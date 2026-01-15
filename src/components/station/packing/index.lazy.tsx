@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Lazy-loaded packing station components for code splitting
  */

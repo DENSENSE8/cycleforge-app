@@ -1,14 +1,19 @@
+'use client';
+
 /**
  * Lazy-loaded checklist components for code splitting
  */
 
 import dynamic from 'next/dynamic';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
 
 export const CompletedTasksLazy = dynamic(() => 
     import('./CompletedTasks').then(mod => ({ default: mod.CompletedTasks })),
     {
-        loading: () => <LoadingSpinner size="sm" className="mx-auto my-4" />,
+        loading: () => (
+            <div className="flex items-center justify-center p-4">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+            </div>
+        ),
     }
 );
 
