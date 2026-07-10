@@ -37,7 +37,8 @@ snapshot*.txt
 .env.nango
 receiving_lines_cleanup_backup_*.json
 .printers.tmp.txt
-.tmp/*.png
+.tmp/
+.test-artifacts/
 
 # vercel
 .vercel
