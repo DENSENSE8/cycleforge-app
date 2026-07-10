@@ -88,7 +88,7 @@ export function DesktopAppDownload() {
           setRelease({
             ok: false,
             reason: 'fetch_failed',
-            releaseUrl: 'https://github.com/usavsolutionsinc/USAV-Orders-Backend/releases/latest',
+            releaseUrl: 'https://github.com/DENSENSE8/cycleforge-app/releases/latest',
           });
         }
       })

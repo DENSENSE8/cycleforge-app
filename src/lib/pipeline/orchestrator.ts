@@ -237,7 +237,7 @@ async function executeTask(task: DiscoveredTask): Promise<{
       implementation,
       validation,
       scoring,
-      repo: 'USAV-Orders-Backend',
+      repo: 'cycleforge-app',
       branch: validation.allPassed ? branchName : undefined,
       commitSha,
     });

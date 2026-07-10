@@ -13,7 +13,7 @@ import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-const GITHUB_REPO = 'usavsolutionsinc/USAV-Orders-Backend';
+const GITHUB_REPO = 'DENSENSE8/cycleforge-app';
 const GITHUB_API = 'https://api.github.com';
 
 type IssueType = 'bug' | 'suggestion' | 'question';

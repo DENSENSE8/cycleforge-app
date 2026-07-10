@@ -26,6 +26,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # electron-builder's Node module collector shells out to `pnpm` (per
+      # the `packageManager` field in package.json) to determine production
+      # dependencies during packaging, even though CI installs via `npm ci`.
+      # Without this it fails with "pnpm: command not found".
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -93,6 +102,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # electron-builder's Node module collector shells out to `pnpm` (per
+      # the `packageManager` field in package.json) to determine production
+      # dependencies during packaging, even though CI installs via `npm ci`.
+      # Without this it fails with "pnpm: command not found".
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

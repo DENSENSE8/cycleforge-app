@@ -29,7 +29,7 @@ const KEY = process.env.STRIPE_SECRET_KEY;
 const LIVE_OK = process.argv.includes('--live');
 const DRY = process.argv.includes('--dry-run');
 const WEBHOOK_URL =
-  process.env.WEBHOOK_URL || 'https://usav-orders-backend.vercel.app/api/billing/webhook';
+  process.env.WEBHOOK_URL || 'https://app.cycleforge.ai/api/billing/webhook';
 
 // The exact events the webhook handler (src/app/api/billing/webhook/route.ts) models.
 const EVENTS = [

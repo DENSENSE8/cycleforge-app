@@ -30,8 +30,8 @@ import { list } from '@vercel/blob';
  */
 export const dynamic = 'force-dynamic';
 
-const GH_OWNER = 'usavsolutionsinc';
-const GH_REPO = 'USAV-Orders-Backend';
+const GH_OWNER = 'DENSENSE8';
+const GH_REPO = 'cycleforge-app';
 const RELEASE_PAGE = `https://github.com/${GH_OWNER}/${GH_REPO}/releases/latest`;
 const BLOB_PREFIX = 'desktop-installers/';
 
@@ -141,7 +141,7 @@ async function fromGithub(): Promise<
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'usav-orders-desktop-app-page',
+    'User-Agent': 'cycleforge-desktop-app-page',
   };
   const token = process.env.GITHUB_TOKEN;
   if (token) headers.Authorization = `Bearer ${token}`;

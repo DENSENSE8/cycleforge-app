@@ -1,9 +1,12 @@
-# USAV Orders Backend
+# CycleForge
 
 Multi-tenant operations platform for order, warehouse, and fulfilment
 workflows. Originally built for USAV Solutions Inc as a single-tenant
-internal tool; now also runs as a public SaaS where each customer is a
-tenant with isolated data, integrations, billing, and feature flags.
+internal tool (`USAV-Orders-Backend`); now developed as CycleForge, a
+standalone SaaS product where each customer is a tenant with isolated
+data, integrations, billing, and feature flags. USAV Solutions remains
+the dogfood tenant/workspace — see `docs/cycle-forge-branding-spec.md`
+for the product-vs-workspace naming split.
 
 This repository is a Next.js (App Router) application that combines:
 - Warehouse/station dashboards (tech, packer, receiving, support, admin)
@@ -274,7 +277,7 @@ Behavior:
 - `npm run desktop:dist:win` builds a Windows `.exe` installer.
 
 Configuration:
-- Production desktop URL defaults to `https://usav-orders-backend.vercel.app`
+- Production desktop URL defaults to `https://app.cycleforge.ai`
 - Override with `ELECTRON_START_URL` when needed
 - External domains open in the system browser instead of navigating inside the app window
 

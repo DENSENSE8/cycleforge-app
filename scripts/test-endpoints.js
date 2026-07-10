@@ -15,7 +15,7 @@
 
 const BASE = (() => {
   const idx = process.argv.indexOf('--base');
-  return idx !== -1 ? process.argv[idx + 1] : 'https://usav-orders-backend.vercel.app';
+  return idx !== -1 ? process.argv[idx + 1] : 'https://app.cycleforge.ai';
 })();
 
 let passed = 0, failed = 0, warned = 0;

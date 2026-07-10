@@ -1,5 +1,5 @@
 {
-  "name": "usav-orders",
+  "name": "cycleforge-app",
   "version": "0.1.1",
   "private": true,
   "packageManager": "pnpm@11.5.1",
@@ -28,7 +28,7 @@
     "electron:build": "electron-builder",
     "electron:build:mac": "electron-builder --mac",
     "electron:build:win": "electron-builder --win --x64",
-    "lint": "next lint",
+    "lint": "eslint src",
     "audit-permissions": "tsx scripts/audit-permissions.ts",
     "audit-route-auth": "tsx scripts/audit-route-auth.ts",
     "audit-route-auth:emit": "tsx scripts/audit-route-auth.ts --emit",

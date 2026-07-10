@@ -9,6 +9,6 @@
 #
 # Keep this in sync with the `publish:` section of electron-builder.yml.
 provider: github
-owner: usavsolutionsinc
-repo: USAV-Orders-Backend
+owner: DENSENSE8
+repo: cycleforge-app
 releaseType: release
