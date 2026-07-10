@@ -2097,6 +2097,47 @@ export type NewPipelineTask = typeof pipelineTasks.$inferInsert;
 export type PipelineCycle = typeof pipelineCycles.$inferSelect;
 export type NewPipelineCycle = typeof pipelineCycles.$inferInsert;
 
+// ─── Cycle Forge (multi-agent dev-loop run history) ──────────────────────────
+// One row per forge run (a /forge invocation from Hermes/Telegram); child rows
+// per stage (architect → build → sync → verify). Mirrors the pipeline_cycles /
+// pipeline_tasks pairing. Fed by POST /api/forge/ingest, read by /api/forge/runs
+// and rendered on /forge via the cycleForgeStepsToTimeline adapter.
+
+export const cycleForgeRuns = pgTable('cycle_forge_runs', {
+  organizationId: orgIdCol(),
+  id: serial('id').primaryKey(),
+  runUid: varchar('run_uid', { length: 64 }).notNull(),
+  featureRequest: text('feature_request').notNull(),
+  branch: varchar('branch', { length: 200 }),
+  manifestPath: text('manifest_path'),
+  status: varchar('status', { length: 20 }).default('running').notNull(),
+  gitDiffStat: text('git_diff_stat'),
+  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  recentIdx: index('cycle_forge_runs_recent_idx').on(table.organizationId, table.startedAt),
+}));
+
+export const cycleForgeRunSteps = pgTable('cycle_forge_run_steps', {
+  organizationId: orgIdCol(),
+  id: serial('id').primaryKey(),
+  runId: integer('run_id').notNull().references(() => cycleForgeRuns.id, { onDelete: 'cascade' }),
+  stage: varchar('stage', { length: 20 }).notNull(),
+  status: varchar('status', { length: 20 }).default('running').notNull(),
+  detail: text('detail'),
+  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  byRunIdx: index('cycle_forge_run_steps_by_run_idx').on(table.organizationId, table.runId, table.createdAt),
+}));
+
+export type CycleForgeRun = typeof cycleForgeRuns.$inferSelect;
+export type NewCycleForgeRun = typeof cycleForgeRuns.$inferInsert;
+export type CycleForgeRunStep = typeof cycleForgeRunSteps.$inferSelect;
+export type NewCycleForgeRunStep = typeof cycleForgeRunSteps.$inferInsert;
+
 // ─── SKU Catalog Hub ─────────────────────────────────────────────────────────
 
 export const skuCatalog = pgTable('sku_catalog', {

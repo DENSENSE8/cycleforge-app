@@ -6,7 +6,8 @@
 //
 // Long-running scripts under `scripts/` and the pm2 pipeline use raw `pg`
 // directly and are unaffected by this change.
-import { Pool as NeonPool } from '@neondatabase/serverless';
+import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 import type { Pool as PgPool } from 'pg';
 
 // Load .env when running outside the Next.js runtime (e.g. standalone scripts).
@@ -33,6 +34,22 @@ const poolMax = readPositiveInt(process.env.PG_POOL_MAX, 5);
 const idleTimeoutMillis = readPositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 10000);
 
 const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/postgres';
+
+// Local dev against a plain Postgres (e.g. the Docker jarvis-db) needs a Neon
+// WebSocket proxy, because @neondatabase/serverless speaks WSS, not raw TCP.
+// This activates ONLY for a localhost DSN, so prod / real Neon is completely
+// unaffected. Stand the proxy up with:
+//   docker run -p 5488:80 -e APPEND_PORT=<pg-host>:5432 -e ALLOW_ADDR_REGEX='.*' \
+//     ghcr.io/neondatabase/wsproxy
+// Override host:port via NEON_WSPROXY (default localhost:5488).
+if (/@(?:localhost|127\.0\.0\.1)(?::\d+)?\//.test(connectionString)) {
+  const proxy = process.env.NEON_WSPROXY || 'localhost:5488';
+  neonConfig.webSocketConstructor = ws;
+  neonConfig.wsProxy = () => `${proxy}/v1`;
+  neonConfig.useSecureWebSocket = false;
+  neonConfig.pipelineTLS = false;
+  neonConfig.pipelineConnect = false;
+}
 
 const basePoolOptions = {
     connectionTimeoutMillis,

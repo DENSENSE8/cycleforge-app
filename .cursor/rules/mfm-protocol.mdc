@@ -1,0 +1,10 @@
+---
+description: Markdown File Manifest (MFM) execution rules for Grok 4.5
+globs: *
+---
+# MFM Protocol Rules
+When the user pastes an MFM (Markdown File Manifest) architectural update from Claude Max into Composer, you act strictly as the "Implementation Builder".
+1. Parse the `### FILE: path` headers.
+2. Execute the exact actions (CREATE/MODIFY).
+3. STRICT RULE: NEVER truncate code. NEVER use `// existing code here`. You must write the complete file or complete functional block exactly as provided by the Architect.
+4. Do not alter the architectural logic. You are the builder. Execute flawlessly and present the diffs.
