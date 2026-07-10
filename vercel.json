@@ -1,8 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
-    "deploymentEnabled": true
+    "deploymentEnabled": false
   },
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "ignoreCommand": "node scripts/vercel-should-build.mjs",
   "crons": [
     {
       "path": "/api/cron/workflow-node-stats",

@@ -84,13 +84,22 @@ const nextConfig: NextConfig = {
         ];
     },
     serverExternalPackages: [
+        '@anthropic-ai/sdk',
+        '@google-cloud/storage',
+        '@google-cloud/vision',
         '@googleapis/sheets',
+        '@gorules/zen-engine-wasm',
+        '@nangohq/node',
+        'ably',
+        'bwip-js',
+        'drizzle-kit',
+        'drizzle-orm',
+        'ebay-api',
         'google-auth-library',
         'googleapis-common',
-        'pg',
         'nodemailer',
-        'drizzle-orm',
-        'drizzle-kit',
+        'pdfjs-dist',
+        'pg',
         // sharp ships per-platform native binaries + an optional wasm32 fallback;
         // letting webpack bundle it makes the build choke trying to resolve
         // '@img/sharp-wasm32/versions'. Require it at runtime instead.

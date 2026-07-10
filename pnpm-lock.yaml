@@ -101,9 +101,6 @@ importers:
       cmdk:
         specifier: ^1.1.1
         version: 1.1.1(@types/react-dom@18.3.7(@types/react@18.3.30))(@types/react@18.3.30)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      cors:
-        specifier: ^2.8.6
-        version: 2.8.6
       cytoscape:
         specifier: ^3.34.0
         version: 3.34.0
@@ -116,24 +113,12 @@ importers:
       date-fns-tz:
         specifier: ^3.2.0
         version: 3.2.0(date-fns@4.4.0)
-      drizzle-kit:
-        specifier: ^0.31.8
-        version: 0.31.10
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.2(@neondatabase/serverless@1.1.0)(@types/pg@8.20.0)(@upstash/redis@1.38.0)(pg@8.21.0)(postgres@3.4.9)
       ebay-api:
         specifier: ^9.4.0
         version: 9.5.2
-      electron-log:
-        specifier: ^5.4.4
-        version: 5.4.4
-      electron-updater:
-        specifier: ^6.8.3
-        version: 6.8.3
-      express:
-        specifier: ^5.2.1
-        version: 5.2.1
       framer-motion:
         specifier: ^11.0.0
         version: 11.18.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -152,9 +137,6 @@ importers:
       lucide-react:
         specifier: ^1.7.0
         version: 1.17.0(react@19.2.7)
-      multer:
-        specifier: ^2.1.1
-        version: 2.1.1
       next:
         specifier: 16.1.1
         version: 16.1.1(@babel/core@7.29.7)(@playwright/test@1.60.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -243,18 +225,30 @@ importers:
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
+      cors:
+        specifier: ^2.8.6
+        version: 2.8.6
       dependency-cruiser:
         specifier: ^17.3.10
         version: 17.4.3
       dotenv:
         specifier: ^17.3.1
         version: 17.4.2
+      drizzle-kit:
+        specifier: ^0.31.8
+        version: 0.31.10
       electron:
         specifier: ^41.0.1
         version: 41.7.1
       electron-builder:
         specifier: ^26.8.1
         version: 26.8.1(electron-builder-squirrel-windows@26.8.1)
+      electron-log:
+        specifier: ^5.4.4
+        version: 5.4.4
+      electron-updater:
+        specifier: ^6.8.3
+        version: 6.8.3
       eslint:
         specifier: ^9.39.1
         version: 9.39.4(jiti@1.21.7)
@@ -264,9 +258,15 @@ importers:
       eslint-plugin-unused-imports:
         specifier: ^4.4.1
         version: 4.4.1(@typescript-eslint/eslint-plugin@8.60.1(@typescript-eslint/parser@8.60.1(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.4(jiti@1.21.7))
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
       knip:
         specifier: ^5.88.0
         version: 5.88.1(@types/node@20.19.41)(typescript@5.9.3)
+      multer:
+        specifier: ^2.1.1
+        version: 2.1.1
       postcss:
         specifier: ^8
         version: 8.5.15
