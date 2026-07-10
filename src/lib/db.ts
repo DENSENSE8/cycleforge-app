@@ -34,6 +34,7 @@ const poolMax = readPositiveInt(process.env.PG_POOL_MAX, 5);
 const idleTimeoutMillis = readPositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 10000);
 
 const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/postgres';
+const adminConnectionString = process.env.ADMIN_DATABASE_URL || connectionString;
 
 // Local dev against a plain Postgres (e.g. the Docker jarvis-db) needs a Neon
 // WebSocket proxy, because @neondatabase/serverless speaks WSS, not raw TCP.
@@ -84,5 +85,14 @@ export const tenantPool: PgPool = tenantConnectionString
         ...basePoolOptions,
     }) as unknown as PgPool)
     : pool;
+
+// Privileged pool for cross-org enumeration (cron org lists, MV refresh, migrations).
+// Defaults to DATABASE_URL (owner) until ADMIN_DATABASE_URL is split out at Phase E1.
+export const adminPool: PgPool = adminConnectionString === connectionString
+    ? pool
+    : (new NeonPool({
+        connectionString: adminConnectionString,
+        ...basePoolOptions,
+    }) as unknown as PgPool);
 
 export default pool;
