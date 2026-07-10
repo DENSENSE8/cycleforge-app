@@ -1,7 +1,7 @@
 'use client';
 
 import type { AiStructuredAnswer } from '@/lib/ai/types';
-import { sectionLabel, tableHeader, tableCell, dataValue } from '@/design-system/tokens/typography/presets';
+import { sectionLabel, tableCell } from '@/design-system/tokens/typography/presets';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 

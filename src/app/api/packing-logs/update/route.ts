@@ -3,7 +3,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishPackerLogChanged, publishOrderChanged } from '@/lib/realtime/publish';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
-import { formatPSTTimestamp, normalizePSTTimestamp } from '@/utils/date';
+import { normalizePSTTimestamp } from '@/utils/date';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { createAuditLog } from '@/lib/audit-logs';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';

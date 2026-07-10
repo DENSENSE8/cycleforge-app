@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Camera, Loader2, SlidersHorizontal } from '@/components/Icons';
 import {
   framerPresenceMobile,
-  framerTransitionMobile,
   motionBezier,
 } from '../../foundations/motion-framer';
 import { useKeyboard } from '@/hooks/useKeyboard';

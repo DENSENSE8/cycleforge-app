@@ -41,7 +41,7 @@ export function BoxMembershipHint({
   const label = ids.length === 1 ? `H-${ids[0]}` : `${ids.length} boxes`;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded bg-teal-50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-teal-700 ring-1 ring-inset ring-teal-200 ${className ?? ''}`}
+      className={`inline-flex items-center gap-1 rounded bg-teal-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-teal-700 ring-1 ring-inset ring-teal-200 ${className ?? ''}`}
     >
       <Package className="h-2.5 w-2.5 shrink-0" />
       {label}
@@ -84,7 +84,7 @@ export function SerialPreviewStrip({
             data-serial-chip
             data-labeled={labeled ? 'true' : 'false'}
             title={labeled ? `Labeled · ${s.unit_uid}` : 'Not labeled yet'}
-            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-inset ${
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${
               labeled
                 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                 : 'bg-surface-canvas text-text-muted ring-border-soft'
@@ -96,7 +96,7 @@ export function SerialPreviewStrip({
         );
       })}
       {extra > 0 ? (
-        <span className="text-[9px] font-black uppercase tracking-widest text-text-soft">
+        <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
           +{extra}
         </span>
       ) : null}

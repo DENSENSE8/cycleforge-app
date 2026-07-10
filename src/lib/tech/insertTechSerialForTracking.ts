@@ -8,7 +8,6 @@ import { mergeSerialsFromTsnRows } from '@/lib/tech/serialFields';
 import { resolveTechSerialInsertContextFromSal } from '@/lib/tech/resolveTechSerialInsertContextFromSal';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { recordOriginProvenance } from '@/lib/neon/serial-units-queries';
-import type { OrgId } from '@/lib/tenancy/constants';
 
 export type TechSerialInsertDb = Pick<Pool, 'query'>;
 

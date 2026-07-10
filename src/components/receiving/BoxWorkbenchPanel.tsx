@@ -209,7 +209,7 @@ export function BoxWorkbenchPanel({
                           …{getLast4(u.serial_number)}
                         </span>
                         <span
-                          className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
+                          className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
                         >
                           {u.current_status}
                         </span>

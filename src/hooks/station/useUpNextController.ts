@@ -10,7 +10,6 @@ import {
   QUICK_FILTER_ITEMS,
   type UpNextTabId,
 } from '@/utils/upnext-shared';
-import type { Order, RepairQueueItem, FBAQueueItem, ReceivingQueueItem } from '@/components/station/upnext/upnext-types';
 
 type TabId = UpNextTabId;
 

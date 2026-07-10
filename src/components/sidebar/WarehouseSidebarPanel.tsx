@@ -19,7 +19,7 @@ import {
   HorizontalButtonSlider,
   type HorizontalSliderItem,
 } from '@/components/ui/HorizontalButtonSlider';
-import { LayoutDashboard, Box, Printer, MapPin, Layers, Database, Package } from '@/components/Icons';
+import { Printer, MapPin, Layers, Database, Package } from '@/components/Icons';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { useLocations } from '@/hooks/useLocations';
 import { useWarehouseSkuSearch, looksLikeBinBarcode } from '@/hooks/useWarehouseSkuSearch';

@@ -25,7 +25,7 @@
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { eq, and, lt, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 import { pipelineTasks, pipelineCycles } from '@/lib/drizzle/schema';
 import { transitionalUsavOrgId } from '@/lib/tenancy/db';

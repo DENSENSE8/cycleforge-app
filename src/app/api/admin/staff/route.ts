@@ -7,7 +7,7 @@
  * untouched so existing consumers keep working.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { audit } from '@/lib/auth/audit';
 import { canonicalRole, ALL_ROLES, type StaffRole } from '@/lib/auth/permissions';

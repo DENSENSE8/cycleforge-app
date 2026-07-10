@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { syncOneInboundPurchase, type SyncOneInboundDeps } from './sync-one-inbound';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { BuyerAccountRef, BuyerPurchaseLine } from '@/lib/ebay/purchase-client';
+import type { BuyerPurchaseLine } from '@/lib/ebay/purchase-client';
 import type { InboundOrgSettings } from '@/lib/tenancy/settings';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as unknown as OrgId;

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { getApiIdempotencyResponse, readIdempotencyKey, saveApiIdempotencyResponse } from '@/lib/api-idempotency';
 import { createStationScanSession } from '@/lib/station-scan-session';
-import { resolveStaffIdFromTechParam } from '@/lib/tech/resolveStaffIdFromTechParam';
 import { appendRepairStatusHistory, getRepairById } from '@/lib/neon/repair-service-queries';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';

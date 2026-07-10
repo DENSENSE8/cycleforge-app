@@ -16,7 +16,7 @@
  */
 
 import { test } from 'node:test';
-import { equal, ok, deepEqual } from 'node:assert/strict';
+import { equal, ok } from 'node:assert/strict';
 import type { PoolClient } from 'pg';
 import {
   recordUnitEvent,

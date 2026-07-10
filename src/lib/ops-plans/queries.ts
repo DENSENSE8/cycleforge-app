@@ -12,7 +12,6 @@ import type {
   PlanRow,
   PhaseRow,
   PhaseWithTasks,
-  TaskLinkRow,
   TaskRow,
 } from './types';
 import type { OpsPlanPhaseStatus, OpsPlanStatus, OpsPlanTaskStatus } from './constants';

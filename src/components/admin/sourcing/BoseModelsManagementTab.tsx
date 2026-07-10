@@ -13,7 +13,7 @@
  * sidebar counts + lookup stay coherent.
  */
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';

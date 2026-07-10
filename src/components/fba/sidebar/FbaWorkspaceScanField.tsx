@@ -13,7 +13,7 @@ import {
   persistAmazonShipmentId,
   persistUpsTracking,
 } from '@/components/fba/sidebar/fbaShipmentTracking';
-import { fbaWorkspaceScanChrome, stationThemeColors } from '@/utils/staff-colors';
+import { fbaWorkspaceScanChrome } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH, USAV_REFRESH_DATA } from '@/lib/fba/events';
 import { SIDEBAR_INTAKE_LABEL_CLASS } from '@/design-system/components/sidebar-intake/intakeFormClasses';

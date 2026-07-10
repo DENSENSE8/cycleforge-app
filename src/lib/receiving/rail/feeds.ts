@@ -24,7 +24,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
 import { stampCartonRailTitleContext, stampPoRailTitleContext } from '@/lib/receiving/po-group-title';
 import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
-import { getReceivedActivityAt, getViewedAt, type RailStatusId } from './status';
+import { getViewedAt, type RailStatusId } from './status';
 import type { RailQtyId } from './quantity';
 import {
   toStubRow,

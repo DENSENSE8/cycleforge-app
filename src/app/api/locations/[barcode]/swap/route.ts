@@ -3,7 +3,6 @@ import pool from '@/lib/db';
 import {
   adjustBinQty,
   getLocationByBarcode,
-  upsertBinContent,
 } from '@/lib/neon/location-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';

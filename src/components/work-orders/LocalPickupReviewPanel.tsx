@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
-import { Check, Loader2, Package, Printer, ShoppingCart, X } from '@/components/Icons';
+import { Loader2, Package, Printer, ShoppingCart, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ReceivingPoLabelPreview } from '@/components/receiving/workspace/ReceivingPoLabelPreview';
 import { printReceivingLabel } from '@/lib/print/printReceivingLabel';

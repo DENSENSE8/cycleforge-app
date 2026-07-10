@@ -7,9 +7,6 @@ import {
   isContactFieldValid,
   canSubmitRepairIntake,
   getRepairSubmitBlockReason,
-  hasRepairIssue,
-  isContactComplete,
-  isProductSelected,
 } from './repair-intake-logic';
 
 // ─── buildInitialFormData ─────────────────────────────────────────────────────

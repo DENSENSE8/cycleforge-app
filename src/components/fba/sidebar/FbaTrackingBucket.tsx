@@ -12,7 +12,7 @@ import { emitOpenQuickAddFnsku } from '@/components/fba/FbaQuickAddFnskuModal';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import type { FbaBoardItem } from '@/lib/fba/types';
-import type { BucketAllocation, TrackingBucket } from '@/lib/fba/types';
+import type { TrackingBucket } from '@/lib/fba/types';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
 

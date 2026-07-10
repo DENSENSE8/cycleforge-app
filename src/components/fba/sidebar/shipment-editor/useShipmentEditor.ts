@@ -16,7 +16,6 @@ import {
   UNALLOCATED_ID,
   UNDO_EXPIRY_MS,
   buildInitialBundles,
-  droppableIdForBundle,
   loadUndoStack,
   mapPlanItems,
   parseBundleIndex,

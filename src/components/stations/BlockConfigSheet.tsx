@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
-import { getBlock, listDataSourceMeta, getDataSource, actionsForSource } from '@/lib/stations';
+import { getBlock, listDataSourceMeta, actionsForSource } from '@/lib/stations';
 import type { BlockInstanceConfig, DataSourceMeta } from '@/lib/stations/contract';
 import { StationIcon } from './station-icons';
 

@@ -7,7 +7,6 @@ import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { deletePhoto } from '@/lib/photos/service';
 import { getReceivingPhotoDeleteMeta, countReceivingPhotos } from '@/lib/photos/queries/receiving-list';
 import { publishReceivingPhotoChanged } from '@/lib/realtime/publish';
-import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
  * DELETE /api/photos/[id] — unified photo delete across every entity_type

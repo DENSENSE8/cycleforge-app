@@ -16,7 +16,7 @@ import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { join } from 'path';
 import { MAX_TASKS_PER_CYCLE, TYPECHECK_TIMEOUT_MS, LINT_TIMEOUT_MS, TEST_TIMEOUT_MS } from './config';
-import type { DiscoveredTask, TaskSource } from './types';
+import type { DiscoveredTask } from './types';
 
 const execAsync = promisify(childExec);
 

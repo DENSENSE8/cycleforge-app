@@ -10,7 +10,6 @@ import {
 } from '@/lib/print/printProductLabel';
 import { useLabelRecents } from '@/hooks/useLabelRecents';
 import { CONDITION_OPTIONS } from '@/components/receiving/zoho-po-types';
-import type { BarcodeMode } from '@/components/barcode/ModeSelector';
 import { useBarcodeModeStep } from './useBarcodeModeStep';
 import { useSerialList } from './useSerialList';
 import { allocateNextUnitId, lookupProductInfo, postMultiSn, resolveUnitId } from './unit-label-api';

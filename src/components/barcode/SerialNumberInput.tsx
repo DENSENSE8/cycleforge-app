@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { LocationSelector } from './LocationSelector';

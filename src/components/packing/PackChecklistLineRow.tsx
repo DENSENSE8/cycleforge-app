@@ -195,7 +195,7 @@ export function PackChecklistLineRow({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="mb-1 inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+              <div className="mb-1 inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
                 Visual match — confirm photo = physical item
               </div>
               <dl className="min-w-0 flex-1 space-y-1">

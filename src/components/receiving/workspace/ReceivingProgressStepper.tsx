@@ -233,7 +233,7 @@ function StepDot({
     return (
       <span
         className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card font-black text-blue-700 ring-2 ring-blue-500 ${sizeClass} ${
-          compact ? 'text-[8px]' : 'text-eyebrow'
+          compact ? 'text-mini' : 'text-eyebrow'
         }`}
       >
         {index}

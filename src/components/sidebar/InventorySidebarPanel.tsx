@@ -6,7 +6,7 @@ import { InventoryGraphSidebar } from '@/components/inventory/sidebar/InventoryG
 import { InventoryTriageSidebar } from '@/components/inventory/sidebar/InventoryTriageSidebar';
 import { InventoryPulseSidebar } from '@/components/inventory/sidebar/InventoryPulseSidebar';
 import { ReplenishSidebarPanel } from '@/components/sidebar/ReplenishSidebarPanel';
-import { sidebarHeaderBandClass, sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
+import { sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { Package, RefreshCw } from '@/components/Icons';

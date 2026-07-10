@@ -167,7 +167,7 @@ export function PhotoAnalysisProviderPanel() {
                   <span className="flex items-center gap-2">
                     <span className="text-caption font-bold text-gray-900">{opt.label}</span>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-inset ${
+                      className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${
                         PRIVACY_CHIP[opt.privacy]
                       }`}
                     >

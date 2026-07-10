@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /** Mobile breakpoint – matches Tailwind's `md` (768px). */
 export const MOBILE_BREAKPOINT = '(max-width: 767px)';
