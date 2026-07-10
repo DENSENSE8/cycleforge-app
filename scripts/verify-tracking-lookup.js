@@ -22,7 +22,7 @@
 
 const BASE = (() => {
   const idx = process.argv.indexOf('--base');
-  return idx !== -1 ? process.argv[idx + 1] : 'https://usav-orders-backend.vercel.app';
+  return idx !== -1 ? process.argv[idx + 1] : 'https://app.cycleforge.ai';
 })();
 
 const raw = process.argv.find((a, i) => i >= 2 && !a.startsWith('--') && process.argv[i - 1] !== '--base');

@@ -19,7 +19,7 @@ try {
   log = { info: console.log, warn: console.warn, error: console.error };
 }
 
-const DEFAULT_URL = 'https://usav-orders-backend.vercel.app';
+const DEFAULT_URL = 'https://app.cycleforge.ai';
 const DEV_URL = 'http://127.0.0.1:3000';
 const SIDECAR_PORT = 3001;
 
