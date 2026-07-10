@@ -645,12 +645,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     source: 'packing-logs',
                     tracking_type: classification.trackingType,
                     order_id: order.order_id ?? null,
-                    ...(classification.trackingType === 'CLEAN'
-                        ? {
-                            clean_size: classification.cleanSize ?? null,
-                            pack_tier: packTierFromCleanSize(classification.cleanSize),
-                          }
-                        : {}),
+                    // Note: this block is inside the `trackingType === 'ORDERS'`
+                    // branch, so CLEAN-specific fields never apply here.
                 },
                 createdAt: foundCreatedAt,
             });

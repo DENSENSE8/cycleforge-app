@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { AlertTriangle, ChevronRight, Flag, History, Loader2, Package, QrCode, Trash2 } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { ViewDropdown, type ViewDropdownOption } from '@/components/ui/ViewDropdown';
+import { Button } from '@/design-system/primitives';
 import { SectionHeader } from '@/components/mobile/redesign/DesignSystem';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ScanResultRow, type ScanFeedItem } from '@/components/mobile/feed/rows/ScanResultRow';

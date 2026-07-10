@@ -19,6 +19,7 @@ node_modules/
 /server/storage/
 
 # misc
+.research/
 .DS_Store
 *.pem
 

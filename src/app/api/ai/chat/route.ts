@@ -190,14 +190,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       chars: reply.length,
     });
 
-    const finalMode = localResolution?.analysis ? 'hybrid' : 'assistant';
+    // The local_ops path returns early above; reaching here means the
+    // 'enriched' branch, which carries no local resolution/analysis.
+    const finalMode = 'assistant';
     const payload: AiChatRouteResponse = {
       reply: String(reply).trim(),
       sessionId,
       mode: finalMode,
-      analysis: localResolution?.analysis ?? null,
+      analysis: null,
     };
-    void persistChatMessage({ organizationId: ctx.organizationId, sessionId, role: 'assistant', content: String(reply).trim(), mode: finalMode, analysis: localResolution?.analysis });
+    void persistChatMessage({ organizationId: ctx.organizationId, sessionId, role: 'assistant', content: String(reply).trim(), mode: finalMode, analysis: null });
     return NextResponse.json(payload);
   } catch (err: any) {
     console.error('[ai-chat] Error:', err?.message);

@@ -63,7 +63,7 @@ function buildAsciiTable(summary: PackingKpiSummary, options?: { showPercentOfDa
   const header = cols.map((c) => padCell(c.label, c.width)).join('  ');
   const divider = cols.map((c) => '─'.repeat(c.width)).join('──');
   const body = rows.map((row) =>
-    cols.map((c) => padCell(String(row[c.key]), c.width)).join('  '),
+    cols.map((c) => padCell(String((row as Record<string, unknown>)[c.key]), c.width)).join('  '),
   );
   const totals = summary.totals;
   const totalRowCells = [
