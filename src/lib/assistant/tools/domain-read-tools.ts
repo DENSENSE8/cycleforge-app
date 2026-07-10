@@ -76,7 +76,7 @@ async function loadDefaultJourneyDeps(): Promise<OperationsJourneyDeps> {
 
 export const getOperationsJourney: AssistantToolDef<
   z.ZodObject<{
-    dim: z.ZodEnum<['order', 'serial', 'tracking']>;
+    dim: z.ZodEnum<{ order: 'order'; serial: 'serial'; tracking: 'tracking' }>;
     value: z.ZodString;
     limit: z.ZodDefault<z.ZodNumber>;
   }>

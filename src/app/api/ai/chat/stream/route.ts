@@ -246,14 +246,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         }
 
         const finalText = assembled.trim();
-        const finalMode = localResolution?.analysis ? 'hybrid' : 'assistant';
-        if (localResolution?.analysis) send('analysis', localResolution.analysis);
+        // local_ops streams+returns early above; this Hermes fall-through is the
+        // 'enriched' branch, which carries no local resolution/analysis.
+        const finalMode = 'assistant';
         send('done', { mode: finalMode });
         void persistChatMessage({
           organizationId, sessionId, role: 'assistant',
           content: finalText || 'No response received.',
           mode: finalMode,
-          analysis: localResolution?.analysis ?? null,
+          analysis: null,
         });
       } catch (err: unknown) {
         const messageText = err instanceof Error ? err.message : 'Chat request failed';
