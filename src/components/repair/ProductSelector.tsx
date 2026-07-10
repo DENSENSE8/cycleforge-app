@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
-    SIDEBAR_INTAKE_LABEL_CLASS,
     getSidebarIntakeInputClass,
 } from '@/design-system/components';
 

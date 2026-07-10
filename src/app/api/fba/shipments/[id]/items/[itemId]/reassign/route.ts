@@ -3,7 +3,7 @@ import { parseFbaPlanId } from '@/lib/fba/plan-id';
 import { publishFbaItemChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
-import { requireRoutePerm, recordRouteAudit } from '@/lib/auth/dynamic-route-guard';
+import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
 type Params = Promise<{ id: string; itemId: string }>;

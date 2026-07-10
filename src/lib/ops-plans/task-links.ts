@@ -1,4 +1,4 @@
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { updateTask } from './queries';
 import type { TaskLinkRow } from './types';

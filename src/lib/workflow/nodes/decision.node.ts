@@ -26,7 +26,7 @@
  * before it's configured.
  */
 
-import type { NodeContext, NodeDefinition, NodeOutputPort, NodeResult } from '../contract';
+import type { NodeContext, NodeOutputPort, NodeResult } from '../contract';
 import {
   parseDecisionRules,
   resolveDecision,

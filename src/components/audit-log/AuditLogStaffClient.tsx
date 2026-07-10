@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatPSTTimestamp } from '@/utils/date';
-import { ClipboardList, Package, FileText, User as UserIcon } from '@/components/Icons';
+import { ClipboardList, Package, FileText } from '@/components/Icons';
 import { AuditLogDailyReport } from './AuditLogDailyReport';
 
 interface StaffEvent {

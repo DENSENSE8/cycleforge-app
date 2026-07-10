@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { History, Star, X } from '@/components/Icons';
+import { Star, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { Row } from './Row';
 import { PinThisPageButton } from './PinThisPageButton';

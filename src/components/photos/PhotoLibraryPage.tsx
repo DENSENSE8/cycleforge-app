@@ -8,7 +8,7 @@ import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
 import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
 import { describePhotoLibraryContext } from '@/lib/photos/library-context-label';
-import { claimsTicketLabel, photoShareTitle } from '@/lib/photos/display-names';
+import { photoShareTitle } from '@/lib/photos/display-names';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
   photoLibraryViewToggleModes,

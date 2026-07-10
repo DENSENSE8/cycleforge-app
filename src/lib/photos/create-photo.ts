@@ -1,6 +1,5 @@
 import type { PoolClient } from 'pg';
 import { photoContentUrl } from './display-url';
-import { createPhotoEntityLink } from './links';
 import type { PhotoEntityType, PhotoLinkRole } from './types';
 
 export interface InsertPhotoCatalogInput {

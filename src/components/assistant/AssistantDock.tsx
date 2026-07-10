@@ -252,7 +252,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <p className="mt-1.5 text-micro text-text-faint">
-          <span className="rounded bg-surface-canvas px-1 py-px text-[10px] font-semibold ring-1 ring-inset ring-border-hairline">
+          <span className="rounded bg-surface-canvas px-1 py-px text-micro font-semibold ring-1 ring-inset ring-border-hairline">
             ⌘J
           </span>{' '}
           ⌘J toggle · Enter send · Esc close

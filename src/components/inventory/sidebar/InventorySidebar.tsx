@@ -31,8 +31,7 @@ import {
     getInventorySearchHelperText,
 } from '@/lib/inventory-search';
 import { InventorySidebarTabs } from './InventorySidebarTabs';
-import { FIELD_ICON } from './inventory-sidebar-metadata';
-import { InventorySidebarFilters, InventoryFilterDropdown } from './InventorySidebarFilters';
+import { InventoryFilterDropdown } from './InventorySidebarFilters';
 import { InventoryCrossTabHandoffCard } from './InventoryCrossTabHandoffCard';
 import { InventoryResultList } from './InventoryResultList';
 import { InventoryRecentSearches } from './InventoryRecentSearches';

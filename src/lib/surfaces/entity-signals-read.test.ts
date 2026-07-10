@@ -72,7 +72,7 @@ test('getEntitySignal: org-scoped by id, coerces entity_id, returns null when ab
   assert.equal(detail?.entity_id, 501);
   assert.equal(typeof detail?.entity_id, 'number');
   assert.deepEqual(found.cap[0].params, [ORG, 9]); // org-first, by id
-  assert.ok(found.cap[0].text.includes('organization_id = $1 AND id = $2'));
+  assert.ok(found.cap[0].text.includes('es.organization_id = $1 AND es.id = $2'));
 
   const absent = fakes([]);
   assert.equal(await getEntitySignal(ORG, 9, absent.deps), null);

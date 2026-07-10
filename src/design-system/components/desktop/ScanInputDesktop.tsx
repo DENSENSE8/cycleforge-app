@@ -7,7 +7,6 @@ import {
   useState,
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { framerTransition, framerPresence } from '../../foundations/motion-framer';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

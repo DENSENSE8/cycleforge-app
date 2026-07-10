@@ -16,7 +16,6 @@ import {
   ChevronDown,
   X,
 } from '@/components/Icons';
-import { TOKENS } from './DesignSystem';
 import { IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';

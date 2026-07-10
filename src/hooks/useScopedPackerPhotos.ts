@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCamera';
-import type { PackerPhotoScope } from '@/components/mobile/packer/PackerPhotoUploadQueue';
 
 export interface PackerPhotoRow {
   id: number;

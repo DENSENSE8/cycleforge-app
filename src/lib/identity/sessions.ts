@@ -21,7 +21,6 @@
  */
 
 import type { Pool, PoolClient } from 'pg';
-import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 

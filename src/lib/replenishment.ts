@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { getCurrentPSTDateKey } from '@/utils/date';
-import { getPurchaseOrderById, listPurchaseOrders, listPurchaseReceives } from '@/lib/zoho';
+import { getPurchaseOrderById, listPurchaseReceives } from '@/lib/zoho';
 import { zohoGet, zohoPost } from '@/lib/zoho/httpClient';
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

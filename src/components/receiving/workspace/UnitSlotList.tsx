@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
-import { Plus, X } from '@/components/Icons';
+import { X } from '@/components/Icons';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ConditionBadge } from './ConditionBadge';

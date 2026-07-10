@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createLocation, getRooms, setRoomZoneLetter } from '@/lib/neon/location-queries';
+import { createLocation, getRooms } from '@/lib/neon/location-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 
 /** GET /api/rooms — list active rooms (parent rows with no row/col). */

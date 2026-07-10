@@ -19,7 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserBySid, type CurrentUser } from './current-user';
+import { getCurrentUserBySid } from './current-user';
 import { SESSION_COOKIE_NAME } from './session';
 import { hasStepUp } from './stepup';
 import { requiresStepUp, rolesIncludeAdmin, type PermissionString } from './permissions';

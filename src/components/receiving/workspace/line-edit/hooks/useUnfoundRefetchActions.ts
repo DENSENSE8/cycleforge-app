@@ -12,7 +12,6 @@ import { toast } from '@/lib/toast';
 import {
   classifyZohoRetry,
   classifyAmazonLookup,
-  type RefetchStatus,
   type RefetchState,
 } from './useUnfoundRefetchActions.classify';
 

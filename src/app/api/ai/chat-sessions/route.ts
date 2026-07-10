@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/drizzle/db';
 import { aiChatSessions, aiChatMessages } from '@/lib/drizzle/schema';
-import { desc, eq, sql, count } from 'drizzle-orm';
+import { desc, eq, count } from 'drizzle-orm';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const runtime = 'nodejs';

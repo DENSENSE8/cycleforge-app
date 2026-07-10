@@ -60,7 +60,7 @@ export function UnitPrintHistory({
       {jobs.map((j) => (
         <li key={j.id} className="flex items-center gap-2 text-eyebrow font-semibold text-text-soft">
           <span
-            className={`shrink-0 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-widest ring-1 ring-inset ${
+            className={`shrink-0 rounded px-1 py-0.5 text-mini font-black uppercase tracking-widest ring-1 ring-inset ${
               j.is_reprint
                 ? 'bg-amber-50 text-amber-700 ring-amber-200'
                 : 'bg-emerald-50 text-emerald-700 ring-emerald-200'

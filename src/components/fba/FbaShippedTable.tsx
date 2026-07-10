@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { fbaPaths } from '@/lib/fba/api-paths';
 import { Check, ChevronDown, Loader2, Boxes } from '@/components/Icons';

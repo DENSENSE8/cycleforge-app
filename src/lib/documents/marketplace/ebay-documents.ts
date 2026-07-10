@@ -2,7 +2,6 @@ import 'server-only';
 
 import { EbayClient } from '@/lib/ebay/client';
 import { buildSourceHash } from '@/lib/documents/fetch-idempotency';
-import type { OutboundDocumentType } from '@/lib/documents/types';
 import type { OutboundOrderContext } from './order-context';
 import type { MarketplaceDocumentAdapter, MarketplaceFetchOutcome } from './types';
 

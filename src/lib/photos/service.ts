@@ -1,5 +1,4 @@
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { photoContentUrl } from './display-url';
 import {
   findPhotoByEntityLegacyUrl,
   insertPhotoCatalog,

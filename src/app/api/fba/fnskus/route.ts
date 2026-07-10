@@ -4,7 +4,6 @@ import { publishFbaCatalogChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { withAuth } from '@/lib/auth/withAuth';
-import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 // ── POST /api/fba/fnskus ──────────────────────────────────────────────────────
 // Add a new FNSKU to the fba_fnskus catalog.

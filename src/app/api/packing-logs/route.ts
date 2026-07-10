@@ -7,7 +7,7 @@ import { upsertOpenOrderException } from '@/lib/orders-exceptions';
 import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
 import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
 import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson } from '@/lib/cache/upstash-cache';
-import { formatPSTTimestamp, normalizePSTTimestamp, getCurrentPSTDateKey } from '@/utils/date';
+import { normalizePSTTimestamp, getCurrentPSTDateKey } from '@/utils/date';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';

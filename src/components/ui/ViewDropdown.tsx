@@ -3,7 +3,6 @@
 import React from 'react';
 import { AnchoredLayer } from '@/design-system';
 import { dmSans } from '@/lib/fonts';
-import { Check } from '@/components/Icons';
 
 export interface ViewDropdownOption<T extends string> {
   value: T;
