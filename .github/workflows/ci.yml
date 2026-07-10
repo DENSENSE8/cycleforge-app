@@ -159,3 +159,95 @@ jobs:
             exit 0
           fi
           npm run tenancy:canary:check
+
+  deploy:
+    name: Deploy production (prebuilt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check deploy-relevant changes
+        id: should_deploy
+        run: |
+          if node scripts/vercel-should-build.mjs; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "No deploy-relevant changes — skipping production deploy."
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Deploy-relevant changes detected — proceeding."
+          fi
+
+      - name: Verify Vercel secrets
+        id: vercel_secrets
+        if: steps.should_deploy.outputs.deploy == 'true'
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::VERCEL_TOKEN, VERCEL_ORG_ID, or VERCEL_PROJECT_ID not set — skipping production deploy."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Set up pnpm
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      - name: Set up Node.js
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Next.js build
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Refresh release notes
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        run: node scripts/generate-release-notes.mjs
+
+      - name: Pull Vercel environment
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        run: pnpm exec vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build for production
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        run: pnpm exec vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy prebuilt to production
+        if: steps.should_deploy.outputs.deploy == 'true' && steps.vercel_secrets.outputs.configured == 'true'
+        run: pnpm exec vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
