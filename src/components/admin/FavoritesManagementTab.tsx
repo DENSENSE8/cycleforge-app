@@ -404,7 +404,7 @@ export function FavoritesManagementTab() {
               </label>
 
               <label className="space-y-1">
-                <span className={`block ${sectionLabel}`}>Ecwid Product ID</span>
+                <span className={`block ${sectionLabel}`}>Storefront product ID</span>
                 <input
                   type="text"
                   value={form.ecwidProductId}

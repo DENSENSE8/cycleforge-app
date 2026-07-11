@@ -44,7 +44,7 @@ interface IncomingSyncDialogProps {
 }
 
 const KIND_META: Record<IncomingSyncKind, { eyebrow: string; icon: typeof RefreshCw; runningTitle: string; tone: string }> = {
-  zoho: { eyebrow: 'Zoho Sync', icon: RefreshCw, runningTitle: 'Refreshing Zoho POs', tone: 'text-emerald-600' },
+  zoho: { eyebrow: 'Inventory Sync', icon: RefreshCw, runningTitle: 'Refreshing purchase orders', tone: 'text-emerald-600' },
   email: { eyebrow: 'Email Sync', icon: Mail, runningTitle: 'Rescanning PO mailbox', tone: 'text-violet-600' },
   marketplace: { eyebrow: 'Marketplace Sync', icon: Package, runningTitle: 'Importing marketplace purchases', tone: 'text-amber-600' },
 };

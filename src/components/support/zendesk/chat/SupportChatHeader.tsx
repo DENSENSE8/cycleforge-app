@@ -170,7 +170,7 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         {/* Zendesk ticket fields — these write back to Zendesk. */}
         <div className="flex items-center gap-2">
-          <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Zendesk</span>
+          <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Helpdesk</span>
           <ZendeskSelect
             value={String(ticket.status)}
             options={STATUS_OPTIONS}

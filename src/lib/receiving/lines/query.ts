@@ -114,13 +114,16 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const poFrom = isISODate(poFromRaw) ? poFromRaw : '';
   const poTo = isISODate(poToRaw) ? poToRaw : '';
   // Incoming-only: sort axis. Defaults to most-recently-issued-in-Zoho.
+  // `po_newest`/`po_oldest` (B3, provider-agnostic aliases) map to the SAME
+  // SQL as `zoho_newest`/`zoho_oldest` (see build-sql.ts's incomingOrderBy) —
+  // old values are never removed, so existing deep links keep working.
   const sortRaw = String(searchParams.get('sort') || '').trim().toLowerCase();
   const incomingSort:
     | 'zoho_newest'
     | 'zoho_oldest'
     | 'expected_soonest'
     | 'recently_added' =
-    sortRaw === 'zoho_oldest'
+    sortRaw === 'zoho_oldest' || sortRaw === 'po_oldest'
       ? 'zoho_oldest'
       : sortRaw === 'expected_soonest'
         ? 'expected_soonest'
@@ -159,8 +162,11 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const view = parseReceivingView(viewRaw);
   // Phase 2 — physical-vs-financial decoupling: `?zohoStatus=open` (the "Hide
   // Zoho-received" toggle) re-applies the old hide-terminal filter.
-  const hideZohoReceived =
-    String(searchParams.get('zohoStatus') || '').trim().toLowerCase() === 'open';
+  // `?inventoryStatus=` (B3, provider-agnostic alias) is the same toggle under
+  // the new name — preferred when both are present; old param never removed.
+  const zohoStatusRaw = String(searchParams.get('zohoStatus') || '').trim().toLowerCase();
+  const inventoryStatusRaw = String(searchParams.get('inventoryStatus') || '').trim().toLowerCase();
+  const hideZohoReceived = (inventoryStatusRaw || zohoStatusRaw) === 'open';
   // view=testing only: scope the recently-tested feed to one staff member.
   const testerId = Number(searchParams.get('tester'));
   const include     = String(searchParams.get('include') || '').trim().toLowerCase();

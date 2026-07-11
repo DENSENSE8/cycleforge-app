@@ -70,7 +70,7 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
               label={
                 isInboundOnly
                   ? 'Re-pull this order from linked marketplace accounts (eBay) + re-poll its shipment'
-                  : 'Re-pull this PO from Zoho + re-poll its shipment'
+                  : 'Re-pull this PO from inventory + re-poll its shipment'
               }
               asChild
             >

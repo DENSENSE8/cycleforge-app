@@ -22,9 +22,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   deferInvalidateTriageAndUnboxQueueFeeds,
+  deferInvalidateTriageReceivingFeeds,
   deferInvalidateUnboxReceivingFeeds,
   dispatchReceivingLinesPrepended,
   dispatchReceivingUnboxRefresh,
+  dispatchReceivingTriageRefresh,
   upsertReceivingRailRows,
   upsertUnboxQueueRows,
   receivingRailCartonKey,
@@ -555,7 +557,7 @@ export function useTrackingScan({
               receiving_id: Number(data.receiving_id) || undefined,
             });
             window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
-            toast.error('Zoho not connected — PO matched but items could not load. Reconnect Zoho in Settings → Integrations.');
+            toast.error('Inventory system not connected — PO matched but items could not load. Reconnect it in Settings → Integrations.');
             return;
           }
 

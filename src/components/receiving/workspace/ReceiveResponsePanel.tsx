@@ -87,7 +87,7 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
     if (http2xx && zoho.rate_limited) {
       return {
         verdict: 'rate_limit',
-        headline: 'Zoho daily API quota exhausted',
+        headline: 'Inventory sync quota exhausted',
         tone: 'rose',
         detail,
       };
@@ -95,7 +95,7 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
     if (http2xx && Number(zoho.attempted ?? 0) > 0 && zoho.ok === false) {
       return {
         verdict: 'api_error',
-        headline: 'Zoho rejected the purchase receive',
+        headline: 'Inventory system rejected the purchase receive',
         tone: 'rose',
         detail,
       };
@@ -132,9 +132,9 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
     const secs = Math.max(1, Math.ceil((zoho.circuit?.retryAfterMs ?? 0) / 1000));
     return {
       verdict: 'circuit_open',
-      headline: `Zoho cooldown — retry in ~${secs}s`,
+      headline: `Inventory sync cooldown — retry in ~${secs}s`,
       tone: 'amber',
-      detail: `Circuit breaker open after ${zoho.circuit?.consecutiveFailures ?? 0} recent Zoho failures. Lines saved locally and stay in Scanned; the PO syncs once Zoho recovers.`,
+      detail: `Circuit breaker open after ${zoho.circuit?.consecutiveFailures ?? 0} recent sync failures. Lines saved locally and stay in Scanned; the PO syncs once the connection recovers.`,
     };
   }
   if (zoho.skip_reason === 'zoho_already_fully_received') {
@@ -156,10 +156,10 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
   if (zoho.skip_reason === 'no_zoho_link') {
     return {
       verdict: 'skipped',
-      headline: 'Zoho NOT updated — no PO link',
+      headline: 'Inventory NOT updated — no PO link',
       tone: 'amber',
       detail:
-        'No Zoho purchaseorder_id / line_item_id is attached to this package. Click the refresh icon to sync with Zoho first, then try again.',
+        'No purchase-order link is attached to this package. Click the refresh icon to sync purchase orders first, then try again.',
     };
   }
   if (zoho.skip_reason === 'scan_only') {
@@ -175,7 +175,7 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
     // intentionally not touched (there is no PO to reconcile against).
     return {
       verdict: 'success',
-      headline: 'Received locally — Zoho not touched',
+      headline: 'Received locally — inventory not updated',
       tone: 'emerald',
       detail: '',
     };
@@ -183,38 +183,38 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
   if (!zoho.attempted) {
     return {
       verdict: 'skipped',
-      headline: 'Zoho NOT updated — no PO link',
+      headline: 'Inventory NOT updated — no PO link',
       tone: 'amber',
       detail:
-        'Lines were saved locally but no Zoho purchaseorder_id / line_item_id is attached to this package. Click the refresh icon to sync with Zoho first, then try again.',
+        'Lines were saved locally but no purchase-order link is attached to this package. Click the refresh icon to sync purchase orders first, then try again.',
     };
   }
   if (zoho.rate_limited) {
     return {
       verdict: 'rate_limit',
-      headline: 'Zoho daily API quota exhausted',
+      headline: 'Inventory sync quota exhausted',
       tone: 'rose',
       detail:
-        'Local DB updated, but Zoho purchase receive was rejected with rate-limit. Wait for the daily reset or pause other Zoho-touching workflows.',
+        'Saved locally, but the inventory purchase receive was rejected with a rate limit. Wait for the daily reset or pause other inventory-sync workflows.',
     };
   }
   const firstErrorKind = zoho.results?.find((x) => x.error_kind)?.error_kind ?? null;
   if (!zoho.ok && firstErrorKind === 'circuit_open') {
     return {
       verdict: 'circuit_open',
-      headline: 'Zoho circuit breaker tripped',
+      headline: 'Inventory sync circuit breaker tripped',
       tone: 'rose',
       detail:
         zoho.error ||
-        'Recent Zoho failures caused the client to suppress new requests for a cooldown window. Retry in a minute.',
+        'Recent sync failures caused new requests to pause for a cooldown window. Retry in a minute.',
     };
   }
   if (!zoho.ok) {
     return {
       verdict: 'api_error',
-      headline: 'Zoho API rejected the receive',
+      headline: 'Inventory system rejected the receive',
       tone: 'rose',
-      detail: zoho.error || 'Zoho returned an error — see the raw response below for the exact reason.',
+      detail: zoho.error || 'The inventory system returned an error — see the raw response below for the exact reason.',
     };
   }
   return {

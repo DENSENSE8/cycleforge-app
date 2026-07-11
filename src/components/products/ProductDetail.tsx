@@ -121,7 +121,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                 <DetailCard title="Attributes">
                     <DetailRow label="GTIN" value={product.gtin} mono />
                     <DetailRow label="UPC" value={product.upc} mono />
-                    <DetailRow label="Zoho Item ID" value={product.zoho_item_id} mono />
+                    <DetailRow label="Inventory item ID" value={product.zoho_item_id} mono />
                     <DetailRow label="Category" value={product.category} />
                 </DetailCard>
 

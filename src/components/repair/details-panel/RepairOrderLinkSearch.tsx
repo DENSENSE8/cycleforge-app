@@ -204,7 +204,7 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search Ecwid order # / customer…"
+          placeholder="Search store order # / customer…"
           disabled={disabled}
           className="w-full rounded-lg border border-border-soft py-2 pl-8 pr-8 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
         />
@@ -233,11 +233,11 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
           className="absolute z-dropdown mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border-soft bg-surface-card py-1 shadow-lg"
         >
           {isError ? (
-            <p className="px-3 py-2 text-xs text-rose-600">Couldn’t reach Ecwid. Type the order # and press Enter.</p>
+            <p className="px-3 py-2 text-xs text-rose-600">Couldn’t reach the store. Type the order # and press Enter.</p>
           ) : null}
 
           {!isFetching && !isError && orders.length === 0 && debounced.length >= 2 ? (
-            <p className="px-3 py-2 text-xs text-text-soft">No Ecwid orders match “{debounced}”.</p>
+            <p className="px-3 py-2 text-xs text-text-soft">No store orders match “{debounced}”.</p>
           ) : null}
 
           {orders.map((o, i) => {

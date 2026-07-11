@@ -17,7 +17,7 @@ export function PoTab({ data }: { data: DetailsResponse }) {
       <Row label="PO Date" value={fmtDate(po.po_date)} />
       <Row label="Expected delivery" value={fmtDate(po.expected_delivery_date)} />
       <Row label="Total" value={fmtMoney(po.total, po.currency)} />
-      <Row label="Modified in Zoho" value={fmtDateTime(po.last_modified_zoho)} />
+      <Row label="Modified in inventory" value={fmtDateTime(po.last_modified_zoho)} />
       <Row label="Synced locally" value={fmtDateTime(po.last_synced_at)} />
     </div>
   );

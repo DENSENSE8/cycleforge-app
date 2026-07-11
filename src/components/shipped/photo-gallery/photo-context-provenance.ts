@@ -22,7 +22,7 @@ export function describePhotoWorkflow(meta: PhotoMeta): PhotoWorkflowDescriptor 
     scope === 'packing' || type.includes('PACK') || type.includes('PACKER');
 
   if (isClaim) {
-    return { kind: 'claims', label: 'Zendesk claim', tone: 'bg-amber-500/15 text-amber-200 ring-amber-400/30' };
+    return { kind: 'claims', label: 'Claim ticket', tone: 'bg-amber-500/15 text-amber-200 ring-amber-400/30' };
   }
   if (isPacking) {
     return { kind: 'packing', label: 'Packing', tone: 'bg-violet-500/15 text-violet-200 ring-violet-400/30' };
@@ -69,7 +69,7 @@ function missingEntityCopy(workflow: PhotoWorkflowDescriptor): Pick<LinkedEntity
     case 'claims':
       return {
         missingHeadline: 'Ticket not linked',
-        missingDetail: 'Tagged as a claim photo but no Zendesk ticket is attached.',
+        missingDetail: 'Tagged as a claim photo but no support ticket is attached.',
       };
     default:
       return {

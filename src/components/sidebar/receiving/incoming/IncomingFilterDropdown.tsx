@@ -25,7 +25,7 @@ export function IncomingFilterDropdown({
       <div>
         <span className={dropdownLabelClass}>PO purchased between</span>
         <DateRangePickerField value={dateRange} onChange={setDateRange} placeholder="Any date" />
-        <p className="mt-1 text-eyebrow font-medium text-text-faint">Date in header is when Zoho PO was created</p>
+        <p className="mt-1 text-eyebrow font-medium text-text-faint">Date in header is when the PO was created</p>
       </div>
 
       <label className="block">

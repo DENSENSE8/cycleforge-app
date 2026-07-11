@@ -54,7 +54,7 @@ function fallbackTicketBody(ticketId: number | null): string {
     'Purchase Order: n/a',
     'Tracking: n/a',
     '',
-    ticketId ? `Zendesk ticket: #${ticketId}` : null,
+    ticketId ? `Ticket: #${ticketId}` : null,
   ].filter(Boolean).join('\n');
 }
 

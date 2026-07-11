@@ -1,19 +1,35 @@
 import { NextResponse } from 'next/server';
-import { getZendeskSupportOverview } from '@/lib/zendesk';
+import {
+  getHelpdeskProvider,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+  type HelpdeskOverview,
+} from '@/lib/integrations/helpdesk';
 import { formatPSTTimestamp } from '@/utils/date';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Support overview — Zendesk only. (eBay messages/returns were removed when the
- * support surface became a native Zendesk console.) Powers the Operations
- * dashboard's Zendesk tile. Requires a valid session (was previously
- * unauthenticated — the proxy only checks cookie presence).
+ * Support overview — the org's helpdesk (Zendesk is the first adapter; eBay
+ * messages/returns were removed when the support surface became a native
+ * ticket console). Powers the Operations dashboard's support tile. Requires a
+ * valid session (was previously unauthenticated — the proxy only checks
+ * cookie presence). The response key stays `zendesk` for contract stability.
  */
 export const GET = withAuth(async (_req, ctx) => {
   try {
-    const zendesk = await getZendeskSupportOverview(10, ctx.organizationId);
+    const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+    const zendesk: HelpdeskOverview = helpdesk
+      ? await helpdesk.getOverview(10)
+      : {
+          configured: false,
+          healthy: false,
+          count: 0,
+          urgentCount: 0,
+          tickets: [],
+          agentUrl: null,
+          error: HELPDESK_NOT_CONNECTED_MESSAGE,
+        };
 
     const totals = {
       zendeskTickets: zendesk.count,

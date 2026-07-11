@@ -18,8 +18,8 @@ export type IncomingSort =
   | 'recently_added';
 
 export const INCOMING_SORT_LABELS: Record<IncomingSort, string> = {
-  zoho_newest:      'Newest in Zoho',
-  zoho_oldest:      'Oldest in Zoho',
+  zoho_newest:      'Newest PO',
+  zoho_oldest:      'Oldest PO',
   expected_soonest: 'Expected soonest',
   recently_added:   'Recently synced',
 };

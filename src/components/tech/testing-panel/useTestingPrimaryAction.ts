@@ -28,7 +28,7 @@ export function useTestingPrimaryAction(c: TestingController, row: ReceivingLine
   const primaryTitle = row.receiving_id == null
     ? 'Line is not linked to a carton'
     : !hasSku
-      ? 'Add a SKU first — open Package Pairing → Zoho PO → Acknowledge by Zoho SKU (or scan a unit serial)'
+      ? 'Add a SKU first — open Package Pairing → Purchase Order → Acknowledge by Inventory SKU (or scan a unit serial)'
       : !hasActiveSerial
         ? 'Scan a serial for this slot before printing'
         : activeVerdict == null

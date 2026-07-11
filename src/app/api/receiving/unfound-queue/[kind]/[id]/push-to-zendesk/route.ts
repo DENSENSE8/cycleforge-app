@@ -17,7 +17,13 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { after } from 'next/server';
-import { createTicket, ZendeskNotConfiguredError } from '@/lib/zendesk';
+import { ZendeskNotConfiguredError } from '@/lib/zendesk';
+import {
+  HelpdeskNotConnectedError,
+  requireHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import {
   ALLOWED_UNFOUND_KINDS,
@@ -72,10 +78,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   const subject = (body.subject?.trim() || generated.subject).slice(0, 250);
   const description = body.description?.trim() || generated.description;
 
-  // Create the ticket directly via the Zendesk REST API.
+  // Create the ticket via the org's HelpdeskProvider (Zendesk adapter).
   let ticket;
   try {
-    ticket = await createTicket(
+    const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
+    ticket = await helpdesk.createTicket(
       {
         subject,
         comment: { body: description, public: false },
@@ -85,16 +92,15 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       // Entity-derived key: the overlay zendesk_ticket_id check above already
       // blocks a second push, so a stable per-row key is safe defense-in-depth.
       { idempotencyKey: `unfound:${kind}:${sourceId}` },
-      ctx.organizationId,
     );
   } catch (err: unknown) {
-    if (err instanceof ZendeskNotConfiguredError) {
+    if (err instanceof ZendeskNotConfiguredError || err instanceof HelpdeskNotConnectedError) {
       // Surface the would-be ticket body so the operator can copy/paste while
-      // Zendesk credentials are being configured.
+      // a helpdesk is being connected.
       return NextResponse.json(
         {
           success: false,
-          error: 'Zendesk is not configured',
+          error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}`,
           draftSubject: subject,
           draftBody: description,
         },
@@ -104,7 +110,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json(
       {
         success: false,
-        error: err instanceof Error ? err.message : 'Zendesk request failed',
+        error: err instanceof Error ? err.message : 'Helpdesk request failed',
         draftSubject: subject,
         draftBody: description,
       },

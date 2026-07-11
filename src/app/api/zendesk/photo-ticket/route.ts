@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  addTicketComment,
-  createTicket,
-  isZendeskConfiguredForOrg,
-  ZendeskApiError,
-  ZendeskNotConfiguredError,
-} from '@/lib/zendesk';
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { linkTicket } from '@/lib/zendesk-links';
 import {
   linkLibraryPhotosToTicket,
@@ -69,7 +68,7 @@ const MetaSchema = z.discriminatedUnion('mode', [
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -87,7 +86,8 @@ export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'POST /api/zendesk/photo-ticket';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
 
       const form = await req.formData();
       const metaRaw = form.get('meta');
@@ -124,7 +124,7 @@ export const POST = withAuth(
         const requester =
           meta.requester && (meta.requester.name || meta.requester.email) ? meta.requester : undefined;
 
-        const ticket = await createTicket({
+        const ticket = await helpdesk.createTicket({
           subject: meta.subject,
           comment: { body: meta.description, public: meta.isPublic ?? false, uploads },
           priority: meta.priority,
@@ -132,7 +132,7 @@ export const POST = withAuth(
           status: meta.status,
           tags: meta.tags,
           requester,
-        }, {}, ctx.organizationId);
+        });
 
         // Self-link the ticket to its own ZENDESK_TICKET entity + link the photos
         // to it, so the support detail strip and claims scope both resolve them.
@@ -164,7 +164,7 @@ export const POST = withAuth(
       }
 
       // mode === 'update' — post the reply / note with the attachments.
-      const updated = await addTicketComment(
+      const updated = await helpdesk.addComment(
         meta.ticketId,
         {
           body: meta.comment,
@@ -179,7 +179,6 @@ export const POST = withAuth(
               ? meta.emailCcs.map((user_email) => ({ user_email, action: 'put' as const }))
               : undefined,
         },
-        ctx.organizationId,
       );
       if (!updated) throw new ApiError(404, 'Ticket not found', `Ticket #${meta.ticketId} no longer exists.`);
 

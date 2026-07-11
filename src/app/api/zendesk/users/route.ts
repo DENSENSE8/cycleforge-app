@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskApiError, ZendeskNotConfiguredError, type ZendeskUser } from '@/lib/zendesk';
 import {
-  getUsers,
-  isZendeskConfiguredForOrg,
-  ZendeskApiError,
-  ZendeskNotConfiguredError,
-  type ZendeskUser,
-} from '@/lib/zendesk';
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { getCachedUsers, upsertCachedUsers } from '@/lib/zendesk-users-cache';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +23,7 @@ export const dynamic = 'force-dynamic';
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -42,7 +41,8 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/users';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
 
       const ids = (req.nextUrl.searchParams.get('ids') ?? '')
         .split(',')
@@ -57,7 +57,7 @@ export const GET = withAuth(
       const missing = ids.filter((id) => !cached.has(id));
       let fetched: ZendeskUser[] = [];
       if (missing.length) {
-        fetched = await getUsers(missing, ctx.organizationId);
+        fetched = await helpdesk.getUsers(missing);
         if (fetched.length) await upsertCachedUsers(ctx.organizationId, fetched);
       }
 

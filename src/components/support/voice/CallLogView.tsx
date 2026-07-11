@@ -36,7 +36,7 @@ export function CallLogView() {
         <EmptyState
           icon={<Phone className="h-6 w-6 text-text-faint" />}
           title="Call log isn’t connected"
-          description="Connect Nextiva in Settings → Integrations to watch inbound, outbound, and missed calls stream in here."
+          description="Connect your phone system in Settings → Integrations to watch inbound, outbound, and missed calls stream in here."
         />
       </div>
     );

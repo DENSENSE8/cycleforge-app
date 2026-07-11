@@ -162,6 +162,14 @@ test('sort: incoming axis mapping with zoho_newest default', () => {
   assert.equal(parse('').incomingSort, 'zoho_newest');
 });
 
+test('sort: po_newest/po_oldest (B3 provider-agnostic aliases) map onto the same axis', () => {
+  // Old zoho_* values are never removed — both still resolve their own axis value.
+  assert.equal(parse('sort=po_oldest').incomingSort, 'zoho_oldest');
+  assert.equal(parse('sort=po_newest').incomingSort, 'zoho_newest');
+  assert.equal(parse('sort=zoho_oldest').incomingSort, 'zoho_oldest');
+  assert.equal(parse('sort=zoho_newest').incomingSort, 'zoho_newest');
+});
+
 test('sort: history axis mapping with scanned_newest default', () => {
   assert.equal(parse('sort=scanned_oldest').historySort, 'scanned_oldest');
   assert.equal(parse('sort=unboxed_newest').historySort, 'unboxed_newest');
@@ -184,6 +192,17 @@ test('zohoStatus=open toggles hideZohoReceived (case-insensitive, trimmed)', () 
   assert.equal(parse('zohoStatus=OPEN').hideZohoReceived, true);
   assert.equal(parse('zohoStatus=closed').hideZohoReceived, false);
   assert.equal(parse('').hideZohoReceived, false);
+});
+
+test('inventoryStatus=open (B3 provider-agnostic alias) toggles hideZohoReceived; preferred over zohoStatus when both present', () => {
+  assert.equal(parse('inventoryStatus=open').hideZohoReceived, true);
+  assert.equal(parse('inventoryStatus=OPEN').hideZohoReceived, true);
+  assert.equal(parse('inventoryStatus=closed').hideZohoReceived, false);
+  // new name wins when both are present and disagree
+  assert.equal(parse('inventoryStatus=closed&zohoStatus=open').hideZohoReceived, false);
+  assert.equal(parse('inventoryStatus=open&zohoStatus=closed').hideZohoReceived, true);
+  // legacy param alone still works (old deep links keep working)
+  assert.equal(parse('zohoStatus=open').hideZohoReceived, true);
 });
 
 test('tester: raw Number (absent → 0, junk → NaN)', () => {

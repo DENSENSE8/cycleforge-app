@@ -210,7 +210,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
         </HoverTooltip>
       </div>
       <p className="mt-2 text-micro font-medium text-text-faint">
-        Checked photos attach to the Zendesk ticket. All carton photos also save to local storage in
+        Checked photos attach to the support ticket. All carton photos also save to local storage in
         a folder named after the case #.
       </p>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from '@/lib/toast';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -96,8 +97,13 @@ export function PoMailboxTab() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-text-default">PO Mailbox</h1>
           <p className="mt-0.5 text-sm text-text-soft">
-            Dedicated Gmail account scanned for purchase-order emails. Connect once; refresh tokens
-            are stored server-side and rotated automatically.
+            Dedicated email inbox scanned for purchase-order emails (a Gmail account). Connect once;
+            refresh tokens are stored server-side and rotated automatically. Connections are managed
+            from{' '}
+            <Link href="/settings/integrations#gmail" className="font-medium text-blue-600 hover:underline">
+              Settings → Integrations
+            </Link>
+            .
           </p>
         </div>
       </header>
@@ -148,13 +154,21 @@ export function PoMailboxTab() {
             </>
           ) : (
             <>
-              <StatusRow ok={false} label="Not connected" detail="No mailbox has been authorized yet." />
-              <Button variant="primary" icon={<Mail />} onClick={handleConnect}>
-                Connect PO mailbox
-              </Button>
+              <StatusRow ok={false} label="Not connected" detail="No email inbox has been authorized yet." />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="primary" icon={<Mail />} onClick={handleConnect}>
+                  Connect email inbox
+                </Button>
+                <Link
+                  href="/settings/integrations#gmail"
+                  className="text-label font-medium text-blue-600 hover:underline"
+                >
+                  or connect from Settings → Integrations
+                </Link>
+              </div>
               <p className="text-label text-text-soft">
-                You&apos;ll be redirected to Google to sign in as the dedicated PO email account and approve
-                the <code className="rounded bg-surface-sunken px-1 py-0.5">gmail.modify</code> scope.
+                You&apos;ll be redirected to Google to sign in as the dedicated PO email account (Gmail) and
+                approve the <code className="rounded bg-surface-sunken px-1 py-0.5">gmail.modify</code> scope.
               </p>
             </>
           )}
@@ -169,9 +183,11 @@ export function PoMailboxTab() {
           <dt className="text-text-soft">Scope granted</dt>
           <dd className="text-text-default break-all">{status?.scope ?? '—'}</dd>
           <dt className="text-text-soft">Refresh token</dt>
-          <dd className="text-text-default">Stored in <code className="rounded bg-surface-sunken px-1 py-0.5">google_oauth_tokens</code> (provider=&apos;po_gmail&apos;)</dd>
+          <dd className="text-text-default">
+            Stored encrypted in the integrations vault, <code className="rounded bg-surface-sunken px-1 py-0.5">organization_integrations</code> (provider=&apos;gmail&apos;) — read first at runtime. The legacy <code className="rounded bg-surface-sunken px-1 py-0.5">google_oauth_tokens</code> row (provider=&apos;po_gmail&apos;) is kept as a fallback during the migration.
+          </dd>
           <dt className="text-text-soft">Client credentials</dt>
-          <dd className="text-text-default">Read from <code className="rounded bg-surface-sunken px-1 py-0.5">PO_GMAIL_CLIENT_ID</code> / <code className="rounded bg-surface-sunken px-1 py-0.5">PO_GMAIL_CLIENT_SECRET</code> env vars</dd>
+          <dd className="text-text-default">App-level OAuth client from <code className="rounded bg-surface-sunken px-1 py-0.5">PO_GMAIL_CLIENT_ID</code> / <code className="rounded bg-surface-sunken px-1 py-0.5">PO_GMAIL_CLIENT_SECRET</code> env vars (copied into the vault row at connect time)</dd>
         </dl>
       </section>
 

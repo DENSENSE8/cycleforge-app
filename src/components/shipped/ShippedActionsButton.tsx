@@ -3,9 +3,9 @@
 /**
  * One sidebar button → a tabbed popover that unifies the two shipped-view
  * actions that used to be separate full-width buttons:
- *   - **Sync** — push packer-scanned shipped orders to Zoho (dry-run preview →
- *     two-click live sync), via the centered {@link ZohoSyncDialog}. Gated by
- *     `integrations.zoho`.
+ *   - **Sync** — push packer-scanned shipped orders to inventory (dry-run preview →
+ *     two-click live sync), via the centered {@link InventoryFulfillmentSyncDialog}.
+ *     Gated by `integrations.zoho`.
  *   - **Report** — pick a day and print that day's carrier pickup report.
  *
  * Replaces the old split (ZohoSyncButton + PickupReportButton) so the Shipped
@@ -30,17 +30,26 @@ import { toast } from '@/lib/toast';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { printPickupReportForDate } from '@/lib/shipped/printPickupReportForDate';
 import {
-  ZohoSyncDialog,
-  type ZohoSyncReport,
-  type ZohoSyncPhase,
-} from '@/components/shipped/ZohoSyncDialog';
+  InventoryFulfillmentSyncDialog,
+  type InventorySyncReport,
+  type InventorySyncPhase,
+} from '@/components/shipped/InventoryFulfillmentSyncDialog';
 
 const PREVIEW_LIMIT = 50;
+
+/** Thrown when the inventory-sync route soft-disables (no connector) — lets
+ *  the caller show a teaching "connect it" state instead of a generic toast. */
+class InventoryNotConnectedResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InventoryNotConnectedResponseError';
+  }
+}
 
 async function postSync(
   body: Record<string, unknown>,
   signal?: AbortSignal,
-): Promise<ZohoSyncReport> {
+): Promise<InventorySyncReport> {
   const res = await fetch('/api/zoho/fulfillment-sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,14 +58,19 @@ async function postSync(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.success) {
-    throw new Error(data?.error || `Zoho sync failed (HTTP ${res.status})`);
+    if (data?.error === 'INVENTORY_NOT_CONNECTED') {
+      throw new InventoryNotConnectedResponseError(
+        data?.message || 'No inventory integration is connected for this workspace.',
+      );
+    }
+    throw new Error(data?.error || `Fulfillment sync failed (HTTP ${res.status})`);
   }
-  return data.report as ZohoSyncReport;
+  return data.report as InventorySyncReport;
 }
 
 const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 
-const countPending = (report: ZohoSyncReport | null) =>
+const countPending = (report: InventorySyncReport | null) =>
   report ? report.results.filter((r) => r.status === 'dry_run').length : 0;
 
 type ActionsTab = 'sync' | 'report';
@@ -73,12 +87,13 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<ActionsTab>(canZoho ? 'sync' : 'report');
 
-  // ── Zoho fulfillment sync (centered dialog) ────────────────────────────────
+  // ── Inventory fulfillment sync (centered dialog) ───────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [report, setReport] = useState<ZohoSyncReport | null>(null);
+  const [report, setReport] = useState<InventorySyncReport | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [phase, setPhase] = useState<ZohoSyncPhase>('preview');
+  const [phase, setPhase] = useState<InventorySyncPhase>('preview');
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [notConnected, setNotConnected] = useState(false);
   const startRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -94,11 +109,16 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
     onSuccess: (r) => {
       setReport(r);
       setConfirming(false);
+      setNotConnected(false);
       setPhase('preview');
     },
     onError: (e: unknown) => {
       if (isAbort(e)) return;
       setPhase('preview');
+      if (e instanceof InventoryNotConnectedResponseError) {
+        setNotConnected(true);
+        return;
+      }
       toast.error(e instanceof Error ? e.message : 'Preview failed');
     },
   });
@@ -108,9 +128,10 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
     onSuccess: (r) => {
       setReport(r);
       setConfirming(false);
+      setNotConnected(false);
       setPhase('done');
       toast.success(
-        `Synced ${r.completed} order${r.completed === 1 ? '' : 's'} to Zoho` +
+        `Synced ${r.completed} order${r.completed === 1 ? '' : 's'} to inventory` +
           (r.errored ? ` · ${r.errored} failed` : ''),
       );
     },
@@ -118,6 +139,10 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
       if (isAbort(e)) return;
       setConfirming(false);
       setPhase('preview');
+      if (e instanceof InventoryNotConnectedResponseError) {
+        setNotConnected(true);
+        return;
+      }
       toast.error(e instanceof Error ? e.message : 'Sync failed');
     },
   });
@@ -146,6 +171,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
     setOpen(false);
     setDialogOpen(true);
     setConfirming(false);
+    setNotConnected(false);
     setPhase('previewing');
     beginTimer();
     if (!preview.isPending) preview.mutate();
@@ -153,6 +179,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
 
   const handleRefresh = () => {
     setConfirming(false);
+    setNotConnected(false);
     setPhase('previewing');
     beginTimer();
     preview.mutate();
@@ -202,7 +229,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
         <Popover.Trigger asChild>
           <button
             type="button"
-            aria-label="Shipped actions — sync to Zoho or print a pickup report"
+            aria-label="Shipped actions — sync fulfillment or print a pickup report"
             className="ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-label font-bold text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           >
             {triggerBusy ? (
@@ -253,7 +280,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
                   icon={<RefreshCw className={`h-3.5 w-3.5 ${busy ? 'animate-spin' : ''}`} />}
                   className={`w-full ${sectionLabel}`}
                 >
-                  Preview &amp; Sync to Zoho
+                  Preview &amp; sync fulfillment
                   {pendingCount > 0 ? (
                     <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-glass/25 px-1.5 text-mini font-black">
                       {pendingCount}
@@ -261,7 +288,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
                   ) : null}
                 </Button>
                 <p className="px-1 text-eyebrow leading-relaxed text-text-faint">
-                  Pushes each packer-scanned shipped order to Zoho as one bundle
+                  Pushes each packer-scanned shipped order to your inventory system as one bundle
                   (sales order → package → shipment → invoice).
                 </p>
               </div>
@@ -284,7 +311,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
         </Popover.Portal>
       </Popover.Root>
 
-      <ZohoSyncDialog
+      <InventoryFulfillmentSyncDialog
         open={dialogOpen}
         onClose={handleDialogClose}
         report={report}
@@ -292,6 +319,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
         elapsedMs={elapsedMs}
         confirming={confirming}
         pendingCount={pendingCount}
+        notConnected={notConnected}
         onRefresh={handleRefresh}
         onSync={handleSync}
       />

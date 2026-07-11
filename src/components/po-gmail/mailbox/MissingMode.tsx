@@ -27,7 +27,7 @@ export function MissingMode({
       {/* Scan controls — run a fresh reconcile to populate the worklist */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
         <label className="flex-1 min-w-[220px]">
-          <span className="block text-caption font-medium text-text-muted">Gmail query</span>
+          <span className="block text-caption font-medium text-text-muted">Mailbox query</span>
           <input
             type="text"
             value={scanQuery}

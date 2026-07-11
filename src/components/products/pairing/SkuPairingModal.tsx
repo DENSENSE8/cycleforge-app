@@ -24,7 +24,7 @@ interface Props {
  * Right-side slide-over that hosts the Product Hub pairing surface — the same
  * confirmed/suggested per-platform display used on the products pairing page,
  * with manual add-by-SKU enabled. Opened from the testing workspace so a tester
- * can pair the line's Zoho SKU to Ecwid/eBay/Amazon/etc. without leaving the
+ * can pair the line's inventory SKU to Ecwid/eBay/Amazon/etc. without leaving the
  * flow. Anchored to the right edge (over the workspace panel) rather than
  * centered. Portaled to body so it escapes the workspace's transformed
  * stacking context.

@@ -81,7 +81,7 @@ export function ZendeskPushSection({
           onClick={() => onPush()}
           className="border border-blue-200 bg-blue-50 text-blue-700 ring-0 hover:bg-blue-100"
         >
-          {pushing ? 'Pushing…' : 'Push to Zendesk'}
+          {pushing ? 'Pushing…' : 'Push to helpdesk'}
         </Button>
         <HoverTooltip label="Generate a clearer ticket with local AI, then review and edit before pushing" asChild>
           <Button

@@ -124,10 +124,10 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
         ))}
       </Section>
 
-      <Section title="Zoho compare">
+      <Section title="Inventory compare">
         <dl className="space-y-1 text-label">
           <Row
-            label="PO# already in Zoho?"
+            label="PO# already in inventory?"
             value={existingPo ? `Yes — ${existingPo.zoho_purchaseorder_number}` : 'No'}
           />
           <Row
@@ -143,7 +143,7 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
         </dl>
       </Section>
 
-      <Section title="Zoho PO# I uploaded">
+      <Section title="PO# I uploaded">
         <input
           type="text"
           value={zohoUploaded}

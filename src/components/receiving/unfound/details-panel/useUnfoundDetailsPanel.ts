@@ -71,10 +71,10 @@ export function useUnfoundDetailsPanel({
 
   const handlePushToZendesk = useCallback(async (overrides?: { subject: string; description: string }) => {
     if (pushMut.isPending || row.zendesk_ticket_id) return;
-    const toastId = toast.loading('Pushing to Zendesk…');
+    const toastId = toast.loading('Creating support ticket…');
     try {
       const body = await pushMut.mutateAsync(overrides);
-      toast.success(`Zendesk ticket ${body.ticketNumber} created`, {
+      toast.success(`Support ticket ${body.ticketNumber} created`, {
         id: toastId,
         action: body.ticketUrl
           ? { label: 'Open', onClick: () => window.open(body.ticketUrl!, '_blank', 'noopener') }
@@ -122,7 +122,7 @@ export function useUnfoundDetailsPanel({
       poNumbers.length > 0 ? `PO #s: ${poNumbers.join(', ')}` : null,
       subjectPrefix ? `Subject: ${subjectPrefix}` : null,
       row.product_title ? `Product: ${row.product_title}` : null,
-      row.zendesk_ticket_id ? `Zendesk: ${row.zendesk_ticket_id}` : null,
+      row.zendesk_ticket_id ? `Ticket: ${row.zendesk_ticket_id}` : null,
       row.usa_team_note ? `USA: ${row.usa_team_note}` : null,
       row.vietnam_team_note ? `VN: ${row.vietnam_team_note}` : null,
       `Created: ${formatDateTimePST(row.created_at)}`,

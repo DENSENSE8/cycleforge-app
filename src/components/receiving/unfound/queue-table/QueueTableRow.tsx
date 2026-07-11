@@ -159,7 +159,7 @@ export function QueueTableRow({
             Synced
           </span>
         ) : (
-          <HoverTooltip label="Create a Zendesk ticket from this row" asChild>
+          <HoverTooltip label="Create a support ticket from this row" asChild>
             <Button
               variant="ghost"
               size="sm"

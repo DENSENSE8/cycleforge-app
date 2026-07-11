@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, Check, ExternalLink } from '@/components/Icons';
 import { OrderIdChip, PoChip, getLast4 } from '@/components/ui/CopyChip';
-import { PairingLinkButton } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
+import { PairingLinkButton, PairingLinkedBadge } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
 import { toast } from '@/lib/toast';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import type { DetailsResponse } from './incoming-details-shared';
@@ -31,7 +31,7 @@ interface PoCandidate {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-micro font-black uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">{label}</p>
       <div className="text-caption font-semibold text-text-default">{children}</div>
     </div>
   );
@@ -126,7 +126,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
 
       {/* Link to Zoho PO — the merge affordance. */}
       <div className="space-y-2 border-t border-border-soft pt-3">
-        <p className="text-micro font-black uppercase tracking-widest text-text-soft">Zoho purchase order</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">Purchase order</p>
         {zohoLinked ? (
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -156,7 +156,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
               </p>
             ) : candidates.length === 0 ? (
               <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
-                {trimmed ? `No purchase orders match “${trimmed}”.` : 'Search to link this order to its Zoho PO.'}
+                {trimmed ? `No purchase orders match “${trimmed}”.` : 'Search to link this order to its purchase order.'}
               </p>
             ) : (
               <div className="space-y-1.5">

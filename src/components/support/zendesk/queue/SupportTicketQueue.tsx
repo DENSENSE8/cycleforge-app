@@ -1,9 +1,10 @@
 'use client';
 
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Clock, History, RefreshCw } from '@/components/Icons';
+import { Clock, History, Link2, RefreshCw } from '@/components/Icons';
 import { Button, EmptyState, IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -161,11 +162,22 @@ export function SupportTicketQueue({ modeToggle = null }: { modeToggle?: ReactNo
         ) : error ? (
           <div className="p-6">
             <EmptyState
-              title={isNotConfigured(error) ? 'Zendesk isn’t configured' : 'Couldn’t load tickets'}
+              title={isNotConfigured(error) ? 'Helpdesk isn’t connected' : 'Couldn’t load tickets'}
               description={
                 isNotConfigured(error)
-                  ? 'Set the Zendesk API credentials to use the console.'
+                  ? 'Connect one in Settings → Integrations to use the console.'
                   : 'Please try again.'
+              }
+              action={
+                isNotConfigured(error) ? (
+                  <Link
+                    href="/settings/integrations#zendesk"
+                    className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Connect a helpdesk
+                  </Link>
+                ) : undefined
               }
             />
           </div>

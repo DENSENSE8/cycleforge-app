@@ -5,7 +5,7 @@
  *
  * Two lenses on the system, as a read-only reference:
  *   Stations    — RECEIVING / TECH / PACK / LABELS / FBA / ADMIN + what they do
- *   Identifiers — tracking #, serial #, Zoho SKU, order #, FNSKU, shipment id…
+ *   Identifiers — tracking #, serial #, inventory SKU, order #, FNSKU, shipment id…
  *                 with where each lives and how it travels through the system
  *
  * Flows live in the main panel now (OperationsFlowsDisplay), shown in full as a

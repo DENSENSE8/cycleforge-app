@@ -143,6 +143,23 @@ export async function listActiveEbayAccounts(orgId: OrgId): Promise<EbayAccount[
 }
 
 /**
+ * True when the org has ≥1 connected, active eBay BUYER account. The SoT
+ * predicate for "eBay purchasing is connected" — used by the Studio inbound
+ * publish gate and the connection-driven inbound-sources default
+ * (src/lib/inbound/org-settings.ts). No token decryption; just a COUNT.
+ */
+export async function hasConnectedEbayBuyerAccount(orgId: OrgId): Promise<boolean> {
+  const r = await tenantQuery(
+    orgId,
+    `SELECT COUNT(*)::int AS n FROM ebay_accounts
+      WHERE organization_id = $1 AND account_role = 'buyer' AND is_active = true
+        AND ${EBAY_PLATFORM_PREDICATE}`,
+    [orgId],
+  );
+  return ((r.rows[0] as { n: number } | undefined)?.n ?? 0) > 0;
+}
+
+/**
  * Hard-delete an eBay account (disconnect). eBay has no token-revocation API,
  * so removing the stored tokens IS the revocation. Returns the deleted
  * account_name (for audit + vault cleanup) or null if nothing matched.

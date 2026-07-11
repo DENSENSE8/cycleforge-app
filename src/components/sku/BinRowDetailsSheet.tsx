@@ -334,7 +334,7 @@ export function BinRowDetailsSheet({
             rows={2}
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
-            placeholder="Short label (overrides catalog/Ecwid)"
+            placeholder="Short label (overrides catalog/storefront)"
             className="w-full resize-none rounded-md border border-border-default px-3 py-2 text-sm font-bold text-text-default focus:border-blue-500 focus:outline-none"
           />
           <div className="flex gap-2">
@@ -350,7 +350,7 @@ export function BinRowDetailsSheet({
             </Button>
           </div>
           <p className="text-micro font-bold uppercase tracking-widest text-text-faint">
-            Stored in sku_stock.display_name_override · wins over Ecwid
+            Stored in sku_stock.display_name_override · wins over the storefront title
           </p>
         </section>
 

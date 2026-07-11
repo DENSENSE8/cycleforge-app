@@ -302,7 +302,7 @@ export function LineNotesTabbedCard({
       actions.push({
         id: 'ticket-subject',
         label: 'Insert linked ticket subject',
-        ariaLabel: 'Insert the linked Zendesk ticket subject',
+        ariaLabel: 'Insert the linked support ticket subject',
         icon: <Tag className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_TAG_BTN,
         onClick: () => void handlePrefillTicketSubject(),
@@ -336,7 +336,7 @@ export function LineNotesTabbedCard({
     if (showZohoTab && trimmedSyncNotes) {
       actions.push({
         id: 'sync-notes',
-        label: 'Insert sync (Zoho PO) notes into the label',
+        label: 'Insert sync (PO) notes into the label',
         ariaLabel: 'Insert sync notes into the label',
         icon: <Download className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_DOWNLOAD_INSERT_BTN,
@@ -447,7 +447,7 @@ export function LineNotesTabbedCard({
           <div className="pointer-events-none absolute bottom-2.5 right-1.5 flex items-center gap-0.5">
             {showZohoTab ? (
               <div className="pointer-events-auto">
-                <HoverTooltip label="Sync to the inventory system (Zoho PO note)" asChild>
+                <HoverTooltip label="Sync to inventory (PO note)" asChild>
                   {/* ds-raw-button */}
                   <button
                     type="button"
@@ -511,11 +511,11 @@ export function LineNotesTabbedCard({
             <span className="text-micro font-semibold uppercase tracking-wide text-text-faint">
               {loadingZoho ? (
                 <span className="inline-flex items-center gap-1 text-blue-500">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Syncing from Zoho…
+                  <Loader2 className="h-3 w-3 animate-spin" /> Syncing from inventory…
                 </span>
               ) : onLoadZohoNotes ? (
                 <HoverTooltip
-                  label={overallDirty ? 'Save or discard edits first' : 'Reload the latest notes from Zoho'}
+                  label={overallDirty ? 'Save or discard edits first' : 'Reload the latest synced notes'}
                   asChild
                 >
                   <Button
@@ -524,24 +524,24 @@ export function LineNotesTabbedCard({
                     icon={<Download className="h-3 w-3" />}
                     onClick={() => void loadZohoNotes()}
                     disabled={overallDirty}
-                    aria-label={overallDirty ? 'Save or discard edits first' : 'Reload the latest notes from Zoho'}
+                    aria-label={overallDirty ? 'Save or discard edits first' : 'Reload the latest synced notes'}
                     className="h-auto gap-1 px-0 text-micro font-semibold uppercase tracking-wide text-text-faint hover:bg-transparent hover:text-text-muted"
                   >
-                    Sync from Zoho
+                    Sync from inventory
                   </Button>
                 </HoverTooltip>
               ) : null}
             </span>
-            <HoverTooltip label="Append the edited note to the Zoho PO field" asChild>
+            <HoverTooltip label="Append the edited note to the synced PO notes" asChild>
               <button
                 type="button"
                 onClick={() => void handleSaveOverall()}
                 disabled={!overallDirty || savingOverall || loadingZoho}
-                aria-label="Append the edited note to the Zoho PO field"
+                aria-label="Append the edited note to the synced PO notes"
                 className="ds-raw-button inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-caption font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Check className="h-3.5 w-3.5" />
-                {savingOverall ? 'Saving…' : 'Save to Zoho'}
+                {savingOverall ? 'Saving…' : 'Save to inventory'}
               </button>
             </HoverTooltip>
           </div>

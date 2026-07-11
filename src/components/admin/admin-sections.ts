@@ -47,7 +47,7 @@ export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
   { value: 'quality',      label: 'Quality',      description: 'Condition grades, open failures, repair throughput & risk',    group: 'Performance', icon: ShieldCheck, requires: 'sku_stock.view' },
 
   { value: 'staff_schedule', label: 'Staff schedule', description: 'Weekly shifts, availability rules, and shop calendar',       group: 'Operations',  icon: User,         requires: 'admin.manage_staff' },
-  { value: 'po_mailbox',   label: 'PO Mailbox',   description: 'Triage emailed POs not in Zoho, unmatched cartons, and exceptions', group: 'Operations', icon: Mail, requires: 'receiving.view' },
+  { value: 'po_mailbox',   label: 'PO Mailbox',   description: 'Triage emailed POs not in inventory, unmatched cartons, and exceptions', group: 'Operations', icon: Mail, requires: 'receiving.view' },
   { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to',          group: 'Operations', icon: Camera },
 
   { value: 'fba',          label: 'FBA',          description: 'FNSKU catalog rows and CSV imports',                           group: 'Data & catalogs', icon: Package },
@@ -60,7 +60,7 @@ export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
 
   { value: 'reason_codes', label: 'Reason Codes', description: 'Movement, adjustment & shrinkage reason-code catalog',          group: 'Data & catalogs', icon: Tags,        requires: 'sku_stock.manage' },
 
-  { value: 'connections',  label: 'Sync tools',   description: 'Run marketplace syncs, Zoho tools, and connection activity',     group: 'System',      icon: Link2 },
+  { value: 'connections',  label: 'Sync tools',   description: 'Run marketplace syncs, inventory tools, and connection activity', group: 'System',      icon: Link2 },
   { value: 'logs',         label: 'Operations log', description: 'Bin, SKU & receiving changes across stations',               group: 'System',      icon: FileText,     requires: 'admin.view_logs' },
   { value: 'system_sync',  label: 'Sync Activity', description: 'Cron job health, last runs, and history across every scheduled sync', group: 'System', icon: Activity },
 ];

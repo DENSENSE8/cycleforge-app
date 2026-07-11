@@ -61,7 +61,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
         <EmptyState
           icon={<Voicemail className="h-6 w-6 text-text-faint" />}
           title="Voicemail isn’t connected"
-          description="Connect Nextiva in Settings → Integrations to play voicemails and work call-back follow-ups."
+          description="Connect your phone system in Settings → Integrations to play voicemails and work call-back follow-ups."
         />
       </CenteredPane>
     );

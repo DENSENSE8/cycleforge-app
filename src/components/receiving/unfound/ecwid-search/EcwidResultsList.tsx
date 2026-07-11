@@ -15,9 +15,9 @@ export function EcwidResultsList({ c }: { c: EcwidProductSearchController }) {
       aria-label={
         popoverMode === 'repair_service'
           ? orderScope === 'all'
-            ? 'Recent Ecwid order lines'
+            ? 'Recent store order lines'
             : 'Recent repair-service order lines'
-          : 'Ecwid product results'
+          : 'Storefront product results'
       }
       className="min-h-[120px] flex-1 overflow-y-auto"
     >
@@ -43,7 +43,7 @@ export function EcwidResultsList({ c }: { c: EcwidProductSearchController }) {
         items.length === 0 && (
         <li className="px-3 py-3 text-label text-text-soft">
           {orderScope === 'all'
-            ? 'No recent Ecwid orders found.'
+            ? 'No recent store orders found.'
             : 'No recent repair-service line items (-RS SKU) found.'}
         </li>
       )}
@@ -63,7 +63,7 @@ export function EcwidResultsList({ c }: { c: EcwidProductSearchController }) {
         isLoading &&
         items.length === 0 && (
           <li className="px-3 py-4 text-micro font-semibold text-text-faint">
-            Loading recent Ecwid orders…
+            Loading recent store orders…
           </li>
         )}
 

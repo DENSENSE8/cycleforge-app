@@ -27,7 +27,7 @@ export function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController 
         items={SCOPE_ITEMS}
         value={c.orderScope}
         onChange={(id) => c.setOrderScope(id as EcwidOrderScope)}
-        aria-label="Ecwid order scope"
+        aria-label="Store order scope"
       />
     </div>
   );

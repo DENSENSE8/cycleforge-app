@@ -192,12 +192,12 @@ export function useUnfoundQueueTable() {
         }
         toast.success(
           body.already_synced
-            ? `Already on Zendesk ticket ${body.ticketNumber}`
-            : `Zendesk ticket ${body.ticketNumber} created`,
+            ? `Already on ticket ${body.ticketNumber}`
+            : `Support ticket ${body.ticketNumber} created`,
         );
         await fetchRows();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Push to Zendesk failed');
+        toast.error(err instanceof Error ? err.message : 'Couldn’t create the support ticket');
       } finally {
         setPushing(null);
       }

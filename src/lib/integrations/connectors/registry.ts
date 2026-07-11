@@ -15,10 +15,13 @@ import type { Capability, IntegrationConnector } from './types';
 
 const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   // Marketplaces — real OAuth already exists; sync/refresh wired in Phase 1+.
+  // 'inventory' is the ERP/inventory-BACKEND capability (POs, item master,
+  // fulfillment push) — channel stock/price push on marketplaces is part of
+  // the 'orders' channel capability (the pushInventory hook), not 'inventory'.
   ebay: {
     provider: 'ebay',
     authKind: 'oauth',
-    capabilities: ['orders', 'inventory'],
+    capabilities: ['orders'],
     authorizeStartPath: '/api/ebay/connect',
     healthPath: '/api/ebay/health',
     // Lazy imports so the connection reader never pulls in the eBay client.
@@ -28,7 +31,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   amazon: {
     provider: 'amazon',
     authKind: 'oauth',
-    capabilities: ['orders', 'inventory'],
+    capabilities: ['orders'],
     authorizeStartPath: '/api/amazon/oauth/start',
     healthPath: '/api/amazon/health',
     sync: (orgId) => import('./amazon').then((m) => m.amazonSync(orgId)),
@@ -74,7 +77,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   ecwid: {
     provider: 'ecwid',
     authKind: 'vault',
-    capabilities: ['orders'],
+    capabilities: ['orders', 'catalog'],
     // Lazy import so the connection reader never pulls in the Ecwid job.
     sync: (orgId) => import('./orders-transfer').then((m) => m.ecwidSync(orgId)),
   },
@@ -90,21 +93,31 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   shipstation: {
     provider: 'shipstation',
     authKind: 'vault',
-    capabilities: ['orders', 'tracking'],
+    capabilities: ['orders', 'tracking', 'labels'],
     sync: (orgId) => import('./shipstation').then((m) => m.shipstationSync(orgId)),
   },
   ups: { provider: 'ups', authKind: 'vault', capabilities: ['tracking'] },
   fedex: { provider: 'fedex', authKind: 'vault', capabilities: ['tracking'] },
   usps: { provider: 'usps', authKind: 'vault', capabilities: ['tracking'] },
-  // Support / Realtime / AI — no ingestion capability.
-  zendesk: { provider: 'zendesk', authKind: 'vault', capabilities: [] },
+  // Support / Realtime / AI.
+  zendesk: { provider: 'zendesk', authKind: 'vault', capabilities: ['helpdesk'] },
   ably: { provider: 'ably', authKind: 'vault', capabilities: [] },
-  ollama: { provider: 'ollama', authKind: 'vault', capabilities: [] },
+  ollama: { provider: 'ollama', authKind: 'vault', capabilities: ['ai'] },
   // AI search providers (BYOK, OpenAI wire format) — resolved per request by
   // src/lib/ai/org-provider.ts; 'ollama' doubles as the self-hosted slot.
-  ai_gateway: { provider: 'ai_gateway', authKind: 'vault', capabilities: [] },
-  openai: { provider: 'openai', authKind: 'vault', capabilities: [] },
-  anthropic: { provider: 'anthropic', authKind: 'vault', capabilities: [] },
+  ai_gateway: { provider: 'ai_gateway', authKind: 'vault', capabilities: ['ai'] },
+  openai: { provider: 'openai', authKind: 'vault', capabilities: ['ai'] },
+  anthropic: { provider: 'anthropic', authKind: 'vault', capabilities: ['ai'] },
+  // Email inbox — the PO mailbox (Gmail). The OAuth island under
+  // /api/admin/po-gmail/* remains the live flow; tokens are being migrated
+  // from google_oauth_tokens into the vault (dual-read in src/lib/po-gmail/
+  // client.ts). Registered here so 'email_inbox' gating/labels resolve.
+  gmail: {
+    provider: 'gmail',
+    authKind: 'oauth',
+    capabilities: ['email_inbox'],
+    authorizeStartPath: '/api/admin/po-gmail/connect',
+  },
   // Voice — business phone (call log + voicemail follow-ups + click-to-call).
   // authKind is confirmed in the Phase 0 spike; vault is the default. sync() is
   // the catch-up poll (webhooks are the realtime path) — lazy-imported so the

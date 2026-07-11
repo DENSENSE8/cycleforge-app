@@ -155,7 +155,7 @@ function DetailBody({ claim }: { claim: WarrantyClaimDetail }) {
             <Field label="RMA" value={claim.rmaNumber} />
             <Field label="Repair ticket" value={claim.repairTicket} />
             <Field
-              label="Zendesk"
+              label="Support ticket"
               value={
                 claim.zendeskTicketId != null && zendeskTicketUrl(claim.zendeskTicketId) ? (
                   <a

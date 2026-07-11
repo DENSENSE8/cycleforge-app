@@ -28,18 +28,18 @@ export function IncomingSyncButtons({ sync }: { sync: ReturnType<typeof useIncom
       </HoverTooltip>
       <div className="flex items-stretch gap-1.5">
         <HoverTooltip
-          label="Re-sync Zoho issued POs + mirror status. Received POs clear from Incoming."
+          label="Re-sync issued purchase orders + mirror status. Received POs clear from Incoming."
           asChild
         >
           <button
             type="button"
             onClick={() => void sync.refreshZoho()}
             disabled={sync.zohoRefreshing}
-            aria-label="Re-sync Zoho issued POs + mirror status. Received POs clear from Incoming."
+            aria-label="Re-sync issued purchase orders + mirror status. Received POs clear from Incoming."
             className="ds-raw-button flex flex-1 items-center justify-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${sync.zohoRefreshing ? 'animate-spin' : ''}`} />
-            {sync.zohoRefreshing ? 'Zoho…' : 'Zoho'}
+            {sync.zohoRefreshing ? 'Inventory…' : 'Inventory'}
           </button>
         </HoverTooltip>
         <HoverTooltip

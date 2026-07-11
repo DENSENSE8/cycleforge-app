@@ -48,7 +48,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
       {data.ecwid && (
         <div className="rounded-xl bg-surface-card border border-border-soft p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className={sectionLabel}>Ecwid Product</h2>
+            <h2 className={sectionLabel}>Storefront product</h2>
             <a
               href={`https://my.ecwid.com/store/${process.env.NEXT_PUBLIC_ECWID_STORE_ID || ''}#product:id=${data.ecwid.id}`}
               target="_blank"

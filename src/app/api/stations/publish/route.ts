@@ -26,7 +26,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { validateInboundPublish } from '@/lib/inbound/publish-validation';
 import { isIncomingUniversal } from '@/lib/feature-flags';
 import { resolveInboundSettings } from '@/lib/inbound/org-settings';
-import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';
+import { hasConnectedEbayBuyerAccount } from '@/lib/ebay/credentials';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,16 +74,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // pinned inbound source_type must be enabled in org policy.
     const inboundIssues = await validateInboundPublish(row.config, {
       isFlagOn: () => isIncomingUniversal(ctx.organizationId),
-      hasConnectedBuyerAccount: async () => {
-        const r = await tenantQuery<{ n: number }>(
-          ctx.organizationId,
-          `SELECT COUNT(*)::int AS n FROM ebay_accounts
-            WHERE organization_id = $1 AND account_role = 'buyer' AND is_active = true
-              AND ${EBAY_PLATFORM_PREDICATE}`,
-          [ctx.organizationId],
-        );
-        return (r.rows[0]?.n ?? 0) > 0;
-      },
+      hasConnectedBuyerAccount: () => hasConnectedEbayBuyerAccount(ctx.organizationId),
       getEnabledSources: async () => (await resolveInboundSettings(ctx.organizationId)).enabledSources,
     });
     if (inboundIssues.length > 0) {

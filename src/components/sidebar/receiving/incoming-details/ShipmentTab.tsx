@@ -54,7 +54,7 @@ export function ShipmentTab({ data }: { data: DetailsResponse }) {
     const poId = (data.po?.zoho_purchaseorder_id || '').trim();
     return (
       <div className="space-y-3">
-        <Empty msg="No shipment linked yet — the Zoho PO reference# is empty or hasn't resolved to a tracking number. Attach a tracking number below, or wait for the next sync run." />
+        <Empty msg="No shipment linked yet — the PO reference# is empty or hasn't resolved to a tracking number. Attach a tracking number below, or wait for the next sync run." />
         {poId ? (
           <div className="flex justify-center">
             <IncomingAttachTrackingPopover

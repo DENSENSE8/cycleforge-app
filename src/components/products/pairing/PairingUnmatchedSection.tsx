@@ -11,7 +11,7 @@ interface Props {
   query: string;
   /** Open the add/pair modal for a specific unmapped identifier. */
   onPairIdentifier: (id: UnmappedPlatformId) => void;
-  /** Open the add modal to create a brand-new Zoho SKU from the query. */
+  /** Open the add modal to create a brand-new inventory SKU from the query. */
   onAddSku: () => void;
 }
 
@@ -19,7 +19,7 @@ interface Props {
  * Sits beneath the canonical pairing queue. When a search yields no canonical
  * row to land on, this surfaces the two recoverable gaps:
  *   • unmapped account-source identifiers (ASIN/eBay/Walmart/Ecwid) → pair them
- *   • the searched Zoho SKU isn't in the catalog → add it
+ *   • the searched inventory SKU isn't in the catalog → add it
  * Renders nothing when the query is empty or there's nothing actionable.
  */
 export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: Props) {
@@ -117,7 +117,7 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
         </ul>
       )}
 
-      {/* Add the searched Zoho SKU to the catalog */}
+      {/* Add the searched inventory SKU to the catalog */}
       {offerAdd && (
         <div className={`border-t border-border-hairline ${SIDEBAR_GUTTER} py-2`}>
           <button
@@ -129,7 +129,7 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
               <Plus className="h-3.5 w-3.5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-caption font-bold text-blue-700">Add Zoho SKU to catalog</span>
+              <span className="block text-caption font-bold text-blue-700">Add inventory SKU to catalog</span>
               <span className="block truncate font-mono text-micro text-blue-500">{term}</span>
             </span>
           </button>

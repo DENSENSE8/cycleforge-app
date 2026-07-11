@@ -2,16 +2,13 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskApiError, ZendeskNotConfiguredError, type ZendeskComment } from '@/lib/zendesk';
 import {
-  addTicketComment,
-  getUsers,
-  isZendeskConfiguredForOrg,
-  listAgents,
-  listTicketComments,
-  ZendeskApiError,
-  ZendeskNotConfiguredError,
-  type ZendeskComment,
-} from '@/lib/zendesk';
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+  type HelpdeskProvider,
+} from '@/lib/integrations/helpdesk';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getCachedUsers, upsertCachedUsers } from '@/lib/zendesk-users-cache';
 
@@ -26,13 +23,14 @@ export const dynamic = 'force-dynamic';
  */
 async function enrichCommentAuthors(
   organizationId: OrgId,
+  helpdesk: HelpdeskProvider,
   comments: ZendeskComment[],
 ): Promise<ZendeskComment[]> {
   const ids = Array.from(new Set(comments.map((c) => c.author_id).filter((n) => n > 0)));
   if (!ids.length) return comments;
 
   const [agents, cached] = await Promise.all([
-    listAgents(false, organizationId).catch(() => []),
+    helpdesk.listAgents(false).catch(() => []),
     getCachedUsers(organizationId, ids),
   ]);
   const agentsById = new Map(agents.map((a) => [a.id, a]));
@@ -56,7 +54,7 @@ async function enrichCommentAuthors(
   if (missing.length) {
     after(async () => {
       try {
-        const fetched = await getUsers(missing, organizationId);
+        const fetched = await helpdesk.getUsers(missing);
         if (fetched.length) await upsertCachedUsers(organizationId, fetched);
       } catch (err) {
         console.warn('[comments] author backfill failed', err);
@@ -67,7 +65,7 @@ async function enrichCommentAuthors(
 }
 
 /**
- * Zendesk ticket comment thread.
+ * Helpdesk ticket comment thread (via the org's HelpdeskProvider).
  *
  *   GET  /api/zendesk/tickets/:id/comments  → list comments (replies + notes)
  *   POST /api/zendesk/tickets/:id/comments  → add a comment (public reply or
@@ -76,7 +74,7 @@ async function enrichCommentAuthors(
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -111,15 +109,16 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets/[id]/comments';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
       const sp = req.nextUrl.searchParams;
       const { page, perPage } = ListQuery.parse({
         page: sp.get('page') ?? undefined,
         perPage: sp.get('perPage') ?? sp.get('per_page') ?? undefined,
       });
-      const result = await listTicketComments(id, { page, perPage }, ctx.organizationId);
-      const comments = await enrichCommentAuthors(ctx.organizationId, result.comments);
+      const result = await helpdesk.listComments(id, { page, perPage });
+      const comments = await enrichCommentAuthors(ctx.organizationId, helpdesk, result.comments);
       return NextResponse.json({ success: true, ...result, comments });
     } catch (err) {
       return mapZendeskError(err, context);
@@ -140,17 +139,17 @@ export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'POST /api/zendesk/tickets/[id]/comments';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
       const json = await req.json().catch(() => null);
       if (!json) throw ApiError.badRequest('Missing JSON body');
       const input = CommentBody.parse(json);
 
-      const ticket = await addTicketComment(
+      const ticket = await helpdesk.addComment(
         id,
         { body: input.body, html_body: input.html_body, public: input.public },
         { emailCcs: input.email_ccs?.map((user_email) => ({ user_email, action: 'put' as const })) },
-        ctx.organizationId,
       );
       if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
       return NextResponse.json({ success: true, ticket }, { status: 201 });

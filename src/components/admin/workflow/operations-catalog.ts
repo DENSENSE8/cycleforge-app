@@ -3,7 +3,7 @@
  *
  * A hand-curated, schema-grounded map of the real system: the STATIONS work
  * happens at, the IDENTIFIERS that travel through it (tracking numbers, serial
- * numbers, Zoho SKUs, order numbers, FNSKUs…), and the FLOWS that string the
+ * numbers, inventory SKUs, order numbers, FNSKUs…), and the FLOWS that string the
  * lifecycle states together (receiving, shipping, FBA, repair, returns).
  *
  * Station names + activity types are the REAL values observed in
@@ -137,7 +137,7 @@ export const STATIONS: OpsStation[] = [
     label: 'Admin / System',
     color: '#64748b',
     blurb:
-      'Back-office and automated actors (SYSTEM, BACKFILL, MOBILE). Corrections, Zoho syncs, and data backfills land here.',
+      'Back-office and automated actors (SYSTEM, BACKFILL, MOBILE). Corrections, inventory syncs, and data backfills land here.',
     activityTypes: [],
     handles: ['orderNumber', 'zohoItem', 'sku'],
     states: ['UNKNOWN'],
@@ -199,7 +199,7 @@ export const IDENTIFIERS: OpsIdentifier[] = [
     label: 'SKU / item code',
     example: 'BOSE-QC45-BLK',
     blurb:
-      'Product identity — what the unit IS. Bridges the physical unit to the catalog and Zoho inventory.',
+      'Product identity — what the unit IS. Bridges the physical unit to the catalog and inventory.',
     tables: ['serial_units.sku', 'sku_catalog.sku', 'sku_platform_ids', 'items.sku'],
     travels: [
       { station: 'RECEIVING', note: 'set when the unit is matched to a catalog item' },
@@ -210,13 +210,13 @@ export const IDENTIFIERS: OpsIdentifier[] = [
   },
   {
     key: 'zohoItem',
-    label: 'Zoho SKU / item id',
+    label: 'Inventory SKU / item id',
     example: 'zoho_item_id 4567…',
     blurb:
-      "Zoho Inventory's internal id for the SKU — the sync key that keeps stock counts and sales orders aligned with Zoho.",
+      "The inventory system's internal id for the SKU — the sync key that keeps stock counts and sales orders aligned upstream.",
     tables: ['serial_units.zoho_item_id', 'sku_catalog', 'zoho_fulfillment_sync', 'zoho_locations'],
     travels: [
-      { station: 'ADMIN', note: 'SYSTEM sync reconciles stock + SOs with Zoho' },
+      { station: 'ADMIN', note: 'SYSTEM sync reconciles stock + SOs with inventory' },
     ],
     relatedTo: ['sku', 'orderNumber'],
   },
@@ -225,10 +225,10 @@ export const IDENTIFIERS: OpsIdentifier[] = [
     label: 'Order # / Sales order',
     example: 'SO-01042 / eBay 12-…',
     blurb:
-      'The customer order. Drives allocation → pick → pack → ship. Carries the eBay/Zoho sales-order numbers.',
+      'The customer order. Drives allocation → pick → pack → ship. Carries the marketplace/inventory sales-order numbers.',
     tables: ['orders', 'sales_orders', 'shipment_links'],
     travels: [
-      { station: 'ADMIN', note: 'order synced in from marketplace / Zoho' },
+      { station: 'ADMIN', note: 'order synced in from marketplace / inventory' },
       { station: 'PACK', note: 'allocated + packed against the order' },
       { station: 'LABELS', note: 'label printed for the order' },
     ],
@@ -336,7 +336,7 @@ export const FLOWS: OpsFlow[] = [
     source: 'inbound_workflow_status_enum · src/lib/receiving/workflow-stages.ts',
     code: ['src/lib/receiving/workflow-stages.ts', '/api/receiving/match', 'src/lib/receiving/receive-line.ts', '/api/serial-units/[id]/test'],
     steps: [
-      { stage: 'Incoming', key: 'EXPECTED', station: 'RECEIVING', note: 'On a PO from Zoho — not yet scanned at the dock', signal: 'Zoho PO sync' },
+      { stage: 'Incoming', key: 'EXPECTED', station: 'RECEIVING', note: 'On an issued PO — not yet scanned at the dock', signal: 'PO sync' },
       { stage: 'Scanned', key: 'ARRIVED', station: 'RECEIVING', note: 'Carton scanned in, not yet matched to a PO', signal: 'TRACKING_SCANNED' },
       { stage: 'Matched', key: 'MATCHED', station: 'RECEIVING', note: 'Line linked to a PO/order (shows as “Scanned” in tables)', signal: 'WS_RECEIVING_CHANGED', by: '/api/receiving/match' },
       { stage: 'Unboxed', key: 'UNBOXED', station: 'RECEIVING', note: 'First scan on the Unbox surface — carton opened/unboxed', signal: 'UNBOX_SCAN_OPENED', by: 'recordUnboxScanOpened' },
@@ -442,16 +442,16 @@ export const FLOWS: OpsFlow[] = [
     key: 'po_intake',
     group: 'Sourcing & intake',
     order: 10,
-    label: 'PO intake (Gmail triage)',
+    label: 'PO intake (email triage)',
     color: '#0ea5e9',
-    blurb: 'Vendor PO emails triaged from Gmail into Zoho purchase orders. Stage = email_missing_purchase_orders.pile.',
+    blurb: 'Vendor PO emails triaged from the email inbox into purchase orders. Stage = email_missing_purchase_orders.pile.',
     stations: ['ADMIN'],
     source: 'email_missing_purchase_orders.pile · 2026-05-24 po_mailbox_triage',
     code: ['/api/admin/po-gmail/triage', '/api/admin/po-gmail/triage/[id]/extract', '/api/admin/po-gmail/triage/[id]/create-zoho-draft', 'src/lib/po-gmail'],
     steps: [
-      { stage: 'Inbox', key: 'inbox', station: 'ADMIN', note: 'Email synced from Gmail, awaiting triage', signal: 'Gmail OAuth sync' },
-      { stage: 'Upload', key: 'upload', station: 'ADMIN', note: 'Triaged & fields extracted — queued for Zoho PO creation', by: '/api/admin/po-gmail/triage/[id]/extract' },
-      { stage: 'Done', key: 'done', station: 'ADMIN', note: 'Zoho PO draft created; email archived → feeds the Receiving flow', by: '/api/admin/po-gmail/triage/[id]/create-zoho-draft' },
+      { stage: 'Inbox', key: 'inbox', station: 'ADMIN', note: 'Email synced from the PO inbox, awaiting triage', signal: 'Email inbox OAuth sync' },
+      { stage: 'Upload', key: 'upload', station: 'ADMIN', note: 'Triaged & fields extracted — queued for PO creation', by: '/api/admin/po-gmail/triage/[id]/extract' },
+      { stage: 'Done', key: 'done', station: 'ADMIN', note: 'PO draft created; email archived → feeds the Receiving flow', by: '/api/admin/po-gmail/triage/[id]/create-zoho-draft' },
     ],
     offPath: [{ stage: 'Ignore', note: 'Marked as noise / duplicate — excluded from the workflow' }],
   },
@@ -469,8 +469,8 @@ export const FLOWS: OpsFlow[] = [
       { stage: 'Detected', key: 'detected', station: 'ADMIN', note: 'An order hit insufficient stock → request auto-created', signal: 'auto-detect' },
       { stage: 'Review', key: 'pending_review', station: 'ADMIN', note: 'Buyer reviews vendor / qty / cost' },
       { stage: 'Plan PO', key: 'planned_for_po', station: 'ADMIN', note: 'Reviewed and staged for PO creation' },
-      { stage: 'PO Sent', key: 'po_created', station: 'ADMIN', note: 'Zoho PO created and sent to vendor', by: '/api/replenish/bulk-create-po' },
-      { stage: 'Awaiting Receipt', key: 'waiting_for_receipt', station: 'RECEIVING', note: 'PO open/confirmed in Zoho; goods in transit', signal: 'Zoho sync' },
+      { stage: 'PO Sent', key: 'po_created', station: 'ADMIN', note: 'PO created and sent to vendor', by: '/api/replenish/bulk-create-po' },
+      { stage: 'Awaiting Receipt', key: 'waiting_for_receipt', station: 'RECEIVING', note: 'PO open/confirmed upstream; goods in transit', signal: 'PO sync' },
       { stage: 'Fulfilled', key: 'fulfilled', station: 'RECEIVING', note: 'Received & QA-passed → need satisfied', signal: 'reconcile' },
     ],
     offPath: [
@@ -484,13 +484,13 @@ export const FLOWS: OpsFlow[] = [
     order: 14,
     label: 'Walk-in / local pickup',
     color: '#a855f7',
-    blurb: 'Walk-in intake cart → Zoho PO + receiving record. Stage = local_pickup_orders.status.',
+    blurb: 'Walk-in intake cart → purchase order + receiving record. Stage = local_pickup_orders.status.',
     stations: ['ADMIN', 'RECEIVING'],
     source: 'local_pickup_orders.status · 2026-04-13 create_local_pickup_orders',
     code: ['/api/local-pickup-orders', '/api/local-pickup-orders/[id]/finalize', '/api/local-pickup-orders/[id]/void', 'src/components/work-orders/localPickupStore.ts'],
     steps: [
       { stage: 'Draft', key: 'DRAFT', station: 'ADMIN', note: 'Cart open — items being added (editable only while DRAFT)', by: 'POST /api/local-pickup-orders' },
-      { stage: 'Completed', key: 'COMPLETED', station: 'RECEIVING', note: 'Finalized → Zoho PO (LCPU-…) + receiving row created; label printable', by: '/api/local-pickup-orders/[id]/finalize' },
+      { stage: 'Completed', key: 'COMPLETED', station: 'RECEIVING', note: 'Finalized → PO (LCPU-…) + receiving row created; label printable', by: '/api/local-pickup-orders/[id]/finalize' },
     ],
     offPath: [{ stage: 'Voided', note: 'Cancelled; items discarded (requires orders.void)' }],
   },

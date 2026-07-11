@@ -27,6 +27,7 @@ import { syncShippedOrdersToZoho } from '@/lib/zoho/fulfillment-sync';
 import { getFulfillmentSyncConfig } from '@/lib/zoho/fulfillment-config';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { getInventoryProvider } from '@/lib/integrations/inventory';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -45,6 +46,22 @@ export const POST = withAuth(
   async (request: NextRequest, ctx) => {
     if (!isAllowedAdminOrigin(request)) {
       return NextResponse.json({ success: false, error: 'Origin not allowed' }, { status: 403 });
+    }
+
+    // Soft-disable: no inventory integration connected → a clean, typed
+    // response the UI can teach from, instead of the sync failing deep
+    // inside the Zoho client with an opaque 500.
+    const inventory = await getInventoryProvider(ctx.organizationId);
+    if (!inventory) {
+      return NextResponse.json(
+        {
+          ok: false,
+          success: false,
+          error: 'INVENTORY_NOT_CONNECTED',
+          message: 'No inventory integration is connected for this workspace. Connect one in Settings → Integrations.',
+        },
+        { status: 503 },
+      );
     }
 
     try {

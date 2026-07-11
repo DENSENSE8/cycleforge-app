@@ -2,7 +2,7 @@
 
 /**
  * Zoho PO tab for Package Pairing — two independent paths:
- *   1. Search & add product by Zoho SKU (no PO link; carton stays unfound) —
+ *   1. Search & add product by inventory SKU (no PO link; carton stays unfound) —
  *      rendered as the prominent, dedicated search/add CTA (the primary action).
  *   2. Link / relink the carton to a purchase order (PoLinkTab) — secondary.
  *
@@ -39,7 +39,7 @@ export function ZohoPoPairTab({
           </span>
           <div className="min-w-0">
             <p className="text-caption font-black uppercase leading-none tracking-widest text-blue-900">
-              Search &amp; add Zoho SKU
+              Search &amp; add inventory SKU
             </p>
             <p className="mt-1 text-xs leading-snug text-blue-700">
               {allowOffPo

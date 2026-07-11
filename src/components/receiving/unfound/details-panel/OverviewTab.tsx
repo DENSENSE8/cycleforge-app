@@ -75,7 +75,7 @@ export function OverviewTab({
         </Section>
       )}
 
-      <Section title="Zendesk">
+      <Section title="Helpdesk ticket">
         {row.zendesk_ticket_id ? (
           <div className="space-y-0.5">
             {(() => {

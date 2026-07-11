@@ -333,7 +333,7 @@ function ReceivingPopoverContent({
               (no Zoho receive). The "No PO" tag marks that the website↔Zoho gap
               is intentional, not a failed sync. */}
           {row.receiving_source === 'unmatched' ? (
-            <HoverTooltip label="No matching Zoho PO — received locally only" asChild>
+            <HoverTooltip label="No matching PO — received locally only" asChild>
               <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
             </HoverTooltip>
           ) : null}
@@ -343,8 +343,8 @@ function ReceivingPopoverContent({
           {['billed', 'closed', 'cancelled', 'received', 'rejected'].includes(
             String(row.zoho_status || '').toLowerCase(),
           ) ? (
-            <HoverTooltip label={`Zoho marks this PO "${row.zoho_status}" — already received/closed upstream, but the box is still here to unbox`} asChild>
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">Zoho: {String(row.zoho_status)}</span>
+            <HoverTooltip label={`The inventory system marks this PO "${row.zoho_status}" — already received/closed upstream, but the box is still here to unbox`} asChild>
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
             </HoverTooltip>
           ) : null}
           {row.needs_test ? (

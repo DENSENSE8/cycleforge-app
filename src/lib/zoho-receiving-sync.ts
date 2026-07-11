@@ -20,7 +20,11 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
 import { mergeEbayLinesIntoZohoPo } from '@/lib/inbound/merge-purchase-lines';
 import { isIncomingUniversal } from '@/lib/feature-flags';
-import { getPurchaseOrderById, getPurchaseReceiveById, listPurchaseOrders } from '@/lib/zoho';
+// Provider fetches route through the org's InventoryProvider facade
+// (Integrations-as-SoT Wave B1); this module stays the inbound-sync
+// implementation detail on top of it. The withZohoCredential wrapping
+// (operation allowlist + credential-usage audit) is kept at each call site.
+import { requireInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
 import { formatApiOffsetTimestamp, formatPSTTimestamp } from '@/utils/date';
 import type { PoolClient } from 'pg';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
@@ -210,6 +214,7 @@ type SyncPOLinesResult = {
 async function syncPurchaseOrderLines(
   client: PoolClient,
   orgId: OrgId,
+  inventory: InventoryProvider,
   purchaseOrderId: string,
   options: SyncPOLinesOptions = {}
 ): Promise<SyncPOLinesResult> {
@@ -227,7 +232,7 @@ async function syncPurchaseOrderLines(
   // Scope the Zoho fetch to this tenant's credential + allowlisted operation
   // (per-org creds via withZohoOrg, audited, deny-by-default on the operation).
   const detail = await withZohoCredential(orgId, 'purchaseorders.read', () =>
-    getPurchaseOrderById(poId),
+    inventory.getPurchaseOrder(poId),
   );
   const po = asObject((detail as AnyRow)?.purchaseorder);
   if (!po) throw new Error(`Zoho purchase order not found: ${poId}`);
@@ -525,11 +530,15 @@ export async function importZohoPurchaseOrderToReceiving(
   purchaseOrderId: string,
   options: SyncPOLinesOptions = {}
 ): Promise<ImportPOResult> {
+  // Resolve the org's inventory provider once, outside the transaction — a
+  // not-connected org fails fast with the typed error instead of holding a txn.
+  const inventory = await requireInventoryProvider(orgId);
+
   // withTenantTransaction opens the transaction, sets the `app.current_org`
   // GUC via SET LOCAL, and uses the tenant pool — so every write inside (incl.
   // the advisory locks that need a transaction) is org-scoped and RLS-subject.
   const result = await withTenantTransaction(orgId, (client) =>
-    syncPurchaseOrderLines(client, orgId, purchaseOrderId, options),
+    syncPurchaseOrderLines(client, orgId, inventory, purchaseOrderId, options),
   );
 
   // Universal Incoming (Phase 3, plan §5.4): collapse any eBay-buyer Incoming line
@@ -624,9 +633,11 @@ export async function syncZohoPurchaseOrdersToReceiving(
     errors: [],
   };
 
+  const inventory = await requireInventoryProvider(orgId);
+
   for (let page = 1; page <= maxPages && summary.processed < maxItems; page++) {
     const data = await withZohoCredential(orgId, 'purchaseorders.read', () =>
-      listPurchaseOrders({
+      inventory.listPurchaseOrders({
         page,
         per_page: perPage,
         status: opts.status || undefined,
@@ -707,8 +718,9 @@ export async function importZohoPurchaseReceiveToReceiving(options: {
   const receiveIdInput = asString(options.purchaseReceiveId);
   if (!receiveIdInput) throw new Error('purchase_receive_id is required');
 
+  const inventory = await requireInventoryProvider(orgId);
   const detail = await withZohoCredential(orgId, 'purchasereceives.read', () =>
-    getPurchaseReceiveById(receiveIdInput),
+    inventory.getPurchaseReceive(receiveIdInput),
   );
   const receive = asObject((detail as AnyRow)?.purchasereceive);
   if (!receive) throw new Error('Zoho purchase receive not found');

@@ -10,6 +10,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
+import {
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { suggestSupportReply, SupportSuggestError } from '@/lib/support/suggest-reply';
 
 export const runtime = 'nodejs';
@@ -40,6 +45,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   if (!question) {
     return NextResponse.json({ error: 'question is required' }, { status: 400 });
+  }
+
+  // Drafting a reply only makes sense against a connected helpdesk (the
+  // capability gate, not a vendor check). Same 503 language as /api/zendesk/*.
+  const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+  if (!helpdesk || !(await helpdesk.isConfigured())) {
+    return NextResponse.json(
+      { error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}` },
+      { status: 503 },
+    );
   }
 
   try {

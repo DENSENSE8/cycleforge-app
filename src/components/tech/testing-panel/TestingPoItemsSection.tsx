@@ -75,7 +75,7 @@ export function TestingPoItemsSection({
       <div className="space-y-2">
         {linelessUnfound ? (
           <InlineNotice tone="info" size="sm" title="No items yet">
-            Add the product via Package Pairing → Zoho PO (Acknowledge by Zoho SKU),
+            Add the product via Package Pairing → Purchase Order (Acknowledge by Inventory SKU),
             or scan a unit serial below.
           </InlineNotice>
         ) : null}

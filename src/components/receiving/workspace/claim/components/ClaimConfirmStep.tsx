@@ -13,7 +13,7 @@ export function ClaimConfirmStep({ c }: { c: ReceivingClaimController }) {
     <div className="divide-y divide-border-hairline space-y-0 [&>section]:py-3 [&>div]:py-3">
       {isDryRun ? (
         <div className="border-b border-dashed border-amber-300 py-2 text-micro font-black uppercase tracking-[0.14em] text-amber-800">
-          Dry run — no Zendesk ticket, local backup, or DB rows were created.
+          Dry run — no support ticket, local backup, or DB rows were created.
         </div>
       ) : null}
 
