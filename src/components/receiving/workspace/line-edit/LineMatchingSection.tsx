@@ -35,7 +35,7 @@ import {
   Search,
   ShoppingCart,
   Unlink,
-  TicketHelp,
+  ZendeskMark,
 } from '@/components/Icons';
 import {
   dispatchLineUpdated,
@@ -357,7 +357,7 @@ function TriageMatchingCard({
     // Storefront search — search ALL recent orders by order #, title, or SKU
     // (relaxed to include normal orders + returns/trade-ins, not just -RS).
     { id: 'ecwid', label: 'Store', icon: ShoppingCart },
-    { id: 'zendesk', label: 'Tickets', icon: TicketHelp },
+    { id: 'zendesk', label: 'Tickets', icon: ZendeskMark },
     // Email PO — search the Gmail-ingested PO worklist (purchase-order emails with
     // no Zoho match) and link the carton to its order. Works for any carton.
     { id: 'email', label: 'Email PO', icon: Mail },
@@ -471,7 +471,7 @@ function TriageMatchingCard({
   const ticketLinkRow = hasTicket ? (
     <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-        <TicketHelp className="h-4 w-4" />
+        <ZendeskMark className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
         <span className="text-eyebrow font-black uppercase tracking-widest text-violet-700">
