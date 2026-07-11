@@ -88,8 +88,8 @@ export function LineReceiveActionBar({
           onClick: onPrintOnly,
           disabled: !canPrint,
         },
-        // "Save all to Zoho" only makes sense for matched cartons — hidden for an
-        // unfound carton, which has no Zoho PO to save against.
+        // "Save all to inventory" only makes sense for matched cartons — hidden
+        // for an unfound carton, which has no linked PO to save against.
         ...(isLocalReceive
           ? []
           : [

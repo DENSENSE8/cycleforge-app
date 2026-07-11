@@ -25,6 +25,7 @@ export const DEFAULT_FBA_CHANNEL = 'fba:changes';
 export const DEFAULT_DASHBOARD_CHANNEL = 'dashboard:operations';
 export const DEFAULT_OPS_PLANS_CHANNEL = 'ops_plans:changes';
 export const DEFAULT_WALKIN_CHANNEL = 'walkin:changes';
+export const DEFAULT_MASTER_PLAN_CHANNEL = 'forge:master-plan';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -101,6 +102,14 @@ export const getOpsPlansChannelName = (orgId: string) =>
 
 export const getWalkInChannelName = (orgId: string) =>
   `${orgChannelPrefix(orgId)}:${DEFAULT_WALKIN_CHANNEL}`;
+
+/**
+ * Agentic-loop master-plan CRDT channel (`org:{uuid}:forge:master-plan`).
+ * Carries Yjs sync/update messages for the shared `master-plan.mdx` document —
+ * Cursor daemon, web clients, and the forge plan-agent all merge through it.
+ */
+export const getMasterPlanChannel = (orgId: string) =>
+  `${orgChannelPrefix(orgId)}:${DEFAULT_MASTER_PLAN_CHANNEL}`;
 
 // ─── DB-row change channels ────────────────────────────────────────────────
 

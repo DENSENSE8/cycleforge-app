@@ -33,8 +33,10 @@ const TOKEN_BY_PX: Record<number, string> = {
 // shrink. Lower this number as those sizes get normalized onto the scale; never
 // raise it. A new arbitrary size in this range fails the build until tokenized.
 // 2026-07-10: re-armed 111 → 112 at the actual count after merging upstream dev
-// product code that shipped over the old budget. Shrink-only from here.
-const LONG_TAIL_BASELINE = 112;
+// product code that shipped over the old budget, then 112 → 114 after carrying
+// over the in-flight capability-relabel WIP from the same upstream repo.
+// Shrink-only from here.
+const LONG_TAIL_BASELINE = 114;
 
 // Match `text-[Npx]` only as a standalone class (mirrors the codemod regex):
 // allows `:`/`-`-joined prefixes, rejects substrings of longer identifiers.

@@ -11,7 +11,6 @@ import { PhoneIncoming, PhoneMissed } from '@/components/Icons';
 import {
   CALL_DIRECTION_ITEMS,
   parseCallDirection,
-  type CallDirectionFilter,
 } from '@/components/sidebar/support/support-sidebar-shared';
 import { useCallEvents, isNotConfigured } from './useVoiceQueries';
 

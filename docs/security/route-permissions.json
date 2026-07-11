@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-11T06:22:09Z",
+  "generatedAt": "2026-07-11T06:25:13Z",
   "totalRoutes": 812,
   "summary": {
     "permissionGated": 697,
@@ -4317,6 +4317,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving-lines/incoming/inventory-refresh/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving-lines/incoming/marketplace-refresh/route.ts",
       "methods": [
         "POST"
@@ -4375,15 +4384,6 @@
       "methods": [
         "GET",
         "PATCH"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving-lines/incoming/zoho-refresh/route.ts",
-      "methods": [
-        "POST"
       ],
       "gate": "withAuth",
       "permission": "receiving.view",
@@ -4472,6 +4472,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/[id]/inventory-sync/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.scan_po",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/[id]/route.ts",
       "methods": [
         "GET",
@@ -4483,15 +4492,6 @@
     },
     {
       "path": "/api/receiving/[id]/unpair/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "receiving.scan_po",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/[id]/zoho-sync/route.ts",
       "methods": [
         "POST"
       ],
@@ -4582,6 +4582,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/lines/[id]/inventory-note/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/lines/[id]/move/route.ts",
       "methods": [
         "POST"
@@ -4624,15 +4633,6 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/lines/[id]/zoho-note/route.ts",
-      "methods": [
-        "PATCH"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "receiving.mark_received",
       "exemptReason": null
     },
     {

@@ -86,15 +86,18 @@ The team's single Vercel project `usav-orders-backend` (prj_gDTgwbn6sL8ArSGt1suP
 prebuilt-shaped). The old GitHub repo is not the deploy source anymore, so retiring it does not affect
 production.
 
-## In-flight WIP carried over (second commit)
+## In-flight WIP carried over
 
 While the merge was being validated, the source repo's working tree was **actively changing** — an in-progress
-"capability-relabel program" refactor (`docs/integrations/capability-relabel-program.md`): ~115 files including
+"capability-relabel program" refactor (`docs/integrations/capability-relabel-program.md`): ~150 files including
 new `src/lib/integrations/capability-labels.ts` / `capability-connections.ts`, new `helpdesk/` + `inventory/`
-capability facades, and the `ZohoSyncDialog → InventoryFulfillmentSyncDialog` rename. That uncommitted snapshot
-was copied over verbatim (converged repeatedly via `cmp`-based sweeps, final sweep immediately before
-retirement) and committed **separately on top of the merge** so the validated merge and the moving WIP stay
-distinguishable. `CLAUDE.md` was adapted (`USAV-Orders-Backend` → `cycleforge-app` in the repo self-reference).
+capability facades, renamed `inventory-refresh`/`inventory-sync`/`inventory-note` routes, and the
+`ZohoSyncDialog → InventoryFulfillmentSyncDialog` rename. That snapshot was copied over verbatim and converged
+repeatedly via `cmp`-based sweeps. The owner then committed it directly (via GitHub Desktop, mid-session) as
+`055197779` "Relabel Zoho/Zendesk surfaces behind inventory and helpdesk capability facades." on top of the
+SoT merge commit, and merged origin's agentic-loop-plan commit as `86c811470`. Final post-commit drift (5 files)
+plus regenerated gate artifacts landed as a follow-up commit. `CLAUDE.md` was adapted
+(`USAV-Orders-Backend` → `cycleforge-app` in the repo self-reference).
 
 ## Fixes applied to reach a green tree
 
