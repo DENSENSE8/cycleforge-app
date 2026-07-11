@@ -23,7 +23,7 @@ Where earlier drafts conflict with this section, **this section wins**.
 | Decision | Answer |
 |---|---|
 | **Stack** | **Neon Postgres + Ably + Yjs + Next.js.** Composable: Ably = realtime sync; Neon = ops data + issues + CoW branch sandboxes; Yjs = conflict-free Markdown merge. |
-| **Anti-goals** | No second browser Ably client outside `AblyProvider`. No Vercel AI SDK `useChat` replacement of the existing SSE assistant in this plan. No third-party CRDT host — Yjs rides Ably. |
+| **Anti-goals** | No second browser Ably client outside `AblyProvider`. No third-party CRDT host — Yjs rides Ably. Do **not** rewrite the global dock assistant (`useAssistantChat` SSE) in this plan — that migration is separate. |
 | **What this loop is** | Agentic meta-loop: local `./master-plan.mdx` ↔ Y.Text ↔ Ably ↔ `/forge` plan UI ↔ Hermes/`forge.sh` ↔ Neon ephemeral branches ↔ in-app resolution toasts. |
 | **What this loop is not** | Not a parallel product. Not a replacement for `docs/CYCLE-FORGE-ROADMAP` (that remains the product feature spine; this loop **executes** those tickets safely). |
 | **CRDT document** | Single `Y.Text('content')` holding the raw MDX/Markdown string of the master plan. Humans in Cursor and agents on the web merge without last-write-wins clobber. |
@@ -31,7 +31,7 @@ Where earlier drafts conflict with this section, **this section wins**.
 | **Realtime transport** | Existing Ably org-scoped bus (`src/lib/realtime/channels.ts`). New channel helper: `getMasterPlanChannel(orgId)` → `org:{uuid}:forge:master-plan`. Yjs sync steps ride Ably messages (custom provider; own the protocol — do not depend on unmaintained community packages without vendoring). |
 | **Local bridge** | Node daemon (`fs.watch` on `./master-plan.mdx`) under `.cycle_forge_ops/scripts/`, PM2-managed. Upstream: file → Y.Text → Ably. Downstream: Ably → atomic file write. Echo suppressed via generation tokens. |
 | **Web render** | Prefer existing `react-markdown` + `remark-gfm` + custom components (`TicketStatus`, `AgentLog`). Add `next-mdx-remote` only if MDX component compilation is required. |
-| **Web agent** | Extend **existing** `src/lib/assistant/agent-loop.ts` + SSE with a server tool `mutate_master_plan`. Do not fork a second chat stack. |
+| **Web agent** | **Vercel AI SDK** owns the `/forge` plan-agent streaming chat (`useChat` on the client; `streamText` / tool loop on the server). Server tool `mutate_master_plan` mutates the Yjs doc; Ably fans out. Route through existing Vercel AI Gateway config (`src/lib/ai/provider.ts`) where possible. The global dock assistant stays on its current SSE stack until a dedicated migration. |
 | **Ticket status enum** | Only `pending` \| `in-progress` \| `deployed` inside `<TicketStatus />`. |
 | **Verification sandbox** | Before DB-touching VERIFY: Neon API creates an ephemeral CoW branch from production; tests run against branch connection string; on success update MDX status + delete branch; on fail keep branch for retry (TTL + max attempts). Never point production `DATABASE_URL` at agent work. |
 | **In-app feedback loop** | Neon `user_reported_issues` + Ably push + sonner toast (stateful in-app resolution). Dual-write with existing GitHub Issues path (`/api/user-issues` + `claude-fix-issue.yml`). |
@@ -58,7 +58,8 @@ Next.js  → stateful dashboard + existing assistant SSE loop
 | Forge UI | `/forge` poll-only run history | Ably-live runs + plan MDX view |
 | Forge ingest | `POST /api/forge/ingest` (`x-forge-token`) | Emit TicketStatus / issue resolution hooks |
 | Local loop | `.cycle_forge_ops/scripts/forge.sh` + Hermes | Parse pending tickets; Neon branch VERIFY; write `deployed` |
-| Assistant | `agent-loop.ts` + `useAssistantChat` SSE | Add `mutate_master_plan` tool |
+| Global assistant | `agent-loop.ts` + `useAssistantChat` SSE | Leave intact (separate migration) |
+| Forge plan agent | **Absent** (no AI SDK yet) | New AI SDK chat on `/forge` + `mutate_master_plan` tool |
 | Feedback | `FeedbackWidget` → GitHub only | Dual-write Neon + Ably resolve toast |
 | Toasts | `src/lib/toast.ts` (sonner) | Resolution toast copy locked below |
 | Neon branching | Manual CLI in `docs/qa-org-playbook.md` | Programmatic API client + lifecycle |
@@ -88,7 +89,7 @@ flowchart TB
   subgraph webPlane [Cycle Forge Next.js]
     ForgeUI["/forge plan + runs"]
     MDXView["react-markdown + TicketStatus"]
-    AgentChat["assistant agent-loop"]
+    AgentChat["AI SDK useChat plan agent"]
     Toast["sonner toast"]
     ForgeUI --> MDXView
     AgentChat --> YText
@@ -170,8 +171,9 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 | **ALP-3.1** | `/forge`: Ably-live run feed + plan view region (Monitor archetype) | `todo` | No `refetchInterval` polling |
 | **ALP-3.2** | Bind Y.Text → React state → `react-markdown` + custom components | `todo` | Live re-render on remote edit |
 | **ALP-3.3** | `<TicketStatus/>` semantic chips; pulse on `deployed` | `todo` | Tokens from `semantic.ts` only |
-| **ALP-3.4** | Assistant tool `mutate_master_plan` (server-side Yjs mutate) | `todo` | SSE path unchanged; tool unit-tested with fakes |
-| **ALP-3.5** | UI laws: rails, `HoverTooltip`, sonner only for cross-session notices | `todo` | DS guards green |
+| **ALP-3.4** | Vercel AI SDK plan-agent chat on `/forge` (`useChat` + `streamText` + tools) | `todo` | Streaming UI works; Gateway-backed; no second Ably client |
+| **ALP-3.5** | Server tool `mutate_master_plan` (Yjs mutate via AI SDK tool execution) | `todo` | Tool unit-tested with fakes; Ably fans out |
+| **ALP-3.6** | UI laws: rails, `HoverTooltip`, sonner only for cross-session notices | `todo` | DS guards green |
 
 **HUMAN GATE 3:** status flip pending→deployed pulses green without refresh.
 
@@ -221,7 +223,9 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 | PM2 | `ecosystem.config.cjs` |
 | Plan UI | `src/app/forge/` + `src/components/forge/` |
 | TicketStatus | `src/components/forge/TicketStatus.tsx` |
-| mutate tool | `src/lib/assistant/tools/` |
+| Plan-agent API | `src/app/api/forge/chat/route.ts` (AI SDK `streamText`) |
+| Plan-agent UI | `src/components/forge/PlanAgentChat.tsx` (`useChat`) |
+| mutate tool | `src/lib/master-plan/tools/` (or forge-scoped tools module) |
 | Neon branches | `src/lib/neon/branches.ts` (Deps-injected) |
 | Issues schema | `src/lib/migrations/YYYY-MM-DD_user_reported_issues.sql` + Drizzle |
 | Issues API | `src/app/api/user-issues/route.ts` |
@@ -248,7 +252,7 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 - Rebranding Cycle Forge or inventing a parallel product name in UI chrome
 - Hosting the CRDT document on a third-party collaboration SaaS (Yjs must ride Ably)
-- Replacing the assistant SSE stack with Vercel AI SDK `useChat`
+- Rewriting the global dock assistant SSE stack onto AI SDK (out of scope; forge plan-agent is the AI SDK beachhead)
 - Training / Jetson / Qwen pipeline changes
 - Auto-publishing Studio workflow drafts
 - Applying migrations from the agent without a HUMAN GATE
