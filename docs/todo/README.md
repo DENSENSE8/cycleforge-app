@@ -101,6 +101,9 @@ needs credentials / third-party approval / live-DB apply / counsel — not build
 - `studio-driven-operator-surfaces-refactor-plan.md` — shipped (995d2003).
 - `universal-feed-polymorphic-plan.md` — Phases 0–3 code-complete; migrations j–q apply =
   owner-gated.
+- `agentic-loop-master-plan.md` (+ `agentic-loop-EXECUTION-PROMPT.md`) — **0%** — locked
+  Neon+Ably+Yjs Cycle Forge agentic meta-loop (master-plan CRDT sync, local daemon, `/forge` live MDX,
+  Neon branch VERIFY, in-app issue→toast). Plan + Fable 5 ultracode prompt only; implementation not started.
 - `redis-caching-plan.md` — Phases 0–4 **DONE** per its header (2026-07-04); the old "Phase 1 in
   progress" note here was stale. 2026-07-09: 11 legacy sync `checkRateLimit` sites →
   org-scoped distributed limiter.
