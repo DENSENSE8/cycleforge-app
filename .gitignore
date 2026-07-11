@@ -96,3 +96,6 @@ context/*.exe
 
 # reversible snapshot for mark-board-shipped-test.ts (contains live tracking state)
 scripts/.shipped-test-snapshot.json
+
+# crush agent local state
+.crush/

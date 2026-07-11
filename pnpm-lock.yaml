@@ -119,6 +119,9 @@ importers:
       ebay-api:
         specifier: ^9.4.0
         version: 9.5.2
+      fast-xml-parser:
+        specifier: ^5.8.0
+        version: 5.8.0
       framer-motion:
         specifier: ^11.0.0
         version: 11.18.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

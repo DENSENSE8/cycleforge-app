@@ -17,6 +17,7 @@ import {
   sumWarehouseReceivedByPoLineItem,
   updatePurchaseOrder,
 } from '@/lib/zoho';
+import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { getZohoHttpClientStatus } from '@/lib/zoho/httpClient';
 import { receiveLineUnits } from '@/lib/receiving/receive-line';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
@@ -35,6 +36,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { conditionLabel } from '@/lib/conditions';
 import { mergeSerialNoteIntoLineDescription } from '@/lib/zoho';
 import { recordOpsEvent } from '@/lib/ops-events';
+import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
 
 function normalizeSkuKey(s: string | null | undefined): string {
   return String(s ?? '').trim().toLowerCase();
@@ -370,6 +372,9 @@ export const POST = withAuth(async (request, ctx) => {
               actorStaffId: staffId,
               clientEventId: clientEventId ? `${clientEventId}:unbox` : `receiving:${receivingId}:unbox:${now}`,
               occurredAt: now,
+              // Phase 2 (ops-events unification): receive/unbox is the Unbox
+              // surface — stamp its Studio-node binding (null when unpublished).
+              workflowNodeId: await resolveSurfaceWorkflowNodeId('unbox', ctx.organizationId),
               payload: { receivingId, kind: 'unfound_no_po' },
             });
           } catch (err) {
@@ -469,7 +474,12 @@ export const POST = withAuth(async (request, ctx) => {
         disposition_code: dispositionCode,
         condition_grade: conditionGrade,
         notes,
-        set_workflow_status: 'MATCHED',
+        // A real receive advances lines straight to UNBOXED so they never dwell in
+        // the coarse SCANNED state (MATCHED) — that transient dwell is what stamped
+        // receiving_lines.scanned_at on unbox/unfound receives, leaking the door-scan
+        // timestamp that triage owns. scan_only ("Mark as scanned") keeps MATCHED so
+        // its "SCANNED" mark + revert still work (and legitimately owns scanned_at).
+        set_workflow_status: skipZohoReceive ? 'MATCHED' : 'UNBOXED',
         // A real receive must not downgrade a line already unboxed at first scan;
         // scan_only ("Mark as scanned") leaves this false so its revert still works.
         advanceOnly: !skipZohoReceive,
@@ -540,6 +550,9 @@ export const POST = withAuth(async (request, ctx) => {
         actorStaffId: staffId,
         clientEventId: clientEventId ? `${clientEventId}:unbox` : `receiving:${receivingId}:unbox:${now}`,
         occurredAt: now,
+        // Phase 2 (ops-events unification): receive/unbox is the Unbox
+        // surface — stamp its Studio-node binding (null when unpublished).
+        workflowNodeId: await resolveSurfaceWorkflowNodeId('unbox', ctx.organizationId),
         payload: { receivingId },
       });
     } catch (err) {
@@ -756,7 +769,10 @@ export const POST = withAuth(async (request, ctx) => {
       Boolean(localTracking) || Boolean(zendeskTicket) ||
       Boolean(notes) || aggregatedSerials.length > 0 || Boolean(serialNumber);
 
-    after(async () => {
+    // Re-bind the tenant inside after(): the callback runs outside the
+    // request's async context, so the Zoho client would otherwise see no org
+    // binding (getPurchaseOrderById / createPurchaseReceive / updatePurchaseOrder).
+    after(async () => withZohoOrg(ctx.organizationId, async () => {
       // Mirror newly-created serial units into the operations graph
       // (fire-and-forget — tapWorkflow never throws).
       for (const tap of workflowTapQueue) {
@@ -1104,7 +1120,7 @@ export const POST = withAuth(async (request, ctx) => {
       } catch (err) {
         console.warn('mark-received-po: cache/realtime failed', err);
       }
-    });
+    }));
 
     // Audit one row per touched line. Source = mobile-scanner when the call
     // came from the phone station, else receiving-station. Action =

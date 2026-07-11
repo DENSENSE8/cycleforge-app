@@ -88,6 +88,30 @@ export const MessageSquare = ({ className = "w-6 h-6" }: { className?: string })
     </svg>
 );
 
+/** Support / helpdesk ticket — Lucide-weight ticket + upright "?".
+ *  Tilt is compensated with a slight scale so optical volume matches siblings
+ *  (PackageOpen, Wrench, …) at h-5 / h-4. See lucide.dev/contribute/icon-design-guide. */
+export const TicketHelp = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg
+        className={className}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+    >
+        {/* rotate shrinks AABB; scale(1.12) restores Lucide optical volume (rule 9) */}
+        <g transform="translate(12 12) rotate(-10) scale(1.12) translate(-12 -12)">
+            <path d="M5 5h14a2 2 0 0 1 2 2v1.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.5a2.5 2.5 0 0 0 0-5V7a2 2 0 0 1 2-2Z" />
+        </g>
+        {/* Same stroke weight as Lucide TicketPlus / CircleHelp inner glyphs */}
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <path d="M12 17h.01" />
+    </svg>
+);
+
 export const Folder = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />

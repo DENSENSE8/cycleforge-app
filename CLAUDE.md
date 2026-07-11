@@ -1,4 +1,9 @@
-# Project rules — USAV-Orders-Backend
+# Project rules — Cycle Forge
+
+The product is **Cycle Forge** (multi-tenant reseller-ops SaaS); USAV is the dogfood tenant, and
+this repo (`cycleforge-app`) is the app. Vendor integrations (Zoho, Zendesk, …) are tenant
+connectors behind capability facades — never the product itself (see the Integrations section of
+the source-of-truth rules).
 
 Hard rules and source-of-truth invariants for this repo. These were promoted from auto-memory because
 they are durable, team-wide, and protect against repeatable high-cost mistakes. They override default behavior.

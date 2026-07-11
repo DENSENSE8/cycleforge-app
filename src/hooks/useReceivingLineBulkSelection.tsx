@@ -20,7 +20,7 @@ import { useTableSelection } from '@/hooks/useTableSelection';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import { printProductLabel, printProductLabels } from '@/lib/print/printProductLabel';
-import { Copy, Printer, MessageSquare, User, Smartphone } from '@/components/Icons';
+import { Copy, Printer, TicketHelp, User, Smartphone } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
@@ -198,7 +198,7 @@ export function useReceivingLineBulkSelection({
       {
         key: 'ticket',
         label: 'Create support ticket',
-        icon: <MessageSquare className="h-4 w-4" />,
+        icon: <TicketHelp className="h-4 w-4" />,
         maxSelected: 1,
         disabledReason: 'Select a single line to file a ticket',
         run: (rows) => {

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Camera, ShieldCheck } from '@/components/Icons';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { PhotoGallery } from './PhotoGallery';
+import { SECTION_CARD_CLASS } from './SectionCard';
 import { ShippingInformationSection, type EditableShippingFields, type PrepackedSkuInfo } from '@/components/shipped/details-panel/ShippingInformationSection';
 import { ProductDetailsSection } from '@/components/shipped/details-panel/ProductDetailsSection';
 
@@ -27,6 +29,12 @@ interface ShippedDetailsPanelContentProps {
   editableShippingFields?: EditableShippingFields;
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
+  /**
+   * Section presentation. `flat` (default) is the linear slide-over stack.
+   * `card` wraps each section in a lifted rounded bubble for the full-page order
+   * view (drops the slide-over's inner horizontal padding — the cards own it).
+   */
+  variant?: 'flat' | 'card';
 }
 
 export function ShippedDetailsPanelContent({
@@ -41,7 +49,13 @@ export function ShippedDetailsPanelContent({
   productDetailsFirst = false,
   editableShippingFields,
   activeSection,
+  variant = 'flat',
 }: ShippedDetailsPanelContentProps) {
+  const isCard = variant === 'card';
+  // In card mode each section floats in its own bubble; flat mode is byte-identical
+  // to before (fragment wrapper adds no DOM node, so the linear stack is unchanged).
+  const wrapSection = (node: React.ReactNode) =>
+    isCard ? <div className={SECTION_CARD_CLASS}>{node}</div> : <>{node}</>;
   // Tab-gated rendering: when activeSection is set, only the matching section
   // shows. When undefined (legacy callers), everything renders in one scroll.
   const showShipping = activeSection ? activeSection === 'shipping' : true;
@@ -74,23 +88,15 @@ export function ShippedDetailsPanelContent({
   );
 
   return (
-    <div className="px-8 pb-8 pt-0 space-y-6">
+    <div className={isCard ? 'space-y-5' : 'px-8 pb-8 pt-0 space-y-6'}>
       {showPackingPhotos && photosVisible && (
         <>
-          {prepackedSku && Array.isArray(prepackedSku.photos) && prepackedSku.photos.length > 0 && (
+          {prepackedSku && Array.isArray(prepackedSku.photos) && prepackedSku.photos.length > 0 && wrapSection(
             <section>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-default">SKU Integrity Photos</h3>
-                    <p className="text-micro font-bold text-indigo-600 mt-0.5">{prepackedSku.staticSku}</p>
-                  </div>
-                </div>
+              <div className="mb-3 flex items-center gap-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-text-muted" />
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-default">SKU Integrity Photos</h3>
+                <span className="text-micro font-bold text-text-faint">· {prepackedSku.staticSku}</span>
               </div>
               <PhotoGallery
                 photos={prepackedSku.photos}
@@ -106,47 +112,45 @@ export function ShippedDetailsPanelContent({
                   )
                 }
               />
-            </section>
+            </section>,
           )}
 
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
+          {wrapSection(
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <Camera className="h-3.5 w-3.5 text-text-muted" />
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-default">Packing Photos</h3>
               </div>
-            </div>
-            <PhotoGallery
-              photos={shipped.packer_photos_url || []}
-              orderId={shipped.order_id}
-              onPhotoDeleted={() => {
-                onUpdate?.();
-              }}
-            />
-          </section>
+              <PhotoGallery
+                photos={shipped.packer_photos_url || []}
+                orderId={shipped.order_id}
+                onPhotoDeleted={() => {
+                  onUpdate?.();
+                }}
+              />
+            </section>,
+          )}
         </>
       )}
 
-      {productDetailsFirst && showProduct && productDetailsSection}
+      {productDetailsFirst && showProduct && wrapSection(productDetailsSection)}
 
-      {showShipping ? (
-        <ShippingInformationSection
-          shipped={shipped}
-          copiedAll={copiedAll}
-          onCopyAll={onCopyAll}
-          onUpdate={onUpdate}
-          showShippingTimestamp={showShippingTimestamp}
-          showSerialNumber={showSerialNumber}
-          editableShippingFields={editableShippingFields}
-          prepackedSku={prepackedSku}
-        />
-      ) : null}
+      {showShipping
+        ? wrapSection(
+            <ShippingInformationSection
+              shipped={shipped}
+              copiedAll={copiedAll}
+              onCopyAll={onCopyAll}
+              onUpdate={onUpdate}
+              showShippingTimestamp={showShippingTimestamp}
+              showSerialNumber={showSerialNumber}
+              editableShippingFields={editableShippingFields}
+              prepackedSku={prepackedSku}
+            />,
+          )
+        : null}
 
-      {!productDetailsFirst && showProduct && productDetailsSection}
+      {!productDetailsFirst && showProduct && wrapSection(productDetailsSection)}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, Clock, ExternalLink, Loader2, MessageSquare, Unlink } from '@/components/Icons';
+import { Archive, Clock, ExternalLink, Loader2, TicketHelp, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { formatDateTimePST } from '@/utils/date';
@@ -210,7 +210,7 @@ function TicketThreadPanel({
     >
       <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border-hairline px-3 py-2">
         <div className="flex min-w-0 flex-1 items-start gap-2">
-          <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+          <TicketHelp className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
           <div className="min-w-0">
             <div className="break-words text-[13px] font-semibold leading-snug text-text-default">
               {displayTicketId ? `Ticket ${displayTicketId.startsWith('#') ? displayTicketId : `#${displayTicketId}`}` : 'Ticket'}

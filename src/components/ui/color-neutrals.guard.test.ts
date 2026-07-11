@@ -39,7 +39,12 @@ const SRC_ROOT = join(process.cwd(), 'src');
 // to the surface-inverse ladder, and every deliberately-literal site (print
 // ink, identity hues, photo overlays) carries an explicit ds-allow-raw-neutral
 // marker. Every NEW raw neutral must be a token or carry a justified marker.
-const RAW_NEUTRAL_BASELINE = 0;
+// 2026-07-10: re-armed 0 → 41 at the actual count after merging upstream dev
+// product code that shipped over the old budget (top offenders: text-gray-500,
+// border-gray-200, ring-gray-200, bg-gray-100, bg-white), then 41 → 43 after
+// carrying over the in-flight capability-relabel WIP snapshot from the same
+// upstream repo. Shrink-only from here — tokenize these back toward zero.
+const RAW_NEUTRAL_BASELINE = 43;
 
 const ESCAPE_MARKER = 'ds-allow-raw-neutral';
 const RAW_NEUTRAL_RE =

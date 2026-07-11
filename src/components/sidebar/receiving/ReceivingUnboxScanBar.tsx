@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, type FormEvent, type Ref } from 'react';
-import { MapPin, Hash, ZendeskMark } from '@/components/Icons';
+import { MapPin, Hash, TicketHelp } from '@/components/Icons';
 import {
   StationScanLeadingIcon,
   StationScanModeRail,
@@ -23,7 +23,7 @@ export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
   {
     mode: 'ticket',
     label: 'Ticket #',
-    Icon: ZendeskMark,
+    Icon: TicketHelp,
     armedClass: 'text-emerald-700 bg-emerald-500/10',
     iconClass: 'text-emerald-600',
   },

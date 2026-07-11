@@ -278,6 +278,18 @@ export default [
       'src/lib/zoho/core.ts',
       'src/lib/zoho/tenant-context.ts',
       'src/lib/zoho/webhooks/resolve-org.ts',
+      // Added 2026-07-10 (USAV→cycleforge SoT merge): the Wave-3 org-require
+      // refactor routed these session-less legacy paths through the explicit
+      // transitionalUsavOrgId() service-org bridge, making the debt greppable
+      // (see scripts/usav-fallback-guard.mjs allowlist — same ledger). Same
+      // burn-down contract: delete each entry as it is refactored.
+      'src/app/api/need-to-order/create-po/route.ts',
+      'src/app/api/need-to-order/recalculate/route.ts',
+      'src/lib/zoho.ts',
+      // DOGFOOD TRANSITIONAL (token-SoT Phase 5 removes): capability checks
+      // compare orgId against the dogfood org to allow its env-credential
+      // bridge — a comparison, not a tenant fallback. Remove with the bridge.
+      'src/lib/integrations/capability-connections.ts',
     ],
     rules: {
       'no-restricted-syntax': 'off',

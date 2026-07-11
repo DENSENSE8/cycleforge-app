@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, ExternalLink, Image as ImageIcon, MessageSquare, Paperclip, Plus, Reply, Send, X } from '@/components/Icons';
+import { AlertCircle, ExternalLink, Image as ImageIcon, Paperclip, Plus, Reply, Send, TicketHelp, X } from '@/components/Icons';
 import { MediaLibraryPickerContent } from '@/components/photos/MediaLibraryPickerContent';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
@@ -41,7 +41,7 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-hairline px-5 py-4">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 ring-1 ring-inset ring-rose-100">
-            {onPickStep ? <ImageIcon className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
+            {onPickStep ? <ImageIcon className="h-5 w-5" /> : <TicketHelp className="h-5 w-5" />}
           </span>
           <div>
             <p className="text-micro font-black uppercase tracking-widest text-rose-500">

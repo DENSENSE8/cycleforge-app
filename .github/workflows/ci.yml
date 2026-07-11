@@ -44,8 +44,13 @@ jobs:
 
       # Typecheck without emit — catches the kind of constraint and type
       # mismatches that used to land as bodyless 500s in dev.
+      # NODE_OPTIONS: tsc on this tree needs more than the runner's default
+      # heap — the 2026-07-10 run of e33a9680 died with exit 134 (OOM), not a
+      # type error. Mirrors the heap bump the build script already uses.
       - name: Typecheck
         run: npx tsc --noEmit -p tsconfig.json
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       # Glob-discovered unit tests. Drop any new *.test.ts under src/ and
       # it runs automatically — no need to register it in package.json.

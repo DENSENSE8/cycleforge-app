@@ -20,6 +20,7 @@ import {
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
+  TicketHelp,
   Voicemail,
 } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
@@ -37,7 +38,7 @@ export type SupportMode = 'tickets' | 'voicemail' | 'calls';
  *   newest-first, filter-only, no durable selection.
  */
 export const SUPPORT_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'tickets', label: 'Tickets', icon: Inbox },
+  { id: 'tickets', label: 'Tickets', icon: TicketHelp },
   { id: 'voicemail', label: 'Voicemail', icon: Voicemail },
   { id: 'calls', label: 'Calls', icon: Phone },
 ];
