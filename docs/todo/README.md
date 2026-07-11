@@ -83,8 +83,8 @@ credentials / third-party approval / live-DB apply / counsel — not buildable f
   `SurfaceRenderer` host); see doc header.
 - `universal-feed-polymorphic-plan.md` (+ `universal-feed-ai-first-EXECUTION-PROMPT.md` /
   `-RUN-REPORT.md`) — Phases 0–3 code-complete; migrations j–q application state tracked in auto-memory.
-- `garisek-os-agentic-loop-master-plan.md` (+ `garisek-os-EXECUTION-PROMPT.md`) — **0%** — locked
-  Neon+Ably+Yjs Garisek-OS agentic OS plane (master-plan CRDT sync, local daemon, `/forge` live MDX,
+- `agentic-loop-master-plan.md` (+ `agentic-loop-EXECUTION-PROMPT.md`) — **0%** — locked
+  Neon+Ably+Yjs Cycle Forge agentic meta-loop (master-plan CRDT sync, local daemon, `/forge` live MDX,
   Neon branch VERIFY, in-app issue→toast). Plan + Fable 5 ultracode prompt only; implementation not started.
 - `redis-caching-plan.md` — Phase 0 substrate done (cache:v2 org keys + tags); Phase 1 in progress.
 - `roi-execution/` — execution artifacts.
