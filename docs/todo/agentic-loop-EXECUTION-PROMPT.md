@@ -46,10 +46,12 @@ Get the contracts right over getting it done fast.
    - `src/app/forge/page.tsx` (poll-only today — you will make it live)
    - `src/app/api/forge/ingest/route.ts` + `src/app/api/forge/runs/route.ts`
    - `.cycle_forge_ops/scripts/forge.sh` + `.cycle_forge_ops/prompts/{ARCHITECT,CODER}_SYSTEM.md`
-6. Assistant plane (keep SSE; do not introduce `useChat`):
-   - `src/lib/assistant/agent-loop.ts`
-   - `src/components/assistant/useAssistantChat.ts`
-   - `src/lib/assistant/tools/` + `src/lib/assistant/mutations/apply-agent-mutation.ts`
+6. AI chat planes:
+   - Global dock (leave intact): `src/lib/assistant/agent-loop.ts`,
+     `src/components/assistant/useAssistantChat.ts`, `src/lib/assistant/tools/`
+   - **New forge plan-agent (this plan):** Vercel AI SDK — read the `ai-sdk` skill / AI SDK docs
+     for `useChat` + `streamText` + tool execution; reuse Gateway config in `src/lib/ai/provider.ts`
+     / `src/lib/ai/org-provider.ts` where possible.
 7. Feedback / toast plane:
    - `src/components/quick-access/FeedbackWidget.tsx`
    - `src/app/api/user-issues/route.ts`
@@ -65,8 +67,10 @@ Get the contracts right over getting it done fast.
 # Hard invariants (violating any is a failed run)
 
 - **Stack lock:** Neon + Ably + Yjs + Next.js only. Do **not** add a second browser Ably Realtime
-  client or a third-party CRDT host. Do **not** replace the assistant with Vercel AI SDK `useChat`
-  in this plan.
+  client or a third-party CRDT host.
+- **Forge plan chat = Vercel AI SDK:** `/forge` plan-agent uses `useChat` (client) + `streamText`
+  with server tools (incl. `mutate_master_plan`). Prefer `@ai-sdk/*` + existing Vercel AI Gateway
+  env. Do **not** rewrite the global dock assistant SSE stack in this run.
 - **Channel tenancy:** every new channel goes through `orgChannelPrefix(orgId)`. Prefer
   `getMasterPlanChannel(orgId)` → `org:{uuid}:forge:master-plan`.
 - **CRDT shape:** one `Y.Doc` with `Y.Text('content')` holding the raw master-plan string.
@@ -97,8 +101,9 @@ Get the contracts right over getting it done fast.
 
 - Begin with a **parallel understanding workflow**: fan out readers over (a) the master plan §-2,
   (b) Ably channels + token route + AblyContext, (c) `/forge` + ingest, (d) assistant tool
-  registry + agent-loop, (e) FeedbackWidget + user-issues, (f) forge.sh VERIFY path, (g) package.json
-  for yjs/ably presence. Synthesize a structured map before any code.
+  registry + agent-loop (for contrast only), (e) FeedbackWidget + user-issues, (f) forge.sh VERIFY
+  path, (g) package.json for yjs/ably/`ai` SDK presence, (h) `src/lib/ai/provider.ts` Gateway config.
+  Synthesize a structured map before any code.
 - For each phase: **design → implement → adversarially verify**. Verification fan-out:
   - tenancy leak hunter (channel / orgId)
   - CRDT echo-loop / split-brain hunter
@@ -184,7 +189,7 @@ Deliverables:
 
 HUMAN GATE 2: round-trip Cursor file save ↔ web/Yjs update without infinite loop.
 
-# PHASE 3 — `/forge` live plan dashboard + mutate tool (ALP-3.*)
+# PHASE 3 — `/forge` live plan dashboard + AI SDK plan agent (ALP-3.*)
 
 Deliverables:
 
@@ -192,11 +197,15 @@ Deliverables:
    Monitor region bound to Y.Text.
 2. `react-markdown` + custom `TicketStatus` / `AgentLog` components; semantic token chips; motion
    pulse when status becomes `deployed`.
-3. Assistant server tool `mutate_master_plan` registered in the tool registry; Deps-injected;
-   DB-free unit tests with fakes; agent-loop can call it. Keep SSE/`useAssistantChat` — no useChat.
-4. DS guards + archetype compliance for the new regions.
+3. **Vercel AI SDK plan-agent:**
+   - Add `ai` / `@ai-sdk/*` deps as needed.
+   - `POST /api/forge/chat` using `streamText` (Gateway-backed via existing provider helpers).
+   - Client `PlanAgentChat` using `useChat` for the streaming UI on `/forge`.
+   - Server tool `mutate_master_plan` (Deps-injected, unit-tested with fakes) that mutates Y.Text;
+     Ably broadcasts to all clients + the local daemon.
+4. DS guards + archetype compliance for the new regions. Do not touch the global dock assistant.
 
-HUMAN GATE 3: flip a ticket pending→deployed (via tool or daemon) and show live UI pulse without
+HUMAN GATE 3: chat a status flip pending→deployed via the plan agent and show live UI pulse without
 page refresh. Full gate suite green for touched surfaces. Then STOP unless the human expands to
 Phases 4–6.
 
