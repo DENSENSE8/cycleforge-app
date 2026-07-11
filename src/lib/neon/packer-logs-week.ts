@@ -1,4 +1,5 @@
 import { after } from 'next/server';
+import type { QueryResult } from 'pg';
 import pool from '@/lib/db';
 import {
   createCacheLookupKey,
@@ -32,6 +33,16 @@ export interface FetchPackerLogRowsOptions {
   weekStart?: string;
   weekEnd?: string;
   trackingTypeFilter?: PackerLogsTrackingFilter;
+  /**
+   * Spine-first render (immediate paint). When true, the two per-row
+   * `work_assignments` laterals (ship-by deadline + assigned tester) are dropped
+   * and the photos round-trip is skipped, so the page returns from cheap joins
+   * only; those display-only fields are filled in by a second `/api/packerlogs/
+   * hydrate` request. Column shape is identical (deferred cols come back NULL /
+   * []), so the table renders unchanged and just fills in on hydrate. Only
+   * applies on the enriched read path; ignored for the legacy query.
+   */
+  spineOnly?: boolean;
 }
 
 export interface FetchPackerLogRowsResult {
@@ -43,6 +54,12 @@ export interface FetchPackerLogRowsResult {
 // v7: enriched read path falls back to live order_match when projection row is missing.
 const CACHE_NAMESPACE = 'api:packing-logs-v7';
 const CACHE_TAGS = ['packing-logs'];
+
+// Set once if `packer_log_enrichment` is absent (a DB that hasn't run the
+// 2026-06-29f migration — e.g. a fresh preview/branch). Lets the default-ON read
+// model degrade to the legacy query for the rest of the process instead of
+// re-attempting (and re-failing) the enriched query on every request.
+let enrichmentTableMissing = false;
 
 /**
  * Shared loader for the /tech packer-logs week query. Lives in its own module so
@@ -63,6 +80,9 @@ export async function fetchPackerLogRows(
   const weekStart = opts.weekStart ?? '';
   const weekEnd = opts.weekEnd ?? '';
   const trackingTypeFilter: PackerLogsTrackingFilter = opts.trackingTypeFilter ?? 'all';
+  // Spine-first only makes sense on the enriched read path (it trims enriched
+  // laterals); the legacy query is left whole.
+  const spineOnly = Boolean(opts.spineOnly) && isPackerLogEnrichmentRead();
 
   const orgId = opts.organizationId;
 
@@ -81,6 +101,9 @@ export async function fetchPackerLogRows(
     weekStart,
     weekEnd,
     trackingTypeFilter,
+    // Spine and full responses have different column payloads — keep them in
+    // separate cache entries so one can never be served for the other.
+    phase: spineOnly ? 'spine' : 'full',
   });
 
   const today = getCurrentPSTDateKey();
@@ -585,6 +608,51 @@ export async function fetchPackerLogRows(
   // legacy query (same aliases), so the route + client are unaffected. When the
   // projection row is missing (e.g. packs after the backfill cutoff), fall back
   // to the legacy order_match lateral so titles still resolve.
+  //
+  // Spine-first fragments (opts.spineOnly): defer the two per-row work_assignments
+  // laterals — ship-by deadline + assigned tester — so the page paints from cheap
+  // joins; those display-only fields arrive via /api/packerlogs/hydrate. Full mode
+  // substitutes the EXACT original SQL, so the full-mode query stays byte-identical.
+  const deadlineCols = spineOnly
+    ? `NULL::text AS ship_by_date,
+        NULL::text AS deadline_at,`
+    : `to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
+        to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at,`;
+  const testerIdCol = spineOnly ? `NULL::int AS tester_id,` : `wa_t.assigned_tech_id AS tester_id,`;
+  const testerNameCol = spineOnly ? `NULL::text AS tester_name,` : `tester_staff.name AS tester_name,`;
+  const deadlineJoin = spineOnly
+    ? ''
+    : `LEFT JOIN LATERAL (
+        SELECT wa.deadline_at
+        FROM work_assignments wa
+        WHERE wa.entity_type = 'ORDER'
+          AND wa.entity_id = o.id
+          AND wa.work_type = 'TEST'
+        ORDER BY
+          CASE wa.status
+            WHEN 'IN_PROGRESS' THEN 1
+            WHEN 'ASSIGNED' THEN 2
+            WHEN 'OPEN' THEN 3
+            WHEN 'DONE' THEN 4
+            ELSE 5
+          END,
+          wa.updated_at DESC,
+          wa.id DESC
+        LIMIT 1
+    ) wa_deadline ON TRUE`;
+  const waTJoin = spineOnly
+    ? ''
+    : `LEFT JOIN LATERAL (
+        SELECT wa.assigned_tech_id
+        FROM work_assignments wa
+        WHERE wa.entity_type = 'ORDER'
+          AND wa.entity_id = o.id
+          AND wa.work_type = 'TEST'
+          AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
+        ORDER BY wa.created_at DESC, wa.id DESC
+        LIMIT 1
+    ) wa_t ON TRUE`;
+  const testerStaffJoin = spineOnly ? '' : `LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id`;
   const enrichedQuery = `
     ${pageCte}
     SELECT
@@ -619,8 +687,7 @@ export async function fetchPackerLogRows(
             NULLIF(BTRIM(o.item_number), ''),
             NULLIF(BTRIM(o.sku), '')
         ) AS product_title,
-        to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
-        to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at,
+        ${deadlineCols}
         o.item_number,
         NULLIF(TRIM(COALESCE(o.condition, '')), '') AS condition,
         COALESCE(o.quantity, sal.metadata->>'quantity') AS quantity,
@@ -640,11 +707,11 @@ export async function fetchPackerLogRows(
             NULLIF(TRIM(COALESCE(enr.sku_table_serial, '')), '')
         ) AS serial_number,
         enr.sku_table_id AS sku_table_id,
-        wa_t.assigned_tech_id AS tester_id,
+        ${testerIdCol}
         test_data.tested_by,
         test_data.test_date_time,
         tested_staff.name AS tested_by_name,
-        tester_staff.name AS tester_name,
+        ${testerNameCol}
         sal.fnsku,
         (NULLIF(TRIM(sal.metadata->>'fnsku_log_id'), ''))::bigint AS fnsku_log_id,
         stn.carrier                            AS carrier,
@@ -709,34 +776,8 @@ export async function fetchPackerLogRows(
     LEFT JOIN orders o ON o.id = COALESCE(enr.order_row_id, order_match_fallback.id)
       AND o.organization_id = sal.organization_id
     LEFT JOIN orders_exceptions oe ON oe.id = sal.orders_exception_id
-    LEFT JOIN LATERAL (
-        SELECT wa.deadline_at
-        FROM work_assignments wa
-        WHERE wa.entity_type = 'ORDER'
-          AND wa.entity_id = o.id
-          AND wa.work_type = 'TEST'
-        ORDER BY
-          CASE wa.status
-            WHEN 'IN_PROGRESS' THEN 1
-            WHEN 'ASSIGNED' THEN 2
-            WHEN 'OPEN' THEN 3
-            WHEN 'DONE' THEN 4
-            ELSE 5
-          END,
-          wa.updated_at DESC,
-          wa.id DESC
-        LIMIT 1
-    ) wa_deadline ON TRUE
-    LEFT JOIN LATERAL (
-        SELECT wa.assigned_tech_id
-        FROM work_assignments wa
-        WHERE wa.entity_type = 'ORDER'
-          AND wa.entity_id = o.id
-          AND wa.work_type = 'TEST'
-          AND wa.status IN ('ASSIGNED', 'IN_PROGRESS')
-        ORDER BY wa.created_at DESC, wa.id DESC
-        LIMIT 1
-    ) wa_t ON TRUE
+    ${deadlineJoin}
+    ${waTJoin}
     LEFT JOIN LATERAL (
         SELECT
             COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
@@ -747,23 +788,45 @@ export async function fetchPackerLogRows(
           AND tsn.shipment_id = o.shipment_id
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
-    LEFT JOIN staff tester_staff ON tester_staff.id = wa_t.assigned_tech_id
+    ${testerStaffJoin}
     ORDER BY sal.created_at DESC NULLS LAST
   `;
 
-  const query = isPackerLogEnrichmentRead() ? enrichedQuery : legacyQuery;
+  let usedEnriched = isPackerLogEnrichmentRead() && !enrichmentTableMissing;
 
-  const result = await queryWithRetry(
-    () => pool.query(query, params),
-    { retries: 3, delayMs: 1000 },
-  );
+  let result: QueryResult;
+  try {
+    result = await queryWithRetry(
+      () => pool.query(usedEnriched ? enrichedQuery : legacyQuery, params),
+      { retries: 3, delayMs: 1000 },
+    );
+  } catch (error) {
+    // The enriched query is the only path referencing `packer_log_enrichment`.
+    // If that relation is absent (42P01 undefined_table on an un-migrated DB),
+    // degrade to the byte-identical legacy query instead of failing the whole
+    // shipped table — mirrors the row-level order_match_fallback safety net.
+    if (usedEnriched && (error as { code?: string })?.code === '42P01') {
+      enrichmentTableMissing = true;
+      usedEnriched = false;
+      console.warn(
+        '[packer-logs-week] packer_log_enrichment missing — falling back to legacy query for this process',
+      );
+      result = await queryWithRetry(
+        () => pool.query(legacyQuery, params),
+        { retries: 3, delayMs: 1000 },
+      );
+    } else {
+      throw error;
+    }
+  }
 
   const packerLogIds = result.rows
     .map((r: any) => r.packer_log_id)
     .filter((id: any) => id != null);
 
+  // Spine-first skips the photos round-trip; photos arrive via the hydrate call.
   const photosMap: Record<number, any[]> = {};
-  if (packerLogIds.length > 0) {
+  if (!spineOnly && packerLogIds.length > 0) {
     try {
       const photosResult = await pool.query(
         `SELECT l.entity_id,
@@ -805,7 +868,8 @@ export async function fetchPackerLogRows(
 
   // Heal missing projection rows in the background so subsequent reads stay on
   // the fast path (order_match_fallback above is the correctness safety net).
-  if (isPackerLogEnrichmentRead() && rows.length > 0) {
+  // Skipped when we fell back to legacy (table absent) — nothing to heal into.
+  if (usedEnriched && rows.length > 0) {
     const salIds = rows.map((r: { id?: unknown }) => Number(r.id)).filter((id) => Number.isFinite(id));
     after(() => {
       pool.query<{ id: number }>(

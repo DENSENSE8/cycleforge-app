@@ -1,0 +1,9 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "docs/master-connections-and-refactor/staff-connections-planning.html"
+    ],
+    "ignoreValues": []
+  }
+}

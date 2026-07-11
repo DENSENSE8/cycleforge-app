@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Download, ExternalLink, Link2, Loader2, MessageSquare, Tag, Trash2 } from '@/components/Icons';
+import { Download, ExternalLink, Link2, Loader2, Tag, TicketHelp, Trash2 } from '@/components/Icons';
 import { usePhotoLibrary, photoLibraryFilterParams } from '@/hooks/usePhotoLibrary';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
@@ -325,7 +325,7 @@ export function PhotoLibraryPage() {
             {
               key: 'zendesk',
               label: 'Attach to support ticket',
-              icon: <MessageSquare className="h-3.5 w-3.5" />,
+              icon: <TicketHelp className="h-3.5 w-3.5" />,
               onClick: () =>
                 setClaimPhotos([
                   {
@@ -442,7 +442,7 @@ export function PhotoLibraryPage() {
               // Attach the selection to a support ticket (new or existing).
               key: 'zendesk',
               label: 'Add photos to a ticket',
-              icon: <MessageSquare className="h-4 w-4" />,
+              icon: <TicketHelp className="h-4 w-4" />,
               tone: 'blue' as const,
               primary: true,
               run: (rows: LibraryPhoto[]) => {

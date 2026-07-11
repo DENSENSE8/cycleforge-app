@@ -7,8 +7,9 @@ export const dynamic = 'force-dynamic';
 
 // Machine ingress has no session, so there is no ctx.organizationId to derive
 // from — the target tenant is CONFIGURED, not derived. FORGE_ORG_ID (a UUID)
-// selects it; it defaults to USAV org #1 (dogfood). Written as a literal rather
-// than importing USAV_ORG_ID, per the tenancy rule that bans that import in the
+// selects it; it defaults to org #1 (the dogfood tenant). Written as a literal
+// rather than importing the legacy org-id constant, per the tenancy rule
+// (scripts/usav-fallback-guard.mjs) that bans that import in the
 // session-derived routes it is meant to guard.
 const FORGE_ORG_ID = process.env.FORGE_ORG_ID ?? '00000000-0000-0000-0000-000000000001';
 

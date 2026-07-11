@@ -7,6 +7,7 @@
  * 2. The grade endpoint must actually invoke the sort on a PARTS grade.
  */
 
+import '@/lib/assistant/test-db-url'; // MUST be first: sets DATABASE_URL before parts-sort loads the neon client
 import { test } from 'node:test';
 import { ok } from 'node:assert';
 import { readFileSync } from 'node:fs';

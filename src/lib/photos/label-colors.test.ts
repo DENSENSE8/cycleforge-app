@@ -28,6 +28,16 @@ test('normalizeLabelColor coerces unknown/empty values to the default', () => {
 test('every token has a full literal chip class string (Tailwind-scannable)', () => {
   for (const token of LABEL_COLOR_TOKENS) {
     const cls = LABEL_CHIP_CLASSES[token];
+    if (token === 'slate') {
+      // The one NEUTRAL token is theme-aware: the 2026-07 theme rollout moved it
+      // from raw neutrals (bg-slate-50 …) to the semantic aliases bound to
+      // --ds-color-* vars (raw neutrals are banned by color-neutrals.guard.test.ts).
+      // Still full literal class strings, so still Tailwind-scannable.
+      assert.ok(cls.includes('bg-surface-canvas'), 'slate chip has its semantic bg literal');
+      assert.ok(cls.includes('text-text-muted'), 'slate chip has its semantic text literal');
+      assert.ok(cls.includes('ring-border-soft'), 'slate chip has its semantic ring literal');
+      continue;
+    }
     assert.ok(cls.includes(`bg-${token}-50`), `${token} chip has its bg literal`);
     assert.ok(cls.includes(`text-${token}-700`), `${token} chip has its text literal`);
     assert.ok(cls.includes(`ring-${token}-200`), `${token} chip has its ring literal`);

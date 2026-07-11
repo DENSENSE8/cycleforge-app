@@ -11,7 +11,7 @@ import {
   ShoppingCart,
   Tag,
   Wrench,
-  ZendeskMark,
+  TicketHelp,
   Truck,
 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
@@ -42,17 +42,16 @@ const ICONS: Record<string, IconCmp> = {
   ShoppingCart,
   Package,
   Wrench,
-  ZendeskMark,
+  TicketHelp,
   Tag,
   Folder,
   Image: ImageIcon,
   Truck,
 };
 
-/** Sidebar-only glyph overrides — preview Zendesk ticket mark for Claims without
- *  changing the `image-types` string key used elsewhere yet. */
+/** Sidebar-only glyph overrides — Claims uses TicketHelp; keep Truck/FileText aliases. */
 const BUILTIN_ICON_OVERRIDE: Partial<Record<string, IconCmp>> = {
-  claims:   ZendeskMark,
+  claims: TicketHelp,
   Truck,
   FileText: ImageIcon,
 };

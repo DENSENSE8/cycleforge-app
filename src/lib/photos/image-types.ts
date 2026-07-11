@@ -50,7 +50,7 @@ export const BUILTIN_IMAGE_TYPES: BuiltInImageType[] = [
   { kind: 'builtin', key: 'local_pickup', label: 'Pickups', icon: 'ShoppingCart' },
   { kind: 'builtin', key: 'packing', label: 'Packing', icon: 'Package' },
   { kind: 'builtin', key: 'repair', label: 'Repair', icon: 'Wrench' },
-  { kind: 'builtin', key: 'claims', label: 'Claims', icon: 'MessageSquare' },
+  { kind: 'builtin', key: 'claims', label: 'Claims', icon: 'TicketHelp' },
   { kind: 'builtin', key: 'outbound', label: 'Outbound', icon: 'Truck' },
 ];
 

@@ -4,7 +4,7 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import { PhotoLibraryPage } from '@/components/photos/PhotoLibraryPage';
 
 export const metadata: Metadata = {
-  title: 'Media Library · USAV',
+  title: 'Media Library',
 };
 
 export default async function OpsPhotosPage() {

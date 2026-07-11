@@ -54,7 +54,16 @@ test('no two status dots share a hue (except the PACKED_STAGED seam)', () => {
 });
 
 test('every tone token maps to a pill + dot class pair', () => {
+  // The one NEUTRAL tone is theme-aware: the 2026-07 theme rollout migrated
+  // `slate` from raw neutrals (bg-slate-50 …) to the semantic aliases bound to
+  // --ds-color-* vars, so neutral chips follow the tenant theme / dark mode.
+  // Raw neutral utilities are banned by color-neutrals.guard.test.ts, so we pin
+  // the exact semantic strings here (still full literals — Tailwind-scannable).
+  assert.equal(TONE_CLASSES.slate.pill, 'bg-surface-canvas text-text-muted ring-border-soft');
+  assert.equal(TONE_CLASSES.slate.dot, 'bg-border-emphasis');
+  // Every CHROMATIC tone keeps the literal 3-layer chip contract (bg-x-50 text-x-N ring-x-200).
   for (const tone of Object.keys(TONE_CLASSES) as Array<keyof typeof TONE_CLASSES>) {
+    if (tone === 'slate') continue;
     assert.match(TONE_CLASSES[tone].pill, /^bg-\w+-50 text-\w+-\d+ ring-\w+-200$/);
     assert.match(TONE_CLASSES[tone].dot, /^bg-\w+-\d+$/);
   }

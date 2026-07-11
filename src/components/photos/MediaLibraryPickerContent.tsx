@@ -13,7 +13,7 @@ import {
   ShoppingCart,
   Tag,
   Wrench,
-  ZendeskMark,
+  TicketHelp,
 } from '@/components/Icons';
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import { PhotoDateBreadcrumb } from '@/components/photos/PhotoDateBreadcrumb';
@@ -42,14 +42,14 @@ const ICONS: Record<string, IconCmp> = {
   ShoppingCart,
   Package,
   Wrench,
-  ZendeskMark,
+  TicketHelp,
   Tag,
   Folder,
   Image: ImageIcon,
 };
 
 const BUILTIN_ICON_OVERRIDE: Partial<Record<string, IconCmp>> = {
-  claims: ZendeskMark,
+  claims: TicketHelp,
 };
 
 interface MediaTypeSelection {

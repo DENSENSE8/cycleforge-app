@@ -51,7 +51,7 @@ function classifyFilename(name: string): keyof Installers | null {
 }
 
 // Best-effort version parse from the electron-builder filename pattern, e.g.
-// "USAV Orders-0.1.0-arm64.dmg" → "0.1.0", "USAV Orders Setup 0.1.0.exe" → "0.1.0".
+// "Cycle-Forge-0.1.0-arm64.dmg" → "0.1.0", "Cycle-Forge-Setup-0.1.0.exe" → "0.1.0".
 function parseVersion(name: string): string | undefined {
   const match = name.match(/(\d+\.\d+\.\d+(?:[-+][\w.]+)?)/);
   return match?.[1];
