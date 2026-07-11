@@ -164,7 +164,7 @@ export function PerformanceGoals() {
             </div>
             <div className="text-left space-y-0.5">
               <p className="text-label font-bold text-text-default leading-snug">
-                Replenish Amazon FBA inventory soon
+                Replenish FBA inventory soon
               </p>
               <p className="text-micro text-text-muted font-semibold leading-normal mt-0.5">
                 SKU USAV-CBL-04 inventory low (9 days remaining). Click to create shipment.

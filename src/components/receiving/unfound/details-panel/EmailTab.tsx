@@ -19,7 +19,7 @@ export function EmailTab({ detail }: { detail: TriageDetail }) {
           }
         />
         {detail.body.hasAttachments && (
-          <Row label="Attachments" value="present (see Gmail)" />
+          <Row label="Attachments" value="present (open the email)" />
         )}
       </dl>
       {error ? (

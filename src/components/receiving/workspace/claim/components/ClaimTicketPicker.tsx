@@ -82,7 +82,7 @@ export function ClaimTicketPicker({ search, onSelect }: Props) {
             <div className="px-4 py-10 text-center text-micro font-medium text-text-faint">
               {hasQuery
                 ? 'No tickets found — try a different search or ticket #'
-                : 'Recent Zendesk tickets will appear here'}
+                : 'Recent support tickets will appear here'}
             </div>
           )}
         </div>

@@ -34,7 +34,7 @@ export function TestingTicketReplyCard({
 
   return (
     <WorkspaceCard
-      label="Zendesk ticket"
+      label="Support ticket"
       bodyClassName="p-4"
       actions={
         ticketUrl ? (

@@ -79,7 +79,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
 
       <ReviewBlock
         icon={<FileText className="h-3.5 w-3.5" />}
-        label="Zendesk ticket"
+        label="Support ticket"
         hint={template.previewLoading ? 'updating…' : undefined}
       >
         <div className="overflow-hidden rounded-lg border border-border-soft">

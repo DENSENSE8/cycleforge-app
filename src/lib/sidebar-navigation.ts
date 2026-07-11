@@ -34,6 +34,7 @@ import {
   Sparkles,
   Star,
   Tags,
+  TicketHelp,
   TrendingUp,
   Truck,
   Wrench,
@@ -142,13 +143,13 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'tech',              label: 'Testing',     href: '/test',               icon: Wrench,          kind: 'station', requires: 'tech.view' },
   // Data Wipe is temporarily absent from master nav — revisit when the station
   // UX is ready for general rollout. /wipe route + API remain live.
-  { id: 'fba',               label: 'Amazon FBA',  href: '/fba',                icon: Boxes,           kind: 'main',    requires: 'fba.view' },
+  { id: 'fba',               label: 'FBA prep',    href: '/fba',                icon: Boxes,           kind: 'main',    requires: 'fba.view' },
   { id: 'ops-photos',        label: 'Media library', href: '/ops/photos',       icon: Images,          kind: 'main',    requires: 'photos.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
   { id: 'packer',            label: 'Packing',     href: '/pack',               icon: Box,             kind: 'station', requires: 'packing.view' },
-  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
+  { id: 'support',           label: 'Support',     href: '/support',            icon: TicketHelp,      kind: 'bottom', requires: 'integrations.zendesk' },
   { id: 'studio',            label: 'Studio',      href: '/studio',             icon: Layers,          kind: 'bottom',  requires: 'studio.view' },
   { id: 'ai-chat',           label: 'AI Chat',     href: '/ai-chat',            icon: MessageSquare,   kind: 'bottom',  requires: 'dashboard.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
@@ -509,10 +510,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'queue';
     },
   },
-  // ── Amazon FBA ────────────────────────────────────────────────────────────
+  // ── FBA prep ──────────────────────────────────────────────────────────────
   // `?mode=plan|combine|shipped`; default `combine` (param cleared).
   {
-    id: 'fba', label: 'Amazon FBA', href: FBA, icon: Boxes, kind: 'main', requires: 'fba.view',
+    id: 'fba', label: 'FBA prep', href: FBA, icon: Boxes, kind: 'main', requires: 'fba.view',
     modes: [
       { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: FBA, params: { mode: 'plan' } }) },
       { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: FBA, params: { mode: null } }) },
@@ -651,9 +652,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Every switch clears the mode-scoped params (selection, search, filters) so
   // each mode opens clean.
   {
-    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'bottom', requires: 'integrations.zendesk',
+    id: 'support', label: 'Support', href: SUPPORT, icon: TicketHelp, kind: 'bottom', requires: 'integrations.zendesk',
     modes: [
-      { id: 'tickets',   label: 'Tickets',   icon: Inbox,     to: () => ({ pathname: SUPPORT, params: { mode: null,        ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
+      { id: 'tickets',   label: 'Tickets',   icon: TicketHelp, to: () => ({ pathname: SUPPORT, params: { mode: null,        ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
       { id: 'voicemail', label: 'Voicemail', icon: Voicemail, to: () => ({ pathname: SUPPORT, params: { mode: 'voicemail', ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
       { id: 'calls',     label: 'Calls',     icon: Phone,     to: () => ({ pathname: SUPPORT, params: { mode: 'calls',     ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
     ],

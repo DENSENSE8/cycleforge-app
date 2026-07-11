@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { isZendeskConfiguredForOrg, ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
+import {
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { getEntityPhotos, getTicketEntity } from '@/lib/zendesk-links';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +24,7 @@ export const dynamic = 'force-dynamic';
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -48,7 +53,8 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets/[id]/photos';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
 
       const entity = await getTicketEntity(ctx.organizationId, id);

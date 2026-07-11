@@ -2,32 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  createTicket,
-  isZendeskConfiguredForOrg,
-  listTickets,
-  searchTickets,
-  ZendeskApiError,
-  ZendeskNotConfiguredError,
-} from '@/lib/zendesk';
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { getIntegrationCredentials } from '@/lib/integrations/credentials';
 import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Zendesk tickets collection.
+ * Helpdesk tickets collection (Zendesk is the first adapter).
  *
  *   GET  /api/zendesk/tickets            → list (paginated, newest first)
- *   GET  /api/zendesk/tickets?query=...  → Zendesk search
+ *   GET  /api/zendesk/tickets?query=...  → helpdesk search
  *   POST /api/zendesk/tickets            → create
  *
- * Direct Zendesk REST API (not the GAS bridge). Gated by integrations.zendesk.
+ * Goes through the org's HelpdeskProvider (capability facade). Gated by
+ * integrations.zendesk.
  */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -55,7 +54,8 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
 
       const sp = req.nextUrl.searchParams;
       const parsed = ListQuery.parse({
@@ -70,10 +70,10 @@ export const GET = withAuth(
       const subdomain = creds?.subdomain ?? process.env.ZENDESK_SUBDOMAIN ?? 'usav';
 
       if (parsed.query) {
-        const { results, count, next_page } = await searchTickets(parsed.query, {
+        const { results, count, next_page } = await helpdesk.searchTickets(parsed.query, {
           page: parsed.page,
           perPage: parsed.perPage,
-        }, ctx.organizationId);
+        });
         // Normalize the Search API shape (`results`) to the list shape (`tickets`)
         // the client reads. Without this, every status filter (which runs in
         // search mode) renders empty while only "All" (list mode) works.
@@ -88,12 +88,12 @@ export const GET = withAuth(
         });
       }
 
-      const result = await listTickets({
+      const result = await helpdesk.listTickets({
         page: parsed.page,
         perPage: parsed.perPage,
         sortBy: parsed.sortBy,
         sortOrder: parsed.sortOrder,
-      }, ctx.organizationId);
+      });
       return NextResponse.json({ success: true, mode: 'list', subdomain, ...result });
     } catch (err) {
       return mapZendeskError(err, context);
@@ -127,7 +127,8 @@ export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'POST /api/zendesk/tickets';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
 
       const json = await req.json().catch(() => null);
       if (!json) throw ApiError.badRequest('Missing JSON body');
@@ -139,7 +140,7 @@ export const POST = withAuth(
         ? buildExternalId(input.entity.type, input.entity.id)
         : input.external_id;
 
-      const ticket = await createTicket({
+      const ticket = await helpdesk.createTicket({
         subject: input.subject,
         comment: { body: input.body, html_body: input.html_body, public: input.public },
         priority: input.priority,
@@ -150,7 +151,7 @@ export const POST = withAuth(
         assignee_id: input.assignee_id,
         group_id: input.group_id,
         external_id: externalId,
-      }, {}, ctx.organizationId);
+      });
 
       // Best-effort link — never fail ticket creation if the mapping write fails.
       if (input.entity && ticket?.id) {

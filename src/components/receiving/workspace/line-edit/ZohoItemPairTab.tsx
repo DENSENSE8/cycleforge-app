@@ -7,7 +7,7 @@ import type { EcwidProductSelection } from '@/components/receiving/unfound/Ecwid
 /**
  * Zoho Item pairing tab for Package Pairing.
  *
- * This is the "add by Zoho SKU" path (no purchase-order link required). On
+ * This is the "add by inventory SKU" path (no purchase-order link required). On
  * unfound cartons, this is the default leftmost pill and the quickest way to
  * record what's inside the box before the PO is known.
  */
@@ -29,7 +29,7 @@ export function ZohoItemPairTab({
         </span>
         <div className="min-w-0">
           <p className="text-caption font-black uppercase leading-none tracking-widest text-blue-900">
-            Search &amp; add Zoho SKU
+            Search &amp; add inventory SKU
           </p>
           <p className="mt-1 text-xs leading-snug text-blue-700">
             {allowOffPo

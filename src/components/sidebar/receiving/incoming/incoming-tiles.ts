@@ -13,7 +13,7 @@ export interface TileSpec {
 }
 
 export const TILES: TileSpec[] = [
-  { state: null, label: 'All issued', key: 'issued', tone: 'slate', icon: Package, title: 'Every PO Zoho says is issued and not yet received locally.' },
+  { state: null, label: 'All issued', key: 'issued', tone: 'slate', icon: Package, title: 'Every PO issued upstream and not yet received locally.' },
   {
     state: 'DELIVERED_UNOPENED', label: 'Delivered · not scanned', key: 'delivered_unopened', tone: 'rose', icon: AlertTriangle,
     title: 'Carrier marked the box delivered AND no operator has scanned the tracking# at the receiving station yet (no receiving_scans row). Physically here, untouched — top priority.',
@@ -50,7 +50,7 @@ export const TILES: TileSpec[] = [
   },
   {
     state: 'AWAITING_TRACKING', label: 'Awaiting tracking #', key: 'awaiting_tracking', tone: 'gray', icon: Clock,
-    title: 'No tracking# registered at all — vendor has not shipped, or the PO `reference_number` field on Zoho is empty.',
+    title: 'No tracking# registered at all — vendor has not shipped, or the PO `reference_number` field is empty upstream.',
   },
 ];
 

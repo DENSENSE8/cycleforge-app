@@ -1,19 +1,33 @@
 /**
  * PO Gmail mailbox — auth plumbing only.
  *
- * Holds the refresh token for the dedicated purchase-order mailbox in
- * google_oauth_tokens (provider='po_gmail') and exposes:
+ * Token home is DUAL-READ, VAULT-PREFERRED during the integrations-as-SoT
+ * migration:
+ *   1. organization_integrations (provider='gmail', GmailCredentials) — the
+ *      vault row written by the oauth-callback dual-write. When present it is
+ *      the source of truth: refresh uses the row's clientId/clientSecret,
+ *      refreshed access tokens persist back via upsertIntegrationCredentials,
+ *      and invalid_grant flags the row via markIntegrationError.
+ *   2. google_oauth_tokens (provider='po_gmail') — the legacy global-singleton
+ *      row (plaintext refresh_token, needs_reconnect flags). Read only when NO
+ *      vault row exists; behavior on this path is unchanged (USAV-only).
+ *
+ * Exposes:
  *   - getAccessToken(): refreshes when expired, persists the new token
  *   - poGmailFetch(): Bearer-authed wrapper around fetch() for Gmail API
  *
- * Implements the standard OAuth lifecycle (refresh, needs_reconnect, store
- * back) against the shared google_oauth_tokens table. Gmail-specific helpers
- * (list messages, modify labels, etc.) live in a separate file that's added
- * when we wire the email-reconcile pipeline — this module is auth only.
+ * Gmail-specific helpers (list messages, modify labels, etc.) live in
+ * messages.ts — this module is auth only.
  */
 
 import pool from '@/lib/db';
 import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import {
+  getIntegrationCredentials,
+  upsertIntegrationCredentials,
+  markIntegrationError,
+  type GmailCredentials,
+} from '@/lib/integrations/credentials';
 
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -86,6 +100,75 @@ export function assertUsavMailbox(orgId: string): void {
 export function isPoGmailAvailableForOrg(orgId: string): boolean {
   return orgId === USAV_ORG_ID;
 }
+
+// ─── Vault path (organization_integrations, provider='gmail') ───────────────
+
+/**
+ * The vault row for this org's PO mailbox, or null when the org hasn't been
+ * migrated / connected through the vault yet (→ legacy-table fallback).
+ * Caller must have already run the assertUsavMailbox tenant guard.
+ */
+async function loadVaultCreds(orgId: string): Promise<GmailCredentials | null> {
+  const creds = await getIntegrationCredentials<GmailCredentials>(orgId, 'gmail');
+  return creds?.refreshToken ? creds : null;
+}
+
+/**
+ * Access token off the vault row: reuse the stored short-lived token when
+ * fresh, otherwise refresh with the row's own clientId/clientSecret (falling
+ * back to the app-level PO_GMAIL_* env pair) and persist the new
+ * accessToken/expiresAt back into the vault. invalid_grant (400/401) marks
+ * the row status='error' so the admin/settings UI surfaces a reconnect prompt.
+ */
+async function getAccessTokenFromVault(orgId: string, creds: GmailCredentials): Promise<string> {
+  const now = Date.now();
+  if (creds.accessToken && creds.expiresAt && creds.expiresAt > now + 30_000) {
+    return creds.accessToken;
+  }
+
+  const clientId = creds.clientId || process.env.PO_GMAIL_CLIENT_ID || '';
+  const clientSecret = creds.clientSecret || process.env.PO_GMAIL_CLIENT_SECRET || '';
+  if (!clientId || !clientSecret) {
+    throw new Error('PO mailbox OAuth client is not configured (no clientId/clientSecret in the vault row or PO_GMAIL_CLIENT_ID / PO_GMAIL_CLIENT_SECRET env)');
+  }
+
+  const res = await fetch(OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: creds.refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    // 400 / 401 here means the refresh token was revoked or rotated.
+    if (res.status === 400 || res.status === 401) {
+      await markIntegrationError(orgId, 'gmail', `Token refresh rejected (${res.status}): ${text.slice(0, 200)}`);
+      throw new PoGmailNotConnectedError(
+        'PO mailbox needs reconnect — its Google token expired or was revoked. Reconnect at Admin → PO Mailbox.',
+        true,
+      );
+    }
+    throw new Error(`PO Gmail token refresh failed (${res.status}): ${text}`);
+  }
+  const json = (await res.json()) as { access_token: string; expires_in: number };
+  const accessToken = json.access_token;
+  const expiresAt = Date.now() + (json.expires_in - 60) * 1000;
+
+  const payload: GmailCredentials = { ...creds, accessToken, expiresAt };
+  await upsertIntegrationCredentials({
+    orgId,
+    provider: 'gmail',
+    payload,
+    displayLabel: creds.accountEmail ?? null,
+  });
+  return accessToken;
+}
+
+// ─── Legacy path (google_oauth_tokens, provider='po_gmail') ─────────────────
 
 interface TokenRow {
   id: number;
@@ -175,6 +258,14 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
 
 export async function getAccessToken(orgId: string = USAV_ORG_ID): Promise<string> {
   assertUsavMailbox(orgId);
+
+  // Vault-preferred: when an organization_integrations row exists, it is the
+  // token SoT. Legacy google_oauth_tokens is only read when no vault row.
+  const vault = await loadVaultCreds(orgId);
+  if (vault) {
+    return getAccessTokenFromVault(orgId, vault);
+  }
+
   const row = await loadActiveToken();
   const now = Date.now();
   if (row.access_token && row.expires_at && new Date(row.expires_at).getTime() > now + 30_000) {
@@ -207,6 +298,8 @@ export async function getConnectedEmail(orgId: string = USAV_ORG_ID): Promise<st
   // Non-USAV tenants must not learn anything about USAV's mailbox — return
   // empty rather than throwing so connection-status reads degrade quietly.
   if (orgId !== USAV_ORG_ID) return null;
+  const vault = await loadVaultCreds(orgId);
+  if (vault) return vault.accountEmail ?? null;
   const { rows } = await pool.query<{ account_email: string | null }>(
     `SELECT account_email FROM google_oauth_tokens WHERE provider = $1 LIMIT 1`,
     [PROVIDER],

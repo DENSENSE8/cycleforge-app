@@ -35,7 +35,7 @@ import {
   Search,
   ShoppingCart,
   Unlink,
-  ZendeskMark,
+  TicketHelp,
 } from '@/components/Icons';
 import {
   dispatchLineUpdated,
@@ -173,7 +173,7 @@ function TriageMatchingCard({
   // Email-PO sit alongside it.
   //
   // Unfound cartons default to the Zoho Item tab (leftmost pill), where the next
-  // correct action is to record the product by Zoho SKU even before the PO is
+  // correct action is to record the product by inventory SKU even before the PO is
   // known. This is only the initial default (a lazy initializer that runs once)
   // — the operator can still switch to Ecwid / Tickets / Email PO.
   const [tab, setTab] = useState<MatchTab>(() =>
@@ -244,7 +244,7 @@ function TriageMatchingCard({
       toast.error('Could not resolve the ticket number');
       return;
     }
-    if (!window.confirm(`Unlink Zendesk ticket #${ticketId} from this package?`)) return;
+    if (!window.confirm(`Unlink ticket #${ticketId} from this package?`)) return;
     setUnlinkingTicket(true);
     try {
       const sp = new URLSearchParams({ receivingId: String(receivingId), ticketId });
@@ -350,14 +350,14 @@ function TriageMatchingCard({
   };
 
   const tabs: HorizontalSliderItem[] = [
-    // Zoho Item (left pill) — search & add by Zoho SKU (no PO link required).
-    { id: 'zoho_item', label: 'Zoho Item', icon: Search },
-    // Zoho PO pairing (second pill) — link/relink the carton to a PO.
-    { id: 'zoho_po', label: 'Zoho PO', icon: Link2 },
-    // Ecwid Search — search ALL recent orders by order #, title, or SKU
+    // Inventory Item (left pill) — search & add by inventory SKU (no PO link required).
+    { id: 'zoho_item', label: 'Inventory Item', icon: Search },
+    // PO pairing (second pill) — link/relink the carton to a PO.
+    { id: 'zoho_po', label: 'PO', icon: Link2 },
+    // Storefront search — search ALL recent orders by order #, title, or SKU
     // (relaxed to include normal orders + returns/trade-ins, not just -RS).
-    { id: 'ecwid', label: 'Ecwid', icon: ShoppingCart },
-    { id: 'zendesk', label: 'Tickets', icon: ZendeskMark },
+    { id: 'ecwid', label: 'Store', icon: ShoppingCart },
+    { id: 'zendesk', label: 'Tickets', icon: TicketHelp },
     // Email PO — search the Gmail-ingested PO worklist (purchase-order emails with
     // no Zoho match) and link the carton to its order. Works for any carton.
     { id: 'email', label: 'Email PO', icon: Mail },
@@ -382,10 +382,10 @@ function TriageMatchingCard({
         </HoverTooltip>
       ) : null}
       {!embedded ? (
-        <HoverTooltip label="Add items — search recent Ecwid orders by order #, title, or SKU" focusable={false}>
+        <HoverTooltip label="Add items — search recent store orders by order #, title, or SKU" focusable={false}>
           <IconButton
             icon={<Pencil className="h-3.5 w-3.5 text-white" />}
-            ariaLabel="Search Ecwid orders to add items"
+            ariaLabel="Search store orders to add items"
             onClick={() => {
               setTab('ecwid');
               setForcePicker(true);
@@ -471,7 +471,7 @@ function TriageMatchingCard({
   const ticketLinkRow = hasTicket ? (
     <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-        <ZendeskMark className="h-4 w-4" />
+        <TicketHelp className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
         <span className="text-eyebrow font-black uppercase tracking-widest text-violet-700">
@@ -481,7 +481,7 @@ function TriageMatchingCard({
           {pkg.zendeskTicket}
         </p>
       </div>
-      <HoverTooltip label="Unlink this Zendesk claim ticket (leaves the order pairing intact)" asChild focusable={false}>
+      <HoverTooltip label="Unlink this claim ticket (leaves the order pairing intact)" asChild focusable={false}>
         <Button
           variant="secondary"
           size="sm"
@@ -600,7 +600,7 @@ function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
         </p>
       ) : t.candidatesError ? (
         <p className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600">
-          Couldn’t load Zendesk matches. Zendesk may be unconfigured.
+          Couldn’t load helpdesk matches. The helpdesk may not be connected.
         </p>
       ) : t.candidates.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft">

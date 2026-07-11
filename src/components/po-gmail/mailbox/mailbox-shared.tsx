@@ -13,7 +13,7 @@ export function ScanControls({
   return (
     <div className="flex flex-wrap items-end gap-3">
       <label className="flex-1 min-w-[220px]">
-        <span className="block text-caption font-medium text-text-muted">Gmail query</span>
+        <span className="block text-caption font-medium text-text-muted">Mailbox query</span>
         <input
           type="text"
           value={query}
@@ -54,7 +54,7 @@ export function SummaryRow({ elapsedMs, counts, extra }: {
     <div className="flex flex-wrap items-center gap-2 border-t border-border-hairline pt-3 text-label text-text-soft">
       <span><span className="font-semibold text-amber-700">{counts.missing}</span> missing</span>
       <span aria-hidden>·</span>
-      <span><span className="font-semibold text-blue-700">{counts.in_zoho}</span> in Zoho</span>
+      <span><span className="font-semibold text-blue-700">{counts.in_zoho}</span> in inventory</span>
       <span aria-hidden>·</span>
       <span><span className="font-semibold text-emerald-700">{counts.received}</span> received</span>
       <span aria-hidden>·</span>
@@ -85,7 +85,7 @@ export function StatusChip({ status }: { status: MissingStatus }) {
 export function ReconcileStatusChip({ status }: { status: ReconcileItem['status'] }) {
   const map: Record<ReconcileItem['status'], { cls: string; label: string }> = {
     missing:  { cls: 'bg-amber-50 text-amber-700',     label: 'missing' },
-    in_zoho:  { cls: 'bg-blue-50 text-blue-700',       label: 'in Zoho' },
+    in_zoho:  { cls: 'bg-blue-50 text-blue-700',       label: 'in inventory' },
     received: { cls: 'bg-emerald-50 text-emerald-700', label: 'received' },
     no_match: { cls: 'bg-surface-sunken text-text-muted',      label: 'no PO#' },
   };

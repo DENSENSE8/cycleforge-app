@@ -52,7 +52,7 @@ export function useZohoSync(
   const syncCartonFromZoho = useCallback(async (): Promise<string | null> => {
     if (!row.receiving_id) return null;
     try {
-      const res = await fetch(`/api/receiving/${row.receiving_id}/zoho-sync`, {
+      const res = await fetch(`/api/receiving/${row.receiving_id}/inventory-sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

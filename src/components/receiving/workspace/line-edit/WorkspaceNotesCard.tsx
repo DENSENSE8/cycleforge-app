@@ -19,9 +19,9 @@ import type { UnboxLineController } from './unbox-line-controller';
 function zohoPoNotesSkipNote(zoho?: { patched?: boolean; skipped?: string }): string | undefined {
   switch (zoho?.skipped) {
     case 'no_zoho_link':
-      return 'Saved locally — no Zoho PO link on this carton.';
+      return 'Saved locally — no PO link on this carton.';
     case 'po_not_editable':
-      return 'Saved locally — Zoho PO is not editable.';
+      return 'Saved locally — the synced PO is not editable.';
     default:
       return undefined;
   }
@@ -75,7 +75,7 @@ export function WorkspaceNotesCard({ row, c, onActionFeedback, activeStep }: Wor
               dispatchLineUpdated({ id: row.id, receiving_zoho_notes: text || null });
               onActionFeedback({
                 tone: 'emerald',
-                headline: text ? 'Zoho notes updated' : 'Zoho notes cleared',
+                headline: text ? 'Synced notes updated' : 'Synced notes cleared',
                 // Show the FULL PO notes (multi-line, pre-wrapped) so the operator
                 // sees exactly what landed in Zoho — not a truncated first-line preview.
                 items: text ? [text] : [],
@@ -85,7 +85,7 @@ export function WorkspaceNotesCard({ row, c, onActionFeedback, activeStep }: Wor
             } else {
               onActionFeedback({
                 tone: 'amber',
-                headline: 'Could not save Zoho notes',
+                headline: 'Could not save synced notes',
                 items: [],
                 note: data?.error?.trim() || 'Save failed',
                 at: Date.now(),

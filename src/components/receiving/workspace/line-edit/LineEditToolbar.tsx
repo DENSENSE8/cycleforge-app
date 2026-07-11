@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Copy, History, Info, Link2, MoreVertical, RefreshCw, ZendeskMark } from '@/components/Icons';
+import { Copy, History, Info, Link2, MoreVertical, RefreshCw, TicketHelp } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -71,8 +71,8 @@ export function LineEditToolbar({
       label: 'Refresh',
       icon: <RefreshCw className={`h-3.5 w-3.5 ${zohoSyncing ? 'animate-spin' : ''}`} />,
       disabled: zohoSyncing,
-      title: 'Sync with Zoho by tracking number',
-      ariaLabel: 'Refresh line from Zoho',
+      title: 'Sync purchase order by tracking number',
+      ariaLabel: 'Refresh line from inventory',
     },
     share: {
       label: 'Share',
@@ -96,11 +96,11 @@ export function LineEditToolbar({
       ariaLabel: 'Copy all receiving details',
     },
     photoNote: {
-      label: 'Zendesk',
-      icon: <ZendeskMark className="h-4 w-4" />,
+      label: 'Ticket',
+      icon: <TicketHelp className="h-4 w-4" />,
       disabled,
-      title: "Send this PO's photos to a Zendesk ticket",
-      ariaLabel: 'Send photos to a Zendesk ticket',
+      title: "Send this PO's photos to a support ticket",
+      ariaLabel: 'Send photos to a support ticket',
     },
     pair: {
       label: 'Pair',

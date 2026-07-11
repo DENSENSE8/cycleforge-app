@@ -79,9 +79,9 @@ export function useIncomingSyncActions() {
     setZohoRefreshing(true);
     beginIncSync('zoho');
     try {
-      const res = await fetch('/api/receiving-lines/incoming/zoho-refresh', { method: 'POST' });
+      const res = await fetch('/api/receiving-lines/incoming/inventory-refresh', { method: 'POST' });
       const data = await res.json().catch(() => null);
-      if (!res.ok || !data) throw new Error(data?.error || `Zoho refresh failed (${res.status})`);
+      if (!res.ok || !data) throw new Error(data?.error || `PO sync failed (${res.status})`);
       await invalidateIncoming();
       const created = data?.issued?.created ?? 0;
       const updated = data?.issued?.updated ?? 0;
@@ -123,10 +123,10 @@ export function useIncomingSyncActions() {
           ] },
         ],
         errors: mirrorErrors,
-        note: nothingChanged ? 'Already up to date — no Zoho changes since last sync.' : null,
+        note: nothingChanged ? 'Already up to date — no PO changes since last sync.' : null,
       });
     } catch (err) {
-      finishIncSync({ ok: false, tiles: [], updated: [], sections: [], errors: [], note: err instanceof Error ? err.message : 'Could not reach Zoho. Try again.' });
+      finishIncSync({ ok: false, tiles: [], updated: [], sections: [], errors: [], note: err instanceof Error ? err.message : 'Could not reach the inventory service. Try again.' });
     } finally {
       setZohoRefreshing(false);
     }
@@ -168,7 +168,7 @@ export function useIncomingSyncActions() {
           { label: 'Mailbox scan', rows: [
             { k: 'Scanned', v: scanned },
             { k: 'Missing', v: counts?.missing ?? 0 },
-            { k: 'In Zoho', v: counts?.in_zoho ?? 0 },
+            { k: 'In inventory', v: counts?.in_zoho ?? 0 },
             { k: 'Received', v: counts?.received ?? 0 },
             { k: 'No match', v: counts?.no_match ?? 0 },
           ] },

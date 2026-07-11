@@ -288,7 +288,7 @@ export function useReceiveAction(
                   orgId,
                   lineIds,
                   createdAt: respRecord.at,
-                  label: 'Syncing to Zoho…',
+                  label: 'Syncing to inventory…',
                 });
               }
               playScanFeedback('success');

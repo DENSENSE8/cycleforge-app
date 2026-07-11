@@ -4,21 +4,17 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { formatPSTTimestamp } from '@/utils/date';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
+// Pure payload helpers only — every Zoho NETWORK call in this route goes
+// through the org's InventoryProvider facade (Integrations-as-SoT Wave B1).
 import {
   assertPurchaseOrderLineItemsEditable,
   assertPurchaseOrderReceivable,
   buildPurchaseOrderLineItemsForDescriptionPut,
   catalogItemIdFromZohoPoLineItem,
-  createPurchaseReceive,
-  getPurchaseOrderById,
   getPurchaseReceiveIdFromCreateResponse,
-  markPurchaseOrderAsUnreceived,
-  searchItemBySku,
-  sumWarehouseReceivedByPoLineItem,
-  updatePurchaseOrder,
 } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
-import { getZohoHttpClientStatus } from '@/lib/zoho/httpClient';
+import { getInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
 import { receiveLineUnits } from '@/lib/receiving/receive-line';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { attachSerialToLine } from '@/lib/receiving/serial-attach';
@@ -71,12 +67,13 @@ function findZohoLineItemIdFromPoLines(
  * using only (ordered − quantity_received) misses prior receives and can exceed what Zoho allows.
  */
 async function lineItemsPendingZohoReceive(
+  inventory: InventoryProvider,
   poDetail: { purchaseorder?: { line_items?: unknown[] } },
   lineItemIds: Set<string>,
   purchaseOrderId: string,
   skuByLineItemId?: ReadonlyMap<string, string | null | undefined>,
 ): Promise<{ line_item_id: string; quantity_received: number; item_id: string }[]> {
-  const receivedTotals = await sumWarehouseReceivedByPoLineItem(purchaseOrderId);
+  const receivedTotals = await inventory.sumWarehouseReceivedByPoLineItem(purchaseOrderId);
   const items = Array.isArray(poDetail.purchaseorder?.line_items)
     ? poDetail.purchaseorder!.line_items!
     : [];
@@ -98,7 +95,7 @@ async function lineItemsPendingZohoReceive(
         const sku = String(skuByLineItemId.get(id) ?? '').trim();
         if (sku) {
           try {
-            const hit = await searchItemBySku(sku);
+            const hit = await inventory.findItemBySku(sku);
             itemId = hit?.item_id ? String(hit.item_id).trim() : '';
           } catch {
             itemId = '';
@@ -769,6 +766,11 @@ export const POST = withAuth(async (request, ctx) => {
       Boolean(localTracking) || Boolean(zendeskTicket) ||
       Boolean(notes) || aggregatedSerials.length > 0 || Boolean(serialNumber);
 
+    // Resolve the org's inventory provider (capability facade). Null when no
+    // inventory integration is connected — the local receive still stands and
+    // the background provider sync degrades exactly like a failed Zoho call.
+    const inventory = await getInventoryProvider(ctx.organizationId);
+
     // Re-bind the tenant inside after(): the callback runs outside the
     // request's async context, so the Zoho client would otherwise see no org
     // binding (getPurchaseOrderById / createPurchaseReceive / updatePurchaseOrder).
@@ -795,9 +797,10 @@ export const POST = withAuth(async (request, ctx) => {
         { purchaseorder?: { line_items?: unknown[] } } | null
       >();
       const getCachedPoForResolve = async (poId: string) => {
+        if (!inventory) return null;
         if (zohoPoDetailCache.has(poId)) return zohoPoDetailCache.get(poId) ?? null;
         try {
-          const detail = await getPurchaseOrderById(poId);
+          const detail = await inventory.getPurchaseOrder(poId);
           const typed = detail as { purchaseorder?: { line_items?: unknown[] } };
           zohoPoDetailCache.set(poId, typed);
           return typed;
@@ -883,13 +886,23 @@ export const POST = withAuth(async (request, ctx) => {
 
       const poZohoReceiveSucceeded = new Map<string, boolean>();
       try {
-        if (skipZohoReceive) {
+        if (!inventory) {
+          // No inventory integration connected: the local receive stands; every
+          // linked PO is reported as a failed provider sync (lines stay UNBOXED,
+          // visibly provider-pending) — same shape as a Zoho-call failure.
+          if (byPo.size > 0) {
+            console.warn(
+              'mark-received-po: no inventory integration connected — provider receive skipped',
+            );
+          }
+          for (const zohoPoId of byPo.keys()) poZohoReceiveSucceeded.set(zohoPoId, false);
+        } else if (skipZohoReceive) {
           // "Mark as scanned" intent: flip every linked Zoho PO back to issued
           // so the local SCANNED state stays consistent with Zoho. Idempotent
           // on POs not currently in `received` status.
           for (const zohoPoId of byPo.keys()) {
             try {
-              await markPurchaseOrderAsUnreceived(zohoPoId);
+              await inventory.markPurchaseOrderUnreceived(zohoPoId);
               poZohoReceiveSucceeded.set(zohoPoId, true);
             } catch (err) {
               poZohoReceiveSucceeded.set(zohoPoId, false);
@@ -911,7 +924,7 @@ export const POST = withAuth(async (request, ctx) => {
               item_id: string;
             }[] = [];
             try {
-              const poResp = await getPurchaseOrderById(zohoPoId);
+              const poResp = await inventory.getPurchaseOrder(zohoPoId);
               assertPurchaseOrderReceivable(poResp);
               const idSet = byPo.get(zohoPoId)!;
               const skuByLineItemId = new Map<string, string>();
@@ -924,6 +937,7 @@ export const POST = withAuth(async (request, ctx) => {
                 if (sku) skuByLineItemId.set(liId, sku);
               }
               lineItemsPosted = await lineItemsPendingZohoReceive(
+                inventory,
                 poResp,
                 idSet,
                 zohoPoId,
@@ -933,7 +947,7 @@ export const POST = withAuth(async (request, ctx) => {
                 poZohoReceiveSucceeded.set(zohoPoId, true);
                 continue;
               }
-              const receiveResp = await createPurchaseReceive({
+              const receiveResp = await inventory.markPurchaseOrderReceived({
                 purchaseOrderId: zohoPoId,
                 lineItems: lineItemsPosted,
                 bills: poResp.purchaseorder?.bills,
@@ -1021,7 +1035,7 @@ export const POST = withAuth(async (request, ctx) => {
       }
 
       try {
-        if (!skipZohoReceive) {
+        if (!skipZohoReceive && inventory) {
           for (const zohoPoId of byPo.keys()) {
             if (!poZohoReceiveSucceeded.get(zohoPoId)) continue;
           const serialMap = serialNotesByPo.get(zohoPoId);
@@ -1029,7 +1043,7 @@ export const POST = withAuth(async (request, ctx) => {
           if (!hasSerialLines && !needsHeaderPatch) continue;
 
           try {
-            const existing = await getPurchaseOrderById(zohoPoId);
+            const existing = await inventory.getPurchaseOrder(zohoPoId);
             const patch: Record<string, unknown> = {};
 
             if (hasSerialLines && existing.purchaseorder) {
@@ -1086,7 +1100,7 @@ export const POST = withAuth(async (request, ctx) => {
             }
 
             if (Object.keys(patch).length > 0) {
-              await updatePurchaseOrder(zohoPoId, patch);
+              await inventory.updatePurchaseOrder(zohoPoId, patch);
             }
           } catch (err) {
             console.warn('mark-received-po: updatePurchaseOrder failed', zohoPoId, err);
@@ -1174,7 +1188,11 @@ export const POST = withAuth(async (request, ctx) => {
     let circuitStatus: { isOpen: boolean; retryAfterMs: number; consecutiveFailures: number } | null =
       null;
     try {
-      circuitStatus = getZohoHttpClientStatus().circuit;
+      // Facade equivalent of the former getZohoHttpClientStatus() read — still a
+      // cheap in-process breaker read. Null when no inventory integration is
+      // connected (nothing to cool down). Wire value 'zoho_circuit_open' below is
+      // kept as-is for API compatibility.
+      circuitStatus = inventory?.clientStatus().circuit ?? null;
     } catch {
       circuitStatus = null;
     }

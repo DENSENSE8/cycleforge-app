@@ -107,7 +107,7 @@ export function UnfoundQueueSidebarToolbar() {
     if (scanning) return;
     setScanning(true);
     const loadingId = toast.loading(
-      `Scanning last ${scanLimit} Gmail message${scanLimit === 1 ? '' : 's'}…`,
+      `Scanning last ${scanLimit} inbox email${scanLimit === 1 ? '' : 's'}…`,
     );
     try {
       const url = new URL(
@@ -156,7 +156,7 @@ export function UnfoundQueueSidebarToolbar() {
           Unfound queue
         </h2>
         <HoverTooltip
-          label="Refresh the queue from the local DB (no Gmail call)"
+          label="Refresh the queue from the local DB (no mailbox call)"
           asChild
         >
           <Button
@@ -164,7 +164,7 @@ export function UnfoundQueueSidebarToolbar() {
             size="sm"
             icon={<RefreshCw />}
             onClick={onRefresh}
-            ariaLabel="Refresh the queue from the local DB (no Gmail call)"
+            ariaLabel="Refresh the queue from the local DB (no mailbox call)"
             className="gap-1 rounded-md border border-border-soft px-2 py-1 text-micro font-bold uppercase tracking-wider text-text-muted hover:bg-surface-hover"
           >
             Refresh
@@ -177,7 +177,7 @@ export function UnfoundQueueSidebarToolbar() {
           about to look. localStorage-persisted (key: unfoundQueue.scanLimit). */}
       <div className="flex items-center gap-2">
         <HoverTooltip
-          label={`Pull the last ${scanLimit} Gmail messages and reconcile against Zoho`}
+          label={`Pull the last ${scanLimit} inbox emails and reconcile against your purchase orders`}
           asChild
         >
           <Button
@@ -186,7 +186,7 @@ export function UnfoundQueueSidebarToolbar() {
             icon={<Mail className={scanning ? 'animate-pulse' : undefined} />}
             onClick={() => void onScanEmails()}
             disabled={scanning}
-            ariaLabel={`Pull the last ${scanLimit} Gmail messages and reconcile against Zoho`}
+            ariaLabel={`Pull the last ${scanLimit} inbox emails and reconcile against your purchase orders`}
             className="flex-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-micro font-bold uppercase tracking-wider text-blue-700 hover:bg-blue-100"
           >
             {scanning ? 'Scanning…' : `Scan last ${scanLimit}`}
@@ -196,7 +196,7 @@ export function UnfoundQueueSidebarToolbar() {
           Scan depth
         </label>
         <HoverTooltip
-          label="How many recent Gmail messages to fetch on each scan"
+          label="How many recent inbox emails to fetch on each scan"
           asChild
         >
           <select
@@ -204,7 +204,7 @@ export function UnfoundQueueSidebarToolbar() {
             value={scanLimit}
             onChange={(e) => onScanLimitChange(Number(e.target.value))}
             disabled={scanning}
-            aria-label="How many recent Gmail messages to fetch on each scan"
+            aria-label="How many recent inbox emails to fetch on each scan"
             className="h-7 rounded-md border border-border-soft bg-surface-card px-1.5 text-micro font-bold tracking-wider text-text-muted outline-none focus:border-blue-500 disabled:opacity-60"
           >
             {[10, 25, 50, 100, 200].map((n) => (

@@ -30,7 +30,7 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
 
   { id: 'organization',  label: 'Organization',  description: 'Timezone, locale, auth policies, warranty',        group: 'Organization', requires: 'admin.view', href: '/settings/organization' },
   { id: 'billing',       label: 'Billing',       description: 'Plan, entitlements & Stripe portal',               group: 'Organization', requires: 'admin.view', href: '/settings/billing' },
-  { id: 'integrations',  label: 'Integrations',  description: 'Connect Amazon, eBay, Zoho, Stripe & more',        group: 'Organization', requires: 'admin.view', href: '/settings/integrations' },
+  { id: 'integrations',  label: 'Integrations',  description: 'Connect inventory, sales channels, payments & more', group: 'Organization', requires: 'admin.view', href: '/settings/integrations' },
   { id: 'ai',            label: 'AI & Search',   description: 'AI provider, search usage & pricing',              group: 'Organization', requires: 'admin.view', href: '/settings/ai' },
   { id: 'catalog',       label: 'Platforms & Types', description: 'Sales channels & receiving flow types',          group: 'Organization', requires: 'admin.manage_features' },
   { id: 'team',          label: 'Team',          description: 'Invite teammates, roles, deactivate access',       group: 'Organization', requires: 'admin.manage_staff', href: '/settings/staff' },

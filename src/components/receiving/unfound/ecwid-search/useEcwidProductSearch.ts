@@ -224,19 +224,19 @@ export function useEcwidProductSearch({
       searchFieldOverride
         ? 'Search product name or SKU…'
         : searchField === 'title'
-          ? 'Search Ecwid product title…'
-          : 'Search Ecwid SKU…',
+          ? 'Search storefront product title…'
+          : 'Search storefront SKU…',
     [searchField, searchFieldOverride],
   );
 
   const dialogAria =
     popoverMode === 'repair_service'
       ? orderScope === 'all'
-        ? 'Recent Ecwid orders'
-        : 'Recent Ecwid repair-service orders'
+        ? 'Recent store orders'
+        : 'Recent repair-service orders'
       : manualTitleMode
         ? 'Enter product title manually'
-        : 'Search Ecwid products';
+        : 'Search storefront products';
 
   return {
     // raw state + setters

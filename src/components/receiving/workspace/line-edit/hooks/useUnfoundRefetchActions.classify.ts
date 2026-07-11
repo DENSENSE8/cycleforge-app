@@ -45,7 +45,7 @@ export function classifyZohoRetry(ok: boolean, data: unknown): RefetchOutcome {
     };
   }
   return {
-    state: { status: 'no-match', message: 'Still no Zoho match — try again later, or link a PO manually.' },
+    state: { status: 'no-match', message: 'Still no PO match — try again later, or link a PO manually.' },
     promote: false,
   };
 }

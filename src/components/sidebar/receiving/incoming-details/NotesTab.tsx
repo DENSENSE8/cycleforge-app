@@ -64,7 +64,7 @@ export function NotesTab({
 
   if (receivingId == null) {
     return (
-      <Empty msg="No receiving row for this PO yet — notes will be available after the next Zoho sync." />
+      <Empty msg="No receiving row for this PO yet — notes will be available after the next PO sync." />
     );
   }
 

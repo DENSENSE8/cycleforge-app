@@ -21,6 +21,27 @@ Summarized in the root `CLAUDE.md`; this file holds the detail and rationale.
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
 
+## Integrations: capability labels, gating, and tokens
+
+- **Product surfaces speak capabilities, never vendor brands.** Operator copy uses either a generic
+  capability noun ("Save to inventory", "Sync purchase orders") or the connected provider's display
+  label resolved at runtime — never a hardcoded "Zoho / Zendesk / Ecwid / Gmail" product sentence.
+- Label SoT: `src/lib/integrations/capability-labels.ts` (`capabilityNoun` / `capabilityTitle` /
+  `providerCatalogLabel` / `integrationsHubHref` — client-safe). Org-aware resolution + feature
+  gating: `src/lib/integrations/capability-connections.ts` (`isCapabilityConnected` /
+  `connectedProviderLabel` — server-only). Capability vocabulary: `Capability` in
+  `src/lib/integrations/connectors/types.ts`.
+- Capability facades, not direct vendor imports, in product routes/services:
+  `src/lib/integrations/inventory/` (`getInventoryProvider`) and `src/lib/integrations/helpdesk/`
+  (`getHelpdeskProvider`). Vendor modules (`src/lib/zoho/**`, `src/lib/zendesk.ts`) are connector
+  implementation detail behind them.
+- Brand strings ARE allowed in: the Integrations card (`PROVIDER_CATALOG`), deep links into vendor
+  web apps ("Open in Zoho"), platform/channel chips, permission LABELS (ids like
+  `integrations.zoho` never rename), and admin cron/diagnostic category names.
+- **Settings → Integrations is the only connect/disconnect surface.** Tokens live ONLY in the
+  `organization_integrations` vault via `src/lib/integrations/credentials.ts`; never add a new
+  token home or a new USAV env fallback branch.
+
 ## Source platform → label / tone
 
 - Source: `src/lib/source-platform.ts` (`SOURCE_PLATFORM_OPTS` / `SOURCE_PLATFORM_LABELS` derive from it).

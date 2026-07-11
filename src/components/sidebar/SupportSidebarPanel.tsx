@@ -43,7 +43,7 @@ export function SupportSidebarPanel() {
   if (isLoaded && !has('integrations.zendesk')) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-caption font-semibold text-text-soft">
-        Requires the “Manage Zendesk tickets” permission.
+        Requires the “Manage support tickets” permission.
       </div>
     );
   }

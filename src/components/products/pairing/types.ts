@@ -38,7 +38,7 @@ export interface PairingQueueResponse {
 
 /** An account-source identifier that exists in sku_platform_ids but is not yet
  *  linked to any canonical SKU. Surfaced by /api/sku-catalog/search-unmatched so
- *  the operator can pair it (or create a new Zoho SKU for it). */
+ *  the operator can pair it (or create a new inventory SKU for it). */
 export interface UnmappedPlatformId {
   platformIdRowId: number;
   platform: string;

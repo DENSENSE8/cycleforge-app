@@ -11,6 +11,7 @@ import { PhoneIncoming, PhoneMissed } from '@/components/Icons';
 import {
   CALL_DIRECTION_ITEMS,
   parseCallDirection,
+  type CallDirectionFilter,
 } from '@/components/sidebar/support/support-sidebar-shared';
 import { useCallEvents, isNotConfigured } from './useVoiceQueries';
 
@@ -69,7 +70,7 @@ export function CallLogSidebar({ modeToggle = null }: { modeToggle?: ReactNode }
           <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-4">
             <p className="text-caption font-semibold text-text-muted">Call log not connected</p>
             <p className="mt-1 text-micro leading-5 text-text-soft">
-              Connect Nextiva in Settings → Integrations to watch inbound, outbound, and missed
+              Connect your phone system in Settings → Integrations to watch inbound, outbound, and missed
               calls here in real time.
             </p>
           </div>

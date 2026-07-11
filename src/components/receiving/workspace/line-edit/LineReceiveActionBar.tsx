@@ -94,11 +94,11 @@ export function LineReceiveActionBar({
           ? []
           : [
               {
-                label: 'Save all to Zoho',
+                label: 'Save all to inventory',
                 icon: <Clipboard className="h-3.5 w-3.5 shrink-0" />,
                 onClick: onReceive,
                 disabled: !canZohoReceive,
-                title: 'Save all received quantities + edits to the Zoho purchase receive (no print)',
+                title: 'Save all received quantities + edits to the inventory purchase receive (no print)',
               },
             ]),
         {

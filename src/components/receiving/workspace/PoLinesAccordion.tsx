@@ -358,11 +358,11 @@ export function PoLinesAccordion({
   function zohoSkipNote(zoho?: { skipped?: string }): string | undefined {
     switch (zoho?.skipped) {
       case 'no_zoho_link':
-        return 'Saved locally — no Zoho PO link on this line.';
+        return 'Saved locally — no PO link on this line.';
       case 'no_line_item_id':
-        return 'Saved locally — sync with Zoho first.';
+        return 'Saved locally — sync purchase orders first.';
       case 'po_not_editable':
-        return 'Saved locally — Zoho PO is not editable.';
+        return 'Saved locally — the synced PO is not editable.';
       default:
         return undefined;
     }
@@ -385,7 +385,7 @@ export function PoLinesAccordion({
     setDescSavingLineId(lineId);
     onItemDescFeedback?.(null);
     try {
-      const res = await fetch(`/api/receiving/lines/${lineId}/zoho-note`, {
+      const res = await fetch(`/api/receiving/lines/${lineId}/inventory-note`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zoho_notes: next }),
@@ -562,7 +562,7 @@ export function PoLinesAccordion({
                     {line.item_name || line.sku || `Line #${line.id}`}
                   </p>
                   {!readOnly ? (
-                    <HoverTooltip label="Toggle item description (Zoho)" asChild>
+                    <HoverTooltip label="Toggle item description (synced)" asChild>
                       <IconButton
                         ariaLabel="Toggle item description"
                         aria-pressed={descShown === line.id}
@@ -720,7 +720,7 @@ export function PoLinesAccordion({
                               setDescEdit({ id: line.id, draft: e.target.value });
                               onItemDescFeedback?.(null);
                             }}
-                            placeholder="Zoho line description"
+                            placeholder="Item description (synced)"
                             onKeyDown={(e) => { if (e.key === 'Enter') void saveItemDesc(line.id); }}
                             className="h-10 min-w-0 flex-1 rounded-xl border border-border-default bg-surface-card px-3 text-caption normal-case tracking-normal text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                           />
@@ -814,7 +814,7 @@ function CartonAddAction({ receivingId, unitIds }: { receivingId: number; unitId
           initialTab="item"
           unitIds={unitIds}
           onAddLine={addOffPoLine}
-          addLineHint="Adds as an off-PO item — not on the Zoho PO. Reconcile it in Zoho separately."
+          addLineHint="Adds as an off-PO item — not on the purchase order. Reconcile it in inventory separately."
           onAssignedBox={setBox}
           onClose={() => setOpen(false)}
         />

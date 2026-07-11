@@ -23,6 +23,7 @@ interface IntegrationRow {
   last_error: string | null;
   last_used_at: Date | null;
   updated_at: Date | null;
+  created_at: Date | null;
 }
 
 function rowToState(status: string): ConnectionState {
@@ -51,11 +52,12 @@ function toStatus(row: IntegrationRow): ConnectionStatus {
     scope: row.scope,
     lastError: row.last_error,
     lastUsedAt: row.last_used_at,
+    connectedAt: row.created_at,
   };
 }
 
 const BASE_SELECT = `
-  SELECT provider, status, display_label, scope, last_error, last_used_at, updated_at
+  SELECT provider, status, display_label, scope, last_error, last_used_at, updated_at, created_at
     FROM organization_integrations
    WHERE organization_id = $1`;
 

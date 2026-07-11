@@ -45,11 +45,11 @@ export function WarrantyTicketButton({
 
   return (
     <>
-      <HoverTooltip label={linked ? 'Support ticket thread' : 'Create Zendesk ticket'} asChild>
+      <HoverTooltip label={linked ? 'Support ticket thread' : 'Create support ticket'} asChild>
         <IconButton
           ref={buttonRef}
           type="button"
-          ariaLabel={linked ? 'Open support ticket thread' : 'Create Zendesk ticket'}
+          ariaLabel={linked ? 'Open support ticket thread' : 'Create support ticket'}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={(e) => {
@@ -196,7 +196,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
             </HoverTooltip>
           )}
           {linked && (
-            <HoverTooltip label="Unlink ticket (it stays in Zendesk)" asChild>
+            <HoverTooltip label="Unlink ticket (it stays in the helpdesk)" asChild>
             <IconButton
               type="button"
               disabled={unlink.isPending}
@@ -206,7 +206,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                 if (ticketId == null) return;
                 if (
                   !window.confirm(
-                    `Unlink ticket #${ticketId} from this claim? The ticket stays in Zendesk — only the claim link is removed.`,
+                    `Unlink ticket #${ticketId} from this claim? The ticket stays in the helpdesk — only the claim link is removed.`,
                   )
                 ) {
                   return;
@@ -267,7 +267,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
             )}
             {commentsQuery.isError && (
               <p className="rounded-md bg-surface-danger px-2 py-1.5 text-caption text-text-danger">
-                Zendesk history unavailable:{' '}
+                Ticket history unavailable:{' '}
                 {commentsQuery.error instanceof Error ? commentsQuery.error.message : 'request failed'}
               </p>
             )}
@@ -277,7 +277,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
             {!linked ? (
               <div className="space-y-2">
                 <p className="text-label text-text-soft">
-                  No Zendesk ticket yet — create one from this claim to start the support thread.
+                  No support ticket yet — create one from this claim to start the support thread.
                 </p>
                 {createDraft && (
                   <div className="rounded-md border border-border-warning bg-surface-warning p-2">
@@ -304,7 +304,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                   icon={<Send className="h-4 w-4" />}
                   className="w-full text-sm font-medium"
                 >
-                  Create Zendesk ticket
+                  Create support ticket
                 </Button>
 
                 {/* Link an EXISTING ticket — for claims whose ticket was filed

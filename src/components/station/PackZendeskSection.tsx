@@ -46,7 +46,7 @@ export function PackZendeskSection({ orderId, className }: PackZendeskSectionPro
       >
         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" />
         <span className="flex-1 text-eyebrow font-black uppercase tracking-widest text-text-soft">
-          Zendesk ticket
+          Support ticket
         </span>
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-text-faint transition-transform ${open ? 'rotate-180' : ''}`}
@@ -101,7 +101,7 @@ function PackZendeskBody({ orderId }: { orderId?: string | null }) {
 
       {notConfigured ? (
         <p className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-caption font-semibold text-text-faint">
-          Zendesk isn&apos;t configured for this workspace.
+          Helpdesk isn&apos;t connected for this workspace.
         </p>
       ) : tickets.error ? (
         <p className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-caption font-semibold text-rose-700">

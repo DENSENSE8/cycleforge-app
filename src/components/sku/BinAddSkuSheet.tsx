@@ -47,7 +47,7 @@ function useDebounced<T>(value: T, delayMs: number): T {
 /**
  * Add a new SKU to the current bin. Ecwid-only search via /api/sku-stock,
  * which joins the Ecwid display_name so the result shows the Ecwid title and
- * SKU as a unit. (Zoho SKU field is not surfaced — still in development.)
+ * SKU as a unit. (Inventory SKU field is not surfaced — still in development.)
  */
 export function BinAddSkuSheet({
   open,
@@ -235,7 +235,7 @@ export function BinAddSkuSheet({
                 type="text"
                 inputMode="search"
                 autoComplete="off"
-                placeholder="Search Ecwid SKU or product title"
+                placeholder="Search storefront SKU or product title"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-sm font-bold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint"
@@ -293,7 +293,7 @@ export function BinAddSkuSheet({
                       ) : (
                         <HoverTooltip label="Not yet in stock — will create the entry on first put" asChild>
                           <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-micro font-bold text-blue-700">
-                            Ecwid only
+                            Storefront only
                           </span>
                         </HoverTooltip>
                       )}

@@ -85,7 +85,7 @@ function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
   if (failed) {
     return {
       tone: 'amber',
-      headline: 'Zoho receive didn’t go through',
+      headline: 'Inventory receive didn’t go through',
       items: [],
       note: 'Saved locally — lines stay Scanned and will retry. Re-run Receive if it doesn’t clear.',
     };
@@ -93,7 +93,7 @@ function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
   if (summary.alreadyReceived) {
     return {
       tone: 'emerald',
-      headline: 'Already received in Zoho',
+      headline: 'Already received in inventory',
       items: ['Local state now matches the dashboard'],
     };
   }
@@ -103,14 +103,14 @@ function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
         tone: 'emerald',
         headline: 'Received locally',
         items: ['Marked as received locally'],
-        note: 'Unfound carton — label printed, Zoho not touched.',
+        note: 'Unfound carton — label printed, inventory not updated.',
       };
     }
     return {
       tone: 'emerald',
       headline: 'Marked as scanned locally',
       items: ['Saved quantities as Scanned'],
-      note: 'Zoho not updated — run Receive to sync inventory.',
+      note: 'Inventory not updated — run Receive to sync.',
     };
   }
   // Normal Zoho receive — the headline checklist.
@@ -121,7 +121,7 @@ function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
     items.push(`Updated ${n} product description${plural} with condition & serial number${plural}`);
   }
   if (summary.notesUpdated) {
-    items.push('Updated notes field to Zoho');
+    items.push('Updated notes in inventory');
   }
   return { tone: 'emerald', headline: 'Receive complete', items };
 }
@@ -168,7 +168,7 @@ function ReceiveSuccessChecklist({
   // Key/value rows for the details dropdown — show real note/description text
   // when present; omit internal ids (receiving / line ids).
   const detailRows: Array<[string, string]> = [
-    ['Intent', result.summary.intent === 'scan_only' ? 'Scan only (local)' : result.summary.intent === 'local_receive' ? 'Received locally' : 'Zoho receive'],
+    ['Intent', result.summary.intent === 'scan_only' ? 'Scan only (local)' : result.summary.intent === 'local_receive' ? 'Received locally' : 'Inventory receive'],
     ...(result.summary.itemDescription
       ? [['Item description', result.summary.itemDescription] as [string, string]]
       : []),
@@ -194,13 +194,13 @@ function ReceiveSuccessChecklist({
           {result.reconcile && status === 'pending' && view.tone === 'emerald' ? (
             <p className="mt-1.5 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-text-faint">
               <Loader2 className="h-3 w-3 animate-spin" />
-              Syncing to Zoho…
+              Syncing to inventory…
             </p>
           ) : null}
           {status === 'confirmed' ? (
             <p className="mt-1.5 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-emerald-600">
               <Check className="h-3 w-3" />
-              Confirmed in Zoho
+              Confirmed in inventory
             </p>
           ) : null}
 

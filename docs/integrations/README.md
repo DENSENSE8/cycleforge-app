@@ -1,34 +1,53 @@
 # Integrations
 
-Per-provider documentation for everything in the Settings → Integrations catalog. The
-catalog itself has two sources of truth:
+Per-provider documentation for everything in the Settings → Integrations catalog.
+
+**Framing: capabilities, not vendors.** Product surfaces speak *capabilities*
+(inventory, helpdesk, sales channel, label engine, email inbox) and resolve operator
+copy from the connected provider's display label — vendors are connectors a tenant
+plugs into a capability slot, never the product itself. Zoho Inventory is the first
+**inventory connector** (POs, item catalog, stock, fulfillment push), not the app's
+backbone; Zendesk is a **helpdesk connector**; ShipStation is the first **label
+engine**. Settings → Integrations is the **only** surface where a tenant connects,
+reconnects, or disconnects an account.
+
+The catalog has two sources of truth, plus the capability vocabulary:
 
 - **Display SoT** — `src/app/settings/integrations/registry.ts` (`PROVIDER_CATALOG`):
   labels, categories, badges, which `connect` method a card uses, OAuth/health paths.
 - **Behavior SoT** — `src/lib/integrations/connectors/registry.ts`: `authKind`,
   `capabilities`, and (per provider) `sync` / `health`. A `Record<IntegrationProvider,…>`
   makes missing a provider here a **compile error**.
+- **Capability vocabulary + labels** — `Capability` in
+  `src/lib/integrations/connectors/types.ts`; product copy resolves through
+  `src/lib/integrations/capability-labels.ts` (pure/client-safe) and
+  `src/lib/integrations/capability-connections.ts` (server: `isCapabilityConnected`,
+  `connectedProviderLabel`). Never hardcode a vendor name in operator copy.
 
 Credentials for every provider resolve through one path —
 `getIntegrationCredentials(orgId, provider)` in `src/lib/integrations/credentials.ts` —
 which reads the encrypted `organization_integrations` vault, with a **USAV-org-only
 env-var fallback** so the existing single-tenant config keeps working during the
-multi-tenant migration. New code must not add to that fallback.
+multi-tenant migration. New code must not add to that fallback; it is being removed
+(token-SoT consolidation Phase 5).
 
 ## Provider index
 
 | Provider | Category | `connect` | `authKind` | Capabilities | Status | Doc |
 |---|---|---|---|---|---|---|
-| **Amazon** | Marketplaces | `amazon` | oauth | orders, inventory | **Live** (Phase 1) | [amazon.md](./amazon.md) |
-| **eBay** | Marketplaces | `ebay` | oauth | orders, inventory | **Live** (hardened) | [ebay-connect.md](./ebay-connect.md) |
-| **Square** | Storefronts & POS | `nango` | nango | orders | **Built** (needs Nango sidecar to go live) | [square.md](./square.md) |
-| **Ecwid** | Storefronts & POS | `vault` | vault | orders | USAV env live; OAuth = plan | [ecwid.md](./ecwid.md) |
-| **Shopify** | Storefronts & POS | `nango`¹ | nango¹ | orders, inventory | Plan | [shopify.md](./shopify.md) |
-| **Zoho Inventory** | Operations | `oauth` | oauth | inventory | **Live** (backbone) | [zoho.md](./zoho.md) |
-| **Google Sheets** | Operations | `vault` | vault | orders | **Live** (legacy/backfill) | [google-sheets.md](./google-sheets.md) |
-| **Zendesk** | Support | `vault` | vault | — | **Live** (warranty) | [zendesk.md](./zendesk.md) |
-| **UPS / FedEx / USPS** | Shipping carriers | `vault` | vault | tracking | Polling live; webhooks dormant | [carriers.md](./carriers.md) |
-| **Ollama / Hermes (AI)** | Realtime & AI | `vault` | vault | — | **Live** (local gateway) | [realtime-ai.md](./realtime-ai.md) |
+| **Amazon** | Sales channels | `amazon` | oauth | orders | **Live** (Phase 1) | [amazon.md](./amazon.md) |
+| **eBay** | Sales channels | `ebay` | oauth | orders | **Live** (hardened) | [ebay-connect.md](./ebay-connect.md) |
+| **Square** | Sales channels | `nango` | nango | orders | **Built** (needs Nango sidecar to go live) | [square.md](./square.md) |
+| **Ecwid** | Sales channels | `vault` | vault | orders, catalog | USAV env live; OAuth = plan | [ecwid.md](./ecwid.md) |
+| **Shopify** | Sales channels | `nango`¹ | nango¹ | orders | Plan | [shopify.md](./shopify.md) |
+| **Google Sheets** | Sales channels | `vault` | vault | orders | **Live** (legacy/backfill) | [google-sheets.md](./google-sheets.md) |
+| **Zoho Inventory** | Purchasing & inventory | `oauth` | oauth | inventory | **Live** (inventory connector) | [zoho.md](./zoho.md) |
+| **UPS / FedEx / USPS** | Fulfillment & shipping | `vault` | vault | tracking | Polling live; webhooks dormant | [carriers.md](./carriers.md) |
+| **ShipStation** | Fulfillment & shipping | `vault` | vault | orders, tracking, labels | **Live** (label engine) | — |
+| **Zendesk** | Support | `vault` | vault | helpdesk | **Live** (warranty + support console) | [zendesk.md](./zendesk.md) |
+| **Nextiva** | Communications | `vault` | vault | voice | **Live** (voice modes) | — |
+| **Gmail (PO mailbox)** | Communications | `oauth` | oauth | email_inbox | **Live** (legacy token home → vault migration) | — |
+| **Ollama / Hermes (AI)** | AI | `vault` | vault | ai | **Live** (local gateway) | [realtime-ai.md](./realtime-ai.md) |
 
 > **Ably** is live realtime infrastructure but is **not** a customer-facing card — its key
 > is wired globally via env (`ABLY_API_KEY`), so the connect card was removed (2026-06-14).

@@ -10,7 +10,7 @@ export function EcwidSearchHeader({ c, onClose }: { c: EcwidProductSearchControl
   return (
     <div className="flex items-center justify-between border-b border-border-hairline px-3 py-2">
       {popoverMode === 'search' && !manualTitleMode && searchFieldOverride ? (
-        <span className={`${microBadge} text-text-muted`}>Search Zoho catalog</span>
+        <span className={`${microBadge} text-text-muted`}>Search inventory catalog</span>
       ) : popoverMode === 'search' && !manualTitleMode ? (
         <div className="flex gap-1">
           <ModeButton
@@ -35,14 +35,14 @@ export function EcwidSearchHeader({ c, onClose }: { c: EcwidProductSearchControl
           }}
           className={`${microBadge} text-blue-700 hover:bg-blue-50 hover:text-blue-700`}
         >
-          {searchFieldOverride === 'zoho_catalog' ? '← Back to Zoho search' : '← Back to Ecwid search'}
+          {searchFieldOverride === 'zoho_catalog' ? '← Back to inventory search' : '← Back to storefront search'}
         </Button>
       ) : popoverMode === 'repair_service' ? (
         <span className={`${microBadge} text-text-muted`}>
-          {orderScope === 'all' ? 'Recent Ecwid orders' : 'Recent repair orders'}
+          {orderScope === 'all' ? 'Recent store orders' : 'Recent repair orders'}
         </span>
       ) : (
-        <span className={`${microBadge} text-text-muted`}>Ecwid search</span>
+        <span className={`${microBadge} text-text-muted`}>Storefront search</span>
       )}
       <IconButton
         type="button"

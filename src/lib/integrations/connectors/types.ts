@@ -15,9 +15,35 @@ import type { IntegrationProvider } from '@/lib/integrations/credentials';
 /** How a tenant authenticates the connection. */
 export type AuthKind = 'oauth' | 'nango' | 'vault';
 
-/** What a connection can do — drives capability badges + which providers the
- *  sync orchestrator runs. */
-export type Capability = 'orders' | 'inventory' | 'tracking' | 'payments' | 'voice';
+/** What a connection can do — drives capability badges, which providers the
+ *  sync orchestrator runs, AND product-surface gating/labels (see
+ *  src/lib/integrations/capability-labels.ts). Product surfaces speak these
+ *  capabilities, never vendor brands — a feature is available when *some*
+ *  connector with the capability is connected, not when "Zoho" is.
+ *
+ *    orders      — sales-order ingestion (marketplaces / storefronts / POS)
+ *    inventory   — purchasing + catalog + stock backend (POs, item master,
+ *                  fulfillment push). Zoho Inventory is the first connector.
+ *    tracking    — carrier tracking events
+ *    labels      — outbound label engine (rate shop / buy / void)
+ *    payments    — payment processing (tenant-connected; Stripe stays platform)
+ *    voice       — business phone (call log / voicemail / click-to-call)
+ *    helpdesk    — customer tickets (support console, claims, warranty)
+ *    email_inbox — org mailbox ingestion (PO mailbox, unfound-scan mail)
+ *    catalog     — storefront catalog lookup (favorites / product search)
+ *    ai          — BYOK AI chat/embeddings (Ask AI, AI search)
+ */
+export type Capability =
+  | 'orders'
+  | 'inventory'
+  | 'tracking'
+  | 'labels'
+  | 'payments'
+  | 'voice'
+  | 'helpdesk'
+  | 'email_inbox'
+  | 'catalog'
+  | 'ai';
 
 /** Normalized token/credential envelope stored (encrypted) inside the vault
  *  payload. Standardizing this lets the refresh sweep treat every OAuth
@@ -46,6 +72,8 @@ export interface ConnectionStatus {
   scope?: string | null;
   lastError?: string | null;
   lastUsedAt?: Date | null;
+  /** When the vault row was first created (i.e. when the org connected). */
+  connectedAt?: Date | null;
   /** Populated once the Phase 1 columns land (last_synced_at / expires_at). */
   lastSyncedAt?: Date | null;
   expiresAt?: Date | null;

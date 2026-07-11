@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  getTicket,
-  updateTicket,
-  ZendeskNotConfiguredError,
-} from '@/lib/zendesk';
+  HelpdeskNotConnectedError,
+  requireHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import {
   buildExternalId,
   clearTicketExternalIdIfMatches,
@@ -40,9 +42,13 @@ export const dynamic = 'force-dynamic';
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
+}
+
+function isNotConnected(err: unknown): boolean {
+  return err instanceof ZendeskNotConfiguredError || err instanceof HelpdeskNotConnectedError;
 }
 
 function entityRef(receivingId: number, lineId: number | null | undefined) {
@@ -80,7 +86,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     return NextResponse.json({ success: true, tickets, hiddenLinked });
   } catch (err) {
-    if (err instanceof ZendeskNotConfiguredError) return notConfigured(context);
+    if (isNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);
   }
 }, { permission: 'receiving.mark_received' });
@@ -97,8 +103,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const body = LinkBody.parse(await req.json().catch(() => null));
     const { entityType, entityId } = entityRef(body.receivingId, body.lineId);
 
-    const ticket = await getTicket(body.ticketId, ctx.organizationId);
-    if (!ticket) throw ApiError.notFound('Zendesk ticket', body.ticketId);
+    const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
+    const ticket = await helpdesk.getTicket(body.ticketId);
+    if (!ticket) throw ApiError.notFound('Helpdesk ticket', body.ticketId);
 
     // One entity per ticket (ticket_links upserts on ticket id), so linking a
     // ticket that already belongs to another carton/line would silently steal
@@ -121,7 +128,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // anyway).
     if (!ticket.external_id) {
       try {
-        await updateTicket(ticket.id, { external_id: buildExternalId(entityType, entityId) }, ctx.organizationId);
+        await helpdesk.updateTicket(ticket.id, { external_id: buildExternalId(entityType, entityId) });
       } catch (extErr) {
         console.warn(`[${context}] external_id backfill failed`, extErr);
       }
@@ -148,7 +155,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       subject: ticket.subject ?? null,
     });
   } catch (err) {
-    if (err instanceof ZendeskNotConfiguredError) return notConfigured(context);
+    if (isNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);
   }
 }, { permission: 'receiving.mark_received' });
@@ -218,7 +225,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
 
     return NextResponse.json({ success: true, removed });
   } catch (err) {
-    if (err instanceof ZendeskNotConfiguredError) return notConfigured(context);
+    if (isNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);
   }
 }, { permission: 'receiving.mark_received' });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   isNotConfigured,
@@ -13,7 +14,7 @@ import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import type { ZendeskComment } from '@/lib/zendesk';
 import { EmptyState, Spinner } from '@/design-system/primitives';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
-import { Upload } from '@/components/Icons';
+import { Link2, Upload } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
 import { SupportChatHeader } from './SupportChatHeader';
@@ -100,11 +101,22 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
-          title={isNotConfigured(error) ? 'Zendesk isn’t configured' : 'Couldn’t load ticket'}
+          title={isNotConfigured(error) ? 'Helpdesk isn’t connected' : 'Couldn’t load ticket'}
           description={
             isNotConfigured(error)
-              ? 'Set the Zendesk API credentials to use the console.'
+              ? 'Connect one in Settings → Integrations to use the console.'
               : 'Try selecting the ticket again.'
+          }
+          action={
+            isNotConfigured(error) ? (
+              <Link
+                href="/settings/integrations#zendesk"
+                className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
+              >
+                <Link2 className="h-4 w-4" />
+                Connect a helpdesk
+              </Link>
+            ) : undefined
           }
         />
       </div>

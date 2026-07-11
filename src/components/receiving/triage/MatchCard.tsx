@@ -14,7 +14,7 @@
  * background+ring, never a size shift.
  */
 
-import { ExternalLink, ZendeskMark } from '@/components/Icons';
+import { ExternalLink, TicketHelp } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   PairingLinkButton,
@@ -47,14 +47,14 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
     >
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-text-soft">
-          <ZendeskMark className="h-4 w-4" />
+          <TicketHelp className="h-4 w-4" />
         </span>
 
         <div className="min-w-0 flex-1">
           {/* Eyebrow: source + ticket id */}
           <div className="flex items-center gap-1.5">
             <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
-              Zendesk
+              Helpdesk
             </span>
             <span className="font-mono text-caption font-bold text-text-muted">#{candidate.id}</span>
             {candidate.url ? (

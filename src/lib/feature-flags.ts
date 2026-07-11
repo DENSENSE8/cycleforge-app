@@ -376,14 +376,17 @@ export function isShipmentLinksDualWrite(): boolean {
 
 /**
  * Universal Incoming (docs/incoming-universal-purchase-orders-plan.md §6, §8.3).
- * Per-org, async, env-fallback. When ON, `view=incoming` also surfaces
- * eBay-buyer-originated Incoming lines (inbound_source_type='ebay') alongside
- * Zoho POs, the `?inbound=` facet filters by source, and the Zoho receiving sync
- * runs the eBay↔Zoho merge. Default OFF — when off, Incoming is the byte-identical
- * Zoho-only path and the merge hook is a no-op, so a tenant not using buyer
- * accounts is unaffected. Enable per org (organization_feature_flags(flag=
- * 'incoming_universal')) once they connect a buyer account, or globally via
- * INCOMING_UNIVERSAL=true.
+ * Per-org, async, env-fallback. Universal Incoming is the product path: Incoming
+ * surfaces purchase lines from every enabled inbound source (source registry +
+ * the org's connection-driven `enabledSources` policy — see
+ * src/lib/inbound/org-settings.ts). When ON, `view=incoming` also surfaces
+ * eBay-buyer-originated lines (inbound_source_type='ebay') alongside the
+ * inventory-backend POs, the `?inbound=` facet filters by source, and the
+ * receiving sync runs the cross-source merge. Default OFF — when off, Incoming
+ * stays on the byte-identical legacy inventory-backend path and the merge hook
+ * is a no-op, so a tenant not using buyer accounts is unaffected. Enable per org
+ * (organization_feature_flags(flag='incoming_universal')) once they connect a
+ * buyer account, or globally via INCOMING_UNIVERSAL=true.
  */
 export async function isIncomingUniversal(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'incoming_universal', 'INCOMING_UNIVERSAL');

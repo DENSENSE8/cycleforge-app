@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { getTicket, isZendeskConfiguredForOrg } from '@/lib/zendesk';
+import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import {
   clearTicketAssignment,
   getTicketAssignment,
@@ -80,8 +80,9 @@ export const POST = withAuth(
 
       // Notify the assignee in their inbox bell — unless they assigned it to
       // themselves (self-assign is not a notification worth raising).
-      if (staffId !== ctx.staffId && (await isZendeskConfiguredForOrg(ctx.organizationId))) {
-        const ticket = await getTicket(id, ctx.organizationId).catch(() => null);
+      const helpdesk = staffId !== ctx.staffId ? await getHelpdeskProvider(ctx.organizationId) : null;
+      if (helpdesk && (await helpdesk.isConfigured())) {
+        const ticket = await helpdesk.getTicket(id).catch(() => null);
         const subject = ticket?.subject?.trim();
         const body = `Assigned support ticket #${id}${subject ? ` — ${subject}` : ''}`;
         const message = await createStaffMessage({

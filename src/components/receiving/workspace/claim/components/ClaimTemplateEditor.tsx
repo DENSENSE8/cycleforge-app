@@ -141,7 +141,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
       actions.push({
         id: 'ticket-subject',
         label: 'Insert linked ticket subject',
-        ariaLabel: 'Insert the linked Zendesk ticket subject',
+        ariaLabel: 'Insert the linked support ticket subject',
         icon: <Tag className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_TAG_BTN,
         onClick: () => void handlePrefillTicketSubject(),
@@ -175,7 +175,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
     if (trimmedSyncNotes) {
       actions.push({
         id: 'sync-notes',
-        label: 'Insert sync (Zoho PO) notes',
+        label: 'Insert sync (PO) notes',
         ariaLabel: 'Insert sync notes',
         icon: <Download className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_DOWNLOAD_INSERT_BTN,
@@ -220,7 +220,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">
-            Zendesk ticket {previewLoading ? '(updating…)' : '(editable)'}
+            Support ticket {previewLoading ? '(updating…)' : '(editable)'}
           </p>
           {filedTicket ? (
             <p className="mt-0.5 text-micro font-semibold text-emerald-600">Filed {filedTicket.number}</p>

@@ -187,7 +187,7 @@ export function ReplenishSidebarPanel() {
           icon={<RefreshCw className="h-4 w-4" />}
           className="w-full"
         >
-          {syncing ? 'Syncing Zoho…' : 'Refresh Zoho Stock'}
+          {syncing ? 'Syncing stock…' : 'Refresh Stock'}
         </Button>
 
         {/* Urgent banner */}

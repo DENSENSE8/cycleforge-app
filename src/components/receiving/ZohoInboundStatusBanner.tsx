@@ -56,7 +56,7 @@ export function ZohoInboundStatusBanner() {
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload?.success) {
-        throw new Error(payload?.error || 'Failed to start Zoho sync');
+        throw new Error(payload?.error || 'Failed to start inventory sync');
       }
       return payload;
     },
@@ -98,7 +98,7 @@ export function ZohoInboundStatusBanner() {
               {tone.icon}
             </div>
             <p className={`text-[var(--text-sm)] font-semibold uppercase tracking-[0.18em] ${tone.text}`}>
-              Zoho Inbound Sync
+              Inventory inbound sync
             </p>
             <StatusBadge
               status={zoho?.circuit.isOpen ? 'overdue' : 'confirmed'}
@@ -109,7 +109,7 @@ export function ZohoInboundStatusBanner() {
             Budgeted for {zoho?.configured_headroom || '80/100 req per minute'}, capped at {zoho?.max_concurrent ?? 8} concurrent calls.
           </p>
         </div>
-        <HoverTooltip label="Queue an incremental Zoho purchase-order sync" asChild>
+        <HoverTooltip label="Queue an incremental inventory purchase-order sync" asChild>
           <Button
             variant="ghost"
             size="sm"

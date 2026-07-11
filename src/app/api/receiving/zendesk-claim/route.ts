@@ -7,7 +7,12 @@ import {
   CLAIM_TYPE_LABEL,
   type ClaimType,
 } from '@/lib/zendesk-claim-template';
-import { createTicket, uploadFileToZendesk, ZendeskNotConfiguredError, addTicketComment } from '@/lib/zendesk';
+import { ZendeskNotConfiguredError } from '@/lib/zendesk';
+import {
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import {
   readPhotoBytes,
   archiveClaimToFolder,
@@ -154,6 +159,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       });
     }
 
+    // Capability gate: filing a claim needs a connected helpdesk. Surfaces the
+    // assembled body as a copyable draft, mirroring the in-flight error path.
+    const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+    if (!helpdesk) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}`,
+          draftBody: description,
+        },
+        { status: 503 },
+      );
+    }
+
     // Idempotency: a per-submit key (client UUID via Idempotency-Key header)
     // dedupes double-clicks / network retries so we never file two tickets for
     // the same submission. Cached responses are replayed verbatim.
@@ -188,7 +207,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             ).toLowerCase();
             const fileName = `${fileLabel}_${String(seq).padStart(3, '0')}.${ext}`;
             try {
-              uploads.push(await uploadFileToZendesk(fileName, pb.bytes, pb.contentType, ctx.organizationId));
+              uploads.push(await helpdesk.uploadAttachment(fileName, pb.bytes, pb.contentType));
             } catch (upErr) {
               console.warn('[zendesk-claim] photo upload failed', row.id, upErr);
             }
@@ -200,7 +219,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // photos ride along as `comment.uploads` (real attachments).
         let ticket;
         try {
-          ticket = await createTicket(
+          ticket = await helpdesk.createTicket(
             {
               subject,
               comment: {
@@ -217,15 +236,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 : {}),
             },
             { idempotencyKey: idempotencyKey ?? undefined },
-            ctx.organizationId,
           );
         } catch (err: unknown) {
           if (err instanceof ZendeskNotConfiguredError) {
-            return { status: 503, body: { success: false, error: 'Zendesk is not configured', draftBody: description } };
+            return {
+              status: 503,
+              body: {
+                success: false,
+                error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}`,
+                draftBody: description,
+              },
+            };
           }
           return {
             status: 502,
-            body: { success: false, error: err instanceof Error ? err.message : 'Zendesk request failed', draftBody: description },
+            body: { success: false, error: err instanceof Error ? err.message : 'Helpdesk request failed', draftBody: description },
           };
         }
 
@@ -395,11 +420,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               });
             }
             try {
-              await addTicketComment(ticket.id, {
+              await helpdesk.addComment(ticket.id, {
                 body: `Photo share pack: ${sharePackUrl}`,
                 html_body: `<p>Photo share pack: <a href="${sharePackUrl}">${sharePackUrl}</a></p>`,
                 public: false,
-              }, {}, ctx.organizationId);
+              });
             } catch (commentErr) {
               console.warn('[zendesk-claim] share pack comment failed', commentErr);
             }

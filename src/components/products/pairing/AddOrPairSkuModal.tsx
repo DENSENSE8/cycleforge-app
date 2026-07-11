@@ -17,7 +17,7 @@ interface CatalogSearchRow {
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** The current sidebar search term. Seeds the new Zoho SKU field in the
+  /** The current sidebar search term. Seeds the new inventory SKU field in the
    *  add-to-catalog flow (no pending id), and the "pair to existing" search. */
   query: string;
   /** When set, the modal links this account-source identifier after create, or
@@ -32,7 +32,7 @@ type Mode = 'create' | 'existing';
 
 /**
  * Closes the two gaps the canonical pairing queue can't:
- *   1. Add a Zoho SKU that isn't in sku_catalog yet (POST /api/sku-catalog).
+ *   1. Add an inventory SKU that isn't in sku_catalog yet (POST /api/sku-catalog).
  *   2. Pair an unmapped account-source identifier (Amazon ASIN, eBay/Walmart
  *      item id, Ecwid SKU) to a canonical SKU — either the brand-new one or an
  *      existing one (POST /api/sku-catalog/pair, which also backfills orders).
@@ -65,9 +65,9 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
   useEffect(() => {
     if (!open) return;
     setMode('create');
-    // Add-to-catalog flow (no pending id): the operator searched the Zoho SKU
+    // Add-to-catalog flow (no pending id): the operator searched the inventory SKU
     // itself, so seed the field with it. Pairing an unmapped identifier (pending)
-    // means the search term is an ASIN / platform id — NOT a Zoho SKU — so leave
+    // means the search term is an ASIN / platform id — NOT an inventory SKU — so leave
     // it blank for the operator to enter the real canonical SKU.
     setSku(pending ? '' : query.trim());
     setTitle(pending?.suggestedTitle || '');
@@ -125,7 +125,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
   const handleCreate = async () => {
     const trimmedSku = sku.trim();
     const trimmedTitle = title.trim();
-    if (!trimmedSku) { setError('Zoho SKU is required.'); return; }
+    if (!trimmedSku) { setError('Inventory SKU is required.'); return; }
     if (!trimmedTitle) { setError('Product title is required.'); return; }
     setSubmitting(true);
     setError(null);
@@ -168,7 +168,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
     }
   };
 
-  const headerLabel = pending ? 'Pair identifier' : 'Add Zoho SKU';
+  const headerLabel = pending ? 'Pair identifier' : 'Add inventory SKU';
   const style = useMemo(() => (pending ? platformStyle(pending.platform) : null), [pending]);
 
   if (!open || !portal) return null;
@@ -228,7 +228,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
             {mode === 'create' ? (
               <div className="space-y-3">
-                <Field label="Zoho SKU" required>
+                <Field label="Inventory SKU" required>
                   <input
                     value={sku}
                     onChange={(e) => setSku(e.target.value)}

@@ -31,17 +31,17 @@ export function OrdersSection({ c }: { c: ConnectionsPanelController }) {
 
 export function ZohoSection({ c }: { c: ConnectionsPanelController }) {
   return (
-    <SidebarSection title="Zoho" expanded={c.showZoho} onToggle={() => c.setShowZoho((v) => !v)}>
+    <SidebarSection title="Inventory sync" expanded={c.showZoho} onToggle={() => c.setShowZoho((v) => !v)}>
       <div className="border-b border-border-soft bg-surface-card px-4 py-3">
         <Link
           href="/admin?section=connections&page=zoho-management"
           className={`inline-flex border-b border-border-strong py-1 ${sectionLabel} text-text-default`}
         >
-          Open Zoho Tools
+          Inventory sync tools
         </Link>
       </div>
-      <LineItem label="Refresh Token" detail="Refresh the Zoho auth token before syncing" right={<ActionButton onClick={() => c.zohoRefreshMutation.mutate()} loading={c.zohoRefreshMutation.isPending} title="Refresh Zoho token" />} />
-      <LineItem label="Sync Expected POs" detail="Load expected inbound lines before receiving starts" right={<ActionButton onClick={() => c.zohoSyncMutation.mutate()} loading={c.zohoSyncMutation.isPending} title="Sync Zoho purchase orders" tone="green" />} />
+      <LineItem label="Refresh Token" detail="Refresh the inventory connector's auth token before syncing" right={<ActionButton onClick={() => c.zohoRefreshMutation.mutate()} loading={c.zohoRefreshMutation.isPending} title="Refresh inventory connector token" />} />
+      <LineItem label="Sync Expected POs" detail="Load expected inbound lines before receiving starts" right={<ActionButton onClick={() => c.zohoSyncMutation.mutate()} loading={c.zohoSyncMutation.isPending} title="Sync inventory purchase orders" tone="green" />} />
       <div className="border-b border-border-soft bg-surface-card px-4 py-3">
         <p className={dataValue}>Import One Purchase Receive</p>
         <div className="mt-2 flex items-stretch gap-0 border border-border-soft">

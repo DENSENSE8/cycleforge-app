@@ -102,7 +102,7 @@ export function useTriagePanel({
           return;
         }
         const ticketNumber = data.ticketNumber ?? `#${ticketId}`;
-        toast.success(`Matched to Zendesk ${ticketNumber}`);
+        toast.success(`Matched to ticket ${ticketNumber}`);
         dispatchLineUpdated({ id: pkg.lineId, zendesk_ticket: ticketNumber });
         await queryClient.invalidateQueries({
           queryKey: ['triage-ticket-candidates', pkg.receivingId],

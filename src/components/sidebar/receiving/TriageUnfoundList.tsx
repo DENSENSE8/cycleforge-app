@@ -65,7 +65,7 @@ export function TriageUnfoundList({
         toast.success(`Matched to PO ${data.zoho_purchaseorder_id ?? ''}`.trim());
         invalidateReceivingFeeds(queryClient);
       } else {
-        toast('Still no Zoho match', { description: 'Try again later, or link a PO manually.' });
+        toast('Still no PO match', { description: 'Try again later, or link a PO manually.' });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Retry failed');
@@ -93,7 +93,7 @@ export function TriageUnfoundList({
                     <span className="inline-flex items-center gap-1.5">
                       <span className={`h-2 w-2 shrink-0 rounded-full ${exceptionDotClass(ctx)}`} />
                       <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
-                        Zoho sync pending · {ctx.retryCount}×
+                        PO sync pending · {ctx.retryCount}×
                       </span>
                     </span>
                   </HoverTooltip>
@@ -106,7 +106,7 @@ export function TriageUnfoundList({
         renderPopoverActions={(row, { dismiss }) => (
           <div className="flex items-center gap-1">
             {row.receiving_id != null ? (
-              <HoverTooltip label="Re-check Zoho for a PO match right now" asChild>
+              <HoverTooltip label="Re-check inventory for a PO match right now" asChild>
                 <Button
                   variant="ghost"
                   size="sm"

@@ -300,7 +300,7 @@ function PairingSidebarQueue({ query, sort }: { query: string; sort: PairingSort
   const selectedSku = searchParams.get('sku') || null;
 
   // Add/pair modal state — opened from the "not in the queue" section for an
-  // unmapped identifier (`pending` set) or to create a brand-new Zoho SKU.
+  // unmapped identifier (`pending` set) or to create a brand-new inventory SKU.
   const [modalOpen, setModalOpen] = useState(false);
   const [pending, setPending] = useState<UnmappedPlatformId | null>(null);
 
@@ -550,12 +550,12 @@ interface ProductPickerListProps {
 }
 
 function ProductPickerList({ query, recents, onPick }: ProductPickerListProps) {
-  // Sources from the Zoho `items` mirror (canonical Zoho SKU + Zoho name) via
+  // Sources from the Zoho `items` mirror (canonical inventory SKU + Zoho name) via
   // the catalog search API's `zoho_catalog` field — the Zoho product display is
   // the source of truth. NOT `sku_catalog`/`sku_stock`, which use an independent
-  // SKU numbering that collides with Zoho SKUs on the same string (e.g. SKU
+  // SKU numbering that collides with inventory SKUs on the same string (e.g. SKU
   // 00016 is a different product in each table). That single query matches on
-  // Zoho SKU OR name, so no per-shape field detection is needed. allowEmpty
+  // inventory SKU OR name, so no per-shape field detection is needed. allowEmpty
   // fetches the top page when the user hasn't typed yet so there's always
   // something to click.
   const { data, isLoading, isError } = useSkuCatalogSearch(query, {

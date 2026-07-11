@@ -73,7 +73,7 @@ export function UnfoundQueueTable() {
           </colgroup>
           <thead className="sticky top-0 z-10 bg-surface-card shadow-sm">
             <tr className="text-left text-micro font-bold uppercase tracking-wider text-text-soft">
-              <th className="px-3 py-2">Zendesk</th>
+              <th className="px-3 py-2">Ticket</th>
               <th className="px-3 py-2">Product Title</th>
               <th className="px-3 py-2">USA Team Note</th>
               <th className="px-3 py-2">Vietnam Team Note</th>

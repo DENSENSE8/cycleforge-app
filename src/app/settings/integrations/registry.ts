@@ -29,23 +29,28 @@ export interface ProviderDef {
   badge: string;
 }
 
+/**
+ * Industry-standard capability taxonomy — cards are grouped by what the
+ * connection DOES for the tenant, not by vendor family. Keep in sync with the
+ * Capability vocabulary in src/lib/integrations/connectors/types.ts.
+ */
 export const INTEGRATION_CATEGORIES = [
-  'Marketplaces',
-  'Storefronts & POS',
-  'Operations',
-  'Storage & Backup',
+  'Sales channels',
+  'Purchasing & inventory',
+  'Fulfillment & shipping',
   'Support',
-  'Shipping carriers',
-  'Realtime & AI',
+  'Communications',
+  'Storage & Backup',
+  'AI',
 ] as const;
 
 export const PROVIDER_CATALOG: ProviderDef[] = [
-  // ── Marketplaces ──
+  // ── Sales channels ── (orders in; listings/stock out)
   {
     key: 'amazon',
     label: 'Amazon',
     description: 'Selling Partner API — import sales orders (SKU / FBA-item scoped).',
-    category: 'Marketplaces',
+    category: 'Sales channels',
     connect: 'amazon',
     oauthStartPath: '/api/amazon/oauth/start',
     healthPath: '/api/amazon/health',
@@ -57,7 +62,7 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
     key: 'ebay',
     label: 'eBay',
     description: 'Selling: storefront orders + tracking. Purchasing: buyer-account orders flow into Incoming.',
-    category: 'Marketplaces',
+    category: 'Sales channels',
     connect: 'ebay',
     oauthStartPath: '/api/ebay/connect',
     healthPath: '/api/ebay/health',
@@ -65,13 +70,11 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
     docsUrl: 'https://developer.ebay.com/api-docs/static/oauth-authorization-code-grant.html',
     badge: 'bg-blue-100 text-blue-700',
   },
-
-  // ── Storefronts & POS ──
   {
     key: 'ecwid',
     label: 'Ecwid',
     description: 'Storefront catalog + orders.',
-    category: 'Storefronts & POS',
+    category: 'Sales channels',
     connect: 'vault',
     badge: 'bg-sky-100 text-sky-700',
   },
@@ -79,29 +82,65 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
     key: 'square',
     label: 'Square',
     description: 'In-store POS + walk-ins — OAuth via the Nango connector.',
-    category: 'Storefronts & POS',
+    category: 'Sales channels',
     connect: 'nango',
     badge: 'bg-surface-strong text-text-muted',
   },
+  {
+    key: 'google_sheets',
+    label: 'Google Sheets',
+    description: 'Spreadsheet order import pipelines.',
+    category: 'Sales channels',
+    connect: 'vault',
+    badge: 'bg-green-100 text-green-700',
+  },
 
-  // ── Operations ──
+  // ── Purchasing & inventory ── (the inventory backend: POs, item master, stock)
   {
     key: 'zoho',
     label: 'Zoho Inventory',
-    description: 'Sales orders, purchase orders, invoices.',
-    category: 'Operations',
+    description: 'Inventory backend — purchase orders, item catalog, stock, and fulfillment push.',
+    category: 'Purchasing & inventory',
     connect: 'oauth',
     oauthStartPath: '/api/zoho/oauth/authorize',
     healthPath: '/api/zoho/health',
     badge: 'bg-red-100 text-red-700',
   },
+
+  // ── Fulfillment & shipping ── (carrier tracking + the label engine)
+  { key: 'ups',  label: 'UPS',   description: 'Tracking + webhook callbacks.', category: 'Fulfillment & shipping', connect: 'vault', badge: 'bg-amber-100 text-amber-800' },
+  { key: 'fedex', label: 'FedEx', description: 'Shipment tracking.',           category: 'Fulfillment & shipping', connect: 'vault', badge: 'bg-purple-100 text-purple-700' },
+  { key: 'usps', label: 'USPS',  description: 'OAuth + label tracking.',       category: 'Fulfillment & shipping', connect: 'vault', badge: 'bg-blue-100 text-blue-800' },
+  { key: 'shipstation', label: 'ShipStation', description: 'Label engine — rate-shop + buy/void labels (v2); pull orders (v1).', category: 'Fulfillment & shipping', connect: 'vault', docsUrl: 'https://docs.shipstation.com/', badge: 'bg-violet-100 text-violet-700' },
+
+  // ── Support ──
   {
-    key: 'google_sheets',
-    label: 'Google Sheets',
-    description: 'Order transfer pipelines.',
-    category: 'Operations',
+    key: 'zendesk',
+    label: 'Zendesk',
+    description: 'Helpdesk — support console, warranty + customer ticket linkage.',
+    category: 'Support',
     connect: 'vault',
-    badge: 'bg-green-100 text-green-700',
+    badge: 'bg-emerald-100 text-emerald-700',
+  },
+
+  // ── Communications ──
+  {
+    key: 'nextiva',
+    label: 'Nextiva',
+    description: 'Business phone — call log, voicemail follow-ups, click-to-call.',
+    category: 'Communications',
+    connect: 'vault',
+    healthPath: '/api/integrations/nextiva/health',
+    badge: 'bg-violet-100 text-violet-700',
+  },
+  {
+    key: 'gmail',
+    label: 'Gmail (PO mailbox)',
+    description: 'Email inbox — purchase-order mailbox ingest + unfound-scan mail lookup.',
+    category: 'Communications',
+    connect: 'oauth',
+    oauthStartPath: '/api/admin/po-gmail/connect',
+    badge: 'bg-rose-100 text-rose-700',
   },
 
   // ── Storage & Backup ──
@@ -117,36 +156,11 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
     badge: 'bg-yellow-100 text-yellow-700',
   },
 
-  // ── Support ──
-  {
-    key: 'zendesk',
-    label: 'Zendesk',
-    description: 'Warranty + customer ticket linkage.',
-    category: 'Support',
-    connect: 'vault',
-    badge: 'bg-emerald-100 text-emerald-700',
-  },
-  {
-    key: 'nextiva',
-    label: 'Nextiva',
-    description: 'Business phone — call log, voicemail follow-ups, click-to-call.',
-    category: 'Support',
-    connect: 'vault',
-    healthPath: '/api/integrations/nextiva/health',
-    badge: 'bg-violet-100 text-violet-700',
-  },
-
-  // ── Shipping carriers ──
-  { key: 'ups',  label: 'UPS',   description: 'Tracking + webhook callbacks.', category: 'Shipping carriers', connect: 'vault', badge: 'bg-amber-100 text-amber-800' },
-  { key: 'fedex', label: 'FedEx', description: 'Shipment tracking.',           category: 'Shipping carriers', connect: 'vault', badge: 'bg-purple-100 text-purple-700' },
-  { key: 'usps', label: 'USPS',  description: 'OAuth + label tracking.',       category: 'Shipping carriers', connect: 'vault', badge: 'bg-blue-100 text-blue-800' },
-  { key: 'shipstation', label: 'ShipStation', description: 'Rate-shop + buy/void labels (v2) and pull orders (v1).', category: 'Shipping carriers', connect: 'vault', docsUrl: 'https://docs.shipstation.com/', badge: 'bg-violet-100 text-violet-700' },
-
-  // ── Realtime & AI ──
-  { key: 'ollama', label: 'Self-hosted AI (Ollama / custom)', description: 'Any OpenAI-compatible endpoint you run (Ollama, LM Studio, vLLM). Payload: {"baseUrl","model","embedModel"?,"apiKey"?}.', category: 'Realtime & AI', connect: 'vault', badge: 'bg-surface-strong text-text-muted' },
-  { key: 'ai_gateway', label: 'Vercel AI Gateway', description: 'One key, every model — powers AI search + Ask AI. Payload: {"apiKey","chatModel"?,"embedModel"?}.', category: 'Realtime & AI', connect: 'vault', badge: 'bg-surface-inverse text-white' },
-  { key: 'openai', label: 'OpenAI', description: 'Direct key for AI-search embeddings + Ask AI. Payload: {"apiKey","chatModel"?,"embedModel"?}.', category: 'Realtime & AI', connect: 'vault', badge: 'bg-emerald-100 text-emerald-700' },
-  { key: 'anthropic', label: 'Anthropic', description: 'Claude for Ask AI (chat only — embeddings need another provider). Payload: {"apiKey","chatModel"?}.', category: 'Realtime & AI', connect: 'vault', badge: 'bg-amber-100 text-amber-700' },
+  // ── AI ──
+  { key: 'ollama', label: 'Self-hosted AI (Ollama / custom)', description: 'Any OpenAI-compatible endpoint you run (Ollama, LM Studio, vLLM). Payload: {"baseUrl","model","embedModel"?,"apiKey"?}.', category: 'AI', connect: 'vault', badge: 'bg-surface-strong text-text-muted' },
+  { key: 'ai_gateway', label: 'Vercel AI Gateway', description: 'One key, every model — powers AI search + Ask AI. Payload: {"apiKey","chatModel"?,"embedModel"?}.', category: 'AI', connect: 'vault', badge: 'bg-surface-inverse text-white' },
+  { key: 'openai', label: 'OpenAI', description: 'Direct key for AI-search embeddings + Ask AI. Payload: {"apiKey","chatModel"?,"embedModel"?}.', category: 'AI', connect: 'vault', badge: 'bg-emerald-100 text-emerald-700' },
+  { key: 'anthropic', label: 'Anthropic', description: 'Claude for Ask AI (chat only — embeddings need another provider). Payload: {"apiKey","chatModel"?}.', category: 'AI', connect: 'vault', badge: 'bg-amber-100 text-amber-700' },
 ];
 
 // ── Shared status shapes (server-computed, passed to the client cards) ──
@@ -167,6 +181,8 @@ export interface ProviderState {
   displayLabel: string | null;
   lastError: string | null;
   updatedAt: string | null;
+  /** Most recent time this connection was actually used (organization_integrations.last_used_at). */
+  lastUsedAt?: string | null;
   accounts: AccountSummary[];
 }
 
@@ -185,5 +201,7 @@ export function managePermission(def: ProviderDef): string {
   if (def.connect === 'ebay') return 'integrations.ebay';
   if (def.connect === 'oauth' && def.key === 'zoho') return 'integrations.zoho';
   if (def.connect === 'oauth' && def.key === 'google_drive') return 'integrations.google_drive';
+  // PO-Gmail's connect/disconnect routes (/api/admin/po-gmail/*) gate on admin.view.
+  if (def.connect === 'oauth' && def.key === 'gmail') return 'admin.view';
   return 'admin.manage_features';
 }

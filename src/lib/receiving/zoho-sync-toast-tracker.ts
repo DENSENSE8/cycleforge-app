@@ -83,7 +83,7 @@ export function enqueuePendingZohoSync(input: {
     orgId: input.orgId,
     lineIds,
     createdAt: input.createdAt ?? now(),
-    label: input.label ?? 'Syncing to Zoho…',
+    label: input.label ?? 'Syncing to inventory…',
   };
   upsertPending(p);
   ensureLoadingToast(p);
@@ -115,14 +115,14 @@ export function resolvePendingZohoSync(input: {
   if (!hit) return;
 
   if (input.verdict === 'ok') {
-    toast.success('Confirmed in Zoho', { id: hit.id, duration: 2500 });
+    toast.success('Confirmed in inventory', { id: hit.id, duration: 2500 });
   } else if (input.verdict === 'failed') {
-    toast.error('Zoho sync failed — saved locally. Open the PO and retry Receive.', {
+    toast.error('Inventory sync failed — saved locally. Open the PO and retry Receive.', {
       id: hit.id,
       duration: 6000,
     });
   } else {
-    toast.info('Zoho sync skipped.', { id: hit.id, duration: 2500 });
+    toast.info('Inventory sync skipped.', { id: hit.id, duration: 2500 });
   }
 
   removePending(hit.id);

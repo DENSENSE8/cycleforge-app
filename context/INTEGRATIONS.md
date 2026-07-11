@@ -1,5 +1,14 @@
 # External Integrations
 
+> **Framing: capabilities, not vendors.** Product surfaces speak capabilities
+> (inventory, helpdesk, sales channel, label engine, email inbox) and resolve
+> operator copy via `src/lib/integrations/capability-labels.ts` /
+> `capability-connections.ts`. Every provider below is a **connector** a tenant
+> plugs into a capability slot from **Settings → Integrations** (the only
+> connect/disconnect surface). Vendor names belong inside connector code, the
+> Integrations card, and deep links — never hardcoded into operator copy.
+> Capability vocabulary: `Capability` in `src/lib/integrations/connectors/types.ts`.
+
 ## eBay (`src/lib/ebay/`)
 
 ### Purpose
@@ -32,7 +41,10 @@ EBAY_APP_ID, EBAY_CERT_ID, EBAY_REFRESH_TOKEN_*
 ## Zoho Inventory (`src/lib/zoho/`)
 
 ### Purpose
-Master data source for inventory items, sales orders, purchase orders.
+The first **inventory connector** (the `inventory` capability): purchase orders,
+item catalog, stock, and fulfillment push. Product surfaces reach it through the
+`InventoryProvider` facade (`src/lib/integrations/inventory/`) — Zoho is a
+connector behind that capability, not the app's backbone.
 
 ### Files
 - `src/lib/zoho/core.ts` — Base API client

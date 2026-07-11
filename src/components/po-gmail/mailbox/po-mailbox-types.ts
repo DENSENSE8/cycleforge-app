@@ -79,7 +79,7 @@ export interface PreviewResponse { query: string; limit: number; count: number; 
 export type MissingStatus = 'pending' | 'ignored' | 'resolved';
 
 export const MODE_TABS: { id: Mode; label: string }[] = [
-  { id: 'missing', label: 'Missing from Zoho' },
+  { id: 'missing', label: 'Missing from inventory' },
   { id: 'scanned', label: 'All scanned' },
   { id: 'raw',     label: 'Raw preview' },
 ];

@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * Rich "what was synced to Zoho" modal for the dashboard shipped view.
+ * Rich "what was synced to inventory" modal for the dashboard shipped view.
  *
  * Mirrors the Google Sheets transfer popover (OrderSyncDialog): summary stat
  * cards + a scrollable detail table showing each packer-scanned shipped order
- * that was pushed to a Zoho sales order (→ package → shipment → invoice).
+ * that was pushed to an inventory sales order (→ package → shipment → invoice).
  *
  * It is a presentational component — the ShippedActionsButton owns the data
  * fetching (dry-run preview + live run) and feeds report/phase/elapsed in as props.
@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Check,
@@ -23,6 +24,7 @@ import {
   Package,
   Truck,
   User,
+  Link2,
 } from '@/components/Icons';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -32,20 +34,20 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 // ─── Shared report shape (mirrors the API's SyncRunReport / OrderSyncResult) ──
 
-export interface ZohoSyncLine {
+export interface InventorySyncLine {
   sku: string | null;
   quantity: number;
   productTitle: string | null;
   itemNumber: string | null;
 }
 
-export interface ZohoSyncPacker {
+export interface InventorySyncPacker {
   id: number | null;
   name: string | null;
   packedAt: string | null;
 }
 
-export interface ZohoOrderResult {
+export interface InventoryOrderResult {
   referenceNumber: string;
   status: 'completed' | 'error' | 'skipped' | 'dry_run';
   delivered: boolean;
@@ -54,33 +56,35 @@ export interface ZohoOrderResult {
   trackingNumber: string | null;
   orderDate: string | null;
   deliveredAt: string | null;
-  packer: ZohoSyncPacker | null;
-  lines: ZohoSyncLine[];
+  packer: InventorySyncPacker | null;
+  lines: InventorySyncLine[];
   actions: string[];
   error?: string;
 }
 
-export interface ZohoSyncReport {
+export interface InventorySyncReport {
   dryRun: boolean;
   invoiceMode: string;
   scanned: number;
   completed: number;
   skipped: number;
   errored: number;
-  results: ZohoOrderResult[];
+  results: InventoryOrderResult[];
   errors: string[];
 }
 
-export type ZohoSyncPhase = 'previewing' | 'preview' | 'syncing' | 'done';
+export type InventorySyncPhase = 'previewing' | 'preview' | 'syncing' | 'done';
 
-interface ZohoSyncDialogProps {
+interface InventoryFulfillmentSyncDialogProps {
   open: boolean;
   onClose: () => void;
-  report: ZohoSyncReport | null;
-  phase: ZohoSyncPhase;
+  report: InventorySyncReport | null;
+  phase: InventorySyncPhase;
   elapsedMs: number;
   confirming: boolean;
   pendingCount: number;
+  /** True when the sync route soft-disabled (no inventory integration connected). */
+  notConnected?: boolean;
   onRefresh: () => void;
   onSync: () => void;
 }
@@ -89,7 +93,7 @@ interface ZohoSyncDialogProps {
 
 /** Best available date for a synced order — when the packer scanned it, else
  *  delivered/order date — formatted month + day only (e.g. "Jun 3"). */
-function syncRowDate(r: ZohoOrderResult): string {
+function syncRowDate(r: InventoryOrderResult): string {
   const raw = r.packer?.packedAt || r.deliveredAt || r.orderDate;
   if (!raw) return '—';
   const d = new Date(raw);
@@ -97,8 +101,8 @@ function syncRowDate(r: ZohoOrderResult): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function statusBadge(status: ZohoOrderResult['status'], delivered: boolean) {
-  const map: Record<ZohoOrderResult['status'], { label: string; cls: string }> = {
+function statusBadge(status: InventoryOrderResult['status'], delivered: boolean) {
+  const map: Record<InventoryOrderResult['status'], { label: string; cls: string }> = {
     completed: { label: delivered ? 'synced · delivered' : 'synced', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
     dry_run: { label: 'pending', cls: 'bg-blue-50 text-blue-700 ring-blue-200' },
     skipped: { label: 'already synced', cls: 'bg-surface-canvas text-text-muted ring-border-soft' },
@@ -144,7 +148,7 @@ function ChainStep({ icon, label }: { icon: React.ReactNode; label: string }) {
   );
 }
 
-function DetailTable({ rows }: { rows: ZohoOrderResult[] }) {
+function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
   return (
     <div className="max-h-[42vh] overflow-y-auto">
       <table className="w-full text-sm">
@@ -228,7 +232,7 @@ function DetailTable({ rows }: { rows: ZohoOrderResult[] }) {
 
 // ─── Modal ─────────────────────────────────────────────────────────────────────
 
-export function ZohoSyncDialog({
+export function InventoryFulfillmentSyncDialog({
   open,
   onClose,
   report,
@@ -236,9 +240,10 @@ export function ZohoSyncDialog({
   elapsedMs,
   confirming,
   pendingCount,
+  notConnected = false,
   onRefresh,
   onSync,
-}: ZohoSyncDialogProps) {
+}: InventoryFulfillmentSyncDialogProps) {
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -258,9 +263,10 @@ export function ZohoSyncDialog({
 
   if (!portalNode || !open) return null;
 
-  const title =
-    phase === 'syncing'
-      ? 'Syncing shipped orders to Zoho'
+  const title = notConnected
+    ? 'Inventory not connected'
+    : phase === 'syncing'
+      ? 'Syncing shipped orders to inventory'
       : phase === 'done'
         ? 'Sync complete'
         : phase === 'previewing'
@@ -293,7 +299,7 @@ export function ZohoSyncDialog({
       >
         <header className="flex items-start gap-3 border-b border-border-soft px-5 py-3.5">
           <div className="flex-1 min-w-0">
-            <p className={`${microBadge} text-text-soft`}>Zoho Fulfillment Sync</p>
+            <p className={`${microBadge} text-text-soft`}>Inventory Fulfillment Sync</p>
             <h2 className={`${sectionLabel} text-text-default mt-0.5`}>{title}</h2>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -336,7 +342,22 @@ export function ZohoSyncDialog({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {phase === 'previewing' && noRows ? (
+          {notConnected ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
+              <Link2 className="h-6 w-6 text-text-faint" />
+              <p className={fieldLabel}>No inventory integration is connected.</p>
+              <p className="max-w-sm text-caption text-text-soft">
+                Connect one in Settings → Integrations to sync shipped orders.
+              </p>
+              <Link
+                href="/settings/integrations#zoho"
+                className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-accent-bg px-3 py-1.5 text-eyebrow font-black uppercase tracking-widest text-text-inverse hover:bg-accent-bg/90"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Open Integrations
+              </Link>
+            </div>
+          ) : phase === 'previewing' && noRows ? (
             <div className="flex items-center justify-center gap-2 py-12 text-text-soft">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className={fieldLabel}>Checking what’s pending…</span>
@@ -344,7 +365,7 @@ export function ZohoSyncDialog({
           ) : report && report.scanned === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-text-soft">
               <Check className="h-6 w-6 text-emerald-500" />
-              <p className={fieldLabel}>Nothing pending — all recent shipped orders are already in Zoho.</p>
+              <p className={fieldLabel}>Nothing pending — all recent shipped orders are already synced.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -395,7 +416,7 @@ export function ZohoSyncDialog({
           <p className="text-micro leading-snug text-text-faint">
             {report?.dryRun !== false
               ? 'Preview is a dry run (no changes).'
-              : 'Records created in Zoho.'}
+              : 'Records created in inventory.'}
             {report ? ` Invoice mode: ${report.invoiceMode}.` : ''}
           </p>
           <div className="flex items-center gap-2">

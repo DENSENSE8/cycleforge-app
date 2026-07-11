@@ -17,7 +17,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
         <input
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          placeholder="Search Ecwid product by name or SKU"
+          placeholder="Search storefront products by name or SKU"
           className="w-full rounded-xl border-0 bg-transparent px-3 py-2.5 text-caption font-semibold text-text-default outline-none placeholder:text-text-soft"
         />
         {searchingProducts ? (

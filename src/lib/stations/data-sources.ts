@@ -102,7 +102,7 @@ const poGmailUnmatchedEmails: DataSourceDefinition = {
  */
 const receivingAwaitingTrackingPos: DataSourceDefinition = {
   id: 'receiving.awaiting_tracking_pos',
-  label: 'POs awaiting tracking # (Zoho)',
+  label: 'POs awaiting tracking #',
   integration: 'receiving',
   endpoint: '/api/receiving-lines',
   buildUrl: (filters) => {
@@ -278,7 +278,7 @@ const receivingIncomingAll: DataSourceDefinition = {
 /** Incoming POs from Zoho only (the legacy Incoming set). */
 const receivingIncomingZoho: DataSourceDefinition = {
   id: 'receiving.incoming_zoho',
-  label: 'Incoming POs (Zoho)',
+  label: 'Incoming POs (inventory)',
   integration: 'receiving',
   endpoint: '/api/receiving-lines',
   buildUrl: (filters) => {
@@ -314,11 +314,11 @@ const receivingIncomingEbay: DataSourceDefinition = {
   filters: [
     {
       key: 'link',
-      label: 'Zoho link',
+      label: 'PO link',
       kind: 'select',
       options: [
         { value: 'any', label: 'Any' },
-        { value: 'zoho_pending', label: 'Awaiting Zoho PO' },
+        { value: 'zoho_pending', label: 'Awaiting PO' },
       ],
       default: 'any',
     },
@@ -332,7 +332,7 @@ const receivingIncomingEbay: DataSourceDefinition = {
 /** eBay purchases still needing their Zoho PO — the merge to-do (§6.2). */
 const receivingAwaitingZohoLink: DataSourceDefinition = {
   id: 'receiving.awaiting_zoho_link',
-  label: 'eBay purchases needing a Zoho PO',
+  label: 'eBay purchases needing a PO',
   integration: 'receiving',
   endpoint: '/api/receiving-lines',
   buildUrl: (filters) => {

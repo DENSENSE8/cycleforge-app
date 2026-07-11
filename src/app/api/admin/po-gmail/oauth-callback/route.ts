@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { PO_GMAIL_SCOPE, assertUsavMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
+import { upsertIntegrationCredentials, type GmailCredentials } from '@/lib/integrations/credentials';
 import { ApiError, errorResponse } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -90,8 +91,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // best-effort; we don't need the email
     }
 
-    const expiresAt = new Date(Date.now() + (tokens.expires_in - 60) * 1000).toISOString();
+    const expiresAtMs = Date.now() + (tokens.expires_in - 60) * 1000;
+    const expiresAt = new Date(expiresAtMs).toISOString();
 
+    // Legacy home (google_oauth_tokens) — kept during the vault migration so
+    // the legacy fallback read path keeps working. Do not remove until the
+    // token-SoT cutover retires the table.
     await pool.query(
       `INSERT INTO google_oauth_tokens
          (provider, account_email, scope, refresh_token, access_token, expires_at,
@@ -108,6 +113,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
              needs_reconnect_reason = NULL`,
       [accountEmail, PO_GMAIL_SCOPE, tokens.refresh_token, tokens.access_token, expiresAt, ctx.staffId],
     );
+
+    // Vault dual-write (organization_integrations, provider='gmail') — the
+    // preferred token home the po-gmail client reads first. App-level OAuth
+    // client creds are copied into the row so the refresh path is
+    // self-contained at runtime (mirrors GoogleDriveCredentials / Amazon LWA).
+    const vaultPayload: GmailCredentials = {
+      clientId,
+      clientSecret,
+      refreshToken: tokens.refresh_token,
+      accessToken: tokens.access_token,
+      expiresAt: expiresAtMs,
+      accountEmail: accountEmail ?? undefined,
+      scope: tokens.scope || PO_GMAIL_SCOPE,
+    };
+    await upsertIntegrationCredentials({
+      orgId: ctx.organizationId,
+      provider: 'gmail',
+      payload: vaultPayload,
+      displayLabel: accountEmail,
+      createdBy: ctx.staffId,
+    });
 
     const res = NextResponse.redirect(`${url.origin}/admin?section=po_mailbox&po_gmail_connected=1`);
     res.cookies.delete('po_gmail_oauth_state');

@@ -36,6 +36,7 @@ interface OrgRow {
   last_error: string | null;
   scope: string | null;
   updated_at: Date | null;
+  last_used_at: Date | null;
 }
 interface AmazonRow {
   id: number; account_name: string; seller_id: string | null; region: string | null;
@@ -70,7 +71,7 @@ export default async function IntegrationsPage({
 
   const [orgRowsR, amazonR, ebayR] = await Promise.all([
     pool.query<OrgRow>(
-      `SELECT provider, status, display_label, last_error, scope, updated_at
+      `SELECT provider, status, display_label, last_error, scope, updated_at, last_used_at
          FROM organization_integrations
         WHERE organization_id = $1
         ORDER BY provider ASC, scope NULLS FIRST`,
@@ -137,14 +138,20 @@ export default async function IntegrationsPage({
     // vault / oauth (single credential row + env fallback)
     const row = orgByProvider.get(def.key) ?? null;
     const isConfigured = configured.get(def.key) ?? false;
-    const status: ProviderState['status'] = row?.status === 'error'
-      ? 'error'
-      : (isConfigured || row) ? 'connected' : 'not_connected';
+    // Only an 'active' row counts as connected — 'revoked'/'error' rows must
+    // surface as needs-attention, never silently read as connected.
+    const status: ProviderState['status'] = row
+      ? (row.status === 'active' ? 'connected' : 'error')
+      : (isConfigured ? 'connected' : 'not_connected');
+    const lastError = row
+      ? row.last_error ?? (row.status !== 'active' ? `Connection ${row.status} — reconnect to resume syncing.` : null)
+      : null;
     return {
       status,
       displayLabel: row?.display_label ?? (isConfigured && !row ? 'Configured via environment' : null),
-      lastError: row?.last_error ?? null,
+      lastError,
       updatedAt: row?.updated_at ? new Date(row.updated_at).toISOString() : null,
+      lastUsedAt: row?.last_used_at ? new Date(row.last_used_at).toISOString() : null,
       accounts: [],
     };
   };

@@ -2,30 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  deleteTicket,
-  getTicket,
-  isZendeskConfiguredForOrg,
-  updateTicket,
-  ZendeskApiError,
-  ZendeskNotConfiguredError,
-} from '@/lib/zendesk';
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Single Zendesk ticket.
+ * Single helpdesk ticket (via the org's HelpdeskProvider; Zendesk adapter).
  *
  *   GET    /api/zendesk/tickets/:id  → fetch one
  *   PATCH  /api/zendesk/tickets/:id  → update fields / add a comment
- *   DELETE /api/zendesk/tickets/:id  → delete (soft-delete in Zendesk)
+ *   DELETE /api/zendesk/tickets/:id  → delete (soft-delete in the provider)
  *
  * withAuth ignores the route `params`, so the id is parsed from the path.
  */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -54,9 +52,10 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets/[id]';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
-      const ticket = await getTicket(id, ctx.organizationId);
+      const ticket = await helpdesk.getTicket(id);
       if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
       return NextResponse.json({ success: true, ticket });
     } catch (err) {
@@ -90,13 +89,14 @@ export const PATCH = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'PATCH /api/zendesk/tickets/[id]';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
       const json = await req.json().catch(() => null);
       if (!json) throw ApiError.badRequest('Missing JSON body');
       const input = UpdateBody.parse(json);
 
-      const ticket = await updateTicket(id, input, ctx.organizationId);
+      const ticket = await helpdesk.updateTicket(id, input);
       if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
       return NextResponse.json({ success: true, ticket });
     } catch (err) {
@@ -120,9 +120,10 @@ export const DELETE = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'DELETE /api/zendesk/tickets/[id]';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
-      const ok = await deleteTicket(id, ctx.organizationId);
+      const ok = await helpdesk.deleteTicket(id);
       if (!ok) throw ApiError.notFound('Zendesk ticket', id);
       return NextResponse.json({ success: true, id });
     } catch (err) {

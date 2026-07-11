@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { isZendeskConfiguredForOrg, listAgents, ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
+import {
+  getHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/zendesk/agents
- * Lists assignable Zendesk agents + admins for the assignee dropdown.
- * Server-side cached (5 min) in the lib — the roster rarely changes.
+ * Lists assignable helpdesk agents + admins for the assignee dropdown (via the
+ * org's HelpdeskProvider). Server-side cached (5 min) in the adapter's client —
+ * the roster rarely changes.
  */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
@@ -22,9 +28,10 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/agents';
     try {
-      if (!(await isZendeskConfiguredForOrg(ctx.organizationId))) return notConfigured(context);
+      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const force = req.nextUrl.searchParams.get('refresh') === '1';
-      const agents = await listAgents(force, ctx.organizationId);
+      const agents = await helpdesk.listAgents(force);
       return NextResponse.json({ success: true, agents });
     } catch (err) {
       if (err instanceof ZendeskNotConfiguredError) return notConfigured(context);

@@ -197,20 +197,26 @@ export const OrgSettingsSchema = z.object({
   // publish gate validates bound sources ⊆ this list). Read only when the
   // `incoming_universal` flag is on; the merge helper's built-in defaults match
   // these, so an org with no `inbound` block behaves identically.
+  //
+  // `enabledSources` is deliberately OPTIONAL (no zod default): absent means the
+  // org never explicitly chose, and resolveInboundSettings
+  // (src/lib/inbound/org-settings.ts — the ONE resolution point) derives the
+  // enabled set from the org's actual connections (inventory backend, eBay buyer
+  // account, …) instead of a hardcoded vendor list. A persisted array — including
+  // an explicitly empty one — is kept verbatim.
   inbound: z
     .object({
       displaySourceAfterMerge: z.enum(['ebay', 'zoho', 'both']).default('ebay'),
       zohoOrderNumberFields: z.array(z.string()).default(['reference_number', 'notes']),
       autoMergeSignals: z.array(z.enum(['tracking', 'order_number'])).default(['tracking', 'order_number']),
       fuzzyMergeRequiresReview: z.boolean().default(true),
-      enabledSources: z.array(z.string()).default(['zoho', 'ebay']),
+      enabledSources: z.array(z.string()).optional(),
     })
     .default({
       displaySourceAfterMerge: 'ebay',
       zohoOrderNumberFields: ['reference_number', 'notes'],
       autoMergeSignals: ['tracking', 'order_number'],
       fuzzyMergeRequiresReview: true,
-      enabledSources: ['zoho', 'ebay'],
     }),
 }).passthrough();
 
@@ -274,18 +280,35 @@ export function getSubstitutionAllowedNodes(settings: OrgSettings): Substitution
   return settings.fulfillment?.substitutionAllowedNodes ?? ['pick'];
 }
 
-/** Per-org Universal Incoming policy. See OrgSettingsSchema.inbound + plan §9.6. */
-export type InboundOrgSettings = OrgSettings['inbound'];
+/**
+ * Per-org Universal Incoming policy. See OrgSettingsSchema.inbound + plan §9.6.
+ *
+ * Raw = the persisted block as stored: `enabledSources` may be absent, meaning
+ * the org never explicitly chose (semantics change 2026-07: it used to zod-default
+ * to ['zoho','ebay']). Resolved = what product code consumes: `enabledSources`
+ * always present, filled by resolveInboundSettings (src/lib/inbound/org-settings.ts)
+ * — connection-driven for orgs that never chose, verbatim otherwise.
+ */
+export type InboundOrgSettingsRaw = OrgSettings['inbound'];
+export type InboundOrgSettings = Omit<InboundOrgSettingsRaw, 'enabledSources'> & {
+  enabledSources: string[];
+};
 
-const DEFAULT_INBOUND_SETTINGS: InboundOrgSettings = {
+const DEFAULT_INBOUND_SETTINGS: InboundOrgSettingsRaw = {
   displaySourceAfterMerge: 'ebay',
   zohoOrderNumberFields: ['reference_number', 'notes'],
   autoMergeSignals: ['tracking', 'order_number'],
   fuzzyMergeRequiresReview: true,
-  enabledSources: ['zoho', 'ebay'],
+  // enabledSources deliberately absent — "never chose"; the resolver derives it.
 };
 
-export function getInboundSettings(settings: OrgSettings): InboundOrgSettings {
+/**
+ * Raw accessor for the persisted inbound block. Returns `enabledSources`
+ * possibly-undefined ("org never chose"); do NOT read it directly in product
+ * code — go through resolveInboundSettings, the single resolution point that
+ * fills it (connection-driven default, or the org's explicit choice verbatim).
+ */
+export function getInboundSettings(settings: OrgSettings): InboundOrgSettingsRaw {
   return settings.inbound ?? DEFAULT_INBOUND_SETTINGS;
 }
 

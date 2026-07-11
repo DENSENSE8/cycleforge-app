@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  addTicketComment,
-  getTicket,
-  listTicketComments,
-  ZendeskApiError,
-  ZendeskNotConfiguredError,
-} from '@/lib/zendesk';
+  HelpdeskNotConnectedError,
+  requireHelpdeskProvider,
+  HELPDESK_CONNECT_HINT,
+  HELPDESK_NOT_CONNECTED_MESSAGE,
+} from '@/lib/integrations/helpdesk';
 import { claimBodyToHtml } from '@/lib/zendesk-claim-template';
 import { getTicketEntity } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
@@ -28,13 +28,15 @@ export const dynamic = 'force-dynamic';
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
-    new ApiError(503, 'Zendesk is not configured', 'Set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL and ZENDESK_API_TOKEN.'),
+    new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
 }
 
 function mapZendeskError(err: unknown, context: string): NextResponse {
-  if (err instanceof ZendeskNotConfiguredError) return notConfigured(context);
+  if (err instanceof ZendeskNotConfiguredError || err instanceof HelpdeskNotConnectedError) {
+    return notConfigured(context);
+  }
   if (err instanceof ZendeskApiError) {
     const status = err.status >= 400 && err.status < 600 ? err.status : 502;
     return errorResponse(new ApiError(status, 'Zendesk API error', err.message), context);
@@ -58,9 +60,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       throw ApiError.notFound('Linked receiving ticket', ticketId);
     }
 
-    const ticket = await getTicket(ticketId, ctx.organizationId);
-    if (!ticket) throw ApiError.notFound('Zendesk ticket', ticketId);
-    const { comments } = await listTicketComments(ticketId, { perPage: 100 }, ctx.organizationId);
+    const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
+    const ticket = await helpdesk.getTicket(ticketId);
+    if (!ticket) throw ApiError.notFound('Helpdesk ticket', ticketId);
+    const { comments } = await helpdesk.listComments(ticketId, { perPage: 100 });
 
     return NextResponse.json({
       success: true,
@@ -111,12 +114,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       throw ApiError.notFound('Linked receiving ticket', parsed.ticketId);
     }
 
-    const ticket = await addTicketComment(parsed.ticketId, {
+    const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
+    const ticket = await helpdesk.addComment(parsed.ticketId, {
       body: parsed.body,
       html_body: claimBodyToHtml(parsed.body),
       public: parsed.public,
-    }, {}, ctx.organizationId);
-    if (!ticket) throw ApiError.notFound('Zendesk ticket', parsed.ticketId);
+    });
+    if (!ticket) throw ApiError.notFound('Helpdesk ticket', parsed.ticketId);
 
     return NextResponse.json({
       success: true,

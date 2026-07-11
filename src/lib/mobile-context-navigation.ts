@@ -39,7 +39,7 @@ const DASHBOARD_VIEW_OPTIONS: MobileContextOption[] = [
   { id: 'pending', label: 'Pending' },
   { id: 'unshipped', label: 'Awaiting' },
   { id: 'shipped', label: 'Shipped' },
-  { id: 'fba', label: 'FBA' },
+  { id: 'fba', label: 'FBA prep' },
 ];
 
 const RECEIVING_MODE_OPTIONS: MobileContextOption[] = [

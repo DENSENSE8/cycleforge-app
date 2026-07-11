@@ -122,7 +122,7 @@ export function EmailPoLinkTab({
           search box filters them. */}
       {isError ? (
         <p className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600">
-          Couldn’t load PO emails. The PO-Gmail inbox may be unconfigured.
+          Couldn’t load PO emails. The PO email inbox may not be connected.
         </p>
       ) : isFetching && candidates.length === 0 ? (
         <p className="flex items-center justify-center gap-2 py-5 text-xs text-text-soft">

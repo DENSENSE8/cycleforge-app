@@ -115,7 +115,7 @@ export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipment
         const status = body?.mirror?.status as string | null;
         const polled = body?.shipment?.polled as boolean | undefined;
         toast.success(
-          `Synced${status ? ` · Zoho: ${status}` : ''}${polled ? ' · carrier re-polled' : ''}`,
+          `Synced${status ? ` · PO: ${status}` : ''}${polled ? ' · carrier re-polled' : ''}`,
         );
       }
       invalidateIncoming();

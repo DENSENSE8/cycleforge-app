@@ -10,6 +10,7 @@
  *   - vault  : paste-JSON credential entry + disconnect
  */
 import { useCallback, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -261,7 +262,8 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
   const connectLabel = connected ? 'Reconnect' : 'Connect';
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
+    // id anchors deep links like /settings/integrations#gmail (PO mailbox tab).
+    <div id={def.key} className="flex h-full scroll-mt-6 flex-col rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
       {/* Header */}
       <div className="flex items-start gap-3">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px] font-black ${def.badge}`}>
@@ -341,6 +343,11 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
       )}
       {state.lastError && (
         <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-caption text-red-700">{state.lastError}</div>
+      )}
+      {state.lastUsedAt && (
+        <div className="mt-2 text-caption text-text-faint">
+          Last used {formatDistanceToNow(new Date(state.lastUsedAt), { addSuffix: true })}
+        </div>
       )}
 
       {/* Actions — pinned to the bottom so buttons align across cards in a row */}

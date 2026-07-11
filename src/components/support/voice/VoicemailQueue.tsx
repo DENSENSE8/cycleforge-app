@@ -80,7 +80,7 @@ export function VoicemailQueue({ modeToggle = null }: { modeToggle?: ReactNode }
           <div className="p-6">
             <EmptyState
               title="Voicemail isn’t connected yet"
-              description="Connect Nextiva in Settings → Integrations to start receiving call-back follow-ups here."
+              description="Connect your phone system in Settings → Integrations to start receiving call-back follow-ups here."
             />
           </div>
         ) : error ? (
