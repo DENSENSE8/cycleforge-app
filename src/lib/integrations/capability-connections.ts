@@ -22,7 +22,14 @@ import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import { getIntegrationCredentials } from '@/lib/integrations/credentials';
 import { listConnections } from '@/lib/integrations/connectors/connections';
 import type { Capability, ConnectionStatus } from '@/lib/integrations/connectors/types';
-import { capabilityProviderKeys, capabilityTitle, providerCatalogLabel } from './capability-labels';
+import { capabilityTitle, providerCatalogLabel } from './capability-labels';
+import { connectorsWithCapability } from '@/lib/integrations/connectors/registry';
+import type { IntegrationProvider } from '@/lib/integrations/credentials';
+
+/** Provider keys whose connector exposes a capability (behavior SoT). */
+export function capabilityProviderKeys(cap: Capability): IntegrationProvider[] {
+  return connectorsWithCapability(cap).map((c) => c.provider);
+}
 
 /** Active connections whose connector exposes `cap`, in catalog order. */
 export async function getConnectedProviders(

@@ -16,9 +16,7 @@
  *   capability words → the maps below (extend here, never inline in a view)
  */
 import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
-import { connectorsWithCapability } from '@/lib/integrations/connectors/registry';
 import type { Capability } from '@/lib/integrations/connectors/types';
-import type { IntegrationProvider } from '@/lib/integrations/credentials';
 
 /** Lowercase noun for mid-sentence interpolation ("Save to {noun}"). */
 const CAPABILITY_NOUN: Record<Capability, string> = {
@@ -62,10 +60,7 @@ export function providerCatalogLabel(provider: string): string {
   return PROVIDER_CATALOG.find((p) => p.key === provider)?.label ?? provider;
 }
 
-/** Provider keys whose connector exposes a capability (behavior SoT). */
-export function capabilityProviderKeys(cap: Capability): IntegrationProvider[] {
-  return connectorsWithCapability(cap).map((c) => c.provider);
-}
+
 
 /** Deep-link to the Integrations hub — the ONLY connect surface. Optionally
  *  anchored to one provider's card. */

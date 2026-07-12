@@ -244,6 +244,7 @@ export function UnshippedShelfBoard({
           clearSearchLabel={clearSearchLabel}
           onOpenRecord={onOpenRecord}
           dateHeaderEndSlot={dateHeaderEndSlot}
+          stickyTopClass={growToContent ? 'top-[41px]' : 'top-0'}
         />
       );
     },
