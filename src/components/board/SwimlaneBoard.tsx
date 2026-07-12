@@ -393,17 +393,17 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
       className="min-w-0 w-full"
     >
     <section
-      // Stacked: overflow-visible so sticky lane chrome can pin to the board
-      // scroll parent while scanning PENDING/TESTED/BLOCKED. Grid lanes keep
-      // overflow-hidden (body scrolls internally within the card).
+      // Stacked: overflow-clip so sticky lane chrome can pin to the board
+      // scroll parent, while preventing rows from bleeding outside the rounded
+      // corners or overflowing horizontally. Grid lanes keep overflow-hidden.
       className={`flex w-full min-w-0 flex-col rounded-xl border border-border-soft bg-surface-card ${
-        stacked ? 'overflow-visible' : 'overflow-hidden'
+        stacked ? 'overflow-clip' : 'overflow-hidden'
       }`}
     >
       {/* Lane chrome — sticky to the board scroll region in 1-up stack mode. */}
       <div
-        className={`flex items-center gap-2 border-b border-border-hairline bg-surface-card/95 px-2.5 py-1.5 backdrop-blur-sm ${
-          stacked ? 'sticky top-0 z-10' : ''
+        className={`flex items-center gap-2 border-b border-t border-border-hairline bg-surface-card/95 px-2.5 py-1.5 backdrop-blur-sm rounded-t-xl ${
+          stacked ? 'sticky top-0 z-sticky' : ''
         }`}
       >
         {/* ds-raw-button: dnd-kit drag handle (spreads listeners; active:scale would fight drag) */}
@@ -751,9 +751,12 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
         ref={boardScrollRef}
         data-testid="swimlane-board-scroll"
         // Portaled dashboard toolbar: parent column already owns the horizontal
-        // gutter (KPI + tabs + board share one edge) — only keep vertical air.
-        className={`flex-1 overflow-y-auto scrollbar-hide ${toolbarPortalTarget ? 'py-1' : 'p-4'}`}
+        // gutter (KPI + tabs + board share one edge).
+        // Vertical air is provided by spacer divs below so `sticky top-0` correctly
+        // caps at the absolute scroll boundary without bleeding through padding.
+        className={`flex-1 overflow-y-auto scrollbar-hide ${toolbarPortalTarget ? '' : 'px-4'}`}
       >
+        <div className={`shrink-0 ${toolbarPortalTarget ? 'h-1' : 'h-4'}`} />
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorderLanes}>
           <SortableContext items={effectiveOrder} strategy={isGrid ? rectSortingStrategy : verticalListSortingStrategy}>
             <LayoutGroup id={`swimlane-board-${prefsKey}`}>
@@ -791,6 +794,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
           </SortableContext>
         </DndContext>
         {footerSlot}
+        <div className={`shrink-0 ${toolbarPortalTarget ? 'h-1' : 'h-4'}`} />
       </div>
     </div>
   );

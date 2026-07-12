@@ -21,6 +21,7 @@ export interface QueueDateSectionProps {
    * Show more / Show less can exit-animate rows and let siblings layout-reflow.
    */
   animateRows?: boolean;
+  stickyTopClass?: string;
 }
 
 /**
@@ -35,6 +36,7 @@ export function QueueDateSection({
   isMobile,
   renderRow,
   animateRows = true,
+  stickyTopClass,
 }: QueueDateSectionProps) {
   // groups preserve the per-day sort order (groupRowsBy), matching
   // displayedRecords so shift-range select lines up with the view. `stripeIndex`
@@ -87,7 +89,7 @@ export function QueueDateSection({
       className="flex flex-col"
       transition={animateRows ? { layout: layoutTransition } : undefined}
     >
-      <DateGroupHeader date={date} total={dayTotal} animate={animateRows} />
+      <DateGroupHeader date={date} total={dayTotal} animate={animateRows} stickyTopClass={stickyTopClass} />
       {animateRows ? (
         <AnimatePresence initial={false} mode="popLayout">
           {body}

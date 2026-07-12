@@ -114,6 +114,12 @@ export interface OrdersQueueTableProps {
   scrollParentRef?: RefObject<HTMLElement | null>;
   /** Single sticky top-right control (e.g. swimlane Show less) — not per day-band. */
   dateHeaderEndSlot?: ReactNode;
+  /**
+   * The CSS `top-*` class for the internal sticky elements (DateGroupHeader and dateHeaderEndSlot).
+   * Used when `growToContent` is true to offset them below a parent's sticky header (e.g. 41px for a SwimlaneBoard lane header).
+   * Defaults to `'top-0'`.
+   */
+  stickyTopClass?: string;
 }
 
 export function OrdersQueueTable({
@@ -152,6 +158,7 @@ export function OrdersQueueTable({
   inheritColumnConfig = false,
   virtualized = false,
   dateHeaderEndSlot,
+  stickyTopClass = 'top-0',
   // `scrollParentRef` is still accepted (SwimlaneBoard lane-body contract) but no
   // longer consumed: stacked lanes render all rows instead of windowing against the
   // shared ancestor scroll (see the render branch below), so nothing to wire here.
@@ -367,7 +374,7 @@ export function OrdersQueueTable({
               {/* One sticky collapse control on the far right — docks with the
                   sticky date pill at top-0. NOT re-rendered on every day band. */}
               {dateHeaderEndSlot ? (
-                <div className="pointer-events-none sticky top-0 z-sticky h-0 overflow-visible">
+                <div className={`pointer-events-none sticky z-sticky h-0 overflow-visible ${stickyTopClass}`}>
                   <div className="flex justify-end px-3 pt-1.5">
                     <div className="pointer-events-auto">{dateHeaderEndSlot}</div>
                   </div>
@@ -410,6 +417,7 @@ export function OrdersQueueTable({
                             isMobile={isMobile}
                             renderRow={renderRow}
                             animateRows
+                            stickyTopClass={stickyTopClass}
                           />
                         </motion.div>
                       ))}
@@ -423,6 +431,7 @@ export function OrdersQueueTable({
                         isMobile={isMobile}
                         renderRow={renderRow}
                         animateRows={false}
+                        stickyTopClass={stickyTopClass}
                       />
                     ))
                   )}
