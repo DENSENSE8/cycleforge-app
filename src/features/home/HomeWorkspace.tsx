@@ -26,7 +26,8 @@ import { MyDayWorkspace } from '@/features/my-day/MyDayWorkspace';
 import { AgenticLoopLiveConsole } from '@/components/forge/AgenticLoopLiveConsole';
 import { HOME_MODE_ITEMS, homeModeLabel, type HomeMode } from './home-modes';
 import { useHomeMode } from './useHomeMode';
-import { HomeTasksPanel, HomeCollabPanel, HomeBriefPanel } from './HomeModePanels';
+import { HomeTasksMode } from './HomeTasksMode';
+import { HomeCollabPanel, HomeBriefPanel } from './HomeModePanels';
 
 export function HomeWorkspace() {
   const { mode, updateMode } = useHomeMode();
@@ -59,7 +60,7 @@ export function HomeWorkspace() {
             <AgenticLoopLiveConsole />
           </div>
         )}
-        {mode === 'tasks' && <HomeTasksPanel />}
+        {mode === 'tasks' && <HomeTasksMode />}
         {mode === 'collab' && <HomeCollabPanel />}
         {mode === 'brief' && <HomeBriefPanel />}
       </div>
