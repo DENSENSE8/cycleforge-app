@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
-import { DogfoodSurfaceGate } from '@/components/dogfood/DogfoodSurfaceGate';
 
+/**
+ * `/fba` is a permanent redirect to `/outbound?mode=fba` — no dogfood parking.
+ * FBA prep is hosted under Outbound (not a top-level parked surface anymore).
+ */
 export default function FbaLayout({ children }: { children: ReactNode }) {
-  return <DogfoodSurfaceGate surface="fba">{children}</DogfoodSurfaceGate>;
+  return children;
 }

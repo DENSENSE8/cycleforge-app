@@ -125,11 +125,11 @@ export function DashboardDetailsStack({
                   <span className="text-eyebrow font-black uppercase tracking-wider text-text-soft whitespace-nowrap">Undo</span>
                   <Button
                     type="button"
-                    variant="primary"
+                    variant="danger"
                     size="sm"
                     onClick={handleUndo}
                     disabled={isUndoing}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600"
+                    className="flex-1"
                   >
                     {isUndoing ? 'Undoing...' : 'Undo Last Scan'}
                   </Button>

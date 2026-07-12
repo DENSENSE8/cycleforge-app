@@ -49,8 +49,8 @@ export function useOutboundUrlState() {
     (next: OutboundMode) => {
       replaceParams((params) => {
         for (const key of OUTBOUND_MODE_SCOPED_PARAMS) params.delete(key);
-        if (next === 'scan-out') params.set('mode', 'scan-out');
-        else params.delete('mode');
+        if (next === 'labels') params.delete('mode');
+        else params.set('mode', next);
       });
     },
     [replaceParams],

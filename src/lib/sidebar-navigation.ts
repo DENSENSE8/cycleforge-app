@@ -23,7 +23,6 @@ import {
   MapPin,
   Monitor,
   Package,
-  PackageCheck,
   PackageOpen,
   Printer,
   Search,
@@ -145,7 +144,7 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view' },
-  { id: 'dashboard',         label: 'Orders / Shipping', href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
+  { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
   { id: 'walk-in',           label: 'Walk-In',     href: '/walk-in',            icon: ShoppingCart,    kind: 'main',    requires: 'walk_in.view' },
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
@@ -169,6 +168,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
   { id: 'packer',            label: 'Packing',     href: '/pack',               icon: Box,             kind: 'station', requires: 'packing.view' },
+  // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
@@ -442,31 +442,26 @@ const SUPPORT = '/support';
 const PACK = '/pack';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
-  // ── Orders / Shipping ─────────────────────────────────────────────────────
-  // Bare presence params (`?unshipped` / `?shipped` / `?warranty`); first match
-  // wins in the reader. Unshipped + Shipped are now ONE nav mode ("Outbound") —
-  // the pre-ship backlog and the shipped feed live under a single Outbound
-  // sidebar, and the Unshipped/Shipped split is a top-left TAB inside the main
-  // content (see `DashboardOrdersView`), not a nav-rail switch. `?unshipped` /
-  // legacy `?pending` / bare all resolve to Outbound; `?warranty` is its own
-  // mode. (FBA order-view is its own page.)
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+  // Bare presence params (`?unshipped` / `?shipped`); first match wins in the
+  // reader. Unshipped + Shipped are ONE nav mode ("Outbound") — the Unshipped/
+  // Shipped split is a top-left TAB inside the main content
+  // (`DashboardOrdersView`). Warranty Logger moved to Support (`?mode=warranty`);
+  // legacy `/dashboard?warranty=` redirects there from the dashboard page.
   {
-    id: 'dashboard', label: 'Orders / Shipping', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
+    id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
     modes: [
-      { id: 'outbound',  label: 'Outbound',         icon: PackageCheck, to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
-      { id: 'warranty',  label: 'Warranty Logger',  icon: ShieldCheck,  to: () => ({ pathname: DASHBOARD, params: { warranty: '', pending: null, shipped: null, unshipped: null, fba: null } }) },
+      { id: 'outbound',  label: 'Outbound',         icon: Truck,        to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
     ],
-    resolveMode: ({ params }) => {
-      if (params.has('warranty')) return 'warranty';
-      // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → the single
-      // Outbound mode (the Unshipped/Shipped tab lives in the main content).
+    resolveMode: () => {
+      // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Outbound.
       return 'outbound';
     },
   },
   // ── Operations ────────────────────────────────────────────────────────────
-  // `?mode=analytics|insights|history|signals`; bare /operations = the Live
-  // floor dashboard (default). The L2 rail mirrors the five right-pane modes
-  // (OperationsWorkspace). Every switch clears the mode-scoped params (search,
+  // `?mode=analytics|insights|history|signals|plans`; bare /operations = the Live
+  // floor dashboard (default). The L2 rail mirrors the six right-pane modes
+  // (OperationsWorkspace) — SoT `OPERATIONS_MODE_ITEMS`. Every switch clears the mode-scoped params (search,
   // selection, range, section…) so each mode opens clean — matches Inventory.
   {
     id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', requires: 'operations.view',
@@ -476,6 +471,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights',  signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
       { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history',   signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
       { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals',   signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
+      { id: 'plans',     label: 'Plans',     icon: ClipboardList, to: () => ({ pathname: OPERATIONS, params: { mode: 'plans',      signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -483,6 +479,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'insights') return 'insights';
       if (m === 'history') return 'history';
       if (m === 'signals') return 'signals';
+      if (m === 'plans') return 'plans';
       return 'live';
     },
   },
@@ -548,29 +545,35 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'queue';
     },
   },
-  // ── FBA prep ──────────────────────────────────────────────────────────────
-  // `?mode=plan|combine|shipped`; default `combine` (param cleared).
+  // ── FBA prep (legacy page nav — surface split hosts under Outbound) ─────
+  // Deep-links still resolve; primary UX is `/outbound?mode=fba&fbaMode=…`.
   {
-    id: 'fba', label: 'FBA prep', href: FBA, icon: Boxes, kind: 'main', requires: 'fba.view',
+    id: 'fba', label: 'FBA prep', href: OUTBOUND, icon: Boxes, kind: 'main', requires: 'fba.view',
     modes: [
-      { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: FBA, params: { mode: 'plan' } }) },
-      { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: FBA, params: { mode: null } }) },
-      { id: 'shipped', label: 'Shipped', icon: Truck,         to: () => ({ pathname: FBA, params: { mode: 'shipped' } }) },
+      { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', fbaMode: 'plan' } }) },
+      { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', fbaMode: null } }) },
+      { id: 'shipped', label: 'Shipped', icon: Truck,         to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', fbaMode: 'shipped' } }) },
     ],
     resolveMode: ({ params }) => {
-      const v = String(params.get('mode') || '').trim().toLowerCase();
+      const v = String(params.get('fbaMode') || params.get('mode') || '').trim().toLowerCase();
       return v === 'plan' || v === 'shipped' ? v : 'combine';
     },
   },
   // ── Outbound ──────────────────────────────────────────────────────────────
-  // `?mode=labels|scan-out`; default `labels` (param cleared).
+  // `?mode=labels|scan-out|ready|fba`; default `labels` (param cleared).
   {
     id: 'outbound', label: 'Outbound', href: OUTBOUND, icon: Truck, kind: 'station', requires: 'shipping.view',
     modes: [
-      { id: 'labels',   label: 'Labels',   icon: Printer, to: () => ({ pathname: OUTBOUND, params: { mode: null, q: null, open: null, sort: null } }) },
-      { id: 'scan-out', label: 'Scan out', icon: Barcode, to: () => ({ pathname: OUTBOUND, params: { mode: 'scan-out', q: null, open: null, sort: null } }) },
+      { id: 'labels',   label: 'Labels',   icon: Printer,       to: () => ({ pathname: OUTBOUND, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'scan-out', label: 'Scan out', icon: Barcode,       to: () => ({ pathname: OUTBOUND, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'ready',    label: 'Ready',    icon: ClipboardList, to: () => ({ pathname: OUTBOUND, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'fba',      label: 'FBA',      icon: Boxes,         to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', q: null, open: null, sort: null } }) },
     ],
-    resolveMode: ({ params }) => (params.get('mode') === 'scan-out' ? 'scan-out' : 'labels'),
+    resolveMode: ({ params }) => {
+      const m = params.get('mode');
+      if (m === 'scan-out' || m === 'ready' || m === 'fba') return m;
+      return 'labels';
+    },
   },
   // ── Packing ───────────────────────────────────────────────────────────────
   // `?packMode=fragile|multi`; default `standard` (param cleared). Mirrors the
@@ -684,22 +687,109 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Support ───────────────────────────────────────────────────────────────
-  // `?mode=voicemail|calls`; bare /support = the Zendesk Tickets console
-  // (default, param cleared) for deep-link back-compat. Voicemail is a Workbench
-  // (pick a follow-up → detail), Calls is a Monitor (observe the call stream).
-  // Every switch clears the mode-scoped params (selection, search, filters) so
-  // each mode opens clean.
+  // `?mode=voicemail|calls|warranty`; bare /support = the Zendesk Tickets
+  // console (default, param cleared) for deep-link back-compat. Voicemail is a
+  // Workbench, Calls is a Monitor, Warranty is the claim/coverage Workbench
+  // (moved from Dashboard). Every switch clears mode-scoped params so each
+  // mode opens clean — see SUPPORT_MODE_SCOPED_PARAMS.
   {
     id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'bottom', requires: 'integrations.zendesk',
     modes: [
-      { id: 'tickets',   label: 'Tickets',   icon: Inbox,     to: () => ({ pathname: SUPPORT, params: { mode: null,        ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
-      { id: 'voicemail', label: 'Voicemail', icon: Voicemail, to: () => ({ pathname: SUPPORT, params: { mode: 'voicemail', ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
-      { id: 'calls',     label: 'Calls',     icon: Phone,     to: () => ({ pathname: SUPPORT, params: { mode: 'calls',     ticket: null, vm: null, q: null, status: null, assignee: null, direction: null, range: null } }) },
+      {
+        id: 'tickets',
+        label: 'Tickets',
+        icon: Inbox,
+        to: () => ({
+          pathname: SUPPORT,
+          params: {
+            mode: null,
+            ticket: null,
+            vm: null,
+            q: null,
+            status: null,
+            assignee: null,
+            direction: null,
+            range: null,
+            search: null,
+            open: null,
+            wstatus: null,
+            wexp: null,
+          },
+        }),
+      },
+      {
+        id: 'voicemail',
+        label: 'Voicemail',
+        icon: Voicemail,
+        to: () => ({
+          pathname: SUPPORT,
+          params: {
+            mode: 'voicemail',
+            ticket: null,
+            vm: null,
+            q: null,
+            status: null,
+            assignee: null,
+            direction: null,
+            range: null,
+            search: null,
+            open: null,
+            wstatus: null,
+            wexp: null,
+          },
+        }),
+      },
+      {
+        id: 'calls',
+        label: 'Calls',
+        icon: Phone,
+        to: () => ({
+          pathname: SUPPORT,
+          params: {
+            mode: 'calls',
+            ticket: null,
+            vm: null,
+            q: null,
+            status: null,
+            assignee: null,
+            direction: null,
+            range: null,
+            search: null,
+            open: null,
+            wstatus: null,
+            wexp: null,
+          },
+        }),
+      },
+      {
+        id: 'warranty',
+        label: 'Warranty',
+        icon: ShieldCheck,
+        requires: 'warranty.view',
+        to: () => ({
+          pathname: SUPPORT,
+          params: {
+            mode: 'warranty',
+            ticket: null,
+            vm: null,
+            q: null,
+            status: null,
+            assignee: null,
+            direction: null,
+            range: null,
+            search: null,
+            open: null,
+            wstatus: null,
+            wexp: null,
+          },
+        }),
+      },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
       if (m === 'voicemail') return 'voicemail';
       if (m === 'calls') return 'calls';
+      if (m === 'warranty') return 'warranty';
       return 'tickets';
     },
   },

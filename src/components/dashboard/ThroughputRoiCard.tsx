@@ -19,8 +19,9 @@
  *
  * States: loading (Loader2 + text) · error / no-data-from-fetch (quiet null,
  * never crashes the dashboard) · `hasData === false` (quiet null — the sibling
- * `FirstScanOnboardingCard` owns the brand-new-shop first-run state, so the two
- * never stack a "no data yet" box) · `hasData === true` (the hero).
+ * `FirstScanOnboardingCard` (mounted alongside in UnshippedSidebar) owns the
+ * brand-new-shop first-run state, so the two never stack a "no data yet" box) ·
+ * `hasData === true` (the hero).
  */
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,13 +50,15 @@ const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-sof
  * `useOperationsRoi` from mounting at all for a user without `operations.view`,
  * so there is no wasted/403 fetch and no flash of an unauthorized card.
  */
-export function ThroughputRoiCard({ variant = 'band' }: { variant?: 'band' | 'sidebar' }) {
+export type ThroughputRoiVariant = 'band' | 'sidebar' | 'inline';
+
+export function ThroughputRoiCard({ variant = 'band' }: { variant?: ThroughputRoiVariant }) {
   const { isLoaded, has } = useAuth();
   if (!isLoaded || !has('operations.view')) return null;
   return <ThroughputRoiCardInner variant={variant} />;
 }
 
-function ThroughputRoiCardInner({ variant }: { variant: 'band' | 'sidebar' }) {
+function ThroughputRoiCardInner({ variant }: { variant: ThroughputRoiVariant }) {
   const { data, isLoading, isError } = useOperationsRoi();
 
   if (isLoading) {
@@ -83,10 +86,13 @@ function ThroughputRoiCardInner({ variant }: { variant: 'band' | 'sidebar' }) {
   return <RoiHero data={data} variant={variant} />;
 }
 
-const shellClass = (variant: 'band' | 'sidebar') =>
-  variant === 'sidebar' ? cn('bg-surface-card', SIDEBAR_GUTTER) : BAND;
+// `inline` drops the band's own border + padding so the card can nest inside a
+// host that owns its own gutter (the outbound KPI strip); its internal layout is
+// the horizontal band layout (sidebar=false below).
+const shellClass = (variant: ThroughputRoiVariant) =>
+  variant === 'sidebar' ? cn('bg-surface-card', SIDEBAR_GUTTER) : variant === 'inline' ? 'bg-transparent' : BAND;
 
-function RoiHero({ data, variant }: { data: OperationsRoiData; variant: 'band' | 'sidebar' }) {
+function RoiHero({ data, variant }: { data: OperationsRoiData; variant: ThroughputRoiVariant }) {
   const { unitsThisWeek, unitsLastWeek, pctChange, unitsPerLaborHour, unitsStuck } = data;
   const sidebar = variant === 'sidebar';
   return (

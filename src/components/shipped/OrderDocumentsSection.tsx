@@ -173,14 +173,14 @@ function DocumentTypeGroup({
         </div>
       ) : null}
 
-      {error ? <p className="mt-2 text-eyebrow font-bold text-red-600">{error}</p> : null}
+      {error ? <p className="mt-2 text-eyebrow font-bold text-text-danger">{error}</p> : null}
       {fetchError ? (
         <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-caption text-amber-700">{fetchError}</p>
+          <p className="text-caption text-text-warning">{fetchError}</p>
           <button
             type="button"
             onClick={() => fetchMutation.mutate()}
-            className="shrink-0 text-eyebrow font-bold uppercase tracking-widest text-amber-700 hover:underline"
+            className="shrink-0 text-eyebrow font-bold uppercase tracking-widest text-text-warning hover:underline"
           >
             Retry
           </button>

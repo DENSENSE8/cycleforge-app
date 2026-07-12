@@ -20,7 +20,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-CONN | `connections-mdx-forge-plan.md`, `connections-mdx-forge-EXECUTION-PROMPT.md` — **live:** 74 `CONN-*` in `master-plan.mdx` (`pnpm connections:check`) |
 | WS-ENGINE | `ops-events-station-workflow-unification-plan.md` |
 | WS-GLASS | `GLASS-DESIGN-SYSTEM.md` |
-| WS-HOME | `contextual-my-day-home-plan.md` |
+| WS-HOME | `contextual-my-day-home-plan.md`, **`home-ops-tv-collab-surfaces-plan.md`** (Home triage/collab · Ops TV · Forge on Home) |
 | WS-INT | `integrations-oauth-connection-plan.md`, `production-integrations-system-plan.md`, `reversibility-fixes-plan.md` |
 | WS-LOGIN | `org-login-gate-EXECUTION-PROMPT.md` |
 | WS-ONB | `onboarding-foundational-plan.md` |

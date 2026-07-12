@@ -53,8 +53,9 @@ export interface DashboardBulkSelection {
 export function useDashboardBulkSelection(
   orderView: DashboardOrderView,
 ): DashboardBulkSelection {
-  const selectionEnabled = orderView !== 'fba' && orderView !== 'warranty';
-  const isShippedView = orderView === 'shipped';
+  const selectionEnabled = orderView !== 'fba';
+  // Packed reuses the shipped row/delete path (packer records with packed_at).
+  const isShippedView = orderView === 'shipped' || orderView === 'packed';
   const [selectMode, setSelectMode] = useState(false);
   const selectedRows = useTableSelection<DashSelectableRow>(
     DASHBOARD_ORDERS_SELECTION_SCOPE,

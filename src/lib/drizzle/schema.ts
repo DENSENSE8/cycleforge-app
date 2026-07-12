@@ -3794,7 +3794,7 @@ export const stationDefinitions = pgTable('station_definitions', {
 }));
 
 // ─── Warranty Claim Logger + Repair Outcome Tracker ──────────────────────────
-// 4th mode on the Orders / Shipping page. See 2026-06-06_warranty_claim_logger.sql
+// Support › Warranty mode (`/support?mode=warranty`). See 2026-06-06_warranty_claim_logger.sql
 // and docs/warranty-claim-logger-plan.md. Clock logic: src/lib/warranty/clock.ts.
 
 /**

@@ -447,6 +447,116 @@ export function formatTimePST(
   return formatTime12hPST(input, options);
 }
 
+/**
+ * Ops-friendly stage time for dense rows: relative under 1 hour (`12m ago`),
+ * otherwise warehouse wall-clock (`3:45 PM`). Uses America/Los_Angeles for the
+ * clock form; relative is elapsed from now against the warehouse instant.
+ */
+/**
+ * Hours (or days) an order has sat in the current lane — prioritization without
+ * opening detail. Prefer stage entry instants (tested/packed/ship) over created_at.
+ * Returns null when no usable timestamp (caller omits the slot).
+ */
+export function formatLaneAgeCompact(
+  input: string | Date | null | undefined,
+  nowMs: number = Date.now(),
+): string | null {
+  if (input == null || input === '') return null;
+
+  let ms: number;
+  if (input instanceof Date) {
+    ms = input.getTime();
+  } else {
+    const raw = String(input).trim();
+    if (TZ_SUFFIX_RE.test(raw)) {
+      ms = Date.parse(raw);
+    } else {
+      const normalized = normalizePSTTimestamp(raw, { fallbackToNow: false });
+      if (!normalized) return null;
+      ms = fromZonedTime(normalized.replace(' ', 'T'), PST_TIME_ZONE).getTime();
+    }
+  }
+  if (!Number.isFinite(ms)) return null;
+
+  const delta = nowMs - ms;
+  if (delta < 0) return null;
+  const hours = Math.floor(delta / 3_600_000);
+  if (hours < 1) {
+    const mins = Math.max(0, Math.floor(delta / 60_000));
+    if (mins < 1) return '<1m';
+    return `${mins}m`;
+  }
+  if (hours < 48) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+/** Tone for lane-age chips — older ages get hotter. */
+export function getLaneAgeTone(hoursApprox: number | null): string {
+  if (hoursApprox == null) return 'text-text-faint';
+  if (hoursApprox >= 48) return 'text-red-600';
+  if (hoursApprox >= 24) return 'text-amber-600';
+  if (hoursApprox >= 8) return 'text-yellow-700';
+  return 'text-text-faint';
+}
+
+/** Elapsed hours for tone helpers (null when unparseable). */
+export function getLaneAgeHours(
+  input: string | Date | null | undefined,
+  nowMs: number = Date.now(),
+): number | null {
+  if (input == null || input === '') return null;
+  let ms: number;
+  if (input instanceof Date) {
+    ms = input.getTime();
+  } else {
+    const raw = String(input).trim();
+    if (TZ_SUFFIX_RE.test(raw)) {
+      ms = Date.parse(raw);
+    } else {
+      const normalized = normalizePSTTimestamp(raw, { fallbackToNow: false });
+      if (!normalized) return null;
+      ms = fromZonedTime(normalized.replace(' ', 'T'), PST_TIME_ZONE).getTime();
+    }
+  }
+  if (!Number.isFinite(ms)) return null;
+  const delta = nowMs - ms;
+  if (delta < 0) return null;
+  return delta / 3_600_000;
+}
+
+export function formatOpsStageTime(
+  input: string | Date | null | undefined,
+  nowMs: number = Date.now(),
+): string {
+  const placeholder = '--:--';
+  if (input == null || input === '') return placeholder;
+
+  let ms: number;
+  if (input instanceof Date) {
+    ms = input.getTime();
+  } else {
+    const raw = String(input).trim();
+    if (TZ_SUFFIX_RE.test(raw)) {
+      ms = Date.parse(raw);
+    } else {
+      const normalized = normalizePSTTimestamp(raw, { fallbackToNow: false });
+      if (!normalized) return placeholder;
+      // Naive warehouse wall → true instant in America/Los_Angeles.
+      ms = fromZonedTime(normalized.replace(' ', 'T'), PST_TIME_ZONE).getTime();
+    }
+  }
+  if (!Number.isFinite(ms)) return placeholder;
+
+  const delta = nowMs - ms;
+  if (delta >= 0 && delta < 60 * 60 * 1000) {
+    const mins = Math.max(0, Math.floor(delta / 60_000));
+    if (mins < 1) return 'just now';
+    return `${mins}m ago`;
+  }
+  return formatTime12hPST(input);
+}
+
 /** Wall-clock time in America/Los_Angeles (12-hour with AM/PM). */
 export function formatTime12hPST(
   input: string | Date | null | undefined,

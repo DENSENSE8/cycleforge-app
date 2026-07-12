@@ -206,6 +206,7 @@ test('resolveSidebarMode reads the operations mode', () => {
   assert.equal(resolveSidebarMode('operations', at('mode=insights')), 'insights');
   assert.equal(resolveSidebarMode('operations', at('mode=history')), 'history');
   assert.equal(resolveSidebarMode('operations', at('mode=signals')), 'signals');
+  assert.equal(resolveSidebarMode('operations', at('mode=plans')), 'plans');
   assert.equal(resolveSidebarMode('operations', at('mode=bogus')), 'live');
 });
 
@@ -260,17 +261,24 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('receiving', at('/receiving/history', 'q=abc')), 'history');
   assert.equal(getSidebarRouteKey('/pickup'), 'receiving');
   assert.equal(getSidebarRouteKey('/receiving/history'), 'receiving');
-  // FBA defaults to combine, not the leftmost-listed plan.
-  assert.equal(resolveSidebarMode('fba', at('/fba')), 'combine');
+  // FBA sub-modes live under Outbound as fbaMode (legacy mode=plan still works).
+  assert.equal(resolveSidebarMode('fba', at('/outbound', 'mode=fba')), 'combine');
+  assert.equal(resolveSidebarMode('fba', at('/outbound', 'mode=fba&fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarMode('fba', at('/fba', 'mode=plan')), 'plan');
+  // Outbound modes include ready + fba.
+  assert.equal(resolveSidebarMode('outbound', at('/outbound')), 'labels');
+  assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
+  assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=fba')), 'fba');
+  assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=scan-out')), 'scan-out');
   // Dashboard: Unshipped + Shipped collapsed into one "Outbound" nav mode; the
   // Unshipped/Shipped split is now a top-left tab in the main content, so both
   // `?shipped` and `?unshipped` (+ legacy `?pending` + bare) resolve to Outbound.
-  // `?warranty` stays its own mode.
+  // Warranty Logger moved to Support (`?mode=warranty`).
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'outbound');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'warranty=')), 'warranty');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'warranty=')), 'outbound');
+  assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
   // param-based so it resolves identically on the canonical route + legacy alias.

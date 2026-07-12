@@ -64,7 +64,7 @@ export function ShippedNotesComposer({
                   onClick={onCancel}
                   disabled={isSaving}
                   ariaLabel="Cancel note"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-text-faint hover:bg-red-50 hover:text-red-600"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-text-faint hover:bg-surface-danger hover:text-text-danger"
                   icon={<X className="h-4 w-4" />}
                 />
               </HoverTooltip>

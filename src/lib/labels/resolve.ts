@@ -16,7 +16,7 @@ import type {
   LabelResolveContext,
   ResolvedLabel,
 } from './types';
-import { LABEL_DEFAULTS, TONE_CLASSES } from './registry';
+import { LABEL_DEFAULTS, TONE_CLASSES, TONE_SVG_HEX } from './registry';
 
 /** Resolve one (kind, code) to its effective, render-ready label. */
 export function resolveLabel(
@@ -62,6 +62,16 @@ export function resolveLabel(
 /** Resolve every code in a kind, in seed (pipeline) order. The legend feed. */
 export function resolveKind(kind: LabelKind, ctx?: LabelResolveContext): ResolvedLabel[] {
   return Object.keys(LABEL_DEFAULTS[kind]).map((code) => resolveLabel(kind, code, ctx));
+}
+
+/**
+ * Raw hex for a state's chart arc/segment (KPI donut, sparkline), resolved from
+ * the SAME seeded tone that drives its board dot — so the gauge and the status
+ * dot always read as one hue. Tenant-override aware (an org that recolors a state
+ * recolors both its dot and its donut arc). SVG-only; UI dots keep `dot`/`pill`.
+ */
+export function stateChartHex(kind: LabelKind, code: string, ctx?: LabelResolveContext): string {
+  return TONE_SVG_HEX[resolveLabel(kind, code, ctx).tone];
 }
 
 /** Presentation shape the legacy `*_STATE_META` maps expose. */

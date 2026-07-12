@@ -27,6 +27,7 @@ import {
   dashboardOrderRowShellClass,
 } from '@/lib/dashboard-order-row-layout';
 import { isFbaPackerRecord, type DerivedPackerRecord } from '@/lib/shipped-records';
+import { formatOpsStageTime } from '@/utils/date';
 
 function normalizePersonName(value: unknown): string {
   const text = String(value ?? '').replace(/^tech:\s*/i, '').replace(/^packer:\s*/i, '').trim();
@@ -75,6 +76,27 @@ export function ShippedRecordRow({
   const productPageUrl = getExternalUrlByItemNumber(String(record.item_number || '').trim() || skuScanPrefixBeforeColon(String(record.scan_ref || record.shipping_tracking_number || '').trim()));
   const hideOrderIdChip = isSkuSourceRecord({ orderId: record.order_id, accountSource: record.account_source, trackingType: record.tracking_type, scanRef: String(record.scan_ref || record.shipping_tracking_number || '').trim() });
 
+  // Stage time on meta row 2: ship-out wins, else pack stamp (packer log created_at),
+  // else test stamp. PACKED_STAGED prefers pack time so staged vs left-building is clear.
+  const testedAt = record.test_date_time || null;
+  const packedAt = record.created_at || null;
+  const shippedAt = record.ship_confirmed_at || null;
+  const isPackedStaged = record.outboundState === 'PACKED_STAGED';
+  const hasLeft = record.hasLeft;
+  const stageTime = isPackedStaged || !hasLeft
+    ? packedAt || testedAt
+    : shippedAt || record.effShipTime || packedAt || testedAt;
+  const stageTimeLabel = isPackedStaged || (!hasLeft && packedAt)
+    ? 'Packed'
+    : hasLeft || shippedAt
+      ? 'Shipped out'
+      : testedAt
+        ? 'Tested'
+        : packedAt
+          ? 'Packed'
+          : null;
+  const stageTimeDisplay = stageTime ? formatOpsStageTime(stageTime) : null;
+
   return (
     <div
       onClick={(e) => (selectMode ? onToggle(Number(record.id), e.shiftKey) : onRowClick(record))}
@@ -118,6 +140,13 @@ export function ShippedRecordRow({
           rest={<div className="flex items-center gap-2">
             {techDisplay !== '---' ? <HoverTooltip label={`Tested by ${techDisplay}`}><StaffInitials staffId={techStaffId} name={techDisplay} /></HoverTooltip> : <StaffInitials staffId={techStaffId} name={techDisplay} />}
             {packerDisplay !== '---' ? <HoverTooltip label={`Packed by ${packerDisplay}`}><StaffInitials staffId={packerStaffId} name={packerDisplay} /></HoverTooltip> : <StaffInitials staffId={packerStaffId} name={packerDisplay} />}
+            {stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel ? (
+              <HoverTooltip label={`${stageTimeLabel} ${stageTimeDisplay}`}>
+                <span className="tabular-nums normal-case tracking-normal text-text-faint">
+                  {stageTimeDisplay}
+                </span>
+              </HoverTooltip>
+            ) : null}
             <CarrierStatusIcon className="ml-1" carrier={record.carrier} category={record.latest_status_category} statusLabel={record.latest_status_label} description={record.latest_status_description} latestEventAt={record.latest_event_at} hasException={record.has_exception} isTerminal={record.is_terminal} />
           </div>}
         />

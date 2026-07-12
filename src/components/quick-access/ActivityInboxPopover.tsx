@@ -135,7 +135,7 @@ function hrefFor(it: ActivityInboxItem): string | null {
   if (it.kind === 'support_followup' && it.ticketId) {
     return `/support?ticket=${it.ticketId}`;
   }
-  if (it.kind === 'warranty_claim' && it.claimId) return `/dashboard?warranty=&open=${it.claimId}`;
+  if (it.kind === 'warranty_claim' && it.claimId) return `/support?mode=warranty&open=${it.claimId}`;
   if (
     (it.kind === 'order_ready_ship' ||
       it.kind === 'return_pending_test' ||

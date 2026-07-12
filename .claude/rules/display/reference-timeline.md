@@ -1,20 +1,19 @@
 # Reference timeline — the shared history→detail data-display pattern
 
-> Inherits: ../ui-design-system.md (linear scaffold, one-row anatomy, eyebrow headers, chips, semantic-token color). This doc adds only what is timeline-specific.
+> Inherits: ../ui-design-system.md (Kinetic Ledger, one-row anatomy, chips, semantic tokens). Timeline-specific only.
 
 The merged, read-only event trail that shows **what happened to a record, newest-first** — carrier events,
-order/audit history, lifecycle `inventory_events`, tech verdicts, station scans, warranty/repair steps. It is a
-**cross-cutting display pattern, not an archetype.** It lives **inside** a Workbench detail pane (an order/SKU/unit
-inspector) or a Monitor page (the Operations history surface). It is never a page on its own and never the thing the
-user navigates by.
+order/audit history, lifecycle `inventory_events`, tech verdicts, station scans, warranty/repair steps.
 
-> Rule of thumb: a timeline is a *fact display*, not an input. If the user is reading what already happened, it's this
-> pattern. If they're picking/editing records, that's Workbench; if they're scanning, that's Station. The timeline rides
-> along inside one of those.
+**Data shape: event stream.** It is a **cross-cutting presentation pattern, not a region contract.** It may be:
 
-This is the **master–detail "detail" half** ([master–detail interface](https://en.wikipedia.org/wiki/Master%E2%80%93detail_interface)):
-the master picks a record, this renders that record's history. Treat it as a leaf component you drop in, not a surface
-you design per feature.
+- **Primary** on a Monitor history surface (Operations history), or
+- **Secondary** inside a Workbench focus surface (order/SKU/unit inspector fact stack),
+
+never the thing the user navigates by as a collection map, and never a parallel timeline component per feature.
+
+> Rule of thumb: a timeline is a *fact display*, not an input. Pick/edit → Workbench; scan → Station; observe stream →
+> Monitor. The timeline rides along as the history surface for the active entity or filter range.
 
 ---
 

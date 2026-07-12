@@ -15,7 +15,8 @@
  * shared `warmActiveView` warm-up so the splash holds until data is painted.
  */
 
-import { Suspense, useCallback } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { QueryClient } from '@tanstack/react-query';
 import { BootGate } from '@/components/boot/BootGate';
 import { BootSplash } from '@/components/boot/BootSplash';
@@ -28,9 +29,20 @@ import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
+import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
 
 function DashboardPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
+
+  // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
+  // Support › Warranty. Preserve open claim + filters for bookmarks / e2e.
+  useEffect(() => {
+    if (!searchParams.has('warranty')) return;
+    const qs = buildSupportWarrantyRedirectSearch(searchParams);
+    router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
+  }, [router, searchParams]);
 
   const { selectionEnabled, selectMode, toggleSelectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection(orderView);
@@ -44,6 +56,10 @@ function DashboardPageContent() {
   const refreshDashboard = useCallback(() => {
     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
   }, []);
+
+  if (searchParams.has('warranty')) {
+    return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
+  }
 
   return (
     <div className="flex h-full w-full">

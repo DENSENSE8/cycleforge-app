@@ -50,15 +50,19 @@ export async function fetchAwaitingLabelsData({
   );
 }
 
-/** Packed + staged at the dock, not yet scanned out — Outbound · Scan-out queue. */
+/** Packed + staged at the dock, not yet scanned out — Outbound · Scan-out + Dashboard · Packed. */
 export async function fetchStagedOrdersData({
   searchQuery = '',
+  staffId,
 }: {
   searchQuery?: string;
+  /** Universal staff filter (P1-WORK-02): packer/tester match. */
+  staffId?: number;
 } = {}): Promise<ShippedOrder[]> {
   const params = new URLSearchParams();
   if (searchQuery.trim()) params.set('q', searchQuery.trim());
   params.set('stagedOnly', 'true');
+  if (staffId != null && staffId > 0) params.set('staff', String(staffId));
 
   const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
   if (!res.ok) throw new Error('Failed to fetch staged orders');

@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  *
  * Verifies:
  *   - A warranty claim can be created via the API and opened in the
- *     Warranty Logger mode (/dashboard?warranty=&open=<id>)
+ *     Warranty Logger mode (/support?mode=warranty&open=<id>)
  *   - Clicking the support-ticket icon button opens the "Support ticket thread"
  *     popover showing "No Zendesk ticket yet"
  *   - POST /api/warranty/claims/<id>/zendesk is intercepted and fulfilled with
@@ -128,7 +128,7 @@ test.describe('Warranty claim — Zendesk round-trip', () => {
     });
 
     // ── 3. Navigate to Warranty Logger with the claim open ────────────────
-    await page.goto(`/dashboard?warranty=&open=${claimId}`);
+    await page.goto(`/support?mode=warranty&open=${claimId}`);
 
     // ── 4. Open the support-ticket popover ───────────────────────────────
     // The icon button renders both on the claim's table row and in the detail

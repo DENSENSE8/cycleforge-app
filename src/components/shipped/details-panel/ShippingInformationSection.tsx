@@ -7,6 +7,7 @@ import { formatDateTimePST } from '@/utils/date';
 import { Pencil, Copy, Check } from '@/components/Icons';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
 import { DateTimeValue } from '@/design-system/components/DateTimeValue';
+import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { CopyActionIcon } from '@/design-system/components/CopyActionIcon';
 import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -89,36 +90,31 @@ export function ShippingInformationSection({
     techNameDisplay,
     returnsCopyText,
   } = deriveShippingDisplayMeta(shipped, serialNumberRows);
-  const daysLateClassName =
-    daysLate > 1
-      ? 'text-micro font-black uppercase tracking-wide text-red-600'
-      : daysLate === 1
-        ? 'text-micro font-black uppercase tracking-wide text-yellow-600'
-        : 'text-micro font-black uppercase tracking-wide text-text-soft';
+  const daysLateTone = daysLate > 1 ? 'danger' : daysLate === 1 ? 'warning' : 'soft';
   const showProvenance = Boolean(shipped.packed_at && shipped.packed_at !== '1');
 
   const provenanceRows = showProvenance ? (
     <>
       <DetailsPanelRow label="Tested By">
         <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-sm font-bold text-text-default">{techNameDisplay}</p>
+          <LedgerValue value={techNameDisplay} truncate />
           <DateTimeValue value={shipped.test_date_time} />
         </div>
       </DetailsPanelRow>
       <DetailsPanelRow label="Packed By">
         <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-sm font-bold text-text-default">{packerNameDisplay}</p>
+          <LedgerValue value={packerNameDisplay} truncate />
           <DateTimeValue value={packedAtSource} />
         </div>
       </DetailsPanelRow>
       <DetailsPanelRow label="Scanned Out">
         {isScannedOut ? (
           <div className="flex items-center justify-between gap-3">
-            <p className="truncate text-sm font-bold text-text-default">{scannedOutByDisplay}</p>
+            <LedgerValue value={scannedOutByDisplay} truncate />
             <DateTimeValue value={shipped.ship_confirmed_at} />
           </div>
         ) : (
-          <p className="text-sm font-bold text-text-faint">N/A</p>
+          <LedgerValue value={null} />
         )}
       </DetailsPanelRow>
     </>
@@ -154,7 +150,7 @@ export function ShippingInformationSection({
                 ariaLabel="Copy all shipped details"
                 icon={copiedAll ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 className={`flex h-6 w-6 items-center justify-center rounded-md hover:bg-surface-sunken ${
-                  copiedAll ? 'text-emerald-600' : 'text-text-faint hover:text-text-muted'
+                  copiedAll ? 'text-text-success' : 'text-text-faint hover:text-text-muted'
                 }`}
               />
             </HoverTooltip>
@@ -189,14 +185,13 @@ export function ShippingInformationSection({
           onBlur={ef.onBlur}
           externalUrl={getOrderIdUrl(ef.orderNumber)}
           headerAccessory={accountSourceLabel || undefined}
-          headerAccessoryClassName="text-micro font-black tracking-wide text-blue-600"
+          headerAccessoryClassName="text-micro font-black tracking-wide text-text-info"
           allowEdit={false}
         />
 
         <ShippingEditableRow
           label="Ship By Date"
-          headerAccessory={String(daysLate)}
-          headerAccessoryClassName={daysLateClassName}
+          headerAccessory={<LedgerValue value={daysLate} variant="number" tier="meta" tone={daysLateTone} className="uppercase tracking-wide" />}
           value={ef.shipByDate}
           placeholder="MM-DD-YY"
           onChange={ef.onShipByDateChange}
@@ -255,10 +250,10 @@ export function ShippingInformationSection({
         {prepackedSku ? <PrepackedSkuRow sku={prepackedSku} /> : null}
 
         {ef.isSaving ? (
-          <p className="pt-2 text-micro font-bold uppercase tracking-wide text-blue-600">Saving shipping updates...</p>
+          <p className="pt-2 text-micro font-bold uppercase tracking-wide text-text-info">Saving shipping updates...</p>
         ) : null}
         {ef.isSavingShipByDate ? (
-          <p className="pt-1 text-micro font-bold uppercase tracking-wide text-blue-600">Saving ship by date...</p>
+          <p className="pt-1 text-micro font-bold uppercase tracking-wide text-text-info">Saving ship by date...</p>
         ) : null}
       </div>
     </section>

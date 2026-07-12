@@ -19,6 +19,11 @@ export interface ShippedTableEmptyStateProps {
   searchMeta: ShippedSearchMeta | null;
   /** Switch to the suggested type filter when the match is out of scope. */
   onApplySuggestedFilter: (filter: string) => void;
+  /**
+   * When set (Packed tab, no search), teach next action instead of a blank week message.
+   * e.g. CTA to open Scan-out for staging work.
+   */
+  idleEmpty?: { title: string; body: string; actionLabel?: string; onAction?: () => void } | null;
 }
 
 /**
@@ -34,6 +39,7 @@ export function ShippedTableEmptyState({
   onClearSearch,
   searchMeta,
   onApplySuggestedFilter,
+  idleEmpty = null,
 }: ShippedTableEmptyStateProps) {
   const suggestion = searchMeta?.outOfScope ? searchMeta.outOfScopeSuggestion : null;
 
@@ -60,6 +66,22 @@ export function ShippedTableEmptyState({
             </Button>
           ) : null}
         </>
+      ) : idleEmpty ? (
+        <div className="mx-auto max-w-sm rounded-xl border border-dashed border-border-soft bg-surface-canvas px-5 py-7 text-center">
+          <p className="text-caption font-bold text-text-default">{idleEmpty.title}</p>
+          <p className="mt-1.5 text-caption text-text-muted">{idleEmpty.body}</p>
+          {idleEmpty.actionLabel && idleEmpty.onAction ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              type="button"
+              onClick={idleEmpty.onAction}
+              className="mt-4"
+            >
+              {idleEmpty.actionLabel}
+            </Button>
+          ) : null}
+        </div>
       ) : (
         <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">No shipped records for this week</div>
       )}

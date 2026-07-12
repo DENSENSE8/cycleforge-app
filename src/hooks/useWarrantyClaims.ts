@@ -21,8 +21,8 @@ export interface WarrantyUrlState {
 
 /**
  * URL-state for the Warranty Logger mode: `?wstatus`, `?wexp`, `?open`. All mode
- * state lives in the URL (sidebar-mode contract); switching modes clears these
- * via normalizeDashboardOrderViewParams.
+ * state lives in the URL (sidebar-mode contract); Support mode switches clear
+ * these via SUPPORT_MODE_SCOPED_PARAMS.
  */
 export function useWarrantyUrlState(): WarrantyUrlState {
   const pathname = usePathname();
@@ -39,8 +39,17 @@ export function useWarrantyUrlState(): WarrantyUrlState {
     (mutate: (params: URLSearchParams) => void) => {
       const params = new URLSearchParams(searchParams.toString());
       mutate(params);
+      // Prefer staying on /support (Warranty lives under Support). Fall back to
+      // current path for any residual deep-links during redirect soak.
+      const base =
+        pathname?.startsWith('/support') || pathname?.startsWith('/dashboard')
+          ? pathname
+          : '/support';
+      if (base === '/support' && !params.has('mode')) {
+        params.set('mode', 'warranty');
+      }
       const qs = params.toString();
-      router.replace(qs ? `${pathname || '/dashboard'}?${qs}` : pathname || '/dashboard', { scroll: false });
+      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
     },
     [pathname, router, searchParams],
   );

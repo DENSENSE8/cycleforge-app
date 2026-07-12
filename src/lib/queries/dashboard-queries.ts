@@ -27,6 +27,7 @@ import {
   fetchUnshippedQueueCounts,
   fetchDashboardPackedRecords,
 } from '@/lib/dashboard-table-data';
+import { fetchStagedOrdersData } from '@/lib/outbound/outbound-table-data';
 import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsParams } from '@/lib/warranty/client';
 import { isPastWeekStart } from '@/lib/dashboard-week-range';
 
@@ -119,6 +120,25 @@ export function unshippedQueueCountsQuery({ staffId }: { staffId?: number } = {}
   return queryOptions({
     queryKey: ['dashboard-table', 'unshipped-counts', { staffId: staffId ?? null }],
     queryFn: () => fetchUnshippedQueueCounts({ staffId }),
+    staleTime: 60_000,
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * Dashboard · Packed — first-class `stagedOnly` orders path (PACK event, no
+ * SHIP_CONFIRM). Not a client filter of the shipped week packerlogs query.
+ */
+export function packedOrdersQuery({
+  searchQuery = '',
+  staffId,
+}: {
+  searchQuery?: string;
+  staffId?: number;
+} = {}) {
+  return queryOptions({
+    queryKey: ['dashboard-table', 'packed', { searchQuery, staffId: staffId ?? null }],
+    queryFn: () => fetchStagedOrdersData({ searchQuery, staffId }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
   });

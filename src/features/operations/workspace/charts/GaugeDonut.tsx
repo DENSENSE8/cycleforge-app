@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/_cn';
 
@@ -19,6 +19,19 @@ interface GaugeDonutProps {
   size?: number;
   thickness?: number;
   className?: string;
+  /** Enable per-arc hover: the hovered arc lifts, the others dim, and the center
+   *  readout swaps to that segment's label · value · share. */
+  interactive?: boolean;
+  /**
+   * Monitor filter-only click: when set, arcs become toggle affordances. Clicking
+   * an arc calls `onSelect(key)`; the `activeKey` arc stays lit (raised, others
+   * dimmed) even without hover — the visual twin of the toolbar legend's lit chip.
+   * Keyboard access is provided by that legend; the arcs are a secondary pointer
+   * affordance, so they add focus semantics but never a durable selection.
+   */
+  onSelect?: (key: string) => void;
+  /** The currently-filtered segment key (drives the lit/pinned arc). */
+  activeKey?: string | null;
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -42,7 +55,14 @@ export function GaugeDonut({
   size = 200,
   thickness = 16,
   className,
+  interactive = false,
+  onSelect,
+  activeKey = null,
 }: GaugeDonutProps) {
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
+  const clickable = Boolean(onSelect);
+  // Hover wins for pointer feedback; the active (filtered) arc stays lit at rest.
+  const litKey = hoverKey ?? activeKey;
   const sum = total ?? segments.reduce((acc, s) => acc + Math.max(0, s.value), 0);
   const cx = size / 2;
   const cy = size / 2;
@@ -78,30 +98,72 @@ export function GaugeDonut({
             strokeLinecap="round"
           />
         </g>
-        {arcs.map((arc, i) => (
-          <motion.path
-            key={arc.key}
-            d={arc.d}
-            fill="none"
-            stroke={arc.color}
-            strokeWidth={thickness}
-            strokeLinecap="round"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.1 + i * 0.08, ease: EASE }}
-          />
-        ))}
-        {/* center readout — currentColor so it inherits the dark-mode remap */}
-        <g className="text-text-default">
-          <text x={cx} y={cy - r * 0.18} textAnchor="middle" fill="currentColor" className="text-2xl font-black tabular-nums">
-            {sum.toLocaleString()}
-          </text>
-        </g>
-        <g className="text-text-faint">
-          <text x={cx} y={cy + 4} textAnchor="middle" fill="currentColor" className="text-micro font-bold uppercase tracking-[0.18em]">
-            {centerLabel}
-          </text>
-        </g>
+        {arcs.map((arc, i) => {
+          const lit = litKey === arc.key;
+          const dimmed = litKey != null && !lit;
+          const hoverable = interactive || clickable;
+          return (
+            <motion.path
+              key={arc.key}
+              d={arc.d}
+              fill="none"
+              stroke={arc.color}
+              strokeWidth={lit ? thickness + 3 : thickness}
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: dimmed ? 0.28 : 1 }}
+              transition={{
+                pathLength: { duration: 0.7, delay: 0.1 + i * 0.08, ease: EASE },
+                opacity: { duration: 0.15 },
+                strokeWidth: { duration: 0.12 },
+              }}
+              className={clickable ? 'outline-none focus-visible:opacity-100' : undefined}
+              style={hoverable ? { cursor: 'pointer' } : undefined}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              aria-label={clickable ? `Filter board to ${arc.key.replace(/_/g, ' ').toLowerCase()}` : undefined}
+              aria-pressed={clickable ? activeKey === arc.key : undefined}
+              onMouseEnter={hoverable ? () => setHoverKey(arc.key) : undefined}
+              onMouseLeave={hoverable ? () => setHoverKey(null) : undefined}
+              onFocus={clickable ? () => setHoverKey(arc.key) : undefined}
+              onBlur={clickable ? () => setHoverKey(null) : undefined}
+              onClick={clickable ? () => onSelect?.(arc.key) : undefined}
+              onKeyDown={
+                clickable
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelect?.(arc.key);
+                      }
+                    }
+                  : undefined
+              }
+            />
+          );
+        })}
+        {/* center readout — currentColor so it inherits the dark-mode remap. On
+            hover the readout swaps to the hovered segment's value + label. */}
+        {(() => {
+          const hovered = litKey ? segments.find((s) => s.key === litKey) : null;
+          const bigText = hovered ? hovered.value.toLocaleString() : sum.toLocaleString();
+          const subText = hovered
+            ? `${hovered.label} · ${sum > 0 ? Math.round((hovered.value / sum) * 100) : 0}%`
+            : centerLabel;
+          return (
+            <>
+              <g style={hovered ? { fill: hovered.color } : undefined} className={hovered ? undefined : 'text-text-default'}>
+                <text x={cx} y={cy - r * 0.18} textAnchor="middle" fill={hovered ? hovered.color : 'currentColor'} className="text-2xl font-black tabular-nums">
+                  {bigText}
+                </text>
+              </g>
+              <g className="text-text-faint">
+                <text x={cx} y={cy + 4} textAnchor="middle" fill="currentColor" className="text-micro font-bold uppercase tracking-[0.14em]">
+                  {subText}
+                </text>
+              </g>
+            </>
+          );
+        })()}
       </svg>
     </div>
   );

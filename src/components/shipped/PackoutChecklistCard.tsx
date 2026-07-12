@@ -45,7 +45,7 @@ function LineBlock({ line }: { line: PackChecklistLineDto }) {
                 {part.qty > 1 ? ` ×${part.qty}` : ''}
               </span>
               {part.critical ? (
-                <span className="shrink-0 rounded bg-amber-50 px-1 py-0.5 text-eyebrow font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+                <span className="shrink-0 rounded bg-surface-warning px-1 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-warning ring-1 ring-inset ring-border-warning">
                   Required
                 </span>
               ) : null}
@@ -112,7 +112,7 @@ export function PackoutChecklistCard({
           className={cn(
             'ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset',
             allPacked
-              ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+              ? 'bg-surface-success text-text-success ring-border-success'
               : 'bg-surface-sunken text-text-soft ring-border-soft',
           )}
         >

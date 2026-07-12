@@ -10,6 +10,7 @@ import { ConditionPills } from '@/components/receiving/workspace/ConditionPills'
 import { FnskuCatalogInfoPanel } from '@/components/fba/FnskuCatalogInfoPanel';
 import { getFnskuCatalogValue, isFnskuCatalogContext } from '@/utils/fnsku-catalog';
 import { CopyChip } from '@/components/ui/CopyChip';
+import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { ShippingEditableRow, type EditableShippingFields } from '@/components/shipped/details-panel/ShippingInformationSection';
 import { useExternalItemUrl } from '@/hooks/useExternalItemUrl';
 import { isOrderShipped } from '@/components/shipped/details-panel/shipped-details-logic';
@@ -95,9 +96,7 @@ function PlatformSkuRow({ entry }: { entry: PlatformSkuEntry }) {
         />
       </div>
       {entry.itemId && entry.itemId !== entry.value && (
-        <span className="shrink-0 font-mono text-micro text-text-faint">
-          {entry.itemId}
-        </span>
+        <LedgerValue value={entry.itemId} variant="id" tier="meta" tone="faint" className="shrink-0" nowrap />
       )}
     </div>
   );
@@ -241,13 +240,13 @@ export function ProductDetailsSection({
             value={shipped.product_title || 'Not provided'}
             noTruncate
             variant="flat"
-            valueClassName="font-dm-sans"
+            valueClassName="font-sans"
           />
 
           <div className="border-b border-border-hairline py-3">
             {isSavingCondition ? (
               <div className="mb-1 flex justify-end">
-                <span className="text-micro font-black uppercase tracking-wide text-blue-600">Saving</span>
+                <span className="text-micro font-black uppercase tracking-wide text-text-info">Saving</span>
               </div>
             ) : null}
             <ConditionPills value={conditionValue} onChange={handleConditionChange} readOnly={conditionLocked} />

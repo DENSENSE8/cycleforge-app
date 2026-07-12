@@ -75,7 +75,7 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
           <span className={`mt-0.5 block whitespace-pre-line break-words ${dataValue}`}>{value}</span>
         </span>
         {copied === key ? (
-          <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+          <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-text-success" />
         ) : (
           <Copy className="mt-1 h-3.5 w-3.5 shrink-0 text-text-faint" />
         )}
@@ -135,7 +135,7 @@ export function CustomerDetailsTab({ customerId }: CustomerDetailsTabProps) {
           type="button"
           variant="secondary"
           onClick={() => copy('full', fullAddress)}
-          icon={copied === 'full' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+          icon={copied === 'full' ? <Check className="h-3.5 w-3.5 text-text-success" /> : <Copy className="h-3.5 w-3.5" />}
           className={`w-full rounded-xl border border-border-soft bg-surface-card py-2 ring-0 ${sectionLabel} text-text-muted hover:bg-surface-hover`}
         >
           {copied === 'full' ? 'Copied' : 'Copy full address'}

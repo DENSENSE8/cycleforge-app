@@ -1,16 +1,17 @@
-# Workbench display — list → select → detail → update
+# Workbench display — select → edit → persist
 
-The pointer-driven master-detail editor. A user **navigates** a set of records that are **not** scan-driven and
-**edits** them: catalog authoring, QC checklists, kit-parts ("what's in the box"), pairing, settings. Deliberate,
-durable, URL-addressable selection, CRUD. This is the **default archetype** — if a region isn't a scanner Station, a
-read-only Monitor, or a node-graph Canvas, it's a Workbench.
+The **pick+edit region contract**: pointer-driven navigation of records that are **not** scan-driven, with
+**durable, URL-addressable selection** and CRUD. This is the **default contract** — if a region isn't a scanner Station,
+a read-only Monitor, or a node-graph Canvas, it's a Workbench.
 
-**Inherits:** ../ui-design-system.md (linear scaffold, one-row anatomy, eyebrow + chips, `HoverTooltip`, semantic
-tokens, icon pairing). This doc only details what's *specific* to the Workbench archetype; never restate the shared
-house style.
+Workbench is **not** “sidebar + right pane forever.” That is one **common recipe**. Data shape chooses primary surface
+(list / table / board / master–detail / fact stack). Density default: **`ops`**.
 
-> Rule of thumb: if the user **picks from a list and edits**, the **sidebar is the map and the right pane is the
-> workspace.** Keep the map stable; transition only the workspace.
+**Inherits:** ../ui-design-system.md (Kinetic Ledger, density, presentation kinds, one-row anatomy, chips, tokens).
+This doc only details what's *specific* to the Workbench contract.
+
+> Rule of thumb: if the user **picks a record and edits it**, keep a **stable collection map** and a **singular focus
+> surface** for the selected record. Crossfade only the focus surface — never the map.
 
 ---
 
@@ -21,24 +22,31 @@ house style.
   job decides, not the feature area or the route.
 - **The signature is durable, URL-addressable selection + CRUD.** If the user picks a record, edits it, and the edit
   persists through a route — and a reload should land them back on the same record — it's a Workbench.
-  `ProductsWorkspace.tsx` is the reference: one page, five modes (`?view=labels|pairing|qc|kit`, default Manuals),
-  each a list→select→edit surface.
-- **Anti-mix guard — never invert the sidebar.** The sidebar is the **master picker** for *every* mode in the page;
-  that cross-mode consistency is the whole point. **Do not** flip one mode to put related/similar items where the
-  picker belongs (siblings go *below* the picker via progressive disclosure — see that section). Inverting the map
-  breaks the user's mental model the moment they switch modes.
-- A page may **host** a Workbench beside another archetype (a scan bench with an inspector that's a mini-workbench),
-  but each *region* obeys exactly one archetype — never blend two in one region.
+- **Anti-mix:** never bolt Workbench edit onto a pure Monitor stream; never drop a browse list into a Station scan column.
+- A page may **host** a Workbench beside another contract (scan bench + inspector), but each *region* obeys exactly one.
 
 ---
 
-## Anatomy
+## Recipes (data shape chooses)
 
-Three structural slots, always in this order:
+| Recipe | Primary map | Focus surface | When |
+|---|---|---|---|
+| **Master–detail** | Sidebar picker (`SidebarShell` / rail) | Right pane workspace | Mode-scoped catalogs, multi-mode pages (Products, many receiving modes) |
+| **Table / queue + context** | Dense table | Drawer / side panel / stack | Wide rows, multi-column ops (orders, shipments) |
+| **Board + detail** | Swimlanes / cards on lanes | Board detail panel | Pipeline states (FBA board) |
+| **Fact stack / form** | Optional thin list or none | Full-width record body | Single durable entity already selected |
+
+**Detail pane / right pane = optional secondary** in table/board recipes. Do not invent a dual pane to satisfy an old template when the collection is already the job.
+
+---
+
+## Anatomy — master–detail recipe (common)
+
+When using the sidebar map, three structural slots, in this order:
 
 | Slot | Owns | Reference |
 |---|---|---|
-| **Sidebar picker** (the stable map) | searchable master list + mode rail; the navigator for the whole page | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
+| **Sidebar picker** (the stable map) | searchable master list + mode rail | `ProductsSidebarPanel.tsx` via `src/components/layout/SidebarShell.tsx` |
 | **Mode rail** | `?view=`/`?mode=` switcher pinned in the sidebar header | `HorizontalButtonSlider` `variant="nav"` `dense` |
 | **Right pane** (the workspace) | the selected record's detail/editor; crossfades on selection change | `QcChecklistWorkspace.tsx`, `KitPartsWorkspace.tsx` |
 
@@ -48,13 +56,12 @@ Three structural slots, always in this order:
   and stacks `headerAbove` (mode rail) → search →
   `headerRows[]` (sub-tabs) → `children` (the single `flex-1 overflow-y-auto` body). The panel supplies slots, not
   layout — that's what kept the 40px search band from drifting per page.
-- **The mode rail lives in the sidebar header**, not the right pane. `ProductsSidebarPanel.tsx` passes the view slider
+- **The mode rail lives with the map** (sidebar header), not buried in the detail surface. `ProductsSidebarPanel.tsx` passes the view slider
   as `headerAbove` and conditional sub-tab/sort rows (`labelsView`, `pairingSort`) as `headerRows`. Each is a
   `HorizontalButtonSlider` `variant="nav" dense` (32px pill in a 40px band).
+- **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
-  cramped two-up. This is the M3 *list-detail* canonical layout's pane-collapse rule and WinUI's *List/Details*
-  pattern — selection drives which pane is visible. (M3: https://m3.material.io/foundations/layout/canonical-layouts ·
-  WinUI: https://learn.microsoft.com/en-us/windows/apps/design/controls/list-details)
+  cramped two-up. (M3 list-detail / WinUI List/Details patterns.)
 
 ---
 
@@ -102,16 +109,12 @@ Three structural slots, always in this order:
 
 ## Selection lifecycle
 
-The list is the stable map; only the detail moves.
+The collection map is stable; only the **focus surface** moves.
 
-1. **Row click → `router.replace`.** The picker writes the selection id to the URL. `QcSidebarPicker`/`KitPartsPicker`
-   set `?view=…&skuId=…`; the active row stays highlighted (`bg-blue-50 text-blue-700`, trailing `Check`).
-2. **URL change → id-gated re-fetch.** The detail hook reads the id and gates on validity:
-   `useSkuQcChecks(skuId)` / `useSkuKitParts(skuId)` set `enabled: typeof skuCatalogId === 'number' && skuCatalogId > 0`,
-   so an empty/`null` selection never fires a request — it renders the teaching empty state instead.
-3. **Crossfade the right pane**, keyed on the selection id (see Right-pane crossfade).
-4. **The list never animates.** Selection is `bg-blue-50 ring-1 ring-inset ring-blue-400` background+ring only — never
-   a size/height shift, never a list crossfade. Stable navigation; the map stays put.
+1. **Row click → `router.replace`.** Write the selection id to the URL. Active row uses house selection ring only.
+2. **URL change → id-gated re-fetch.** Detail hooks gate on validity so empty selection never fires; teaching empty instead.
+3. **Crossfade the focus surface** (right pane, drawer, or stack), keyed on the selection id.
+4. **The map never animates.** Selection is `bg-blue-50 ring-1 ring-inset ring-blue-400` only — never a size/height shift.
 
 ---
 
@@ -149,9 +152,9 @@ The list is the stable map; only the detail moves.
 
 ---
 
-## Right-pane crossfade
+## Focus-surface crossfade (right pane recipe)
 
-- **Crossfade the right pane on selection change; keep the list mounted and still.** `AnimatePresence mode="wait"`
+- **Crossfade the focus surface on selection change; keep the collection map mounted and still.** For master–detail, that surface is the right pane. `AnimatePresence mode="wait"`
   keyed on the selection id, **opacity + small-y only**, `prefers-reduced-motion` honored. `ReceivingRightPane.tsx` is
   the reference: the focused workspace is a `motion.div key={`workspace-${workspace.row.id}`}` with
   `initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}` →

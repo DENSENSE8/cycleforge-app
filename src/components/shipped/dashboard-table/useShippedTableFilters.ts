@@ -15,16 +15,23 @@ import {
 } from '@/components/shipping/ShippedFilterToolbar';
 import { deriveShippedRecord } from '@/lib/shipped-records';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
+import type { OutboundState } from '@/lib/outbound-state';
 
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
 
-/** Right-pane presentation of the same week-scoped record set:
- *  `board` = outbound-state swimlanes (default), `all` = flat chronological list. */
+/** Presentation of the same week-scoped record set:
+ *  `all` = flat chronological list (default, sole dashboard lens);
+ *  `board` = outbound-state swimlanes (legacy / embedded only). */
 export type ShippedLayout = 'board' | 'all';
 
 export interface UseShippedTableFiltersOptions {
   packedBy?: number;
   testedBy?: number;
+  /**
+   * When set (Packed tab), only rows in this outbound state are shown and
+   * `?ostatus` is ignored so the list stays exact for that lifecycle stage.
+   */
+  lockedOutboundStatus?: OutboundState | null;
 }
 
 /**
@@ -33,7 +40,11 @@ export interface UseShippedTableFiltersOptions {
  * exposes the URL mutators that write them back. Keeping this in one hook means
  * the table body never touches `searchParams` directly.
  */
-export function useShippedTableFilters({ packedBy, testedBy }: UseShippedTableFiltersOptions) {
+export function useShippedTableFilters({
+  packedBy,
+  testedBy,
+  lockedOutboundStatus = null,
+}: UseShippedTableFiltersOptions) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,7 +76,10 @@ export function useShippedTableFilters({ packedBy, testedBy }: UseShippedTableFi
   // already-loaded week records by exact derived state — week-scoped, so it
   // stays in lockstep with the legend's week counts (no all-time widening).
   // The Exception chip folds PROCESS_GAP (same bucket the legend renders).
-  const obStatus = String(searchParams.get('ostatus') || '').trim().toUpperCase();
+  // Locked status (Packed tab) wins over URL so the list stays exact.
+  const obStatus = lockedOutboundStatus
+    ? lockedOutboundStatus
+    : String(searchParams.get('ostatus') || '').trim().toUpperCase();
   const matchesOutbound = useCallback(
     (r: PackerRecord): boolean => {
       if (!obStatus) return true;
@@ -96,9 +110,11 @@ export function useShippedTableFilters({ packedBy, testedBy }: UseShippedTableFi
   const search = searchParams.get('search') || '';
   const normalizedSearch = search.trim().toLowerCase();
 
-  // Presentation lens over the same records — URL-backed so a shared `?layout=board`
-  // link (and a reload) reproduce the exact view. Default `all` drops out of the URL.
-  const layout: ShippedLayout = searchParams.get('layout') === 'board' ? 'board' : 'all';
+  // Dashboard lifecycle tabs are list-only. Board layout remains URL-readable for
+  // any residual bookmarks but the outbound header no longer offers the switch;
+  // locked stages (Packed) always force the flat list.
+  const layout: ShippedLayout =
+    lockedOutboundStatus || searchParams.get('layout') !== 'board' ? 'all' : 'board';
 
   // Mirror the active type filter into the persisted preference.
   useEffect(() => {

@@ -5,11 +5,9 @@ import { readShippedFilterPreference } from '@/utils/dashboard-preferences';
 import {
   unshippedOrdersQuery,
   dashboardShippedQuery,
+  packedOrdersQuery,
   fbaShipmentsQuery,
-  warrantyClaimsQuery,
 } from '@/lib/queries/dashboard-queries';
-import { WARRANTY_EXPIRING_SOON_DAYS } from '@/hooks/useWarrantyClaims';
-import { isWarrantyClaimStatus } from '@/lib/warranty/types';
 
 /**
  * Warm the active dashboard view's data into the React Query cache. Shared by
@@ -18,6 +16,8 @@ import { isWarrantyClaimStatus } from '@/lib/warranty/types';
  * single source of truth). `shippedFilter` falls back to the stored preference,
  * matching how `DashboardShippedTable` resolves it. Returns a promise that
  * settles when the active view is ready.
+ *
+ * Warranty Logger lives under Support (`/support?mode=warranty`) — not warmed here.
  */
 export function warmActiveView(
   queryClient: QueryClient,
@@ -33,15 +33,11 @@ export function warmActiveView(
   if (view === 'fba') {
     return queryClient.prefetchQuery(fbaShipmentsQuery());
   }
-  if (view === 'warranty') {
-    const wstatus = sp.get('wstatus');
-    return queryClient.prefetchQuery(
-      warrantyClaimsQuery({
-        status: isWarrantyClaimStatus(wstatus) ? wstatus : null,
-        search: searchQuery,
-        expiringWithinDays: sp.get('wexp') === '1' ? WARRANTY_EXPIRING_SOON_DAYS : null,
-      }),
-    );
+  // Packed uses the first-class stagedOnly orders path (not week packerlogs).
+  if (view === 'packed') {
+    const staffRaw = Number(sp.get('staff'));
+    const staffId = Number.isFinite(staffRaw) && staffRaw > 0 ? staffRaw : undefined;
+    return queryClient.prefetchQuery(packedOrdersQuery({ searchQuery, staffId }));
   }
   if (view === 'shipped') {
     const week = getWeekRangeForOffset(0);
@@ -50,6 +46,6 @@ export function warmActiveView(
       dashboardShippedQuery({ weekStart: week.startStr, weekEnd: week.endStr, shippedFilter }),
     );
   }
-  // Default + legacy `?pending` → the merged Unshipped backlog.
+  // Default + legacy `?pending` → the merged To Ship backlog.
   return queryClient.prefetchQuery(unshippedOrdersQuery({ searchQuery, strictSearchScope: true }));
 }

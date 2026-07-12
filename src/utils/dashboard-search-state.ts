@@ -6,10 +6,15 @@ import type { ShippedDetailsContext } from '@/utils/events';
 // 'pending' removed — Awaiting+Pending merged into 'unshipped' (2026-06-13).
 // getDashboardOrderViewFromSearch never returns 'pending'; all legacy ?pending
 // URLs resolve to 'unshipped' at the URL-read layer.
-export type DashboardOrderView = 'unshipped' | 'shipped' | 'fba' | 'warranty';
+//
+// Lifecycle tabs (ops names → industry labels in the UI):
+//   unshipped → "To Ship"  (labeled, not yet packed)
+//   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
+//   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
+export type DashboardOrderView = 'unshipped' | 'packed' | 'shipped' | 'fba';
 /**
- * UI grouping for the dashboard view pills. Unshipped / Shipped are all
- * the same underlying orders data; FBA is a distinct data source and stays its own group.
+ * UI grouping for the dashboard view pills. To Ship / Packed / Shipped share
+ * outbound order data; FBA is a distinct data source and stays its own group.
  */
 export type DashboardViewGroup = 'orders' | 'fba';
 export type DashboardCacheEntry = readonly [unknown, unknown];
@@ -32,12 +37,29 @@ export interface DashboardAssignmentUpdateDetail {
   condition?: string | null;
 }
 
+/**
+ * Build the Support warranty deep-link from a legacy `/dashboard?warranty=` URL.
+ * Preserves open claim + filters + search for bookmark compatibility.
+ */
+export function buildSupportWarrantyRedirectSearch(
+  searchParams: Pick<URLSearchParams, 'get'>
+): string {
+  const next = new URLSearchParams();
+  next.set('mode', 'warranty');
+  for (const key of ['open', 'wstatus', 'wexp', 'search'] as const) {
+    const value = searchParams.get(key);
+    if (value) next.set(key, value);
+  }
+  return next.toString();
+}
+
 export function getDashboardOrderViewFromSearch(
   searchParams: Pick<URLSearchParams, 'has'>
 ): DashboardOrderView {
   if (searchParams.has('shipped')) return 'shipped';
+  if (searchParams.has('packed')) return 'packed';
   if (searchParams.has('fba')) return 'fba';
-  if (searchParams.has('warranty')) return 'warranty';
+  // Legacy `?warranty` is redirected to Support by the dashboard page; treat as unshipped.
   // The merged pre-ship mode. `?unshipped`, the legacy `?pending` (Awaiting +
   // Pending are now one mode), and the bare default all resolve here.
   return 'unshipped';
@@ -47,6 +69,16 @@ export function getDashboardViewGroup(view: DashboardOrderView): DashboardViewGr
   return view === 'fba' ? 'fba' : 'orders';
 }
 
+/** Display labels for the outbound lifecycle slider (industry-standard wording). */
+export const DASHBOARD_ORDER_VIEW_LABEL: Record<
+  Exclude<DashboardOrderView, 'fba'>,
+  string
+> = {
+  unshipped: 'To Ship',
+  packed: 'Packed',
+  shipped: 'Shipped',
+};
+
 export function normalizeDashboardOrderViewParams(
   params: URLSearchParams,
   preferredView?: DashboardOrderView
@@ -54,13 +86,32 @@ export function normalizeDashboardOrderViewParams(
   const nextView = preferredView ?? getDashboardOrderViewFromSearch(params);
   params.delete('unshipped');
   params.delete('pending');
+  params.delete('packed');
   params.delete('shipped');
   params.delete('fba');
   params.delete('warranty');
-  // Clear warranty mode-scoped params (selection + filters) so they don't leak across modes.
+  // Clear residual warranty params if any still ride on dashboard URLs.
   params.delete('open');
   params.delete('wstatus');
   params.delete('wexp');
+  // Nested board layout was retired — lists only on To Ship / Packed / Shipped.
+  params.delete('layout');
+  // Cross-tab status filters are view-specific; clear so they don't bleed.
+  if (nextView !== 'unshipped') {
+    params.delete('ustatus');
+    params.delete('stage');
+    params.delete('late');
+    params.delete('attention');
+    params.delete('surface');
+  }
+  if (nextView === 'packed') {
+    // Packed is the exact staged list — status chips don't apply.
+    params.delete('ostatus');
+    params.delete('exceptions');
+  }
+  if (nextView !== 'shipped' && nextView !== 'packed') {
+    params.delete('ostatus');
+  }
   params.set(nextView, '');
   return nextView;
 }

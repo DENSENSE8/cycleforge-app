@@ -20,6 +20,7 @@ import {
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
+  ShieldCheck,
   TicketHelp,
   Voicemail,
 } from '@/components/Icons';
@@ -27,7 +28,7 @@ import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlide
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type SupportMode = 'tickets' | 'voicemail' | 'calls';
+export type SupportMode = 'tickets' | 'voicemail' | 'calls' | 'warranty';
 
 /**
  * - tickets   → Zendesk ticket queue → conversation (Workbench, the existing
@@ -36,17 +37,20 @@ export type SupportMode = 'tickets' | 'voicemail' | 'calls';
  *   pick a voicemail → detail + linked case → act (call back, done, assign…).
  * - calls     → org call log (Monitor): observe inbound/outbound/missed,
  *   newest-first, filter-only, no durable selection.
+ * - warranty  → Warranty Logger (Workbench): coverage lookup + claims queue +
+ *   claim detail (`?open=`). Phone-support home for “is this still covered?”.
  */
 export const SUPPORT_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'tickets', label: 'Tickets', icon: TicketHelp },
   { id: 'voicemail', label: 'Voicemail', icon: Voicemail },
   { id: 'calls', label: 'Calls', icon: Phone },
+  { id: 'warranty', label: 'Warranty', icon: ShieldCheck },
 ];
 
 export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 
 export function parseSupportMode(raw: string | null | undefined): SupportMode {
-  return raw === 'voicemail' || raw === 'calls' ? raw : 'tickets';
+  return raw === 'voicemail' || raw === 'calls' || raw === 'warranty' ? raw : 'tickets';
 }
 
 /**
@@ -61,6 +65,10 @@ export const SUPPORT_MODE_SCOPED_PARAMS = [
   'assignee', // voicemail assignee filter
   'direction', // calls: inbound | outbound | missed
   'range', // calls: time window
+  'search', // warranty: coverage + claims filter (shared with WarrantyWorkspace)
+  'open', // warranty: open claim id
+  'wstatus', // warranty: claim status filter
+  'wexp', // warranty: expiring-soon filter
 ] as const;
 
 // ── Tickets mode — Zendesk status filter ────────────────────────────────────

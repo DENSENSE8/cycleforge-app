@@ -3,6 +3,26 @@
 Each concern below has exactly one source module. Read from it; never inline, copy, or re-derive the mapping.
 Summarized in the root `CLAUDE.md`; this file holds the detail and rationale.
 
+## Presentation kinds (UI waist — data drives display)
+
+Views **assemble** resolved facts; they do **not** invent label maps, hues, or chip types. When rendering domain
+fields, pick the presentation kind and import from the SoT below (Kinetic Ledger law 4 — `AGENTS.md`).
+
+| Facet / kind | Source |
+|---|---|
+| Civil day / instant / warehouse zone | `src/utils/date.ts` |
+| Condition grade → label | `src/lib/conditions.ts` (`conditionLabel`) |
+| Condition grade → tone | `src/lib/condition-tone.ts` (+ `useConditionGradeStyle`) |
+| Source platform → label / tone | `src/lib/source-platform.ts` |
+| Typed identifiers (serial, FNSKU, tracking, …) | `CopyChip` family + `src/lib/copy-chip-format.ts` |
+| Capability / provider nouns | `src/lib/integrations/capability-labels.ts` (+ server connections) |
+| Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
+| Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` (do not invent status maps) |
+| Z-index | `src/design-system/tokens/z-index.ts` |
+| Buttons | `src/design-system/primitives` `Button` |
+
+If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
+
 ## Dates & times (civil day vs instant)
 
 - Source: `src/utils/date.ts`. Warehouse business zone is `WAREHOUSE_TIME_ZONE` (`America/Los_Angeles`).

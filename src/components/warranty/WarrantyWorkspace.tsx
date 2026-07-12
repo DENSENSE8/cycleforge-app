@@ -8,10 +8,10 @@ import { WarrantyCoverageCard } from '@/components/warranty/WarrantyCoverageCard
 import { useWarrantyUrlState } from '@/hooks/useWarrantyClaims';
 
 /**
- * Right-pane workspace for the Orders / Shipping "Warranty Logger" mode:
+ * Right-pane workspace for Support › Warranty mode (`/support?mode=warranty`):
  * a coverage-lookup card (the "is this order under warranty?" phone-support
  * check) above the claims table + a slide-in detail panel driven by `?open`.
- * Self-contained so the dashboard page only switches one component in.
+ * Self-contained so the support page only switches one component in.
  */
 export function WarrantyWorkspace() {
   const { openClaimId, openClaim } = useWarrantyUrlState();

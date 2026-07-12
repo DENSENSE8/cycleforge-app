@@ -7,12 +7,17 @@ import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
 import { Plus } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
-
+import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
+import { OutboundFilterDropdown } from '@/components/unshipped/OutboundFilterDropdown';
 import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
+import { FirstScanOnboardingCard } from '@/components/dashboard/FirstScanOnboardingCard';
+import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
+import { ShippedFilterDropdown } from '@/components/shipping/shipped-filter/ShippedFilterDropdown';
 import { motion } from 'framer-motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSidebarScope';
 
 interface UnshippedSidebarProps {
   showIntakeForm?: boolean;
@@ -29,6 +34,7 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const scope = useOutboundSidebarScope();
   const {
     showIntakeForm = false,
     onCloseForm,
@@ -57,11 +63,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     const qs = params.toString();
     router.replace(qs ? `/outbound?${qs}` : '/outbound', { scroll: false });
   }, [stageParam, searchValue, searchParams, router]);
-
-  // Stage + staff filtering moved OFF the sidebar: the swim-lane board sorts orders
-  // into PENDING / TESTED / BLOCKED lanes (replacing the stage filter), and the
-  // board header hosts its own staff filter (BoardStaffFilter). The `?stage=awaiting`
-  // legacy redirect above is kept. So no sidebar Filters button here anymore.
 
   if (showIntakeForm) {
     return (
@@ -93,6 +94,10 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     },
   };
 
+  const isPrePack = scope.mode === 'unshipped';
+  const refinements = isPrePack ? scope.unshippedRefinements : scope.shippedRefinements;
+  const onClearAll = isPrePack ? scope.clearUnshippedScope : scope.clearShippedScope;
+
   const content = (
     <SidebarShell
       as={motion.div}
@@ -107,20 +112,17 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
           {!hideSectionHeader ? (
             <motion.header variants={itemVariants} className={`${SIDEBAR_GUTTER} ${filterControl ? 'pt-2' : 'pt-6'}`}>
               <h2 className="text-xl font-black tracking-tighter uppercase leading-none text-text-default">
-                Unshipped
+                Outbound
               </h2>
               <p className="text-eyebrow font-bold text-text-accent uppercase tracking-widest mt-1">
-                Fulfillment Queue
+                Fulfillment queue
               </p>
             </motion.header>
           ) : null}
-          {/* In-context list filter — a local base SearchBar (NOT the deleted
-              sidebar band / SidebarShell.search). Drives the dashboard ?search=
-              param so the order list filters in place. The global header pill
-              stays global (search any order across the app). */}
+          {/* 1) Search — in-context list filter over dashboard ?search=. */}
           <motion.div
             variants={itemVariants}
-            className={`${SIDEBAR_GUTTER} ${hideSectionHeader ? 'pt-4' : 'pt-3'} pb-2`}
+            className={`${SIDEBAR_GUTTER} ${hideSectionHeader ? 'pt-4' : 'pt-3'} pb-1`}
           >
             <SearchBar
               size="compact"
@@ -145,20 +147,40 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
           </motion.div>
         </>
       }
-      // The PENDING / TESTED / BLOCKED status legend was removed: the Unshipped
-      // swim-lane board now sorts orders into those exact lanes, so a sidebar
-      // click-to-filter legend on the same three states was redundant.
-      bodyClassName="flex flex-col no-scrollbar pb-6"
+      filter={{
+        label: isPrePack ? 'Order filters' : 'Shipment filters',
+        refinements,
+        activeCount: refinements.length,
+        onClearAll,
+        renderDropdown: (onClose) =>
+          isPrePack ? (
+            <OutboundFilterDropdown onClose={onClose} />
+          ) : (
+            <ShippedFilterDropdown onClose={onClose} />
+          ),
+      }}
+      headerBelow={
+        <motion.div variants={itemVariants} className={`${SIDEBAR_GUTTER} pb-2 pt-1`}>
+          <OrdersSyncPopover
+            onRefresh={() => {
+              window.dispatchEvent(new CustomEvent('dashboard-refresh'));
+              window.dispatchEvent(new CustomEvent('app-refresh-data'));
+            }}
+          />
+        </motion.div>
+      }
+      bodyClassName="flex flex-col no-scrollbar pb-6 space-y-4"
     >
-      <OrdersSyncPopover
-        onRefresh={() => {
-          window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-          window.dispatchEvent(new CustomEvent('app-refresh-data'));
-        }}
-      />
-      <div className="space-y-3 border-t border-border-hairline pt-3">
+      <motion.div variants={itemVariants}>
+        <OutboundSidebarFilterMap />
+      </motion.div>
+
+      {/* Ambient / teach — first-scan when no throughput; ROI when hasData. */}
+      <motion.div variants={itemVariants} className="space-y-3 border-t border-border-hairline pt-3">
+        <FirstScanOnboardingCard variant="sidebar" />
         <ThroughputRoiCard variant="sidebar" />
-      </div>
+        <GettingStartedChecklist variant="sidebar" />
+      </motion.div>
     </SidebarShell>
   );
 

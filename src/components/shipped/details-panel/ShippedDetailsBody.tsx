@@ -12,6 +12,7 @@ import { ShippedDetailsPanelContent, type ShippedActiveSection } from '@/compone
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
+import { OrderWarrantySection } from '@/components/shipped/details-panel/OrderWarrantySection';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 
@@ -124,6 +125,14 @@ export function ShippedDetailsBody({
             orderRef={shipped.order_id || `order-${shipped.id}`}
             readOnly={!isLabelsPanel}
           />
+        </div>
+      );
+    }
+
+    if (activeSection === 'warranty') {
+      return (
+        <div className="px-6">
+          <OrderWarrantySection order={shipped} />
         </div>
       );
     }

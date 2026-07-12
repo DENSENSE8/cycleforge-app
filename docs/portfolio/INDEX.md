@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (156 files, regenerated 2026-07-12) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (158 files, regenerated 2026-07-12) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Switcher:** [`dev-worktrees.json`](../../dev-worktrees.json) · `pnpm dev:switcher`
 
@@ -36,15 +36,15 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 
 | WT-ID | Absolute path | Branch | HEAD | Switcher card | Unlock parked | Workstreams |
 |-------|---------------|--------|------|---------------|---------------|-------------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `gitbutler/workspace` | `8c3afcf72` | yes · :3000 | no | WS-DOGFOOD + lane=main |
-| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `8c3afcf72` | yes · :3000 | yes | WS-AI |
-| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `8c3afcf72` | yes · :3000 | yes | WS-FBA |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `370521de9` | yes · :3000 | no | WS-DOGFOOD + lane=main |
+| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes · :3000 | yes | WS-AI |
+| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes · :3000 | yes | WS-FBA |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes · :3000 | yes | WS-GLASS |
-| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `8c3afcf72` | yes · :3000 | yes | WS-HOME |
-| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `8c3afcf72` | yes · :3000 | yes | WS-INV |
-| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `8c3afcf72` | yes · :3000 | yes | WS-SRC |
-| `studio` | `/Users/icecube/repos/cycleforge-studio-followups` | `studio-catalog-followups` | `a331b1247` | yes · :3000 | yes | WS-STUDIO |
-| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `8c3afcf72` | yes · :3000 | yes | WS-WH |
+| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `3f55b275e` | yes · :3000 | yes | WS-HOME |
+| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes · :3000 | yes | WS-INV |
+| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes · :3000 | yes | WS-SRC |
+| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `370521de9` | yes · :3000 | yes | — |
+| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes · :3000 | yes | WS-WH |
 
 **Relative paths (for switcher / docs):**
 
@@ -57,7 +57,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | `home` | `../cycleforge-home` (parent: `cycleforge-home`) |
 | `inventory` | `../cycleforge-inventory` (parent: `cycleforge-inventory`) |
 | `sourcing` | `../cycleforge-sourcing` (parent: `cycleforge-sourcing`) |
-| `studio` | `../cycleforge-studio-followups` (parent: `cycleforge-studio-followups`) |
+| `unbox` | `../cycleforge-unbox` (parent: `cycleforge-unbox`) |
 | `warehouse` | `../cycleforge-warehouse` (parent: `cycleforge-warehouse`) |
 
 **Add a tree:**
@@ -78,7 +78,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WS-AI | AI chat | `/ai-chat` · diagrams AI | **`ai-chat`** | P1-branch | `WS-AI` | — |
 | WS-ALP | Agentic loop | [todo/agentic-loop…](../todo/agentic-loop-master-plan.md) | `main` | P5-promote | `ALP-*` | needed |
 | WS-BETA | Beta intake | [todo/beta-intake…](../todo/beta-intake-funnel-plan.md) | `main` | P0-catalog | — | — |
-| WS-CONN | Connections | [master-connections](../master-connections-and-refactor/README.md) · live MDX | `main` | P3-tunnel | `CONN-*` (74) | needed | Folded into `master-plan.mdx` 2026-07-12 |
+| WS-CONN | Connections | [master-connections](../master-connections-and-refactor/README.md) · live MDX · `connections_gap_adoption` | `main` | P3-tunnel | `CONN-*` (74) + org template | needed | P1 MDX fold + P2 adoption template shipped |
 | WS-DEV | Dev workflow | [dev-workflow/](../dev-workflow/) | `main` | P6-done | — | — |
 | WS-DIAG | Diagrams | [diagrams/](../diagrams/) | `main` | P6-done | — | — |
 | WS-DOGFOOD | Stations + shipping | product default | `main` | P6-done | — | continuous |
@@ -86,7 +86,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WS-ENGINE | Ops events / engine | [todo/ops-events…](../todo/ops-events-station-workflow-unification-plan.md) | `main` | P2-build | — | — |
 | WS-FBA | FBA prep | FBA diagrams + `/fba` | **`fba`** | P1-branch | `WS-FBA` | — |
 | WS-GLASS | Glass DS | [todo/GLASS…](../todo/GLASS-DESIGN-SYSTEM.md) | **`glass`** | P2-build | `WS-GLASS` | needed |
-| WS-HOME | My Day home | [todo/contextual-my-day…](../todo/contextual-my-day-home-plan.md) | **`home`** | P1-branch | `WS-HOME` | — |
+| WS-HOME | Home triage/collab · Ops TV | [todo/home-ops-tv-collab…](../todo/home-ops-tv-collab-surfaces-plan.md) · my-day | **`home`** + `main` | P0-catalog | `HOME-OPS-*` | — | Plan 2026-07-12 |
 | WS-INT | Integrations | [integrations/](../integrations/) + todo oauth | `main` | P2-build | — | — |
 | WS-INV | Inventory | inventory UI | **`inventory`** | P1-branch | `WS-INV` | — |
 | WS-LOGIN | Org login | [todo/org-login-gate…](../todo/org-login-gate-EXECUTION-PROMPT.md) | `main` | P4-human-review | — | needed |

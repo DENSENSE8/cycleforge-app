@@ -111,21 +111,24 @@ export function FbaWorkspaceSidebar() {
           today's plan, Plan button only) and Select on combine (FNSKU selects
           packed items, Select button only). */}
       {isBoard && !editorActive && (
+        // Same 40px scan band geometry as testing / packing sidebars — no extra
+        // py that shrinks the input and stacks right-rail chips.
         <div
           className={cn(
             receivingScanBandClass,
             FBA_SCAN_BAND_HALO[stationTheme],
             SIDEBAR_GUTTER,
-            'py-1',
           )}
         >
-          <FbaWorkspaceScanField
-            staffName={staffName}
-            staffId={staffId}
-            showTrackingCard={false}
-            scanMode={activeMode === 'plan' ? 'plan' : 'select'}
-            sidebarHeaderBand
-          />
+          <div className="min-w-0 flex-1">
+            <FbaWorkspaceScanField
+              staffName={staffName}
+              staffId={staffId}
+              showTrackingCard={false}
+              scanMode={activeMode === 'plan' ? 'plan' : 'select'}
+              sidebarHeaderBand
+            />
+          </div>
         </div>
       )}
 

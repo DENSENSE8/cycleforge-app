@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { sectionLabel, SkeletonList } from '@/design-system';
 import { Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
@@ -12,6 +13,8 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
   normalizePersonName,
   resolveRowStatus,
@@ -109,6 +112,8 @@ export interface OrdersQueueTableProps {
    *  rather than mounting every row (Phase V0 fix). Omitted → the internal body
    *  `scrollRef` owns the scroll (dense table + grid lanes), unchanged. */
   scrollParentRef?: RefObject<HTMLElement | null>;
+  /** Single sticky top-right control (e.g. swimlane Show less) — not per day-band. */
+  dateHeaderEndSlot?: ReactNode;
 }
 
 export function OrdersQueueTable({
@@ -146,6 +151,7 @@ export function OrdersQueueTable({
   growToContent = false,
   inheritColumnConfig = false,
   virtualized = false,
+  dateHeaderEndSlot,
   // `scrollParentRef` is still accepted (SwimlaneBoard lane-body contract) but no
   // longer consumed: stacked lanes render all rows instead of windowing against the
   // shared ancestor scroll (see the render branch below), so nothing to wire here.
@@ -153,6 +159,11 @@ export function OrdersQueueTable({
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Day-band enter/exit (Show more revealing new dates) — same tableRow presence
+  // as order rows so the top-left date pill arrives with the list.
+  const dayPresence = useMotionPresence(framerPresence.tableRow);
+  const dayMountTransition = useMotionTransition(framerTransition.tableRowMount);
+  const dayLayoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
 
   // `autoHeight`: the body sizes to content, capped by a max-height (px wins over
   // class), so short tables leave no trailing whitespace and tall ones scroll.
@@ -238,7 +249,11 @@ export function OrdersQueueTable({
       return (
         <OrdersQueueTableRow
           key={record.id}
-          disableEnterAnimation={virtualized}
+          // Presence: parent QueueDateSection AnimatePresence (dense) or none
+          // (virtualized remounts) — never double-fade on the row itself.
+          disableEnterAnimation
+          // Layout: dense rows reflow with ChipColumns; virtualized skips.
+          disableLayoutAnimation={virtualized}
           record={r}
           isSelected={selectMode ? selectedIds.has(Number(record.id)) : selectedRecord?.id === record.id}
           selectMode={selectMode}
@@ -255,6 +270,7 @@ export function OrdersQueueTable({
           outOfStockValue={outOfStockValue}
           notesValue={notesValue}
           daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
+          queueMode={queueMode}
           onRowClick={handleRowAction}
         />
       );
@@ -346,34 +362,73 @@ export function OrdersQueueTable({
                 </div>
               )}
             </div>
-          ) : virtualized && !growToContent ? (
-            // Self-scrolling body (dense table + grid lanes): window against the
-            // internal `scrollRef`. Stacked (growToContent) lanes deliberately fall
-            // through to the all-rows path below — the ancestor-scroll virtualizer
-            // mis-measures on first mount (rows only appear after a column toggle),
-            // and the queue is already bounded (rowLimit 200, split across lanes),
-            // so rendering all rows keeps the wheel on the board's shared scroll
-            // region with no first-paint race. This is the "windowing degrades to
-            // all-rows in 1-up lanes" behavior the `virtualized` prop doc promises.
-            <VirtualQueueSections
-              orderGroupsByDate={orderGroupsByDate}
-              scrollParentRef={scrollRef}
-              useAncestorScroll={false}
-              isMobile={isMobile}
-              renderRow={renderRow}
-            />
           ) : (
-            <div className="flex flex-col w-full">
-              {orderGroupsByDate.map(([date, groups]) => (
-                <QueueDateSection
-                  key={date}
-                  date={date}
-                  groups={groups}
+            <>
+              {/* One sticky collapse control on the far right — docks with the
+                  sticky date pill at top-0. NOT re-rendered on every day band. */}
+              {dateHeaderEndSlot ? (
+                <div className="pointer-events-none sticky top-0 z-sticky h-0 overflow-visible">
+                  <div className="flex justify-end px-3 pt-1.5">
+                    <div className="pointer-events-auto">{dateHeaderEndSlot}</div>
+                  </div>
+                </div>
+              ) : null}
+              {virtualized && !growToContent ? (
+                // Self-scrolling body (dense table + grid lanes): window against the
+                // internal `scrollRef`. Stacked (growToContent) lanes deliberately fall
+                // through to the all-rows path below — the ancestor-scroll virtualizer
+                // mis-measures on first mount (rows only appear after a column toggle),
+                // and the queue is already bounded (rowLimit 200, split across lanes),
+                // so rendering all rows keeps the wheel on the board's shared scroll
+                // region with no first-paint race. This is the "windowing degrades to
+                // all-rows in 1-up lanes" behavior the `virtualized` prop doc promises.
+                <VirtualQueueSections
+                  orderGroupsByDate={orderGroupsByDate}
+                  scrollParentRef={scrollRef}
+                  useAncestorScroll={false}
                   isMobile={isMobile}
                   renderRow={renderRow}
                 />
-              ))}
-            </div>
+              ) : (
+                <div className="flex w-full flex-col">
+                  {!virtualized ? (
+                    <AnimatePresence initial={false} mode="popLayout">
+                      {orderGroupsByDate.map(([date, groups]) => (
+                        <motion.div
+                          key={date}
+                          layout
+                          {...dayPresence}
+                          transition={{
+                            layout: dayLayoutTransition,
+                            opacity: dayMountTransition,
+                            y: dayMountTransition,
+                          }}
+                        >
+                          <QueueDateSection
+                            date={date}
+                            groups={groups}
+                            isMobile={isMobile}
+                            renderRow={renderRow}
+                            animateRows
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  ) : (
+                    orderGroupsByDate.map(([date, groups]) => (
+                      <QueueDateSection
+                        key={date}
+                        date={date}
+                        groups={groups}
+                        isMobile={isMobile}
+                        renderRow={renderRow}
+                        animateRows={false}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

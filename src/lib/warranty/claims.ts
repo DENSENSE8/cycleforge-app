@@ -1,7 +1,7 @@
 /**
  * Warranty claims — read domain module (Phase 1).
  *
- * Lists and fetches warranty claims for the Orders / Shipping "Warranty Logger"
+ * Lists and fetches warranty claims for the Support "Warranty Logger"
  * mode. Write/lifecycle verbs land in Phase 2 (createClaim, submit, approve,
  * deny, repair, close) alongside the matching routes.
  *

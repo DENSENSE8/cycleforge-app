@@ -12,3 +12,15 @@ export const MASTER_PLAN_OPS_TITLE = 'Agentic Loop — Master Plan';
 
 /** Prefix for ops_plan_tasks.client_event_id → `master-plan:{ticketId}`. */
 export const MASTER_PLAN_TASK_KEY_PREFIX = 'master-plan:';
+
+/**
+ * Prefix for **org adoption** tasks seeded from `connections_gap_adoption`
+ * (and optional deploy upserts). Must never equal `master-plan:` so product
+ * CONN tickets and customer checklists cannot collide.
+ *
+ * @see docs/todo/connections-mdx-forge-plan.md §5.2
+ */
+export const CONN_ADOPT_TASK_KEY_PREFIX = 'conn-adopt:';
+
+/** Stable title for the org-scoped adoption plan (from-template). */
+export const CONNECTIONS_ADOPTION_OPS_TITLE = 'Connections gap adoption';

@@ -1,11 +1,12 @@
 # Station display — scan → crossfade → display
 
-Deep dive on the **scan-driven operator bench**: the focus-locked scan loop, the single active-entity card that
-replaces on each scan, scan-to-confirm gating, station-down state, the throughput HUD, and the phone variant. This is
-the **dominant archetype** in the app and the one most often regressed by bolting browse affordances onto it.
+Deep dive on the **scan-driven operator bench** (region **contract**): the focus-locked scan loop, the single
+active-entity card that replaces on each scan, scan-to-confirm gating, station-down state, the throughput HUD, and the
+phone variant. Density default: **`floor`**. Presentation of the active entity is a **fact stack** resolved via SoTs —
+not a browse list. This is the contract most often regressed by bolting Workbench browse affordances onto it.
 
-Inherits: ../ui-design-system.md (semantic tokens, linear scaffold, one-row anatomy, eyebrow+chips, HoverTooltip, icon
-pairing). This doc only adds what is *station-specific*; it does not restate the house style.
+House identity: **Kinetic Ledger**. Inherits: ../ui-design-system.md (tokens, density, presentation kinds, one-row
+anatomy, chips, HoverTooltip, icons). This doc only adds what is *station-specific*.
 
 > The discriminator (from ../contextual-display.md): **does this region react to a *scanner*, or to a *pointer*?**
 > A scanner — keyboard-wedge/barcode/camera — short-circuits straight to Station. Hands are busy; throughput is the job;

@@ -82,6 +82,7 @@
     "test:ds-guards": "tsx --test src/components/ui/typography-tokens.guard.test.ts src/components/ui/raw-button.guard.test.ts src/components/ui/native-title.guard.test.ts src/components/ui/color-tokens.guard.test.ts src/components/ui/color-neutrals.guard.test.ts src/components/ui/sidebar-search-bar.guard.test.ts src/lib/reason-codes.guard.test.ts src/utils/date-civil.guard.test.ts",
     "test:operations-journey": "tsx --test src/lib/operations/journey-helpers.test.ts src/lib/operations/benchmarks.test.ts src/lib/operations/signal-rollup.test.ts",
     "test:surfaces": "tsx --test src/lib/surfaces/*.test.ts",
+    "test:channel-allocation": "tsx --test src/lib/channel-allocation/*.test.ts",
     "test:ops-plans": "tsx --test src/lib/ops-plans/*.test.ts",
     "test:master-plan": "tsx --test src/lib/master-plan/*.test.ts src/lib/master-plan/tools/*.test.ts",
     "test:neon-branches": "tsx --test src/lib/neon/branches.test.ts",

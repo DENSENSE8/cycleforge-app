@@ -7,9 +7,14 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, Plus, SlidersHorizontal, Star, Trash2 } from '@/components/Icons';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { useSavedViews } from '@/hooks/useSavedViews';
+import { useTableColumnConfig } from '@/components/ui/table-column-config/TableColumnConfig';
 import { TABLE_DENSITIES, TABLE_DENSITY_LABEL, type TableDensity } from '@/lib/tables/table-density';
 import type { StationLayout, StationScope } from '@/lib/station/table-url-params';
 import type { UseStaffFilterResult } from '@/hooks/useStaffFilter';
+import {
+  OUTBOUND_COLUMN_PRESET_HIDDEN,
+  type OutboundColumnPreset,
+} from '@/lib/dashboard/outbound-queue-prefs';
 
 /**
  * `TableOptionsMenu` (⋮) — the station tables' options popover
@@ -35,6 +40,11 @@ export interface TableOptionsMenuProps {
   };
   /** Show the Row density toggle (reads/writes the nearest TableDensityProvider). */
   showDensity?: boolean;
+  /**
+   * Full / Ops / Minimal column presets (orders + shipped outbound queues).
+   * Requires a surrounding TableColumnConfigProvider.
+   */
+  showColumnPresets?: boolean;
   /** Saved-views config for this surface. Omit to hide the section. */
   savedViews?: { storageKey: string; paramKeys: readonly string[] };
   /** Extra content rendered as its own "Columns" section (a column list). */
@@ -197,10 +207,41 @@ function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; para
   );
 }
 
+const COLUMN_PRESET_OPTIONS: { id: OutboundColumnPreset; label: string }[] = [
+  { id: 'full', label: 'Full' },
+  { id: 'ops', label: 'Ops' },
+  { id: 'minimal', label: 'Minimal' },
+];
+
+function ColumnPresetsSection() {
+  const config = useTableColumnConfig();
+  if (!config) return null;
+  const hiddenKey = [...config.hidden].sort().join('|');
+  const active: OutboundColumnPreset =
+    hiddenKey === [...OUTBOUND_COLUMN_PRESET_HIDDEN.minimal].sort().join('|')
+      ? 'minimal'
+      : hiddenKey === [...OUTBOUND_COLUMN_PRESET_HIDDEN.ops].sort().join('|')
+        ? 'ops'
+        : hiddenKey === ''
+          ? 'full'
+          : 'full';
+
+  return (
+    <Section label="Column preset">
+      <Segment
+        value={active}
+        options={COLUMN_PRESET_OPTIONS}
+        onChange={(id) => config.setHidden(OUTBOUND_COLUMN_PRESET_HIDDEN[id])}
+      />
+    </Section>
+  );
+}
+
 export function TableOptionsMenu({
   layout,
   scope,
   showDensity = true,
+  showColumnPresets = false,
   savedViews,
   columnsSlot,
   align = 'end',
@@ -244,6 +285,8 @@ export function TableOptionsMenu({
               <Segment value={density} options={DENSITY_OPTIONS} onChange={setDensity} />
             </Section>
           ) : null}
+
+          {showColumnPresets ? <ColumnPresetsSection /> : null}
 
           {columnsSlot ? <Section label="Columns">{columnsSlot}</Section> : null}
 

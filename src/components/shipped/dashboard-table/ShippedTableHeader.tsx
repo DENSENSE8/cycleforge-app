@@ -1,6 +1,5 @@
 'use client';
 
-import { Loader2 } from '@/components/Icons';
 import DateRangeHeader from '@/components/ui/DateRangeHeader';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { PaneHeader } from '@/components/ui/pane-header';
@@ -12,8 +11,6 @@ import type { ShippedPeriodControls } from './useShippedPeriodControls';
 export interface ShippedTableHeaderProps {
   bannerTitle?: React.ReactNode;
   bannerSubtitle?: React.ReactNode;
-  /** Show the refresh spinner (background fetch / search resolving). */
-  isBusy: boolean;
   /** Render the compact "N results" header (active search or carrier filter). */
   showResultsHeader: boolean;
   totalCount: number;
@@ -21,12 +18,6 @@ export interface ShippedTableHeaderProps {
   /** Week/month/custom period picker controls (presets + custom range + reset). */
   period: ShippedPeriodControls;
 }
-
-const BusySpinner = ({ isBusy }: { isBusy: boolean }) => (
-  <div className="min-w-[18px] flex items-center justify-end">
-    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" /> : null}
-  </div>
-);
 
 /**
  * The shipped table's sticky header. One of three modes:
@@ -38,7 +29,6 @@ const BusySpinner = ({ isBusy }: { isBusy: boolean }) => (
 export function ShippedTableHeader({
   bannerTitle,
   bannerSubtitle,
-  isBusy,
   showResultsHeader,
   totalCount,
   weekRange,
@@ -52,7 +42,6 @@ export function ShippedTableHeader({
             <p className={`${sectionLabel} text-text-accent`}>{bannerTitle}</p>
             {bannerSubtitle ? <p className={`mt-0.5 ${fieldLabel}`}>{bannerSubtitle}</p> : null}
           </div>
-          <BusySpinner isBusy={isBusy} />
         </div>
       </div>
     );
@@ -70,7 +59,7 @@ export function ShippedTableHeader({
         leftSlot={
           <p className={`${sectionLabel} text-text-muted`}>{totalCount} result{totalCount !== 1 ? 's' : ''}</p>
         }
-        rightSlot={<BusySpinner isBusy={isBusy} />}
+        rightSlot={null}
       />
     );
   }

@@ -77,7 +77,7 @@ export function ShippedDetailsHeader({
                   aria-label={`Copy ${orderIdDisplay}`}
                 >
                   {orderIdDisplay}
-                  {copiedOrderId && <span className="ml-1 text-emerald-600">✓</span>}
+                  {copiedOrderId && <span className="ml-1 text-text-success">✓</span>}
                 </button>
               </HoverTooltip>
             }
@@ -123,6 +123,8 @@ export function ShippedDetailsHeader({
               ...(showDocumentsTab ? [{ value: 'documents' as const, label: 'Documents' }] : []),
               { value: 'timeline' as const, label: 'Timeline' },
               ...(showCustomerTab ? [{ value: 'customer' as const, label: 'Customer' }] : []),
+              // Coverage-first phone support — always available on order workbenches.
+              { value: 'warranty' as const, label: 'Warranty' },
             ]}
             value={activeSection}
             onChange={onSectionChange}

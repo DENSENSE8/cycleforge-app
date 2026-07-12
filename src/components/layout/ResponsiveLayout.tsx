@@ -12,6 +12,7 @@ import { useBodyScrollLock } from '@/design-system/hooks';
 import { AlertTriangle, RotateCcw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
+import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { GlobalDesktopSkuScanner } from '@/components/layout/GlobalDesktopSkuScanner';
 import { QuickAccessVisitRecorder } from '@/lib/quick-access/QuickAccessVisitRecorder';
@@ -132,6 +133,8 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   // `/m` paths as mobile deterministically so SSR + first paint match the final
   // layout (no blank gate, no desktop→mobile flip).
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
+  /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome. */
+  const chromeless = isClientPublicPath(pathname);
 
   const openDrawer = useCallback(() => setDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
@@ -252,7 +255,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
         <PhoneScanBridgeMount />
-        {!sidebarCollapsed && (
+        {!chromeless && !sidebarCollapsed && (
           <ErrorBoundary
             label="sidebar"
             fallback={(_e, reset) => <SidebarFallback reset={reset} />}
@@ -263,11 +266,13 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
           </ErrorBoundary>
         )}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+          {!chromeless && (
           <GlobalHeader
             canCollapseSidebar
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
           />
+          )}
           <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {children}
           </main>
@@ -276,7 +281,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
         {/* Left-edge reveal — only when the sidebar is collapsed. Rest the
             pointer against the far-left edge for ~2s and the sidebar re-opens
             (and stays open until toggled again). */}
-        {sidebarCollapsed && (
+        {sidebarCollapsed && !chromeless && (
           <div
             className="fixed bottom-0 left-0 top-10 z-40 w-6"
             onMouseEnter={armSidebarPeek}

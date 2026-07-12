@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import { AlertCircle, Loader2, Package } from '@/components/Icons';
 import { StationScanBar } from '@/components/station/StationScanBar';
-import { FBA_SCAN_FOCUS_RING, FBA_SCAN_BAND_HALO } from './fba-scan-theme';
+import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { FBA_SCAN_BAND_HALO } from './fba-scan-theme';
 import { useFbaStationInput, type StationFbaInputProps } from './station-input/useFbaStationInput';
 import { FbaPendingPlanQueue } from './station-input/FbaPendingPlanQueue';
 import { FbaPlanPreviewList } from './station-input/FbaPlanPreviewList';
@@ -14,9 +15,10 @@ export { FBA_SCAN_BAND_HALO };
 export type { StationFbaInputProps };
 
 /**
- * FBA station scan bar — thin composition shell. All scan-flow logic lives in
- * {@link useFbaStationInput}; the review queue + plan preview are presentational
- * components under `./station-input/`.
+ * FBA station scan bar — same chrome as testing / packing sidebars:
+ * {@link ThemedStationScanBar} (staff border + inset focus) when in the sidebar
+ * band; no plan/select mode chips when the page locks `scanMode`; no paste chip
+ * in the sidebar band (clipboard-over-focus ring was the right-rail glitch).
  */
 export default function StationFbaInput(props: StationFbaInputProps) {
   const {
@@ -28,6 +30,28 @@ export default function StationFbaInput(props: StationFbaInputProps) {
   } = props;
 
   const c = useFbaStationInput(props);
+  const staffId = props.techStaffIdOverride ?? null;
+
+  // Sidebar band: match packing/testing — themed bar, spinner-only right rail.
+  // Standalone (non-band) keeps dual mode + paste for free-form plan stations.
+  const useSidebarChrome = fbaScanOnly && sidebarHeaderBand;
+  const showModeToggle = fbaScanOnly && !scanMode && !sidebarHeaderBand;
+
+  const scanIcon = (
+    <Package
+      className={`h-[17px] w-[17px] ${
+        fbaScanOnly ? c.workspaceChrome.fnskuScanIconClass : 'text-violet-600'
+      }`}
+    />
+  );
+
+  const busySpinner = c.busy ? (
+    <Loader2
+      className={`h-4 w-4 shrink-0 animate-spin ${
+        fbaScanOnly ? c.workspaceChrome.savingSpinner : 'text-text-muted'
+      }`}
+    />
+  ) : null;
 
   return (
     <div className={`${c.stackBelowScan ? 'space-y-2' : ''} ${className}`.trim()}>
@@ -40,7 +64,9 @@ export default function StationFbaInput(props: StationFbaInputProps) {
           ) : (
             <p className="text-micro font-semibold uppercase tracking-widest text-text-soft">Station scan</p>
           )}
-          <p className="text-caption leading-snug text-text-soft">{fbaScanOnly ? c.fbaOnlyHint : c.routingHint}</p>
+          <p className="text-caption leading-snug text-text-soft">
+            {fbaScanOnly ? c.fbaOnlyHint : c.routingHint}
+          </p>
         </>
       ) : null}
 
@@ -48,61 +74,63 @@ export default function StationFbaInput(props: StationFbaInputProps) {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-        // Soft staff-tint halo band — matches the receiving/testing sidebars so
-        // the FBA scan bar presents as the same station component. In the sidebar
-        // header band the parent row owns the halo + 40px height.
         className={
           fbaScanOnly && !sidebarHeaderBand
             ? `rounded-xl px-1.5 py-1 ${FBA_SCAN_BAND_HALO[c.stationTheme]}`
             : undefined
         }
       >
-        <StationScanBar
-          value={c.inputValue}
-          onChange={c.handleInputChange}
-          onSubmit={c.handleFormSubmit}
-          inputRef={c.inputRef}
-          inputBorderClassName={c.scanOutlineClass}
-          placeholder={fbaScanOnly ? 'FNSKU (X00…) or ASIN (B0…)' : 'FNSKU, ASIN, tracking, RS-, serial'}
-          autoFocus={false}
-          hasRightContent={fbaScanOnly || c.busy}
-          onPaste={fbaScanOnly ? c.handleInputChange : undefined}
-          icon={
-            <Package
-              className={`${fbaScanOnly ? 'h-[17px] w-[17px]' : 'h-4 w-4'} ${fbaScanOnly ? c.workspaceChrome.fnskuScanIconClass : 'text-violet-600'}`}
-            />
-          }
-          iconClassName=""
-          // fbaScanOnly mirrors the receiving/testing scan bar: inherit the
-          // shared h-10 input chrome + pl-8 left inset; only the themed focus ring differs.
-          inputClassName={
-            fbaScanOnly
-              ? FBA_SCAN_FOCUS_RING[c.stationTheme]
-              : '!py-2.5 !text-sm focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20'
-          }
-          rightContentClassName={fbaScanOnly ? 'right-1.5 gap-0.5' : 'right-2'}
-          showModeButtons={fbaScanOnly}
-          visibleModes={scanMode ? [scanMode] : ['plan', 'select']}
-          activeMode={c.fbaMode}
-          onPlanMode={() => {
-            c.setFbaMode('plan');
-            c.setSelectResult(null);
-          }}
-          onSelectMode={() => {
-            c.setFbaMode('select');
-            c.setPlanHint(null);
-            c.setFbaError(null);
-            c.setPlanPreviewLines([]);
-            c.clearPendingTodayPlan();
-          }}
-          rightContent={
-            c.busy ? (
-              <Loader2
-                className={`h-4 w-4 shrink-0 animate-spin ${fbaScanOnly ? c.workspaceChrome.savingSpinner : 'text-text-muted'}`}
-              />
-            ) : null
-          }
-        />
+        {useSidebarChrome ? (
+          <ThemedStationScanBar
+            staffId={staffId}
+            value={c.inputValue}
+            onChange={c.handleInputChange}
+            onSubmit={c.handleFormSubmit}
+            inputRef={c.inputRef}
+            inputBorderClassName={c.scanOutlineClass}
+            placeholder="FNSKU (X00…) or ASIN (B0…)"
+            autoFocus={false}
+            icon={scanIcon}
+            isResolving={c.busy}
+            showModeButtons={false}
+          />
+        ) : (
+          <StationScanBar
+            value={c.inputValue}
+            onChange={c.handleInputChange}
+            onSubmit={c.handleFormSubmit}
+            inputRef={c.inputRef}
+            inputBorderClassName={c.scanOutlineClass}
+            placeholder={
+              fbaScanOnly ? 'FNSKU (X00…) or ASIN (B0…)' : 'FNSKU, ASIN, tracking, RS-, serial'
+            }
+            autoFocus={false}
+            hasRightContent={Boolean(busySpinner)}
+            onPaste={fbaScanOnly && showModeToggle ? c.handleInputChange : undefined}
+            icon={scanIcon}
+            iconClassName=""
+            inputClassName={
+              fbaScanOnly
+                ? undefined
+                : '!py-2.5 !text-sm focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20'
+            }
+            showModeButtons={showModeToggle}
+            visibleModes={['plan', 'select']}
+            activeMode={c.fbaMode}
+            onPlanMode={() => {
+              c.setFbaMode('plan');
+              c.setSelectResult(null);
+            }}
+            onSelectMode={() => {
+              c.setFbaMode('select');
+              c.setPlanHint(null);
+              c.setFbaError(null);
+              c.setPlanPreviewLines([]);
+              c.clearPendingTodayPlan();
+            }}
+            rightContent={busySpinner}
+          />
+        )}
       </motion.div>
 
       {fbaScanOnly && (c.isFbaLoading || c.planHint || c.selectedCount > 0) ? (
@@ -159,8 +187,6 @@ export default function StationFbaInput(props: StationFbaInputProps) {
           <span className="min-w-0 leading-snug">{c.scanError}</span>
         </div>
       ) : null}
-
-      {/* FbaPairedReviewPanel removed — the parent FbaSidebar renders it via boardSelection */}
     </div>
   );
 }

@@ -325,10 +325,12 @@ The hard rules live in **`CLAUDE.md`** and **`.claude/rules/`** (auto-loaded for
   grade→label/color, z-index, source-platform, copy-chip, SKU identity) has exactly one module;
   never inline or duplicate. Note: `items` (Zoho) and `sku_catalog` are two independent SKU numbering
   schemes — **never join on the SKU string**, they collide.
-- **UI / display** — `.claude/rules/ui-design-system.md` + `contextual-display.md`: house style is
-  simple/linear/icon-based; **four display archetypes** (station/workbench/monitor/canvas) — pick one
-  per region, never blend. Color only from `design-system/tokens/colors/semantic.ts`; z-index only
-  from the named scale; motion through the `useMotionPresence`/`useMotionTransition` hooks.
+- **UI / display** — **Kinetic Ledger** (root `AGENTS.md`, `src/design-system/DESIGN_SYSTEM.md`):
+  data-first ops density, not document-calm chrome. Region **contracts**
+  (station/workbench/monitor/canvas) + **data shape → primary surface** + density
+  (`floor`/`ops`/`rollup`/`studio`). Recipes: `.claude/rules/ui-design-system.md` +
+  `contextual-display.md`. Color only from semantic tokens; z-index named scale; motion through
+  `useMotionPresence`/`useMotionTransition`.
   **Dark mode is not Tailwind `dark:`** — it's a scoped CSS remap under `html[data-theme="dark"]` in
   `src/styles/globals.css` that re-colors existing utilities (`.bg-white` → `#0f172a`, …); there is
   no `darkMode` config, so `dark:` classes would follow the OS preference and ignore the app's theme
@@ -337,9 +339,12 @@ The hard rules live in **`CLAUDE.md`** and **`.claude/rules/`** (auto-loaded for
 - **New polymorphic tables** — `.claude/rules/polymorphic-tables.md`. **Build gotchas** —
   `.claude/rules/build-gotchas.md` (Turbopack silent-failure traps: e.g. `tailwind.config.ts` must
   import the z-index token with an explicit `.ts` extension or all `z-*` utilities drop in dev).
-- **Git workflow** — work only on `main`, never branch, never `git stash` (the user commits mid-session
-  via GitHub Desktop), don't commit/push unless asked. Never commit `.env` (~113 live secrets;
-  `.env.example` is the blank committed template — see [`ENV-VARS.md`](./ENV-VARS.md)).
+- **Git workflow** — **one worktree lane per initiative** (`../cycleforge-<id>` on `topic/<id>`,
+  see [`docs/portfolio/WORKTREE-LANES.md`](../docs/portfolio/WORKTREE-LANES.md) + `dev-worktrees.json`);
+  `main` is the integration/dogfood lane (WS-DOGFOOD). Stay on the current checkout's branch — don't
+  create ad-hoc branches or switch a checkout's branch mid-session, and never `git stash` (the user
+  commits mid-session via GitHub Desktop). Don't commit/push unless asked. Never commit `.env`
+  (~113 live secrets; `.env.example` is the blank committed template — see [`ENV-VARS.md`](./ENV-VARS.md)).
 
 **Testing** — unit tests are `node:test` + `tsx`, co-located `src/**/*.test.ts` (CI glob-discovers
 new ones automatically; domain fns use `Deps` injection to run DB-free). **Playwright E2E does NOT

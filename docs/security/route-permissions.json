@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-12T00:32:39Z",
-  "totalRoutes": 834,
+  "generatedAt": "2026-07-12T07:08:52Z",
+  "totalRoutes": 836,
   "summary": {
-    "permissionGated": 709,
-    "authenticatedNoPermission": 43,
+    "permissionGated": 710,
+    "authenticatedNoPermission": 44,
     "anonymousIntentional": 80,
     "serviceToService": 2,
     "ungatedRead": 0,
@@ -2979,6 +2979,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/my-day/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/nas-config/route.ts",
       "methods": [
         "GET"
@@ -3663,6 +3672,15 @@
       ],
       "gate": "withAuth",
       "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/outbound/ready-queue/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
       "exemptReason": null
     },
     {

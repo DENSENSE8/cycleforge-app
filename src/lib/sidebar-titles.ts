@@ -5,7 +5,7 @@ import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
  * (see {@link getSidebarRouteKey}). Pure data — no React.
  */
 export const SIDEBAR_TITLES: Record<string, string> = {
-  dashboard: 'Orders / Shipping',
+  dashboard: 'Dashboard',
   order: 'Order lookup',
   operations: 'Operations',
   'ops-photos': 'Media library',

@@ -1,37 +1,31 @@
 'use client';
 
 /**
- * The dashboard's main (left) region: the active orders table for the current
- * `?view`, with a Suspense skeleton, plus the bulk-action capsule that pins to
- * the bottom when rows are checked. Presentational — selection state + actions
- * are owned by useDashboardBulkSelection. Extracted from the dashboard page.
+ * The dashboard's main orders region: KPI strip + unified outbound header
+ * (lifecycle slider · contextual filters/controls) + the active list for the
+ * current tab. Presentational — selection state + actions are owned by
+ * useDashboardBulkSelection. Extracted from the dashboard page.
  */
 
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
-import { Inbox, Loader2, PackageCheck } from '@/components/Icons';
-import {
-  HorizontalButtonSlider,
-  type HorizontalSliderItem,
-} from '@/components/ui/HorizontalButtonSlider';
+import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
+import { OutboundKpiStrip } from '@/components/dashboard/OutboundKpiStrip';
+import { OutboundWorkspaceHeader } from '@/components/dashboard/OutboundWorkspaceHeader';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 import type { DashSelectableRow } from '@/hooks/useDashboardBulkSelection';
+import { useOutboundMyWorkDefault } from '@/hooks/useOutboundMyWorkDefault';
 
-// Phase 4 (bundle deferral): the three NON-default order views are code-split so
-// their chunks load only when the user switches to that mode — the default
-// Unshipped view (`UnshippedTable`, imported eagerly above) stays in the initial
-// bundle so its first paint isn't gated on a second round-trip. `ssr: false`: the
-// dashboard is a client shell behind BootGate, so there's no SSR to preserve.
+// Phase 4 (bundle deferral): non-default order views are code-split so their
+// chunks load only when the user switches tabs — the default To Ship view
+// (`UnshippedTable`) stays in the initial bundle. `ssr: false`: the dashboard
+// is a client shell behind BootGate, so there's no SSR to preserve.
 function TableFallback() {
-  return (
-    <div className="flex-1 flex items-center justify-center bg-surface-canvas">
-      <Loader2 className="w-8 h-8 animate-spin text-text-faint" />
-    </div>
-  );
+  return <div className="flex-1 bg-surface-canvas" aria-hidden />;
 }
 const DashboardShippedTable = dynamic(
   () => import('@/components/shipped').then((m) => m.DashboardShippedTable),
@@ -41,33 +35,18 @@ const FBAShipmentsTable = dynamic(() => import('@/components/dashboard/FBAShipme
   ssr: false,
   loading: TableFallback,
 });
-const WarrantyWorkspace = dynamic(
-  () => import('@/components/warranty/WarrantyWorkspace').then((m) => m.WarrantyWorkspace),
-  { ssr: false, loading: TableFallback },
-);
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
-  /** Switch the Outbound tab (Unshipped ⇄ Shipped) — writes the `?view` URL param. */
+  /** Switch the lifecycle tab (To Ship · Packed · Shipped) — writes the URL view flag. */
   onSelectView: (view: DashboardOrderView) => void;
   selectMode: boolean;
-  /** Flip select-mode — handed to each order board's in-toolbar Select toggle. */
+  /** Flip select-mode — handed to each order list's in-toolbar Select toggle. */
   onToggleSelectMode: () => void;
   selectionEnabled: boolean;
   selectedRows: DashSelectableRow[];
   selectionActions: SelectionAction<DashSelectableRow>[];
 }
-
-/**
- * The Outbound tab strip (Unshipped ⇄ Shipped) pinned to the top-LEFT of the
- * main content. The former nav-rail split (two `?unshipped`/`?shipped` modes)
- * now lives here as an in-content tab; `?warranty` / `?fba` render their own
- * full surfaces and never show this strip.
- */
-const OUTBOUND_TABS: HorizontalSliderItem[] = [
-  { id: 'unshipped', label: 'Unshipped', icon: Inbox },
-  { id: 'shipped', label: 'Shipped', icon: PackageCheck },
-];
 
 export function DashboardOrdersView({
   orderView,
@@ -78,64 +57,67 @@ export function DashboardOrdersView({
   selectedRows,
   selectionActions,
 }: DashboardOrdersViewProps) {
-  const showOutboundTabs = orderView === 'unshipped' || orderView === 'shipped';
+  const showOutboundChrome =
+    orderView === 'unshipped' || orderView === 'packed' || orderView === 'shipped';
+  const [outboundControlsEl, setOutboundControlsEl] = useState<HTMLDivElement | null>(null);
+  // Sticky My work default: inject ?staff=<me> on clean outbound URLs.
+  useOutboundMyWorkDefault(showOutboundChrome);
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-      {showOutboundTabs ? (
-        <div className="flex shrink-0 items-center border-b border-border-soft px-3">
-          <HorizontalButtonSlider
-            items={OUTBOUND_TABS}
-            value={orderView}
-            onChange={(id) => onSelectView(id as DashboardOrderView)}
-            variant="nav"
-            dense
-            aria-label="Outbound orders"
-          />
-        </div>
-      ) : null}
-
-      {/* Exterior padding around the active table so rows breathe off the shell
-          edges. For the Outbound tabs the table sits in a rounded card so the
-          gutter reads as intentional; fba/warranty own their full-bleed
-          surfaces (no gutter, no card frame). */}
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+      {/* One content column for the whole outbound surface — KPI strip, header
+          bar, and list share the same max-width + horizontal gutter. */}
       <div
         className={
-          showOutboundTabs
-            ? 'relative flex min-w-0 flex-1 overflow-hidden p-3'
-            : 'relative flex min-w-0 flex-1 overflow-hidden'
+          showOutboundChrome
+            ? 'relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-6 pt-5 sm:px-6 lg:px-8'
+            : 'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
         }
       >
-        <div
-          className={
-            showOutboundTabs
-              ? 'relative flex min-w-0 flex-1 overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-sm'
-              : 'relative flex min-w-0 flex-1 overflow-hidden'
-          }
-        >
-          <Suspense
-            fallback={
-              <div className="flex-1 flex items-center justify-center bg-surface-canvas">
-                <Loader2 className="w-8 h-8 animate-spin text-text-faint" />
-              </div>
-            }
-          >
+        {showOutboundChrome ? (
+          <OutboundKpiStrip
+            mode={orderView === 'packed' ? 'shipped' : (orderView as 'unshipped' | 'shipped')}
+          />
+        ) : null}
+
+        {showOutboundChrome ? (
+          <OutboundWorkspaceHeader
+            orderView={orderView}
+            onSelectView={onSelectView}
+            controlsSlotRef={setOutboundControlsEl}
+          />
+        ) : null}
+
+        <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <Suspense fallback={<div className="flex-1 bg-surface-canvas" aria-hidden />}>
             {orderView === 'shipped' ? (
-              <DashboardShippedTable selectMode={selectMode} onToggleSelectMode={onToggleSelectMode} />
+              <DashboardShippedTable
+                selectMode={selectMode}
+                onToggleSelectMode={onToggleSelectMode}
+                toolbarPortalTarget={outboundControlsEl}
+              />
+            ) : orderView === 'packed' ? (
+              <PackedOrdersTable
+                selectMode={selectMode}
+                onToggleSelectMode={onToggleSelectMode}
+                toolbarPortalTarget={outboundControlsEl}
+              />
             ) : orderView === 'fba' ? (
               <FBAShipmentsTable />
-            ) : orderView === 'warranty' ? (
-              <WarrantyWorkspace />
             ) : (
-              // 'unshipped' (the merged pre-ship backlog) + the default.
-              <UnshippedTable strictSearchScope selectMode={selectMode} onToggleSelectMode={onToggleSelectMode} />
+              <UnshippedTable
+                strictSearchScope
+                selectMode={selectMode}
+                onToggleSelectMode={onToggleSelectMode}
+                toolbarPortalTarget={outboundControlsEl}
+              />
             )}
           </Suspense>
         </div>
       </div>
 
       {/* Bulk-action capsule — pins to the bottom of the orders region when rows
-          are checked in the Unshipped / Shipped tables. */}
+          are checked in the To Ship / Packed / Shipped lists. */}
       {selectionEnabled ? (
         <ContextualSelectionBar
           scope={DASHBOARD_ORDERS_SELECTION_SCOPE}

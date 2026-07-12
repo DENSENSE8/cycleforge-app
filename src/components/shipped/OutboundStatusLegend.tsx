@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { useShippedScanOutData } from '@/hooks/useShippedScanOutData';
+import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
 import { StatusLegend, type StatusLegendItem } from '@/components/ui/StatusLegend';
 
 /**
@@ -25,34 +24,22 @@ const ITEMS: StatusLegendItem<OutboundState>[] = [
   { state: 'EXCEPTION', short: 'Exception', fold: 'PROCESS_GAP' },
 ];
 
-export function OutboundStatusLegend() {
-  const { counts, isFetching } = useShippedScanOutData();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // Click-to-filter (`?ostatus`) — filters the shipped table to one derived
-  // outbound state. Clicking the lit chip clears it.
-  const activeStatus = (searchParams.get('ostatus') || '') as OutboundState | '';
-  const toggleStatus = useCallback(
-    (state: OutboundState) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (params.get('ostatus') === state) params.delete('ostatus');
-      else params.set('ostatus', state);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname || '/dashboard'}?${qs}` : pathname || '/dashboard', { scroll: false });
-    },
-    [router, pathname, searchParams],
-  );
+export function OutboundStatusLegend({ inline = false }: { inline?: boolean } = {}) {
+  const { counts, total } = useShippedScanOutData();
+  // Click-to-filter (`?ostatus`) — shared with the Outbound KPI strip's donut +
+  // dials, so a filter set from any of the three surfaces lights the others.
+  const { active, toggle, clear } = useOutboundStatusFilter();
 
   return (
     <StatusLegend
       items={ITEMS}
       meta={OUTBOUND_STATE_META}
       counts={counts}
-      isFetching={isFetching}
-      activeState={activeStatus || null}
-      onSelectState={toggleStatus}
+      allCount={total}
+      activeState={active}
+      onSelectState={toggle}
+      onSelectAll={clear}
+      inline={inline}
     />
   );
 }

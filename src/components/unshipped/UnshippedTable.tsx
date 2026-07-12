@@ -14,20 +14,14 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
+import { getDaysLateNullable } from '@/utils/date';
 
 /**
- * Unshipped fulfillment queue — the dashboard's default view.
+ * To Ship fulfillment queue — the dashboard's default lifecycle tab.
  *
- * Archetype note (intentional hybrid — do not "normalize" away): this is a
- * **pipeline-workbench**. Visually it's a Monitor-ish `SwimlaneBoard` whose
- * PENDING/TESTED/BLOCKED lanes are *derived* from order state (not an assigned
- * status), but it obeys the Workbench contract: URL-addressable selection
- * (`?openOrderId`), a stable sidebar picker, and a crossfading right-pane detail.
- * It deliberately does NOT compose `SidebarRailShell` — that shell is the
- * recent-activity *rail* engine (fetch + optimistic patch + keyboard-nav over a
- * single vertical list), whereas this surface is a horizontal multi-lane board
- * with its own virtualization and per-lane sort. See
- * `.claude/rules/display/workbench.md`.
+ * Workbench contract: URL-addressable selection (`?openOrderId`) + crossfading
+ * right-pane detail. Renders as a single exact list (status chips in the header
+ * legend still filter via `?ustatus` / `?stage`).
  */
 export interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
@@ -36,6 +30,8 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   selectMode?: boolean;
   /** Flip select-mode — drives the board's in-toolbar Select toggle. */
   onToggleSelectMode?: () => void;
+  /** Portal board toolbar controls into the dashboard outbound floating row. */
+  toolbarPortalTarget?: HTMLElement | null;
 }
 
 /** Map an assignment/order-changed event payload to the flat row patch it implies
@@ -80,10 +76,11 @@ export function UnshippedTable({
   testedBy,
   strictSearchScope = false,
   searchEmptyTitle = 'No orders found',
-  searchResultLabel = 'unshipped orders',
-  clearSearchLabel = 'Show All Unshipped Orders',
+  searchResultLabel = 'orders to ship',
+  clearSearchLabel = 'Show All To Ship Orders',
   selectMode = false,
   onToggleSelectMode,
+  toolbarPortalTarget,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -108,12 +105,14 @@ export function UnshippedTable({
     stageParam === 'pending' ? 'pending'
       : stageParam === 'tested' ? 'tested'
         : 'all';
-  // The Unshipped queue is board-only: a status-lane pipeline (PENDING / TESTED /
-  // BLOCKED) that coexists with the right details slider. Per-lane sort lives in
-  // the board (persisted per staffer), so there is no page-level sort/layout fork.
   // Click-to-filter from the status legend (`?ustatus`) — exact derived pre-dock
   // state. Composes on top of the coarse `?stage` facet.
   const statusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as FulfillmentState | '';
+  // Late-only board filter — past-deadline rows (`?late=1`).
+  const lateOnly = searchParams.get('late') === '1';
+  // Needs attention — blocked ∪ late (`?attention=1`).
+  const attentionOnly =
+    searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
   // Universal staff filter (P1-WORK-02): `?staff=` narrows to one staff's
   // assigned work. Absent = ALL staff (current behavior preserved).
   const staffParam = Number(searchParams.get('staff'));
@@ -122,7 +121,9 @@ export function UnshippedTable({
   // Phase 2 pagination — a growing row ceiling. "Load more" bumps it; any filter
   // change resets it. A search stays unbounded (results are already the matches).
   const [rowLimit, setRowLimit] = useState(200);
-  useEffect(() => { setRowLimit(200); }, [stageFilter, staffId, searchQuery, statusFilter]);
+  useEffect(() => {
+    setRowLimit(200);
+  }, [stageFilter, staffId, searchQuery, statusFilter, lateOnly, attentionOnly]);
 
   const query = useQuery({
     ...unshippedOrdersQuery({
@@ -257,16 +258,25 @@ export function UnshippedTable({
   const allRecords = query.data || [];
   // `?stage` (pending/tested) is filtered SERVER-side now (Phase 1), so the query
   // data already reflects it. `?ustatus` stays a client filter — exact derived
-  // FulfillmentState (PENDING/TESTED/BLOCKED), Decision 8.
-  const records = statusFilter
-    ? allRecords.filter((r) => {
-        const row = r as { has_tech_scan?: boolean; out_of_stock?: string | null };
-        return deriveFulfillmentState({
-          hasTechScan: Boolean(row.has_tech_scan),
-          outOfStock: row.out_of_stock,
-        }) === statusFilter;
-      })
-    : allRecords;
+  // FulfillmentState (PENDING/TESTED/BLOCKED), Decision 8. `?late=1` keeps only
+  // past-deadline rows. `?attention=1` = blocked ∪ late (fire queue).
+  const records = allRecords.filter((r) => {
+    const row = r as { has_tech_scan?: boolean; out_of_stock?: string | null; deadline_at?: string | null };
+    const state = deriveFulfillmentState({
+      hasTechScan: Boolean(row.has_tech_scan),
+      outOfStock: row.out_of_stock,
+    });
+    if (statusFilter && state !== statusFilter) return false;
+    if (attentionOnly) {
+      const days = getDaysLateNullable(row.deadline_at ?? null);
+      const isLate = days != null && days > 0;
+      if (state !== 'BLOCKED' && !isLate) return false;
+    } else if (lateOnly) {
+      const days = getDaysLateNullable(row.deadline_at ?? null);
+      if (days == null || days <= 0) return false;
+    }
+    return true;
+  });
 
   // First-run teaching state: a brand-new org with zero unshipped orders and no
   // active search/filter sees the "connect a sales channel" CTA instead of three
@@ -277,6 +287,8 @@ export function UnshippedTable({
     allRecords.length === 0 &&
     !searchQuery &&
     !statusFilter &&
+    !lateOnly &&
+    !attentionOnly &&
     stageFilter === 'all' &&
     staffId === undefined;
 
@@ -322,6 +334,7 @@ export function UnshippedTable({
       searchResultLabel={searchResultLabel}
       clearSearchLabel={clearSearchLabel}
       footer={footer}
+      toolbarPortalTarget={toolbarPortalTarget}
     />
   );
 }

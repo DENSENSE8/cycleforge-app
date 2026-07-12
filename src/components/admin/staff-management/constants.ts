@@ -22,7 +22,7 @@ export function toNullableDateInput(value: string): string | null {
  * dashboard ships.
  */
 export const STAFF_HOME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: '/dashboard',   label: 'Orders / Shipping' },
+  { value: '/dashboard',   label: 'Dashboard' },
   { value: '/operations',  label: 'Operations' },
   { value: '/receiving',   label: 'Receiving' },
   { value: '/test',        label: 'Testing' },
