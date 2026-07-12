@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { PO_GMAIL_SCOPE, assertUsavMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
+import { PO_GMAIL_SCOPE, assertDogfoodMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
 import { upsertIntegrationCredentials, type GmailCredentials } from '@/lib/integrations/credentials';
 import { ApiError, errorResponse } from '@/lib/api';
 
@@ -28,7 +28,7 @@ interface UserInfo {
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
-    assertUsavMailbox(ctx.organizationId);
+    assertDogfoodMailbox(ctx.organizationId);
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');

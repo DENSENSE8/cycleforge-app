@@ -9,10 +9,11 @@
  * issued PINs yet).
  *
  * Multi-tenant: the picker is scoped by the tenant resolved from the
- * `x-tenant-slug` header set by proxy.ts. On the apex/no-subdomain host the
- * USAV tenant is returned for backwards compatibility (USAV's existing UX
- * assumes the root domain points at them). Once tenants migrate to
- * `slug.app.example.com` URLs, the root host will return USAV-only.
+ * `x-tenant-slug` header set by proxy.ts (`resolveOrgIdFromRequest`). On the
+ * apex / no-subdomain host there is NO tenant, so the picker returns an EMPTY
+ * list — it no longer leaks the USAV dogfood tenant's staff. An operator can
+ * opt one dogfood tenant onto the apex host via `DEFAULT_TENANT_SLUG` during
+ * the DNS cutover; that is explicit, not a silent USAV fallback.
  *
  * Public: the picker has to render before sign-in. We expose only id/name/
  * role/hasPin — no email, employee_code, or sensitive columns.
@@ -20,8 +21,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const runtime = 'nodejs';
 
@@ -38,17 +38,17 @@ function isPinlessEnabled(): boolean {
   return v === 'true' || v === '1' || v === 'on' || v === 'yes';
 }
 
-async function resolveOrgId(req: NextRequest): Promise<string> {
-  const slug = req.headers.get('x-tenant-slug');
-  if (!slug) return USAV_ORG_ID; // Apex host → USAV (transitional).
-  const org = await getOrganizationBySlug(slug);
-  // Unknown slug → empty result rather than leaking another tenant's list.
-  return org?.id ?? '00000000-0000-0000-0000-000000000000';
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const orgId = await resolveOrgId(req);
+    const orgId = await resolveOrgIdFromRequest(req);
+    // Apex / unknown slug → nil org → return an empty picker rather than
+    // running the query (which would also be empty, but skip the round-trip).
+    if (orgId === NIL_ORG_ID) {
+      return NextResponse.json(
+        { staff: [], pinless: isPinlessEnabled() },
+        { headers: { 'cache-control': 'no-store' } },
+      );
+    }
     const r = await pool.query(
       `SELECT id, name, role, color_hex, (pin_hash IS NOT NULL) AS has_pin
          FROM staff

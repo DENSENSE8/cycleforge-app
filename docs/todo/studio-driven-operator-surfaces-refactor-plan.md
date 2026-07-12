@@ -175,7 +175,7 @@ The updated master nav system is:
 - `useOrgNavItems` + `mergeOrgNav` for per-org overrides from `nav_definitions`.
 - Consumes from the single `sidebar-navigation.ts` SoT (`APP_SIDEBAR_NAV`, `SIDEBAR_PAGE_NAV`, `getSidebarRouteKey`, `resolveSidebarMode`, `getSidebarNavItems`).
 
-**Intended contract** (from `master-sidebar-nav-migration-plan.md` and code comments):
+**Intended contract** (from the master-sidebar-nav migration work and code comments):
 - MasterNav owns L1 page selection (dropdown with recents + grouped pages) + L2 ModeRail for modeful pages.
 - `MASTER_NAV_RAIL_PAGES` + `MasterNavProvider enabled` (hardcoded true) tells per-route panels to **suppress** their own pill rows.
 - All navigation display must flow through this path. Legacy per-panel chrome must be deleted.

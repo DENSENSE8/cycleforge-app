@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { readPhotoBytesById } from '@/lib/photos/read-bytes';
@@ -16,7 +16,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const sid = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(request.cookies);
   const actor = await getCurrentUserBySid(sid);
   if (!actor) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });

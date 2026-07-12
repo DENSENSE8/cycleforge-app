@@ -1,7 +1,7 @@
 import pool from '@/lib/db';
 import { publishOrderChanged, publishShipmentChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { tenantQuery, transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { tenantQuery, transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
@@ -31,7 +31,7 @@ export async function publishShipmentStatusChange(
   // realtime fan-out is scoped to that tenant. When omitted, behavior is
   // byte-identical to the pre-migration path (raw pool + USAV fallback) so the
   // many un-migrated callers keep compiling and behaving as today.
-  const publishOrgId = orgId ?? transitionalUsavOrgId();
+  const publishOrgId = orgId ?? transitionalDogfoodOrgId();
 
   // (1) Shipment-level event first — never gated on order linkage, so a bad
   // orders lookup can't suppress the receiving-panel live update.

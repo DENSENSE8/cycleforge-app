@@ -1,7 +1,7 @@
 # 2nd-Tenant Onboarding & Verification Checklist
 
 **For:** you, standing up a brand-new org and exercising it as your own "tenant #2" to prove the platform is safe to sell (Q4 + Q5).
-**Read first:** `docs/sellable-foundation-execution-plan.md`. **Golden rule:** the test only means something if tenant #2 is a *real different org* and you confirm it can **never** see USAV's rows.
+**Golden rule:** the test only means something if tenant #2 is a *real different org* and you confirm it can **never** see USAV's rows.
 
 Mark each row `[x]` pass / `[!]` fail (note what broke).
 

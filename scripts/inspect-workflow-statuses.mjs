@@ -7,7 +7,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 async function main() {
   const dist = await pool.query(
     `SELECT COALESCE(workflow_status::text, '(null)') AS status, COUNT(*)::int AS n
-       FROM receiving_lines
+       FROM receiving_line
       GROUP BY 1
       ORDER BY n DESC`,
   );
@@ -16,7 +16,7 @@ async function main() {
 
   const recent = await pool.query(
     `SELECT workflow_status::text AS status, COUNT(*)::int AS n
-       FROM receiving_lines
+       FROM receiving_line
       WHERE created_at > NOW() - INTERVAL '14 days'
       GROUP BY 1
       ORDER BY n DESC`,

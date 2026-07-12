@@ -141,7 +141,7 @@ export async function callSpApi<T = any>(
         headers: {
           'x-amz-access-token': token,
           'accept': 'application/json',
-          'user-agent': 'USAV-Orders/1.0 (Language=TypeScript)',
+          'user-agent': 'CycleForge/1.0 (Language=TypeScript)',
           ...(opts.body ? { 'content-type': 'application/json' } : {}),
         },
         body: opts.body ? JSON.stringify(opts.body) : undefined,

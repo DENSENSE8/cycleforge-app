@@ -24,6 +24,7 @@ import {
 import { packerRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { formatPackerCopyRow, PACKER_COPY_HEADER } from '@/lib/station/format-station-copy-row';
 import { PACKER_HISTORY_SELECTION_SCOPE } from '@/lib/selection/station-scopes';
+import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
 
 const PACKER_LANE_ICON: Record<PackerLaneIconKey, React.ComponentType<{ className?: string }>> = {
   clock: Clock,
@@ -137,6 +138,7 @@ export function PackerTable({ packedBy }: PackerTableProps) {
         savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
         savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
         emptyMessage="No packer records found"
+        firstRunEmpty={<ContextualEmptyState state="no-work" />}
         pipeline={{
           records: orderedRecords,
           lanes: PACKER_LANES,
@@ -169,6 +171,7 @@ export function PackerTable({ packedBy }: PackerTableProps) {
       onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
       daySections={daySections}
       emptyMessage="No packer records found"
+      firstRunEmpty={<ContextualEmptyState state="no-work" />}
       scrollRef={scrollRef}
       renderRow={renderRow}
       tableId="packer"

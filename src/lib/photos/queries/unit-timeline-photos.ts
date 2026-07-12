@@ -8,7 +8,7 @@ import { UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
  *     testing-label scan captures).
  *   • `unbox`   — the unit's ORIGIN receiving line + its parent carton photos,
  *     reached via `serial_unit_provenance` (origin_type='RECEIVING_LINE') →
- *     `receiving_lines`. This is the join that pairs a unit's testing photos with
+ *     `receiving_line`. This is the join that pairs a unit's testing photos with
  *     the receiving unboxed photos of the same physical unit.
  *
  * Same `pool` + explicit `organization_id` predicate convention as the other
@@ -55,7 +55,7 @@ export async function listUnitTimelinePhotos(
         AND sp.origin_type = 'RECEIVING_LINE'
         AND sp.origin_id IS NOT NULL
         AND sp.organization_id = $1
-       JOIN receiving_lines rl ON rl.id = sp.origin_id
+       JOIN receiving_line rl ON rl.id = sp.origin_id
       WHERE p.organization_id = $1
         AND (
           (l.entity_type = 'RECEIVING_LINE' AND l.entity_id = rl.id)

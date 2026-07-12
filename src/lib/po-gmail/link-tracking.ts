@@ -61,7 +61,7 @@ export async function linkTrackingToPo(
   // created unmatched cartons (those carry their own tracking already).
   const r = await pool.query<{ id: number; shipment_id: number | null }>(
     `SELECT id, shipment_id
-       FROM receiving
+       FROM receiving_carton
       WHERE zoho_purchaseorder_id = $1
         AND source = 'zoho_po'`,
     [args.zoho_purchaseorder_id],
@@ -95,7 +95,7 @@ export async function linkTrackingToPo(
     // concurrent operator scan that may have linked tracking via the
     // station scan bar between our SELECT and this UPDATE.
     const upd = await pool.query(
-      `UPDATE receiving
+      `UPDATE receiving_carton
           SET shipment_id = $1,
               updated_at  = NOW()
         WHERE id = $2

@@ -165,7 +165,7 @@ export async function POST(
     try {
       const promotedId = await withTenantTransaction(orgId, async (client) => {
         const promoted = await client.query<{ id: number }>(
-          `UPDATE receiving
+          `UPDATE receiving_carton
               SET source = 'zoho_po',
                   zoho_purchaseorder_id = $1,
                   updated_at = NOW()
@@ -192,7 +192,7 @@ export async function POST(
     }
   }
 
-  // Import Zoho PO lines into receiving_lines for the primary (and any extras).
+  // Import Zoho PO lines into receiving_line for the primary (and any extras).
   if (promotedReceivingId) {
     try {
       await importZohoPurchaseOrderToReceiving(orgId, primaryPoId, {

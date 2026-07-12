@@ -5,6 +5,8 @@ import { X, Pencil } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SerialChip } from '@/components/ui/CopyChip';
 import { TextField, IconButton } from '@/design-system/primitives';
+import { classifyInput } from '@/lib/scan-resolver';
+import { getLast4Serial } from '@/lib/copy-chip-format';
 import { ConditionPills } from './ConditionPills';
 import { ConditionBadge } from './ReceivingUnitRows';
 
@@ -124,6 +126,18 @@ export function SerialCard({
   const showNotes = typeof notes === 'string' && typeof onNotesChange === 'function';
   const [scan, setScan] = useState('');
   const [editing, setEditing] = useState<SavedSerial | null>(null);
+  /**
+   * Inline scan-guard feedback under the field — a big-enough state for a
+   * bench operator (never a corner toast). rose = blocked (duplicate),
+   * amber = warned (tracking-shaped value, overridable by re-submitting).
+   */
+  const [inlineNotice, setInlineNotice] = useState<{ tone: 'rose' | 'amber'; text: string } | null>(
+    null,
+  );
+  /** Tracking-shaped value the operator was warned about — resubmitting the
+   *  same value overrides the guard (some units genuinely carry
+   *  tracking-shaped serials). Any input change re-arms the guard. */
+  const [trackingOverride, setTrackingOverride] = useState<string | null>(null);
   // Condition picker expand/collapse — starts expanded for selection, collapses
   // to the chosen pill once a grade is picked or while a serial is being edited.
   const [condExpanded, setCondExpanded] = useState(true);
@@ -198,6 +212,8 @@ export function SerialCard({
     setEditing(s);
     onEditingSerialChange?.(s);
     setScan(s.serial_number);
+    setInlineNotice(null);
+    setTrackingOverride(null);
     // Collapse the condition picker so the focus is on editing the serial text.
     setCondExpanded(false);
     // Defer focus until the input is enabled in the new render pass.
@@ -213,6 +229,8 @@ export function SerialCard({
     setEditing(null);
     onEditingSerialChange?.(null);
     setScan('');
+    setInlineNotice(null);
+    setTrackingOverride(null);
   };
 
   const submit = async () => {
@@ -236,8 +254,54 @@ export function SerialCard({
     // SELECT FOR UPDATE lock that requires sequential calls, and parallel
     // submissions used to cause over-receive races (e.g. 2/1).
     const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-    setScan('');
+
+    // Wrong-barcode guard: a carrier-tracking-shaped scan is almost always the
+    // shipping label, not the unit serial. Warn on the first Enter and keep the
+    // value in the field; submitting the SAME value again overrides.
+    if (
+      parts.length === 1 &&
+      trackingOverride !== parts[0] &&
+      classifyInput(parts[0]).type === 'tracking'
+    ) {
+      setTrackingOverride(parts[0]);
+      setInlineNotice({
+        tone: 'amber',
+        text: 'Looks like a carrier tracking number — scan the unit serial, or press Enter again to add it anyway.',
+      });
+      return;
+    }
+
+    // Duplicate guard: skip values already saved on this line so a double-scan
+    // (or re-scan of a chip below) can't queue a second server write.
+    const savedKeys = new Set(
+      saved.map((s) => (s.serial_number || '').trim().toUpperCase()).filter(Boolean),
+    );
+    const fresh: string[] = [];
+    const dupes: string[] = [];
     for (const sn of parts) {
+      const key = sn.toUpperCase();
+      if (savedKeys.has(key)) {
+        dupes.push(sn);
+      } else {
+        savedKeys.add(key);
+        fresh.push(sn);
+      }
+    }
+    setInlineNotice(
+      dupes.length === 0
+        ? null
+        : {
+            tone: 'rose',
+            text:
+              dupes.length === 1
+                ? `Already on this line — ends ${getLast4Serial(dupes[0])}. Not added again.`
+                : `${dupes.length} serials already on this line — skipped.`,
+          },
+    );
+    setTrackingOverride(null);
+    setScan('');
+    if (fresh.length === 0) return;
+    for (const sn of fresh) {
       try {
         await onAdd(sn);
       } catch {
@@ -290,7 +354,12 @@ export function SerialCard({
             ref={inputRef}
             label="Serial"
             value={scan}
-            onChange={setScan}
+            onChange={(next) => {
+              setScan(next);
+              // Any keystroke re-arms the scan guards and clears stale feedback.
+              if (inlineNotice) setInlineNotice(null);
+              if (trackingOverride) setTrackingOverride(null);
+            }}
             tone={editing ? 'emerald' : 'blue'}
             mono
             disabled={disabled || isSubmitting}
@@ -362,6 +431,19 @@ export function SerialCard({
           </button>
         )}
       </div>
+
+      {/* Scan-guard feedback — inline under the field where the operator is
+          already looking (house rule: card state, not a corner toast). */}
+      {inlineNotice ? (
+        <p
+          role="status"
+          className={`mt-2 text-caption font-semibold ${
+            inlineNotice.tone === 'rose' ? 'text-rose-600' : 'text-amber-700'
+          }`}
+        >
+          {inlineNotice.text}
+        </p>
+      ) : null}
 
       {/* Inline slot directly under the scan field — the RETURN flow renders
           its serial-match result here (found / not found). */}

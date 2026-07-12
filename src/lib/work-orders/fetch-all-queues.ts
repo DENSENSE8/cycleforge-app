@@ -18,13 +18,22 @@ async function safeFetch<T>(label: string, fn: () => Promise<T[]>): Promise<T[]>
   }
 }
 
+export type FetchAllQueuesOpts = {
+  /** When true, always merge receiving/repair/FBA/stock queues (My Day + mine). */
+  unified?: boolean;
+};
+
 /**
  * Single SoT for all work-order queue rows — used by /api/work-orders and
  * /api/ops-plans/inbox when OPS_PLANS_UNIFIED_INBOX is enabled.
  */
-export async function fetchAllWorkOrderQueues(orgId: string): Promise<WorkOrderRow[]> {
+export async function fetchAllWorkOrderQueues(
+  orgId: string,
+  opts?: FetchAllQueuesOpts,
+): Promise<WorkOrderRow[]> {
   const orders = await safeFetch('getOrders', () => getOrders(orgId));
-  if (!(await isOpsPlansUnifiedInbox(orgId))) {
+  const unified = opts?.unified ?? (await isOpsPlansUnifiedInbox(orgId));
+  if (!unified) {
     return orders;
   }
   const [receiving, repairs, fba, stock] = await Promise.all([

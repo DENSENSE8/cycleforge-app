@@ -31,6 +31,7 @@ interface StatsRow {
   staff: number | string;
   integrations_connected: number | string;
   first_scan_done: boolean;
+  has_active_workflow: boolean;
 }
 
 /** Caps keep the counts index-cheap; the checklist thresholds are tiny. */
@@ -47,12 +48,14 @@ export async function getOnboardingStats(
            (SELECT COUNT(*)::int FROM (
               SELECT 1 FROM orders WHERE organization_id = $1 LIMIT ${COUNT_CAP}) o)  AS orders,
            (SELECT COUNT(*)::int FROM (
-              SELECT 1 FROM receiving_lines WHERE organization_id = $1 LIMIT ${COUNT_CAP}) r) AS receiving_lines,
+              SELECT 1 FROM receiving_line WHERE organization_id = $1 LIMIT ${COUNT_CAP}) r) AS receiving_lines,
            (SELECT COUNT(*)::int FROM (
               SELECT 1 FROM staff WHERE organization_id = $1 LIMIT ${COUNT_CAP}) s)   AS staff,
            (SELECT COUNT(*)::int FROM organization_integrations
              WHERE organization_id = $1 AND status = 'active')                        AS integrations_connected,
-           EXISTS (SELECT 1 FROM inventory_events WHERE organization_id = $1)         AS first_scan_done`,
+           EXISTS (SELECT 1 FROM inventory_events WHERE organization_id = $1)         AS first_scan_done,
+           EXISTS (SELECT 1 FROM workflow_definitions
+             WHERE organization_id = $1 AND is_active = TRUE)                          AS has_active_workflow`,
         [orgId],
       );
       const row = rows[0];
@@ -63,6 +66,7 @@ export async function getOnboardingStats(
         staff: Number(row.staff ?? 0),
         integrationsConnected: Number(row.integrations_connected ?? 0),
         firstScanDone: Boolean(row.first_scan_done),
+        hasActiveWorkflow: Boolean(row.has_active_workflow),
       };
     });
   } catch (error) {

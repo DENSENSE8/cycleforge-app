@@ -32,7 +32,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const limit = Math.min(Number(params.get('limit') || 100), 250);
 
     // Tenant scope — explicit org filter on the base receiving_lines feed.
-    const conditions: string[] = [`rl.zoho_purchaseorder_id IS NOT NULL`];
+    // Line-level Zoho facts live on receiving_line_zoho (rz, 1:1 with the line);
+    // carton-level zoho_purchaseorder_number stays on the spine (r).
+    const conditions: string[] = [`rz.zoho_purchaseorder_id IS NOT NULL`];
     const values: unknown[] = [];
     let idx = 1;
 
@@ -42,8 +44,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     if (search) {
       conditions.push(
-        `(rl.zoho_purchaseorder_number ILIKE $${idx}
-          OR rl.zoho_purchaseorder_id ILIKE $${idx}
+        `(rz.zoho_purchaseorder_number ILIKE $${idx}
+          OR rz.zoho_purchaseorder_id ILIKE $${idx}
           OR rl.sku ILIKE $${idx}
           OR rl.item_name ILIKE $${idx}
           OR r.zoho_purchaseorder_number ILIKE $${idx})`,
@@ -53,7 +55,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (view === 'today') {
-      conditions.push(`(r.received_at >= CURRENT_DATE OR rl.created_at >= CURRENT_DATE)`);
+      // Carton door-received timestamp lives on receiving_triage (rt).
+      conditions.push(`(rt.door_received_at >= CURRENT_DATE OR rl.created_at >= CURRENT_DATE)`);
     }
 
     const where = `WHERE ${conditions.join(' AND ')}`;
@@ -66,12 +69,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       orgId,
       `WITH grouped AS (
          SELECT
-           COALESCE(rl.zoho_purchaseorder_id, '') AS po_id,
-           COALESCE(rl.zoho_purchaseorder_number,
+           COALESCE(rz.zoho_purchaseorder_id, '') AS po_id,
+           COALESCE(rz.zoho_purchaseorder_number,
                     r.zoho_purchaseorder_number, '') AS po_number,
            MAX(rl.receiving_id)                     AS receiving_id,
            MAX(r.source_platform)                   AS source_platform,
-           MAX(r.received_at::text)                 AS received_at,
+           MAX(rt.door_received_at::text)           AS received_at,
            MAX(rl.updated_at::text)                 AS last_activity,
            COUNT(*)                                 AS item_count,
            SUM(COALESCE(rl.quantity_expected, 0))   AS qty_expected,
@@ -82,18 +85,24 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                END)                                 AS open_items,
            BOOL_OR(rl.workflow_status = 'ARRIVED' OR rl.workflow_status = 'EXPECTED')
                                                     AS has_pending
-         FROM receiving_lines rl
-         LEFT JOIN receiving r ON (
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+              ON rz.receiving_line_id = rl.id
+             AND rz.organization_id = rl.organization_id
+         LEFT JOIN receiving_carton r ON (
               (r.id = rl.receiving_id
                AND r.organization_id = rl.organization_id)
            OR (rl.receiving_id IS NULL
                AND r.source = 'zoho_po'
-               AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+               AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
                AND r.organization_id = rl.organization_id)
          )
+         LEFT JOIN receiving_triage rt
+              ON rt.receiving_id = r.id
+             AND rt.organization_id = r.organization_id
          ${where}
-         GROUP BY COALESCE(rl.zoho_purchaseorder_id, ''),
-                  COALESCE(rl.zoho_purchaseorder_number,
+         GROUP BY COALESCE(rz.zoho_purchaseorder_id, ''),
+                  COALESCE(rz.zoho_purchaseorder_number,
                            r.zoho_purchaseorder_number, '')
        )
        SELECT g.*,

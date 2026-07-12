@@ -1,22 +1,21 @@
 /**
- * seed-org-workflow — Phase F4-lite onboarding.
+ * seed-org-workflow — dogfood / script backfill only.
  *
- * A brand-new org has no `workflow_definition`, so the node-graph engine has
- * nothing to route intake through (a "blank" tenant). This clones the default
- * SYSTEM workflow template into the org and marks it active, so receiving/test/
- * list flows work out-of-the-box. The owner can edit + re-publish later in Studio.
+ * Clones the default SYSTEM workflow template into an org and activates it, so
+ * the node-graph engine can route intake out-of-the-box. Thin wrapper over
+ * installTemplateIntoOrg (the single clone + surface-seed + activate path) with
+ * the seed posture: default template, activate only if system, skip-if-exists.
  *
- * Thin wrapper over `applyTemplateToOrg` (template-catalog) with the onboarding
- * posture: default template, activate, skip-if-exists. Best-effort — a seed
- * failure must never block org creation (the caller swallows). The live seam is
- * the signup route; a tenant wanting a DIFFERENT vertical uses the import route
- * / applyTemplateToOrg with an explicit templateId (a draft, published via the
- * human gate).
+ * NOTE (Template Platform Phase 1): this is NO LONGER the live signup path.
+ * Signup no longer auto-seeds a live graph — a brand-new org chooses its ops SOP
+ * template at onboarding (POST /api/onboarding/template → installTemplateIntoOrg).
+ * Keep this helper for dogfood seeding and backfill scripts (and existing
+ * grandfathered orgs); it is best-effort and idempotent, never a request blocker.
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
-import { applyTemplateToOrg } from './template-catalog';
+import { installTemplateIntoOrg } from './install-template';
 
 export async function seedDefaultWorkflowForOrg(orgId: OrgId, staffId: number): Promise<void> {
-  await applyTemplateToOrg({ orgId, staffId, activate: true, skipIfExists: true });
+  await installTemplateIntoOrg({ orgId, staffId, activate: 'if_system', skipIfExists: true });
 }

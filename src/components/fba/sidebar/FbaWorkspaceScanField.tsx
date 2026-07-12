@@ -15,7 +15,7 @@ import {
 } from '@/components/fba/sidebar/fbaShipmentTracking';
 import { fbaWorkspaceScanChrome } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH, USAV_REFRESH_DATA } from '@/lib/fba/events';
+import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH, APP_REFRESH_DATA } from '@/lib/fba/events';
 import { SIDEBAR_INTAKE_LABEL_CLASS } from '@/design-system/components/sidebar-intake/intakeFormClasses';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { Button } from '@/design-system/primitives';
@@ -178,7 +178,7 @@ export function FbaWorkspaceScanField({
       clearSelection();
       window.dispatchEvent(new CustomEvent(FBA_SCAN_STATUS, { detail: 'Tracking saved' }));
       window.dispatchEvent(new CustomEvent(FBA_ACTIVE_SHIPMENTS_REFRESH));
-      window.dispatchEvent(new CustomEvent(USAV_REFRESH_DATA));
+      window.dispatchEvent(new CustomEvent(APP_REFRESH_DATA));
     } catch (err: any) {
       setSaveError(err?.message || 'Failed to save tracking');
     } finally {

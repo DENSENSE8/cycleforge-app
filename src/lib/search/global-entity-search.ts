@@ -141,7 +141,7 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
     `SELECT r.id,
             stn.tracking_number_raw AS tracking_number,
             COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)             AS carrier
-     FROM receiving r
+     FROM receiving_carton r
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
      WHERE r.organization_id = $5
        AND (stn.tracking_number_raw ILIKE $1

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { publishForgeRunChanged } from '@/lib/realtime/publish';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // from — the target tenant is CONFIGURED, not derived. FORGE_ORG_ID (a UUID)
 // selects it; it defaults to org #1 (the dogfood tenant). Written as a literal
 // rather than importing the legacy org-id constant, per the tenancy rule
-// (scripts/usav-fallback-guard.mjs) that bans that import in the
+// (scripts/dogfood-fallback-guard.mjs) that bans that import in the
 // session-derived routes it is meant to guard.
 const FORGE_ORG_ID = process.env.FORGE_ORG_ID ?? '00000000-0000-0000-0000-000000000001';
 
@@ -95,6 +97,16 @@ export const POST = withAuth(async (req: NextRequest) => {
 
     return { runId };
   });
+
+  // Live dashboard nudge — fire-and-forget, never blocks the ingest response.
+  after(() =>
+    publishForgeRunChanged({
+      organizationId: org,
+      runUid,
+      stage: str(body.stage),
+      runStatus: str(body.runStatus),
+    }),
+  );
 
   return NextResponse.json({ success: true, ...result });
 }, { allowAnonymous: true });

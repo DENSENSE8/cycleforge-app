@@ -89,7 +89,7 @@ export function useSubstituteUnit() {
       // Post-submit reconciliation (tech-substitution wiring §5 Phase 2.1):
       // the substitution re-allocates the unit shipping on the order, so the
       // tech history table (['tech-logs', techId]) and the station/dashboard
-      // tables listening for 'usav-refresh-data' must refetch. Prefix-match
+      // tables listening for 'app-refresh-data' must refetch. Prefix-match
       // invalidation covers every techId variant; the window event is the
       // house-wide refresh signal (src/utils/events.ts).
       qc.invalidateQueries({ queryKey: ['tech-logs'] });

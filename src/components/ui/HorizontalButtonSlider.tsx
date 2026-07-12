@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useId, useRef, type RefObject, type WheelEvent } from 'react';
+import { Fragment, useCallback, useId, useRef, type RefObject, type WheelEvent } from 'react';
 import { motion } from 'framer-motion';
 import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 
@@ -218,14 +219,12 @@ export function HorizontalButtonSlider({
               const segIndicatorClass = segmentedFlush
                 ? 'absolute inset-0 rounded-none bg-blue-600'
                 : 'absolute inset-0 rounded-xl bg-blue-600 shadow-sm shadow-blue-600/25';
-              return (
+              const tab = (
                 <motion.button
-                  key={item.id}
                   type="button"
                   role="tab"
                   aria-selected={isActive}
                   aria-label={item.label}
-                  title={item.label}
                   whileTap={{ scale: 0.94 }}
                   transition={framerTransition.sliderIndicator}
                   onClick={() => onChange(item.id)}
@@ -245,6 +244,18 @@ export function HorizontalButtonSlider({
                     <span className="absolute right-1.5 top-1.5 z-10 h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
                   ) : null}
                 </motion.button>
+              );
+              // Active mode name lives in the sidebar header — tooltip only for
+              // inactive tabs, pinned below the icon so it doesn't cover the rail.
+              if (isActive) {
+                return <Fragment key={item.id}>{tab}</Fragment>;
+              }
+              return (
+                <Fragment key={item.id}>
+                  <HoverTooltip label={item.label} placement="below" asChild>
+                    {tab}
+                  </HoverTooltip>
+                </Fragment>
               );
             }
             if (variant === 'nav') {

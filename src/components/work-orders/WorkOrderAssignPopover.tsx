@@ -102,7 +102,7 @@ export function WorkOrderAssignPopover({
           deadlineAt: row.deadlineAt,
           notes: row.notes,
         });
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         onAssigned?.({ techId: nextTechId, packerId: nextPackerId });
       } catch (err: any) {
         setError(err?.message || 'Failed to save assignment');

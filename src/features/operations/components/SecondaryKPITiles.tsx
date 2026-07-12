@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Info } from 'lucide-react';
 import { AlertCircle, Clock } from '@/components/Icons';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { IconButton } from '@/design-system/primitives';
 import type { DashboardData } from '@/features/operations/types';
 import { DataSourcePopover, type DataSourceInfo } from '@/features/operations/components/DataSourcePopover';
@@ -88,7 +89,7 @@ function SecondaryTile({
           </span>
         )}
       </div>
-      <div className="mt-2 tabular-nums text-[24px] font-extrabold leading-none text-text-default">{value}</div>
+      <AnimatedStat value={value} className="mt-2 text-[24px] font-extrabold leading-none text-text-default" />
       <p className="mt-1.5 text-caption font-bold text-text-default">{label}</p>
       <p className="mt-0.5 text-micro font-medium text-text-muted">{sub}</p>
     </motion.div>

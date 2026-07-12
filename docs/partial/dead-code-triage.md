@@ -31,7 +31,7 @@ Un-triaged knip "Unused Files" backlog (mobile/, fba/table/, manuals/, admin/con
 | `get-all-ebay-tokens.js`<br>`get-ebay-tokens.js` | Script | High | Manual + README | deleted (this wave) | Old token helper scripts. Superseded by proper eBay account management + refresh jobs. Removed from disk. |
 | `test-packing-flow.sh` | Script | High | Manual | deleted (this wave) | One-off test script at root. Removed from disk. |
 | `src/app/design-demo/` | Component | High | Self-documenting + knip + no imports | kept-explain (STALE 2026-06-28) | ~~Git-deleted.~~ **CORRECTION 2026-06-28: design-demo is BACK** — it is the live component showroom for [[design-2026-component-adoption]], not dead code. Do not delete. |
-| Root `*_PLAN.md` files (ARCHITECTURE_PLAN.md, COMPONENT_DEDUP_PLAN.md, FBA_*, etc.) | Docs | Medium | Manual | archived (this wave) | Moved via git mv to `docs/archive/plans/`. Added explanatory README. |
+| Root `*_PLAN.md` files (ARCHITECTURE_PLAN.md, COMPONENT_DEDUP_PLAN.md, FBA_*, etc.) | Docs | Medium | Manual | archived (this wave) | Archived, and the archive was later deleted (history in git). |
 
 **Wave 1 completed**: 2026-06 — Surface junk + infrastructure (apps/desktop, design-demo, root junk, archived plans). Also Phase 2: legacy setup routes (setup-db/*, drizzle-setup, migrate-process, diagnose-migration, setup-source-db) + guard removed. Docs/references cleaned. Modern: `npm run db:migrate`.
 

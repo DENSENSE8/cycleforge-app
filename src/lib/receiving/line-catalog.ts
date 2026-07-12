@@ -9,7 +9,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 /**
  * Resolve the sku_catalog row a receiving line maps to.
  *
- * The line itself only carries a `sku` string (`receiving_lines.sku_catalog_id`
+ * The line itself only carries a `sku` string (`receiving_line.sku_catalog_id`
  * exists but is never populated). The authoritative, populated linkage is
  * `serial_units.sku_catalog_id`, set at scan time (see receive-line.ts). So we
  * prefer a scanned unit's catalog id and fall back to resolving from the SKU
@@ -39,16 +39,18 @@ async function loadLine(
   orgId?: OrgId,
 ): Promise<LineRow | null> {
   if (orgId) {
-    // Tenant path: scope the receiving_lines row to the org and align the
+    // Tenant path: scope the receiving_line row to the org and align the
     // string-key join (zoho_item_id) so a colliding item in another tenant
     // can never supply the title.
     const res = await tenantQuery<LineRow>(
       orgId,
-      `SELECT rl.id, rl.sku, rl.item_name, rl.zoho_item_id,
+      `SELECT rl.id, rl.sku, rl.item_name, rz.zoho_item_id,
               zi.name AS zoho_name
-         FROM receiving_lines rl
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          LEFT JOIN items zi
-           ON zi.zoho_item_id = rl.zoho_item_id AND zi.status = 'active'
+           ON zi.zoho_item_id = rz.zoho_item_id AND zi.status = 'active'
           AND zi.organization_id = rl.organization_id
         WHERE rl.id = $1 AND rl.organization_id = $2
         LIMIT 1`,
@@ -57,11 +59,13 @@ async function loadLine(
     return res.rows[0] ?? null;
   }
   const res = await pool.query<LineRow>(
-    `SELECT rl.id, rl.sku, rl.item_name, rl.zoho_item_id,
+    `SELECT rl.id, rl.sku, rl.item_name, rz.zoho_item_id,
             zi.name AS zoho_name
-       FROM receiving_lines rl
+       FROM receiving_line rl
+       LEFT JOIN receiving_line_zoho rz
+         ON rz.receiving_line_id = rl.id
        LEFT JOIN items zi
-         ON zi.zoho_item_id = rl.zoho_item_id AND zi.status = 'active'
+         ON zi.zoho_item_id = rz.zoho_item_id AND zi.status = 'active'
       WHERE rl.id = $1
       LIMIT 1`,
     [lineId],

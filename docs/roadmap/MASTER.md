@@ -51,7 +51,7 @@ Before touching any UI:
 - [ ] **Phase 6**: roll out order timeline (orderAuditToTimeline) to all order detail views
 - [ ] Platform/account/type catalog: build read-side resolvers (migration applied, CRUD done,
   ```
-  resolvers pending — see `docs/platform-account-type-catalog-plan.md`)
+  resolvers pending)
   ```
 - [ ] SKU graph UI: build Cytoscape visualization (backend `/api/sku-catalog/graph` is done,
   ```

@@ -15,6 +15,8 @@ import { IncomingFilterDropdown } from './incoming/IncomingFilterDropdown';
 import { IncomingSyncButtons } from './incoming/IncomingSyncButtons';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { useQueryClient } from '@tanstack/react-query';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 export type {
   IncomingDeliveryState,
@@ -40,7 +42,22 @@ export function IncomingSidebarPanel() {
     <>
       <SidebarShell
         className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card"
-        search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Search PO #, tracking, SKU…' }}
+        headerAbove={
+          // In-context list filter — local base SearchBar over the Incoming feed.
+          // `filters.search` is derived from `?rh_q` and `setSearch` writes it back,
+          // so deep links hydrate. The global header pill stays global.
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={filters.search}
+              onChange={filters.setSearch}
+              onClear={() => filters.setSearch('')}
+              onSearch={filters.setSearch}
+              placeholder="Filter PO #, tracking, SKU…"
+            />
+          </div>
+        }
         filter={{
           label: 'Filters',
           refinements: filters.refinements,
@@ -61,7 +78,7 @@ export function IncomingSidebarPanel() {
                   onRefresh={() => {
                     invalidateReceivingFeeds(queryClient);
                     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-                    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+                    window.dispatchEvent(new CustomEvent('app-refresh-data'));
                   }}
                 />
               </div>

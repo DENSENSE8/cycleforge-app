@@ -47,7 +47,7 @@ async function assertReceivingEntity(
 ): Promise<void> {
   const recv = await tenantQuery(
     orgId,
-    `SELECT id FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [receivingId, orgId],
   );
   if (!recv.rows.length) throw new Error('Receiving not found');
@@ -55,7 +55,7 @@ async function assertReceivingEntity(
   if (lineId != null) {
     const line = await tenantQuery(
       orgId,
-      `SELECT id FROM receiving_lines
+      `SELECT id FROM receiving_line
         WHERE id = $1 AND receiving_id = $2 AND organization_id = $3
         LIMIT 1`,
       [lineId, receivingId, orgId],

@@ -91,11 +91,12 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     conditions.push(`NOT (
       vq.kind = 'unmatched_receiving'
       AND EXISTS (
-        SELECT 1 FROM receiving r
+        SELECT 1 FROM receiving_carton r
+        LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
         WHERE r.organization_id = vq.organization_id
           AND r.id = vq.source_id::int
           AND (
-            r.unbox_opened_at IS NOT NULL
+            ru.opened_at IS NOT NULL
             OR EXISTS (
               SELECT 1 FROM ops_events oe
               WHERE oe.organization_id = r.organization_id

@@ -80,6 +80,8 @@ export interface StudioTemplateSummary {
   category: string | null;
   nodeCount: number;
   edgeCount: number;
+  /** The blessed default system template — the onboarding chooser pre-selects it. */
+  isDefault: boolean;
 }
 
 /** Full template graph (mirrors the /api/studio/graph node/edge shape). */

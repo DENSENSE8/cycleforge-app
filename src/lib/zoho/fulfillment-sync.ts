@@ -26,7 +26,7 @@
 
 import pool from '@/lib/db';
 import { getCurrentPSTDateKey } from '@/utils/date';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
 import { zohoClient, ZohoInventoryClient } from '@/lib/zoho/ZohoInventoryClient';
 import { salesOrderRepository } from '@/lib/repositories/salesOrderRepository';
@@ -577,7 +577,7 @@ export async function syncShippedOrdersToZoho(opts: SyncRunOptions = {}): Promis
   const runStartedAt = new Date().toISOString();
   const config = getFulfillmentSyncConfig(opts.config);
   const dryRun = opts.dryRun ?? config.dryRunDefault;
-  const orgId = opts.orgId ?? opts.deps?.orgId ?? transitionalUsavOrgId();
+  const orgId = opts.orgId ?? opts.deps?.orgId ?? transitionalDogfoodOrgId();
 
   const deps: FulfillmentDeps = {
     client: opts.deps?.client ?? zohoClient,

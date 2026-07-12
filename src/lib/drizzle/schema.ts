@@ -1086,10 +1086,9 @@ export const receiving = pgTable('receiving_carton', {
   // receiving_tracking_number dropped — tracking lives in shipping_tracking_numbers
   // (via shipmentId). See migration 2026-06-28_drop_receiving_tracking_number.sql.
   carrier: text('carrier'),
-  receivedAt: timestamp('received_at', { withTimezone: true }),
-  receivedBy: integer('received_by').references(() => staff.id, { onDelete: 'set null' }),
-  unboxedAt: timestamp('unboxed_at', { withTimezone: true }),
-  unboxedBy: integer('unboxed_by').references(() => staff.id, { onDelete: 'set null' }),
+  // received_at/received_by/unboxed_at/unboxed_by (+ the never-modeled interim
+  // unbox_opened_*/staging/lane/pairing/triage_* columns) DROPPED 2026-07-11e —
+  // triage facts live on receiving_triage, unbox facts on receiving_unbox.
   qaStatus: qaStatusEnum('qa_status').notNull().default('PENDING'),
   dispositionCode: dispositionEnum('disposition_code').notNull().default('HOLD'),
   conditionGrade: conditionGradeEnum('condition_grade').notNull().default('BRAND_NEW'),
@@ -1226,13 +1225,9 @@ export const receivingLines = pgTable('receiving_line', {
   /** NULL until a physical scan is matched (Zoho PO pre-staging rows start NULL) */
   receivingId: integer('receiving_id').references(() => receiving.id, { onDelete: 'cascade' }),
 
-  // Zoho identifiers — required for Zoho-originated rows (guarded by
-  // receiving_lines_zoho_item_required_chk), NULLABLE since 2026-07-01l so
-  // marketplace-only lines (eBay/Amazon, no Zoho item) can live on the spine.
-  zohoItemId: text('zoho_item_id'),
-  zohoLineItemId: text('zoho_line_item_id'),
-  zohoPurchaseReceiveId: text('zoho_purchase_receive_id'),
-  zohoPurchaseOrderId: text('zoho_purchaseorder_id'),
+  // Zoho identifiers DROPPED 2026-07-11e — the zoho cluster (item/line/PO ids,
+  // number(+norm), sync metadata, zoho_notes, unit_price) lives on
+  // receiving_line_zoho (see receivingLineZoho below).
 
   // Item metadata
   itemName: text('item_name'),
@@ -1247,28 +1242,10 @@ export const receivingLines = pgTable('receiving_line', {
   // Lifecycle state
   workflowStatus: inboundWorkflowStatusEnum('workflow_status').notNull().default('EXPECTED'),
 
-  // QA / disposition
-  qaStatus: qaStatusEnum('qa_status').notNull().default('PENDING'),
-  dispositionCode: dispositionEnum('disposition_code').notNull().default('HOLD'),
-  conditionGrade: conditionGradeEnum('condition_grade').notNull().default('BRAND_NEW'),
-  dispositionAudit: jsonb('disposition_audit').notNull().default([]),
-
-  // Line-level test assignment (separate from package-level receiving.needs_test)
-  needsTest: boolean('needs_test').notNull().default(true),
-  assignedTechId: integer('assigned_tech_id').references(() => staff.id, { onDelete: 'set null' }),
-
-  // Final disposition label (PASS_TO_STOCK | PASS_TO_FBA | PASS_TO_ORDER_TEST | FAIL_DAMAGED | ...)
-  dispositionFinal: text('disposition_final'),
-
-  // Zoho sync metadata for incremental/integration-safe reconciliation
-  zohoSyncSource: text('zoho_sync_source'),
-  zohoLastModifiedTime: text('zoho_last_modified_time'),
-  zohoSyncedAt: timestamp('zoho_synced_at', { withTimezone: true }),
+  // QA/disposition + test-assignment (testing cluster) DROPPED 2026-07-11e —
+  // lives on receiving_line_testing (see receivingLineTesting below).
 
   notes: text('notes'),
-  /** Zoho PO line description (read-only import); split from `notes` so a Zoho
-   *  re-sync can't clobber operator notes. 2026-06-24 notes-collision fix. */
-  zohoNotes: text('zoho_notes'),
   /** Filed Zendesk ticket # for a line-level claim, stored as "#<id>". */
   zendeskTicket: text('zendesk_ticket'),
   // ── Drift reconciliation (2026-06-19): DB columns added via raw-SQL
@@ -1276,7 +1253,6 @@ export const receivingLines = pgTable('receiving_line', {
   organizationId: orgIdCol(),
   /** Direct line→shipment link (retires the LATERAL PO#-guess). FK shipping_tracking_numbers (plain bigint). 2026-06-08. */
   shipmentId: bigint('shipment_id', { mode: 'number' }),
-  zohoPurchaseOrderNumber: text('zoho_purchaseorder_number'),
   /** PO | RETURN | TRADE_IN | PICKUP (line-level override of carton intake_type). 2026-04-13. */
   receivingType: text('receiving_type').default('PO'),
   skuCatalogId: integer('sku_catalog_id').references(() => skuCatalog.id, { onDelete: 'set null' }),
@@ -1306,9 +1282,7 @@ export const receivingLines = pgTable('receiving_line', {
   platformAccountId: bigint('platform_account_id', { mode: 'number' }).references(() => platformAccounts.id, { onDelete: 'set null' }),
   isRepairService: boolean('is_repair_service').notNull().default(false),
   // ── Receiving redesign Phase 0 (2026-06-24): line-level lifecycle facts ────
-  /** Read-only mirror of Zoho PO line.rate (unit cost); Zoho stays SoR. */
-  unitPrice: numeric('unit_price', { precision: 12, scale: 2 }),
-  /** Line-level receiver (carton-level is receiving.received_by). 2026-06-24. */
+  /** Line-level receiver (the carton-level stamp is receiving_triage.door_received_by). 2026-06-24. */
   receivedBy: integer('received_by').references(() => staff.id, { onDelete: 'set null' }),
   /** Line-level dock-scan timestamp. 2026-06-24. */
   scannedAt: timestamp('scanned_at', { withTimezone: true }),
@@ -1322,10 +1296,6 @@ export const receivingLines = pgTable('receiving_line', {
    *  workflow_status); PROBLEM is the orthogonal exception dimension. NULLABLE
    *  text, no enum/CHECK yet (cutover is a later migration). 2026-06-24. */
   receivingLineStatus: text('receiving_line_status'),
-  // NOTE: DB also has GENERATED column `zoho_purchaseorder_number_norm` (2026-05-21,
-  // GENERATED ALWAYS from zoho_purchaseorder_number). Intentionally omitted from the
-  // model — it is read via raw SQL in the reconciler; adding it as a managed column
-  // risks drizzle-kit mishandling the generated expression.
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1371,6 +1341,7 @@ export const receivingLineZoho = pgTable('receiving_line_zoho', {
   zohoPurchaseReceiveId: text('zoho_purchase_receive_id'),
   zohoPurchaseOrderId: text('zoho_purchaseorder_id'),
   zohoPurchaseOrderNumber: text('zoho_purchaseorder_number'),
+  zohoPurchaseOrderNumberNorm: text('zoho_purchaseorder_number_norm'),
   zohoReferenceNumber: text('zoho_reference_number'),
   zohoSyncSource: text('zoho_sync_source'),
   zohoLastModifiedTime: text('zoho_last_modified_time'),
@@ -1383,6 +1354,7 @@ export const receivingLineZoho = pgTable('receiving_line_zoho', {
   orgPoLineIdx: uniqueIndex('ux_receiving_line_zoho_org_po_line').on(table.organizationId, table.zohoPurchaseOrderId, table.zohoLineItemId),
   orgPrLineIdx: uniqueIndex('ux_receiving_line_zoho_org_pr_line').on(table.organizationId, table.zohoPurchaseReceiveId, table.zohoLineItemId),
   orgPoIdx: index('idx_receiving_line_zoho_org_po').on(table.organizationId, table.zohoPurchaseOrderId),
+  orgPoNumberNormIdx: index('idx_receiving_line_zoho_po_number_norm').on(table.organizationId, table.zohoPurchaseOrderNumberNorm),
 }));
 
 /** Line-level testing/QA routing facts. Per-unit verdicts stay on serial_units/testing_results. 1:1. */
@@ -1473,11 +1445,14 @@ export const receivingTriage = pgTable('receiving_triage', {
   triageComplete: boolean('triage_complete').notNull().default(false),
   triageCompletedAt: timestamp('triage_completed_at', { withTimezone: true }),
   triageCompletedBy: integer('triage_completed_by').references(() => staff.id, { onDelete: 'set null' }),
+  /** Idempotency key for POST /api/receiving/triage/complete (org-led unique, partial). */
+  triageClientEventId: text('triage_client_event_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   orgCompleteIdx: index('idx_receiving_triage_org_complete').on(table.organizationId, table.triageCompletedAt).where(sql`triage_complete`),
   stagingIdx: index('idx_receiving_triage_staging').on(table.stagingLocationId).where(sql`staging_location_id IS NOT NULL`),
+  clientEventIdx: uniqueIndex('ux_receiving_triage_client_event_id').on(table.organizationId, table.triageClientEventId).where(sql`triage_client_event_id IS NOT NULL`),
 }));
 
 /** Carton-grain UNBOX street ops (bench opened, unboxed milestone, intake_path). 1:1 with receiving. */
@@ -3665,9 +3640,24 @@ export const workflowTemplates = pgTable('workflow_templates', {
   // 2026-06-28m). Added to the model in universal-feed Phase 5 so the template
   // catalog can mark/order the recommended vertical.
   isDefault: boolean('is_default').notNull().default(false),
+  // Template Platform Phase 4 curation (migration 2026-07-11c). Non-system rows
+  // (imported packages, org submissions) move through a moderation lifecycle;
+  // system rows are public/approved by construction.
+  //   visibility:    'private' | 'org' | 'public'  (named CHECK)
+  //   reviewStatus:  'draft' | 'submitted' | 'approved' | 'rejected'  (named CHECK)
+  visibility: text('visibility').notNull().default('private'),
+  reviewStatus: text('review_status').notNull().default('draft'),
+  // The org that submitted this row for review — the ONLY org linkage on this
+  // otherwise-GLOBAL table; attribution/filtering only, not an FK/RLS column.
+  submittedByOrg: uuid('submitted_by_org'),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   slugIdx: uniqueIndex('ux_workflow_templates_slug').on(table.slug),
+  curatedIdx: index('idx_workflow_templates_curated')
+    .on(table.reviewStatus, table.visibility)
+    .where(sql`is_system = FALSE`),
 }));
 
 // item_workflow_state — where a given serial unit currently sits in its active
@@ -4306,3 +4296,37 @@ export const betaApplications = pgTable('beta_applications', {
 
 export type BetaApplication = typeof betaApplications.$inferSelect;
 export type NewBetaApplication = typeof betaApplications.$inferInsert;
+
+// ─── User-reported issues (agentic loop ALP-5.1) ─────────────────────────────
+// 2026-07-11_user_reported_issues.sql — primary record of the in-app
+// issue→fix→toast loop (FeedbackWidget dual-writes here + GitHub). RLS
+// tenant-from-birth via enforce_tenant_isolation(). CHECK-constrained text
+// discriminators (modeled per polymorphic-tables.md #8):
+//   issue_type IN ('bug','suggestion','question')        — user_reported_issues_issue_type_chk
+//   status     IN ('pending','in-progress','deployed')   — user_reported_issues_status_chk
+//     (mirrors the master-plan TicketStatus enum — locked vocabulary)
+export const userReportedIssues = pgTable('user_reported_issues', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  reporterStaffId: integer('reporter_staff_id'),
+  issueType: text('issue_type').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  pagePath: text('page_path'),
+  githubIssueNumber: integer('github_issue_number'),
+  githubIssueUrl: text('github_issue_url'),
+  status: text('status').notNull().default('pending'),
+  resolutionCommit: text('resolution_commit'),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  clientEventId: text('client_event_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgClientEventUniq: uniqueIndex('ux_user_reported_issues_org_client_event').on(table.organizationId, table.clientEventId),
+  orgStatusIdx: index('idx_user_reported_issues_org_status').on(table.organizationId, table.status),
+  orgReporterIdx: index('idx_user_reported_issues_org_reporter').on(table.organizationId, table.reporterStaffId),
+  orgGithubIdx: index('idx_user_reported_issues_org_github').on(table.organizationId, table.githubIssueNumber),
+}));
+
+export type UserReportedIssue = typeof userReportedIssues.$inferSelect;
+export type NewUserReportedIssue = typeof userReportedIssues.$inferInsert;

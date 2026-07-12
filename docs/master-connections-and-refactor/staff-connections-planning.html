@@ -3,11 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Connections &amp; Refactor — Architecture Plan</title>
+<title>Connections &amp; Refactor — Architecture Plan (DEPRECATED MIRROR)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
+  .sot-banner {
+    position: sticky; top: 0; z-index: 100;
+    background: #0f172a; color: #f8fafc;
+    padding: 12px 16px; font: 600 13px/1.4 Inter, system-ui, sans-serif;
+    border-bottom: 2px solid #38bdf8;
+  }
+  .sot-banner a { color: #7dd3fc; font-weight: 700; }
+  .sot-banner strong { color: #fde68a; }
   :root {
     --bg: #f1f5f9;
     --card: #ffffff;
@@ -406,13 +414,13 @@
 <!-- Ticket / helpdesk icon candidate — preview first -->
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
   <symbol id="icon-ticket-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Tilted ticket; scale restores Lucide optical volume after rotate -->
-    <g transform="translate(12 12) rotate(-10) scale(1.12) translate(-12 -12)">
-      <path d="M5 5h14a2 2 0 0 1 2 2v1.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.5a2.5 2.5 0 0 0 0-5V7a2 2 0 0 1 2-2Z" />
+    <!-- Lucide ticket + perforation dashes; mild tilt + scale for optical volume -->
+    <g transform="translate(12 12) rotate(-10) scale(1.06) translate(-12 -12)">
+      <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+      <path d="M13 5v2" />
+      <path d="M13 11v2" />
+      <path d="M13 17v2" />
     </g>
-    <!-- Lucide CircleHelp "?" — same 2px stroke as TicketPlus glyphs -->
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-    <path d="M12 17h.01" />
   </symbol>
 </svg>
 <section class="icon-preview" aria-label="Ticket icon preview">
@@ -444,7 +452,7 @@
         <span>64</span>
       </div>
     </div>
-    <p class="icon-preview-note">Lucide-weight (24 grid, 2px stroke, round caps/joins). Ticket tilted with scale compensation so optical volume matches sibling icons; upright CircleHelp-style "?".</p>
+    <p class="icon-preview-note">Lucide <code>ticket</code> path (full 24-grid volume) + perforation dashes, mild tilt. Same optical weight as PackageOpen / Wrench / Truck.</p>
   </div>
 </section>
 

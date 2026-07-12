@@ -90,7 +90,7 @@ export async function runReconcileDeliveredJob(): Promise<ReconcileDeliveredResu
                                    stn.delivered_at,
                                    (SELECT min(rs.scanned_at)
                                       FROM receiving_scans rs
-                                      LEFT JOIN receiving r2 ON r2.id = rs.receiving_id
+                                      LEFT JOIN receiving_carton r2 ON r2.id = rs.receiving_id
                                      WHERE ${SHIPMENT_SCAN_MATCH_CONDITION}),
                                    now()
                                  ),

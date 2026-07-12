@@ -62,7 +62,7 @@ export async function POST(
     // Read back the synced carton notes so the caller can refresh its display.
     const res = await tenantQuery<{ zoho_notes: string | null }>(
       orgId,
-      `SELECT zoho_notes FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT zoho_notes FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, orgId],
     );
 

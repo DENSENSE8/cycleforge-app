@@ -28,18 +28,27 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
   const { rows } = await tenantQuery<MetricsRow>(
     ctx.organizationId,
     `SELECT
-       (SELECT AVG(EXTRACT(EPOCH FROM (NOW() - receiving_date_time)) / 3600.0)
-          FROM receiving
-         WHERE organization_id = $1 AND source = 'unmatched' AND unboxed_at IS NULL
+       -- receiving_date_time: Wave-4 decision, see plan Appendix
+       (SELECT AVG(EXTRACT(EPOCH FROM (NOW() - r.receiving_date_time)) / 3600.0)
+          FROM receiving_carton r
+          LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+         WHERE r.organization_id = $1 AND r.source = 'unmatched' AND ru.unboxed_at IS NULL
        ) AS avg_unfound_hours,
-       (SELECT COUNT(*) FROM receiving
-         WHERE organization_id = $1 AND source = 'unmatched' AND unboxed_at IS NULL
+       (SELECT COUNT(*)
+          FROM receiving_carton r
+          LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+         WHERE r.organization_id = $1 AND r.source = 'unmatched' AND ru.unboxed_at IS NULL
        ) AS unfound_count,
-       (SELECT COUNT(*) FROM receiving
-         WHERE organization_id = $1 AND triage_complete = true
+       (SELECT COUNT(*)
+          FROM receiving_carton r
+          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         WHERE r.organization_id = $1 AND COALESCE(rt.triage_complete, false) = true
        ) AS triage_complete_count,
-       (SELECT COUNT(*) FROM receiving
-         WHERE organization_id = $1 AND triage_complete = true AND pairing_state <> 'MATCHED'
+       (SELECT COUNT(*)
+          FROM receiving_carton r
+          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         WHERE r.organization_id = $1 AND COALESCE(rt.triage_complete, false) = true
+           AND COALESCE(rt.pairing_state, 'UNFOUND') <> 'MATCHED'
        ) AS save_without_pair_count`,
     [ctx.organizationId],
   );

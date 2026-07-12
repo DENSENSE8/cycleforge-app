@@ -5,7 +5,7 @@
  *
  * Resolution order:
  *   1. organization_integrations row for (orgId, provider)
- *   2. Env-var fallback — ONLY when orgId === USAV_ORG_ID. Lets us migrate
+ *   2. Env-var fallback — ONLY when orgId === DOGFOOD_ORG_ID. Lets us migrate
  *      USAV's existing single-tenant env-based config without breaking
  *      anything. Any other tenant that lacks a row gets `null` (not an
  *      env-var leak across tenants).
@@ -20,7 +20,7 @@
 
 import pool from '@/lib/db';
 import { parseIntegrationPayload, serializeIntegrationPayload } from './crypto';
-import { USAV_ORG_ID, type OrgId } from '../tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 import { getValidatedAblyApiKey } from '@/lib/realtime/ably-key';
 
 // ─── Provider payload shapes ───────────────────────────────────────────────
@@ -452,7 +452,7 @@ export async function getIntegrationCredentials<T = unknown>(
   }
 
   // Transitional env-var fallback, USAV only.
-  if (orgId === USAV_ORG_ID) {
+  if (orgId === DOGFOOD_ORG_ID) {
     const fallback = envFallback(provider) as T | null;
     if (fallback) {
       credCache.set(key, { value: fallback, expiresAt: Date.now() + CACHE_TTL_MS });

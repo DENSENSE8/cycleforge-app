@@ -21,8 +21,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
-// Must stay in sync with `src/lib/auth/session.ts`.
-const SESSION_COOKIE_NAME = 'usav_sid';
+// Must stay in sync with `src/lib/auth/session.ts` (SESSION_COOKIE_NAME +
+// LEGACY_SESSION_COOKIE_NAME). During the cookie rename the edge accepts EITHER
+// the canonical `cf_sid` or the legacy `usav_sid` — the migrate-on-touch to a
+// single cf_sid happens in the /api/auth/session heartbeat (Node runtime).
+const SESSION_COOKIE_NAME = 'cf_sid';
+const LEGACY_SESSION_COOKIE_NAME = 'usav_sid';
 
 const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/signin(?:$|\/)/,
@@ -32,6 +36,12 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/not-authorized(?:$|\/)/,
   /^\/m\/enroll\//,
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
+  /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
+  /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)
+  // Anonymous share-pack read + zip download by token — a token IS the
+  // capability. The `[^/]+` requires a token segment, so the bare collection
+  // route (`POST /api/photos/share-packs`, create) stays gated by withAuth.
+  /^\/api\/photos\/share-packs\/[^/]+/,
   /^\/api\/auth\//,
   /^\/api\/beta\//,                     // public marketing beta waitlist + spots counter (no auth)
   /^\/api\/health(?:$|\/)/,
@@ -378,7 +388,9 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
 
 export function proxy(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
-  const hasCookie = Boolean(req.cookies.get(SESSION_COOKIE_NAME)?.value);
+  const hasCookie = Boolean(
+    req.cookies.get(SESSION_COOKIE_NAME)?.value || req.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value,
+  );
   // Path-prefix rewrites take precedence; UA-based rewrites are a fallback
   // for exact paths with a /m/* counterpart (see MOBILE_UA_REWRITES).
   const rewriteTarget =

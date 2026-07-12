@@ -1,0 +1,892 @@
+{/*
+  Cycle Forge — Live master plan (CRDT document)
+
+  SoT contract (docs/todo/agentic-loop-master-plan.md §-2):
+  - This file is the LOCAL source of truth. It mirrors into Y.Text('content')
+    over the org-scoped Ably channel `org:{orgId}:forge:master-plan` via the
+    sync daemon (.cycle_forge_ops/scripts/master-plan-sync-daemon.mjs).
+  - Humans edit it in Cursor; agents & staff edit it on /forge → Operations ▸ Plans
+    live view. Yjs merges both.
+  - Ticket statuses are ONLY: pending | in-progress | deployed
+    (contract: src/lib/master-plan/ticket-status.ts — anything else is invalid).
+  - Long-form notes for the ROI wave also live at
+    docs/todo/highest-roi-ops-ui-execution-plan.md (inventory + test checklists).
+*/}
+
+# Cycle Forge — Live Master Plan
+
+**Where you are:** Operations ▸ Plans → **Live** (or `/forge`).  
+**Legend** — `<TicketStatus />` chips:
+
+- `pending` = queued  
+- `in-progress` = someone is on it  
+- `deployed` = VERIFY passed and shipped (`resolutionCommit` when known)
+
+Keep every actionable item inside a `<TicketStatus />` tag so the forge loop and
+ops_plans bridge can project tasks (`master-plan:{ticketId}`).
+
+### Live index (one place)
+
+| Family | Where in this doc | Long-form / lanes |
+|--------|-------------------|-------------------|
+| **CONN-*** | [Connections — Now → Change](#connections--now--change) | [staff + tech](docs/master-connections-and-refactor/) · WS-CONN |
+| **WS-*** | [Portfolio](#portfolio--worktrees--human-review) | [docs/portfolio/INDEX.md](docs/portfolio/INDEX.md) |
+| **ROI-*** | [Highest-ROI Ops](#highest-roi-ops--ui-execution-plan) | [docs/todo/highest-roi…](docs/todo/highest-roi-ops-ui-execution-plan.md) |
+| **ALP-*** | [Loop bring-up](#loop-bring-up-alp) | [agentic-loop plan](docs/todo/agentic-loop-master-plan.md) |
+| **P1/P2-*** | Product roadmap | [CYCLE-FORGE-ROADMAP](docs/CYCLE-FORGE-ROADMAP) |
+
+**Human review:** tunnel walk → [review-protocol](docs/portfolio/review-protocol.md) → INDEX log.  
+**Agent queue:** any `pending` ticket below (forge / Hermes). **Do not** convert all docs to MDX — only tickets live here.
+
+---
+
+## Loop bring-up (ALP)
+
+<TicketStatus status="deployed" ticketId="ALP-0.3" href="/docs/todo/agentic-loop-master-plan.md" resolutionCommit="pending-commit" />
+<TicketStatus status="in-progress" ticketId="ALP-1.1" href="/docs/todo/agentic-loop-master-plan.md" />
+<TicketStatus status="pending" ticketId="ALP-2.1" href="/docs/todo/agentic-loop-master-plan.md" />
+<TicketStatus status="pending" ticketId="ALP-3.4" href="/docs/todo/agentic-loop-master-plan.md" />
+
+## Product roadmap tickets
+
+<TicketStatus status="pending" ticketId="P1-TRACE-02" href="/docs/CYCLE-FORGE-ROADMAP" />
+<TicketStatus status="pending" ticketId="P2-AI-01" href="/docs/CYCLE-FORGE-ROADMAP" />
+
+## Run telemetry
+
+<AgentLog runUid="example-run" stage="verify" />
+
+---
+
+# Portfolio — worktrees & human review
+
+**SoT catalog:** `docs/portfolio/INDEX.md` (plans × worktrees × phase × review).  
+**Protocol:** walk `usav-dev` / tunnel → human checkmarks in INDEX → then promote.  
+**Local:** `pnpm dev:switcher` starts each tree via `dev:tunnel` on :3000.
+
+Do not invent TicketStatus values — only `pending` | `in-progress` | `deployed`.  
+Human “approved” lives in the portfolio INDEX log; flip tickets to `deployed` after promote + VERIFY.
+
+### WS-PARK — parked stand-ins on dogfood
+
+<TicketStatus status="in-progress" ticketId="WS-PARK-1" href="/docs/portfolio/INDEX.md" />
+<TicketStatus status="pending" ticketId="WS-PARK-HR1" href="/docs/portfolio/review-protocol.md" />
+
+### WS-GLASS — glass worktree
+
+Branch `glass-design-system` · path `../cycleforge-glass` · plan `docs/todo/GLASS-DESIGN-SYSTEM.md`
+
+<TicketStatus status="in-progress" ticketId="WS-GLASS-1" href="/docs/todo/GLASS-DESIGN-SYSTEM.md" />
+<TicketStatus status="pending" ticketId="WS-GLASS-HR1" href="/docs/portfolio/INDEX.md" />
+
+### WS-STUDIO — studio catalog follow-ups
+
+Branch `studio-catalog-followups` · path `../cycleforge-studio-followups`
+
+<TicketStatus status="in-progress" ticketId="WS-STUDIO-1" href="/docs/todo/studio-driven-operator-surfaces-refactor-plan.md" />
+<TicketStatus status="pending" ticketId="WS-STUDIO-HR1" href="/docs/portfolio/INDEX.md" />
+
+### Topic worktrees (parked surfaces)
+
+Lanes: [docs/portfolio/WORKTREE-LANES.md](docs/portfolio/WORKTREE-LANES.md). Docs stay in monorepo `docs/`.
+
+<TicketStatus status="pending" ticketId="WS-FBA-1" href="/docs/portfolio/INDEX.md" />
+<TicketStatus status="pending" ticketId="WS-INV-1" href="/docs/portfolio/INDEX.md" />
+<TicketStatus status="pending" ticketId="WS-WH-1" href="/docs/todo/warehouse-map-react-flow-plan.md" />
+<TicketStatus status="pending" ticketId="WS-SRC-1" href="/docs/todo/sourcing-hub-integration-plan.md" />
+<TicketStatus status="pending" ticketId="WS-AI-1" href="/docs/portfolio/INDEX.md" />
+<TicketStatus status="pending" ticketId="WS-HOME-1" href="/docs/todo/contextual-my-day-home-plan.md" />
+
+---
+
+# Highest-ROI Ops & UI Execution Plan
+
+**Status:** PLAN (code-grounded inventory 2026-07-11)  
+**Scope:** Ship-table UX · Walk-in kiosk · Inventory staging hierarchy · Testing / mobile · Popover DS · Packer photos · Mobile unbox/pack · Gate unfinished pages  
+**Principle:** Ship closed-loop daily-ops value first; reuse existing substrates; never invent parallel engines.  
+**Long-form + test checklists:** `docs/todo/highest-roi-ops-ui-execution-plan.md`
+
+### ROI ranking (build order)
+
+| Rank | Workstream | Code state | Effort | Wave |
+|------|------------|------------|--------|------|
+| P0 | Packer photos on order search / dashboard detail | API + UI exist; dashboard stack **hides** them | XS | A |
+| P0 | Testing pass/fail instant UI + invalidation | `recordTestVerdict` works; polish gaps | S | A |
+| P0 | Ship Unshipped ↔ Shipped top tabs | Modes work; need `TabSwitch` on table chrome | XS–S | A |
+| P1 | Mobile testing QR + serial + order pair | Partial APIs; mobile polish | M | C |
+| P1 | Inventory place + room/desk/rack hierarchy | bins + move APIs; no place station | M–L | B |
+| P1 | Mobile unbox + pack UX polish | Shell works; plan ranked | M | D |
+| P2 | Popover DS → `RightPaneOverlay` backbone | Shell shared; many one-offs | M | E |
+| P2 | Walk-in kiosk + staff dual display | Staff `/walk-in` exists; no kiosk | L | F |
+| P3 | Gate unfinished pages (flags/nav) | design-demo kept; knip backlog | S–M | G |
+
+### Non-negotiables
+
+- Status only via `transition()` / `applyTransition()`
+- Tenant via `withTenantTransaction` / `ctx.organizationId`
+- Audit via `recordAudit()`; mutations thread `clientEventId`
+- Search pairing only via `hybridSearch` / `SearchHit`
+- Tabs = `TabSwitch`; large overlays = `RightPaneOverlay`; buttons = design-system `Button`
+- Product copy speaks capabilities, not vendor brands
+
+---
+
+## Wave A — Close the loop with existing data (P0)
+
+Same-sprint wins. No new schema.
+
+### A1 — Packer photos on order search / dashboard detail
+
+**Gap:** `ShippedDetailsPanelContent` defaults photos on; **dashboard stack sets `showPackingPhotos={false}`**. Photos live on `photo_entity_links` (`PACKER_LOG`) + `packer_photos_url`.
+
+**Do:** enable photos on `DashboardDetailsStack` / order workbench; hydrate enrichment; empty teaching state when none.
+
+**Accept:** pack + photo → open order from dashboard search → photos + viewer; tenant isolation on `/api/packing-photos`.
+
+<TicketStatus status="pending" ticketId="ROI-A1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+### A2 — Testing: instant UI after Pass / Fail
+
+**Do:** optimistic unit card; invalidate **testing-scoped** keys only (never receiving isolation feed); 409 → rollback + big fail card; `clientEventId` per press; same contract on mobile `ScanTestingPanel`.
+
+**Accept:** Pass updates in &lt;100ms perceived; double-tap = one verdict; offline rolls back cleanly.
+
+<TicketStatus status="pending" ticketId="ROI-A2" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+### A3 — Ship table Unshipped ↔ Shipped top tabs
+
+**Gap:** tables already switch via `?unshipped` / `?shipped` + master-nav; need sticky **`TabSwitch`** on table chrome for muscle memory.
+
+**Do:** wire to `setOrderView` / `normalizeDashboardOrderViewParams`; prefetch Shipped on hover; clear bulk selection on view change.
+
+**Accept:** click tabs → correct URL + table; shipped date filters still warm-cache.
+
+<TicketStatus status="pending" ticketId="ROI-A3" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## Wave B — Inventory closed loop (P1)
+
+### B1 — Location hierarchy (room → desk/rack → shelf → position)
+
+**Gap:** `locations` is room/row/col/`bin_type`/`parent_id` — not typed desk/rack/shelf/position.
+
+**Do:** migration `location_kind` CHECK (`ROOM`|`DESK`|`RACK`|`SHELF`|`POSITION`|`BIN`|`STAGING`|`OTHER`); backfill `BIN`; Drizzle same PR; tree queries in `location-queries.ts`.
+
+<TicketStatus status="pending" ticketId="ROI-B1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+### B2 — Staging chips → real locations
+
+**Do:** triage `staging_location_id` → real `STAGING` locations; one tenant transaction for stage write + events; presentation-ready path chips from server.
+
+<TicketStatus status="pending" ticketId="ROI-B2" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+### B3 — Place station (scan location → scan unit)
+
+**Do:** Station archetype — active target from location barcode; unit scan places via domain `placeUnitOnLocation` (Deps-injected); real data in inventory UI path labels.
+
+**Accept:** create Room→Rack→Shelf→Position with barcodes; scan chain places unit; other device sees same location.
+
+<TicketStatus status="pending" ticketId="ROI-B3" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## Wave C — Testing mobile + serial identity (P1)
+
+### C1 — Mobile testing: receiving QR + matrix + details
+
+**Build on:** `resolveTestingScan`, `MobilePoQrScanSheet`, `ScanTestingPanel`, MASTER mobile QR item.
+
+**Do:** scan receiving QR → testing context (isolation feed only); large Pass/Fail; edit grade/notes on phone; offline degrade-not-block.
+
+<TicketStatus status="pending" ticketId="ROI-C1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+### C2 — Serial identify / split / wrong-pair recovery
+
+**Build on:** `docs/todo/serial-label-pairing-split-combine-plan.md` + `label_manifests` API.
+
+**Hard rule:** one manufacturer serial → one `serial_units` → one `unit_uid`. Split changes membership only.
+
+**Do:** wrong serial UI → unassign/re-pair via attach + manifest APIs; multi-serial ack on desktop + mobile.
+
+<TicketStatus status="pending" ticketId="ROI-C2" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+### C3 — Order number search + pairing (integrations + local DB)
+
+**Do:** hybridSearch / AiQuickJump only; allocate via existing order allocation APIs; 409 on double-allocate.
+
+<TicketStatus status="pending" ticketId="ROI-C3" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## Wave D — Mobile unbox + pack UX (P1)
+
+### D0 — Restore lost unbox worktree WIP (desktop)
+
+**Build on:** Claude file-history snapshots from Jul 10 `worktree-unbox-ux` (session `874e77ae`).
+
+**Do:** stepper truth-fix, `SerialCard` dupe/tracking guards, receive-bar disabled reason on `/unbox`.
+
+<TicketStatus status="deployed" ticketId="ROI-D0" href="/docs/todo/unbox-receive-ux-improvement-plan.md" resolutionCommit="pending-commit" />
+
+### D1 — Critique → polish unbox + pack phone surfaces (+ remaining strategic)
+
+**Build on:** `docs/todo/unbox-receive-ux-improvement-plan.md` + `/m/unbox` + `/m/pack`.  
+**Does not include** D0 desktop quick-wins (already restored).
+
+**Do (phone first, then desktop parity):** defect chips; `ReceiveReadinessBar`; sticky `StationCommitBar`; multi-qty serial hardening; pack multi-scan (scan1 order → scan2 pack list). Run critique → improve-ui with approval.
+
+<TicketStatus status="pending" ticketId="ROI-D1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## Wave E — Popover design system (P2)
+
+### E1 — Standardize large overlays on ReceivingClaim backbone
+
+**SoT shell:** `RightPaneOverlay` (resize / reshape already).
+
+**Do:** extract shared claim/wizard presentation shell; migrate FBA + high-traffic order popovers first; keep Zendesk vs Receiving **controllers** separate; small menus stay on DS `Popover`.
+
+<TicketStatus status="pending" ticketId="ROI-E1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## Wave F — Walk-in dual display (P2)
+
+### F1 — Customer kiosk + staff management
+
+| Surface | Route | Archetype | Audience |
+|---------|-------|-----------|----------|
+| Front desk / kiosk | `/walk-in/kiosk` (tokenized if public) | Idle station | Customer |
+| Staff management | `/walk-in` (existing) | Workbench | Staff |
+
+**Do:** branded idle + org-uploadable media (`organization_id`); choose Sales | Repair | Service + loading animation; Square sales path; repair intake; service MVP; AI search inventory pairing; device enrollment auth (not open public writes).
+
+<TicketStatus status="pending" ticketId="ROI-F1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## Wave G — Gate unfinished surfaces (P3, continuous)
+
+### G1 — Nav + flags + permissions (not long-lived product worktrees)
+
+**Do:** omit unfinished pages from sidebar; org/env flags (`resolveForOrg` pattern); never add demos to `PUBLIC_PATHS`; design-demo admin-or-dev only if desired; continue knip dead-code waves. Agent worktrees for isolation only — product exposure is flags/nav.
+
+<TicketStatus status="pending" ticketId="ROI-G1" href="/docs/todo/highest-roi-ops-ui-execution-plan.md" />
+
+---
+
+## PR map (implementation order)
+
+| PR | Ticket | Title | Depends |
+|----|--------|-------|---------|
+| PR-1 | ROI-A1 | fix(dashboard): show packer photos in order detail stacks | — |
+| PR-2 | ROI-A2 | fix(testing): instant pass/fail optimistic + scoped invalidation | — |
+| PR-3 | ROI-A3 | feat(dashboard): TabSwitch Unshipped/Shipped on table chrome | — |
+| PR-4 | ROI-B1 | feat(inventory): location_kind hierarchy + placeUnit domain | — |
+| PR-5 | ROI-B3 | feat(stations): Place station scan-to-location | B1 |
+| PR-6 | ROI-B2 | feat(receiving): staging chips → real locations | B1 |
+| PR-7 | ROI-C2 | feat(testing): serial re-pair / label-manifest operator UI | — |
+| PR-8 | ROI-C1 | feat(mobile): testing QR + large pass/fail + details | A2, C2 |
+| PR-9 | ROI-C3 | feat(search): order pair from hybridSearch | — |
+| PR-9a | ROI-D0 | fix(unbox): restore worktree WIP — stepper, serial guards, disabled reason | — |
+| PR-10 | ROI-D1 | feat(mobile): unbox readiness/defects/commit + pack multi-scan | D0 |
+| PR-11 | ROI-E1 | refactor(ui): ClaimWizardShell + migrate FBA/order popovers | — |
+| PR-12 | ROI-F1 | feat(walk-in): kiosk idle + dual display + org media | C3 |
+| PR-13 | ROI-G1 | chore(nav): gate experimental pages + auth-coverage | — |
+
+**Parallel:** A1 ∥ A2 ∥ A3 ∥ E1 ∥ G1.  
+**Serial:** B1 → B2/B3; C2 → C1 polish; A1 before pack photos “done” in D1.
+
+---
+
+## First sprint (demo script)
+
+1. Pack order + photo → find in dashboard search → **photos visible** (ROI-A1).  
+2. Pass on `/test` (and mobile) → **status flips immediately** (ROI-A2).  
+3. Toggle **Unshipped ↔ Shipped** from table header (ROI-A3).  
+4. Stretch: scan bin + unit → unit on that location (ROI-B3).
+
+---
+
+## Open questions
+
+1. Place policy: always scan leaf position vs rack-level “next free”?  
+2. Kiosk: one iPad mode-switch vs two devices (session channel)?  
+3. Kiosk Service = full warranty intake or notify-staff only?  
+4. Ship header tabs: only Unshipped/Shipped, or include Warranty/FBA?  
+5. `/design-demo` admin-only in production?
+
+---
+
+## Ground truth (do not rebuild)
+
+| Area | Key paths |
+|------|-----------|
+| Ship tables | `dashboard-search-state.ts`, `DashboardOrdersView`, Unshipped/Shipped tables |
+| Packer photos | `DashboardDetailsStack`, `ShippedDetailsPanelContent`, `/api/packing-photos` |
+| Testing | `recordTestVerdict.ts`, `/test`, `ScanTestingPanel`, isolation doc |
+| Inventory | `locations` schema, `location-queries.ts`, warehouse floorplan Phase 1 |
+| Serial pairing | `docs/todo/serial-label-pairing-split-combine-plan.md`, label-manifest APIs |
+| Unbox UX plan | `docs/todo/unbox-receive-ux-improvement-plan.md` |
+| Overlay | `RightPaneOverlay.tsx`, `ReceivingClaimModal` |
+| Walk-in | `/walk-in`, `/api/walk-in/*`, letterhead |
+| Surfaces | `src/lib/stations/surface-keys.ts` |
+
+---
+
+Notes for editors: keep tickets inside `<TicketStatus />` tags so the forge
+outer loop can pick the next `pending` ticket deterministically. Prose around
+the tags merges conflict-free via Yjs — write freely. After saving this file,
+run the master-plan sync daemon (or hit live view after seed) so Ably/Yjs and
+ops_plans stay aligned.
+
+---
+
+# Connections — Now → Change
+
+**Promoted from** `docs/master-connections-and-refactor/staff-connections-planning.html` (checkboxes → tickets).
+**Narrative:** [staff plans](/docs/master-connections-and-refactor/staff/INDEX.md) · [technical index](/docs/master-connections-and-refactor/master-index-plan.md).
+**Portfolio:** [WS-CONN](/docs/portfolio/INDEX.md). HTML is a **deprecated mirror** — live SoT is this document on `/forge` Plans Live.
+
+Statuses: `pending` | `in-progress` | `deployed`. Human review: portfolio review-protocol + INDEX log.
+
+## Start
+
+### Stories
+
+- **Now:** A unit’s story is split across History, inventory, tickets, and photos — people piece it together by hand
+- **Change:** One shared plan with topic tabs; each line shows Now + Change; check when done
+
+<TicketStatus status="pending" ticketId="CONN-start-stories" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Language
+
+- **Now:** “Drift” and “where has this unit been?” get mixed up in conversation
+- **Change:** Say Item Journey for the unit timeline; keep Drift for stock-count alerts only
+
+<TicketStatus status="pending" ticketId="CONN-start-language" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Progress tracking
+
+- **Now:** Progress lives in chats and scattered docs
+- **Change:** This page is the shared checklist — same boxes for staff and engineering
+
+<TicketStatus status="pending" ticketId="CONN-start-progress" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Unit façade
+
+- **Now:** The “one write path” for unit updates exists but day-to-day stations still write in different ways
+- **Change:** Test, putaway, and receive all go through the same unit update path
+
+<TicketStatus status="pending" ticketId="CONN-start-unit-facade" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Location dual SoT
+
+- **Now:** Current place is often a text label, while move history already knows the real bin
+- **Change:** Current place links straight to the bin page, same as the history
+
+<TicketStatus status="pending" ticketId="CONN-start-loc-dual" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Journey tickets
+
+- **Now:** Operations History shows several timelines, but tickets and fail reasons are not in that same story
+- **Change:** One Item Journey merges moves, tests, tickets, and photos
+
+<TicketStatus status="pending" ticketId="CONN-start-journey-tickets" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### FAIL ticket
+
+- **Now:** A fail records why and opens a claim screen — the ticket is still filed by hand
+- **Change:** Fail can auto-link a ticket to that serial (rolled out with a flag)
+
+<TicketStatus status="pending" ticketId="CONN-start-fail-ticket" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Pickup dual model
+
+- **Now:** Two pickup tools/paths for the same dock work
+- **Change:** One pickup path with the same receive quality as a normal PO
+
+<TicketStatus status="pending" ticketId="CONN-start-pickup-dual" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+### Zoho sync path
+
+- **Now:** Zoho connection can validate, but sync is scattered across special jobs and buttons
+- **Change:** One Sync action and background job path for the inventory provider
+
+<TicketStatus status="pending" ticketId="CONN-start-zoho-sync" href="/docs/master-connections-and-refactor/staff/INDEX.md" />
+
+## Big picture
+
+### Mental model
+
+- **Now:** Receiving, testing, packing, inventory, and support each work — but feel like separate apps
+- **Change:** One serial is the spine of the story; every screen is a view into that story
+
+<TicketStatus status="pending" ticketId="CONN-big-mental" href="/docs/master-connections-and-refactor/staff/01-big-picture.md" />
+
+### Serial history
+
+- **Now:** History is split across Ops History, inventory, tickets, and photos — no shared panel
+- **Change:** Same journey panel and chips on serial, inventory, testing, and support
+
+<TicketStatus status="pending" ticketId="CONN-big-history" href="/docs/master-connections-and-refactor/staff/01-big-picture.md" />
+
+### Tickets
+
+- **Now:** Tickets usually hang on the carton or shipment — the serial is easy to miss
+- **Change:** Tickets also hang on the unit; a fail can link the ticket automatically
+
+<TicketStatus status="pending" ticketId="CONN-big-tickets" href="/docs/master-connections-and-refactor/staff/01-big-picture.md" />
+
+### Locations
+
+- **Now:** Rooms and bins scan fine; rack is mostly in the barcode; current place is often just text
+- **Change:** Clear Room → Rack → Bin story, and every move shows from → to on the journey
+
+<TicketStatus status="pending" ticketId="CONN-big-locations" href="/docs/master-connections-and-refactor/staff/01-big-picture.md" />
+
+### External ERP
+
+- **Now:** People still treat Zoho as “the inventory system” for floor questions
+- **Change:** Zoho (or any ERP) is a plug-in catalog; the floor owns bins, tests, and pack
+
+<TicketStatus status="pending" ticketId="CONN-big-erp" href="/docs/master-connections-and-refactor/staff/01-big-picture.md" />
+
+### New work
+
+- **Now:** Easy to invent another timeline, ticket queue, or list layout
+- **Change:** New work must say how it connects — no parallel spines
+
+<TicketStatus status="pending" ticketId="CONN-big-new-work" href="/docs/master-connections-and-refactor/staff/01-big-picture.md" />
+
+## Locations
+
+### Hierarchy
+
+- **Now:** Rooms and bins already live in one place, with roles like pick face, reserve, and staging
+- **Change:** Same physical model — clearer labels: Room → Rack → Bin with roles
+
+<TicketStatus status="pending" ticketId="CONN-loc-hierarchy" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### Rack
+
+- **Now:** Rack is not its own screen object — it’s baked into the barcode label
+- **Change:** Keep the barcode encoding; show rack as a clear label people can read
+
+<TicketStatus status="pending" ticketId="CONN-loc-rack" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### Current place
+
+- **Now:** Current place is often a text label — hard to click through to the bin page
+- **Change:** Current place always opens the same bin detail
+
+<TicketStatus status="pending" ticketId="CONN-loc-current" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### Event place
+
+- **Now:** Move history already knows the real from/to bins (stronger than the text label)
+- **Change:** Every meaningful move shows on the Item Journey with from → to bins
+
+<TicketStatus status="pending" ticketId="CONN-loc-events" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### Transfers
+
+- **Now:** Older transfer logs use place names as text — weaker than real move events
+- **Change:** New moves always use the event history; stop writing text-only transfer logs
+
+<TicketStatus status="pending" ticketId="CONN-loc-transfers" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### Putaway
+
+- **Now:** Putaway works after receive; after test and after pack, placement rules feel scattered
+- **Change:** After test and after pack, putaway/staging is an obvious step on the journey
+
+<TicketStatus status="pending" ticketId="CONN-loc-putaway" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### SKU qty
+
+- **Now:** Bin quantities update through the stock ledger when stock moves
+- **Change:** Keep one quantity writer; bin moves and quantity stay one coherent story
+
+<TicketStatus status="pending" ticketId="CONN-loc-sku-qty" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+### Warehouse
+
+- **Now:** Multi-warehouse is prepared in data but not fully lived day to day
+- **Change:** Stamp warehouse consistently as we grow to more sites
+
+<TicketStatus status="pending" ticketId="CONN-loc-warehouse" href="/docs/master-connections-and-refactor/staff/02-inventory-and-locations.md" />
+
+## Tickets
+
+### Registry
+
+- **Now:** One ticket registry already exists (Zendesk today) with links to cartons and lines
+- **Change:** Keep that single registry — never invent a second ticket queue
+
+<TicketStatus status="pending" ticketId="CONN-tix-registry" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+### Resolver
+
+- **Now:** Finding the ticket starts from the receiving carton/line, then shipment, then photos
+- **Change:** Finding the ticket also works from the serial itself
+
+<TicketStatus status="pending" ticketId="CONN-tix-resolver" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+### API
+
+- **Now:** Ticket lookup is built around receiving line / carton IDs
+- **Change:** Same lookup works for serial and order the same way
+
+<TicketStatus status="pending" ticketId="CONN-tix-api" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+### Testing UI
+
+- **Now:** Testing can reply on a ticket only when the carton/line already has one
+- **Change:** When a unit is linked, testing always shows that ticket in context
+
+<TicketStatus status="pending" ticketId="CONN-tix-ui" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+### On FAIL
+
+- **Now:** Fail records why and opens a claim screen — linking the ticket is still manual
+- **Change:** Fail auto-links (and can optionally create) a ticket — rolled out with a flag
+
+<TicketStatus status="pending" ticketId="CONN-tix-fail" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+### Serial link
+
+- **Now:** The system can store a serial link, but the main “find ticket” path doesn’t use it yet
+- **Change:** Serial is a first-class place tickets hang
+
+<TicketStatus status="pending" ticketId="CONN-tix-serial" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+### Nav
+
+- **Now:** Jumping Support → unit → bin → test is incomplete
+- **Change:** Jump both ways: ticket ↔ unit ↔ location ↔ test
+
+<TicketStatus status="pending" ticketId="CONN-tix-nav" href="/docs/master-connections-and-refactor/staff/03-testing-and-support-tickets.md" />
+
+## Journey
+
+### API
+
+- **Now:** Operations History can open a journey by order, serial, or tracking
+- **Change:** One shared journey path becomes the place every screen reads from
+
+<TicketStatus status="pending" ticketId="CONN-jny-api" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+### 5 spines
+
+- **Now:** History already merges several activity streams (ops, inventory, audit, carrier, warranty)
+- **Change:** Also fold in tickets, fail reasons, and photos into that same thread
+
+<TicketStatus status="pending" ticketId="CONN-jny-spines" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+### UI home
+
+- **Now:** The journey lives mainly under Operations ▸ History — not on inventory, testing, or support
+- **Change:** Same journey panel and chips on those everyday screens
+
+<TicketStatus status="pending" ticketId="CONN-jny-ui" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+### Façade
+
+- **Now:** There is no single “get this unit’s full story” helper yet
+- **Change:** One helper merges moves, tickets, origin, photos, and signals
+
+<TicketStatus status="pending" ticketId="CONN-jny-facade" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+### Provenance
+
+- **Now:** Origin edges exist in the database, but screens don’t fully read them yet
+- **Change:** Journey treats origin as a reliable first chapter of the story
+
+<TicketStatus status="pending" ticketId="CONN-jny-prov" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+### Completeness
+
+- **Now:** Ship, ticket, and bin hops are easy to miss on the timeline
+- **Change:** Full life: receive → test → putaway → pick → pack → ship + related tickets
+
+<TicketStatus status="pending" ticketId="CONN-jny-complete" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+### Naming
+
+- **Now:** Stock “drift” alerts are easy to confuse with this timeline
+- **Change:** Training and UI say Item Journey; drift stays inventory health only
+
+<TicketStatus status="pending" ticketId="CONN-jny-naming" href="/docs/master-connections-and-refactor/staff/04-item-journey.md" />
+
+## Zoho / external inventory
+
+### Mental model
+
+- **Now:** People still say “check Zoho” for questions the floor already answered
+- **Change:** Zoho is the connected catalog/ERP; the floor owns bins, tests, pack, and pickup
+
+<TicketStatus status="pending" ticketId="CONN-zoho-mental" href="/docs/master-connections-and-refactor/staff/05-external-inventory-zoho.md" />
+
+### Connector
+
+- **Now:** Settings can validate the Zoho connection; sync is not on that same path yet
+- **Change:** Sync runs through the same connection path as Settings
+
+<TicketStatus status="pending" ticketId="CONN-zoho-connector" href="/docs/master-connections-and-refactor/staff/05-external-inventory-zoho.md" />
+
+### Provider interface
+
+- **Now:** “Inventory provider” is planned on paper — not a real plug-in yet
+- **Change:** A clear provider contract: pull catalog/stock, push updates, reconcile
+
+<TicketStatus status="pending" ticketId="CONN-zoho-provider" href="/docs/master-connections-and-refactor/staff/05-external-inventory-zoho.md" />
+
+### Mirrors
+
+- **Now:** Incoming still leans on the Zoho-shaped PO mirror alongside a newer shared mirror
+- **Change:** Incoming reads the shared mirror only — provider-agnostic
+
+<TicketStatus status="pending" ticketId="CONN-zoho-mirrors" href="/docs/master-connections-and-refactor/staff/05-external-inventory-zoho.md" />
+
+### Core schema
+
+- **Now:** Zoho-shaped fields still show up on core receiving paths
+- **Change:** No new Zoho-shaped fields on floor tables — mirrors hold provider facts
+
+<TicketStatus status="pending" ticketId="CONN-zoho-schema" href="/docs/master-connections-and-refactor/staff/05-external-inventory-zoho.md" />
+
+### Sync UX
+
+- **Now:** Zoho tools and background jobs feel scattered
+- **Change:** One “Sync now” in Settings plus the same job in the background
+
+<TicketStatus status="pending" ticketId="CONN-zoho-sync-ux" href="/docs/master-connections-and-refactor/staff/05-external-inventory-zoho.md" />
+
+## Pickup
+
+### Data model
+
+- **Now:** Two pickup models/tools for the same dock intake work
+- **Change:** One pickup orders model operators learn once
+
+<TicketStatus status="pending" ticketId="CONN-pk-model" href="/docs/master-connections-and-refactor/staff/06-local-pickup.md" />
+
+### LCPU
+
+- **Now:** LCPU / local-pickup POs are detected and can sync into pickup orders
+- **Change:** Keep detection; pushing a PO to Zoho is optional — not required to record the drop-off
+
+<TicketStatus status="pending" ticketId="CONN-pk-lcpu" href="/docs/master-connections-and-refactor/staff/06-local-pickup.md" />
+
+### Receiving parity
+
+- **Now:** Synced pickup POs don’t always get the same line-level receive story as carrier POs
+- **Change:** Same receive quality as a normal PO
+
+<TicketStatus status="pending" ticketId="CONN-pk-parity" href="/docs/master-connections-and-refactor/staff/06-local-pickup.md" />
+
+### Surface
+
+- **Now:** Pickup has its own page and review panel
+- **Change:** One checklist; Incoming shows pickup without a secret second tool
+
+<TicketStatus status="pending" ticketId="CONN-pk-surface" href="/docs/master-connections-and-refactor/staff/06-local-pickup.md" />
+
+### Journey
+
+- **Now:** Easy to miss that a serial came from pickup
+- **Change:** Journey clearly shows origin = pickup
+
+<TicketStatus status="pending" ticketId="CONN-pk-journey" href="/docs/master-connections-and-refactor/staff/06-local-pickup.md" />
+
+### Sales vs intake
+
+- **Now:** Walk-in sales can feel adjacent to pickup intake
+- **Change:** Clear split in nav and training: sales ≠ pickup intake
+
+<TicketStatus status="pending" ticketId="CONN-pk-sales" href="/docs/master-connections-and-refactor/staff/06-local-pickup.md" />
+
+## Pages
+
+### Surfaces
+
+- **Now:** Core operator jobs are registered (unbox, triage, incoming, pickup, history, pack, test, outbound)
+- **Change:** Every new operator surface registers the same way
+
+<TicketStatus status="pending" ticketId="CONN-pg-surfaces" href="/docs/master-connections-and-refactor/staff/07-pages-and-design.md" />
+
+### Archetypes
+
+- **Now:** Stations feel more consistent than admin and reports
+- **Change:** Every screen declares its job: Station, Workbench, Monitor, or Canvas — never mix in one region
+
+<TicketStatus status="pending" ticketId="CONN-pg-archetypes" href="/docs/master-connections-and-refactor/staff/07-pages-and-design.md" />
+
+### Nav keys
+
+- **Now:** Sidebar labels and operator surface keys don’t always match one-to-one
+- **Change:** One clear mapping so nav and surfaces stay in sync
+
+<TicketStatus status="pending" ticketId="CONN-pg-nav" href="/docs/master-connections-and-refactor/staff/07-pages-and-design.md" />
+
+### Inventory
+
+- **Now:** Inventory has many modes, but no shared journey strip
+- **Change:** One inventory workbench with shared journey and chips
+
+<TicketStatus status="pending" ticketId="CONN-pg-inventory" href="/docs/master-connections-and-refactor/staff/07-pages-and-design.md" />
+
+### Rails
+
+- **Now:** Some pages reinvent their own lists and timelines
+- **Change:** Reuse the shared sidebar and recent-activity rails everywhere
+
+<TicketStatus status="pending" ticketId="CONN-pg-rails" href="/docs/master-connections-and-refactor/staff/07-pages-and-design.md" />
+
+### Admin
+
+- **Now:** Admin feels standalone; “Connections” there means integrations, not unit links
+- **Change:** Lift admin into the same shell language — or label it clearly as a monitor tool
+
+<TicketStatus status="pending" ticketId="CONN-pg-admin" href="/docs/master-connections-and-refactor/staff/07-pages-and-design.md" />
+
+## Roadmap
+
+### Phase 0 docs
+
+- **Now:** Technical index, staff hub, and this HTML are published
+- **Change:** Keep dual-layer update rules alive in 1-on-1s
+
+<TicketStatus status="pending" ticketId="CONN-rm-p0-docs" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 0 governance
+
+- **Now:** Editing rules are written down
+- **Change:** Leads walk the dual-layer rules; plan statuses stay current
+
+<TicketStatus status="pending" ticketId="CONN-rm-p0-governance" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 1 FAIL
+
+- **Now:** Fail opens a claim screen only
+- **Change:** Fail links a ticket to the serial (safe rollout with a flag)
+
+<TicketStatus status="pending" ticketId="CONN-rm-p1-fail" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 1 ship
+
+- **Now:** Pack/ship is incomplete on the unit journey
+- **Change:** Pack and ship show as clear hops on the journey
+
+<TicketStatus status="pending" ticketId="CONN-rm-p1-ship" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 1 bins
+
+- **Now:** Moves can record bins, but not always honestly
+- **Change:** Every move shows from-bin → to-bin
+
+<TicketStatus status="pending" ticketId="CONN-rm-p1-bins" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 1 pickup
+
+- **Now:** Two pickup paths
+- **Change:** One operator path
+
+<TicketStatus status="pending" ticketId="CONN-rm-p1-pickup" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 1 sync
+
+- **Now:** Zoho sync is ad-hoc
+- **Change:** Sync lives on the shared integrations path
+
+<TicketStatus status="pending" ticketId="CONN-rm-p1-sync" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 2 journey
+
+- **Now:** Journey widgets are fragmented / History-heavy
+- **Change:** One shared journey panel on the main screens
+
+<TicketStatus status="pending" ticketId="CONN-rm-p2-journey" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 2 chips
+
+- **Now:** Order / serial / bin / ticket chips look different per page
+- **Change:** Same chips everywhere
+
+<TicketStatus status="pending" ticketId="CONN-rm-p2-chips" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 3 inventory
+
+- **Now:** Inventory feels like many thin pages
+- **Change:** One workbench with shared panels
+
+<TicketStatus status="pending" ticketId="CONN-rm-p3-inv" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 3 support
+
+- **Now:** Support ↔ unit jumps are incomplete
+- **Change:** Confirmed bidirectional nav in a 1-on-1
+
+<TicketStatus status="pending" ticketId="CONN-rm-p3-support" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+### Phase 4 provider
+
+- **Now:** Multi-provider inventory is docs-only
+- **Change:** Zoho as one adapter, plus a second stub provider
+
+<TicketStatus status="pending" ticketId="CONN-rm-p4-provider" href="/docs/master-connections-and-refactor/staff/08-roadmap-and-phases.md" />
+
+## Technical
+
+### Unit status
+
+- **Now:** Most status changes go through the state machine; some raw updates remain
+- **Change:** Every status change goes through the state machine only
+
+<TicketStatus status="pending" ticketId="CONN-tech-transition" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+
+### Qty ledger
+
+- **Now:** Quantity changes should go through the ledger; bypass risk remains
+- **Change:** Never change stock totals outside the ledger
+
+<TicketStatus status="pending" ticketId="CONN-tech-ledger" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+
+### Unit façade
+
+- **Now:** The combined unit-write helper exists but isn’t on hot paths yet
+- **Change:** Prefer that helper for test, putaway, and receive
+
+<TicketStatus status="pending" ticketId="CONN-tech-unit-facade" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+
+### Polymorphic hubs
+
+- **Now:** Typed link tables already exist (photos, tickets, parts, signals, …)
+- **Change:** No single “connections” dump table; new links follow the same contract
+
+<TicketStatus status="pending" ticketId="CONN-tech-poly" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+
+### Connections module
+
+- **Now:** The shared read/link module is not built yet
+- **Change:** A thin read/link layer; domains keep owning writes
+
+<TicketStatus status="pending" ticketId="CONN-tech-connections" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+
+### External inventory
+
+- **Now:** Zoho validates; sync and provider adapter are incomplete
+- **Change:** Full inventory provider adapter with Zoho as one implementation
+
+<TicketStatus status="pending" ticketId="CONN-tech-ext-inv" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+
+### Index governance
+
+- **Now:** The technical connection matrix lives in the master index
+- **Change:** Update the matrix and staff Now/Change whenever behavior ships
+
+<TicketStatus status="pending" ticketId="CONN-tech-index" href="/docs/master-connections-and-refactor/master-index-plan.md" />
+

@@ -13,8 +13,8 @@
  * survives a refresh/deep-link — the gap the plan's D1 implementation note
  * flagged in the prior local-state-only `triageQuery`.
  *
- * A bare `<SearchBar size="compact">` (not `<SidebarSearchBar>`): this band is
- * bottom-anchored, not the 40px sidebar HEADER band `SidebarSearchBar` owns —
+ * A bare `<SearchBar size="compact">`: this band is bottom-anchored, a compact
+ * station-style filter — NOT the global header search (the app's only search) —
  * see sidebar-search-bar.guard.test.ts.
  */
 

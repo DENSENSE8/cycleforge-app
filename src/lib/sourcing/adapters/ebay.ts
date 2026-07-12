@@ -3,7 +3,7 @@ import { browseSearch } from '@/lib/ebay/browse-client';
 import { getIntegrationCredentials, type EbayCredentials } from '@/lib/integrations/credentials';
 import { normalizeEnvValue } from '@/lib/env-utils';
 import { normalizeBrowseItems } from '@/lib/sourcing/normalize';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { buildScourQuery, type ScourRequest, type SourceAdapter } from './types';
 
@@ -28,7 +28,7 @@ async function logCall(
     await pool.query(
       `INSERT INTO ebay_api_calls (method, endpoint, latency_ms, status_code, error_message, created_at, organization_id)
        VALUES ('GET', $1, $2, $3, $4, NOW(), $5::uuid)`,
-      [endpoint, latencyMs, statusCode, errorMessage, orgId ?? transitionalUsavOrgId()],
+      [endpoint, latencyMs, statusCode, errorMessage, orgId ?? transitionalDogfoodOrgId()],
     );
   } catch (err) {
     console.warn('[sourcing.ebay] ebay_api_calls log failed:', err instanceof Error ? err.message : err);

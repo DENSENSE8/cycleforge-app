@@ -30,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                     stn.tracking_number_raw AS tracking,
                     COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier) AS status,
                     ${countExpr} AS count
-             FROM receiving r
+             FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
              WHERE r.organization_id = $3
                AND (

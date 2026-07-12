@@ -138,7 +138,7 @@ export interface MobileFeedQueryOptions<T> {
     invalidation?: Parameters<typeof useRealtimeInvalidation>[0];
     /** Ably channel/event whose arrival should refetch this feed. */
     ably?: { channel: string; event: string; enabled?: boolean };
-    /** window CustomEvent names that should refetch (e.g. 'usav-refresh-data'). */
+    /** window CustomEvent names that should refetch (e.g. 'app-refresh-data'). */
     windowEvents?: ReadonlyArray<string>;
   };
 }

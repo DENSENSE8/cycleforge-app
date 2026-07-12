@@ -6,6 +6,7 @@ import {
   getAiAssistSessionChannelName,
   getDashboardChannelName,
   getFbaChannelName,
+  getForgeRunsChannelName,
   getInboxChannelName,
   getOrdersChannelName,
   getOpsPlansChannelName,
@@ -17,12 +18,12 @@ import {
 } from '@/lib/realtime/channels';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { getPrimaryTechStaffIds } from '@/lib/neon/staff-stations-queries';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import { formatPSTTimestamp } from '@/utils/date';
 
 // Every payload carries `organizationId` so the channel it publishes to is
 // org-namespaced. Route handlers pass `ctx.organizationId`; the transitional
-// jobs (orders-ingest-drain, fulfillment-sync, …) pass `transitionalUsavOrgId()`.
+// jobs (orders-ingest-drain, fulfillment-sync, …) pass `transitionalDogfoodOrgId()`.
 
 type OrderChangedPayload = {
   organizationId: string;
@@ -183,6 +184,41 @@ export async function publishOpsPlanUpdated(payload: OpsPlanUpdatedPayload) {
   });
 }
 
+export type ForgeRunChangedPayload = {
+  organizationId: string;
+  runUid: string;
+  stage?: string | null;
+  runStatus?: string | null;
+};
+
+/** Cycle Forge run ingest → live /forge refresh (replaces poll-only fetch). */
+export async function publishForgeRunChanged(payload: ForgeRunChangedPayload) {
+  await publishEvent(getForgeRunsChannelName(payload.organizationId), 'forge_run.changed', {
+    ...payload,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
+export type IssueResolvedPayload = {
+  organizationId: string;
+  /** The reporter — the toast lands ONLY on their per-staff inbox channel. */
+  staffId: number;
+  issueId: number;
+  title: string;
+  resolutionCommit?: string | null;
+};
+
+/**
+ * Issue→fix→toast loop (ALP-5.3): fired when a reported issue reaches
+ * `deployed`. Rides the reporter's own inbox channel so nobody else toasts.
+ */
+export async function publishIssueResolved(payload: IssueResolvedPayload) {
+  await publishEvent(getInboxChannelName(payload.organizationId, payload.staffId), 'issue.resolved', {
+    ...payload,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
 export type VoiceEventPayload = {
   organizationId: string;
   /** What changed, so the client knows which query keys to invalidate. */
@@ -243,7 +279,7 @@ async function logRealtimeEventToStationActivity(
 
   // This self-derived station-activity feed has no request context; it stamps
   // the transitional org (USAV) — it is single-tenant by construction today.
-  const selfOrgId = transitionalUsavOrgId();
+  const selfOrgId = transitionalDogfoodOrgId();
 
   try {
     if (eventName === 'order.tested') {

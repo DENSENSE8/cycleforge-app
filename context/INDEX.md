@@ -75,5 +75,5 @@ Michael(1/green), Thuc(2/blue), Sang(3/purple), Tuan(4/black), Thuy(5/red), Cuon
 PostgreSQL on Neon serverless. Drizzle ORM + raw pg Pool. 50+ tables + 5 pipeline tables.
 
 ### Deployment
-Vercel (web) + Electron (desktop) + PM2 (pipeline). Vercel Cron is primary; bootstrap QStash only for remaining legacy jobs.
+Vercel (web) + PM2 (pipeline). Vercel Cron is primary; bootstrap QStash only for remaining legacy jobs.
 Pipeline: `npm run pipeline:start` (Mac) + `systemctl start jetson-trainer` (Jetson).

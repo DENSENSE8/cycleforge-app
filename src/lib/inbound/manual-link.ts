@@ -6,8 +6,9 @@
  *   1. adds the target as a SECONDARY link on the same spine row (the existing
  *      primary keeps the badge; if the line had no primary yet the target becomes
  *      primary), idempotent on ux_inbound_po_links_natural;
- *   2. when the target is Zoho, dual-writes the zoho_purchaseorder_id / _number
- *      spine cache so legacy Zoho readers + receive-in-Zoho work on the row;
+ *   2. when the target is Zoho, writes the zoho_purchaseorder_id / _number onto
+ *      the line's receiving_line_zoho facts row (W3 — the spine zoho columns are
+ *      dead) so Zoho readers + receive-in-Zoho work on the row;
  *   3. records the cross-source equivalence edge (line's primary ↔ target,
  *      reason 'manual') so reconcile/merge queries see the two orders as one;
  *   4. writes an inbound_purchase_merge_log audit row; and
@@ -119,10 +120,13 @@ export async function linkInboundManually(
       `inbound-link:${orgId}:${targetSource}:${sourceOrderId}`,
     ]);
 
-    // 1. Line must exist for this org.
+    // 1. Line must exist for this org (zoho identity read from the rz facts table).
     const lineRes = await client.query<{ id: number; zoho_purchaseorder_id: string | null }>(
-      `SELECT id, zoho_purchaseorder_id
-         FROM receiving_lines WHERE id = $1 AND organization_id = $2`,
+      `SELECT rl.id, rz.zoho_purchaseorder_id
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+        WHERE rl.id = $1 AND rl.organization_id = $2`,
       [receivingLineId, orgId],
     );
     if (lineRes.rows.length === 0) {
@@ -161,22 +165,10 @@ export async function linkInboundManually(
       { withTx: (_o, fn) => fn(client) },
     );
 
-    // 4. When linking a Zoho identity as a SECONDARY link, upsertPurchaseLink
-    //    doesn't touch the zoho spine cache (it only dual-writes for a primary),
-    //    so stamp zoho_purchaseorder_id / _number explicitly here.
+    // (The zoho-identity adopt onto the winner's receiving_line_zoho facts row
+    //  happens in step 6b, AFTER the loser collapse — the loser's rz row can
+    //  hold the same (org, PO, line-item) natural key this line is adopting.)
     let zohoPurchaseOrderId = lineRes.rows[0].zoho_purchaseorder_id;
-    if (targetSource === 'zoho') {
-      await client.query(
-        `UPDATE receiving_lines
-            SET zoho_purchaseorder_id     = $3,
-                zoho_purchaseorder_number = COALESCE($4, zoho_purchaseorder_number),
-                zoho_line_item_id         = COALESCE(zoho_line_item_id, $5),
-                updated_at                = now()
-          WHERE id = $1 AND organization_id = $2`,
-        [receivingLineId, orgId, sourceOrderId, targetOrderNumber, targetLineItemId],
-      );
-      zohoPurchaseOrderId = sourceOrderId;
-    }
 
     // 5. Cross-source equivalence: link the existing primary identity to the
     //    target, so reconcile/merge queries see them as one real-world order.
@@ -205,9 +197,11 @@ export async function linkInboundManually(
     if (targetSource === 'zoho' && mergeStrategy === 'augment_winner') {
       const loserRes = await client.query<{ id: number }>(
         `SELECT rl.id
-           FROM receiving_lines rl
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
           WHERE rl.organization_id = $1
-            AND rl.zoho_purchaseorder_id = $2
+            AND rz.zoho_purchaseorder_id = $2
             AND rl.id <> $3
             AND COALESCE(rl.inbound_source_type, 'zoho') <> 'ebay'
             AND rl.workflow_status IN ('EXPECTED','ARRIVED')
@@ -220,12 +214,41 @@ export async function linkInboundManually(
       );
       if (loserRes.rows.length === 1) {
         const loserId = loserRes.rows[0].id;
-        await client.query(`DELETE FROM receiving_lines WHERE id = $1 AND organization_id = $2`, [
+        await client.query(`DELETE FROM receiving_line WHERE id = $1 AND organization_id = $2`, [
           loserId,
           orgId,
         ]);
         loserLineIds.push(loserId);
       }
+    }
+
+    // 6b. Adopt the Zoho identity onto the winner's receiving_line_zoho facts row
+    //     (W3 writer inversion — the spine zoho columns are dead). Runs after the
+    //     loser collapse so ux_receiving_line_zoho_org_po_line can't collide with
+    //     the just-deleted duplicate's rz row (FK cascade removed it). Inline
+    //     upsert (not narrow.ts) because this site needs COALESCE-once on
+    //     zoho_line_item_id and must maintain the derived
+    //     zoho_purchaseorder_number_norm (GENERATED on the old spine column).
+    if (targetSource === 'zoho') {
+      await client.query(
+        `INSERT INTO receiving_line_zoho (
+           receiving_line_id, organization_id,
+           zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm,
+           zoho_line_item_id)
+         VALUES ($1, $2, $3, $4,
+                 NULLIF(upper(regexp_replace($4, '[^A-Za-z0-9]', '', 'g')), ''),
+                 $5)
+         ON CONFLICT (receiving_line_id) DO UPDATE SET
+           zoho_purchaseorder_id          = EXCLUDED.zoho_purchaseorder_id,
+           zoho_purchaseorder_number      = COALESCE(EXCLUDED.zoho_purchaseorder_number, receiving_line_zoho.zoho_purchaseorder_number),
+           zoho_purchaseorder_number_norm = CASE WHEN EXCLUDED.zoho_purchaseorder_number IS NOT NULL
+                                                 THEN EXCLUDED.zoho_purchaseorder_number_norm
+                                                 ELSE receiving_line_zoho.zoho_purchaseorder_number_norm END,
+           zoho_line_item_id              = COALESCE(receiving_line_zoho.zoho_line_item_id, EXCLUDED.zoho_line_item_id),
+           updated_at                     = now()`,
+        [receivingLineId, orgId, sourceOrderId, targetOrderNumber, targetLineItemId],
+      );
+      zohoPurchaseOrderId = sourceOrderId;
     }
 
     // 7. Merge-log the collapse/augment for the dedup audit trail.

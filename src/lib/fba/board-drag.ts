@@ -1,7 +1,7 @@
 import type { FbaBoardItem } from '@/lib/fba/types';
 
 /** MIME type for HTML5 drag payload from sidebar rows / board table (combined review). */
-export const FBA_BOARD_DND_TYPE = 'application/x-usav-fba-board-drag';
+export const FBA_BOARD_DND_TYPE = 'application/x-cf-fba-board-drag';
 
 /** Row fields required to allocate onto an Active shipments tracking row via PATCH planTracking. */
 export type FbaBoardDragRowSnapshot = Pick<

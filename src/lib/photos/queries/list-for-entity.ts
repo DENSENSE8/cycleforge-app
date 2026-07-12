@@ -41,7 +41,7 @@ export function buildListForEntityQuery(input: ListForEntityInput): {
   const params: unknown[] = [input.organizationId];
   const joins = `
     INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
-    LEFT JOIN receiving_lines rl ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
+    LEFT JOIN receiving_line rl ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
   `;
 
   if (input.entityType === 'RECEIVING' && input.receivingId) {

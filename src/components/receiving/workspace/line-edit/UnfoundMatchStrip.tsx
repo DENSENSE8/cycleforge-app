@@ -554,7 +554,7 @@ function LogSerialButton({
       setStatus('logged');
       // Reflect the newly-paired serial on the carton/line surfaces.
       if (data.paired_to_line) {
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         if (lineId != null) {
           window.dispatchEvent(
             new CustomEvent('receiving-line-updated', { detail: { id: lineId } }),

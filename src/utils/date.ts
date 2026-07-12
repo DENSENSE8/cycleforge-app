@@ -1,10 +1,182 @@
-const PST_TIME_ZONE = 'America/Los_Angeles';
+import { fromZonedTime } from 'date-fns-tz';
+
+/** Warehouse business zone — every civil “day” in ops is this zone unless noted. */
+export const WAREHOUSE_TIME_ZONE = 'America/Los_Angeles';
+const PST_TIME_ZONE = WAREHOUSE_TIME_ZONE;
 
 const ISO_DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_NAIVE_RE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/;
 const ISO_NAIVE_FRACTION_RE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\.\d+$/;
 const SLASH_DATE_RE = /^\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/;
 const TZ_SUFFIX_RE = /(Z|[+-]\d{2}:\d{2})$/i;
+
+// ─── Civil date keys (YYYY-MM-DD) ─────────────────────────────────────────────
+//
+// A *civil date* is a calendar day with no time-of-day. It is NOT an Instant.
+// Never parse a date key as host-local midnight (`new Date(`${key}T00:00:00`)`)
+// and re-format it in another zone — that is the class of bug that shifts a day
+// on UTC CI runners. All arithmetic and display for date keys go through these
+// helpers.
+//
+// Three types (keep them separate):
+//   Instant      → ISO-8601 with Z/offset; format with timeZone: WAREHOUSE_TIME_ZONE
+//   Civil date   → YYYY-MM-DD only; use parseDateKey / addDaysToDateKey / formatDateKey*
+//   Zoned wall   → Instant + explicit zone (SQL: timezone('America/Los_Angeles', ts)::date)
+
+export interface DateKeyParts {
+  y: number;
+  m: number;
+  d: number;
+}
+
+/** True when `raw` is exactly `YYYY-MM-DD`. */
+export function isDateKey(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  return ISO_DATE_ONLY_RE.test(raw.trim());
+}
+
+/** Parse a civil date key into parts, or null if invalid / out of range. */
+export function parseDateKey(raw: string | null | undefined): DateKeyParts | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!ISO_DATE_ONLY_RE.test(s)) return null;
+  const [y, m, d] = s.split('-').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  // Reject impossible days (e.g. 2026-02-31) via UTC round-trip.
+  const probe = new Date(Date.UTC(y, m - 1, d));
+  if (
+    probe.getUTCFullYear() !== y ||
+    probe.getUTCMonth() !== m - 1 ||
+    probe.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return { y, m, d };
+}
+
+/** Build a civil date key from Y/M/D (1-based month). Returns '' if invalid. */
+export function dateKeyFromParts(y: number, m: number, d: number): string {
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return '';
+  const key = `${y}-${pad2(m)}-${pad2(d)}`;
+  return parseDateKey(key) ? key : '';
+}
+
+/**
+ * Add (or subtract) whole days to a civil date key without host-TZ influence.
+ * Uses UTC day arithmetic on the Y-M-D components.
+ */
+export function addDaysToDateKey(dateKey: string, deltaDays: number): string {
+  const parts = parseDateKey(dateKey);
+  if (!parts) return '';
+  const utc = Date.UTC(parts.y, parts.m - 1, parts.d) + deltaDays * 86_400_000;
+  const next = new Date(utc);
+  return dateKeyFromParts(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate());
+}
+
+/** Signed day difference `b - a` in whole civil days (same key → 0). */
+export function diffDaysDateKey(a: string, b: string): number | null {
+  const pa = parseDateKey(a);
+  const pb = parseDateKey(b);
+  if (!pa || !pb) return null;
+  const ia = Math.floor(Date.UTC(pa.y, pa.m - 1, pa.d) / 86_400_000);
+  const ib = Math.floor(Date.UTC(pb.y, pb.m - 1, pb.d) / 86_400_000);
+  return ib - ia;
+}
+
+/**
+ * Day-of-week for a civil date key: 0 = Sunday … 6 = Saturday
+ * (ISO civil calendar, independent of host TZ).
+ */
+export function weekdayOfDateKey(dateKey: string): number | null {
+  const parts = parseDateKey(dateKey);
+  if (!parts) return null;
+  return new Date(Date.UTC(parts.y, parts.m - 1, parts.d, 12)).getUTCDay();
+}
+
+/**
+ * Short label for a civil date key, e.g. "Jun 1".
+ * Never depends on the host timezone (safe for UTC CI).
+ */
+export function formatDateKeyShort(dateKey: string): string {
+  const parts = parseDateKey(dateKey);
+  if (!parts) return dateKey || '';
+  const date = new Date(Date.UTC(parts.y, parts.m - 1, parts.d, 12));
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+/**
+ * Longer civil label, e.g. "Mon, Jun 1" or "Monday, June 1, 2026".
+ * Independent of host TZ.
+ */
+export function formatDateKeyMedium(
+  dateKey: string,
+  options?: { weekday?: 'short' | 'long' | 'none'; withYear?: boolean },
+): string {
+  const parts = parseDateKey(dateKey);
+  if (!parts) return dateKey || '';
+  const date = new Date(Date.UTC(parts.y, parts.m - 1, parts.d, 12));
+  const weekday = options?.weekday ?? 'short';
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    ...(weekday === 'none' ? {} : { weekday }),
+    month: 'short',
+    day: 'numeric',
+    ...(options?.withYear ? { year: 'numeric' } : {}),
+  }).format(date);
+}
+
+/**
+ * Calendar-widget bridge only: civil key → local-midnight `Date` for
+ * react-day-picker / native date inputs. Round-trip ONLY with
+ * {@link localDateToDateKey}. Do not pass this `Date` to zoned formatters
+ * or `toISOString()` for warehouse day logic.
+ */
+export function dateKeyToLocalDate(dateKey: string): Date | undefined {
+  const parts = parseDateKey(dateKey);
+  if (!parts) return undefined;
+  return new Date(parts.y, parts.m - 1, parts.d);
+}
+
+/**
+ * Calendar-widget bridge only: local `Date` from a picker → civil key via
+ * local Y/M/D getters (same frame as {@link dateKeyToLocalDate}).
+ */
+export function localDateToDateKey(d: Date | undefined | null): string | null {
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return dateKeyFromParts(d.getFullYear(), d.getMonth() + 1, d.getDate()) || null;
+}
+
+/**
+ * Inclusive warehouse-day bounds as UTC ISO strings for SQL / API filters.
+ * Day D in America/Los_Angeles → [startIso, endIso] covering that wall-clock day.
+ */
+export function warehouseDayUtcBounds(
+  dateKey: string,
+): { startIso: string; endIso: string } | null {
+  if (!parseDateKey(dateKey)) return null;
+  const start = fromZonedTime(`${dateKey}T00:00:00.000`, PST_TIME_ZONE);
+  const end = fromZonedTime(`${dateKey}T23:59:59.999`, PST_TIME_ZONE);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
+/** Yesterday’s warehouse civil date key. */
+export function getYesterdayPSTDateKey(anchor?: string): string {
+  const today = anchor && parseDateKey(anchor) ? anchor : getCurrentPSTDateKey();
+  return addDaysToDateKey(today, -1);
+}
+
+/** Start of a rolling N-day window ending on warehouse today (inclusive). */
+export function getRollingDaysStartKey(days: number, anchor?: string): string {
+  const n = Math.max(1, Math.floor(days));
+  const today = anchor && parseDateKey(anchor) ? anchor : getCurrentPSTDateKey();
+  return addDaysToDateKey(today, -(n - 1));
+}
 
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
@@ -74,17 +246,11 @@ export function formatPSTTimestamp(date?: Date): string {
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
+/** True UTC ISO-8601 instant (host-TZ independent). */
 export function formatApiInstant(date?: Date): string {
   const base = date ?? new Date();
-  const shifted = new Date(base.getTime() + base.getTimezoneOffset() * 60_000);
-  const year = shifted.getFullYear();
-  const month = pad2(shifted.getMonth() + 1);
-  const day = pad2(shifted.getDate());
-  const hour = pad2(shifted.getHours());
-  const minute = pad2(shifted.getMinutes());
-  const second = pad2(shifted.getSeconds());
-  const millisecond = String(shifted.getMilliseconds()).padStart(3, '0');
-  return `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}Z`;
+  if (Number.isNaN(base.getTime())) return new Date(0).toISOString();
+  return base.toISOString();
 }
 
 export function formatApiOffsetTimestamp(date?: Date): string {
@@ -372,24 +538,21 @@ export function formatDateWithOrdinal(dateStr: string): string {
       return value + (suffixes[(mod100 - 20) % 10] || suffixes[mod100] || suffixes[0]);
     };
 
-    let date: Date;
-    const pstDateKey = toPSTDateKey(dateStr);
-    if (pstDateKey) {
-      const [year, month, day] = pstDateKey.split('-').map(Number);
-      date = new Date(year, month - 1, day);
-    } else if (ISO_DATE_ONLY_RE.test(dateStr)) {
-      const [year, month, day] = dateStr.split('-').map(Number);
-      date = new Date(year, month - 1, day);
-    } else {
-      date = new Date(dateStr);
+    const key = toPSTDateKey(dateStr) || (ISO_DATE_ONLY_RE.test(dateStr) ? dateStr : '');
+    const parts = key ? parseDateKey(key) : null;
+    if (!parts) {
+      const fallback = new Date(dateStr);
+      if (Number.isNaN(fallback.getTime())) return dateStr;
+      const k = getPstYmdFromDate(fallback);
+      const p = parseDateKey(k);
+      if (!p) return dateStr;
+      return formatDateWithOrdinal(k);
     }
-
-    if (Number.isNaN(date.getTime())) return dateStr;
 
     const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-    return `${days[date.getDay()]}, ${months[date.getMonth()]} ${getOrdinal(date.getDate())}`;
+    const dow = weekdayOfDateKey(key)!;
+    return `${days[dow]}, ${months[parts.m - 1]} ${getOrdinal(parts.d)}`;
   } catch {
     return dateStr;
   }
@@ -408,28 +571,23 @@ export function formatWeekRangeCompact(startStr: string, endStr: string): string
   };
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-  const parse = (raw: string): Date | null => {
+  const parse = (raw: string): DateKeyParts | null => {
     if (!raw) return null;
     const key = toPSTDateKey(raw) || (ISO_DATE_ONLY_RE.test(raw) ? raw : '');
-    if (!key) {
-      const fallback = new Date(raw);
-      return Number.isNaN(fallback.getTime()) ? null : fallback;
-    }
-    const [y, m, d] = key.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    return key ? parseDateKey(key) : null;
   };
 
   const start = parse(startStr);
   const end = parse(endStr);
   if (!start && !end) return '';
-  if (!end) return `${months[start!.getMonth()]} ${getOrdinal(start!.getDate())}`;
-  if (!start) return `${months[end.getMonth()]} ${getOrdinal(end.getDate())}`;
+  if (!end) return `${months[start!.m - 1]} ${getOrdinal(start!.d)}`;
+  if (!start) return `${months[end.m - 1]} ${getOrdinal(end.d)}`;
 
-  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const sameMonth = start.m === end.m && start.y === end.y;
   if (sameMonth) {
-    return `${months[start.getMonth()]} ${getOrdinal(start.getDate())} - ${getOrdinal(end.getDate())}`;
+    return `${months[start.m - 1]} ${getOrdinal(start.d)} - ${getOrdinal(end.d)}`;
   }
-  return `${months[start.getMonth()]} ${getOrdinal(start.getDate())} - ${months[end.getMonth()]} ${getOrdinal(end.getDate())}`;
+  return `${months[start.m - 1]} ${getOrdinal(start.d)} - ${months[end.m - 1]} ${getOrdinal(end.d)}`;
 }
 
 export function formatShortDate(dateString: string | null | undefined): string {
@@ -515,22 +673,25 @@ export interface WeekRange {
   endStr: string;
 }
 
-/** Compute Sunday–Saturday date range for a given week offset (0 = current week, 1 = last week, etc.). */
-export function computeWeekRange(weekOffset: number): WeekRange {
-  const todayPst = getCurrentPSTDateKey();
-  const [pstYear, pstMonth, pstDay] = todayPst.split('-').map(Number);
-  const now = new Date(pstYear, (pstMonth || 1) - 1, pstDay || 1);
-  const daysFromSunday = now.getDay();
-  const sunday = new Date(now);
-  sunday.setDate(now.getDate() - daysFromSunday - weekOffset * 7);
-  sunday.setHours(0, 0, 0, 0);
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
-  saturday.setHours(23, 59, 59, 999);
+/**
+ * Compute Sunday–Saturday civil date range for a week offset
+ * (0 = warehouse week containing today, 1 = previous week, …).
+ * `startStr` / `endStr` are YYYY-MM-DD civil keys (host-TZ independent).
+ * `start` / `end` are local calendar Dates for legacy pickers only.
+ */
+export function computeWeekRange(weekOffset: number, anchorDateKey?: string): WeekRange {
+  const todayPst =
+    anchorDateKey && parseDateKey(anchorDateKey) ? anchorDateKey : getCurrentPSTDateKey();
+  const dow = weekdayOfDateKey(todayPst) ?? 0; // 0 = Sunday
+  const sundayKey = addDaysToDateKey(todayPst, -dow - weekOffset * 7);
+  const saturdayKey = addDaysToDateKey(sundayKey, 6);
+  const start = dateKeyToLocalDate(sundayKey) ?? new Date();
+  const end = dateKeyToLocalDate(saturdayKey) ?? new Date();
+  end.setHours(23, 59, 59, 999);
   return {
-    start: sunday,
-    end: saturday,
-    startStr: `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`,
-    endStr: `${saturday.getFullYear()}-${String(saturday.getMonth() + 1).padStart(2, '0')}-${String(saturday.getDate()).padStart(2, '0')}`,
+    start,
+    end,
+    startStr: sundayKey,
+    endStr: saturdayKey,
   };
 }

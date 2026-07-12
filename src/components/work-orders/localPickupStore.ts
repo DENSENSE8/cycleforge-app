@@ -319,7 +319,7 @@ export async function finalize(name: string, notes: string): Promise<FinalizeRes
     pendingFinalize = null;
 
     invalidateReceivingCache();
-    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+    window.dispatchEvent(new CustomEvent('app-refresh-data'));
     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
 
     setState({

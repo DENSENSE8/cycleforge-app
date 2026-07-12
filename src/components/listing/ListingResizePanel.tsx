@@ -1,20 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import EmbeddedBrowser from '@/components/EmbeddedBrowser';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ChevronDown, ExternalLink } from '@/components/Icons';
 
 /* ─────────────────────────────────────────────────────────────────────────
  *  ListingResizePanel
  *  ───────────────────────────────────────────────────────────────────────
- *  Pinned iframe section with a draggable splitter on top. Click-and-hold
- *  the splitter to resize the iframe; operators drag it taller to clear
- *  cookie banners or external modals.
+ *  Pinned preview section with a draggable splitter. Marketplace listing
+ *  pages block iframe embedding, so the body is always an "open externally"
+ *  affordance. Operators drag the splitter to give the panel more room.
  *
  *  Interaction:
- *   • Drag up   → iframe grows (content above gets less room).
- *   • Drag down → iframe shrinks. Past a collapse threshold it snaps closed.
+ *   • Drag up   → panel grows (content above gets less room).
+ *   • Drag down → panel shrinks. Past a collapse threshold it snaps closed.
  *   • Double-click → toggles "max" (≈ viewport-200px) and "default" (≈55vh).
  *   • Chevron button → fully collapse / restore.
  *   • Keyboard: ↑/↓ resize, Home/End jump to extremes, Enter/Space toggle.
@@ -29,8 +28,11 @@ const MIN_OPEN_HEIGHT = 160;
 
 export interface ListingResizePanelProps {
   url: string;
-  /** When false, panel shows an "open externally" fallback instead of the webview. */
-  canEmbed: boolean;
+  /**
+   * @deprecated Embeds are not supported in the browser app. Kept optional for
+   * call-site compatibility; ignored.
+   */
+  canEmbed?: boolean;
   /** Header strip label. Defaults to "Listing preview". */
   title?: string;
   /** localStorage namespace; height/collapsed persist per surface. */
@@ -56,7 +58,6 @@ function getInitialCollapsed(ns: string): boolean {
 
 export function ListingResizePanel({
   url,
-  canEmbed,
   title = 'Listing preview',
   storageNamespace,
 }: ListingResizePanelProps) {
@@ -209,26 +210,20 @@ export function ListingResizePanel({
         }`}
       >
         {effectiveHeight > 0 ? (
-          canEmbed ? (
-            <div className="h-full">
-              <EmbeddedBrowser url={url} />
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center px-6 py-10 text-center">
-              <p className="text-label font-semibold text-text-soft">
-                Listing preview is only available in the desktop app. Use{' '}
-                {/* ds-raw-button — inline prose link */}
-                <button
-                  type="button"
-                  onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-                  className="text-blue-600 underline-offset-2 hover:underline"
-                >
-                  Open externally
-                </button>{' '}
-                to view the page in a browser tab.
-              </p>
-            </div>
-          )
+          <div className="flex h-full items-center justify-center px-6 py-10 text-center">
+            <p className="text-label font-semibold text-text-soft">
+              Marketplace listings open in a new tab. Use{' '}
+              {/* ds-raw-button — inline prose link */}
+              <button
+                type="button"
+                onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                className="text-blue-600 underline-offset-2 hover:underline"
+              >
+                Open externally
+              </button>{' '}
+              to view the page.
+            </p>
+          </div>
         ) : null}
       </div>
     </div>

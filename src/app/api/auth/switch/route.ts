@@ -20,11 +20,12 @@ import {
   loadSession,
   revokeSession,
   SESSION_COOKIE_NAME,
+  LEGACY_SESSION_COOKIE_NAME,
+  readSessionSid,
   type DeviceKind,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
-import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { resolveOrgIdFromRequest } from '@/lib/tenancy/resolve-org-from-request';
 
 export const runtime = 'nodejs';
 
@@ -37,16 +38,6 @@ function clientIp(req: NextRequest): string | null {
 function asDeviceKind(raw: unknown): DeviceKind {
   if (raw === 'personal' || raw === 'station' || raw === 'phone') return raw;
   return 'station';
-}
-
-// Tenant fallback for the signin-like (no prior session) path: resolve the org
-// from `x-tenant-slug` exactly like the staff-picker, so a switch can never
-// cross into another tenant. Apex host → USAV (transitional).
-async function resolveOrgId(req: NextRequest): Promise<string> {
-  const slug = req.headers.get('x-tenant-slug');
-  if (!slug) return USAV_ORG_ID;
-  const org = await getOrganizationBySlug(slug);
-  return org?.id ?? '00000000-0000-0000-0000-000000000000';
 }
 
 export async function POST(req: NextRequest) {
@@ -72,14 +63,14 @@ export async function POST(req: NextRequest) {
     // Read the current sid (if any) so we can revoke it once the new
     // session is minted. Don't require a current session — a /signin-like
     // flow should still work if the cookie was cleared in another tab.
-    const prevSid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+    const prevSid = readSessionSid(req.cookies);
     const prev = prevSid ? await loadSession(prevSid) : null;
 
     // Tenant scope: you may only switch to a staff member in the SAME org as
     // your current session (or, signin-like with no prior session, the org of
     // the request's tenant). A cross-org staffId reads as NOT_FOUND → 404,
     // so a station bound to org A can't pivot into org B even with a leaked PIN.
-    const targetOrgId = prev?.organizationId ?? (await resolveOrgId(req));
+    const targetOrgId = prev?.organizationId ?? (await resolveOrgIdFromRequest(req));
     const row = await verifyStaffPin(staffId, pin, targetOrgId);
     if (row.status !== 'active') {
       await audit({
@@ -127,6 +118,9 @@ export async function POST(req: NextRequest) {
       sameSite: 'lax',
       path: '/',
       maxAge: cookieMaxAgeForSession(session),
+    });
+    res.cookies.set(LEGACY_SESSION_COOKIE_NAME, '', {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0,
     });
     return res;
   } catch (err) {

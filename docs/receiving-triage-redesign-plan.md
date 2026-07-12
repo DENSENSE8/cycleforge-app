@@ -1,7 +1,7 @@
 # Receiving Triage — Redesign Plan (v4 — grounded + interviewed)
 
-**Status:** PLAN (2026-07-01). **Supersedes** the open items in `receiving-triage-mode-plan.md`,
-`receiving-priority-triage-plan.md`, and `receiving-triage-streamline-plan.md` for UX/data-model/street decisions.
+**Status:** PLAN (2026-07-01). **Supersedes** the open items in the earlier triage-mode and
+priority-triage plans and in `receiving-triage-streamline-plan.md` for UX/data-model/street decisions.
 v2 (earlier the same day) locked stakeholder decisions from a design conversation without re-checking them
 against the live codebase; a v3 grounding pass re-read the codebase line-by-line against every v2 claim and found
 the codebase had moved **substantially further** than v2 assumed — several "planned" items were already shipped,

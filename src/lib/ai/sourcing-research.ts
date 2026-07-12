@@ -103,7 +103,7 @@ export async function researchSourcingCandidates(input: {
   const model = String(process.env.HERMES_MODEL || 'hermes-agent').trim();
   const res = await fetch(`${getHermesApiUrl()}/chat/completions`, {
     method: 'POST',
-    headers: getHermesHeaders({ 'content-type': 'application/json', 'X-Source': 'usav-sourcing-research' }),
+    headers: getHermesHeaders({ 'content-type': 'application/json', 'X-Source': 'cycle-forge-sourcing-research' }),
     body: JSON.stringify({
       model,
       temperature: 0,

@@ -75,7 +75,7 @@ async function defaultGenerate({
     headers: getHermesHeaders({
       'Content-Type': 'application/json',
       'X-Hermes-Session-Id': sessionTag,
-      'X-Source': 'usav-support-suggest',
+      'X-Source': 'cycle-forge-support-suggest',
     }),
     body: JSON.stringify({
       model: getHermesModel(),

@@ -23,11 +23,7 @@ layer on top of (not a replacement for) the detailed provider docs in
 |---|---|
 | [studio-integrations-master-plan.md](./studio-integrations-master-plan.md) | Studio wiring checklist, diagnostics rules, P0–P5 phasing |
 | [integrations-oauth-connection-plan.md](./integrations-oauth-connection-plan.md) | Connector contract origin, entitlement model |
-| [token-sot-consolidation-plan.md](../integrations/token-sot-consolidation-plan.md) | Vault as sole token home; Zoho cutover log |
-| [platform-account-type-catalog-plan.md](./platform-account-type-catalog-plan.md) | `platforms` → `platform_accounts` → `types` chain |
-| [../partial/platform-account-type-catalog-STATUS.md](../partial/platform-account-type-catalog-STATUS.md) | What's shipped vs remaining on catalog |
-| [../incoming-universal-purchase-orders-plan.md](../incoming-universal-purchase-orders-plan.md) | Polymorphic Incoming + eBay buyer role |
-| [nango-additive-integration-plan.md](./nango-additive-integration-plan.md) | Nango sidecar deployment recipe |
+| [../nango-sidecar-setup.md](../nango-sidecar-setup.md) | Nango sidecar deployment recipe |
 | [../integrations/README.md](../integrations/README.md) | Per-provider status index |
 | `.claude/skills/integration-connector/SKILL.md` | Canonical connector implementation steps |
 | `.claude/skills/ops-studio/SKILL.md` | Studio layer laws |
@@ -465,7 +461,7 @@ complete; remove in P0 exit criteria.
 
 ### P3 — Universal Incoming (weeks 7–10)
 
-Follow `incoming-universal-purchase-orders-plan.md`:
+Work items (from the universal-Incoming design):
 
 | Work item | Paths |
 |---|---|
@@ -501,7 +497,7 @@ Follow `incoming-universal-purchase-orders-plan.md`:
 
 ### P6 — Nango GA (weeks 14+)
 
-Follow `nango-additive-integration-plan.md` + `docs/integrations/shopify.md`.
+Follow `docs/nango-sidecar-setup.md` + `docs/integrations/shopify.md`.
 
 ### P7 — Enterprise QoL (ongoing)
 
@@ -557,10 +553,7 @@ Outbound webhooks, audit export, SSO-managed integration admin, per-tenant API r
 | Build order P0–P7 | **This doc** |
 | Studio diagnostics rules detail | `studio-integrations-master-plan.md` |
 | Provider OAuth steps | `docs/integrations/{provider}.md` |
-| Token home | `token-sot-consolidation-plan.md` |
-| Catalog schema | `platform-account-type-catalog-plan.md` + STATUS |
-| Incoming polymorphic DDL | `incoming-universal-purchase-orders-plan.md` |
-| Nango deployment | `nango-additive-integration-plan.md` |
+| Nango deployment | `docs/nango-sidecar-setup.md` |
 | New connector steps | `integration-connector` skill |
 
 ---

@@ -145,7 +145,7 @@ export default function StationPacking({
             isNew: !!data.is_new || !!data.auto_added_to_plan,
           });
           onComplete?.();
-          window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+          window.dispatchEvent(new CustomEvent('app-refresh-data'));
         }
       } else {
         // ── Regular packing path ───────────────────────────────────────────
@@ -181,7 +181,7 @@ export default function StationPacking({
               isNew: false,
             });
             onComplete?.();
-            window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+            window.dispatchEvent(new CustomEvent('app-refresh-data'));
             return;
           }
         }
@@ -235,7 +235,7 @@ export default function StationPacking({
         if (data.packerRecord?.id) {
           window.dispatchEvent(new CustomEvent('packer-log-added', { detail: data.packerRecord }));
         }
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Scan failed');

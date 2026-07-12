@@ -17,8 +17,7 @@
 | Doc | Role in this plan |
 |---|---|
 | [integrations-oauth-connection-plan.md](./integrations-oauth-connection-plan.md) | Connector contract, connection-driven sync, entitlement enforcement |
-| [nango-additive-integration-plan.md](./nango-additive-integration-plan.md) | Nango sidecar deployment, Shopify/Square recipe |
-| [../incoming-universal-purchase-orders-plan.md](../incoming-universal-purchase-orders-plan.md) | Polymorphic Incoming spine, eBay buyer purchases, dedup merge |
+| [../nango-sidecar-setup.md](../nango-sidecar-setup.md) | Nango sidecar deployment, Shopify/Square recipe |
 | [ops-events-station-workflow-unification-plan.md](./ops-events-station-workflow-unification-plan.md) | `workflow_node_id` on `ops_events` for Live lens |
 | [../operations-studio/station-builder-ui-plan.md](../operations-studio/station-builder-ui-plan.md) | Block / data-source / action registries |
 | [../operations-studio/operations-studio-plan.md](../operations-studio/operations-studio-plan.md) | Studio laws (lenses, diagnostics, draft/publish) |
@@ -80,7 +79,6 @@ Settings connect  →  Connector (auth + sync)  →  Domain tables
 | ShipStation v2 client + types | `src/lib/shipping/shipstation/` | 🛠 Lib only, no provider card |
 | Station registries | `src/lib/stations/{data-sources,actions,blocks}/` | 🛠 3 sources, 4 actions |
 | Workflow engine + ship node | `src/lib/workflow/`, `nodes/ship.node.ts` | ✅ Engine live; ship tap not wired |
-| Incoming universal plan (DDL + merge) | `docs/incoming-universal-purchase-orders-plan.md` | 📝 Plan only |
 | Zoho KV→vault migration script | `scripts/migrate-zoho-to-vault.ts` | 🛠 Script exists, not run |
 
 ---
@@ -412,8 +410,8 @@ Do **not** build a separate integrations page under `/admin` (Studio law #1).
 
 **Goal:** `receiving_lines` is the universal Incoming spine; eBay buyer purchases appear before Zoho PO; dedup merge when Zoho catches up.
 
-> **Canonical DDL and merge algorithm:** `docs/incoming-universal-purchase-orders-plan.md`.
-> This section sequences that plan against P0/P1 and adds Studio wiring only.
+> **Canonical DDL and merge algorithm:** the universal-Incoming design (history in git).
+> This section sequences that work against P0/P1 and adds Studio wiring only.
 
 ### 4.1 Database (P2a — polymorphic spine)
 
@@ -507,7 +505,7 @@ registerDataSource({
 - [ ] Incoming page shows eBay-only rows with correct badge
 - [ ] Station Checklist can bind `receiving.incoming_expected`
 - [ ] No duplicate Incoming rows for same physical shipment in acceptance test
-- [ ] All new tables have RLS policies (coordinate with `phase-1-rls-plan.md` if landed)
+- [ ] All new tables have RLS policies (coordinate with `docs/tenancy/multi-tenancy-execution-plan.md`)
 
 ---
 
@@ -618,7 +616,7 @@ On label purchase: update `shipments` + `orders.tracking_number`; enqueue carrie
 
 ### 6.1 Nango sidecar deployment
 
-Follow `nango-additive-integration-plan.md` Option B:
+Follow `docs/nango-sidecar-setup.md`:
 
 1. Provision Postgres branch for Nango storage
 2. Deploy `nango-server` + Redis (Fly.io / Render / Docker — not Vercel)
@@ -676,7 +674,7 @@ Additional Studio wiring:
 
 ### 7.3 Platform accounts wiring
 
-When `platform-account-type-catalog-plan.md` lands, map each connection → `platform_accounts` row so `inbound_source_type` badges and order chips share one account id space.
+When the platform/account/type catalog lands, map each connection → `platform_accounts` row so `inbound_source_type` badges and order chips share one account id space.
 
 ---
 
@@ -687,7 +685,7 @@ When `platform-account-type-catalog-plan.md` lands, map each connection → `pla
 Every new query/mutation:
 
 - `withTenantTransaction(orgId, …)` or `tenantQuery`
-- RLS policies on new tables (coordinate `phase-1-rls-plan.md`)
+- RLS policies on new tables (coordinate `docs/tenancy/multi-tenancy-execution-plan.md`)
 - Cron routes iterate orgs via `connectedOrgsForProvider` — never global queries without org filter
 
 ### 8.2 Permissions
@@ -780,13 +778,13 @@ src/lib/auth/route-permission-manifest.test.ts
 | eBay buyer scope approval delayed | Ship P2a–b (Zoho universal spine) without P2c; feature-flag eBay buyer |
 | Nango sidecar ops burden | Start with Square pilot only; Shopify after 2 weeks stable |
 | ShipStation API key in vault — user error | Validate on upsert; health check before save |
-| RLS not enforced | Do not onboard stranger tenants until `phase-1-rls-plan.md` Phase 1 or accept risk explicitly |
+| RLS not enforced | Do not onboard stranger tenants until the tenancy execution plan's RLS enforcement lands or accept risk explicitly |
 | Studio publish gate too aggressive | `integration-sync-stale` = warning only; disconnected = error |
 | Neon CU cost from sync cron | Incremental cursors; `MAX_PAGES` caps; stagger provider cron offsets |
 
 **Hard dependency:** `INTEGRATION_KMS_KEY` in production before any new tenant connects integrations.
 
-**Soft dependency:** `phase-1-rls-plan.md` before GA multi-tenant; P0–P3 can proceed on staging with RLS flagged.
+**Soft dependency:** the tenancy execution plan (`docs/tenancy/multi-tenancy-execution-plan.md`) before GA multi-tenant; P0–P3 can proceed on staging with RLS flagged.
 
 ---
 

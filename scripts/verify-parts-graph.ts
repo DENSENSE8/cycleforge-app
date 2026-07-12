@@ -9,10 +9,10 @@ import 'dotenv/config';
  */
 async function main() {
   const { tenantQuery } = await import('@/lib/tenancy/db');
-  const { USAV_ORG_ID } = await import('@/lib/tenancy/constants');
+  const { DOGFOOD_ORG_ID } = await import('@/lib/tenancy/constants');
   const { parsePartSku, normalizeBase } = await import('@/lib/inventory/part-sku');
 
-  const orgId = USAV_ORG_ID;
+  const orgId = DOGFOOD_ORG_ID;
   const result = await tenantQuery(
     orgId,
     `SELECT sku, name, quantity_on_hand, quantity_available

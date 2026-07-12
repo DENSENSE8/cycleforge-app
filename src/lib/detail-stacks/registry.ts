@@ -41,9 +41,22 @@ export const DETAIL_STACK_PARAMS: ReadonlyArray<{ kind: DetailStackKind; param: 
 
 /** Pages that always own a given kind's open param (even if opened elsewhere). */
 const DETAIL_STACK_CANONICAL_PATH: Partial<Record<DetailStackKind, string>> = {
-  order: '/dashboard',
+  // Dedicated order workspace — re-open always lands on /o/[id].
+  order: '/o',
   shipment: '/fba',
 };
+
+/** Extract `/o/[orderId]` path segment (numeric pk or human order number). */
+export function parseOrderWorkspacePath(pathname: string | null | undefined): string | null {
+  if (!pathname) return null;
+  const match = pathname.match(/^\/o\/([^/?#]+)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]).trim() || null;
+  } catch {
+    return match[1].trim() || null;
+  }
+}
 
 /** Build the href that re-opens a recorded stack on the page it was opened from. */
 export function detailStackHref(entry: {
@@ -53,6 +66,12 @@ export function detailStackHref(entry: {
   /** Query string captured when the stack was opened (preserves view/mode params). */
   search?: string;
 }): string {
+  // Orders live on the dedicated full-page workspace — path segment is the id,
+  // not a query param on /dashboard.
+  if (entry.kind === 'order') {
+    return `/o/${encodeURIComponent(entry.id)}`;
+  }
+
   const def = DETAIL_STACK_DEFS[entry.kind];
   const basePath = DETAIL_STACK_CANONICAL_PATH[entry.kind] ?? entry.path;
   const params = new URLSearchParams(entry.search ?? '');

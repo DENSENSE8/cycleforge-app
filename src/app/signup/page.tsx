@@ -6,7 +6,7 @@
  * One-screen flow: company name, your full name, email, PIN. On submit we
  * call /api/auth/signup which creates the org, the first admin staff,
  * hashes the PIN, and mints a session cookie. We then land them at
- * /dashboard.
+ * `/` (My Day).
  *
  * Visual language mirrors /signin (same dotted background, same rounded
  * pill toggles, same scale). A returning user lands here by mistake
@@ -21,22 +21,21 @@ interface FormState {
   companyName: string;
   fullName: string;
   email: string;
-  pin: string;
-  pinConfirm: string;
+  password: string;
+  passwordConfirm: string;
 }
 
 const EMPTY: FormState = {
   companyName: '',
   fullName: '',
   email: '',
-  pin: '',
-  pinConfirm: '',
+  password: '',
+  passwordConfirm: '',
 };
 
 function humanError(code: string | undefined): string {
   switch (code) {
     case 'INVALID_INPUT':   return 'Check your inputs and try again.';
-    case 'WEAK_PIN':        return 'PIN is too obvious — avoid 0000, 1234, 1111, etc.';
     case 'RATE_LIMITED':    return 'Too many sign-ups from this network. Try again in a few minutes.';
     case 'INTERNAL':        return 'Something went wrong. Try again.';
     default:                return 'Sign-up failed. Try again.';
@@ -57,8 +56,8 @@ export default function SignUpPage() {
     form.companyName.trim().length > 0 &&
     form.fullName.trim().length > 0 &&
     /\S+@\S+\.\S+/.test(form.email) &&
-    /^\d{4,12}$/.test(form.pin) &&
-    form.pin === form.pinConfirm;
+    form.password.length >= 8 &&
+    form.password === form.passwordConfirm;
 
   const onSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +73,7 @@ export default function SignUpPage() {
           companyName: form.companyName.trim(),
           fullName: form.fullName.trim(),
           email: form.email.trim(),
-          pin: form.pin,
+          password: form.password,
         }),
       });
       if (!r.ok) {
@@ -84,7 +83,8 @@ export default function SignUpPage() {
         return;
       }
       const data = await r.json().catch(() => ({}));
-      const target = (data as { defaultHomePath?: string }).defaultHomePath || '/dashboard';
+      const base = (data as { defaultHomePath?: string }).defaultHomePath || '/';
+      const target = base === '/' ? '/?welcome=1' : base;
       router.replace(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error.');
@@ -125,20 +125,18 @@ export default function SignUpPage() {
             autoComplete="email"
           />
           <Field
-            label="PIN (4–12 digits)"
-            value={form.pin}
-            onChange={(v) => onChange('pin', v.replace(/\D/g, '').slice(0, 12))}
-            placeholder="••••"
-            inputMode="numeric"
+            label="Password (min 8 characters)"
+            value={form.password}
+            onChange={(v) => onChange('password', v)}
+            placeholder="••••••••"
             type="password"
             autoComplete="new-password"
           />
           <Field
-            label="Confirm PIN"
-            value={form.pinConfirm}
-            onChange={(v) => onChange('pinConfirm', v.replace(/\D/g, '').slice(0, 12))}
-            placeholder="••••"
-            inputMode="numeric"
+            label="Confirm password"
+            value={form.passwordConfirm}
+            onChange={(v) => onChange('passwordConfirm', v)}
+            placeholder="••••••••"
             type="password"
             autoComplete="new-password"
           />

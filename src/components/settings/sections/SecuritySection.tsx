@@ -20,6 +20,10 @@ export function SecuritySection() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [savingPin, setSavingPin] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
   const [addingPasskey, setAddingPasskey] = useState(false);
   const [addingAcctPasskey, setAddingAcctPasskey] = useState(false);
   const [acctPasskeys, setAcctPasskeys] = useState<{ id: string; label: string | null; createdAt: string; lastUsedAt: string | null }[]>([]);
@@ -70,6 +74,35 @@ export function SecuritySection() {
       setSavingPin(false);
     }
   }, [currentPin, newPin, confirmPin]);
+
+  const savePassword = useCallback(async () => {
+    setErr(null); setOk(null);
+    if (newPassword.length < 8) { setErr('Password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { setErr("Confirmation doesn't match."); return; }
+    setSavingPassword(true);
+    try {
+      const r = await fetch('/api/auth/account/change-password', {
+        method: 'POST', credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ newPassword, currentPassword: currentPassword || undefined }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        const code = String((data as { error?: string }).error || '');
+        setErr(
+          code === 'CURRENT_PASSWORD_INVALID' ? 'Your current password is incorrect.'
+          : code === 'NO_ACCOUNT' ? 'This profile has no email account to set a password on.'
+          : code === 'WEAK_PASSWORD' ? 'Choose a stronger password.'
+          : 'Could not update your password.',
+        );
+      } else {
+        setOk('Password updated.');
+        setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      }
+    } finally {
+      setSavingPassword(false);
+    }
+  }, [currentPassword, newPassword, confirmPassword]);
 
   const addPasskey = useCallback(async () => {
     setErr(null); setOk(null);
@@ -137,7 +170,7 @@ export function SecuritySection() {
     <section className="space-y-8">
       <header>
         <h1 className="sr-only">Security</h1>
-        <p className="text-sm text-text-soft">Manage your PIN and passkeys.</p>
+        <p className="text-sm text-text-soft">Manage your password, PIN, and passkeys.</p>
       </header>
 
       {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
@@ -171,6 +204,38 @@ export function SecuritySection() {
         <div className="flex justify-end">
           <Button variant="brand" size="sm" disabled={savingPin || newPin.length < 4} onClick={savePin}>
             {savingPin ? 'Saving…' : 'Save PIN'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border-soft bg-surface-card p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-text-default">Change your password</h2>
+          <p className="text-xs text-text-soft">Used for email sign-in across your workspaces.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="block">
+            <span className="block text-xs text-text-soft mb-1">Current password</span>
+            <input type="password" autoComplete="current-password"
+              value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded-md border border-border-default px-2 py-1.5 text-sm" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-text-soft mb-1">New password</span>
+            <input type="password" autoComplete="new-password" minLength={8}
+              value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-md border border-border-default px-2 py-1.5 text-sm" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-text-soft mb-1">Confirm new password</span>
+            <input type="password" autoComplete="new-password"
+              value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-md border border-border-default px-2 py-1.5 text-sm" />
+          </label>
+        </div>
+        <div className="flex justify-end">
+          <Button variant="brand" size="sm" disabled={savingPassword || newPassword.length < 8} onClick={savePassword}>
+            {savingPassword ? 'Saving…' : 'Save password'}
           </Button>
         </div>
       </div>

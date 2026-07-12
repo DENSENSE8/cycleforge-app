@@ -78,8 +78,8 @@ Not for the 1-on-1 itself — open only if someone asks “is this already plann
 |-------|------------------|
 | Polymorphic tables | [`docs/todo/schema-wide-polymorphic-refactor-plan.md`](../../todo/schema-wide-polymorphic-refactor-plan.md) |
 | Operator surfaces / nav | [`docs/todo/studio-driven-operator-surfaces-refactor-plan.md`](../../todo/studio-driven-operator-surfaces-refactor-plan.md) |
-| Inventory upgrade | [`context/inventory_system_upgrade_plan.md`](../../../context/inventory_system_upgrade_plan.md) |
 | Gap closure / connectors | [`docs/roadmap/gap-closure-plan.md`](../../roadmap/gap-closure-plan.md) |
+| Agentic loop (ops plans bridge) | [`docs/todo/agentic-loop-master-plan.md`](../../todo/agentic-loop-master-plan.md) (+ [`EXECUTION-PROMPT`](../../todo/agentic-loop-EXECUTION-PROMPT.md)) — live on Operations ▸ Plans |
 | Plan status roll-up | [`docs/todo/README.md`](../../todo/README.md) |
 
 ---

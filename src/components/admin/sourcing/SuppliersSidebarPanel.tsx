@@ -17,6 +17,7 @@ import {
   useAdminUrlState,
 } from '../shared';
 import { Button } from '@/design-system/primitives';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 interface SupplierListRow {
   id: number;
@@ -30,7 +31,7 @@ export function SuppliersSidebarPanel() {
   const search = searchParams.get('search') ?? '';
   const selected = searchParams.get('supplier') ?? '';
 
-  const { data, isLoading } = useQuery<{ items: SupplierListRow[] }>({
+  const { data, isLoading, isFetching } = useQuery<{ items: SupplierListRow[] }>({
     queryKey: qk.suppliers.list(search, ''),
     queryFn: async () => {
       const q = search.trim();
@@ -45,13 +46,6 @@ export function SuppliersSidebarPanel() {
 
   return (
     <AdminSidebarShell
-      search={{
-        value: search,
-        onChange: (v) => setParam((p) => { if (v.trim()) p.set('search', v.trim()); else p.delete('search'); }),
-        onClear: () => setParam((p) => p.delete('search')),
-        placeholder: 'Search supplier name',
-        variant: 'blue',
-      }}
       action={
         <Button
           variant="ghost"
@@ -69,6 +63,22 @@ export function SuppliersSidebarPanel() {
         </Button>
       }
     >
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={search}
+          onChange={(v) =>
+            setParam((p) => {
+              if (v.trim()) p.set('search', v.trim());
+              else p.delete('search');
+            })
+          }
+          onClear={() => setParam((p) => p.delete('search'))}
+          placeholder="Filter supplier name…"
+          isSearching={isFetching && !isLoading}
+        />
+      </div>
       {isLoading ? (
         <div className="px-2 py-6 text-center text-xs text-text-faint">Loading suppliers…</div>
       ) : rows.length === 0 ? (

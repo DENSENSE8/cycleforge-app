@@ -114,7 +114,7 @@ Delete or archive:
 
 ### 1.3 Root plan documents
 
-Move the following into `docs/archive/plans/` (with a README explaining they are historical):
+Remove the following historical root plan documents (done — archived, then the archive itself was deleted; history in git):
 - `ARCHITECTURE_PLAN.md`
 - `COMPONENT_DEDUP_PLAN.md`
 - `FBA_ALIGNMENT_PLAN.md`

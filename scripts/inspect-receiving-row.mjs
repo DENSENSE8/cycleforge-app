@@ -7,14 +7,14 @@ const SCANNED = '9622001900001691053100380368793934';
 const last8 = SCANNED.replace(/\D/g, '').slice(-8);
 
 async function main() {
-  // What columns does receiving_lines actually have?
+  // What columns does receiving_line actually have?
   const cols = await pool.query(
     `SELECT column_name, data_type
        FROM information_schema.columns
-      WHERE table_name = 'receiving_lines'
+      WHERE table_name = 'receiving_line'
       ORDER BY ordinal_position`,
   );
-  console.log('receiving_lines columns:');
+  console.log('receiving_line columns:');
   for (const c of cols.rows) console.log(`  ${c.column_name} (${c.data_type})`);
 
   // The scan resolves to receiving_id 3578 — inspect that receiving row and its lines.
@@ -22,14 +22,14 @@ async function main() {
   const r = await pool.query(
     `SELECT id, source, zoho_purchaseorder_id, zoho_purchaseorder_number,
             receiving_tracking_number, shipment_id, source_platform
-       FROM receiving WHERE id = 3578`,
+       FROM receiving_carton WHERE id = 3578`,
   );
   console.log(r.rows[0]);
 
-  console.log('\n[receiving_lines for receiving_id = 3578]');
+  console.log('\n[receiving_line for receiving_id = 3578]');
   const lines = await pool.query(
     `SELECT id, receiving_id, zoho_purchaseorder_id, zoho_purchaseorder_number, sku, item_name
-       FROM receiving_lines WHERE receiving_id = 3578 LIMIT 5`,
+       FROM receiving_line WHERE receiving_id = 3578 LIMIT 5`,
   );
   for (const l of lines.rows) console.log('  ', l);
 
@@ -38,7 +38,7 @@ async function main() {
     console.log(`\n[lines under PO# ${r.rows[0].zoho_purchaseorder_id}]`);
     const po = await pool.query(
       `SELECT id, receiving_id, sku, item_name
-         FROM receiving_lines
+         FROM receiving_line
         WHERE zoho_purchaseorder_id = $1
         LIMIT 5`,
       [r.rows[0].zoho_purchaseorder_id],

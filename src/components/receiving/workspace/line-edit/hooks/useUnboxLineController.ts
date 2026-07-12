@@ -426,6 +426,16 @@ export function useUnboxLineController(
   const serialWaived = serialAbsent && Boolean(serialAbsentReason);
   const serialConfirmed = !requireSerialConfirmation || hasCapturedSerial || serialWaived;
   const combinedReviewDisabled = !canReceiveReview || !canPrintReview || !serialConfirmed;
+  // Bench-visible reason for the disabled Receive bar. A hover `title` is
+  // invisible to an operator standing at a station — the bar renders this
+  // line above the pill so the blocker names itself.
+  const combinedReviewDisabledReason = !canReceiveReview
+    ? 'Link this carton to a shipment to receive'
+    : !canPrintReview
+      ? 'Add a PO number or SKU before printing and receiving'
+      : !serialConfirmed
+        ? 'Scan a serial — or mark “No serial” with a reason — to receive'
+        : null;
   const isSinglePoItem = itemTotal === 1;
   const receiveMenuLabel = isSinglePoItem ? 'Receive' : 'Receive all';
   const printReceivePrimaryLabel = isUnfound ? 'Receive locally' : receiveMenuLabel;
@@ -589,7 +599,7 @@ export function useUnboxLineController(
     scanValue, labelPayload, runPrintLabel, handlePrintAndReceive,
     // custom label print (Edit on the label preview)
     labelDraftDefaults, buildLabelPayload, applyAndPrintLabel,
-    canPrintReview, canReceiveReview, canZohoReceive, isUnfound, combinedReviewDisabled, requireSerialConfirmation,
+    canPrintReview, canReceiveReview, canZohoReceive, isUnfound, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
     receiveMenuLabel, receiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow
     claimModalOpen, setClaimModalOpen, returnClaimPrefill, setReturnClaimPrefill,

@@ -4,8 +4,9 @@
  *
  * Pins the exact coercion/default/fallback semantics the old inline route
  * logic had: invalid values degrade silently (never throw / never a new 400),
- * NaN survives raw-Number params, limit clamps at 500, week/PO date strings
- * keep their raw form for the SQL-time regex gate, etc.
+ * NaN survives raw-Number params, limit clamps at 500, PO date strings
+ * validate to ISO-or-empty, etc. (Wave-2: ?week_start/?week_end and
+ * view=recent were removed as dead arms — pinned below.)
  *
  * Run: `npx tsx --test src/lib/receiving/lines/query.test.ts`
  */
@@ -29,8 +30,6 @@ test('defaults: empty search params', () => {
   assert.equal(q.qaFilter, '');
   assert.equal(q.dispFilter, '');
   assert.equal(q.workflowFilter, '');
-  assert.equal(q.weekStart, '');
-  assert.equal(q.weekEnd, '');
   assert.equal(q.viewRaw, '');
   assert.equal(q.view, null);
   assert.equal(q.deliveryStateFilter, '');
@@ -119,16 +118,14 @@ test('qa/disposition/workflow filters: uppercased raw strings; validity gate is 
   assert.equal(WORKFLOW_STATUSES.has(q.workflowFilter), true);
 });
 
-test('week range: raw trimmed strings (regex gate stays at SQL build)', () => {
+test('week params: ignored entirely (Wave-2 dead-arm removal)', () => {
   const q = parse('week_start=2026-06-01&week_end=2026-06-07');
-  assert.equal(q.weekStart, '2026-06-01');
-  assert.equal(q.weekEnd, '2026-06-07');
-  // Malformed values are preserved raw — they simply fail the SQL-time regex.
-  assert.equal(parse('week_start=junk').weekStart, 'junk');
+  assert.equal('weekStart' in q, false);
+  assert.equal('weekEnd' in q, false);
 });
 
-test('view: known views parse; unknown → null (week-range fallback)', () => {
-  for (const v of ['all', 'recent', 'received', 'incoming', 'activity', 'scanned', 'unbox_opened', 'testing', 'needs-test', 'viewed']) {
+test('view: known views parse; unknown → null (default scoping)', () => {
+  for (const v of ['all', 'received', 'incoming', 'activity', 'scanned', 'unbox_opened', 'testing', 'needs-test', 'viewed']) {
     const q = parse(`view=${v}`);
     assert.equal(q.view, v);
     assert.equal(q.viewRaw, v);
@@ -136,6 +133,9 @@ test('view: known views parse; unknown → null (week-range fallback)', () => {
   assert.equal(parse('view=BOGUS').view, null);
   assert.equal(parse('view=BOGUS').viewRaw, 'bogus'); // lowercased raw survives for surface guards
   assert.equal(parse('view=Testing').view, 'testing'); // case-insensitive
+  // Removed view (Wave-2 dead arm): old deep links degrade to default scoping.
+  assert.equal(parse('view=recent').view, null);
+  assert.equal(parse('view=recent').viewRaw, 'recent');
 });
 
 test('delivery_state: trimmed + uppercased raw string, no validity gate here', () => {

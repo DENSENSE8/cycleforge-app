@@ -3,7 +3,6 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 
 const VALID_ACTION_TYPES = new Set<string>([
   'replaced',
@@ -48,7 +47,7 @@ function normInt(v: unknown): number | null {
  */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const repairId = Number(req.nextUrl.searchParams.get('repairId'));
     if (!Number.isFinite(repairId) || repairId <= 0) {
       return NextResponse.json({ error: 'repairId is required' }, { status: 400 });
@@ -91,7 +90,7 @@ export const GET = withAuth(
  */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const body = await req.json().catch(() => ({}));
     const repairId = Number(body?.repairId);
     const actionType = String(body?.actionType ?? '').trim().toLowerCase();

@@ -18,6 +18,7 @@ const SURFACE_LABELS: Record<string, string> = {
   warehouse: 'Warehouse',
   receiving: 'Receiving',
   repair: 'Repairs',
+  replenish: 'Replenish',
   operations: 'Operations',
   products: 'Products',
   fba: 'FBA',
@@ -26,6 +27,8 @@ const SURFACE_LABELS: Record<string, string> = {
   photos: 'Media',
   warranty: 'Warranty',
   goals: 'Goals',
+  outbound: 'Outbound',
+  labels: 'Labels',
   admin: 'Admin',
 };
 

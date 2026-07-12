@@ -72,9 +72,9 @@ export function resolveTestingLineTitle(
 
 /**
  * Print a product/testing unit label. Renders the same face as the on-screen
- * preview and drives the browser-only print pipeline: WebUSB/Web Serial raw
- * TSPL/ZPL to the paired thermal printer when silent mode is on, then Electron
- * silent-print / hidden-iframe dialog fallback.
+ * preview and drives the browser print pipeline: WebUSB/Web Serial raw
+ * TSPL/ZPL to the paired thermal printer when silent mode is on, then
+ * hidden-iframe dialog fallback.
  */
 export function printProductLabel(input: PrintProductLabelInput): void {
   if (typeof window === 'undefined') return;

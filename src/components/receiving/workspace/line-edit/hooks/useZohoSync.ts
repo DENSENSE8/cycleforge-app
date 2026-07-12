@@ -66,7 +66,7 @@ export function useZohoSync(
           dispatchLine(lineData.receiving_line as ReceivingLineRow);
         }
       } catch { /* line refetch best-effort */ }
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
 
       return (data?.zoho_notes ?? null) as string | null;
     } catch {
@@ -159,7 +159,7 @@ export function useZohoSync(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ trackingNumber: tracking, staffId: Number(staffId) }),
         });
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
       }
 
       // Re-fetch the line so sidebar + table pick up every change.

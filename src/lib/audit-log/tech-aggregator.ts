@@ -138,7 +138,10 @@ export async function listTechSessions(
   }
 
   // ── PO-anchored sessions (receiving lines that were tested — "Line under PO") ──
-  const poWhere: string[] = ['rl.zoho_purchaseorder_id IS NOT NULL'];
+  // Wave-2 reader cutover: the line's zoho cluster reads from receiving_line_zoho
+  // (rz, 1:1 on the line PK); rz rows exist for every line with any zoho field,
+  // so LEFT JOIN + rz-predicates ≡ the old spine filters.
+  const poWhere: string[] = ['rz.zoho_purchaseorder_id IS NOT NULL'];
   // Scope on both org-bearing tables in the JOIN (testing_results + the
   // receiving_lines parent it joins on the surrogate rl.id = tr.receiving_line_id).
   if (pOrg) {
@@ -189,23 +192,27 @@ export async function listTechSessions(
     ),
     po_sessions AS (
       SELECT
-        rl.zoho_purchaseorder_id AS session_key,
-        COALESCE(rr.zoho_po_number, rl.zoho_purchaseorder_id) AS label,
+        rz.zoho_purchaseorder_id AS session_key,
+        COALESCE(rr.zoho_po_number, rz.zoho_purchaseorder_id) AS label,
         MAX(tr.created_at)                  AS latest_event_at,
         COUNT(DISTINCT tr.serial_unit_id)::int AS serial_count,
         MAX(tr.tested_by)                   AS tester_id,
         (
           SELECT string_agg(DISTINCT rl2.sku, ', ')
-            FROM receiving_lines rl2
-           WHERE rl2.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+            FROM receiving_line rl2
+            LEFT JOIN receiving_line_zoho rz2
+              ON rz2.receiving_line_id = rl2.id AND rz2.organization_id = rl2.organization_id
+           WHERE rz2.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
              ${pOrg ? `AND rl2.organization_id = $${pOrg}` : ''}
              AND rl2.sku IS NOT NULL
         ) AS sku_summary
       FROM testing_results tr
-      JOIN receiving_lines rl ON rl.id = tr.receiving_line_id
-      LEFT JOIN replenishment_requests rr ON rr.zoho_po_id = rl.zoho_purchaseorder_id${pOrg ? ` AND rr.organization_id = rl.organization_id` : ''}
+      JOIN receiving_line rl ON rl.id = tr.receiving_line_id
+      LEFT JOIN receiving_line_zoho rz
+        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+      LEFT JOIN replenishment_requests rr ON rr.zoho_po_id = rz.zoho_purchaseorder_id${pOrg ? ` AND rr.organization_id = rl.organization_id` : ''}
       WHERE ${poWhere.join(' AND ')}
-      GROUP BY rl.zoho_purchaseorder_id, rr.zoho_po_number
+      GROUP BY rz.zoho_purchaseorder_id, rr.zoho_po_number
     ),
     combined AS (
       SELECT * FROM shipment_sessions
@@ -272,9 +279,16 @@ export async function getTechSessionDetail(
     shipmentId = trackingRes.rows[0].id as number;
     canonicalTracking = trackingRes.rows[0].tracking_number_raw as string;
   } else {
+    // Wave-2 reader cutover: PO id lives on receiving_line_zoho (1:1 side table).
     const poSql = orgId
-      ? `SELECT id FROM receiving_lines WHERE zoho_purchaseorder_id = $1 AND organization_id = $2`
-      : `SELECT id FROM receiving_lines WHERE zoho_purchaseorder_id = $1`;
+      ? `SELECT rl.id FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+          WHERE rz.zoho_purchaseorder_id = $1 AND rl.organization_id = $2`
+      : `SELECT rl.id FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+          WHERE rz.zoho_purchaseorder_id = $1`;
     const poRes = orgId
       ? await tenantQuery(orgId, poSql, [session, orgId])
       : await pool.query(poSql, [session]);

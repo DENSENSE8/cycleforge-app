@@ -221,33 +221,65 @@ async function seedReceivingFixture(client: PoolClient, orgId: string) {
     : await client.query<{ id: number }>(
         `INSERT INTO receiving_carton
            (organization_id, source, zoho_purchaseorder_id, zoho_purchaseorder_number,
-            carrier, receiving_date_time, received_at, qa_status, needs_test, updated_at)
-         VALUES ($1, 'zoho_po', $2, $3, 'Mock', NOW(), NOW(), 'PENDING', true, NOW())
+            carrier, receiving_date_time, qa_status, needs_test, updated_at)
+         VALUES ($1, 'zoho_po', $2, $3, 'Mock', NOW(), 'PENDING', true, NOW())
          RETURNING id`,
         [orgId, QA_FIXTURE_PO_ID, QA_FIXTURE_PO_NUMBER],
       );
   const receivingId = Number(receivingRes.rows[0]!.id);
 
+  // Door-arrival stamp lives on receiving_triage (street cutover).
   await client.query(
-    `DELETE FROM receiving_line
-     WHERE receiving_id = $1 AND zoho_line_item_id LIKE 'QA-MOCK-LINE-%'`,
+    `INSERT INTO receiving_triage (receiving_id, organization_id, door_received_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (receiving_id) DO UPDATE
+       SET door_received_at = COALESCE(receiving_triage.door_received_at, EXCLUDED.door_received_at),
+           updated_at = NOW()`,
+    [receivingId, orgId],
+  );
+
+  await client.query(
+    `DELETE FROM receiving_line rl
+      USING receiving_line_zoho rz
+      WHERE rz.receiving_line_id = rl.id
+        AND rl.receiving_id = $1
+        AND rz.zoho_line_item_id LIKE 'QA-MOCK-LINE-%'`,
     [receivingId],
   );
-  await client.query(
-    `INSERT INTO receiving_line
-       (organization_id, receiving_id, zoho_item_id, zoho_line_item_id, zoho_purchaseorder_id,
-        item_name, sku, quantity_expected, quantity_received,
-        qa_status, disposition_code, condition_grade, disposition_audit,
-        workflow_status, needs_test, created_at, updated_at)
-     VALUES
-       ($1, $2, 'QA-MOCK-ITEM-1', 'QA-MOCK-LINE-1', $3,
-        'QA Bose SoundLink Mini II', $4, 2, 0, 'PENDING', 'HOLD', 'BRAND_NEW', '[]'::jsonb,
-        'MATCHED', true, NOW(), NOW()),
-       ($1, $2, 'QA-MOCK-ITEM-2', 'QA-MOCK-LINE-2', $3,
-        'QA Apple AirPods Pro', $5, 3, 0, 'PENDING', 'HOLD', 'BRAND_NEW', '[]'::jsonb,
-        'MATCHED', true, NOW(), NOW())`,
-    [orgId, receivingId, QA_FIXTURE_PO_ID, QA_FIXTURE_SKUS.speaker, QA_FIXTURE_SKUS.earbuds],
-  );
+  // Thin spine births + explicit street/facts rows (Wave-3 writer inversion:
+  // the testing + zoho clusters live on receiving_line_testing / receiving_line_zoho).
+  const qaFixtureLines = [
+    { itemId: 'QA-MOCK-ITEM-1', lineId: 'QA-MOCK-LINE-1', title: 'QA Bose SoundLink Mini II', sku: QA_FIXTURE_SKUS.speaker, qty: 2 },
+    { itemId: 'QA-MOCK-ITEM-2', lineId: 'QA-MOCK-LINE-2', title: 'QA Apple AirPods Pro', sku: QA_FIXTURE_SKUS.earbuds, qty: 3 },
+  ];
+  for (const fx of qaFixtureLines) {
+    const lineRes = await client.query<{ id: number }>(
+      `INSERT INTO receiving_line
+         (organization_id, receiving_id, item_name, sku, quantity_expected, quantity_received,
+          workflow_status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 0, 'MATCHED', NOW(), NOW())
+       RETURNING id`,
+      [orgId, receivingId, fx.title, fx.sku, fx.qty],
+    );
+    const lineId = Number(lineRes.rows[0]!.id);
+    await client.query(
+      `INSERT INTO receiving_line_testing
+         (receiving_line_id, organization_id, needs_test, qa_status, disposition_code,
+          condition_grade, disposition_audit)
+       VALUES ($1, $2, true, 'PENDING', 'HOLD', 'BRAND_NEW', '[]'::jsonb)
+       ON CONFLICT (receiving_line_id) DO NOTHING`,
+      [lineId, orgId],
+    );
+    await client.query(
+      `INSERT INTO receiving_line_zoho
+         (receiving_line_id, organization_id, zoho_item_id, zoho_line_item_id,
+          zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm)
+       VALUES ($1, $2, $3, $4, $5, $6,
+               NULLIF(UPPER(REGEXP_REPLACE($6, '[^A-Za-z0-9]', '', 'g')), ''))
+       ON CONFLICT (receiving_line_id) DO NOTHING`,
+      [lineId, orgId, fx.itemId, fx.lineId, QA_FIXTURE_PO_ID, QA_FIXTURE_PO_NUMBER],
+    );
+  }
 
   await client.query(
     `INSERT INTO receiving_scans (receiving_id, tracking_number, carrier, scanned_at, source)

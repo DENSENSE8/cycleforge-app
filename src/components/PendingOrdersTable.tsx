@@ -228,13 +228,13 @@ export default function PendingOrdersTable({
       );
     };
 
-    window.addEventListener('usav-refresh-data' as any, handleRefresh as any);
+    window.addEventListener('app-refresh-data' as any, handleRefresh as any);
     window.addEventListener('dashboard-refresh' as any, handleRefresh as any);
     window.addEventListener('dashboard-pending-order-refetch' as any, handlePendingOrderRefetch as any);
     window.addEventListener('order-assignment-updated' as any, handleAssignmentUpdated as any);
 
     return () => {
-      window.removeEventListener('usav-refresh-data' as any, handleRefresh as any);
+      window.removeEventListener('app-refresh-data' as any, handleRefresh as any);
       window.removeEventListener('dashboard-refresh' as any, handleRefresh as any);
       window.removeEventListener('dashboard-pending-order-refetch' as any, handlePendingOrderRefetch as any);
       window.removeEventListener('order-assignment-updated' as any, handleAssignmentUpdated as any);

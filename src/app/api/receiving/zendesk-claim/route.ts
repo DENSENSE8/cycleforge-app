@@ -342,7 +342,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           });
           const shipmentRow = await tenantQuery<{ shipment_id: number | null }>(
             ctx.organizationId,
-            `SELECT shipment_id FROM receiving
+            `SELECT shipment_id FROM receiving_carton
               WHERE id = $1 AND organization_id = $2 LIMIT 1`,
             [receivingId, ctx.organizationId],
           );
@@ -363,9 +363,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // the line (or carton for package-level claims). Best-effort.
         try {
           if (lineId != null) {
-            await tenantQuery(ctx.organizationId, `UPDATE receiving_lines SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3`, [ticketNumber, lineId, ctx.organizationId]);
+            await tenantQuery(ctx.organizationId, `UPDATE receiving_line SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3`, [ticketNumber, lineId, ctx.organizationId]);
           } else {
-            await tenantQuery(ctx.organizationId, `UPDATE receiving SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3`, [ticketNumber, receivingId, ctx.organizationId]);
+            await tenantQuery(ctx.organizationId, `UPDATE receiving_carton SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3`, [ticketNumber, receivingId, ctx.organizationId]);
           }
         } catch (colErr) {
           console.warn('[POST /api/receiving/zendesk-claim] zendesk_ticket column update failed', colErr);

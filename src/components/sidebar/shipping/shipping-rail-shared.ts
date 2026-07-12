@@ -6,7 +6,7 @@ export function shippingRailQueryKey(feed: 'queue' | 'stock', techId: string) {
 }
 
 export const SHIPPING_RAIL_REFRESH_EVENTS = [
-  'usav-refresh-data',
+  'app-refresh-data',
   'dashboard-refresh',
 ] as const;
 

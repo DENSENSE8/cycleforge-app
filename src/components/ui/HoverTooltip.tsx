@@ -32,6 +32,7 @@ export function HoverTooltip({
   className,
   focusable = true,
   asChild = false,
+  placement = 'auto',
 }: {
   label: string;
   children: ReactNode;
@@ -46,9 +47,17 @@ export function HoverTooltip({
    * doesn't show — never a layout or functional break.
    */
   asChild?: boolean;
+  /**
+   * Bubble placement relative to the trigger. `auto` prefers above and flips
+   * below when there isn't room; `below` / `above` pin to that side (still
+   * viewport-clamped).
+   */
+  placement?: 'auto' | 'above' | 'below';
 }) {
   const triggerRef = useRef<HTMLElement | null>(null);
   const bubbleRef = useRef<HTMLSpanElement | null>(null);
+  const placementRef = useRef(placement);
+  placementRef.current = placement;
   // Trigger rect captured on open; the bubble is positioned off-screen+hidden
   // first so we can measure it, then clamped into view in the layout effect.
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -56,7 +65,9 @@ export function HoverTooltip({
 
   const show = useCallback(() => {
     const r = triggerRef.current?.getBoundingClientRect();
-    if (r) {
+    // Ignore zero-size / detached rects — otherwise the portal can clamp to the
+    // viewport's top-left corner and look like a stray label (e.g. SKU chip).
+    if (r && r.width >= 2 && r.height >= 2) {
       setAnchor(r);
       setPos(null);
     }
@@ -67,15 +78,24 @@ export function HoverTooltip({
   }, []);
 
   useLayoutEffect(() => {
-    if (!anchor || !bubbleRef.current) return;
+    if (!anchor || anchor.width < 2 || anchor.height < 2 || !bubbleRef.current) return;
     const b = bubbleRef.current.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Prefer above the trigger; flip below when there isn't room above.
     const roomAbove = anchor.top - MARGIN;
-    const preferAbove = roomAbove >= b.height || roomAbove > vh - anchor.bottom;
-    const rawTop = preferAbove ? anchor.top - b.height - MARGIN : anchor.bottom + MARGIN;
+    const roomBelow = vh - anchor.bottom - MARGIN;
+    const side = placementRef.current;
+    let rawTop: number;
+    if (side === 'below') {
+      rawTop = anchor.bottom + MARGIN;
+    } else if (side === 'above') {
+      rawTop = anchor.top - b.height - MARGIN;
+    } else {
+      // Prefer above the trigger; flip below when there isn't room above.
+      const preferAbove = roomAbove >= b.height || roomAbove > roomBelow;
+      rawTop = preferAbove ? anchor.top - b.height - MARGIN : anchor.bottom + MARGIN;
+    }
     const top = Math.min(Math.max(rawTop, MARGIN), Math.max(MARGIN, vh - b.height - MARGIN));
 
     // Center on the trigger, then clamp horizontally into the viewport.

@@ -17,7 +17,6 @@ import { publishRepairChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AuthContext } from '@/lib/auth/auth-context';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 import {
   getApiIdempotencyResponse,
@@ -80,14 +79,16 @@ const handler = createCrudHandler({
 
   list: async (params) => {
     const tab = normalizeTab(params.tab);
-    const orgId = params.organizationId ?? USAV_ORG_ID;
+    if (!params.organizationId) throw ApiError.unauthorized('Organization context required');
+    const orgId = params.organizationId;
     const repairs = await getAllRepairs(params.limit, params.offset, { tab }, orgId);
     return { rows: repairs };
   },
 
   search: async (query, params) => {
     const tab = normalizeTab(params.tab);
-    const orgId = params.organizationId ?? USAV_ORG_ID;
+    if (!params.organizationId) throw ApiError.unauthorized('Organization context required');
+    const orgId = params.organizationId;
     return searchRepairs(query, { tab }, orgId);
   },
 
@@ -96,7 +97,8 @@ const handler = createCrudHandler({
 
     if (!id) throw ApiError.badRequest('ID is required');
 
-    const orgId = organizationId ?? USAV_ORG_ID;
+    if (!organizationId) throw ApiError.unauthorized('Organization context required');
+    const orgId = organizationId;
     if (status) await updateRepairStatus(id, status, orgId);
     if (notes !== undefined) await updateRepairNotes(id, notes, orgId);
     if (field && value !== undefined) await updateRepairField(id, field, value, orgId);

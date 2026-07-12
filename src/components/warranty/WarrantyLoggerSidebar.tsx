@@ -10,6 +10,8 @@ import { useWarrantyClaims, useWarrantyUrlState, WARRANTY_EXPIRING_SOON_DAYS } f
 import { WARRANTY_CLAIM_STATUSES, WARRANTY_STATUS_LABEL, type WarrantyClaimStatus } from '@/lib/warranty/types';
 import { WarrantyClockChip, WarrantyStatusBadge } from '@/components/warranty/chips';
 import { WarrantyLogClaimDialog } from '@/components/warranty/WarrantyLogClaimDialog';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 interface WarrantyLoggerSidebarProps {
   /** Legacy in-panel mode rail (rendered only when master nav is off). */
@@ -130,13 +132,24 @@ export function WarrantyLoggerSidebar({
   return (
     <>
     <SidebarShell
-      headerAbove={filterControl}
-      search={{
-        value: searchValue,
-        onChange: (v) => onSearchChange?.(v),
-        placeholder: 'Search claim #, serial, SKU, order, customer…',
-        isSearching: isFetching && !isLoading,
-      }}
+      headerAbove={
+        <>
+          {filterControl}
+          {/* In-context list filter — local base SearchBar over the claims list.
+              The global header pill stays global (search any order app-wide). */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchValue}
+              onChange={(v) => onSearchChange?.(v)}
+              onClear={() => onSearchChange?.('')}
+              placeholder="Filter claim #, serial, SKU, order…"
+              isSearching={isFetching && !isLoading}
+            />
+          </div>
+        </>
+      }
       filter={{
         label: 'Filters',
         refinements,

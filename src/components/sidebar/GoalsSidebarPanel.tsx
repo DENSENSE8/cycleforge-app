@@ -8,6 +8,8 @@ import { Loader2, RefreshCw, X } from '@/components/Icons';
 import { sectionLabel, dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
 import { getAllStaffGoals, invalidateStaffGoalsCache, type GoalRow } from '@/lib/staffGoalsCache';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 const GOAL_VIEW_OPTIONS = [
   { value: 'all', label: 'All Staff' },
@@ -308,24 +310,31 @@ export function GoalsSidebarPanel() {
     <SidebarShell
       className="bg-surface-card"
       headerAbove={
-        <div className="border-b border-border-soft">
-          <ViewDropdown
-            options={GOAL_VIEW_OPTIONS}
-            value={goalView}
-            onChange={(nextValue) => updateParams({ goalView: nextValue as GoalViewMode })}
-            variant="boxy"
-            buttonClassName={`h-full w-full appearance-none bg-surface-card px-4 py-3 pr-8 text-left ${fieldLabel} outline-none transition-all hover:bg-surface-hover`}
-            optionClassName={fieldLabel}
-          />
-        </div>
+        <>
+          <div className="border-b border-border-soft">
+            <ViewDropdown
+              options={GOAL_VIEW_OPTIONS}
+              value={goalView}
+              onChange={(nextValue) => updateParams({ goalView: nextValue as GoalViewMode })}
+              variant="boxy"
+              buttonClassName={`h-full w-full appearance-none bg-surface-card px-4 py-3 pr-8 text-left ${fieldLabel} outline-none transition-all hover:bg-surface-hover`}
+              optionClassName={fieldLabel}
+            />
+          </div>
+          {/* In-context list filter — local base SearchBar. The global header
+              pill stays global. */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchValue}
+              onChange={(value) => updateParams({ search: value })}
+              onClear={() => updateParams({ search: '' })}
+              placeholder="Filter staff or role"
+            />
+          </div>
+        </>
       }
-      search={{
-        value: searchValue,
-        onChange: (value) => updateParams({ search: value }),
-        onClear: () => updateParams({ search: '' }),
-        placeholder: 'Search staff or role',
-        variant: 'blue',
-      }}
       bodyClassName="pb-4 space-y-5"
     >
         <section className="space-y-2">

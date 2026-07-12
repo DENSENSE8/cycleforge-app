@@ -12,11 +12,8 @@
  *   Under Chrome/Edge launched with `--kiosk-printing`, any `window.print()`
  *   call prints straight to the *default* printer with NO dialog. Without that
  *   flag the normal print dialog appears (browsers give web pages no other way
- *   to reach a driver-owned OS printer). So for dialog-free receiving labels in
- *   a browser tab: set the label printer as the default printer and start the
- *   browser with `--kiosk-printing`. The desktop (Electron) shell
- *   needs none of this — it prints silently via `webContents.print` upstream of
- *   this fallback (see {@link printHtmlSilent}).
+ *   to reach a driver-owned OS printer). Prefer WebUSB/Web Serial profiles for
+ *   dialog-free thermal labels when possible (see {@link ./browserPrint}).
  *
  * The label HTML embeds its own `window.onload -> window.print()` (so the legacy
  * popup path still drives itself); inside the iframe that same script runs in the

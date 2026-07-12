@@ -32,7 +32,7 @@ export interface ClipboardEntry {
 }
 
 const MAX_ENTRIES = 20;
-const STORAGE_KEY = 'usav-clipboard-history-v1';
+const STORAGE_KEY = 'cf-clipboard-history-v1';
 
 let entries: ClipboardEntry[] = [];
 let hydrated = false;

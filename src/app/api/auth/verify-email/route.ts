@@ -23,11 +23,20 @@ import {
   cookieMaxAgeForSession,
 } from '@/lib/auth/session';
 import { hashVerificationToken } from '@/lib/auth/email-verification';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const GET = withAuth(async (req: NextRequest) => {
   const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
   const fail = (reason: string) =>
     NextResponse.redirect(`${base || ''}/?verify_error=${reason}`);
+
+  const rl = await checkRateLimitAsync({
+    headers: req.headers,
+    routeKey: 'auth-verify-email',
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) return fail('rate_limited');
 
   const token = req.nextUrl.searchParams.get('token') ?? '';
   if (!token) return fail('missing');

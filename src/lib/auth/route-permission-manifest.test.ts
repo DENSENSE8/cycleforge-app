@@ -238,6 +238,75 @@ test('regression: the template library is studio.view to list/preview, studio.ma
   );
 });
 
+test('regression: the onboarding template chooser is studio.manage (Template Platform Phase 1)', () => {
+  // The first-run chooser installs a system template into the org (clone +
+  // surface-seed + activate) — the same authoring write as template import, so
+  // the same gate.
+  const manage = routesGatedBy('studio.manage').map((r) => r.path);
+  assert.ok(
+    manage.includes('/api/onboarding/template/route.ts'),
+    'studio.manage should gate the onboarding template chooser (it installs a workflow)',
+  );
+});
+
+test('regression: package export is studio.view, package import is studio.manage (Template Platform Phase 3)', () => {
+  // Exporting the org's own definition to a CycleForgeTemplatePackage is a read
+  // (studio.view); importing a package clones it into a draft (studio.manage).
+  const view = routesGatedBy('studio.view').map((r) => r.path);
+  assert.ok(
+    view.includes('/api/studio/definitions/[id]/export/route.ts'),
+    'studio.view should gate the definition → package export',
+  );
+  const manage = routesGatedBy('studio.manage').map((r) => r.path);
+  assert.ok(
+    manage.includes('/api/studio/templates/import-package/route.ts'),
+    'studio.manage should gate template package import (it writes a draft)',
+  );
+});
+
+test('regression: catalog curation — submit is studio.manage, review is studio.catalog.review (Template Platform Phase 4)', () => {
+  // Submitting the org's OWN definition to the catalog is an authoring write by
+  // its owner (studio.manage). Browsing the curated (approved+public) catalog is
+  // a read (studio.view). Moderating another org's submission — the review queue
+  // and approve/reject — is the platform-curator gate (studio.catalog.review).
+  const manage = routesGatedBy('studio.manage').map((r) => r.path);
+  assert.ok(
+    manage.includes('/api/studio/definitions/[id]/submit/route.ts'),
+    'studio.manage should gate submitting an org definition to the catalog',
+  );
+  const view = routesGatedBy('studio.view').map((r) => r.path);
+  assert.ok(
+    view.includes('/api/studio/catalog/route.ts'),
+    'studio.view should gate browsing the curated catalog',
+  );
+  const review = routesGatedBy('studio.catalog.review').map((r) => r.path);
+  assert.ok(
+    review.includes('/api/studio/catalog/submissions/route.ts'),
+    'studio.catalog.review should gate the submission review queue',
+  );
+  assert.ok(
+    review.includes('/api/studio/catalog/submissions/[id]/review/route.ts'),
+    'studio.catalog.review should gate the approve/reject action',
+  );
+});
+
+test('regression: AI intake surfaces are studio.view reads, never activation (Template Platform Phase 5)', () => {
+  // The AI palette (constrained vocabulary) and the template recommender are
+  // both read-only: they rank/expose EXISTING system templates + the registered
+  // node/surface vocabulary. Neither installs or activates anything (the owner
+  // still confirms via the studio.manage onboarding chooser), so both are
+  // studio.view.
+  const view = routesGatedBy('studio.view').map((r) => r.path);
+  assert.ok(
+    view.includes('/api/studio/templates/ai-vocabulary/route.ts'),
+    'studio.view should gate the AI template vocabulary palette',
+  );
+  assert.ok(
+    view.includes('/api/onboarding/recommend/route.ts'),
+    'studio.view should gate the template recommender',
+  );
+});
+
 test('regression: node-bound station writes are studio.manage (ST5 / Phase D)', () => {
   // The node-scoped station binding (Operations Studio L2). The read
   // (GET .../station) stays studio.view; the manifest records the first-declared
@@ -414,5 +483,29 @@ test('regression: receiving.match_email gates the incoming match-email route (in
   assert.ok(
     paths.includes('/api/receiving-lines/incoming/match-email/route.ts'),
     'receiving.match_email should gate /api/receiving-lines/incoming/match-email',
+  );
+});
+
+test('regression: operations.plans.view gates the forge master-plan routes (agentic loop Phase 1/3)', () => {
+  // The agentic-loop master plan reuses the ops-plans permission family
+  // (docs/todo/agentic-loop-master-plan.md): viewers bootstrap the CRDT via
+  // GET /api/forge/master-plan (+ /seed), and the plan-agent chat streams from
+  // /api/forge/chat (mutation tools are only handed to operations.plans.manage
+  // holders inside the handler; the route gate is the view permission).
+  const paths = routesGatedBy('operations.plans.view').map((r) => r.path);
+  assert.ok(paths.includes('/api/forge/master-plan/route.ts'), 'view perm should gate /api/forge/master-plan');
+  assert.ok(paths.includes('/api/forge/master-plan/seed/route.ts'), 'view perm should gate /api/forge/master-plan/seed');
+  assert.ok(paths.includes('/api/forge/chat/route.ts'), 'view perm should gate /api/forge/chat');
+});
+
+test('regression: forge master-plan sync is machine-gated (allowAnonymous + forge token)', () => {
+  // Cursor/`forge.sh` status flips POST here so ops_plans refresh without a
+  // browser viewer. Ungated session writes are forbidden inside the handler.
+  const r = routeByPath('/api/forge/master-plan/sync/route.ts');
+  assert.ok(r, 'sync route should be in the manifest');
+  assert.equal(r.permission, null);
+  assert.ok(
+    r.gate.includes('allowAnonymous') || r.gate.includes('withAuth'),
+    `expected withAuth/allowAnonymous gate, got ${r.gate}`,
   );
 });

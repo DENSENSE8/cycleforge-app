@@ -3,6 +3,22 @@
 Each concern below has exactly one source module. Read from it; never inline, copy, or re-derive the mapping.
 Summarized in the root `CLAUDE.md`; this file holds the detail and rationale.
 
+## Dates & times (civil day vs instant)
+
+- Source: `src/utils/date.ts`. Warehouse business zone is `WAREHOUSE_TIME_ZONE` (`America/Los_Angeles`).
+- Keep **three types separate** — never collapse them into one ad-hoc `Date`:
+  - **Instant** — timeline moment → ISO-8601 with `Z`/offset; store as `timestamptz`; format with `formatDateTimePST` / `formatTime12hPST` / `formatApiInstant`.
+  - **Civil date** — calendar day with no time → `YYYY-MM-DD` only; use `parseDateKey`, `addDaysToDateKey`, `diffDaysDateKey`, `formatDateKeyShort`, `getCurrentPSTDateKey`, `toPSTDateKey`.
+  - **Zoned wall-clock** — instant + explicit zone (SQL: `timezone('America/Los_Angeles', ts)::date`).
+- **Banned** (guard: `src/utils/date-civil.guard.test.ts`):
+  - `new Date(\`${dateKey}T00:00:00\`)` or any local-midnight reparse of a civil key
+  - `new Date('YYYY-MM-DD')` then `getDate()` / `toLocaleDateString()` for warehouse labels
+  - Host-local `ymd(new Date())` for warehouse “today” — use `getCurrentPSTDateKey()`
+  - Bare `toLocaleDateString()` on ops surfaces that must match warehouse day buckets
+- **Calendar widgets only:** `dateKeyToLocalDate` / `localDateToDateKey` (same local frame both ways). Do not pass those `Date`s into zoned formatters or `toISOString()` for day logic.
+- **Day bounds for SQL/API:** `warehouseDayUtcBounds(dateKey)` or SQL `timezone('America/Los_Angeles', ts)::date`.
+- Unit tests for civil math must pass under `TZ=UTC` (see `src/utils/date.civil.test.ts`).
+
 ## Condition grade → label
 
 - Source: `src/lib/conditions.ts`, function `conditionLabel(code, variant)`.

@@ -51,12 +51,9 @@ export const receivingLinesQuerySchema = z.object({
   qaFilter: z.string(),
   dispFilter: z.string(),
   workflowFilter: z.string(),
-  /** Raw trimmed strings; the ISO-date regex gate stays at SQL build. */
-  weekStart: z.string(),
-  weekEnd: z.string(),
   /** Trimmed + lowercased raw `?view=` (drives the surface-isolation guards). */
   viewRaw: z.string(),
-  /** Parsed view — `null` = no/unknown view → week-range fallback. */
+  /** Parsed view — `null` = no/unknown view → org-wide default scoping. */
   view: z.enum(RECEIVING_VIEWS).nullable(),
   deliveryStateFilter: z.string(),
   /** ISO `YYYY-MM-DD` or `''` — malformed silently no-ops (bookmark-safe). */
@@ -97,8 +94,8 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const qaFilter    = String(searchParams.get('qa_status') || '').trim().toUpperCase();
   const dispFilter  = String(searchParams.get('disposition') || '').trim().toUpperCase();
   const workflowFilter = String(searchParams.get('workflow_status') || '').trim().toUpperCase();
-  const weekStart = String(searchParams.get('week_start') || '').trim();
-  const weekEnd   = String(searchParams.get('week_end') || '').trim();
+  // Wave-2 dead-arm removal: the no-view ?week_start/?week_end fallback was
+  // deleted (grep-proven zero consumers) — those params are now ignored.
   const viewRaw   = String(searchParams.get('view') || '').trim().toLowerCase();
   // Incoming-only: filters by the computed delivery_state bucket
   // (DELIVERED_UNOPENED, ARRIVING_TODAY, STALLED, IN_TRANSIT, AWAITING_TRACKING).
@@ -130,7 +127,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
         : sortRaw === 'recently_added'
           ? 'recently_added'
           : 'zoho_newest';
-  // Sort axis for the receiving-history feed (view=recent/all/activity).
+  // Sort axis for the receiving-history feed (view=all/activity).
   // Lets the history UI sort by scanned-at (door), unboxed-at, or received-at
   // (the line's terminal DONE / "Received" transition — receiving_lines.
   // received_done_at, distinct from the misnamed door-scan receiving.received_at).
@@ -158,7 +155,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const wantsPrioritySort = sortRaw === 'priority';
   // Shared contract with the client (src/lib/receiving/receiving-views.ts) so
   // the supported view set can't drift between the two ends. `null` = no/
-  // unknown view → fall back to week-range scoping.
+  // unknown view → org-wide default scoping.
   const view = parseReceivingView(viewRaw);
   // Phase 2 — physical-vs-financial decoupling: `?zohoStatus=open` (the "Hide
   // Zoho-received" toggle) re-applies the old hide-terminal filter.
@@ -190,8 +187,6 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     qaFilter,
     dispFilter,
     workflowFilter,
-    weekStart,
-    weekEnd,
     viewRaw,
     view,
     deliveryStateFilter,

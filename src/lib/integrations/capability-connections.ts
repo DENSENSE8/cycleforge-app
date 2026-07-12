@@ -18,7 +18,7 @@
  * probe for the dogfood org only, so capability gating cannot soft-disable
  * surfaces that actually work there.
  */
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import { getIntegrationCredentials } from '@/lib/integrations/credentials';
 import { listConnections } from '@/lib/integrations/connectors/connections';
 import type { Capability, ConnectionStatus } from '@/lib/integrations/connectors/types';
@@ -40,7 +40,7 @@ export async function getConnectedProviders(
 export async function isCapabilityConnected(orgId: OrgId, cap: Capability): Promise<boolean> {
   const connected = await getConnectedProviders(orgId, cap);
   if (connected.length > 0) return true;
-  if (orgId !== USAV_ORG_ID) return false;
+  if (orgId !== DOGFOOD_ORG_ID) return false;
   for (const provider of capabilityProviderKeys(cap)) {
     const creds = await getIntegrationCredentials(orgId, provider);
     if (creds) return true;
@@ -56,7 +56,7 @@ export async function isCapabilityConnected(orgId: OrgId, cap: Capability): Prom
 export async function connectedProviderLabel(orgId: OrgId, cap: Capability): Promise<string> {
   const [first] = await getConnectedProviders(orgId, cap);
   if (first) return first.displayLabel || providerCatalogLabel(first.provider);
-  if (orgId === USAV_ORG_ID) {
+  if (orgId === DOGFOOD_ORG_ID) {
     for (const provider of capabilityProviderKeys(cap)) {
       const creds = await getIntegrationCredentials(orgId, provider);
       if (creds) return providerCatalogLabel(provider);
@@ -72,7 +72,7 @@ export async function connectedProviderKey(
 ): Promise<string | null> {
   const [first] = await getConnectedProviders(orgId, cap);
   if (first) return first.provider;
-  if (orgId === USAV_ORG_ID) {
+  if (orgId === DOGFOOD_ORG_ID) {
     for (const provider of capabilityProviderKeys(cap)) {
       const creds = await getIntegrationCredentials(orgId, provider);
       if (creds) return provider;

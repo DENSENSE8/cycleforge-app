@@ -1,17 +1,25 @@
 import pool from '@/lib/db';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
+import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 
 /** Ops spine event — carton opened via a scan on the Unbox surface. */
 export const UNBOX_SCAN_OPENED_EVENT = 'UNBOX_SCAN_OPENED';
 
 /**
  * SQL predicate: carton was scanned/opened on the Unbox workspace.
- * Uses the receiving row stamp (always queryable) with ops_events as a
- * secondary signal for backfills.
+ * Wave-2 reader cutover: the opened stamp now reads from the receiving_unbox
+ * street table (ru.opened_at, 1:1 with the carton — spine unbox_opened_at is
+ * writer-owned + trigger-mirrored), with ops_events as a secondary signal for
+ * backfills. References only the outer alias `r`, so importers need no join.
  */
 export const UNBOX_OPENED_PREDICATE_SQL = `(
-  r.unbox_opened_at IS NOT NULL
+  EXISTS (
+    SELECT 1 FROM receiving_unbox ru_uo
+    WHERE ru_uo.receiving_id = r.id
+      AND ru_uo.organization_id = r.organization_id
+      AND ru_uo.opened_at IS NOT NULL
+  )
   OR EXISTS (
     SELECT 1 FROM ops_events oe_uo
     WHERE oe_uo.organization_id = r.organization_id
@@ -21,8 +29,17 @@ export const UNBOX_OPENED_PREDICATE_SQL = `(
   )
 )`;
 
-/** Carton first touched on Unbox with no prior triage door scan. */
-export const UNBOX_ONLY_INTAKE_PREDICATE_SQL = `(r.unbox_only_intake = true)`;
+/**
+ * Carton first touched on Unbox with no prior triage door scan.
+ * Street read: receiving_unbox.intake_path = 'unbox_only' (false when no row),
+ * replacing the spine boolean r.unbox_only_intake.
+ */
+export const UNBOX_ONLY_INTAKE_PREDICATE_SQL = `EXISTS (
+  SELECT 1 FROM receiving_unbox ru_ui
+  WHERE ru_ui.receiving_id = r.id
+    AND ru_ui.organization_id = r.organization_id
+    AND ru_ui.intake_path = 'unbox_only'
+)`;
 
 /** @deprecated Use UNBOX_OPENED_PREDICATE_SQL */
 export const UNBOX_SCAN_OPENED_EXISTS_SQL = UNBOX_OPENED_PREDICATE_SQL;
@@ -31,8 +48,13 @@ export const UNBOX_SCAN_OPENED_EXISTS_SQL = UNBOX_OPENED_PREDICATE_SQL;
  * Record that this carton entered the operator's Unbox work queue via a scan.
  *
  * Unbox scans are independent from triage door stamps:
- *   1. Stamps unbox_opened_at/by only (NOT received_at, NOT unboxed_at).
- *   2. Sets unbox_only_intake when received_at is still NULL (bench-first path).
+ *   1. Stamps receiving_unbox.opened_at/opened_by only (NOT the triage door
+ *      stamp, NOT unboxed_at). Wave-3 writer inversion: written DIRECTLY on
+ *      the receiving_unbox street table (the spine columns are dropped in
+ *      Wave 4); COALESCE-once inside the helper so a re-scan never re-stamps.
+ *   2. Derives intake_path in the same statement ('unbox_only' when the carton
+ *      has no triage door stamp — the bench-first path; an already-resolved
+ *      path is kept).
  *   3. Appends UNBOX_SCAN_OPENED ops_event for rails / timeline.
  *
  * The "Unboxed" workflow milestone (unboxed_at, line UNBOXED transition) is
@@ -46,21 +68,13 @@ export async function recordUnboxScanOpened(
   trackingNumber?: string,
 ): Promise<void> {
   try {
-    await pool.query(
-      `UPDATE receiving
-          SET unbox_opened_at = COALESCE(unbox_opened_at, NOW()),
-              unbox_opened_by = COALESCE(unbox_opened_by, $3),
-              unbox_only_intake = CASE
-                WHEN received_at IS NULL THEN true
-                ELSE unbox_only_intake
-              END,
-              updated_at = NOW()
-        WHERE id = $1
-          AND organization_id = $2::uuid`,
-      [receivingId, organizationId, actorStaffId],
-    );
+    await upsertReceivingUnbox(pool, organizationId, receivingId, {
+      openedAt: 'now',
+      openedBy: actorStaffId,
+      deriveIntakePath: true,
+    });
   } catch (err) {
-    console.warn('[recordUnboxScanOpened] receiving.unbox_opened_at stamp skipped:', err);
+    console.warn('[recordUnboxScanOpened] receiving_unbox.opened_at stamp skipped:', err);
   }
 
   const clientEventId =

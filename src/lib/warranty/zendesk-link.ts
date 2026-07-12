@@ -14,7 +14,7 @@
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import { clearTicketExternalIdIfMatches, linkTicket, unlinkTicket } from '@/lib/zendesk-links';
 
 /** Append a warranty_claim_events row outside the mutations.ts transaction helpers. */
@@ -58,7 +58,7 @@ export async function recordClaimTicketLink(args: {
   actorStaffId: number | null;
   eventType?: 'ZENDESK_TICKET_CREATED' | 'ZENDESK_LINKED';
 }): Promise<void> {
-  const orgId: OrgId = args.organizationId || USAV_ORG_ID;
+  const orgId: OrgId = args.organizationId || DOGFOOD_ORG_ID;
   await tenantQuery(
     orgId,
     `UPDATE warranty_claims
@@ -113,7 +113,7 @@ export async function unlinkClaimTicket(args: {
   organizationId: string;
   actorStaffId: number | null;
 }): Promise<{ detached: boolean }> {
-  const orgId: OrgId = args.organizationId || USAV_ORG_ID;
+  const orgId: OrgId = args.organizationId || DOGFOOD_ORG_ID;
   const upd = await tenantQuery(
     orgId,
     `UPDATE warranty_claims

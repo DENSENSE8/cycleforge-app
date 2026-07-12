@@ -72,7 +72,7 @@ API. We use Nango's free **auth + proxy** tier — *not* Nango Syncs (Enterprise
 
 > One sidecar (nango-server + Postgres + Redis) unlocks Square, Shopify, and ~250 other
 > OAuth providers. Until `NANGO_SECRET_KEY` is set, `isNangoConfigured()` is false and
-> Nango-backed cards fall back to vault entry. See `docs/nango-additive-integration-plan.md`.
+> Nango-backed cards fall back to vault entry. See `docs/nango-sidecar-setup.md`.
 
 **Recipe for a Nango-backed provider:** (1) add the key to `IntegrationProvider` +
 `NANGO_BACKED_PROVIDERS` (mapping our key → Nango's `provider_config_key`); (2) add a

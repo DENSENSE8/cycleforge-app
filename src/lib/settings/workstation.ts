@@ -3,7 +3,7 @@
  * Used to pre-fill receiving/packing forms and scope scans / filters.
  */
 
-const KEY = 'usav.workstation';
+const KEY = 'cf.workstation';
 
 export type WorkstationRole = '' | 'packer' | 'tech' | 'receiver' | 'admin';
 

@@ -11,11 +11,16 @@ import {
   buildAccountAuthenticationOptions,
   ACCOUNT_PASSKEY_CHALLENGE_COOKIE,
 } from '@/lib/identity/webauthn-account';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await checkRateLimitAsync({
+      headers: req.headers, routeKey: 'auth-account-passkey-authenticate-begin', limit: 30, windowMs: 10 * 60 * 1000,
+    });
+    if (!rl.ok) return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429 });
     const options = await buildAccountAuthenticationOptions({ req });
     const payload = Buffer.from(JSON.stringify({ challenge: options.challenge })).toString('base64url');
     const res = NextResponse.json({ options });

@@ -23,6 +23,7 @@ import {
   AdminPickerRow,
   useAdminUrlState,
 } from './shared';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 interface FbaFnskuRow {
   product_title: string | null;
@@ -59,7 +60,7 @@ export function FbaCatalogSidebarPanel() {
   const selected = searchParams.get('fnsku') ?? '';
   const filter = asFilter(searchParams.get('fbaFilter'));
 
-  const { data, isLoading } = useQuery<{ rows: FbaFnskuRow[] }>({
+  const { data, isLoading, isFetching } = useQuery<{ rows: FbaFnskuRow[] }>({
     queryKey: qk.adminFbaFnskus.list(search),
     queryFn: async () => {
       const q = search.trim();
@@ -99,17 +100,6 @@ export function FbaCatalogSidebarPanel() {
 
   return (
     <AdminSidebarShell
-      search={{
-        value: search,
-        onChange: (v) =>
-          setParam((p) => {
-            if (v.trim()) p.set('search', v.trim());
-            else p.delete('search');
-          }),
-        onClear: () => setParam((p) => p.delete('search')),
-        placeholder: 'Search FNSKU, title, ASIN, SKU',
-        variant: 'blue',
-      }}
       filters={
         <HorizontalButtonSlider
           items={filterItems}
@@ -174,6 +164,22 @@ export function FbaCatalogSidebarPanel() {
         </div>
       }
     >
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={search}
+          onChange={(v) =>
+            setParam((p) => {
+              if (v.trim()) p.set('search', v.trim());
+              else p.delete('search');
+            })
+          }
+          onClear={() => setParam((p) => p.delete('search'))}
+          placeholder="Filter FNSKU, title, ASIN, SKU…"
+          isSearching={isFetching && !isLoading}
+        />
+      </div>
       {isLoading ? (
         <div className="px-2 py-6 text-center text-xs text-text-faint">Loading catalog…</div>
       ) : visibleRows.length === 0 ? (

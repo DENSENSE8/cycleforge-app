@@ -94,7 +94,7 @@ export async function collectShippingTrackingMetrics(): Promise<ShippingTracking
     // Recent intake cartons with no canonical STN link. Tracking now lives only
     // in shipping_tracking_numbers (via shipment_id), so "unmatched" = an
     // unmatched-source carton that never got an STN row.
-    `SELECT count(*)::int AS n FROM receiving r
+    `SELECT count(*)::int AS n FROM receiving_carton r
       WHERE r.shipment_id IS NULL
         AND r.source = 'unmatched'
         AND r.created_at > now() - interval '90 days'`,

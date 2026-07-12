@@ -23,7 +23,7 @@ import {
   getIntegrationCredentials,
   type ZohoCredentials,
 } from '@/lib/integrations/credentials';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveOrgByWebhookToken } from './zoho-webhook-credentials';
 import type { NormalizedZohoEvent } from './types';
@@ -63,7 +63,7 @@ export async function resolveOrgFromWebhook(params: {
 
   // Legacy tokenless path → USAV via the global env secret (signingSecret
   // undefined; verifyZohoWebhookSignature falls back to ZOHO_WEBHOOK_SECRET).
-  return { ok: true, orgId: transitionalUsavOrgId(), source: 'legacy_global' };
+  return { ok: true, orgId: transitionalDogfoodOrgId(), source: 'legacy_global' };
 }
 
 /**

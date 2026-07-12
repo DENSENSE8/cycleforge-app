@@ -29,6 +29,9 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const panelVisible = g.panelOpen;
   const reduceMotion = useReducedMotion();
   const heroTransition = useMotionTransition(framerTransition.photoHeroMorph);
+  const scrimTransition = useMotionTransition(framerTransition.overlayScrim);
+  const panelLayoutTransition = useMotionTransition(framerTransition.photoContextPanelMount);
+  const toolbarTransition = useMotionTransition(framerTransition.dropdownOpen);
   // Keep Tab inside the lightbox — without this the page behind the scrim
   // keeps receiving keyboard focus.
   const trapRef = useFocusTrap<HTMLDivElement>(true);
@@ -104,6 +107,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       initial={{ opacity: 0, pointerEvents: 'auto' }}
       animate={{ opacity: 1, pointerEvents: 'auto' }}
       exit={{ opacity: 0, pointerEvents: 'none' }}
+      transition={scrimTransition}
       className="fixed inset-0 flex bg-scrim/95 outline-none backdrop-blur-md"
       style={{ zIndex: zLayer.modal }}
       onClick={(e) => e.stopPropagation()}
@@ -131,12 +135,21 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       </AnimatePresence>
 
       {/* Stage — image lane. flex-1 yields width to the details panel; toolbar
-          is scoped here so it never bleeds over the panel border. */}
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          is scoped here so it never bleeds over the panel border. `layout` lets
+          the toolbar cluster ease back when the details column soft-closes. */}
+      <motion.div
+        layout
+        transition={panelLayoutTransition}
+        className="relative flex min-w-0 flex-1 flex-col overflow-hidden"
+      >
       {/* Top bar — counter (left) + zoom/rotate pill + action buttons (right).
           Pinned to the image lane, not the full viewport, so controls stay left
           of the details column when it opens. */}
-      <div
+      <motion.div
+        layout
+        transition={{ layout: panelLayoutTransition, ...toolbarTransition }}
+        initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
         className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between py-6 pl-6 pr-6"
       >
         <div className="pointer-events-auto flex shrink-0 items-center gap-3">
@@ -255,7 +268,8 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                     onClick={(e) => {
                       e.stopPropagation();
                       setMoreOpen(false);
-                      g.togglePanel();
+                      if (g.panelOpen) g.closePanel();
+                      else g.togglePanel();
                     }}
                     className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-glass/15 ${
                       g.panelOpen ? 'text-blue-200' : 'text-white'
@@ -412,7 +426,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             />
           </HoverTooltip>
         </div>
-      </div>
+      </motion.div>
 
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">
       {g.deleteError && (
@@ -564,13 +578,21 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         </div>
       )}
       </div>
-      </div>
-      {/* Info panel — flex sibling of the stage; mount/unmount animated. */}
-      <AnimatePresence initial={false}>
+      </motion.div>
+      {/* Info panel — flex sibling of the stage; mount/unmount animated. When
+          the viewer is closing with the panel open, wait for this exit before
+          tearing down the lightbox (see `deferViewerClose` in usePhotoGallery). */}
+      <AnimatePresence
+        initial={false}
+        onExitComplete={() => {
+          if (g.deferViewerClose) g.completeViewerClose();
+        }}
+      >
         {panelVisible ? (
           <PhotoContextPanel
+            key="photo-context-panel"
             photo={photoItems[currentIndex]}
-            onCollapse={g.togglePanel}
+            onCollapse={g.closePanel}
           />
         ) : null}
       </AnimatePresence>

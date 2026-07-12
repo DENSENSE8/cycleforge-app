@@ -132,7 +132,7 @@ export default [
   // (SerialCard's in-flow hover tooltip) carries an inline disable.
   //
   // ── Tenancy escape-hatch guard (merged into the same no-restricted-syntax) ─
-  // `USAV_ORG_ID` / `transitionalUsavOrgId()` hardcode the dogfood org instead
+  // `DOGFOOD_ORG_ID` / `transitionalDogfoodOrgId()` hardcode the dogfood org instead
   // of reading `ctx.organizationId` from the session. New code MUST NOT add
   // either. Both selectors live in THIS block (not a second one) because a
   // second block re-declaring no-restricted-syntax for the same files would
@@ -167,26 +167,36 @@ export default [
             'Inline global zIndex literal is banned. Use zIndex.<token> from tokens/z-index.ts (or useZIndex()/<Layer>). Local in-flow lifts (< 50) are fine.',
         },
         {
-          selector: "ImportSpecifier[imported.name='USAV_ORG_ID']",
+          selector: "ImportSpecifier[imported.name='DOGFOOD_ORG_ID']",
           message:
-            'Do not import USAV_ORG_ID in new code — derive the tenant from ctx.organizationId. See docs/tenancy/multi-tenancy-execution-plan.md §A3.',
+            'Do not import DOGFOOD_ORG_ID in new code — derive the tenant from ctx.organizationId. See docs/tenancy/multi-tenancy-execution-plan.md §A3.',
         },
         {
-          selector: "ImportSpecifier[imported.name='transitionalUsavOrgId']",
+          selector: "ImportSpecifier[imported.name='transitionalDogfoodOrgId']",
           message:
-            'transitionalUsavOrgId() is deprecated migration debt — thread ctx.organizationId through instead. See docs/tenancy/multi-tenancy-execution-plan.md §A3.',
+            'transitionalDogfoodOrgId() is deprecated migration debt — thread ctx.organizationId through instead. See docs/tenancy/multi-tenancy-execution-plan.md §A3.',
         },
         {
-          selector: "CallExpression[callee.name='transitionalUsavOrgId']",
+          selector: "CallExpression[callee.name='transitionalDogfoodOrgId']",
           message:
-            'transitionalUsavOrgId() is deprecated migration debt — thread ctx.organizationId through instead. See docs/tenancy/multi-tenancy-execution-plan.md §A3.',
+            'transitionalDogfoodOrgId() is deprecated migration debt — thread ctx.organizationId through instead. See docs/tenancy/multi-tenancy-execution-plan.md §A3.',
+        },
+        {
+          selector: "Literal[value=/USAV Solutions|USAV Orders|USAV Assistant|USAV Ops Assistant/]",
+          message:
+            'Hardcoded USAV product brand is banned. Use PRODUCT_NAME / PRODUCT_NAME_AI from src/lib/branding/constants.ts, or organizations.name from the DB. See docs/cycle-forge-branding-spec.md.',
+        },
+        {
+          selector: "TemplateElement[value.raw=/USAV Solutions|USAV Orders|USAV Assistant|USAV Ops Assistant/]",
+          message:
+            'Hardcoded USAV product brand is banned. Use PRODUCT_NAME / PRODUCT_NAME_AI from src/lib/branding/constants.ts, or organizations.name from the DB. See docs/cycle-forge-branding-spec.md.',
         },
       ],
     },
   },
 
   // ── Tenancy burn-down allowlist ──────────────────────────────────────────
-  // The current known `USAV_ORG_ID` / `transitionalUsavOrgId()` callers. This
+  // The current known `DOGFOOD_ORG_ID` / `transitionalDogfoodOrgId()` callers. This
   // block turns OFF no-restricted-syntax ONLY for these files (they stay parsed
   // by tsParser from the block above and linted by every other rule). As each
   // file is refactored to thread ctx.organizationId, DELETE its entry here so
@@ -216,8 +226,8 @@ export default [
       'src/app/api/ecwid/transfer-orders/route.ts',
       'src/app/api/google-sheets/transfer-orders/route.ts',
       'src/app/api/shipping/track/sync-one/route.ts',
-      // Bulk-added 2026-07-10: remaining pre-existing USAV_ORG_ID /
-      // transitionalUsavOrgId() callers surfaced once `no-restricted-syntax`
+      // Bulk-added 2026-07-10: remaining pre-existing DOGFOOD_ORG_ID /
+      // transitionalDogfoodOrgId() callers surfaced once `no-restricted-syntax`
       // started actually running in CI (previously masked because `next
       // lint` — removed in Next.js 16 — was silently a no-op, and disabled
       // Next-plugin rules referenced in stale eslint-disable comments were
@@ -280,7 +290,7 @@ export default [
       'src/lib/zoho/webhooks/resolve-org.ts',
       // Added 2026-07-10 (USAV→cycleforge SoT merge): the Wave-3 org-require
       // refactor routed these session-less legacy paths through the explicit
-      // transitionalUsavOrgId() service-org bridge, making the debt greppable
+      // transitionalDogfoodOrgId() service-org bridge, making the debt greppable
       // (see scripts/usav-fallback-guard.mjs allowlist — same ledger). Same
       // burn-down contract: delete each entry as it is refactored.
       'src/app/api/need-to-order/create-po/route.ts',

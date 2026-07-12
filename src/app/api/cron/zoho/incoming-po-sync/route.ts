@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
               max_items: Number.isFinite(maxItemsRaw) && maxItemsRaw > 0 ? maxItemsRaw : 2000,
               po_date_floor: poDateFloor,
             }),
-          { includeUsavTransitional: true },
+          { includeDogfoodTransitional: true },
         );
 
         // Aggregate per-org summaries into the shape callers already expect.

@@ -244,13 +244,16 @@ export async function readSerialProvenance(
             su.sku,
             su.condition_grade,
             su.current_status,
-            rl.zoho_purchaseorder_number AS po_number
+            rz.zoho_purchaseorder_number AS po_number
        FROM serial_units su
        JOIN v_serial_unit_origins vo ON vo.serial_unit_id = su.id
        LEFT JOIN current_line cl ON cl.serial_unit_id = su.id
-       LEFT JOIN receiving_lines rl
+       LEFT JOIN receiving_line rl
          ON rl.id = COALESCE(cl.receiving_line_id, vo.origin_receiving_line_id)
         AND rl.organization_id = su.organization_id
+       LEFT JOIN receiving_line_zoho rz
+         ON rz.receiving_line_id = rl.id
+        AND rz.organization_id = rl.organization_id
       WHERE su.organization_id = $1
         AND su.id = ANY($2::int[])`,
     [orgId, serialUnitIds],

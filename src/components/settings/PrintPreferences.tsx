@@ -2,18 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import {
-  AUTO_PAPER_ID,
-  PAPER_SIZE_OPTIONS,
-  getSavedPreset,
-  isElectron,
-  listPrinters,
-  printHtmlSilent,
-  resolvePaperSizeOption,
-  setSavedPreset,
-  type PrintPreset,
-  type PrinterInfo,
-} from '@/lib/print/silentPrint';
-import {
   PAPER_SIZES,
   PRINTER_ROLES,
   deleteProfile,
@@ -101,8 +89,7 @@ function SilentPrintToggle() {
 }
 
 export function PrintPreferences({ onClose }: PrintPreferencesProps) {
-  const electronAvail = isElectron();
-  const webAvail = !electronAvail && isBrowserPrintSupported();
+  const webAvail = isBrowserPrintSupported();
 
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
@@ -124,93 +111,16 @@ export function PrintPreferences({ onClose }: PrintPreferencesProps) {
 
       <SilentPrintToggle />
 
-      {electronAvail ? (
-        <ElectronPreferences />
-      ) : webAvail ? (
+      {webAvail ? (
         <BrowserProfiles />
       ) : (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">Silent printing isn&rsquo;t available in this browser.</p>
-        <p className="mt-1 text-amber-800">
-            Use Chrome or Edge to pair wired label printers on Windows or macOS, or install the desktop app.
+          <p className="mt-1 text-amber-800">
+            Use Chrome or Edge to pair wired label printers on Windows or macOS.
           </p>
         </div>
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Electron — OS-printer preset (unchanged)
-// ---------------------------------------------------------------------------
-function ElectronPreferences() {
-  const [printers, setPrinters] = useState<PrinterInfo[]>([]);
-  const [preset, setPreset] = useState<PrintPreset>(getSavedPreset());
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('');
-
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  async function refresh() {
-    setLoading(true);
-    setPrinters(await listPrinters());
-    setLoading(false);
-  }
-
-  function update<K extends keyof PrintPreset>(key: K, value: PrintPreset[K]) {
-    setPreset(setSavedPreset({ [key]: value } as Partial<PrintPreset>));
-    setStatus('Saved');
-  }
-
-  async function onTest() {
-    setStatus('Sending test page…');
-    const paper =
-      preset.paperSizeId === AUTO_PAPER_ID
-        ? PAPER_SIZE_OPTIONS[0]
-        : resolvePaperSizeOption(preset.paperSizeId) ?? PAPER_SIZE_OPTIONS[0];
-    const html = `<!doctype html><html><head><meta charset="utf-8"/><style>@page{margin:0}html,body{margin:0;padding:6px;font-family:Arial,sans-serif}.t{font-size:14px;font-weight:900}.s{font-size:10px;color:#444;margin-top:4px}</style></head><body><div class="t">USAV silent print test</div><div class="s">Printer: ${preset.deviceName || '(system default)'}</div><div class="s">Paper: ${paper.label}</div><div class="s">${new Date().toLocaleString()}</div></body></html>`;
-    setStatus((await printHtmlSilent(html, { waitMs: 150 })) ? 'Test sent ✓' : 'Test failed');
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={refresh}
-          disabled={loading}
-        >
-          {loading ? 'Refreshing…' : 'Refresh printers'}
-        </Button>
-      </div>
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-text-muted">Printer</span>
-        <select value={preset.deviceName ?? ''} onChange={(e) => update('deviceName', e.target.value || null)} className={FIELD_CLS}>
-          <option value="">System default</option>
-          {printers.map((p) => (
-            <option key={p.name} value={p.name}>{p.displayName}{p.isDefault ? ' (default)' : ''}</option>
-          ))}
-        </select>
-      </label>
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-text-muted">Paper size</span>
-        <select value={preset.paperSizeId} onChange={(e) => update('paperSizeId', e.target.value)} className={FIELD_CLS}>
-          <option value={AUTO_PAPER_ID}>Let each label decide (default)</option>
-          {PAPER_SIZE_OPTIONS.map((p) => (<option key={p.id} value={p.id}>{p.label}</option>))}
-        </select>
-      </label>
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-text-muted">Copies</span>
-        <input type="number" min={1} max={20} value={preset.copies} onChange={(e) => update('copies', Math.max(1, Math.min(20, Number(e.target.value) || 1)))} className={`${FIELD_CLS} w-24`} />
-      </label>
-      <div className="flex items-center gap-3 border-t border-border-soft pt-4">
-        <Button type="button" variant="primary" size="md" onClick={onTest}>Print test label</Button>
-        {status && <span className="text-xs text-text-soft">{status}</span>}
-      </div>
     </div>
   );
 }
@@ -285,8 +195,7 @@ function BrowserProfiles() {
     <div className="space-y-4">
       <div className="rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-xs text-text-muted">
         Pair a printer for each role. Labels &amp; receipts print silently from the browser (raw
-        TSPL/ZPL/ESC-POS). Paper/office printers print silently only in the desktop app — in a
-        browser tab they use the print dialog.
+        TSPL/ZPL/ESC-POS). Paper/office printers use the browser print dialog.
         <span className="mt-1 block text-text-soft">
           If a vendor driver already owns the USB printer, WebUSB can’t reach it (“Access denied”).
           Pair it as a <strong>serial port</strong> for reliable silent printing, or remove the driver to use USB.
@@ -363,7 +272,7 @@ function ProfileCard({
 
   async function onTest() {
     if (profile.kind === 'os') {
-      onStatus('Paper/office printers can only be tested from the desktop app.');
+      onStatus('Paper/office printers use the browser print dialog when a job runs — no silent test here.');
       return;
     }
     onStatus('Sending test label…');

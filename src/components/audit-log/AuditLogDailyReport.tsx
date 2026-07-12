@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  formatDateKeyMedium,
+  formatDateKeyShort,
+  getCurrentPSTDateKey,
+  getYesterdayPSTDateKey,
+  toPSTDateKey,
+} from '@/utils/date';
 
 type Section = 'receiving' | 'packing' | 'tech' | 'sku' | 'staff';
 
@@ -43,25 +50,19 @@ function rangeLabel(searchParams: URLSearchParams): string {
   const start = searchParams.get('start');
   const end = searchParams.get('end');
   if (day) {
-    const today = new Date();
-    const ymd = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (day === ymd(today)) return 'Today';
-    const yest = new Date();
-    yest.setDate(yest.getDate() - 1);
-    if (day === ymd(yest)) return 'Yesterday';
-    return new Date(`${day}T00:00:00`).toLocaleDateString([], {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
+    const today = getCurrentPSTDateKey();
+    if (day === today) return 'Today';
+    if (day === getYesterdayPSTDateKey(today)) return 'Yesterday';
+    return formatDateKeyMedium(day, { weekday: 'short' });
   }
   if (start && end) {
-    const s = new Date(start);
-    const e = new Date(end);
-    const sStr = s.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    const eStr = e.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    return sStr === eStr ? sStr : `${sStr} – ${eStr}`;
+    const sKey = toPSTDateKey(start);
+    const eKey = toPSTDateKey(end);
+    if (sKey && eKey) {
+      const sStr = formatDateKeyShort(sKey);
+      const eStr = formatDateKeyShort(eKey);
+      return sStr === eStr ? sStr : `${sStr} – ${eStr}`;
+    }
   }
   return 'All time';
 }

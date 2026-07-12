@@ -25,7 +25,7 @@ export const maxDuration = 300;
  * neon-http Drizzle client can't carry the GUC, so the stamp is required).
  *
  * Source sheet is per-org. USAV keeps its hardcoded sheet
- * (USAV_SOURCE_SPREADSHEET_ID) via includeUsavTransitional — it connects Google
+ * (DOGFOOD_SOURCE_SPREADSHEET_ID) via includeDogfoodTransitional — it connects Google
  * with env service-account creds and has no google_sheets integration row, so
  * there is no per-org id to read for it; this is exactly the prior behavior.
  * Every OTHER org reads its OWN sheet id from its google_sheets integration
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
               throw err;
             }
           },
-          { includeUsavTransitional: true },
+          { includeDogfoodTransitional: true },
         );
 
         const totals = {

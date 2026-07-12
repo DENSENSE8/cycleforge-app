@@ -52,7 +52,7 @@ export function usePoBinding(row: ReceivingLineRow) {
    * line's own is null) and is searchable via the carton column — so the old
    * "GET every line → PATCH each" (N+2 round-trips) bought nothing but latency.
    * The active line is patched optimistically below; sibling lines reconcile
-   * from the carton number on the next list refresh (`usav-refresh-data`).
+   * from the carton number on the next list refresh (`app-refresh-data`).
    */
   const persistPoNumber = useCallback(
     async (nextRaw: string) => {
@@ -78,7 +78,7 @@ export function usePoBinding(row: ReceivingLineRow) {
         if (next && row.receiving_source === 'unmatched') patch.receiving_source = 'zoho_po';
         dispatchLineUpdated(patch);
         toast.success(next ? `PO# saved (${next})` : 'PO# cleared');
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
             detail: { receiving_id: row.receiving_id, zoho_purchaseorder_number: next || null },

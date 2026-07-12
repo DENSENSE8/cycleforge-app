@@ -46,17 +46,21 @@ function buildSourceCTE(section: Section): { sql: string; params: unknown[] } {
   // `$1` is the tenant org id (seeded below via params: [orgId]).
   switch (section) {
     case 'receiving': {
-      // Inventory events anchored on receiving lines.
+      // Inventory events anchored on receiving lines. The line-level Zoho PO
+      // key lives on receiving_line_zoho (rz, 1:1 with the line).
       return {
         sql: `
           SELECT ie.occurred_at AS occurred_at,
                  ie.kind AS action,
                  ie.actor_staff_id AS staff_id,
-                 rl.zoho_purchaseorder_id AS item_key,
-                 COALESCE(rr.zoho_po_number, rl.zoho_purchaseorder_id) AS item_label
+                 rz.zoho_purchaseorder_id AS item_key,
+                 COALESCE(rr.zoho_po_number, rz.zoho_purchaseorder_id) AS item_label
             FROM inventory_events ie
-            JOIN receiving_lines rl ON rl.id = ie.receiving_line_id
-            LEFT JOIN replenishment_requests rr ON rr.zoho_po_id = rl.zoho_purchaseorder_id
+            JOIN receiving_line rl ON rl.id = ie.receiving_line_id
+            LEFT JOIN receiving_line_zoho rz
+              ON rz.receiving_line_id = rl.id
+             AND rz.organization_id = rl.organization_id
+            LEFT JOIN replenishment_requests rr ON rr.zoho_po_id = rz.zoho_purchaseorder_id
            WHERE ie.organization_id = $1
         `,
         params: [],

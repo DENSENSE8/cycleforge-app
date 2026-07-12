@@ -1,6 +1,6 @@
 import type { BrowseCondition } from '@/lib/ebay/browse-client';
 import { saveCandidate } from '@/lib/neon/sourcing-queries';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import type { CandidateSource, NormalizedCandidate } from '@/lib/sourcing/normalize';
 import { buildScourQuery, type ScourRequest } from './adapters/types';
 import { getEnabledAdapters } from './adapters';
@@ -50,7 +50,7 @@ export interface SearchSecondaryMarketResult {
 export async function scour(
   params: SearchSecondaryMarketParams,
 ): Promise<SearchSecondaryMarketResult> {
-  const orgId = params.orgId ?? USAV_ORG_ID;
+  const orgId = params.orgId ?? DOGFOOD_ORG_ID;
   const req: ScourRequest = {
     query: params.query ?? null,
     modelNumber: params.modelNumber ?? null,

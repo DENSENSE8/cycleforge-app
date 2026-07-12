@@ -11,12 +11,17 @@ import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
  * panel (via the `FloatingButton` primitive in `docked` mode) so it stacks
  * cleanly ABOVE the receive-feedback / label-preview bands instead of painting
  * over them. It is tinted with the assigned tech's station theme when one is set.
+ *
+ * While the primary CTA is disabled, `disabledReason` renders as a visible
+ * line above the pill — a hover `title` alone is invisible to an operator
+ * standing at a bench, so the blocker names itself on screen.
  */
 export function LineReceiveActionBar({
   assignedTechId,
   primaryLabel,
   primaryTitle,
   primaryDisabled,
+  disabledReason,
   splitMenuAriaLabel,
   splitMenuHoverTitle,
   canPrint,
@@ -36,6 +41,9 @@ export function LineReceiveActionBar({
   primaryLabel: string;
   primaryTitle: string;
   primaryDisabled: boolean;
+  /** Bench-visible line naming WHY the primary CTA is disabled — rendered
+   *  above the pill (a hover `title` alone is invisible at a station). */
+  disabledReason?: string | null;
   splitMenuAriaLabel: string;
   splitMenuHoverTitle: string;
   canPrint: boolean;
@@ -45,7 +53,7 @@ export function LineReceiveActionBar({
   canZohoReceive: boolean;
   /**
    * Unfound carton — there is no Zoho PO to receive against. Hides "Save all to
-   * Zoho" and routes "Receive all" through the local (no-Zoho) receive path.
+   * inventory" and routes "Receive all" through the local (no-Zoho) receive path.
    */
   isLocalReceive?: boolean;
   receiveMenuLabel: string;
@@ -63,56 +71,70 @@ export function LineReceiveActionBar({
   const techTheme =
     assignedTechId != null ? stationThemeColors[getStaffThemeById(assignedTechId)] : null;
   return (
-    <FloatingButton
-      label={primaryLabel}
-      title={primaryTitle}
-      disabled={primaryDisabled}
-      onClick={onPrintAndReceive}
-      icon={<Printer className="h-4 w-4 shrink-0" />}
-      // Match the workspace track used by the cards above it.
-      maxWidth={maxWidthClass}
-      fullWidth
-      // Dock in flow so the label-preview / receive-feedback bands stack above
-      // the pill instead of being hidden behind an absolute float.
-      docked
-      tone="emerald"
-      toneClasses={
-        techTheme ? { bg: techTheme.bg, hover: techTheme.hover } : undefined
-      }
-      menuLabel={splitMenuAriaLabel}
-      menuTitle={splitMenuHoverTitle}
-      menu={[
-        {
-          label: 'Print only',
-          icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
-          onClick: onPrintOnly,
-          disabled: !canPrint,
-        },
-        // "Save all to inventory" only makes sense for matched cartons — hidden
-        // for an unfound carton, which has no linked PO to save against.
-        ...(isLocalReceive
-          ? []
-          : [
-              {
-                label: 'Save all to inventory',
-                icon: <Clipboard className="h-3.5 w-3.5 shrink-0" />,
-                onClick: onReceive,
-                disabled: !canZohoReceive,
-                title: 'Save all received quantities + edits to the inventory purchase receive (no print)',
-              },
-            ]),
-        {
-          label: receiveMenuLabel,
-          icon: <PackageCheck className="h-3.5 w-3.5 shrink-0" />,
-          // Unfound → receive all locally (RECEIVED, Zoho untouched), gated on the
-          // local receive precondition; matched → the Zoho receive.
-          onClick: isLocalReceive ? onLocalReceive : onReceive,
-          disabled: isLocalReceive ? !canReceive : !canZohoReceive,
-          title: isLocalReceive
-            ? 'Receive all open lines locally — external inventory is not touched'
-            : receiveMenuTitle,
-        },
-      ]}
-    />
+    <>
+      {primaryDisabled && disabledReason ? (
+        // Same band padding + width track as the FloatingButton below so the
+        // reason line sits flush over the pill it explains.
+        <div className="shrink-0 px-4 sm:px-6">
+          <p
+            role="status"
+            className={`mx-auto w-full ${maxWidthClass} text-center text-caption font-semibold text-amber-700`}
+          >
+            {disabledReason}
+          </p>
+        </div>
+      ) : null}
+      <FloatingButton
+        label={primaryLabel}
+        title={primaryTitle}
+        disabled={primaryDisabled}
+        onClick={onPrintAndReceive}
+        icon={<Printer className="h-4 w-4 shrink-0" />}
+        // Match the workspace track used by the cards above it.
+        maxWidth={maxWidthClass}
+        fullWidth
+        // Dock in flow so the label-preview / receive-feedback bands stack above
+        // the pill instead of being hidden behind an absolute float.
+        docked
+        tone="emerald"
+        toneClasses={
+          techTheme ? { bg: techTheme.bg, hover: techTheme.hover } : undefined
+        }
+        menuLabel={splitMenuAriaLabel}
+        menuTitle={splitMenuHoverTitle}
+        menu={[
+          {
+            label: 'Print only',
+            icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
+            onClick: onPrintOnly,
+            disabled: !canPrint,
+          },
+          // "Save all to inventory" only makes sense for matched cartons — hidden
+          // for an unfound carton, which has no linked PO to save against.
+          ...(isLocalReceive
+            ? []
+            : [
+                {
+                  label: 'Save all to inventory',
+                  icon: <Clipboard className="h-3.5 w-3.5 shrink-0" />,
+                  onClick: onReceive,
+                  disabled: !canZohoReceive,
+                  title: 'Save all received quantities + edits to the inventory purchase receive (no print)',
+                },
+              ]),
+          {
+            label: receiveMenuLabel,
+            icon: <PackageCheck className="h-3.5 w-3.5 shrink-0" />,
+            // Unfound → receive all locally (RECEIVED, Zoho untouched), gated on the
+            // local receive precondition; matched → the Zoho receive.
+            onClick: isLocalReceive ? onLocalReceive : onReceive,
+            disabled: isLocalReceive ? !canReceive : !canZohoReceive,
+            title: isLocalReceive
+              ? 'Receive all open lines locally — external inventory is not touched'
+              : receiveMenuTitle,
+          },
+        ]}
+      />
+    </>
   );
 }

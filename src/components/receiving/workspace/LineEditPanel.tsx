@@ -26,7 +26,6 @@ import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
 import { LineLabelPreviewCard } from './line-edit/LineLabelPreviewCard';
 import { LineReceiveActionBar } from './line-edit/LineReceiveActionBar';
 import { LineEditToolbar } from './line-edit/LineEditToolbar';
-import { LineSkuHeaderChip } from './line-edit/LineSkuHeaderChip';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { POUnboxingSection } from './line-edit/POUnboxingSection';
@@ -173,12 +172,6 @@ export function LineEditPanel({
           }}
         />
 
-        {/* SKU identity band — the line's SKU as a copyable header chip with an
-            in-place pencil override (PATCH /api/receiving-lines, optimistic). */}
-        <div className="flex shrink-0 items-center border-b border-border-hairline px-4 py-1 sm:px-6">
-          <LineSkuHeaderChip lineId={row.id} sku={row.sku ?? null} />
-        </div>
-
         {/* Scroll surface — owns the centered hero column. The receive-feedback,
             label-preview, and action bars now DOCK in flow below this region
             (shrink-0 bands), so the scroll body no longer reserves clearance for
@@ -284,6 +277,7 @@ export function LineEditPanel({
           primaryLabel={c.printReceivePrimaryLabel}
           primaryTitle={c.printThenReceiveTitle}
           primaryDisabled={c.combinedReviewDisabled}
+          disabledReason={c.combinedReviewDisabledReason}
           splitMenuAriaLabel={c.splitMenuAriaLabel}
           splitMenuHoverTitle={c.splitMenuHoverTitle}
           canPrint={c.canPrintReview}

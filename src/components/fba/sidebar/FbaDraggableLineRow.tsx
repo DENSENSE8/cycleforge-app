@@ -21,7 +21,7 @@ export interface FbaDraggableLineRowProps extends FbaSelectedLineRowProps {
   /**
    * When set together with bucketItemIds, the grip participates in combine-review buckets
    * via dnd-kit and also emits an HTML5 drag payload for merging into expanded Active shipments
-   * tracking rows (`application/x-usav-fba-board-drag`).
+   * tracking rows (`application/x-cf-fba-board-drag`).
    */
   sidebarBoardSnapshots?: ReadonlyArray<FbaBoardDragRowSnapshot & { qty?: number }>;
   bucketItemIds?: ReadonlySet<number>;

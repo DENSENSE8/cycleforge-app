@@ -2,7 +2,7 @@ import pool from '@/lib/db';
 
 const LINK_JOINS = `
   INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
-  LEFT JOIN receiving_lines rl
+  LEFT JOIN receiving_line rl
          ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
 `;
 
@@ -119,7 +119,7 @@ export function sqlReceivingPhotoCount(receivingIdExpr: string, orgIdExpr: strin
   return `(SELECT COUNT(DISTINCT p.id)
      FROM photos p
      INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
-     LEFT JOIN receiving_lines rl_ph
+     LEFT JOIN receiving_line rl_ph
             ON l.entity_type = 'RECEIVING_LINE' AND rl_ph.id = l.entity_id
     WHERE p.organization_id = ${orgIdExpr}
       AND ${receivingIdExpr} IS NOT NULL

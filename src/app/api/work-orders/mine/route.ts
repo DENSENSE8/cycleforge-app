@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { getOrders } from '@/lib/work-orders/queries';
+import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { topWorkOrderForStaff } from '@/lib/work-orders/ranking';
 
 /**
@@ -17,9 +17,8 @@ import { topWorkOrderForStaff } from '@/lib/work-orders/ranking';
  */
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
   try {
-    // Mirror the parent GET: only the pending-orders queue is enabled today.
-    const orders = await getOrders(ctx.organizationId);
-    const top = topWorkOrderForStaff(orders, ctx.staffId);
+    const allRows = await fetchAllWorkOrderQueues(ctx.organizationId, { unified: true });
+    const top = topWorkOrderForStaff(allRows, ctx.staffId);
 
     if (!top) {
       return NextResponse.json({ top: null });

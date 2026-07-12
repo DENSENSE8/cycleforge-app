@@ -26,7 +26,7 @@
 
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { tenantPool } from '@/lib/db';
-import { USAV_ORG_ID, type OrgId } from './constants';
+import { DOGFOOD_ORG_ID, type OrgId } from './constants';
 
 function assertOrgId(orgId: OrgId): void {
   if (!orgId || typeof orgId !== 'string') {
@@ -97,12 +97,12 @@ export async function withTenantTransaction<T>(
 }
 
 /**
- * Transitional escape hatch: returns the USAV org id when a caller has
+ * Transitional escape hatch: returns the dogfood org id when a caller has
  * been migrated to require an orgId but doesn't yet have it threaded
  * through. New code MUST NOT call this.
  *
  * @deprecated Use `ctx.organizationId` from withAuth instead.
  */
-export function transitionalUsavOrgId(): OrgId {
-  return USAV_ORG_ID;
+export function transitionalDogfoodOrgId(): OrgId {
+  return DOGFOOD_ORG_ID;
 }

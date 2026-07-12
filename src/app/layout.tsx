@@ -20,8 +20,8 @@ import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { OfflineBanner } from "../components/layout/OfflineBanner";
 import { InstallPrompt } from "../components/station/InstallPrompt";
 import { AppearanceApplier } from "../components/settings/AppearanceApplier";
-import { ElectronDragStrip } from "../components/electron/ElectronDragStrip";
 import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoSyncToaster";
+import { UserIssueResolvedToaster } from "../components/providers/UserIssueResolvedToaster";
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { Analytics } from "@vercel/analytics/next";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
@@ -72,7 +72,6 @@ export default async function RootLayout({
                 <script dangerouslySetInnerHTML={{ __html: BOOT_SPLASH_SCRIPT }} />
             </head>
             <body className="antialiased m-0 overflow-hidden bg-surface-card">
-                <ElectronDragStrip />
                 {/*
                   Pin the app to the visual viewport. Body must NOT carry safe-area
                   padding or min-height:100vh — both caused first-load gaps (URL bar
@@ -100,6 +99,7 @@ export default async function RootLayout({
                                         </FbaWorkspaceProvider>
                                     </HeaderProvider>
                                     <ReceivingZohoSyncToaster />
+                                    <UserIssueResolvedToaster />
                                     <SwitchStaffSheet />
                                     <ScanHotkeySync />
                                     <ThemeSync />

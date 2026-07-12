@@ -33,7 +33,7 @@ export async function GET(
               r.carrier AS receiving_carrier
          FROM tracking_exceptions te
          LEFT JOIN staff s ON s.id = te.staff_id
-         LEFT JOIN receiving r ON r.id = te.receiving_id
+         LEFT JOIN receiving_carton r ON r.id = te.receiving_id
         WHERE te.id = $1
         LIMIT 1`,
       [id],

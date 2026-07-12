@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
-import { assertUsavMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
+import { assertDogfoodMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
 import { getIntegrationCredentials, type GmailCredentials } from '@/lib/integrations/credentials';
 import { getConnectionStatus } from '@/lib/integrations/connectors/connections';
 
@@ -27,7 +27,7 @@ const DISCONNECTED = {
 
 export const GET = withAuth(async (_req, ctx) => {
   try {
-    assertUsavMailbox(ctx.organizationId);
+    assertDogfoodMailbox(ctx.organizationId);
 
     // Vault-first: the organization_integrations row (provider='gmail') is the
     // preferred token home. Report its state; the legacy google_oauth_tokens

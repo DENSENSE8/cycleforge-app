@@ -7,7 +7,7 @@ import {
   findLocationByBarcode,
   findLocationByName,
 } from '@/lib/repositories/inventory/locations';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import type { DecisionRule } from '@/lib/workflow/decision-eval';
 import { observePlacementParity } from '@/lib/workflow/placement-parity';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
@@ -152,7 +152,7 @@ export async function sortSerialUnitToParts(
     return { sorted: false, reason: 'committed' };
   }
 
-  const orgId = (unit.organization_id as OrgId | null) ?? USAV_ORG_ID;
+  const orgId = (unit.organization_id as OrgId | null) ?? DOGFOOD_ORG_ID;
 
   // Resolve the destination bin. CUTOVER (PLACEMENT_STRANGLE_PARTS_SORT): source
   // it from the declarative policy — the org's Studio decision nodes first, then

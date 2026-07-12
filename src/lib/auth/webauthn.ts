@@ -25,7 +25,7 @@ import type {
 import pool from '@/lib/db';
 import { WEBAUTHN_RP_NAME_DEFAULT } from '@/lib/branding/constants';
 
-export const PASSKEY_CHALLENGE_COOKIE = 'usav_wac';
+export const PASSKEY_CHALLENGE_COOKIE = 'cf_wac';
 
 /**
  * Returns { rpID, rpName, origin } resolved against the request.

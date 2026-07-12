@@ -24,6 +24,7 @@ import {
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types';
 
 export const runtime = 'nodejs';
@@ -39,6 +40,11 @@ export async function POST(req: NextRequest) {
   const ua = req.headers.get('user-agent');
 
   try {
+    const rl = await checkRateLimitAsync({
+      headers: req.headers, routeKey: 'auth-account-passkey-authenticate-finish', limit: 30, windowMs: 10 * 60 * 1000,
+    });
+    if (!rl.ok) return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429 });
+
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const response = (body as { response?: unknown }).response as AuthenticationResponseJSON | undefined;
     const organizationId = (body as { organizationId?: unknown }).organizationId as string | undefined;

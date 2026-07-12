@@ -225,6 +225,6 @@ This mirrors the **already-working precedent**: mobile bottom-nav resolves role 
 - Status/registry SoT: `lib/unshipped-state.ts`, `lib/outbound-state.ts`, `lib/conditions.ts`, `lib/source-platform.ts`, `design-system/tokens/z-index.ts`, `design-system/foundations/motion-framer.ts`.
 - Preferences/identity: `lib/migrations/2026-06-21_staff_preferences.sql`, `api/staff-preferences/route.ts`, `lib/schemas/staff-preferences.ts`, `contexts/AuthContext.tsx` (`resolveMobileDisplayConfig`), `lib/auth/permission-registry.ts`, `role-store.ts`.
 - Duplication hotspots: `components/station/TechRecordRow.tsx` vs `PackerRecordRow.tsx`; forked scan bars (`TestingScanBar`, `FbaWorkspaceScanField`, `outbound/scan-out/ScanOutStationBar`).
-- Related prior plans: `docs/receiving-workspace-mode-primitives-plan.md`, `docs/operations-studio/station-builder-ui-plan.md`, `docs/operations-studio/operations-studio-plan.md`.
+- Related prior plans: `docs/operations-studio/station-builder-ui-plan.md`, `docs/operations-studio/operations-studio-plan.md`; the earlier receiving workspace mode-primitives work shipped and its plan was deleted.
 </content>
 </invoke>

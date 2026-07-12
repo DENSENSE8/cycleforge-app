@@ -4,7 +4,7 @@
 **Created:** 2026-07-01  
 **Last ground-truthed:** 2026-07-01 (verified against `main`)  
 **Owner:** TBD  
-**Related:** [media-library-modernization-plan.md](./media-library-modernization-plan.md), [platform-account-type-catalog-plan.md](./todo/platform-account-type-catalog-plan.md), [multi-tracking-po-plan.md](./partial/multi-tracking-po-plan.md) (STN / `shipment_links` SoT)
+**Related:** the shipped media-library modernization, platform/account/type catalog, and multi-tracking PO work (STN / `shipment_links` SoT)
 
 > **How to read this doc.** Each phase has a **Reality check** block stating what already
 > exists on `main`, so you build the delta, not a duplicate. Decisions marked **LOCKED**

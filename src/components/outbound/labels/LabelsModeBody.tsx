@@ -10,6 +10,7 @@ import { UNSHIPPED_STATE_META, countUnshippedStates } from '@/lib/unshipped-stat
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { OUTBOUND_SORT_OPTIONS } from '@/components/outbound/outbound-sidebar-shared';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 const AWAITING_LEGEND: StatusLegendItem<'AWAITING_LABEL'>[] = [
   { state: 'AWAITING_LABEL', short: 'Awaiting' },
@@ -20,7 +21,6 @@ export function LabelsModeBody() {
   const { q, sort, setQ, setSort } = useOutboundUrlState();
   const [searchInput, setSearchInput] = useState(q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setSearchInput(q);
@@ -46,18 +46,26 @@ export function LabelsModeBody() {
 
   return (
     <SidebarShell
-      search={{
-        value: searchInput,
-        onChange: handleInputChange,
-        onSearch: commitSearch,
-        onClear: () => {
-          setSearchInput('');
-          commitSearch('');
-        },
-        inputRef,
-        placeholder: 'Search order #, SKU, title…',
-        variant: 'blue',
-      }}
+      headerAbove={
+        // In-context list filter — local base SearchBar over the labels queue.
+        // Separate from the dock/station scan bar (scan-first input, untouched).
+        // Global header pill stays global.
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={searchInput}
+            onChange={handleInputChange}
+            onClear={() => {
+              setSearchInput('');
+              commitSearch('');
+            }}
+            onSearch={commitSearch}
+            placeholder="Filter order #, SKU, title…"
+            isSearching={labelsQuery.isFetching}
+          />
+        </div>
+      }
       filter={{
         label: 'Sort',
         refinements: sort !== 'priority'

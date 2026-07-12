@@ -65,7 +65,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.details || data?.error || 'Failed to save');
       }
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
       onRefresh?.();
     } catch (err: any) {
       window.alert(err?.message || 'Failed to save assignment');
@@ -88,7 +88,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       if (!res.ok) throw new Error('Failed to save');
       setShowOosInput(false);
       setOosText('');
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
       onRefresh?.();
     } catch (err: any) {
       window.alert(err?.message || 'Failed to save out of stock');
@@ -120,7 +120,7 @@ export function useUpNextRepairCard({ repair, techId, onRefresh }: UseUpNextRepa
       if (!res.ok) throw new Error('Failed to mark repaired');
       setShowRepairedInput(false);
       setOutcomeText('');
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
       onRefresh?.();
     } catch (err: any) {
       window.alert(err?.message || 'Failed to mark repair as repaired');

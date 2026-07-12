@@ -9,11 +9,11 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 
 async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
   const noopMark = () => {};
-  const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(req.cookies);
   const user = await getCurrentUserBySid(sid);
   return user
     ? { user, session: user.session, staffId: user.staffId, organizationId: user.organizationId, role: user.role, permissions: user.permissions, markAuditWritten: noopMark }

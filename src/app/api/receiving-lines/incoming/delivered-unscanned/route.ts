@@ -5,7 +5,7 @@
  *
  * Shipment-anchored (not PO-line-anchored): a carrier-confirmed delivery that
  * the dock hasn't started receiving. Scoped to INBOUND only — a shipment is
- * inbound when it has a `receiving` row OR its source_system is a receiving
+ * inbound when it has a `receiving_carton` row OR its source_system is a receiving
  * origin. This deliberately excludes outbound order/packer tracking (which is
  * also "delivered, never scanned" but is not a dock arrival).
  *
@@ -35,19 +35,24 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   try {
     // Phase 3: when the unified inbound model is on, a delivered shipment
     // resolves its PO + line-level SKU/order# DIRECTLY through
-    // receiving_lines.shipment_id, instead of only via a linked receiving row
+    // receiving_line.shipment_id, instead of only via a linked receiving_carton row
     // or a tracking#→reference# guess. This is what makes the "delivered ·
     // needs scan" rows show SKU/order# for shipments that never got their own
     // receiving row. Column-gated: only referenced when the flag is on (so an
     // unapplied migration can't error).
     const unified = isReceivingUnifiedInbound();
-    // receiving_lines is tenant-owned — scope these PO-resolution subqueries to
+    // receiving_line is tenant-owned — scope these PO-resolution subqueries to
     // this org ($2) so a foreign tenant's line can't supply the PO id / item agg.
+    // Wave-2 reader cutover: the line's zoho PO id reads from
+    // receiving_line_zoho rz (1:1 on receiving_line_id; every line with ANY
+    // zoho field has an rz row). rl.shipment_id stays on the spine.
     const unifiedPoIdBranch = unified
-      ? `(SELECT rl.zoho_purchaseorder_id
-            FROM receiving_lines rl
+      ? `(SELECT rz.zoho_purchaseorder_id
+            FROM receiving_line rl
+            JOIN receiving_line_zoho rz
+              ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
            WHERE rl.shipment_id = base.shipment_id
-             AND rl.zoho_purchaseorder_id IS NOT NULL
+             AND rz.zoho_purchaseorder_id IS NOT NULL
              AND rl.organization_id = $2
            ORDER BY rl.id LIMIT 1),`
       : '';
@@ -57,16 +62,16 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     // Every inbound tracking# IS a Zoho PO's reference_number (the PO sync
     // registers it that way), so each box has full PO context even before a
     // dock scan. We resolve the PO id two ways and coalesce:
-    //   1. the linked `receiving` row's zoho_purchaseorder_id (when present), or
+    //   1. the linked `receiving_carton` row's zoho_purchaseorder_id (when present), or
     //   2. matching the normalized tracking# back to zoho_po_mirror.reference_number.
     // From the PO id we pull PO#, vendor + dates (zoho_po_mirror) and the
-    // product/item names (receiving_lines — the mirror's `raw` is the Zoho PO
+    // product/item names (receiving_line — the mirror's `raw` is the Zoho PO
     // *list* shape, which omits line_items, so item names live on the lines).
     // GUC-wrapped via tenantQuery: the canonical `base` derives from
     // shipping_tracking_numbers (NEEDS-COL — no organization_id column yet) and
     // zoho_po_mirror (NEEDS-COL), so they can only be GUC-scoped here. The
-    // tenant-owned tables this outer query touches — receiving and
-    // receiving_lines — ARE explicitly org-filtered ($2) so a foreign tenant's
+    // tenant-owned tables this outer query touches — receiving_carton and
+    // receiving_line — ARE explicitly org-filtered ($2) so a foreign tenant's
     // PO# can't leak vendor/item context onto a shipment.
     const { rows } = await tenantQuery<{
       shipment_id: number;
@@ -98,7 +103,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
                 COALESCE(
                   ${unifiedPoIdBranch}
                   (SELECT r.zoho_purchaseorder_id
-                     FROM receiving r
+                     FROM receiving_carton r
                     WHERE r.shipment_id = base.shipment_id
                       AND r.zoho_purchaseorder_id IS NOT NULL
                       AND r.organization_id = $2
@@ -116,7 +121,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
               COALESCE(
                 m.zoho_purchaseorder_number,
                 (SELECT r.zoho_purchaseorder_number
-                   FROM receiving r
+                   FROM receiving_carton r
                   WHERE r.shipment_id = enriched.shipment_id
                     AND r.zoho_purchaseorder_number IS NOT NULL
                     AND r.organization_id = $2
@@ -131,11 +136,16 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
          FROM enriched
          LEFT JOIN zoho_po_mirror m ON m.zoho_purchaseorder_id = enriched.zoho_purchaseorder_id
          LEFT JOIN LATERAL (
+           -- Wave-2 reader cutover: PO-id match reads receiving_line_zoho rz
+           -- (LEFT JOIN — the flag-gated shipment_id arm can match lines with
+           -- no zoho fields at all). 1:1 PK join, so the aggs can't multiply.
            SELECT (array_agg(rl.item_name ORDER BY rl.id))[1] AS first_item_name,
                   (array_agg(rl.sku       ORDER BY rl.id))[1] AS first_sku,
                   COUNT(*)::int                                AS item_count
-             FROM receiving_lines rl
-            WHERE (rl.zoho_purchaseorder_id = enriched.zoho_purchaseorder_id
+             FROM receiving_line rl
+             LEFT JOIN receiving_line_zoho rz
+               ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+            WHERE (rz.zoho_purchaseorder_id = enriched.zoho_purchaseorder_id
                    ${unifiedAggMatch})
               AND rl.organization_id = $2
               AND COALESCE(rl.item_name, '') <> ''

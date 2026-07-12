@@ -51,7 +51,7 @@ export const DRIVE_SCOPES = [
 
 /** Default name of the backup folder created in the tenant's Drive. */
 export const DRIVE_BACKUP_FOLDER_NAME =
-  process.env.PHOTOS_DRIVE_FOLDER_NAME?.trim() || 'USAV Photo Backup';
+  process.env.PHOTOS_DRIVE_FOLDER_NAME?.trim() || 'Photo Backup';
 
 /**
  * Thrown when a tenant's Drive can't be reached because it's not connected or
@@ -311,7 +311,7 @@ async function cacheSubfolder(orgId: OrgId, key: string, id: string): Promise<vo
 
 /**
  * Resolve (creating + caching as needed) the Drive folder id for a path of
- * segments under the root, e.g. ['2026','06'] → .../USAV Photo Backup/2026/06.
+ * segments under the root, e.g. ['2026','06'] → .../Photo Backup/2026/06.
  * Cache key is the joined path so each level is created at most once per org.
  */
 export async function ensureSubfolderPath(
@@ -357,7 +357,7 @@ export async function uploadPhotoToDrive(
   opts: { folderId: string; name: string; bytes: Buffer | Uint8Array; contentType: string },
 ): Promise<DriveUploadResult> {
   const accessToken = await getDriveAccessToken(orgId);
-  const boundary = `usav_drive_${Date.now().toString(16)}`;
+  const boundary = `cf_drive_${Date.now().toString(16)}`;
   const meta = JSON.stringify({ name: opts.name, parents: [opts.folderId] });
   const pre = Buffer.from(
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n` +

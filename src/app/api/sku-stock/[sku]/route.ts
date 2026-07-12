@@ -18,7 +18,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
@@ -32,7 +32,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
  * check against `ctx.permissions` instead.
  */
 async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
-  const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(req.cookies);
   const user = await getCurrentUserBySid(sid);
   const noopMark = () => {};
   return user

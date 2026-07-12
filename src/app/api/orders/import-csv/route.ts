@@ -11,7 +11,7 @@ import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
  * POST /api/orders/import-csv
  *
  * Tenant-generic CSV order import. Where the Google-Sheets import is hardcoded
- * to USAV (transitionalUsavOrgId), this lane lets ANY tenant bring orders in:
+ * to USAV (transitionalDogfoodOrgId), this lane lets ANY tenant bring orders in:
  * the client parses the CSV in-browser, picks which detected header maps to each
  * canonical field, and posts the already-parsed rows + the mapping here.
  *

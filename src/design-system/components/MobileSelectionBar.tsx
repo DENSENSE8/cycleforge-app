@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, X } from '@/components/Icons';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { cn } from '@/utils/_cn';
 
 /** Mass actions, in declaration order. `danger` tints the icon rose (delete). */
@@ -37,29 +38,6 @@ const TONE = {
   clear: 'text-text-faint hover:bg-surface-sunken hover:text-text-muted',
 };
 
-/**
- * A vertical sliding digit counter that animates whenever the count changes.
- * Uses mode="popLayout" to keep the digits in the same spot during transition.
- */
-function AnimatedCounter({ value }: { value: number }) {
-  return (
-    <div className="relative h-4 overflow-hidden">
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={value}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -20, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-          className="flex h-4 items-center justify-center text-micro font-black tabular-nums"
-        >
-          {value}
-        </motion.span>
-      </AnimatePresence>
-    </div>
-  );
-}
-
 function SelectAll({ count, allSelected, onToggleAll }: { count: number; allSelected: boolean; onToggleAll: () => void }) {
   return (
     <motion.button
@@ -76,7 +54,11 @@ function SelectAll({ count, allSelected, onToggleAll }: { count: number; allSele
             <Check className="h-3.5 w-3.5" />
           </motion.div>
         ) : (
-          <AnimatedCounter value={count} />
+          <AnimatedStat
+            value={count}
+            speed="fast"
+            className="flex h-4 items-center justify-center text-micro font-black"
+          />
         )}
       </span>
     </motion.button>

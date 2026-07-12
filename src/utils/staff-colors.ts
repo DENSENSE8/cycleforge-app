@@ -226,7 +226,8 @@ const _staffColorSubscribers = new Set<() => void>();
  * on cold boot instead of flashing the emerald default until
  * <StaffColorsProvider>'s /api/staff fetch resolves.
  */
-const STORAGE_KEY = 'usav_staff_colors_v1';
+const STORAGE_KEY = 'cf_staff_colors_v1';
+const LEGACY_STORAGE_KEY = 'usav_staff_colors_v1';
 
 function persistStaffColorCache(): void {
   if (typeof window === 'undefined') return;
@@ -242,7 +243,7 @@ function persistStaffColorCache(): void {
 function hydrateStaffColorCacheFromStorage(): void {
   if (typeof window === 'undefined') return;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return;

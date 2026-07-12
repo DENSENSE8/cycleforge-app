@@ -95,6 +95,8 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  /** True while the details panel is playing its exit before the viewer tears down. */
+  const [deferViewerClose, setDeferViewerClose] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState(false);
@@ -129,8 +131,10 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     setUploadError(null);
   }, [photoItems.length, zoom]);
 
-  const closeViewer = useCallback(() => {
+  const dismissViewer = useCallback(() => {
     setViewerOpen(false);
+    setPanelOpen(false);
+    setDeferViewerClose(false);
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
@@ -138,6 +142,24 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     setReassignError(null);
     setUploadError(null);
   }, [zoom]);
+
+  const closePanel = useCallback(() => {
+    setPanelOpen(false);
+  }, []);
+
+  const closeViewer = useCallback(() => {
+    if (panelOpen) {
+      setDeferViewerClose(true);
+      setPanelOpen(false);
+      return;
+    }
+    dismissViewer();
+  }, [panelOpen, dismissViewer]);
+
+  const completeViewerClose = useCallback(() => {
+    if (!deferViewerClose) return;
+    dismissViewer();
+  }, [deferViewerClose, dismissViewer]);
 
   const openViewer = useCallback((index: number) => {
     setCurrentIndex(index);
@@ -427,7 +449,11 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     allowReassign, receivingId,
     photoItems, loadedCount, errorCount,
     viewerOpen, currentIndex, mounted, openViewer, closeViewer, handleNext, handlePrevious, setCurrentIndex,
-    panelOpen, togglePanel: () => setPanelOpen((prev) => !prev),
+    panelOpen,
+    closePanel,
+    togglePanel: () => setPanelOpen((prev) => !prev),
+    deferViewerClose,
+    completeViewerClose,
     ...zoom,
     downloading, handleDownloadCurrent, handleDownloadAll,
     canDeleteCurrent, deleteArmed, deletingPhoto, deleteError, handleDeleteClick,

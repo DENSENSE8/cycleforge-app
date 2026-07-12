@@ -160,7 +160,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
 
   // Refresh events from form submits / cross-pane mutations → invalidate.
   useEventBridge({
-    'usav-refresh-data': () => {
+    'app-refresh-data': () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
       queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
     },

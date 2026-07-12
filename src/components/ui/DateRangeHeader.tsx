@@ -9,7 +9,7 @@ import {
 } from './pane-header';
 import { Calendar } from '@/design-system/components/Calendar';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
-import { formatWeekRangeCompact } from '@/utils/date';
+import { dateKeyToLocalDate, formatWeekRangeCompact, localDateToDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
 interface WeekRange {
@@ -24,14 +24,10 @@ export interface DateRangePreset {
   active?: boolean;
 }
 
-/* ── YYYY-MM-DD ⇄ Date helpers (local frame, matches the week/month ranges) ── */
-const parseKey = (k?: string | null): Date | undefined => {
-  if (!k) return undefined;
-  const [y, m, d] = k.split('-').map(Number);
-  return Number.isFinite(y) ? new Date(y, (m || 1) - 1, d || 1) : undefined;
-};
-const fmtKey = (d?: Date): string =>
-  d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+/* ── YYYY-MM-DD ⇄ Date helpers (picker bridge only — civil SoT in @/utils/date) ── */
+const parseKey = (k?: string | null): Date | undefined =>
+  k ? dateKeyToLocalDate(k) : undefined;
+const fmtKey = (d?: Date): string => localDateToDateKey(d) ?? '';
 
 interface DateRangePickerPillProps {
   /** Text shown on the pill (e.g. "JUN 23rd – 27th"). */

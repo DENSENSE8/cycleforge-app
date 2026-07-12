@@ -79,7 +79,6 @@ Cycle Forge already has the right **domain spines** — `serial_units` + `transi
 | Backend route / transition / audit | [`.claude/rules/backend-patterns.md`](../../.claude/rules/backend-patterns.md) |
 | UI / archetypes | [`.claude/rules/ui-design-system.md`](../../.claude/rules/ui-design-system.md), [`.claude/rules/contextual-display.md`](../../.claude/rules/contextual-display.md) |
 | Schema-wide polymorphic plan | [`docs/todo/schema-wide-polymorphic-refactor-plan.md`](../todo/schema-wide-polymorphic-refactor-plan.md) |
-| Inventory upgrade | [`context/inventory_system_upgrade_plan.md`](../../context/inventory_system_upgrade_plan.md) |
 | Operator surfaces / nav | [`docs/todo/studio-driven-operator-surfaces-refactor-plan.md`](../todo/studio-driven-operator-surfaces-refactor-plan.md) |
 | Integrations | [`docs/integrations/`](../integrations/), [`src/lib/integrations/connectors/types.ts`](../../src/lib/integrations/connectors/types.ts) |
 

@@ -61,7 +61,7 @@ export function useWorkOrderAssignment(): UseWorkOrderAssignmentReturn {
         deadlineAt: payload.deadline,
         notes: row.notes,
       });
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     } catch (err: any) {
       window.alert(err?.message || 'Failed to save assignment');
     }

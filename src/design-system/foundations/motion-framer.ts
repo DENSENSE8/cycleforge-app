@@ -33,8 +33,10 @@ export const framerDuration = {
   workbenchPaneMount: 0.18,
   /** Photo viewer details column — slides in from the right */
   photoContextPanelMount: 0.22,
-  /** Global detail-stack overlay card (inset, rounded) — enter/exit */
-  detailStackOverlayMount: 0.22,
+  /** Photo viewer details column — exit (~75% of mount, mirrors detail-stack) */
+  photoContextPanelUnmount: 0.17,
+  /** Global detail-stack overlay card (full-height flyout) — slow, soft enter/exit */
+  detailStackOverlayMount: 0.4,
   /**
    * Heavy right-pane WORKSPACE overlay settle (receiving line workspace).
    * Slower + opacity-led than `workbenchPaneMount` — a carton→carton swap is a
@@ -75,10 +77,17 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
+  /** Photo viewer details column — exit; pair with `framerPresence.photoContextPanel` */
+  photoContextPanelUnmount: {
+    duration: framerDuration.photoContextPanelUnmount,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
   /** Detail-stack overlay card — pair with `framerPresence.detailStackOverlay` */
   detailStackOverlayMount: {
     duration: framerDuration.detailStackOverlayMount,
-    ease: motionBezier.easeOut,
+    // Softer curve than easeOut so the full-height panel eases open/shut gently.
+    ease: motionBezier.layout,
   } satisfies Transition,
 
   /**
@@ -398,7 +407,7 @@ export const framerPresence = {
   photoContextPanel: {
     initial: { opacity: 0, x: 20 },
     animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 12 },
+    exit: { opacity: 0, x: 20 },
   },
   /**
    * Global detail-stack overlay — inset rounded card over the viewport.
@@ -407,9 +416,9 @@ export const framerPresence = {
    * `framerTransition.detailStackOverlayMount` + `useMotionPresence`.
    */
   detailStackOverlay: {
-    initial: { opacity: 0, scale: 0.97 },
+    initial: { opacity: 0, scale: 0.96 },
     animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.98 },
+    exit: { opacity: 0, scale: 0.97 },
   },
   /**
    * Heavy right-pane WORKSPACE overlay crossfade (the receiving line workspace

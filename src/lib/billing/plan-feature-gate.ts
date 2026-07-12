@@ -30,7 +30,7 @@
 
 import { hasFeature } from './entitlements';
 import { readOrgFeatureFlag } from '../feature-flags';
-import { USAV_ORG_ID, type OrgId } from '../tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 import type { EntitlementFeature } from './feature-gate';
 
 /** Env var that flips Growth+ plan-feature enforcement from dormant → live. */
@@ -40,7 +40,7 @@ export const PLAN_FEATURE_ENFORCEMENT_ENV = 'PLAN_FEATURE_ENFORCED';
  * The dogfood / internal org that runs the live deployment — exempt from
  * plan-feature gating ALWAYS, so we can never lock ourselves out. Org #1.
  */
-export const PLAN_FEATURE_EXEMPT_ORG_ID: OrgId = USAV_ORG_ID;
+export const PLAN_FEATURE_EXEMPT_ORG_ID: OrgId = DOGFOOD_ORG_ID;
 
 /**
  * True only when `PLAN_FEATURE_ENFORCED` is explicitly truthy. Default OFF —

@@ -13,7 +13,7 @@ import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { orderSyncService, type ChannelOrder } from '@/services/OrderSyncService';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       let done = 0;
       let failed = 0;
       for (const row of rows) {
-        const orgId = row.organization_id ?? transitionalUsavOrgId();
+        const orgId = row.organization_id ?? transitionalDogfoodOrgId();
         try {
           await orderSyncService.ingestExternalOrder(orgId, row.payload);
           await pool.query(

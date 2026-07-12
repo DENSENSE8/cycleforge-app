@@ -34,12 +34,12 @@ function getTestingStatusDotLabel(row: ReceivingLineRow): string {
 const TESTING_QUEUE_REFRESH_EVENTS = [
   'receiving-entry-added',
   'receiving-serial-scanned',
-  'usav-refresh-data',
+  'app-refresh-data',
   'testing-result-recorded',
 ];
 
 const TESTING_TESTED_REFRESH_EVENTS = [
-  'usav-refresh-data',
+  'app-refresh-data',
   'testing-result-recorded',
 ];
 

@@ -33,7 +33,7 @@ async function loadLineZohoContext(
 ): Promise<ReceivingLineZohoContext | null> {
   const r = await pool.query<ReceivingLineZohoContext>(
     `SELECT zoho_purchaseorder_id, zoho_line_item_id
-       FROM receiving_lines
+       FROM receiving_line
       WHERE id = $1
       LIMIT 1`,
     [receivingLineId],
@@ -87,8 +87,8 @@ function buildNotesEntry(args: {
  * block. Never throws — failures are logged and returned in the result.
  *
  * Skipped (no-op) when:
- *   - receiving_lines row has no zoho_purchaseorder_id (unmatched carton)
- *   - receiving_lines row has no zoho_line_item_id (orphaned line)
+ *   - receiving_line row has no zoho_purchaseorder_id (unmatched carton)
+ *   - receiving_line row has no zoho_line_item_id (orphaned line)
  *   - Zoho PO status is not editable (DRAFT only — closed POs can't be patched)
  */
 export async function syncSerialToZohoPo(params: SyncParams): Promise<SyncResult> {

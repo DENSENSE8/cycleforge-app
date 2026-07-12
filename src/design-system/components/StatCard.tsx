@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 
 export type StatCategory = 'all' | 'tested' | 'repair' | 'outOfStock' | 'pendingLate' | 'fba';
 
@@ -61,7 +62,7 @@ const CATEGORY_STYLES: Record<StatCategory, {
 
 /**
  * StatCard - A modern 2026 design system component for displaying key performance indicators.
- * Grounded in the USAV design system with semantic category coloring.
+ * Grounded in the Cycle Forge design system with semantic category coloring.
  */
 export function StatCard({ 
   category, 
@@ -94,13 +95,18 @@ export function StatCard({
       <div className="flex items-baseline gap-2 mt-1.5">
         {isLoading ? (
           <div className="h-8 w-20 bg-surface-sunken animate-pulse rounded-sm" />
+        ) : typeof value === 'number' ? (
+          <AnimatedStat
+            value={value}
+            className="text-2xl font-black tracking-tight text-text-default"
+          />
         ) : (
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl font-black tracking-tight text-text-default tabular-nums"
           >
-            {typeof value === 'number' ? value.toLocaleString() : value}
+            {value}
           </motion.span>
         )}
 

@@ -88,9 +88,9 @@ export const MessageSquare = ({ className = "w-6 h-6" }: { className?: string })
     </svg>
 );
 
-/** Support / helpdesk ticket — Lucide-weight ticket + upright "?".
- *  Tilt is compensated with a slight scale so optical volume matches siblings
- *  (PackageOpen, Wrench, …) at h-5 / h-4. See lucide.dev/contribute/icon-design-guide. */
+/** Support / helpdesk ticket — Lucide Ticket + perforation dashes, mild tilt.
+ *  Uses Lucide’s full-canvas ticket path so optical volume matches PackageOpen /
+ *  Wrench / Truck at h-5. See lucide.dev/contribute/icon-design-guide. */
 export const TicketHelp = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg
         className={className}
@@ -102,13 +102,14 @@ export const TicketHelp = ({ className = "w-6 h-6" }: { className?: string }) =>
         strokeLinejoin="round"
         aria-hidden
     >
-        {/* rotate shrinks AABB; scale(1.12) restores Lucide optical volume (rule 9) */}
-        <g transform="translate(12 12) rotate(-10) scale(1.12) translate(-12 -12)">
-            <path d="M5 5h14a2 2 0 0 1 2 2v1.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.5a2.5 2.5 0 0 0 0-5V7a2 2 0 0 1 2-2Z" />
+        {/* Lucide `ticket` geometry (fills the 24 grid); mild tilt keeps silhouette distinctive */}
+        <g transform="translate(12 12) rotate(-10) scale(1.06) translate(-12 -12)">
+            <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+            {/* Perforation — same dashes as Lucide `ticket` */}
+            <path d="M13 5v2" />
+            <path d="M13 11v2" />
+            <path d="M13 17v2" />
         </g>
-        {/* Same stroke weight as Lucide TicketPlus / CircleHelp inner glyphs */}
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-        <path d="M12 17h.01" />
     </svg>
 );
 

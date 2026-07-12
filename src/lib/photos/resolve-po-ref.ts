@@ -7,15 +7,20 @@ export async function resolvePoRef(
   entityId: number,
 ): Promise<string | null> {
   switch (entityType) {
+    // Wave-2 reader cutover: the line's zoho PO id reads from receiving_line_zoho
+    // (rz, 1:1 on the line PK). The carton-level zoho_purchase_receive_id fallback
+    // stays on the spine (out of scope this wave).
     case 'RECEIVING': {
       const r = await pool.query<{ po: string | null }>(
         `SELECT COALESCE(
-           NULLIF(TRIM(rl.zoho_purchaseorder_id), ''),
+           NULLIF(TRIM(rz.zoho_purchaseorder_id), ''),
            NULLIF(TRIM(r.zoho_purchase_receive_id), ''),
            'PO_' || r.id::text
          ) AS po
-         FROM receiving r
-         LEFT JOIN receiving_lines rl ON rl.receiving_id = r.id
+         FROM receiving_carton r
+         LEFT JOIN receiving_line rl ON rl.receiving_id = r.id
+         LEFT JOIN receiving_line_zoho rz
+                ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
         WHERE r.id = $1
         ORDER BY rl.id ASC NULLS LAST
         LIMIT 1`,
@@ -26,12 +31,14 @@ export async function resolvePoRef(
     case 'RECEIVING_LINE': {
       const r = await pool.query<{ po: string | null }>(
         `SELECT COALESCE(
-           NULLIF(TRIM(rl.zoho_purchaseorder_id), ''),
+           NULLIF(TRIM(rz.zoho_purchaseorder_id), ''),
            NULLIF(TRIM(r.zoho_purchase_receive_id), ''),
            'PO_' || r.id::text
          ) AS po
-         FROM receiving_lines rl
-         JOIN receiving r ON r.id = rl.receiving_id
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+                ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         JOIN receiving_carton r ON r.id = rl.receiving_id
         WHERE rl.id = $1 LIMIT 1`,
         [entityId],
       );

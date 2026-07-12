@@ -63,7 +63,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
         type: 'success',
         message: `Zoho sync finished. Processed ${data?.totals?.processed || 0}, synced ${data?.totals?.line_items_synced || 0} line items, created ${data?.totals?.created || 0}, updated ${data?.totals?.updated || 0}, failed ${data?.totals?.failed || 0}.`,
       });
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     } catch (error: any) {
       setStatus({ type: 'error', message: error?.message || 'Zoho sync failed.' });
     }
@@ -79,7 +79,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
         type: 'success',
         message: `Imported purchase receive ${data?.purchase_receive_id || id}. Receiving #${data?.receiving_id || '-'} has ${data?.line_items_imported || 0} line item(s).`,
       });
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     } catch (error: any) {
       setStatus({ type: 'error', message: error?.message || 'Zoho import failed.' });
     }

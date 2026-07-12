@@ -74,7 +74,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // receiving join the table uses (direct FK, else PO#-based fallback), so
       // the synced set matches the displayed set. Polling priority is
       // unchanged: out-for-delivery first, then never-polled, then in transit.
-      // Tenant scope: receiving_lines and receiving are tenant-owned, so we
+      // Tenant scope: receiving_line and receiving_carton are tenant-owned, so we
       // filter rl by org and align the receiving LATERAL's string-key PO#
       // fallback join on organization_id (a bare PO#-string match would collide
       // across tenants). zoho_po_mirror and shipping_tracking_numbers have no
@@ -98,15 +98,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                   stn.is_in_transit,
                   stn.is_carrier_accepted,
                   stn.next_check_at
-             FROM receiving_lines rl
+             FROM receiving_line rl
+             -- Wave-2 reader cutover: line zoho PO id reads from
+             -- receiving_line_zoho rz (1:1 on receiving_line_id).
+             LEFT JOIN receiving_line_zoho rz
+               ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
              LEFT JOIN zoho_po_mirror mirror
-               ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+               ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
              JOIN LATERAL (
-               SELECT r.* FROM receiving r
+               SELECT r.* FROM receiving_carton r
                 WHERE (r.id = rl.receiving_id
                    OR (rl.receiving_id IS NULL
                        AND r.source = 'zoho_po'
-                       AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+                       AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
                        AND r.organization_id = rl.organization_id))
                 ORDER BY (r.id = rl.receiving_id) DESC,
                          (r.shipment_id IS NOT NULL) DESC,
@@ -116,7 +120,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
              JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
             WHERE rl.workflow_status = 'EXPECTED'
               AND COALESCE(rl.quantity_received, 0) = 0
-              AND rl.zoho_purchaseorder_id IS NOT NULL
+              AND rz.zoho_purchaseorder_id IS NOT NULL
               AND rl.organization_id = $1
               AND ${NOT_ZOHO_RECEIVED_PREDICATE}
               AND stn.carrier IN ('UPS','USPS','FEDEX')

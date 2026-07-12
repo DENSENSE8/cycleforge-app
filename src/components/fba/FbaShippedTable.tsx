@@ -222,7 +222,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
 
       await load();
       window.dispatchEvent(new CustomEvent('fba-print-shipped'));
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     } catch (e: any) {
       setError(e?.message || 'Failed to save shipment');
     } finally {
@@ -254,7 +254,7 @@ export function FbaShippedTable({ stationTheme = 'green', searchQuery = '', embe
           line.id === item.id ? { ...line, fnsku: nextFnsku } : line,
         ),
       }));
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     } catch (e: any) {
       setError(e?.message || 'Failed to update FNSKU');
     } finally {

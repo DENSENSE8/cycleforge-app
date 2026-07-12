@@ -10,6 +10,7 @@ function fakes(opts: { existingLineId?: number | null; accountId?: number | null
   const calls: Array<{ sql: string; params: unknown[] }> = [];
   const linkCalls: Array<Record<string, unknown>> = [];
   const mirrorCalls: Array<Record<string, unknown>> = [];
+  const testingCalls: Array<{ receivingLineId: number; facts: Record<string, unknown> }> = [];
 
   const client: TxClient = {
     query: (async (sql: string, params: unknown[] = []) => {
@@ -21,7 +22,7 @@ function fakes(opts: { existingLineId?: number | null; accountId?: number | null
       if (/FROM inbound_purchase_order_links/.test(sql)) {
         return { rows: opts.existingLineId != null ? [{ receiving_line_id: opts.existingLineId }] : [], rowCount: opts.existingLineId != null ? 1 : 0 };
       }
-      if (/INSERT INTO receiving_lines/.test(sql)) return { rows: [{ id: 100 }], rowCount: 1 };
+      if (/INSERT INTO receiving_line/.test(sql)) return { rows: [{ id: 100 }], rowCount: 1 };
       return { rows: [], rowCount: 1 };
     }) as TxClient['query'],
   };
@@ -36,12 +37,15 @@ function fakes(opts: { existingLineId?: number | null; accountId?: number | null
       mirrorCalls.push(input);
       return { id: 5, source_type: input.sourceType, source_order_id: input.sourceOrderId, platform_account_id: input.platformAccountId ?? null, order_number: null, vendor_or_seller_name: null, status: null, payment_status: null, tracking_number: null, carrier_code: null };
     }) as unknown as IngestPurchaseDeps['upsertInboundMirror'],
+    upsertReceivingLineTesting: (async (_o: unknown, receivingLineId: number, facts: Record<string, unknown>) => {
+      testingCalls.push({ receivingLineId, facts });
+    }) as unknown as IngestPurchaseDeps['upsertReceivingLineTesting'],
   };
-  return { deps, calls, linkCalls, mirrorCalls };
+  return { deps, calls, linkCalls, mirrorCalls, testingCalls };
 }
 
-test('new order: locks, resolves account, upserts mirror, inserts spine, primary link + facts', async () => {
-  const { deps, calls, linkCalls, mirrorCalls } = fakes({ existingLineId: null, accountId: 7 });
+test('new order: locks, resolves account, upserts mirror, inserts spine, rlt birth, primary link + facts', async () => {
+  const { deps, calls, linkCalls, mirrorCalls, testingCalls } = fakes({ existingLineId: null, accountId: 7 });
   const r = await ingestPurchase(ORG, {
     sourceOrderId: 'E-123',
     accountLabel: 'USAV-Buyer',
@@ -58,7 +62,23 @@ test('new order: locks, resolves account, upserts mirror, inserts spine, primary
   const sqls = calls.map((c) => c.sql);
   assert.ok(sqls.some((s) => /pg_advisory_xact_lock/.test(s)), 'takes the advisory lock');
   assert.ok(sqls.some((s) => /FROM platform_accounts/.test(s)), 'resolves the buyer account');
-  assert.ok(sqls.some((s) => /INSERT INTO receiving_lines/.test(s)), 'creates the spine row');
+  const birthSql = sqls.find((s) => /INSERT INTO receiving_line\s/.test(s));
+  assert.ok(birthSql, 'creates the spine row');
+  // W3 writer inversion: the moved columns are gone from the spine birth.
+  assert.ok(!/condition_grade/.test(birthSql!), 'condition_grade moved to receiving_line_testing');
+  assert.ok(!/zoho_item_id/.test(birthSql!), 'zoho cluster is not written on the spine');
+
+  // BIRTH INVARIANT: the 1:1 receiving_line_testing row is created in the same tx
+  // with the explicit values the birth used to set on the spine.
+  assert.equal(testingCalls.length, 1);
+  assert.equal(testingCalls[0].receivingLineId, 100);
+  assert.deepEqual(testingCalls[0].facts, {
+    needsTest: false,
+    qaStatus: 'PENDING',
+    dispositionCode: 'HOLD',
+    conditionGrade: 'BRAND_NEW',
+    dispositionAudit: [],
+  });
 
   // mirror stamped with the resolved account
   assert.equal(mirrorCalls[0].platformAccountId, 7);
@@ -69,12 +89,13 @@ test('new order: locks, resolves account, upserts mirror, inserts spine, primary
   assert.deepEqual(linkCalls[0].facts, { kind: 'ebay_purchase', payload: { sellerUsername: 'acme_deals' } });
 });
 
-test('existing order: reuses the spine row, no INSERT', async () => {
-  const { deps, calls, linkCalls } = fakes({ existingLineId: 55, accountId: 7 });
+test('existing order: reuses the spine row, no INSERT, no rlt re-birth', async () => {
+  const { deps, calls, linkCalls, testingCalls } = fakes({ existingLineId: 55, accountId: 7 });
   const r = await ingestPurchase(ORG, { sourceOrderId: 'E-123', sku: 'SKU-1' }, deps);
   assert.equal(r.created, false);
   assert.equal(r.receivingLineId, 55);
-  assert.ok(!calls.some((c) => /INSERT INTO receiving_lines/.test(c.sql)), 'must not create a second spine row');
+  assert.ok(!calls.some((c) => /INSERT INTO receiving_line\s/.test(c.sql)), 'must not create a second spine row');
+  assert.equal(testingCalls.length, 0, 'rlt birth only accompanies a spine birth');
   assert.equal(linkCalls[0].receivingLineId, 55);
 });
 

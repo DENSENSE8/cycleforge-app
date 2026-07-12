@@ -21,7 +21,6 @@ import {
   Link2,
   List,
   MapPin,
-  MessageSquare,
   Monitor,
   Package,
   PackageCheck,
@@ -45,9 +44,12 @@ import {
   Voicemail,
 } from '@/components/Icons';
 import { ADMIN_SECTION_OPTIONS } from '@/components/admin/admin-sections';
+import { isParkedSurfaceBlocked, type ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
 
 export type SidebarRouteKey =
+  | 'home'
   | 'dashboard'
+  | 'order'
   | 'operations'
   | 'ops-photos'
   | 'studio'
@@ -87,6 +89,15 @@ export interface SidebarNavItem {
    * see filtering rules in getSidebarNavItems).
    */
   requires?: string;
+  /**
+   * When set, this row rides a parked dogfood surface: it is filtered out of
+   * nav whenever that surface is parked (`isParkedSurfaceBlocked`), so a link
+   * to a sub-route of a parked surface never dead-ends on the `ParkedSurface`
+   * stand-in. It reappears once the surface is unlocked (`DOGFOOD_FULL_SURFACE`).
+   * Use this for a sub-route whose nav id differs from the surface id (which
+   * otherwise bypasses the `PARKED_SIDEBAR_NAV_IDS` id filter).
+   */
+  parkedSurface?: ParkedSurfaceKey;
 }
 
 const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
@@ -96,6 +107,7 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'support',
   'admin',
   'audit-log',
+  'order',
 ]);
 
 const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
@@ -122,14 +134,20 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
   );
 }
 
+/**
+ * Dogfood prod surface (stations + shipping + thin support).
+ *
+ * Parked off master nav (routes + SIDEBAR_PAGE_NAV modes may still resolve for
+ * deep-links / topic worktrees — do not delete those until a surface is
+ * promoted back or archived):
+ *   home (`/`), sourcing, inventory, warehouse, fba, studio, ai-chat
+ * Same pattern as Data Wipe: absent from nav, route can remain live.
+ */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view' },
   { id: 'dashboard',         label: 'Orders / Shipping', href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
   { id: 'walk-in',           label: 'Walk-In',     href: '/walk-in',            icon: ShoppingCart,    kind: 'main',    requires: 'walk_in.view' },
-  { id: 'sourcing',          label: 'Sourcing',    href: '/sourcing',           icon: Search,          kind: 'main',    requires: 'sourcing.view' },
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
-  { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'main',    requires: 'sku_stock.view' },
-  { id: 'warehouse',         label: 'Warehouse',   href: '/warehouse',          icon: Warehouse,       kind: 'main',    requires: 'sku_stock.view' },
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
   // surface — so the primary nav lands on the canonical URL without a redirect
   // hop. Route key still resolves to 'receiving', so the item stays active
@@ -140,23 +158,27 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
   { id: 'tech',              label: 'Testing',     href: '/test',               icon: Wrench,          kind: 'station', requires: 'tech.view' },
-  // Data Wipe is temporarily absent from master nav — revisit when the station
-  // UX is ready for general rollout. /wipe route + API remain live.
-  { id: 'fba',               label: 'FBA prep',    href: '/fba',                icon: Boxes,           kind: 'main',    requires: 'fba.view' },
+  // Data Wipe / FBA / Inventory / Warehouse / Sourcing / Studio / AI Chat /
+  // Home are temporarily absent from master nav — dogfood focuses stations +
+  // shipping. Routes + mode configs remain for deep-links / preview worktrees.
   { id: 'ops-photos',        label: 'Media library', href: '/ops/photos',       icon: Images,          kind: 'main',    requires: 'photos.view' },
+  // Sub-route of the parked `studio` surface — hidden from nav while Studio is
+  // parked (so it never dead-ends on the stand-in), shown once it's unlocked.
+  { id: 'studio-catalog',    label: 'Catalog',     href: '/studio/catalog',     icon: Layers,          kind: 'main',    requires: 'studio.view', parkedSurface: 'studio' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
   { id: 'packer',            label: 'Packing',     href: '/pack',               icon: Box,             kind: 'station', requires: 'packing.view' },
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
-  { id: 'studio',            label: 'Studio',      href: '/studio',             icon: Layers,          kind: 'bottom',  requires: 'studio.view' },
-  { id: 'ai-chat',           label: 'AI Chat',     href: '/ai-chat',            icon: MessageSquare,   kind: 'bottom',  requires: 'dashboard.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
   { id: 'admin',             label: 'Admin',       href: '/admin',              icon: ShieldCheck,     kind: 'bottom', requires: 'admin.view' },
   { id: 'settings',          label: 'Settings',    href: '/settings',           icon: Settings,        kind: 'bottom' },
 ];
+
+/** Parked off prod nav — SoT: `src/lib/dogfood/parked-surfaces.ts` (+ URL soft-gate). */
+export { PARKED_SIDEBAR_NAV_IDS } from '@/lib/dogfood/parked-surfaces';
 
 export function isSidebarRouteMobileRestricted(routeKey: SidebarRouteKey): boolean {
   return MOBILE_RESTRICTED_SIDEBAR_IDS.has(routeKey);
@@ -186,12 +208,22 @@ export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNa
   if (permissions) {
     items = items.filter((item) => !item.requires || permissions.has(item.requires));
   }
+  // Drop rows that ride a parked surface while that surface is locked, so a
+  // sub-route link (whose id bypasses the PARKED_SIDEBAR_NAV_IDS id filter)
+  // never points at the ParkedSurface stand-in.
+  items = items.filter(
+    (item) => !item.parkedSurface || !isParkedSurfaceBlocked(item.parkedSurface),
+  );
   return items;
 }
 
 export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (!pathname) return 'unknown';
+  if (pathname === '/') return 'home';
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 'dashboard';
+  // Dedicated order workspace (`/o/[orderId]`) — full-page workbench with its
+  // own Recent/Search sidebar (not the dashboard Orders/Shipping panel).
+  if (pathname === '/o' || pathname.startsWith('/o/')) return 'order';
   if (pathname === '/operations' || pathname.startsWith('/operations/')) return 'operations';
   if (pathname === '/signals' || pathname.startsWith('/signals/')) return 'operations';
   if (pathname === '/ops/photos' || pathname.startsWith('/ops/photos/')) return 'ops-photos';
@@ -254,6 +286,10 @@ export function isSidebarNavActive(pathname: string | null, href: string): boole
     return pathnameSegment === hrefSegment;
   }
 
+  if (href === '/') {
+    return pathname === '/';
+  }
+
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -272,6 +308,8 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/operations',         permission: 'operations.view' },
   { prefix: '/signals',            permission: 'operations.view' },
   { prefix: '/dashboard',          permission: 'dashboard.view' },
+  // Dedicated order workspace — same gate as the dashboard order surfaces.
+  { prefix: '/o',                  permission: 'dashboard.view' },
   { prefix: '/fba',                permission: 'fba.view' },
   { prefix: '/walk-in',            permission: 'walk_in.view' },
   { prefix: '/repair',             permission: 'repair.view' },
@@ -406,22 +444,23 @@ const PACK = '/pack';
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Orders / Shipping ─────────────────────────────────────────────────────
   // Bare presence params (`?unshipped` / `?shipped` / `?warranty`); first match
-  // wins in the reader, default `unshipped`. (FBA order-view is its own page.)
-  // Rail order: Unshipped · Shipped · Warranty Logger. The former "Awaiting" +
-  // "Pending" modes are merged into one "Unshipped" mode (the whole pre-ship
-  // backlog); the legacy `?pending` param resolves here for back-compat.
+  // wins in the reader. Unshipped + Shipped are now ONE nav mode ("Outbound") —
+  // the pre-ship backlog and the shipped feed live under a single Outbound
+  // sidebar, and the Unshipped/Shipped split is a top-left TAB inside the main
+  // content (see `DashboardOrdersView`), not a nav-rail switch. `?unshipped` /
+  // legacy `?pending` / bare all resolve to Outbound; `?warranty` is its own
+  // mode. (FBA order-view is its own page.)
   {
     id: 'dashboard', label: 'Orders / Shipping', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
     modes: [
-      { id: 'unshipped', label: 'Unshipped',        icon: Inbox,        to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
-      { id: 'shipped',   label: 'Shipped',          icon: PackageCheck, to: () => ({ pathname: DASHBOARD, params: { shipped: '', pending: null, unshipped: null, fba: null, warranty: null } }) },
+      { id: 'outbound',  label: 'Outbound',         icon: PackageCheck, to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
       { id: 'warranty',  label: 'Warranty Logger',  icon: ShieldCheck,  to: () => ({ pathname: DASHBOARD, params: { warranty: '', pending: null, shipped: null, unshipped: null, fba: null } }) },
     ],
     resolveMode: ({ params }) => {
-      if (params.has('shipped')) return 'shipped';
       if (params.has('warranty')) return 'warranty';
-      // `?unshipped`, legacy `?pending`, or nothing → the merged Unshipped mode.
-      return 'unshipped';
+      // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → the single
+      // Outbound mode (the Unshipped/Shipped tab lives in the main content).
+      return 'outbound';
     },
   },
   // ── Operations ────────────────────────────────────────────────────────────

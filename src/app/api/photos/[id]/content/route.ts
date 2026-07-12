@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getPrimaryPhotoStorage } from '@/lib/photos/storage/resolve-primary';
@@ -25,7 +25,7 @@ export async function GET(
   const variant = new URL(request.url).searchParams.get('variant') === 'thumb' ? 'thumb' : 'full';
   const download = new URL(request.url).searchParams.get('download') === '1';
 
-  const sid = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(request.cookies);
   const actor = await getCurrentUserBySid(sid);
 
   let organizationId: string | undefined;

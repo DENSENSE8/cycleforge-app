@@ -22,16 +22,17 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
   const sql = `
     SELECT
       r.id,
-      r.staging_location_id,
+      rt.staging_location_id,
       l.name AS location_name,
       l.room AS location_room,
-      r.priority_lane,
-      r.triage_complete
-    FROM receiving r
-    LEFT JOIN locations l ON l.id = r.staging_location_id
+      rt.priority_lane,
+      COALESCE(rt.triage_complete, false) AS triage_complete
+    FROM receiving_carton r
+    LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+    LEFT JOIN locations l ON l.id = rt.staging_location_id
     WHERE r.organization_id = $1
-      AND (r.staging_location_id IS NOT NULL OR r.priority_lane IS NOT NULL OR r.triage_complete = true)
-    ORDER BY r.triage_completed_at DESC NULLS LAST, r.updated_at DESC NULLS LAST
+      AND (rt.staging_location_id IS NOT NULL OR rt.priority_lane IS NOT NULL OR COALESCE(rt.triage_complete, false) = true)
+    ORDER BY rt.triage_completed_at DESC NULLS LAST, r.updated_at DESC NULLS LAST
     LIMIT 500
   `;
 

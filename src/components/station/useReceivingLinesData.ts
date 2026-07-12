@@ -158,10 +158,10 @@ export function useReceivingLinesData({
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
     };
     window.addEventListener('receiving-entry-added', handler);
-    window.addEventListener('usav-refresh-data', handler);
+    window.addEventListener('app-refresh-data', handler);
     return () => {
       window.removeEventListener('receiving-entry-added', handler);
-      window.removeEventListener('usav-refresh-data', handler);
+      window.removeEventListener('app-refresh-data', handler);
     };
   }, [queryClient]);
 

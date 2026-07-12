@@ -93,6 +93,6 @@ function makeLogger(base: Bindings): Logger {
 }
 
 export const logger: Logger = makeLogger({
-  app: 'usav-orders',
+  app: 'cycle-forge',
   env: process.env.NODE_ENV || 'development',
 });

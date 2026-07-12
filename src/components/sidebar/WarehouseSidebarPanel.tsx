@@ -31,6 +31,7 @@ import { RackLabelPrinter } from '@/components/barcode/RackLabelPrinter';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoomFinderProvider, useRoomFinder } from '@/components/warehouse/roomFinderContext';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 type InventoryTab = 'rooms' | 'bins' | 'labels' | 'racks' | 'map';
 
@@ -97,10 +98,16 @@ function WarehouseSidebarInner() {
   const isRoomFinderTab = tab === 'rooms' || tab === 'labels' || tab === 'racks';
   const roomFinderPlaceholder =
     tab === 'labels'
-      ? 'Search rooms to label by name or zone…'
+      ? 'Filter rooms to label by name or zone…'
       : tab === 'racks'
-        ? 'Search rooms to print racks for…'
-        : 'Search rooms by name or zone…';
+        ? 'Filter rooms to print racks for…'
+        : 'Filter rooms by name or zone…';
+
+  const showSkuResults =
+    !isRoomFinderTab &&
+    skuSearch.open &&
+    !!skuSearch.value.trim() &&
+    !looksLikeBinBarcode(skuSearch.value);
 
   return (
     <SidebarShell
@@ -119,47 +126,38 @@ function WarehouseSidebarInner() {
               />
             </div>
           )}
+          {/* In-context list filter — local base SearchBar. Room-finder tabs
+              filter the room list; other tabs run the SKU/bin lookup. The
+              global header pill stays global. */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={isRoomFinderTab ? roomQuery : skuSearch.value}
+              onChange={
+                isRoomFinderTab
+                  ? setRoomQuery
+                  : (v) => { skuSearch.setValue(v); skuSearch.setOpen(true); }
+              }
+              onClear={isRoomFinderTab ? () => setRoomQuery('') : skuSearch.handleClear}
+              onSearch={isRoomFinderTab ? undefined : (v) => skuSearch.handleSearch(v)}
+              placeholder={isRoomFinderTab ? roomFinderPlaceholder : 'Filter product, SKU, or bin barcode…'}
+              isSearching={isRoomFinderTab ? undefined : skuSearch.loading}
+            />
+          </div>
         </>
-      }
-      search={
-        isRoomFinderTab
-          ? {
-              value: roomQuery,
-              onChange: setRoomQuery,
-              onClear: () => setRoomQuery(''),
-              placeholder: roomFinderPlaceholder,
-              variant: 'blue',
-            }
-          : {
-              value: skuSearch.value,
-              onChange: (v) => { skuSearch.setValue(v); skuSearch.setOpen(true); },
-              onSearch: skuSearch.handleSearch,
-              onClear: skuSearch.handleClear,
-              placeholder: 'Find product, SKU, or bin barcode…',
-              variant: 'blue',
-              isSearching: skuSearch.loading,
-            }
-      }
-      searchGroup={
-        !isRoomFinderTab
-          ? (searchBar) => (
-              <div className="space-y-2">
-                {searchBar}
-                {skuSearch.open && skuSearch.value.trim() && !looksLikeBinBarcode(skuSearch.value) && (
-                  <div className={SIDEBAR_GUTTER}>
-                    <WarehouseSkuSearchResults
-                      loading={skuSearch.loading}
-                      hits={skuSearch.hits}
-                      onSelect={() => skuSearch.setOpen(false)}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          : undefined
       }
       bodyClassName="flex flex-col overflow-hidden p-0"
     >
+      {showSkuResults && (
+        <div className={`${SIDEBAR_GUTTER} py-2`}>
+          <WarehouseSkuSearchResults
+            loading={skuSearch.loading}
+            hits={skuSearch.hits}
+            onSelect={() => skuSearch.setOpen(false)}
+          />
+        </div>
+      )}
       {tab === 'rooms' ? (
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <RoomsSidebarList />

@@ -77,12 +77,12 @@ async function main() {
   const rows = (
     await pool.query<{ id: number; receiving_tracking_number: string | null }>(
       `SELECT r.id, r.receiving_tracking_number
-         FROM receiving r
+         FROM receiving_carton r
         WHERE r.source = 'unmatched'
           AND COALESCE(r.zoho_purchaseorder_id, '') = ''
           AND r.receiving_tracking_number IS NOT NULL
           AND COALESCE(r.received_at, r.created_at) > NOW() - ($1 || ' days')::interval
-          AND NOT EXISTS (SELECT 1 FROM receiving_lines rl WHERE rl.receiving_id = r.id)
+          AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = r.id)
         ORDER BY COALESCE(r.received_at, r.created_at) DESC`,
       [String(MAX_AGE_DAYS)],
     )

@@ -14,11 +14,9 @@
  * useStaffPreferences — the same cross-device mechanism the boards use).
  * Skipping hides the card but never deletes the underlying truth.
  *
- * Mounted as a SIBLING of `FirstScanOnboardingCard` in the dashboard sidebars —
- * that card owns the single "scan your first unit" hero moment; this one owns
- * the broader multi-step activation ladder. Gated behind `dashboard.view` (the
- * same permission as the stats endpoint) so the query never fires for a user
- * who can't see the dashboard.
+ * Composed in `MyDayOnboardingPanel` (home right pane) alongside
+ * `FirstScanOnboardingCard` — that card owns the "scan your first unit" hero;
+ * this owns the multi-step activation ladder. Gated behind `dashboard.view`.
  */
 
 import Link from 'next/link';
@@ -41,13 +39,15 @@ const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-acc
  * Permission gate. The data-owning inner component mounts only behind
  * `dashboard.view`, so the stats query never fetches for a user without it.
  */
-export function GettingStartedChecklist({ variant = 'band' }: { variant?: 'band' | 'sidebar' }) {
+type ChecklistVariant = 'band' | 'sidebar' | 'pane';
+
+export function GettingStartedChecklist({ variant = 'band' }: { variant?: ChecklistVariant }) {
   const { isLoaded, has } = useAuth();
   if (!isLoaded || !has('dashboard.view')) return null;
   return <GettingStartedChecklistInner variant={variant} />;
 }
 
-function GettingStartedChecklistInner({ variant }: { variant: 'band' | 'sidebar' }) {
+function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }) {
   const entitlements = useEntitlements();
   const { prefs, isLoading: prefsLoading, update } = useStaffPreferences();
 
@@ -77,18 +77,22 @@ function GettingStartedChecklistInner({ variant }: { variant: 'band' | 'sidebar'
 
   const pct = Math.round((completed / steps.length) * 100);
 
+  const isCompact = variant === 'sidebar' || variant === 'pane';
+
   return (
     <section
       className={
-        variant === 'sidebar'
-          ? 'bg-surface-card'
+        isCompact
+          ? variant === 'pane'
+            ? ''
+            : 'bg-surface-card'
           : 'shrink-0 border-b border-border-hairline bg-surface-card px-4 py-3'
       }
       aria-label="Getting started checklist"
     >
       <div
         className={`rounded-xl border border-border-hairline bg-surface-card ${
-          variant === 'sidebar' ? 'px-3 py-3' : 'px-5 py-4'
+          variant === 'pane' ? 'px-4 py-3' : isCompact ? 'px-3 py-3' : 'px-5 py-4'
         }`}
       >
         {/* Eyebrow header: title left, progress + skip right. */}

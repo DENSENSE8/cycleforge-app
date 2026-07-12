@@ -36,7 +36,7 @@ A full codebase + migration + domain scan (Drizzle schema, 300+ migrations, `src
 - `entity_notes` — `entity_type` TEXT + `entity_id` **UUID** (the only UUID id-type), free-text, no trigger.
 - `receiving_exceptions` — status-discriminated (`exception_code` + `status`), **not** owner-polymorphic (both parents are real FK `ON DELETE CASCADE`). Extracted from the receiving god-table `2026-06-24`.
 - `part_links` (`2026-06-28g`) — **the cleanest tenant-from-birth example**: org `NOT NULL` no-default + `enforce_tenant_isolation('part_links')` *in the same migration*, named CHECKs encoding a discriminated-union shape (`status='confirmed'`⇒parent NOT NULL; `status='not_a_part'`⇒parent NULL), org-led partial uniques. (Not modeled in Drizzle.)
-- Platform catalog (`platforms`, `platform_accounts`, `types`) — replaces hard-coded `SOURCE_PLATFORMS` / `RECEIVING_TYPE_OPTS` (see `docs/todo/platform-account-type-catalog-plan.md`). Note: only `platform_accounts.platform_id` is a real FK; `platforms.provider`, `platform_accounts.integration_scope`, `types.workflow_node_id` are **soft "agree-by-string" links**, not FKs.
+- Platform catalog (`platforms`, `platform_accounts`, `types`) — replaces hard-coded `SOURCE_PLATFORMS` / `RECEIVING_TYPE_OPTS`. Note: only `platform_accounts.platform_id` is a real FK; `platforms.provider`, `platform_accounts.integration_scope`, `types.workflow_node_id` are **soft "agree-by-string" links**, not FKs.
 - `serial_units` + `inventory_events` + `sku_stock_ledger` — the authoritative spine (status only via `transition()` / `applyTransition()`).
 - `reason_codes` — `flow_context`-discriminated multi-vocabulary store (named CHECK, org-led unique `(organization_id, flow_context, code)`). ⚠️ a live CHECK regression — see Data-integrity findings.
 
@@ -324,7 +324,7 @@ And **model it in Drizzle in the same PR** (Appendix A #8: `photo_entity_links`/
 
 ## Phased migration strategy (additive, reversible, gated)
 
-Each phase must be shippable. Follow the pattern from `platform-account-type-catalog-plan.md` and the inventory v2 / receiving redesign migrations.
+Each phase must be shippable. Follow the pattern from the shipped platform/account/type catalog work and the inventory v2 / receiving redesign migrations.
 
 **Phase 0 — Audit & Foundation (no schema change) — EXECUTED 2026-07-01**
 - Finalize this plan + get buy-in. ✅
@@ -432,9 +432,6 @@ Each phase must be shippable. Follow the pattern from `platform-account-type-cat
 
 - `.claude/rules/backend-patterns.md` — transition(), audit, tenant scoping, Deps injection.
 - `.claude/rules/source-of-truth.md`
-- `context/inventory_system_upgrade_plan.md`
-- `docs/todo/platform-account-type-catalog-plan.md` *(moved from `docs/` root; root copy deleted)* + status at `docs/partial/platform-account-type-catalog-STATUS.md`.
-- `docs/pending-migrations-plan.md`
 - **Reference-contract migrations (codify these):** `2026-06-28g_part_links.sql` (tenant-from-birth template), `2026-06-18_photos_platform_side_tables.sql` (`photo_entity_links` normalized hub), `2026-06-21_photos_phase_e_drop_legacy_columns.sql` (the polymorphic-link extraction), `2026-06-14_rls_enforcement_infra.sql` (`enforce_tenant_isolation()` definition).
 - **Spine / surface migrations:** `2026-04-10_create_serial_units.sql`, `2026-05-13_create_inventory_events.sql`, `2026-06-17_platform_listings.sql`, `2026-06-24_receiving_exceptions.sql`, `2026-06-24_shipment_links.sql`, `2026-06-28q_drop_legacy_shipment_link_tables.sql`, `2026-05-22_organization_integrations.sql`, `0000_baseline_through_2026-03.sql` (work_assignments + photos triggers), and the `reason_codes` chain (`2026-06-28d`/`28e` — the CHECK regression).
 - Key modules: `src/lib/drizzle/schema.ts`, `src/lib/inventory/state-machine.ts`, `src/lib/workflow/` (`registry.ts`, `contract.ts` — node-type registry), `src/lib/receiving/`, `src/lib/integrations/credentials.ts` (the un-modeled `organization_integrations` access), `src/lib/audit-logs.ts`.

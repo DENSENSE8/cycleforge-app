@@ -6,7 +6,7 @@ import type { ReceivingDetailsLog } from '@/components/station/receiving-details
 export function dispatchDashboardAndStationRefresh(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-  window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+  window.dispatchEvent(new CustomEvent('app-refresh-data'));
 }
 
 export interface ReceivingPhotoChangedPayload {
@@ -21,14 +21,14 @@ export interface ReceivingPhotoChangedPayload {
  * Browser-side photo refresh signal.
  *
  * The `receiving-photo.changed` name matches the realtime event used by the
- * receiving surfaces, while `usav-refresh-data` keeps the existing tables in
+ * receiving surfaces, while `app-refresh-data` keeps the existing tables in
  * sync immediately after a library delete.
  */
 export function dispatchReceivingPhotoChanged(payload: ReceivingPhotoChangedPayload): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('receiving-photo.changed', { detail: payload }));
   window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-  window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+  window.dispatchEvent(new CustomEvent('app-refresh-data'));
 }
 
 /** Merge a single row into the dashboard pending queue cache (no full table refetch). */

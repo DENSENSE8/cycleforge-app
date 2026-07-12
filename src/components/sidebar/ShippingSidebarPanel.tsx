@@ -36,7 +36,7 @@ export function ShippingSidebarPanel({
   }, []);
 
   const handleMissingParts = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+    window.dispatchEvent(new CustomEvent('app-refresh-data'));
     onComplete?.();
   }, [onComplete]);
 

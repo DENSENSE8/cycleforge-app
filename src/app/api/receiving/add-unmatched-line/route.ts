@@ -28,7 +28,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withTenantTransaction } from '@/lib/tenancy/db';
+import { withTenantTransaction, type tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
@@ -69,7 +71,6 @@ interface InsertedLineRow {
   sku_platform_id_row: number | null;
   source_platform_pill: string | null;
   intake_type: string | null;
-  condition_grade: ConditionGrade;
   listing_url: string | null;
   listing_reference: string | null;
   location_code: string | null;
@@ -265,7 +266,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // ─── Verify receiving row exists and is unmatched ───────────────────────
     const receivingResult = await client.query<ReceivingRow>(
       `SELECT id, source, source_platform, organization_id, zoho_purchaseorder_id
-         FROM receiving
+         FROM receiving_carton
         WHERE id = $1
           AND organization_id = $2
         LIMIT 1`,
@@ -327,15 +328,18 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    // ─── Insert the line ────────────────────────────────────────────────────
-    // zoho_item_id is NULL (we relaxed the NOT NULL constraint in migration
-    // 2026-05-22_receiving_lines_unfound_columns.sql for exactly this case).
+    // ─── Insert the line (thin spine) + its testing facts row ───────────────
+    // Wave-3 writer inversion: the testing cluster (condition_grade et al.) lives
+    // on receiving_line_testing (rlt), never the spine. The spine INSERT keeps
+    // only spine-staying columns; the rlt row is birthed in the SAME transaction
+    // with explicit values (birth invariant — every receiving_line has an rlt
+    // row). No Zoho linkage → no receiving_line_zoho row.
     // workflow_status='MATCHED' because the line is already linked to its
     // package — no pre-staging EXPECTED row to reconcile. organization_id is
     // passed explicitly (the column is loud-fail, not GUC-defaulted) and matches
     // the GUC set by withTenantTransaction.
     const insertResult = await client.query<InsertedLineRow>(
-      `INSERT INTO receiving_lines (
+      `INSERT INTO receiving_line (
          receiving_id,
          sku,
          item_name,
@@ -343,7 +347,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
          sku_platform_id_row,
          source_platform_pill,
          intake_type,
-         condition_grade,
          listing_url,
          listing_reference,
          location_code,
@@ -358,16 +361,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
          created_at,
          updated_at
        ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8::condition_grade_enum,
-         $9, $10, $11, $12, 0,
+         $1, $2, $3, $4, $5, $6, $7,
+         $8, $9, $10, $11, 0,
          'MATCHED'::inbound_workflow_status_enum,
-         $13, $14, $15, $16::uuid,
+         $12, $13, $14, $15::uuid,
          NOW(), NOW(), NOW()
        )
        RETURNING
          id, receiving_id, sku, item_name,
          sku_catalog_id, sku_platform_id_row,
-         source_platform_pill, intake_type, condition_grade,
+         source_platform_pill, intake_type,
          listing_url, listing_reference, location_code,
          quantity_expected, quantity_received, workflow_status,
          source_system, source_order_id, is_repair_service,
@@ -380,7 +383,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         skuPlatformIdRow,
         sourcePlatformPill,
         intakeType,
-        conditionGrade,
         listingUrl,
         listingReference,
         locationCode,
@@ -400,6 +402,27 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
+    // rlt birth (same tx via the tenant client): the operator-picked grade plus
+    // the birth defaults this INSERT used to inherit from the spine column
+    // defaults, now stamped explicitly. needs_test=false mirrors the LIVE spine
+    // default (verified 2026-07-11: DEFAULT false, 1361/1363 lines false) the
+    // pre-inversion birth relied on.
+    const txDeps = {
+      query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
+    };
+    await upsertReceivingLineTesting(
+      ctx.organizationId as OrgId,
+      Number(line.id),
+      {
+        needsTest: false,
+        qaStatus: 'PENDING',
+        dispositionCode: 'HOLD',
+        conditionGrade,
+        dispositionAudit: [],
+      },
+      txDeps,
+    );
+
     // ─── Re-derive the carton's source linkage from its lines ───────────────
     // The carton's PO# is only a first-linked DISPLAY representative; this flips
     // an unmatched carton to zoho_po (off the Unfound queue) when the line carries
@@ -417,7 +440,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           source_platform: string | null;
         }>(
           `SELECT zoho_purchaseorder_number, source, source_platform
-             FROM receiving
+             FROM receiving_carton
             WHERE id = $1
               AND organization_id = $2
             LIMIT 1`,
@@ -429,7 +452,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    return respond({ success: true, line, carton });
+    // Envelope frozen: condition_grade used to ride the spine RETURNING; it now
+    // lives on rlt, so compose it from the value we just wrote.
+    return respond({ success: true, line: { ...line, condition_grade: conditionGrade }, carton });
   });
 
   // ─── Background: cache invalidation + realtime publish ────────────────────

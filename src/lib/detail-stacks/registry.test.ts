@@ -1,19 +1,20 @@
 /**
- * detailStackHref — rebuilds deep links for the assistant context rail.
+ * detailStackHref + parseOrderWorkspacePath — rebuilds deep links for the
+ * assistant context rail / order workspace recents.
  * Run: npx tsx --test src/lib/detail-stacks/registry.test.ts
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detailStackHref } from './registry';
+import { detailStackHref, parseOrderWorkspacePath } from './registry';
 
-test('detailStackHref: orders always reopen on /dashboard', () => {
+test('detailStackHref: orders always reopen on /o/[id]', () => {
   assert.equal(
     detailStackHref({ kind: 'order', id: '6057', path: '/pack' }),
-    '/dashboard?openOrderId=6057',
+    '/o/6057',
   );
 });
 
-test('detailStackHref: preserves dashboard view params from stored search', () => {
+test('detailStackHref: order ignores stored dashboard search params', () => {
   assert.equal(
     detailStackHref({
       kind: 'order',
@@ -21,7 +22,7 @@ test('detailStackHref: preserves dashboard view params from stored search', () =
       path: '/dashboard',
       search: 'shipped=&openOrderId=19361',
     }),
-    '/dashboard?shipped=&openOrderId=6057',
+    '/o/6057',
   );
 });
 
@@ -42,4 +43,13 @@ test('detailStackHref: receiving keeps the surface path + mode params', () => {
     }),
     '/unbox?mode=receive&openReceivingId=99',
   );
+});
+
+test('parseOrderWorkspacePath: extracts /o/[orderId]', () => {
+  assert.equal(parseOrderWorkspacePath('/o/6057'), '6057');
+  assert.equal(parseOrderWorkspacePath('/o/12-34567-89012'), '12-34567-89012');
+  assert.equal(parseOrderWorkspacePath('/o/encoded%2Fid'), 'encoded/id');
+  assert.equal(parseOrderWorkspacePath('/dashboard'), null);
+  assert.equal(parseOrderWorkspacePath('/o'), null);
+  assert.equal(parseOrderWorkspacePath(null), null);
 });

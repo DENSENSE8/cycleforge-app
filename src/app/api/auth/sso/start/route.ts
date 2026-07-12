@@ -15,6 +15,7 @@ import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
 import { hasFeature } from '@/lib/billing/entitlements';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 import {
   buildAuthorizeUrl, generatePkce, generateState, resolveEndpoints,
   type OidcProviderRow,
@@ -54,6 +55,16 @@ function mapProvider(row: ProviderDbRow): OidcProviderRow {
 }
 
 export const GET = withAuth(async (req) => {
+  const rl = await checkRateLimitAsync({
+    headers: req.headers,
+    routeKey: 'auth-sso-start',
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429 });
+  }
+
   const slug = req.nextUrl.searchParams.get('slug') || req.headers.get('x-tenant-slug');
   const nextPath = req.nextUrl.searchParams.get('next') || '/dashboard';
   if (!slug) {

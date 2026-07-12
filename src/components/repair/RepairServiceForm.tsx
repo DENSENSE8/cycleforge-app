@@ -5,7 +5,7 @@ import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket'
 import { RepairPaperTicketHeading } from './RepairPaperTicketHeading'
 import type { RepairReceiptProps } from '@/lib/repair/repair-intake-receipt'
 import { REPAIR_PICKUP_DATE_PLACEHOLDER } from '@/lib/repair/repair-paper-html'
-import { useAuth } from '@/contexts/AuthContext'
+import { useOrgLetterhead } from '@/hooks/useOrgLetterhead'
 
 export type RepairServiceFormProps = RepairReceiptProps & {
   /** `compact` — review-step preview: drop-off only, full column width. */
@@ -46,11 +46,8 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
   const displayTicket = formatRepairPaperTicketNumber(ticketNumber)
   const isCompact = density === 'compact'
   const isScreen = surface === 'screen'
-  // On-screen preview only — the actual printed form (/api/repair-service/print/[id])
-  // is the source of truth and pulls the full letterhead (address + phone) from
-  // org settings. This preview only has the org name available client-side.
-  const { user } = useAuth()
-  const orgName = user?.organizationName || 'Workspace'
+  // On-screen preview — matches printed form letterhead from org settings.
+  const letterhead = useOrgLetterhead()
 
   // Format contact display as "Name, Phone, Email"
   const contactDisplay = [name, contact].filter(Boolean).join(', ')
@@ -75,10 +72,16 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
 
       {/* Header Section */}
       <div className={`${headerGap} text-right`}>
-        <h2 className={isCompact ? 'text-sm font-bold' : 'text-lg font-bold'}>{orgName}</h2>
-        <p className="text-xs sm:text-sm">16161 Gothard St. Suite A</p>
-        <p className="text-xs sm:text-sm">Huntington Beach, CA 92647, United States</p>
-        <p className="text-xs sm:text-sm">Tel: (714) 596-6888</p>
+        <h2 className={isCompact ? 'text-sm font-bold' : 'text-lg font-bold'}>{letterhead.name}</h2>
+        {letterhead.addressLine1 ? (
+          <p className="text-xs sm:text-sm">{letterhead.addressLine1}</p>
+        ) : null}
+        {letterhead.addressLine2 ? (
+          <p className="text-xs sm:text-sm">{letterhead.addressLine2}</p>
+        ) : null}
+        {letterhead.phone ? (
+          <p className="text-xs sm:text-sm">Tel: {letterhead.phone}</p>
+        ) : null}
       </div>
 
       <RepairPaperTicketHeading displayTicket={displayTicket} compact={isCompact} />

@@ -14,10 +14,11 @@
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
+import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { resolveSourcingMode, SOURCING_MODE_ITEMS } from '@/components/sourcing/sourcing-shared';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 const BY_ITEMS: HorizontalSliderItem[] = [
   { id: 'model', label: 'Model' },
@@ -72,6 +73,23 @@ export function SourcingSidebarPanel() {
   const by = searchParams.get('by') === 'serial' ? 'serial' : 'model';
   const status = searchParams.get('status') ?? '';
 
+  // In-context list filter — local base SearchBar, only in the modes that have
+  // a query filter (scout, suppliers). The global header pill stays global.
+  const onQueryChange = (v: string) =>
+    setParam((p) => { if (v.trim()) p.set('q', v.trim()); else p.delete('q'); });
+  const searchBar = (placeholder: string) => (
+    <div key="search" className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+      <SearchBar
+        size="compact"
+        variant="blue"
+        value={q}
+        onChange={onQueryChange}
+        onClear={() => setParam((p) => p.delete('q'))}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
   const modeRail = !masterNavEnabled ? (
     <div className={sidebarHeaderPillRowClass}>
       <HorizontalButtonSlider
@@ -90,15 +108,9 @@ export function SourcingSidebarPanel() {
   if (mode === 'scout') {
     return (
       <SidebarShell
-        search={{
-          value: q,
-          onChange: (v: string) => setParam((p) => { if (v.trim()) p.set('q', v.trim()); else p.delete('q'); }),
-          onClear: () => setParam((p) => p.delete('q')),
-          placeholder: by === 'serial' ? 'Scan or type a serial' : 'Search model number or name',
-          variant: 'blue',
-        }}
         headerRows={[
           modeRail,
+          searchBar(by === 'serial' ? 'Scan or type a serial…' : 'Filter model number or name…'),
           <div key="by" className={sidebarHeaderPillRowClass}>
             <HorizontalButtonSlider
               items={BY_ITEMS}
@@ -146,15 +158,9 @@ export function SourcingSidebarPanel() {
     const type = searchParams.get('type') || 'all';
     return (
       <SidebarShell
-        search={{
-          value: q,
-          onChange: (v: string) => setParam((p) => { if (v.trim()) p.set('q', v.trim()); else p.delete('q'); }),
-          onClear: () => setParam((p) => p.delete('q')),
-          placeholder: 'Search suppliers',
-          variant: 'blue',
-        }}
         headerRows={[
           modeRail,
+          searchBar('Filter suppliers…'),
           <div key="type" className={sidebarHeaderPillRowClass}>
             <HorizontalButtonSlider
               items={SUPPLIER_TYPE_ITEMS}

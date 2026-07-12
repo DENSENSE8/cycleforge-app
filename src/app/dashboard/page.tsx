@@ -30,7 +30,7 @@ import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView'
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 
 function DashboardPageContent() {
-  const { detailsEnabled, orderView, searchQuery } = useDashboardSearchController();
+  const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
 
   const { selectionEnabled, selectMode, toggleSelectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection(orderView);
@@ -49,6 +49,7 @@ function DashboardPageContent() {
     <div className="flex h-full w-full">
       <DashboardOrdersView
         orderView={orderView}
+        onSelectView={setOrderView}
         selectMode={selectMode}
         onToggleSelectMode={toggleSelectMode}
         selectionEnabled={selectionEnabled}

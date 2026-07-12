@@ -388,11 +388,19 @@ export async function fetchReceivingContext(orgId: OrgId): Promise<string> {
       `
         SELECT
           COUNT(*)::int AS awaiting_unboxing,
-          COUNT(*) FILTER (WHERE received_at::date = CURRENT_DATE)::int AS received_today,
-          COUNT(*) FILTER (WHERE is_return = true)::int AS returns_pending
-        FROM receiving
-        WHERE organization_id = $1
-          AND unboxed_at IS NULL
+          COUNT(*) FILTER (WHERE rt.door_received_at::date = CURRENT_DATE)::int AS received_today,
+          COUNT(*) FILTER (WHERE r.is_return = true)::int AS returns_pending
+        FROM receiving_carton r
+        -- Wave-2 reader cutover: carton received/unboxed facts come from the
+        -- 1:1 street tables (trigger-mirrored; NULL when no row = not yet).
+        LEFT JOIN receiving_triage rt
+          ON rt.receiving_id = r.id
+         AND rt.organization_id = r.organization_id
+        LEFT JOIN receiving_unbox ru
+          ON ru.receiving_id = r.id
+         AND ru.organization_id = r.organization_id
+        WHERE r.organization_id = $1
+          AND ru.unboxed_at IS NULL
       `,
       [orgId],
     ),
@@ -402,7 +410,7 @@ export async function fetchReceivingContext(orgId: OrgId): Promise<string> {
         SELECT
           COUNT(*) FILTER (WHERE workflow_status = 'EXPECTED')::int AS expected_count,
           COUNT(*) FILTER (WHERE workflow_status = 'ARRIVED')::int AS arrived_count
-        FROM receiving_lines
+        FROM receiving_line
         WHERE organization_id = $1
       `,
       [orgId],

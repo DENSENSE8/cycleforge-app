@@ -33,7 +33,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
   const owned = await tenantQuery(
     ctx.organizationId,
-    `SELECT 1 FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    `SELECT 1 FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [receivingId, ctx.organizationId],
   );
   if (owned.rows.length === 0) {

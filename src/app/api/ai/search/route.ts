@@ -65,7 +65,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       method: 'POST',
       headers: getHermesHeaders({
         'Content-Type': 'application/json',
-        'X-Source': 'usav-search',
+        'X-Source': 'cycle-forge-search',
       }),
       body: JSON.stringify({
         model: getHermesModel(),

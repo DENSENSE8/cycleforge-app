@@ -65,7 +65,7 @@ interface QueueState {
 }
 
 // ─── Storage shape ──────────────────────────────────────────────────────────
-const STORAGE_KEY = 'usav.receiving.upload_queue.v1';
+const STORAGE_KEY = 'cf.receiving.upload_queue.v1';
 const STORAGE_VERSION = 1;
 // Hard cap on persisted entries to keep localStorage well below the 5 MB
 // per-origin quota even on cheap Android Chromes.

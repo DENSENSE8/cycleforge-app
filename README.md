@@ -1,11 +1,9 @@
 # CycleForge
 
 Multi-tenant operations platform for order, warehouse, and fulfilment
-workflows. Originally built for USAV Solutions Inc as a single-tenant
-internal tool (`USAV-Orders-Backend`); now developed as CycleForge, a
-standalone SaaS product where each customer is a tenant with isolated
-data, integrations, billing, and feature flags. USAV Solutions remains
-the dogfood tenant/workspace — see `docs/cycle-forge-branding-spec.md`
+workflows. CycleForge is a SaaS product where each customer is a tenant
+with isolated data, integrations, billing, and feature flags. The first
+(dogfood) workspace is org #1 — see `docs/cycle-forge-branding-spec.md`
 for the product-vs-workspace naming split.
 
 This repository is a Next.js (App Router) application that combines:
@@ -177,7 +175,7 @@ npm run dev
 - `EBAY_CERT_ID`
 - `EBAY_RU_NAME`
 - `EBAY_ENVIRONMENT` (`PRODUCTION` or non-production)
-- `EBAY_REFRESH_TOKEN_USAV` (for token refresh helpers)
+- `EBAY_REFRESH_TOKEN_USAV` (dogfood env bootstrap for token refresh helpers)
 
 ### Ecwid/Square
 
@@ -247,11 +245,6 @@ Channel names are fixed in code (`src/lib/realtime/channels.ts` `DEFAULT_*` cons
 npm run dev
 npm run build
 npm run start
-npm run desktop:dev
-npm run desktop:start
-npm run desktop:dist
-npm run desktop:dist:mac
-npm run desktop:dist:win
 npm run lint
 npm run db:studio
 npm run db:generate
@@ -260,30 +253,7 @@ npm run db:push
 
 Notes:
 - `sync:packer-logs` and `sync:packer-logs:preview` exist in `package.json`, but currently point to missing files.
-
-## Desktop App (Electron Wrapper)
-
-The desktop app is configured as a thin Electron shell around the hosted web app, not a bundled offline copy of the Next.js backend.
-
-- Electron entry point: `electron/main.js`
-- Secure preload bridge: `electron/preload.js`
-- Dev launcher: `scripts/electron-dev.js`
-- Packaged output directory: `desktop-dist/`
-
-Behavior:
-- `npm run desktop:dev` starts Next.js locally, waits for `http://127.0.0.1:3000`, then opens Electron against that local URL.
-- `npm run desktop:start` launches Electron directly against the configured remote URL.
-- `npm run desktop:dist:mac` builds a macOS `.dmg`.
-- `npm run desktop:dist:win` builds a Windows `.exe` installer.
-
-Configuration:
-- Production desktop URL defaults to `https://app.cycleforge.ai`
-- Override with `ELECTRON_START_URL` when needed
-- External domains open in the system browser instead of navigating inside the app window
-
-Important:
-- Do not ship backend secrets inside Electron
-- Package builds require network access because `electron-builder` downloads platform binaries during packaging
+- Distribution is **browser web app only** (Chrome/Edge recommended for WebUSB/Web Serial label printing). There is no Electron desktop shell.
 
 ## Database Initialization / Migration Endpoints
 
@@ -310,9 +280,10 @@ hard-errors rather than silently re-running.
 ### Tenancy
 
 Every staff row belongs to an **organization** (`organizations` table,
-backfilled by `2026-05-22_organizations_tenancy.sql`). USAV is org #1 with
-a fixed UUID — see `src/lib/tenancy/constants.ts`. Routes that need a
-tenant-scoped DB client should use:
+backfilled by `2026-05-22_organizations_tenancy.sql`). The dogfood tenant
+is org #1 with a fixed UUID (`DOGFOOD_ORG_ID` in
+`src/lib/tenancy/constants.ts`). Routes that need a tenant-scoped DB
+client should use:
 
 ```ts
 import { withTenantConnection, tenantQuery } from '@/lib/tenancy';
@@ -351,9 +322,9 @@ import { getIntegrationCredentials, upsertIntegrationCredentials } from '@/lib/i
 const creds = await getIntegrationCredentials<ZohoCredentials>(orgId, 'zoho');
 ```
 
-USAV's existing env-var credentials are kept as a transitional fallback —
-they only resolve for the USAV org id. New tenants get nothing from env,
-so a missing per-tenant row means the integration is genuinely off.
+Dogfood env-var credentials are kept as a transitional fallback — they
+only resolve for org #1 (`DOGFOOD_ORG_ID`). New tenants get nothing from
+env, so a missing per-tenant row means the integration is genuinely off.
 
 UI: `/settings/integrations`.
 

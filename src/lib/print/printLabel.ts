@@ -1,7 +1,5 @@
 import { renderDataMatrixSvg } from '@/lib/barcode/dataMatrixSvg';
-import { printHtmlSilent } from '@/lib/print/silentPrint';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
-import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 /**
  * Shared 2×1" DataMatrix label shell. Receiving, repair, and product/testing
@@ -12,8 +10,6 @@ import { isSilentPrintEnabled } from '@/lib/print/printMode';
  * dimensions). Keeping the shell in one place is what stops the labels from
  * drifting apart (e.g. the testing label printing at the wrong scale/position).
  */
-
-const MICRONS_PER_INCH = 25400;
 
 /** HTML-escape a value for safe interpolation into label markup. */
 export function escapeLabelHtml(s: string | null | undefined): string {
@@ -110,35 +106,14 @@ window.onafterprint=function(){setTimeout(function(){window.close();},80);};
 }
 
 /**
- * Render and print a 2×1" DataMatrix label. Tries Electron silent-print first;
- * falls back to a browser popup + `window.print()` when not in the desktop
- * shell. The label dimensions are mirrored into the microns `pageSize` so the
- * thermal printer picks the right stock.
+ * Render and print a 2×1" DataMatrix label via a hidden iframe + the page's
+ * own `window.print()`. Silent under Chromium `--kiosk-printing` (default
+ * printer); otherwise the normal print dialog. Callers that can pair a thermal
+ * printer via WebUSB/Web Serial should prefer `printRawToProfile` first and
+ * only fall through here.
  */
 export function printLabel(opts: PrintLabelOptions): void {
   if (typeof window === 'undefined') return;
-
-  const widthIn = opts.widthIn ?? 2;
-  const heightIn = opts.heightIn ?? 1;
   const html = buildLabelHtml(opts);
-
-  void (async () => {
-    // Silent printing OFF → skip the Electron silent path and go straight to
-    // the dialog (hidden iframe + window.print()).
-    if (isSilentPrintEnabled()) {
-      const handled = await printHtmlSilent(html, {
-        pageSize: {
-          width: Math.round(widthIn * MICRONS_PER_INCH),
-          height: Math.round(heightIn * MICRONS_PER_INCH),
-        },
-        margins: { marginType: 'none' },
-        waitMs: opts.waitMs ?? 250,
-      });
-      if (handled) return;
-    }
-    // Browser fallback: print via a hidden iframe + the page's own
-    // window.print(). Silent under `--kiosk-printing` (default printer);
-    // otherwise the normal dialog. No popup flash, no popup-blocker risk.
-    printHtmlInIframe(html, { name: opts.name ?? 'printLabel' });
-  })();
+  printHtmlInIframe(html, { name: opts.name ?? 'printLabel' });
 }

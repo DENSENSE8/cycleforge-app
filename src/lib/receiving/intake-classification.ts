@@ -103,7 +103,7 @@ export const INTAKE_CLASSIFICATION_OPTS: ReadonlyArray<{
   { value: 'FBA_RETURN', label: 'FBA Return', short: 'FBA', tone: 'rose' },
   { value: 'AMAZON_RETURN', label: 'Amazon Return', short: 'AMZ', tone: 'rose' },
   { value: 'EBAY_RETURN_DH', label: 'eBay Return (DH)', short: 'eBay·DH', tone: 'rose' },
-  { value: 'EBAY_RETURN_USAV', label: 'eBay Return (USAV)', short: 'eBay·US', tone: 'rose' },
+  { value: 'EBAY_RETURN_USAV', label: 'eBay Return', short: 'eBay', tone: 'rose' },
   { value: 'EBAY_RETURN_MK', label: 'eBay Return (MK)', short: 'eBay·MK', tone: 'rose' },
   { value: 'WALMART_RETURN', label: 'Walmart Return', short: 'WMT', tone: 'rose' },
   { value: 'TRADE_IN', label: 'Trade-In', short: 'Trade', tone: 'amber' },

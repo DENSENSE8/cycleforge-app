@@ -13,7 +13,7 @@
  * hard-DELETE'ing the shared receiving line/carton. Dismissing hides the row
  * from THIS staffer's rail only and is reversible — the row still exists for
  * everyone else. The rail read filter anti-joins the same set so a refetch
- * keeps it hidden (no `usav-refresh-data` broadcast needed; the optimistic
+ * keeps it hidden (no `app-refresh-data` broadcast needed; the optimistic
  * drop + the read filter carry it).
  */
 

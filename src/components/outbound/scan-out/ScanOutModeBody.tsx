@@ -8,13 +8,13 @@ import { ScanOutStationBar } from '@/components/outbound/scan-out/ScanOutStation
 import { OutboundDockStatusLegend } from '@/components/outbound/scan-out/OutboundDockStatusLegend';
 import { stagedOrdersQuery } from '@/lib/queries/outbound-queries';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 /** Scan-out mode sidebar — filter, staging count, and dock scan bar (list lives in the right pane). */
 export function ScanOutModeBody() {
   const { q, setQ } = useOutboundUrlState();
   const [searchInput, setSearchInput] = useState(q);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const stagedQuery = useQuery(stagedOrdersQuery({ searchQuery: q }));
   const queueCount = stagedQuery.data?.length ?? 0;
@@ -39,18 +39,26 @@ export function ScanOutModeBody() {
 
   return (
     <SidebarShell
-      search={{
-        value: searchInput,
-        onChange: handleInputChange,
-        onSearch: commitSearch,
-        onClear: () => {
-          setSearchInput('');
-          commitSearch('');
-        },
-        inputRef,
-        placeholder: 'Filter staged packages…',
-        variant: 'blue',
-      }}
+      headerAbove={
+        // In-context list filter — local base SearchBar over the staged queue.
+        // The dock ScanOutStationBar in the footer is a scan-first input, untouched.
+        // Global header pill stays global.
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={searchInput}
+            onChange={handleInputChange}
+            onClear={() => {
+              setSearchInput('');
+              commitSearch('');
+            }}
+            onSearch={commitSearch}
+            placeholder="Filter staged packages…"
+            isSearching={stagedQuery.isFetching}
+          />
+        </div>
+      }
       headerBelow={
         <div className={`${SIDEBAR_GUTTER} space-y-2 pb-1`}>
           <OutboundDockStatusLegend />

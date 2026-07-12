@@ -22,6 +22,7 @@ import {
 import { audit } from '@/lib/auth/audit';
 import { getStaffRole } from '@/lib/auth/permissions';
 import { findActiveShift, clockIn } from '@/lib/auth/shift-clock';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 import pool from '@/lib/db';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types';
 
@@ -43,6 +44,10 @@ export async function POST(req: NextRequest) {
   const ua = req.headers.get('user-agent');
 
   try {
+    const rl = await checkRateLimitAsync({
+      headers: req.headers, routeKey: 'auth-passkey-authenticate-finish', limit: 30, windowMs: 10 * 60 * 1000,
+    });
+    if (!rl.ok) return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429 });
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const response = (body as { response?: unknown }).response as AuthenticationResponseJSON | undefined;
     const deviceKind = asDeviceKind((body as { deviceKind?: unknown }).deviceKind);

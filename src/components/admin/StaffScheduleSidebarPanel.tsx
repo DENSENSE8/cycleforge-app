@@ -11,6 +11,7 @@ import {
 } from '@/components/admin/shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getStaffColorHex } from '@/utils/staff-colors';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 type StaffViewMode = 'all' | 'active' | 'inactive' | 'technician' | 'packer';
 
@@ -99,22 +100,6 @@ export function StaffScheduleSidebarPanel() {
 
   return (
     <AdminSidebarShell
-      search={{
-        value: search,
-        onChange: (v) =>
-          setParam((p) => {
-            p.set('section', 'staff_schedule');
-            if (v.trim()) p.set('search', v.trim());
-            else p.delete('search');
-          }),
-        onClear: () =>
-          setParam((p) => {
-            p.set('section', 'staff_schedule');
-            p.delete('search');
-          }),
-        placeholder: 'Search name or ID',
-        variant: 'blue',
-      }}
       filters={
         <AdminFilterChips
           options={STAFF_VIEW_OPTIONS}
@@ -134,6 +119,27 @@ export function StaffScheduleSidebarPanel() {
         />
       }
     >
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={search}
+          onChange={(v) =>
+            setParam((p) => {
+              p.set('section', 'staff_schedule');
+              if (v.trim()) p.set('search', v.trim());
+              else p.delete('search');
+            })
+          }
+          onClear={() =>
+            setParam((p) => {
+              p.set('section', 'staff_schedule');
+              p.delete('search');
+            })
+          }
+          placeholder="Filter name or ID…"
+        />
+      </div>
       {isLoading ? (
         <div className="px-2 py-6 text-center text-xs text-text-faint">Loading staff…</div>
       ) : filtered.length === 0 ? (

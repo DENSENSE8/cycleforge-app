@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Standalone script: Import all Zoho Purchase Orders into receiving / receiving_lines.
+ * Standalone script: Import all Zoho Purchase Orders into receiving_carton / receiving_line.
  *
  * Usage:
  *   node scripts/import-zoho-pos.js
@@ -164,15 +164,15 @@ async function runMigration() {
   try {
     console.log('⚙️   Running migration...');
     await client.query(`
-      ALTER TABLE receiving
+      ALTER TABLE receiving_carton
         ADD COLUMN IF NOT EXISTS zoho_purchaseorder_id     TEXT,
         ADD COLUMN IF NOT EXISTS zoho_purchaseorder_number TEXT
     `);
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_receiving_zoho_po_id ON receiving(zoho_purchaseorder_id)
+      CREATE INDEX IF NOT EXISTS idx_receiving_zoho_po_id ON receiving_carton(zoho_purchaseorder_id)
     `);
     await client.query(`
-      ALTER TABLE receiving_lines
+      ALTER TABLE receiving_line
         ADD COLUMN IF NOT EXISTS zoho_purchase_receive_id TEXT,
         ADD COLUMN IF NOT EXISTS zoho_purchaseorder_id    TEXT,
         ADD COLUMN IF NOT EXISTS zoho_line_item_id        TEXT,
@@ -183,7 +183,7 @@ async function runMigration() {
         ADD COLUMN IF NOT EXISTS notes                    TEXT
     `);
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_receiving_lines_zoho_po_id ON receiving_lines(zoho_purchaseorder_id)
+      CREATE INDEX IF NOT EXISTS idx_receiving_lines_zoho_po_id ON receiving_line(zoho_purchaseorder_id)
     `);
     console.log('✅  Migration complete.');
   } finally {
@@ -265,7 +265,7 @@ async function importPO(rawPo, recCols, lineCols) {
     let mode = 'created';
     if (recCols.has('zoho_purchaseorder_id')) {
       const existing = await client.query(
-        `SELECT id FROM receiving WHERE zoho_purchaseorder_id = $1 ORDER BY id DESC LIMIT 1`,
+        `SELECT id FROM receiving_carton WHERE zoho_purchaseorder_id = $1 ORDER BY id DESC LIMIT 1`,
         [zohoId]
       );
       if (existing.rows[0]?.id) { receivingId = existing.rows[0].id; mode = 'updated'; }
@@ -279,7 +279,7 @@ async function importPO(rawPo, recCols, lineCols) {
       }
       vals.push(receivingId);
       if (updates.length) {
-        await client.query(`UPDATE receiving SET ${updates.join(', ')} WHERE id = $${vals.length}`, vals);
+        await client.query(`UPDATE receiving_carton SET ${updates.join(', ')} WHERE id = $${vals.length}`, vals);
       }
     } else {
       const cols = []; const vals = [];
@@ -289,15 +289,15 @@ async function importPO(rawPo, recCols, lineCols) {
       }
       const ph = cols.map((_, i) => `$${i + 1}`).join(', ');
       const ins = await client.query(
-        `INSERT INTO receiving (${cols.join(', ')}) VALUES (${ph}) RETURNING id`, vals
+        `INSERT INTO receiving_carton (${cols.join(', ')}) VALUES (${ph}) RETURNING id`, vals
       );
       receivingId = ins.rows[0].id;
     }
 
-    // receiving_lines
+    // receiving_line
     let insertedLines = 0;
     if (receivingId && lineCols.size > 0) {
-      await client.query(`DELETE FROM receiving_lines WHERE receiving_id = $1`, [receivingId]);
+      await client.query(`DELETE FROM receiving_line WHERE receiving_id = $1`, [receivingId]);
 
       for (const rawLine of lineItems) {
         if (!rawLine) continue;
@@ -334,7 +334,7 @@ async function importPO(rawPo, recCols, lineCols) {
           c === 'disposition_audit' ? `$${i + 1}::jsonb` : `$${i + 1}`
         );
         await client.query(
-          `INSERT INTO receiving_lines (${cols.join(', ')}) VALUES (${ph.join(', ')})`, vals
+          `INSERT INTO receiving_line (${cols.join(', ')}) VALUES (${ph.join(', ')})`, vals
         );
         insertedLines++;
       }
@@ -362,15 +362,15 @@ async function main() {
 
   // Pre-fetch column sets once
   const recColsRes = await pool.query(
-    `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving'`
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_carton'`
   );
   const recCols = new Set(recColsRes.rows.map(r => r.column_name));
 
   const hasLinesRes = await pool.query(
-    `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'receiving_lines') AS exists`
+    `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'receiving_line') AS exists`
   );
   const lineColsRes = hasLinesRes.rows[0]?.exists
-    ? await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_lines'`)
+    ? await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_line'`)
     : { rows: [] };
   const lineCols = new Set(lineColsRes.rows.map(r => r.column_name));
 

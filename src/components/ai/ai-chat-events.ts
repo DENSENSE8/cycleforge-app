@@ -7,8 +7,14 @@
  * the chat through these window events instead of shared hook state — same
  * pattern the older AiChatPanel used with its `ai-new-chat` event.
  */
-export const AI_CHAT_PROMPT_EVENT = 'usav:ai-chat-prompt';
-export const AI_CHAT_NEW_EVENT = 'usav:ai-chat-new';
+export {
+  AI_CHAT_PROMPT_EVENT,
+  AI_CHAT_NEW_EVENT,
+} from '@/lib/app-events';
+import {
+  AI_CHAT_PROMPT_EVENT,
+  AI_CHAT_NEW_EVENT,
+} from '@/lib/app-events';
 
 /** Sidebar → page: send an example prompt into the chat. */
 export function emitAiChatPrompt(prompt: string): void {

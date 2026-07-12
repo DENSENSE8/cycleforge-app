@@ -22,13 +22,13 @@ export default function PackerDashboard({ packerId, showStaffSelector = true }: 
     }, [showStaffSelector]);
 
     useEffect(() => {
-        // `usav-refresh-data` used to remount the whole pane via a `key` nonce
+        // `app-refresh-data` used to remount the whole pane via a `key` nonce
         // (dropped cache + scroll). Invalidate the packer-logs query instead so
         // React Query refetches in place (station-table-unification §Phase 2).
         const handleRefresh = () => queryClient.invalidateQueries({ queryKey: ['packer-logs'] });
-        window.addEventListener('usav-refresh-data', handleRefresh as EventListener);
+        window.addEventListener('app-refresh-data', handleRefresh as EventListener);
         return () => {
-            window.removeEventListener('usav-refresh-data', handleRefresh as EventListener);
+            window.removeEventListener('app-refresh-data', handleRefresh as EventListener);
         };
     }, [queryClient]);
 

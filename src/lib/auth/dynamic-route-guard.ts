@@ -26,7 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import type { AuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { audit } from '@/lib/auth/audit';
 import { recordAudit } from '@/lib/audit-logs';
@@ -46,7 +46,7 @@ export async function requireRoutePerm(
   req: NextRequest,
   perm: PermissionString,
 ): Promise<RouteGuardResult> {
-  const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(req.cookies);
   const user = await getCurrentUserBySid(sid);
 
   if (!user) {

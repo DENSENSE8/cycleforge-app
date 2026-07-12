@@ -7,7 +7,7 @@
  *   - whether it references organizationId (ctx-scoped intent)
  *   - whether it uses the tenant GUC wrappers (tenantQuery/withTenantConnection/
  *     withTenantTransaction) vs the raw @/lib/db pool vs drizzle neon-http
- *   - whether it touches transitional escape hatches (USAV_ORG_ID/transitionalUsavOrgId)
+ *   - whether it touches transitional escape hatches (DOGFOOD_ORG_ID/transitionalDogfoodOrgId)
  *   - which TENANT tables it references (word-boundary match against the live
  *     tenant-table set from coverage.generated.json)
  *   - a risk rating
@@ -80,7 +80,7 @@ for (const file of files) {
   const tenantWrapped = /\b(tenantQuery|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/.test(src);
   const rawPool = /from\s+['"]@\/lib\/db['"]/.test(src);
   const drizzle = /from\s+['"]@\/lib\/drizzle|neon-http/.test(src);
-  const transitional = /\b(USAV_ORG_ID|transitionalUsavOrgId)\b/.test(src);
+  const transitional = /\b(DOGFOOD_ORG_ID|transitionalDogfoodOrgId)\b/.test(src);
   const rp = routePath(file);
   const isCron = rp.startsWith('/api/cron');
   const isPathParam = /\[[^\]]+\]/.test(rp);
@@ -169,7 +169,7 @@ L.push(`| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) |
 L.push(`| references organizationId | ${summary.orgIdRef} |`);
 L.push(`| raw @/lib/db pool import | ${summary.rawPool} |`);
 L.push(`| drizzle / neon-http | ${summary.drizzle} |`);
-L.push(`| uses USAV_ORG_ID / transitionalUsavOrgId | ${summary.transitional} |`);
+L.push(`| uses DOGFOOD_ORG_ID / transitionalDogfoodOrgId | ${summary.transitional} |`);
 L.push(`| cron routes | ${summary.cron} |`);
 L.push('');
 L.push('| risk | count |');

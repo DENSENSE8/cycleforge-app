@@ -5,6 +5,7 @@ export * from './InlineSaveIndicator';
 export * from './StatusBadge';
 export * from './MetricLineRow';
 export * from './StatCard';
+export * from './AnimatedStat';
 export * from './UnderlineValue';
 export * from './InlineNotice';
 export * from './InlineEditableValue';

@@ -1,6 +1,6 @@
 # Nango sidecar — setup & wiring
 
-This is the operational companion to `docs/nango-additive-integration-plan.md`.
+This is the operational runbook for the additive Nango integration layer.
 It covers standing up the self-hosted **auth + proxy** sidecar and turning on
 the additive layer. Nothing in the app activates until `NANGO_SECRET_KEY` is set,
 so these steps can be done whenever you're ready.

@@ -19,13 +19,13 @@
 import { Pool } from 'pg';
 import { upsertOrderTracking } from '@/lib/neon/orders-tracking-queries';
 import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL required'); process.exit(1); }
 const pool = new Pool({ connectionString: DATABASE_URL });
 
-const ORG_ID = transitionalUsavOrgId();
+const ORG_ID = transitionalDogfoodOrgId();
 const CLEAN_ONLY = process.argv.includes('--clean');
 
 const AWAIT_ORDER_ID = 'TEST-UNSHIP-AWAIT';

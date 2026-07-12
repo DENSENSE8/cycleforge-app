@@ -1,7 +1,7 @@
 # Multi-Tenancy Hardening — Execution Plan (codebase-specific build-out)
 
-> This is the concrete, repo-grounded build-out of [`docs/multi-tenancy-hardening-prompt.md`](../multi-tenancy-hardening-prompt.md).
-> It supersedes the role decision in [`docs/phase-1-rls-plan.md`](../phase-1-rls-plan.md) (see **§Phase E / the keystone**).
+> This is the concrete, repo-grounded build-out of the multi-tenancy hardening brief.
+> It supersedes the role decision from the earlier Phase-1 RLS plan (see **§Phase E / the keystone**).
 > Authored 2026-06-13 from a live-DB scan + a 7-agent deep analysis. Ground-truth artifacts:
 >
 > - [`org-id-coverage.generated.md`](./org-id-coverage.generated.md) — per-table org_id/RLS state, from `pg_catalog` (not `schema.ts`). Regenerate: `node scripts/tenancy-coverage.mjs`.
@@ -18,7 +18,7 @@ Consequences:
 
 1. The ~68 tables that already have `ENABLE ROW LEVEL SECURITY` + a `*_tenant_isolation` policy are **100% inert**. RLS is decorative today.
 2. `enforce_tenant_isolation()` (which sets `FORCE`) will **not** isolate anything while the app connects as `neondb_owner` — it would ship RLS that *looks* on (`pg_policies` populated, `relforcerowsecurity=true`) but is fully bypassed. This is more dangerous than no RLS, because it reads as "done."
-3. `docs/phase-1-rls-plan.md`'s decision — *"take the FORCE-per-table path (keep the single `neondb_owner` role)"* — is **wrong** and is hereby overridden. The keystone is a **dedicated non-`BYPASSRLS`, non-owner application role** (Phase E). Every other phase is scaffolding that only becomes load-bearing after that flip.
+3. The earlier Phase-1 RLS plan's decision — *"take the FORCE-per-table path (keep the single `neondb_owner` role)"* — is **wrong** and is hereby overridden. The keystone is a **dedicated non-`BYPASSRLS`, non-owner application role** (Phase E). Every other phase is scaffolding that only becomes load-bearing after that flip.
 
 A standing CI guard now encodes this invariant: `scripts/tenancy-guard.ts` fails the build if any table is `FORCE`d while the live connection role still has `BYPASSRLS` (passes today: 0 forced).
 

@@ -17,6 +17,7 @@ import { LibraryBrowser } from '@/components/manuals/LibraryBrowser';
 import { RecentlyPrintedList, recentLookupKey } from '@/components/labels/RecentlyPrintedList';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 import { UnitHistoryFinder } from '@/components/labels/UnitHistoryFinder';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
   { id: 'volume',     label: 'Ordered',      icon: ShoppingCart },
@@ -54,23 +55,6 @@ const LABELS_SUB_VIEW_ITEMS: HorizontalSliderItem[] = [
   { id: 'recent',  label: 'Recent',   icon: Clock },
   { id: 'history', label: 'History',  icon: History },
 ];
-
-// Light scaffolding for the Recent and History sub-views while their data
-// paths land in follow-up phases. Defined at module-top (before the main
-// component) so the function declaration is reliably available when the
-// JSX above evaluates — Turbopack's HMR has been seen to hand back stale
-// builds where a function declaration further down the file is missing
-// from the hoisted set, producing a ReferenceError at use sites.
-function LabelsSubViewPlaceholder({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-      <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
-        {title}
-      </p>
-      <p className="mt-3 max-w-[260px] text-caption font-medium text-text-soft">{body}</p>
-    </div>
-  );
-}
 
 /**
  * Sidebar surface for `/products`. Hosts:
@@ -181,6 +165,16 @@ export function ProductsSidebarPanel() {
   // scan/paste input (Enter dispatches a lookup the History list resolves).
   const isHistory = isLabels && labelsView === 'history';
 
+  const searchPlaceholder = isHistory
+    ? 'Scan or paste a DataMatrix…'
+    : isLabels
+      ? 'Filter SKU, title…'
+      : isPairing
+        ? 'Filter SKU, title, or any platform ID…'
+        : isManuals
+          ? 'Fuzzy filter folders & manuals…'
+          : 'Filter products…';
+
   // Manuals view = the file-tree library browser (sidebar) + PDF viewer
   // (main pane). QC delegates to the main pane. Labels/Pairing have their
   // own sidebar bodies below.
@@ -188,47 +182,42 @@ export function ProductsSidebarPanel() {
     <SidebarShell
       className="bg-surface-card"
       headerAbove={
-        !masterNavEnabled ? (
-          <div className={sidebarHeaderPillRowClass}>
-            <HorizontalButtonSlider
-              items={viewItems}
-              value={view}
-              onChange={handleViewChange}
-              variant="nav"
-              dense
-              className="w-full"
-              aria-label="Products view"
+        <>
+          {!masterNavEnabled ? (
+            <div className={sidebarHeaderPillRowClass}>
+              <HorizontalButtonSlider
+                items={viewItems}
+                value={view}
+                onChange={handleViewChange}
+                variant="nav"
+                dense
+                className="w-full"
+                aria-label="Products view"
+              />
+            </div>
+          ) : null}
+          {/* In-context list filter — local base SearchBar. The global header
+              pill stays global. History is a submit-to-scan input. */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchInput}
+              onChange={isHistory ? setSearchInput : handleSearchChange}
+              onClear={() => (isHistory ? setSearchInput('') : handleSearchChange(''))}
+              onSearch={(raw) => {
+                const value = raw.trim();
+                if (!value) return;
+                if (isHistory) {
+                  window.dispatchEvent(new CustomEvent('unit-history:lookup', { detail: { raw: value } }));
+                  setSearchInput('');
+                }
+              }}
+              placeholder={searchPlaceholder}
             />
           </div>
-        ) : null
+        </>
       }
-      /* Search bar — always mounted so it stays in position across all sub-views */
-      search={{
-        value: searchInput,
-        onChange: isHistory ? setSearchInput : handleSearchChange,
-        onSearch: isHistory
-          ? (raw) => {
-              const value = raw.trim();
-              if (value) {
-                window.dispatchEvent(
-                  new CustomEvent('unit-history:lookup', { detail: { raw: value } }),
-                );
-              }
-              setSearchInput('');
-            }
-          : undefined,
-        onClear: () => (isHistory ? setSearchInput('') : handleSearchChange('')),
-        placeholder: isHistory
-          ? 'Scan or paste a DataMatrix…'
-          : isLabels
-            ? 'Search SKU, title…'
-            : isPairing
-              ? 'Search SKU, title, or any platform ID…'
-              : isManuals
-                ? 'Fuzzy search folders & manuals…'
-                : 'Search products…',
-        variant: isLabels ? 'blue' : 'gray',
-      }}
       headerRows={[
         // Labels sub-tab row — Print / Recent / History.
         isLabels ? (

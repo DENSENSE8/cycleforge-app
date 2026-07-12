@@ -12,7 +12,7 @@
  *   { companyName: string, slug?: string, fullName: string, email: string,
  *     pin: string (4-12 digits) }
  *
- * Response: sets the usav_sid cookie and returns { orgId, slug, staffId,
+ * Response: sets the cf_sid session cookie and returns { orgId, slug, staffId,
  *           defaultHomePath: '/dashboard' }.
  */
 
@@ -24,12 +24,11 @@ import { checkRateLimitAsync } from '@/lib/api-guard';
 import { createSession, SESSION_COOKIE_NAME, cookieMaxAgeForSession } from '@/lib/auth/session';
 import { hashPin, isObviousPin } from '@/lib/auth/pin';
 import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
-import { getAccountByEmail, createAccount } from '@/lib/identity/accounts';
+import { getAccountByEmail, createAccount, setAccountPassword } from '@/lib/identity/accounts';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { sendEmailBestEffort } from '@/lib/email/send';
 import { createStripeCustomer } from '@/lib/billing/stripe';
 import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
-import { seedDefaultWorkflowForOrg } from '@/lib/studio/seed-org-workflow';
 import { ensureAdminRoleWired } from '@/lib/auth/ensure-admin-role';
 import {
   mintEmailVerificationToken,
@@ -38,12 +37,16 @@ import {
 } from '@/lib/auth/email-verification';
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$/;
+// Owner signs up with a PASSWORD (industry-standard per-person account), not a
+// shared/PIN-only credential. An optional station PIN can still be set later
+// (post-onboarding) — accept it here if supplied, but never require it.
 const SignupSchema = z.object({
-  companyName: z.string().trim().min(1).max(120),
+  companyName: z.string().trim().min(1).max(120),   // shown as "Workspace name" in the UI
   slug: z.string().trim().toLowerCase().regex(SLUG_RE).optional(),
   fullName: z.string().trim().min(1).max(120),
   email: z.string().trim().toLowerCase().email(),
-  pin: z.string().regex(/^\d{4,12}$/),
+  password: z.string().min(8).max(200),
+  pin: z.string().regex(/^\d{4,12}$/).optional(),
 });
 
 function slugify(name: string): string {
@@ -89,7 +92,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     );
   }
 
-  if (isObviousPin(parsed.pin)) {
+  if (parsed.pin && isObviousPin(parsed.pin)) {
     return NextResponse.json({ error: 'WEAK_PIN' }, { status: 400 });
   }
 
@@ -122,9 +125,14 @@ export const POST = withAuth(async (req: NextRequest) => {
     accountId = existingAccount
       ? existingAccount.id
       : await createAccount(
-          { displayName: parsed.fullName, email: parsed.email, password: null },
+          { displayName: parsed.fullName, email: parsed.email, password: parsed.password },
           client,
         );
+    // If the account already existed (invited elsewhere) but had no password,
+    // set the one they chose here so they can sign in with it.
+    if (existingAccount && !existingAccount.passwordHash) {
+      await setAccountPassword(accountId, parsed.password, client);
+    }
 
     // 3. Membership linking the account to the new org as an active member.
     const memRes = await client.query<{ id: string }>(
@@ -138,12 +146,15 @@ export const POST = withAuth(async (req: NextRequest) => {
     const membershipId = memRes.rows[0]!.id;
 
     // 4. First admin staff (the per-org profile), linked to account + membership.
-    const pinHash = await hashPin(parsed.pin);
+    // Owner authenticates by PASSWORD (auth_method='password'); the station PIN
+    // is optional and only set if one was supplied at signup.
+    const pinHash = parsed.pin ? await hashPin(parsed.pin) : null;
     const staffRes = await client.query<{ id: number }>(
       `INSERT INTO staff
          (name, role, active, organization_id, pin_hash, pin_set_at, status, default_home_path, email,
-          account_id, membership_id)
-       VALUES ($1, 'admin', true, $2, $3, now(), 'active', '/dashboard', $4, $5, $6)
+          account_id, membership_id, auth_method)
+       VALUES ($1, 'admin', true, $2, $3, CASE WHEN $3 IS NULL THEN NULL ELSE now() END,
+               'active', '/', $4, $5, $6, 'password')
        RETURNING id`,
       [parsed.fullName, orgId, pinHash, parsed.email, accountId, membershipId],
     );
@@ -206,11 +217,11 @@ export const POST = withAuth(async (req: NextRequest) => {
   void seedOrgCatalog(orgId).catch((err) =>
     console.error('[signup] seedOrgCatalog failed for new org', orgId, err),
   );
-  // Clone + activate the default system workflow so the engine can route intake
-  // for the new tenant out-of-the-box (F4-lite). Best-effort.
-  void seedDefaultWorkflowForOrg(orgId, staffId).catch((err) =>
-    console.error('[signup] seedDefaultWorkflowForOrg failed for new org', orgId, err),
-  );
+  // Template Platform Phase 1: signup NO LONGER silently activates a live
+  // workflow graph. A brand-new org has no active workflow until its owner
+  // chooses an ops SOP template at onboarding (the `workflow` step →
+  // /onboarding/template → POST /api/onboarding/template → installTemplateIntoOrg).
+  // seedDefaultWorkflowForOrg survives for dogfood/backfill scripts only.
 
   // WS6.3 — welcome email + email verification. The verification link reuses the
   // F1 magic-link token store (email_login_tokens); clicking it confirms the email
@@ -232,7 +243,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       text:
         `Hi ${parsed.fullName},\n\n` +
         `Your workspace "${parsed.companyName}" is ready. Your URL is:\n` +
-        `  ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.example.com'}/dashboard\n\n` +
+        `  ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.example.com'}/\n\n` +
         verifyLine +
         `You're on a 14-day trial. Invite teammates from the admin panel.\n`,
     });
@@ -260,7 +271,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     orgId,
     slug,
     staffId,
-    defaultHomePath: '/dashboard',
+    defaultHomePath: '/',
   });
   res.cookies.set({
     name: SESSION_COOKIE_NAME,

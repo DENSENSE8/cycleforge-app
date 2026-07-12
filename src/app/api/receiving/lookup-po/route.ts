@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
+import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
+import { upsertReceivingLineTesting, upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
 import { isTestTrackingShortcutAllowed } from '@/lib/tenancy/test-tracking';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { formatPSTTimestamp } from '@/utils/date';
@@ -104,19 +108,37 @@ async function computePendingOrderSkus(
 async function markReceivingPriority(receivingId: number | null, orgId: string): Promise<void> {
   if (!receivingId || !Number.isFinite(receivingId)) return;
   try {
-    await tenantQuery(
-      orgId,
+    await withTenantTransaction(orgId, async (client) => {
       // Pending-order match = top urgency: set the manual override to tier 0
       // (Priority) and keep is_priority in lockstep. Idempotent — skip rows
-      // already at the top tier.
-      `UPDATE receiving
-          SET is_priority = true,
-              priority_tier = 0,
-              priority_lane = COALESCE(priority_lane, CASE WHEN is_return THEN 'RETURN' ELSE 'PO_STOCKOUT' END),
-              updated_at = NOW()
-        WHERE id = $1 AND (priority_tier IS DISTINCT FROM 0 OR is_priority = false)`,
-      [receivingId],
-    );
+      // already at the top tier (which also skips the lane stamp, exactly like
+      // the old single UPDATE). is_priority/priority_tier stay on the spine;
+      // priority_lane is triage street state (receiving_triage.priority_lane).
+      const upd = await client.query<{ is_return: boolean | null }>(
+        `UPDATE receiving_carton
+            SET is_priority = true,
+                priority_tier = 0,
+                updated_at = NOW()
+          WHERE id = $1 AND (priority_tier IS DISTINCT FROM 0 OR is_priority = false)
+          RETURNING is_return`,
+        [receivingId],
+      );
+      if ((upd.rowCount ?? 0) === 0) return;
+      // COALESCE-once lane routing: never overwrite an operator's manual pick —
+      // only stamp when rt.priority_lane is currently unset (read-check, since
+      // the street helper's lane field is overwrite-when-present).
+      const cur = await client.query<{ priority_lane: string | null }>(
+        `SELECT priority_lane FROM receiving_triage
+          WHERE receiving_id = $1 AND organization_id = $2
+          LIMIT 1`,
+        [receivingId, orgId],
+      );
+      if ((cur.rows[0]?.priority_lane ?? null) == null) {
+        await upsertReceivingTriage(client, orgId, receivingId, {
+          priorityLane: upd.rows[0]?.is_return ? 'RETURN' : 'PO_STOCKOUT',
+        });
+      }
+    });
   } catch (err) {
     console.warn('lookup-po: markReceivingPriority failed', errMessage(err));
   }
@@ -163,12 +185,16 @@ interface ReceivingLineLite {
 }
 
 async function fetchLines(receivingId: number, orgId: string): Promise<ReceivingLineLite[]> {
+  // Zoho identity reads from receiving_line_zoho (rz) — the spine copies are
+  // write-dead and drop next migration.
   const result = await tenantQuery<ReceivingLineLite>(
     orgId,
-    `SELECT rl.id, rl.sku, rl.zoho_item_id, rl.zoho_purchaseorder_id,
+    `SELECT rl.id, rl.sku, rz.zoho_item_id, rz.zoho_purchaseorder_id,
             rl.quantity_expected, rl.quantity_received, rl.item_name,
             sc.image_url
-     FROM receiving_lines rl
+     FROM receiving_line rl
+     LEFT JOIN receiving_line_zoho rz
+       ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
      LEFT JOIN sku_catalog sc ON sc.sku = rl.sku
      WHERE rl.receiving_id = $1
      ORDER BY rl.id ASC`,
@@ -187,16 +213,20 @@ interface ReceivingPackage {
 }
 
 async function fetchReceivingPackage(receivingId: number, orgId: string): Promise<ReceivingPackage | null> {
+  // Door/unbox stamps read from the street tables (receiving_triage rt /
+  // receiving_unbox ru) — output aliases stay frozen for the response shape.
   const r = await tenantQuery<ReceivingPackage>(
     orgId,
-    `SELECT received_at::text AS received_at,
-            unboxed_at::text AS unboxed_at,
-            created_at::text AS created_at,
-            return_platform::text AS return_platform,
-            source_platform,
-            COALESCE(is_return, false) AS is_return
-     FROM receiving
-     WHERE id = $1
+    `SELECT rt.door_received_at::text AS received_at,
+            ru.unboxed_at::text AS unboxed_at,
+            r.created_at::text AS created_at,
+            r.return_platform::text AS return_platform,
+            r.source_platform,
+            COALESCE(r.is_return, false) AS is_return
+     FROM receiving_carton r
+     LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+     LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+     WHERE r.id = $1
      LIMIT 1`,
     [receivingId],
   );
@@ -306,17 +336,18 @@ async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<s
     300,
     [CACHE_TAGS.poByRef],
     async () => {
-      // Tenant-scoped via the GUC pool: receiving_lines + zoho_po_mirror are FORCEd,
-      // so RLS constrains resolution to THIS org — a scanned order# can never resolve
-      // to another tenant's PO id.
-      // 1. receiving_lines (the Incoming table) — newest wins.
+      // Tenant-scoped via the GUC pool: receiving_line_zoho + zoho_po_mirror are
+      // RLS-constrained, so resolution stays in THIS org — a scanned order# can
+      // never resolve to another tenant's PO id.
+      // 1. receiving_line_zoho (the line facts behind the Incoming table) —
+      //    newest line wins. The spine's number/norm/id copies are write-dead.
       const rl = await tenantQuery<{ zoho_purchaseorder_id: string }>(
         orgId,
         `SELECT zoho_purchaseorder_id
-           FROM receiving_lines
+           FROM receiving_line_zoho
           WHERE zoho_purchaseorder_number_norm = $1
             AND zoho_purchaseorder_id IS NOT NULL
-          ORDER BY id DESC
+          ORDER BY receiving_line_id DESC
           LIMIT 1`,
         [norm],
       );
@@ -360,7 +391,7 @@ async function resolvePoIdLocallyByTracking(
   if (preassignedReceivingId != null) {
     const r = await tenantQuery<{ zoho_purchaseorder_id: string | null }>(
       orgId,
-      `SELECT zoho_purchaseorder_id FROM receiving
+      `SELECT zoho_purchaseorder_id FROM receiving_carton
         WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [preassignedReceivingId, orgId],
     );
@@ -424,21 +455,58 @@ async function verifyPoNumberMatches(
  * left alone. `updated_at` is trigger-maintained. Returns the count adopted.
  */
 async function linkLocalPoLinesToReceiving(poId: string, receivingId: number, orgId: string): Promise<number> {
-  // Tenant-scoped: only adopt THIS org's unattached lines. receiving_lines is
+  // Tenant-scoped: only adopt THIS org's unattached lines. receiving_line is
   // FORCEd, so under the GUC pool RLS guarantees the UPDATE can never pull
   // another tenant's lines onto this carton (the prior owner-pool cross-org
   // adoption leak).
-  const res = await tenantQuery(
-    orgId,
-    `UPDATE receiving_lines
-        SET receiving_id = $1,
-            workflow_status = CASE WHEN workflow_status = 'EXPECTED' THEN 'MATCHED' ELSE workflow_status END
-      WHERE zoho_purchaseorder_id = $2
-        AND receiving_id IS NULL`,
-    [receivingId, poId],
-  );
+  //
+  // Step D fold (receiving state-machine chokepoint): the old one-shot UPDATE
+  // listed workflow_status in its SET (CASE EXPECTED→MATCHED ELSE unchanged),
+  // which fired the coarse-status trigger for EVERY adopted line and
+  // COALESCE-stamped scanned_at even on non-transitioning rows. Now the
+  // linkage (receiving_id) is a raw facts UPDATE that does NOT list
+  // workflow_status, and only rows actually moving EXPECTED→MATCHED go through
+  // transitionReceivingLine — so an already-MATCHED line no longer picks up a
+  // spurious scanned_at stamp (house rule: Scanned = triage-only).
+  // skipEvent: the bulk adopt never emitted an inventory_event, and the scan
+  // flow records its own receiving_scans row. `updated_at` stays
+  // trigger-maintained on the linkage UPDATE.
+  const adopted = await withTenantTransaction(orgId, async (client) => {
+    // PO identity keys off receiving_line_zoho (rz) — the spine copy is
+    // write-dead. FOR UPDATE OF rl locks only the line rows.
+    const lines = await client.query<{ id: number; workflow_status: string | null }>(
+      `SELECT rl.id, rl.workflow_status::text AS workflow_status
+         FROM receiving_line rl
+         JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+        WHERE rz.zoho_purchaseorder_id = $1
+          AND rl.receiving_id IS NULL
+        ORDER BY rl.id
+        FOR UPDATE OF rl`,
+      [poId],
+    );
+    if (lines.rows.length === 0) return 0;
+    await client.query(
+      `UPDATE receiving_line
+          SET receiving_id = $1
+        WHERE id = ANY($2::int[])`,
+      [receivingId, lines.rows.map((r) => r.id)],
+    );
+    for (const row of lines.rows) {
+      // Check-and-skip in TS: an identity transition through the chokepoint
+      // would still run its UPDATE (firing the coarse trigger), so only rows
+      // genuinely in EXPECTED transition. EXPECTED→MATCHED is a modeled edge.
+      if (row.workflow_status !== 'EXPECTED') continue;
+      await transitionReceivingLine(
+        { receivingLineId: row.id, to: 'MATCHED', skipEvent: true },
+        client,
+        orgId,
+      );
+    }
+    return lines.rows.length;
+  });
   await stampInboundHandlingUnit(receivingId, orgId);
-  return res.rowCount ?? 0;
+  return adopted;
 }
 
 /**
@@ -456,9 +524,9 @@ async function stampInboundHandlingUnit(receivingId: number, orgId: string): Pro
     // primary key; carton identity is the id / handling_unit_id.)
     await tenantQuery(
       orgId,
-      `UPDATE receiving_lines rl
+      `UPDATE receiving_line rl
           SET shipment_id = r.shipment_id
-         FROM receiving r
+         FROM receiving_carton r
         WHERE rl.receiving_id = $1
           AND r.id = $1
           AND r.shipment_id IS NOT NULL
@@ -479,41 +547,49 @@ async function upsertMatchedReceiving(
   intakeSurface: ReceivingIntakeSurface = 'triage',
 ): Promise<{ receivingId: number; preexisting: boolean }> {
   const now = formatPSTTimestamp();
-  // Door-arrival stamp is TRIAGE-owned. An UNBOX-surface scan must leave
-  // received_at NULL so the carton becomes unbox_only_intake (bench-first) and
-  // never leaks the door-scan / triage door_received_at timestamp. Visibility on
-  // the unbox surface comes from unbox_opened_at (recordUnboxScanOpened), not
-  // received_at — so gating this is safe. Mirrors record-scan.ts:114.
+  // Door-arrival stamp is TRIAGE-owned street state (receiving_triage.
+  // door_received_at/door_received_by — the spine copies are write-dead). An
+  // UNBOX-surface scan must leave it NULL so the carton becomes
+  // unbox_only_intake (bench-first) and never leaks the door-scan timestamp.
+  // Visibility on the unbox surface comes from unbox_opened_at
+  // (recordUnboxScanOpened), not the door stamp — so gating this is safe.
+  // Mirrors record-scan.ts:114.
   const doorAt = intakeSurface === 'triage' ? now : null;
   const doorBy = intakeSurface === 'triage' ? staffId : null;
-  const result = await tenantQuery<{ id: number; xmax: string }>(
-    organizationId,
-    // Target the base table (not the `receiving` compat view): views cannot do
-    // INSERT ... ON CONFLICT, and xmax is a base-table system column. 2026-07-05d.
-    `INSERT INTO receiving_carton
-       (source, zoho_purchaseorder_id, carrier, receiving_date_time,
-        received_at, received_by, qa_status, needs_test, updated_at, organization_id)
-     VALUES ('zoho_po', $1, $2, $3::timestamp, $5::timestamptz, $6, 'PENDING', true, $3::timestamptz, $4::uuid)
-     ON CONFLICT (zoho_purchaseorder_id) WHERE source = 'zoho_po' AND zoho_purchaseorder_id IS NOT NULL
-     DO UPDATE SET
-       updated_at = EXCLUDED.updated_at,
-       -- The Incoming Zoho sync pre-creates this PO's zoho_po receiving row with
-       -- received_at NULL (see zoho-receiving-sync.ts). The TRIAGE door scan IS the
-       -- physical-arrival event, so stamp received_at/by on first triage scan even
-       -- when the row already existed — otherwise the matched carton never
-       -- satisfies the view=scanned predicate (r.received_at IS NOT NULL) and stays
-       -- invisible in the Prioritize / unbox Queue feeds. COALESCE keeps the
-       -- original scan time + scanner on re-scans (idempotent, never resets). On an
-       -- unbox-surface scan EXCLUDED.received_at is NULL, so this never stamps it.
-       received_at = COALESCE(receiving_carton.received_at, EXCLUDED.received_at),
-       received_by = COALESCE(receiving_carton.received_by, EXCLUDED.received_by),
-       carrier = COALESCE(receiving_carton.carrier, EXCLUDED.carrier),
-       organization_id = COALESCE(receiving_carton.organization_id, EXCLUDED.organization_id)
-     RETURNING id, xmax::text`,
-    [poId, carrier || null, now, organizationId, doorAt, doorBy],
-  );
-  const row = result.rows[0];
-  return { receivingId: Number(row.id), preexisting: row.xmax !== '0' };
+  // Carton upsert + triage door stamp in ONE tenant transaction. The Incoming
+  // Zoho sync pre-creates this PO's zoho_po receiving row with no door stamp
+  // (see zoho-receiving-sync.ts); the TRIAGE door scan IS the physical-arrival
+  // event, so stamp it on first triage scan even when the row already existed —
+  // otherwise the matched carton never satisfies the view=scanned predicate
+  // (rt.door_received_at IS NOT NULL) and stays invisible in the Prioritize /
+  // unbox Queue feeds. The street helper is COALESCE-once, so the original scan
+  // time + scanner survive re-scans (idempotent, never resets).
+  return withTenantTransaction(organizationId, async (client) => {
+    const result = await client.query<{ id: number; xmax: string }>(
+      // Target the base table (not the `receiving` compat view): views cannot do
+      // INSERT ... ON CONFLICT, and xmax is a base-table system column. 2026-07-05d.
+      `INSERT INTO receiving_carton
+         (source, zoho_purchaseorder_id, carrier, receiving_date_time,
+          qa_status, needs_test, updated_at, organization_id)
+       VALUES ('zoho_po', $1, $2, $3::timestamp, 'PENDING', true, $3::timestamptz, $4::uuid)
+       ON CONFLICT (zoho_purchaseorder_id) WHERE source = 'zoho_po' AND zoho_purchaseorder_id IS NOT NULL
+       DO UPDATE SET
+         updated_at = EXCLUDED.updated_at,
+         carrier = COALESCE(receiving_carton.carrier, EXCLUDED.carrier),
+         organization_id = COALESCE(receiving_carton.organization_id, EXCLUDED.organization_id)
+       RETURNING id, xmax::text`,
+      [poId, carrier || null, now, organizationId],
+    );
+    const row = result.rows[0];
+    const receivingId = Number(row.id);
+    if (doorAt != null) {
+      await upsertReceivingTriage(client, organizationId, receivingId, {
+        doorReceivedAt: doorAt,
+        doorReceivedBy: doorBy ?? null,
+      });
+    }
+    return { receivingId, preexisting: row.xmax !== '0' };
+  });
 }
 
 async function createUnmatchedReceiving(
@@ -528,25 +604,34 @@ async function createUnmatchedReceiving(
     trackingNumber,
     sourceSystem: 'receiving_lookup_po',
   }, organizationId);
-  // Door-arrival stamp is TRIAGE-owned (mirrors record-scan.ts:114 / the matched
-  // upsert above). An UNBOX-surface scan of an unfound box leaves received_at NULL
-  // so it becomes unbox_only_intake and never leaks door_received_at; visibility
-  // comes from unbox_opened_at.
+  // Door-arrival stamp is TRIAGE-owned street state (mirrors record-scan.ts:114
+  // / the matched upsert above): receiving_triage.door_received_at/by, written
+  // in the same transaction as the carton INSERT. An UNBOX-surface scan of an
+  // unfound box leaves it NULL so it becomes unbox_only_intake and never leaks
+  // door_received_at; visibility comes from unbox_opened_at.
   const doorAt = intakeSurface === 'triage' ? now : null;
   const doorBy = intakeSurface === 'triage' ? staffId : null;
   // Stamp organization_id explicitly rather than leaning on the column default
   // (the GUC default is NULL on this raw-pool path). Receiving is a tenant-owned
   // table; an unmatched door-scan must land under the scanning operator's org.
-  const result = await tenantQuery<{ id: number }>(
-    organizationId,
-    `INSERT INTO receiving
-       (source, shipment_id, carrier, receiving_date_time,
-        received_at, received_by, qa_status, needs_test, updated_at, organization_id)
-     VALUES ('unmatched', $1, $2, $3::timestamp, $5::timestamptz, $6, 'PENDING', true, $3::timestamptz, $4::uuid)
-     RETURNING id`,
-    [shipment?.id ?? null, carrier || null, now, organizationId, doorAt, doorBy],
-  );
-  const receivingId = Number(result.rows[0].id);
+  const receivingId = await withTenantTransaction(organizationId, async (client) => {
+    const result = await client.query<{ id: number }>(
+      `INSERT INTO receiving_carton
+         (source, shipment_id, carrier, receiving_date_time,
+          qa_status, needs_test, updated_at, organization_id)
+       VALUES ('unmatched', $1, $2, $3::timestamp, 'PENDING', true, $3::timestamptz, $4::uuid)
+       RETURNING id`,
+      [shipment?.id ?? null, carrier || null, now, organizationId],
+    );
+    const rid = Number(result.rows[0].id);
+    if (doorAt != null) {
+      await upsertReceivingTriage(client, organizationId, rid, {
+        doorReceivedAt: doorAt,
+        doorReceivedBy: doorBy ?? null,
+      });
+    }
+    return rid;
+  });
   // Phase 5: tag the OS&D reason. No carrier resolved → CARRIER_MISMATCH;
   // otherwise it's a scanned box with no matching PO → NO_PO.
   const exceptionCode: ReceivingExceptionCode =
@@ -581,7 +666,7 @@ async function stampReceivingException(
   orgId: string,
 ): Promise<void> {
   try {
-    await tenantQuery(orgId, `UPDATE receiving SET exception_code = $2 WHERE id = $1`, [receivingId, code]);
+    await tenantQuery(orgId, `UPDATE receiving_carton SET exception_code = $2 WHERE id = $1`, [receivingId, code]);
   } catch (err) {
     console.warn(`[lookup-po] exception_code stamp skipped for receiving=${receivingId}:`, err);
   }
@@ -625,33 +710,66 @@ async function createOrGetTestReceiving(
   // the tech testing queue. The testing queue (/api/work-orders) keys on the
   // receiving HEADER's needs_test, which upsertMatchedReceiving sets true for
   // real POs; clear it here (also heals an older test carton on re-scan).
-  await tenantQuery(organizationId, `UPDATE receiving SET needs_test = false WHERE id = $1`, [receivingId]);
+  await tenantQuery(organizationId, `UPDATE receiving_carton SET needs_test = false WHERE id = $1`, [receivingId]);
 
-  // DO NOTHING on conflict so a re-scan can't wipe the quantity_received /
-  // workflow_status the unbox step wrote (order-independence of scan vs unbox).
-  // needs_test=false: a scanned test carton is a SCANNED receiving line (lands
-  // in the receiving triage page, workflow_status MATCHED → "SCANNED" label) —
-  // NOT a testing work-order. The tech testing queue keys on needs_test=true
-  // (work-orders route), so flagging it there is what wrongly pulled the test
-  // carton into the testing display queue instead of receiving triage.
-  await tenantQuery(
-    organizationId,
-    // Base table (not the `receiving_lines` view): ON CONFLICT is unsupported on
-    // auto-updatable views. 2026-07-05d.
-    `INSERT INTO receiving_line
-       (receiving_id, zoho_item_id, zoho_line_item_id, zoho_purchaseorder_id,
-        item_name, sku, quantity_expected, quantity_received, workflow_status,
-        qa_status, disposition_code, condition_grade, needs_test, updated_at, organization_id)
-     VALUES ($1, $2, $3, $4, $5, 'TEST-SKU', 1, 0, 'MATCHED',
-        'PENDING', 'HOLD', 'BRAND_NEW', false, NOW(), $6::uuid)
-     ON CONFLICT (zoho_purchaseorder_id, zoho_line_item_id)
-       WHERE zoho_purchaseorder_id IS NOT NULL AND zoho_line_item_id IS NOT NULL
-     -- Heal only needs_test on re-scan (clears any older test carton wrongly
-     -- flagged for testing) WITHOUT touching quantity_received / workflow_status,
-     -- so unbox progress survives a re-scan.
-     DO UPDATE SET needs_test = false`,
-    [receivingId, zohoItemId, zohoLineItemId, poId, `Test item · ${key}`, organizationId],
-  );
+  // rz-keyed dedupe (Wave-3 writer inversion): the old spine
+  // ON CONFLICT (zoho_purchaseorder_id, zoho_line_item_id) died with the moved
+  // columns — the natural key is now ux_receiving_line_zoho_org_po_line
+  // (organization_id, zoho_purchaseorder_id, zoho_line_item_id). SELECT rz by
+  // key (locking the line row) → hit: heal ONLY rlt.needs_test (the old
+  // DO UPDATE), never touching quantity_received / workflow_status, so unbox
+  // progress survives a re-scan. Miss: thin spine birth + rz + rlt in the same
+  // transaction (birth invariant — explicit rlt values matching the old spine
+  // birth). needs_test=false: a scanned test carton is a SCANNED receiving line
+  // (lands in the receiving triage page, workflow_status MATCHED → "SCANNED"
+  // label) — NOT a testing work-order.
+  await withTenantTransaction(organizationId, async (client) => {
+    const txDeps = {
+      query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
+    };
+    const existing = await client.query<{ receiving_line_id: number }>(
+      `SELECT rz.receiving_line_id
+         FROM receiving_line_zoho rz
+         JOIN receiving_line rl
+           ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
+        WHERE rz.organization_id = $1
+          AND rz.zoho_purchaseorder_id = $2
+          AND rz.zoho_line_item_id = $3
+        LIMIT 1
+        FOR UPDATE OF rl`,
+      [organizationId, poId, zohoLineItemId],
+    );
+    if (existing.rows[0]) {
+      await upsertReceivingLineTesting(
+        organizationId as OrgId,
+        Number(existing.rows[0].receiving_line_id),
+        { needsTest: false },
+        txDeps,
+      );
+      return;
+    }
+    const ins = await client.query<{ id: number }>(
+      `INSERT INTO receiving_line
+         (receiving_id, item_name, sku, quantity_expected, quantity_received,
+          workflow_status, updated_at, organization_id)
+       VALUES ($1, $2, 'TEST-SKU', 1, 0, 'MATCHED', NOW(), $3::uuid)
+       RETURNING id`,
+      [receivingId, `Test item · ${key}`, organizationId],
+    );
+    const lineId = Number(ins.rows[0].id);
+    await upsertReceivingLineZoho(organizationId as OrgId, lineId, {
+      zohoItemId,
+      zohoLineItemId,
+      zohoPurchaseOrderId: poId,
+    }, txDeps);
+    await upsertReceivingLineTesting(organizationId as OrgId, lineId, {
+      needsTest: false,
+      qaStatus: 'PENDING',
+      dispositionCode: 'HOLD',
+      conditionGrade: 'BRAND_NEW',
+      dispositionAudit: [],
+    }, txDeps);
+  });
 
   return { receivingId, scanId, preexisting, poId };
 }
@@ -685,7 +803,7 @@ async function applyIntakeClassification(
   const cols = classificationToColumns(classification);
   await tenantQuery(
     orgId,
-    `UPDATE receiving
+    `UPDATE receiving_carton
         SET source_platform = $2, is_return = $3, return_platform = $4, updated_at = NOW()
       WHERE id = $1`,
     [receivingId, cols.source_platform, cols.is_return, cols.return_platform],
@@ -793,7 +911,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           ]);
           const recvSourceRes = await tenantQuery<{ source: string | null }>(
             ctx.organizationId,
-            `SELECT source FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+            `SELECT source FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
             [hit.receivingId, ctx.organizationId],
           );
           const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
@@ -1060,7 +1178,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         // used to leave scanned_by stale or NULL via memoizeLookupHit).
         const recvSourceRes = await tenantQuery<{ source: string | null }>(
           ctx.organizationId,
-          `SELECT source FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+          `SELECT source FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
           [existingScan.receiving_id, ctx.organizationId],
         );
         const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
@@ -1305,7 +1423,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         try {
           const promoted = await tenantQuery<{ id: number }>(
             ctx.organizationId,
-            `UPDATE receiving
+            `UPDATE receiving_carton
                 SET source = 'zoho_po',
                     zoho_purchaseorder_id = $1,
                     carrier = COALESCE(NULLIF(carrier, ''), $2),
@@ -1365,7 +1483,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
 
       // Adopt the PO's pre-materialized local lines first — the incoming sync
-      // already wrote every line into receiving_lines (receiving_id NULL), so a
+      // already wrote every line into receiving_line (receiving_id NULL), so a
       // PO "in the system" just needs its lines re-parented onto this carton.
       // Only fall back to a live Zoho import when there was nothing local to
       // adopt (a PO that hasn't been synced yet). This mirrors the order-mode
@@ -1575,7 +1693,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       unmatchedReceivingId = preassignedReceivingId;
       const shipRow = await tenantQuery<{ shipment_id: number | null }>(
         ctx.organizationId,
-        `SELECT shipment_id FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        `SELECT shipment_id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
         [preassignedReceivingId, ctx.organizationId],
       );
       unmatchedShipmentId = shipRow.rows[0]?.shipment_id ?? null;

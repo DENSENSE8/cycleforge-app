@@ -17,6 +17,8 @@ import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { getInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
 import { receiveLineUnits } from '@/lib/receiving/receive-line';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
+import { upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
+import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { attachSerialToLine } from '@/lib/receiving/serial-attach';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import {
@@ -275,28 +277,33 @@ export const POST = withAuth(async (request, ctx) => {
     // "Mark as scanned" can flip a previously-DONE line back to MATCHED for
     // re-testing. Non-scan flows keep the DONE guard to avoid double-receiving
     // in Zoho.
+    // Line-level Zoho identity comes from receiving_line_zoho (Wave-3 inversion —
+    // the spine zoho_* columns are dying); the LEFT JOIN keeps unmatched/manual
+    // lines (no rz row) in the candidate set with NULL Zoho ids, as before.
     const candidates = await tenantQuery<CandidateRow>(
       ctx.organizationId,
       skipZohoReceive
-        ? `SELECT id, sku, item_name, quantity_expected, quantity_received,
-                  zoho_purchaseorder_id, zoho_line_item_id
-           FROM receiving_lines
-           WHERE receiving_id = $1
-             AND organization_id = $2
-           ORDER BY id ASC`
-        : `SELECT id, sku, item_name, quantity_expected, quantity_received,
-                  zoho_purchaseorder_id, zoho_line_item_id
-           FROM receiving_lines
-           WHERE receiving_id = $1
-             AND organization_id = $2
+        ? `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
+                  rz.zoho_purchaseorder_id, rz.zoho_line_item_id
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id
+           WHERE rl.receiving_id = $1
+             AND rl.organization_id = $2
+           ORDER BY rl.id ASC`
+        : `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
+                  rz.zoho_purchaseorder_id, rz.zoho_line_item_id
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id
+           WHERE rl.receiving_id = $1
+             AND rl.organization_id = $2
              AND (
-               workflow_status IS DISTINCT FROM 'DONE'::inbound_workflow_status_enum
+               rl.workflow_status IS DISTINCT FROM 'DONE'::inbound_workflow_status_enum
                OR (
-                 quantity_expected IS NOT NULL
-                 AND COALESCE(quantity_received, 0) < quantity_expected
+                 rl.quantity_expected IS NOT NULL
+                 AND COALESCE(rl.quantity_received, 0) < rl.quantity_expected
                )
              )
-           ORDER BY id ASC`,
+           ORDER BY rl.id ASC`,
       [receivingId, ctx.organizationId],
     );
 
@@ -319,12 +326,13 @@ export const POST = withAuth(async (request, ctx) => {
     if (openForReceive.length === 0) {
       const allLines = await tenantQuery<CandidateRow & { workflow_status: string | null }>(
         ctx.organizationId,
-        `SELECT id, sku, item_name, quantity_expected, quantity_received,
-                zoho_purchaseorder_id, zoho_line_item_id, workflow_status
-         FROM receiving_lines
-         WHERE receiving_id = $1
-           AND organization_id = $2
-         ORDER BY id ASC`,
+        `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
+                rz.zoho_purchaseorder_id, rz.zoho_line_item_id, rl.workflow_status
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id
+         WHERE rl.receiving_id = $1
+           AND rl.organization_id = $2
+         ORDER BY rl.id ASC`,
         [receivingId, ctx.organizationId],
       );
       if (allLines.rows.length === 0) {
@@ -340,7 +348,7 @@ export const POST = withAuth(async (request, ctx) => {
           zoho_purchaseorder_id: string | null;
         }>(
           ctx.organizationId,
-          `SELECT source, zoho_purchaseorder_id FROM receiving
+          `SELECT source, zoho_purchaseorder_id FROM receiving_carton
             WHERE id = $1 AND organization_id = $2 LIMIT 1`,
           [receivingId, ctx.organizationId],
         );
@@ -349,14 +357,15 @@ export const POST = withAuth(async (request, ctx) => {
         const isUnfoundCarton = recvSource === 'unmatched' && !recvZohoPo;
 
         if (isUnfoundCarton && !skipZohoReceive) {
+          // Unboxed milestone lives on the UNBOX street table now (Wave-3
+          // inversion). COALESCE-once + intake-path derivation are baked into
+          // the helper — first stamp wins, exactly like the old spine COALESCE.
           await withTenantTransaction(ctx.organizationId, (client) =>
-            client.query(
-              `UPDATE receiving SET unboxed_at = COALESCE(unboxed_at, $1),
-                                    unboxed_by = COALESCE(unboxed_by, $2),
-                                    updated_at = $1
-               WHERE id = $3 AND organization_id = $4`,
-              [now, staffId, receivingId, ctx.organizationId],
-            ),
+            upsertReceivingUnbox(client, ctx.organizationId, receivingId, {
+              unboxedAt: 'now',
+              unboxedBy: staffId,
+              deriveIntakePath: true,
+            }),
           ).catch(() => {});
           // Append-only ops spine event. Fail-open: receiving must proceed even if
           // ops_events is not yet present.
@@ -597,14 +606,15 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }
 
+    // Carton unboxed milestone → UNBOX street table (Wave-3 inversion). The
+    // helper is COALESCE-once (first stamp wins) and derives intake_path
+    // server-side, mirroring what the old spine write + dual-write trigger did.
     await withTenantTransaction(ctx.organizationId, (client) =>
-      client.query(
-        `UPDATE receiving SET unboxed_at = COALESCE(unboxed_at, $1),
-                              unboxed_by = COALESCE(unboxed_by, $2),
-                              updated_at = $1
-         WHERE id = $3 AND organization_id = $4`,
-        [now, staffId, receivingId, ctx.organizationId],
-      ),
+      upsertReceivingUnbox(client, ctx.organizationId, receivingId, {
+        unboxedAt: 'now',
+        unboxedBy: staffId,
+        deriveIntakePath: true,
+      }),
     ).catch(() => {});
 
     // Stamp each serialized line's local Zoho item description with
@@ -617,6 +627,11 @@ export const POST = withAuth(async (request, ctx) => {
     if (linesUpdatedViaReceiveUnits && updatedLines.length > 0) {
       const itemDescCond = conditionLabel(conditionGrade, 'full');
       await withTenantTransaction(ctx.organizationId, async (client) => {
+        // zoho_notes lives on receiving_line_zoho now (Wave-3 inversion):
+        // read-modify-write against rz on this tx client so the merge is atomic.
+        const txDeps = {
+          query: ((_org, sql, p) => client.query(sql, p as unknown[])) as typeof tenantQuery,
+        };
         for (const l of updatedLines) {
           const serials = serialsByReceivingLineId.get(l.id) ?? [];
           if (serials.length === 0) continue;
@@ -624,18 +639,14 @@ export const POST = withAuth(async (request, ctx) => {
             serials.length === 1 ? `SN: ${serials[0]}` : `SNs: ${serials.join(', ')}`;
           const snippet = itemDescCond ? `${serialPart} · ${itemDescCond}` : serialPart;
           const cur = await client.query<{ zoho_notes: string | null }>(
-            `SELECT zoho_notes FROM receiving_lines
-              WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+            `SELECT zoho_notes FROM receiving_line_zoho
+              WHERE receiving_line_id = $1 AND organization_id = $2 LIMIT 1`,
             [l.id, ctx.organizationId],
           );
           const existing = String(cur.rows[0]?.zoho_notes ?? '');
           const merged = mergeSerialNoteIntoLineDescription(existing, snippet);
           if (merged === existing) continue;
-          await client.query(
-            `UPDATE receiving_lines SET zoho_notes = $1, updated_at = $2
-              WHERE id = $3 AND organization_id = $4`,
-            [merged, now, l.id, ctx.organizationId],
-          );
+          await upsertReceivingLineZoho(ctx.organizationId, l.id, { zohoNotes: merged }, txDeps);
         }
       }).catch(() => {});
     }
@@ -645,7 +656,7 @@ export const POST = withAuth(async (request, ctx) => {
       const trackingRes = await tenantQuery<{ tracking: string | null }>(
         ctx.organizationId,
         `SELECT stn.tracking_number_raw AS tracking
-           FROM receiving r
+           FROM receiving_carton r
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
           WHERE r.id = $1
             AND r.organization_id = $2
@@ -661,7 +672,7 @@ export const POST = withAuth(async (request, ctx) => {
     try {
       const pkgPoRes = await tenantQuery<{ zoho_purchaseorder_id: string | null }>(
         ctx.organizationId,
-        `SELECT zoho_purchaseorder_id FROM receiving
+        `SELECT zoho_purchaseorder_id FROM receiving_carton
           WHERE id = $1 AND organization_id = $2 LIMIT 1`,
         [receivingId, ctx.organizationId],
       );
@@ -684,13 +695,10 @@ export const POST = withAuth(async (request, ctx) => {
       if (!poId && packageZohoPoId) {
         l.zoho_purchaseorder_id = packageZohoPoId;
         try {
-          await withTenantTransaction(ctx.organizationId, (client) =>
-            client.query(
-              `UPDATE receiving_lines SET zoho_purchaseorder_id = $1, updated_at = $2
-                WHERE id = $3 AND organization_id = $4`,
-              [packageZohoPoId, now, l.id, ctx.organizationId],
-            ),
-          );
+          // Line-level PO id is a receiving_line_zoho fact now (Wave-3 inversion).
+          await upsertReceivingLineZoho(ctx.organizationId, l.id, {
+            zohoPurchaseOrderId: packageZohoPoId,
+          });
         } catch {
           /* silent */
         }
@@ -827,13 +835,12 @@ export const POST = withAuth(async (request, ctx) => {
             liId = resolved;
             l.zoho_line_item_id = resolved;
             try {
-              await withTenantTransaction(ctx.organizationId, (client) =>
-                client.query(
-                  `UPDATE receiving_lines SET zoho_line_item_id = $1, updated_at = $2
-                    WHERE id = $3 AND organization_id = $4`,
-                  [resolved, formatPSTTimestamp(), l.id, ctx.organizationId],
-                ),
-              );
+              // receiving_line_zoho fact (Wave-3 inversion). A (org, po_id,
+              // line_item_id) unique collision throws and is swallowed exactly
+              // like the old spine unique indexes were.
+              await upsertReceivingLineZoho(ctx.organizationId, l.id, {
+                zohoLineItemId: resolved,
+              });
             } catch {
               /* silent */
             }

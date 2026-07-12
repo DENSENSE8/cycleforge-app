@@ -78,7 +78,7 @@ const defaultDeps: MoveSerialDeps = {
   },
   loadLine: async (client, lineId, orgId) => {
     const r = await client.query<LineRow>(
-      `SELECT id, receiving_id, sku FROM receiving_lines
+      `SELECT id, receiving_id, sku FROM receiving_line
         WHERE id = $1 AND organization_id = $2`,
       [lineId, orgId],
     );

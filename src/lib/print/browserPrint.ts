@@ -15,13 +15,11 @@
  *   - usb / serial → raw bytes (TSPL/ZPL/ESC-POS) straight to a thermal printer.
  *     Fully silent. This is the WebUSB / Web Serial path.
  *   - os → a regular OS/office printer. Browsers cannot silently drive these via
- *     WebUSB; callers fall back to the HTML print path (silent only in the
- *     desktop shell, dialog in a plain browser tab). Stored for size/name so the
- *     desktop preset and the dialog default line up.
+ *     WebUSB; callers fall back to the HTML iframe + `window.print()` dialog.
  */
 
-const PROFILES_KEY = 'usav.printerProfiles';
-const LEGACY_SINGLE_KEY = 'usav.browserPrinter';
+const PROFILES_KEY = 'cf.printerProfiles';
+const LEGACY_SINGLE_KEY = 'cf.browserPrinter';
 
 export type PrinterRole = 'label' | 'paper' | 'receipt';
 export type PrinterKind = 'usb' | 'serial' | 'os';

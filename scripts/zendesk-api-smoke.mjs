@@ -78,7 +78,7 @@ async function main() {
   if (!receivingId) {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     try {
-      const q = await pool.query('SELECT id FROM receiving ORDER BY id DESC LIMIT 1');
+      const q = await pool.query('SELECT id FROM receiving_carton ORDER BY id DESC LIMIT 1');
       receivingId = Number(q.rows[0]?.id) || 0;
     } finally {
       await pool.end();

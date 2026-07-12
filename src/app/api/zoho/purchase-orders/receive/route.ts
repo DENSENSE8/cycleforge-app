@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
-import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
   createPurchaseReceive,
   getPurchaseOrderById,
@@ -19,6 +18,14 @@ import {
   readIdempotencyKey,
   saveApiIdempotencyResponse,
 } from '@/lib/api-idempotency';
+// Wave-3 writer inversion: line-level testing/zoho facts write directly to the
+// 1:1 facts tables; the carton door stamp writes the triage street table.
+import {
+  upsertReceivingLineTesting,
+  upsertReceivingLineZoho,
+} from '@/lib/receiving/facts/narrow';
+import type { FactsDeps } from '@/lib/receiving/facts/store';
+import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 
@@ -32,14 +39,14 @@ const VALID_CONDITIONS = new Set(['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_
  *
  * Receive a Zoho PO into the warehouse. Local SoT, Zoho sync via after():
  *  0. Idempotency replay on Idempotency-Key / client_event_id.
- *  1. INSERT receiving + receiving_lines (+ optional work_assignments) in
+ *  1. INSERT receiving_carton + receiving_line (+ optional work_assignments) in
  *     one transaction. Sets source='zoho_po' and zoho_purchaseorder_id so
  *     the carton is identifiable while Zoho is still pending.
  *  2. Return 200 immediately with `zoho.pending: true` so the operator
  *     never waits on the Zoho roundtrip.
  *  3. after() runs the Zoho work:
  *       getPurchaseOrderById → assertReceivable → fill missing item_ids →
- *       createPurchaseReceive → UPDATE receiving + receiving_lines with
+ *       createPurchaseReceive → UPDATE receiving_carton + receiving_line with
  *       zoho_purchase_receive_id → invalidate caches + publish realtime.
  *
  * Body unchanged: purchaseorder_id, warehouse_id, receive_date, received_by,
@@ -143,23 +150,23 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   })!;
 
   // ── 1. Local insert (optimistic) ───────────────────────────────────────
-  const orgId = ctx.organizationId ?? USAV_ORG_ID;
+  const orgId = ctx.organizationId;
   let receivingId: number | null = null;
   let insertedLines = 0;
   try {
     await withTenantTransaction(orgId, async (client) => {
 
     const columnsRes = await client.query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving'`,
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_carton'`,
     );
     const receivingCols = new Set<string>(columnsRes.rows.map((r) => r.column_name));
 
     const valuesByColumn: Record<string, unknown> = {
       // PO identity lives in zoho_purchaseorder_id / source='zoho_po' (below);
       // the legacy receiving_tracking_number text column has been dropped.
+      // received_at/received_by moved to the triage street table — stamped via
+      // upsertReceivingTriage right after the INSERT (Wave-3 writer inversion).
       carrier: 'ZOHO_PO',
-      received_at: normalizedDate,
-      received_by: receivedBy,
       qa_status: 'PENDING',
       is_return: false,
       needs_test: needsTest,
@@ -191,38 +198,65 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
     const insertedRow = await client.query<{ id: number }>(
-      `INSERT INTO receiving (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+      `INSERT INTO receiving_carton (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
       insertVals,
     );
     receivingId = Number(insertedRow.rows[0].id);
 
+    // Door stamp → triage street (COALESCE-once inside the helper; the carton is
+    // brand-new so this is the first stamp). Same tx as the carton INSERT.
+    await upsertReceivingTriage(client, orgId, receivingId, {
+      doorReceivedAt: normalizedDate,
+      doorReceivedBy: receivedBy,
+    });
+
+    // Facts writes ride the same transaction client so the thin spine line and
+    // its 1:1 testing/zoho rows commit atomically.
+    const txDeps: FactsDeps = {
+      query: ((_org: string, sql: string, p?: unknown[]) =>
+        client.query(sql, p)) as FactsDeps['query'],
+    };
+    const lineSyncedAt = formatPSTTimestamp();
+
     for (const line of lineItems) {
-      await client.query(
-        `INSERT INTO receiving_lines (
-          receiving_id, zoho_item_id, zoho_line_item_id, zoho_purchase_receive_id, zoho_purchaseorder_id,
-          item_name, sku, quantity_received, quantity_expected,
-          qa_status, disposition_code, condition_grade, disposition_audit,
-          workflow_status, needs_test, assigned_tech_id, zoho_sync_source, zoho_synced_at,
-          organization_id
+      const insertedLine = await client.query<{ id: number }>(
+        `INSERT INTO receiving_line (
+          receiving_id, item_name, sku, quantity_received, quantity_expected,
+          workflow_status, organization_id
         )
-        VALUES ($1,$2,$3,NULL,$4,$5,$6,$7,$8,'PENDING','HOLD',$9,'[]'::jsonb,
-                'MATCHED'::inbound_workflow_status_enum,$10,$11,'purchase_receive',$12,$13::uuid)`,
+        VALUES ($1,$2,$3,$4,$5,'MATCHED'::inbound_workflow_status_enum,$6::uuid)
+        RETURNING id`,
         [
           receivingId,
-          line.item_id || null,
-          line.line_item_id,
-          purchaseOrderId,
           line.item_name || null,
           line.sku || null,
           line.quantity_received,
           line.quantity_expected ?? null,
-          line.condition_grade,
-          needsTest,
-          assignedTechId,
-          formatPSTTimestamp(),
           ctx.organizationId,
         ],
       );
+      const lineId = Number(insertedLine.rows[0].id);
+      // Birth invariant: explicit testing-facts row carrying exactly what the
+      // wide INSERT used to set (this site sets needs_test/assigned_tech_id/
+      // per-line condition_grade from the request body).
+      await upsertReceivingLineTesting(orgId, lineId, {
+        needsTest,
+        assignedTechId,
+        qaStatus: 'PENDING',
+        dispositionCode: 'HOLD',
+        conditionGrade: line.condition_grade,
+        dispositionAudit: [],
+      }, txDeps);
+      // zoho_purchase_receive_id stays NULL until the after() Zoho roundtrip
+      // links it (this birth never set the PO number, so no number/norm here).
+      await upsertReceivingLineZoho(orgId, lineId, {
+        zohoItemId: line.item_id || null,
+        zohoLineItemId: line.line_item_id,
+        zohoPurchaseReceiveId: null,
+        zohoPurchaseOrderId: purchaseOrderId,
+        zohoSyncSource: 'purchase_receive',
+        zohoSyncedAt: lineSyncedAt,
+      }, txDeps);
       insertedLines++;
     }
 
@@ -343,23 +377,34 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const purchaseReceiveId = getPurchaseReceiveIdFromCreateResponse(zohoReceive) ?? '';
 
       if (purchaseReceiveId) {
-        await tenantQuery(
-          orgId,
-          `UPDATE receiving
-             SET zoho_purchase_receive_id = $1,
-                 updated_at = NOW()
-           WHERE id = $2`,
-          [purchaseReceiveId, receivingIdForBg],
-        );
-        await tenantQuery(
-          orgId,
-          `UPDATE receiving_lines
-             SET zoho_purchase_receive_id = $1,
-                 zoho_synced_at = NOW(),
-                 updated_at = NOW()
-           WHERE receiving_id = $2`,
-          [purchaseReceiveId, receivingIdForBg],
-        );
+        // One tx for the whole linkage: the carton half stays on the spine
+        // (carton-level zoho_* is Wave-4 scope); the line half is a zoho FACT and
+        // lives on receiving_line_zoho (Wave-3 inversion). Every line under this
+        // carton has an rz row from birth, so the per-line upsert is a plain update.
+        await withTenantTransaction(orgId, async (client) => {
+          await client.query(
+            `UPDATE receiving_carton
+               SET zoho_purchase_receive_id = $1,
+                   updated_at = NOW()
+             WHERE id = $2`,
+            [purchaseReceiveId, receivingIdForBg],
+          );
+          const lineRows = await client.query<{ id: number }>(
+            `SELECT id FROM receiving_line WHERE receiving_id = $1 ORDER BY id`,
+            [receivingIdForBg],
+          );
+          const txDeps: FactsDeps = {
+            query: ((_org: string, sql: string, p?: unknown[]) =>
+              client.query(sql, p)) as FactsDeps['query'],
+          };
+          const linkedAt = formatPSTTimestamp();
+          for (const row of lineRows.rows) {
+            await upsertReceivingLineZoho(orgId, Number(row.id), {
+              zohoPurchaseReceiveId: purchaseReceiveId,
+              zohoSyncedAt: linkedAt,
+            }, txDeps);
+          }
+        });
       }
 
       try {

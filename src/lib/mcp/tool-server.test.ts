@@ -40,7 +40,7 @@ test('initialize returns protocol version + tools capability + serverInfo', asyn
   const result = res?.result as { protocolVersion: string; capabilities: unknown; serverInfo: { name: string } };
   assert.equal(result.protocolVersion, MCP_PROTOCOL_VERSION);
   assert.deepEqual(result.capabilities, { tools: { listChanged: false } });
-  assert.equal(result.serverInfo.name, 'usav-assistant-tools');
+  assert.equal(result.serverInfo.name, 'cycle-forge-assistant-tools');
 });
 
 test('tools/list returns each tool with a JSON-schema inputSchema', async () => {

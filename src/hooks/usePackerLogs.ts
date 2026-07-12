@@ -174,8 +174,8 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
     const handleRefresh = () => {
       queryClient.invalidateQueries({ queryKey: ['packer-logs', packerId] });
     };
-    window.addEventListener('usav-refresh-data', handleRefresh);
-    return () => window.removeEventListener('usav-refresh-data', handleRefresh);
+    window.addEventListener('app-refresh-data', handleRefresh);
+    return () => window.removeEventListener('app-refresh-data', handleRefresh);
   }, [queryClient, packerId]);
 
   return query;

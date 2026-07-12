@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 import {
   createSession, SESSION_COOKIE_NAME, cookieMaxAgeForSession,
 } from '@/lib/auth/session';
@@ -66,6 +67,14 @@ function failRedirect(req: NextRequest, code: string): NextResponse {
 }
 
 export const GET = withAuth(async (req) => {
+  const rl = await checkRateLimitAsync({
+    headers: req.headers,
+    routeKey: 'auth-sso-callback',
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) return failRedirect(req, 'RATE_LIMITED');
+
   const code = req.nextUrl.searchParams.get('code');
   const state = req.nextUrl.searchParams.get('state');
   if (!code || !state) return failRedirect(req, 'MISSING_PARAMS');

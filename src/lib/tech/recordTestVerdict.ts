@@ -20,6 +20,13 @@
  *   - any unit ON_HOLD                            → line FAILED / FAILED_FUNCTIONAL
  *   - otherwise (still-testing)                   → line IN_TEST / PENDING
  *
+ * The rollup's qa_status/disposition write is an upsert into the
+ * receiving_line_testing facts table (Wave-3 writer inversion); its
+ * workflow_status change routes through transitionReceivingLine (skipEvent —
+ * the per-unit verdict events already cover the timeline) and is skipped
+ * entirely when the status is unchanged, so the coarse-status trigger never
+ * re-stamps lifecycle timestamps on a non-transitioning line.
+ *
  * Finally it taps the workflow engine (`test_verdict`) so the unit's run
  * advances pass/fail — fire-and-forget, an engine error never fails the
  * verdict (see src/lib/workflow/tap.ts).
@@ -32,6 +39,7 @@ import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { applyTransition } from '@/lib/workflow/applyTransition';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig } from '@/lib/feature-flags';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
@@ -349,12 +357,18 @@ export async function recordTestVerdict(
     lineRollup = await withTenantTransaction(rollupOrg, async (client) => {
       // Serialize concurrent rollups on this line. A non-existent / wrong-org
       // line locks nothing and the tally below returns no row → no rollup.
-      await client.query(
-        `SELECT id FROM receiving_lines
+      // Also read the current workflow_status so the status half below can
+      // CHECK-AND-SKIP: only rows that actually change status go through the
+      // chokepoint (an identity transition would still list workflow_status in
+      // a SET and re-fire the coarse trigger's COALESCE timestamp stamps).
+      const lockedLine = await client.query<{ workflow_status: string | null }>(
+        `SELECT workflow_status::text AS workflow_status
+           FROM receiving_line
           WHERE id = $1 AND organization_id = $2
           FOR UPDATE`,
         [lineId, rollupOrg],
       );
+      const currentWorkflow = lockedLine.rows[0]?.workflow_status ?? null;
 
       const tally = await client.query<{
         quantity_expected: number | null;
@@ -368,7 +382,7 @@ export async function recordTestVerdict(
                 COUNT(su.id) FILTER (WHERE su.current_status = 'TESTED')  AS tested_units,
                 COUNT(su.id) FILTER (WHERE su.current_status = 'ON_HOLD') AS failed_units,
                 COUNT(su.id) FILTER (WHERE su.current_status = 'IN_TEST') AS in_test_units
-           FROM receiving_lines rl
+           FROM receiving_line rl
       LEFT JOIN serial_unit_provenance p ON p.origin_type = 'RECEIVING_LINE'
              AND p.origin_id = rl.id AND p.organization_id = rl.organization_id
       LEFT JOIN serial_units su ON su.id = p.serial_unit_id
@@ -410,29 +424,71 @@ export async function recordTestVerdict(
         nextQa = 'PENDING';
       }
 
-      // $4 is always the org (fixed before the optional disposition at $5),
-      // so the WHERE predicate index is stable.
-      const params: unknown[] = [lineId, nextWorkflow, nextQa, rollupOrg];
-      const sets = [
-        `workflow_status = $2::inbound_workflow_status_enum`,
-        `qa_status = $3::qa_status_enum`,
-      ];
-      if (nextDisposition) {
-        params.push(nextDisposition);
-        sets.push(`disposition_code = $${params.length}::disposition_enum`);
-      }
+      // Facts half (Wave-3 writer inversion): qa_status (+ optional disposition)
+      // live on receiving_line_testing now — the spine columns are dying, so the
+      // rollup upserts the facts row directly (same tx client as the FOR UPDATE
+      // lock above). Inline UPSERT rather than narrow.ts because the result must
+      // RETURN the post-write qa/disposition pair — including an untouched
+      // disposition_code when this rollup doesn't set one — exactly like the old
+      // spine UPDATE's RETURNING did. Overwrite semantics, as before. The former
+      // "workflow_status never in the SET" trigger concern no longer applies:
+      // this write doesn't touch the spine at all.
+      const rolled = nextDisposition
+        ? await client.query<Omit<TestLineRollup, 'workflow_status'>>(
+            `INSERT INTO receiving_line_testing (
+                receiving_line_id, organization_id, qa_status, disposition_code)
+             VALUES ($1, $3, $2::qa_status_enum, $4::disposition_enum)
+             ON CONFLICT (receiving_line_id) DO UPDATE SET
+               qa_status        = EXCLUDED.qa_status,
+               disposition_code = EXCLUDED.disposition_code,
+               updated_at       = now()
+             RETURNING receiving_line_id AS id, qa_status::text AS qa_status,
+                       disposition_code::text AS disposition_code`,
+            [lineId, nextQa, rollupOrg, nextDisposition],
+          )
+        : await client.query<Omit<TestLineRollup, 'workflow_status'>>(
+            `INSERT INTO receiving_line_testing (
+                receiving_line_id, organization_id, qa_status)
+             VALUES ($1, $3, $2::qa_status_enum)
+             ON CONFLICT (receiving_line_id) DO UPDATE SET
+               qa_status  = EXCLUDED.qa_status,
+               updated_at = now()
+             RETURNING receiving_line_id AS id, qa_status::text AS qa_status,
+                       disposition_code::text AS disposition_code`,
+            [lineId, nextQa, rollupOrg],
+          );
+      const rolledRow = rolled.rows[0];
+      if (!rolledRow) return null;
 
-      const rolled = await client.query<TestLineRollup>(
-        `UPDATE receiving_lines
-            SET ${sets.join(', ')},
-                updated_at = NOW()
-          WHERE id = $1 AND organization_id = $4
-          RETURNING id, workflow_status::text AS workflow_status,
-                    qa_status::text AS qa_status,
-                    disposition_code::text AS disposition_code`,
-        params,
-      );
-      return rolled.rows[0] ?? null;
+      // Status half: only rows whose workflow_status actually changes route
+      // through the guarded chokepoint, inside THIS tx (executor mode — the
+      // FOR UPDATE re-lock on the row we already hold is a no-op). skipEvent:
+      // the per-unit verdict events are already written (step 2/4) and the
+      // calling route audits — the rollup must not double-write the timeline.
+      let finalWorkflow = currentWorkflow;
+      if (currentWorkflow !== nextWorkflow) {
+        const transitioned = await transitionReceivingLine(
+          {
+            receivingLineId: lineId,
+            to: nextWorkflow,
+            actorStaffId,
+            station: 'TECH',
+            skipEvent: true,
+          },
+          client,
+          rollupOrg,
+        );
+        if (transitioned.ok) {
+          finalWorkflow = transitioned.to;
+        } else {
+          // Unreachable in practice (no expectedFrom, non-strict, row locked by
+          // this tx so it can't vanish) — keep the pre-rollup status visible.
+          console.warn(
+            `[recordTestVerdict] line ${lineId} rollup transition → ${nextWorkflow} refused (${transitioned.status}): ${transitioned.error}`,
+          );
+        }
+      }
+      return { ...rolledRow, workflow_status: finalWorkflow };
     });
   }
 

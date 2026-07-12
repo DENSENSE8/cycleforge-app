@@ -12,7 +12,7 @@
 
 import { db } from '@/lib/drizzle/db';
 import { trainingSamples } from '@/lib/drizzle/schema';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { TrainingPairInput } from './types';
 
 // ─── Pipeline Collector ──────────────────────────────────────
@@ -26,7 +26,7 @@ export async function collectTrainingPair(input: TrainingPairInput): Promise<num
   const { task, implementation, scoring, repo, branch, commitSha } = input;
 
   const [inserted] = await db.insert(trainingSamples).values({
-    organizationId: transitionalUsavOrgId(),
+    organizationId: transitionalDogfoodOrgId(),
     instruction: `${task.title}\n\n${task.description}`,
     inputContext: task.context || null,
     output: implementation.diff || implementation.reasoning,
@@ -65,7 +65,7 @@ export async function collectFromCommit(data: {
   const rating = data.testsPass ? 3 : null;
 
   const [inserted] = await db.insert(trainingSamples).values({
-    organizationId: transitionalUsavOrgId(),
+    organizationId: transitionalDogfoodOrgId(),
     instruction: `Implement the following change: ${data.message}`,
     inputContext: null,
     output: data.diff,
@@ -98,7 +98,7 @@ export async function collectFromChat(data: {
   const rating = data.accepted ? 4 : 1;
 
   const [inserted] = await db.insert(trainingSamples).values({
-    organizationId: transitionalUsavOrgId(),
+    organizationId: transitionalDogfoodOrgId(),
     instruction: data.userMessage,
     inputContext: null,
     output: data.assistantResponse,

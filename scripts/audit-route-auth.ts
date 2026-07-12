@@ -96,9 +96,6 @@ function classifyExemption(path: string): string | null {
   // Public capability links: the unguessable token IN THE URL *is* the
   // authorization (signed/random share token), like a pre-signed URL.
   if (path.includes('/api/photos/share-packs/')) return 'public share link (capability token in URL)';
-  // The desktop auto-updater polls this for the latest installer BEFORE a user
-  // signs in, so it is public release metadata by design.
-  if (path.includes('/api/desktop-app/release')) return 'public desktop release feed (polled pre-auth by the updater)';
   // The admin review queue over beta_applications is NOT public capture — it is
   // withAuth(beta.review)-gated; exclude it from the /api/beta/ exemption below.
   if (path.includes('/api/beta/applications')) return null;

@@ -321,14 +321,14 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       ORDER: 'orders',
       REPAIR: 'repair_service',
       FBA_SHIPMENT: 'fba_shipments',
-      RECEIVING: 'receiving',
+      RECEIVING: 'receiving_carton',
       SKU_STOCK: 'sku_stock',
     };
 
     const owned = await withTenantTransaction(ctx.organizationId, async (client) => {
       // Verify the target entity belongs to the caller's org before any write.
       // A cross-tenant entityId returns false → 404 (hide existence), closing the
-      // work-assignment / fba_shipments / receiving cross-tenant write breach.
+      // work-assignment / fba_shipments / receiving_carton cross-tenant write breach.
       const owns = await client.query(
         `SELECT 1 FROM ${parentTable[entityType]} WHERE id = $1 AND organization_id = $2`,
         [entityId, ctx.organizationId],
@@ -404,7 +404,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 
         if (entityType === 'RECEIVING') {
           await client.query(
-            `UPDATE receiving
+            `UPDATE receiving_carton
              SET assigned_tech_id = $1,
                  updated_at = NOW()
              WHERE id = $2 AND organization_id = $3`,

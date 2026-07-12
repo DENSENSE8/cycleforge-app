@@ -13,7 +13,8 @@
  *     tracking (last-8) or the eBay order id appearing in the PO#/reference/notes
  *     (order#). Fuzzy SKU/qty matching is deliberately NOT auto-merged (§4.1).
  *   - AUGMENT the eBay line with a SECONDARY zoho link + equivalence edge + the
- *     zoho_purchaseorder_id spine cache, so it reconciles/receives against Zoho.
+ *     zoho identity on its receiving_line_zoho facts row (W3 writer inversion —
+ *     the spine zoho columns are dead), so it reconciles/receives against Zoho.
  *   - Only in the UNAMBIGUOUS case (exactly one matched eBay line AND exactly one
  *     zoho-only spine row the sync just created) DELETE the loser spine row and
  *     copy its Zoho identity onto the eBay winner (so the next Zoho sync updates
@@ -127,24 +128,24 @@ export async function mergeEbayLinesIntoZohoPo(
 
   return deps.withTx(orgId, async (client) => {
     // Fill in the PO's own match signals from the spine if not supplied.
-    // Tracking is canonical on receiving.shipment_id → shipping_tracking_numbers
-    // (receiving_lines.zoho_reference_number was dropped 2026-04-15). Narrow
+    // Tracking is canonical on receiving_carton.shipment_id → shipping_tracking_numbers
+    // (receiving_line.zoho_reference_number was dropped 2026-04-15). Narrow
     // receiving_line_zoho.zoho_reference_number is a secondary fallback.
     let signals: ZohoPoSignals = { ...input, zohoPurchaseOrderId };
     if (signals.tracking == null || signals.referenceNumber == null || signals.notes == null) {
       const sig = await client.query<ZohoSignalRow>(
         `SELECT stn.tracking_number_raw AS tracking_number,
                 rz.zoho_reference_number,
-                COALESCE(rc.zoho_notes, rl.zoho_notes) AS zoho_notes,
-                rl.zoho_purchaseorder_number
-           FROM receiving_lines rl
-           LEFT JOIN receiving rc
+                COALESCE(rc.zoho_notes, rz.zoho_notes) AS zoho_notes,
+                rz.zoho_purchaseorder_number
+           FROM receiving_line rl
+           LEFT JOIN receiving_carton rc
              ON rc.id = rl.receiving_id AND rc.organization_id = rl.organization_id
            LEFT JOIN shipping_tracking_numbers stn
              ON stn.id = rc.shipment_id
            LEFT JOIN receiving_line_zoho rz
              ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
-          WHERE rl.organization_id = $1 AND rl.zoho_purchaseorder_id = $2
+          WHERE rl.organization_id = $1 AND rz.zoho_purchaseorder_id = $2
           ORDER BY rl.id
           LIMIT 1`,
         [orgId, zohoPurchaseOrderId],
@@ -165,7 +166,7 @@ export async function mergeEbayLinesIntoZohoPo(
     const candRes = await client.query<{ receiving_line_id: number; source_order_id: string; sku: string | null; tracking: string | null }>(
       `SELECT rl.id AS receiving_line_id, el.source_order_id, rl.sku,
               m.tracking_number AS tracking
-         FROM receiving_lines rl
+         FROM receiving_line rl
          JOIN inbound_purchase_order_links el
            ON el.receiving_line_id = rl.id AND el.organization_id = rl.organization_id
           AND el.source_type = 'ebay' AND el.is_primary = true
@@ -200,11 +201,13 @@ export async function mergeEbayLinesIntoZohoPo(
 
     // The zoho-only spine rows the sync just created for this PO (no eBay link).
     const loserRes = await client.query<ZohoLoserRow>(
-      `SELECT rl.id, rl.zoho_purchaseorder_id, rl.zoho_purchaseorder_number,
-              rl.zoho_line_item_id, rl.zoho_item_id
-         FROM receiving_lines rl
+      `SELECT rl.id, rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number,
+              rz.zoho_line_item_id, rz.zoho_item_id
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
         WHERE rl.organization_id = $1
-          AND rl.zoho_purchaseorder_id = $2
+          AND rz.zoho_purchaseorder_id = $2
           AND COALESCE(rl.inbound_source_type, 'zoho') <> 'ebay'
           AND rl.workflow_status IN ('EXPECTED','ARRIVED')
           AND COALESCE(rl.quantity_received, 0) = 0
@@ -222,17 +225,42 @@ export async function mergeEbayLinesIntoZohoPo(
 
     for (const { c, reason } of matches) {
       const loser = canDeleteLoser ? losers[0] : null;
-
-      // 1. Copy the Zoho identity onto the eBay winner (stable across future syncs).
       const zohoLineItemId = loser?.zoho_line_item_id ?? null;
+
+      // 1. Delete the loser FIRST (W3 writer inversion): its receiving_line_zoho
+      //    row holds the same (org, zoho_purchaseorder_id, zoho_line_item_id)
+      //    natural key the winner is about to adopt, so it must be gone before
+      //    the winner's rz upsert or ux_receiving_line_zoho_org_po_line collides.
+      //    The FK cascade removes the loser's rz/rlt facts rows + links.
+      if (loser) {
+        await client.query(
+          `DELETE FROM receiving_line WHERE id = $1 AND organization_id = $2`,
+          [loser.id, orgId],
+        );
+      }
+
+      // 2. Copy the Zoho identity onto the eBay winner's receiving_line_zoho facts
+      //    row (stable across future syncs). The spine zoho columns are dead (W3);
+      //    inline upsert (not narrow.ts) because this site needs COALESCE-once on
+      //    zoho_line_item_id / zoho_item_id and must maintain the derived
+      //    zoho_purchaseorder_number_norm (GENERATED on the old spine column).
       await client.query(
-        `UPDATE receiving_lines
-            SET zoho_purchaseorder_id     = $3,
-                zoho_purchaseorder_number = COALESCE($4, zoho_purchaseorder_number),
-                zoho_line_item_id         = COALESCE(zoho_line_item_id, $5),
-                zoho_item_id              = COALESCE(zoho_item_id, $6),
-                updated_at                = now()
-          WHERE id = $1 AND organization_id = $2`,
+        `INSERT INTO receiving_line_zoho (
+           receiving_line_id, organization_id,
+           zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm,
+           zoho_line_item_id, zoho_item_id)
+         VALUES ($1, $2, $3, $4,
+                 NULLIF(upper(regexp_replace($4, '[^A-Za-z0-9]', '', 'g')), ''),
+                 $5, $6)
+         ON CONFLICT (receiving_line_id) DO UPDATE SET
+           zoho_purchaseorder_id          = EXCLUDED.zoho_purchaseorder_id,
+           zoho_purchaseorder_number      = COALESCE(EXCLUDED.zoho_purchaseorder_number, receiving_line_zoho.zoho_purchaseorder_number),
+           zoho_purchaseorder_number_norm = CASE WHEN EXCLUDED.zoho_purchaseorder_number IS NOT NULL
+                                                 THEN EXCLUDED.zoho_purchaseorder_number_norm
+                                                 ELSE receiving_line_zoho.zoho_purchaseorder_number_norm END,
+           zoho_line_item_id              = COALESCE(receiving_line_zoho.zoho_line_item_id, EXCLUDED.zoho_line_item_id),
+           zoho_item_id                   = COALESCE(receiving_line_zoho.zoho_item_id, EXCLUDED.zoho_item_id),
+           updated_at                     = now()`,
         [
           c.receivingLineId,
           orgId,
@@ -243,7 +271,7 @@ export async function mergeEbayLinesIntoZohoPo(
         ],
       );
 
-      // 2. Secondary zoho link (is_primary=false → eBay stays the badge source).
+      // 3. Secondary zoho link (is_primary=false → eBay stays the badge source).
       await deps.upsertPurchaseLink(
         orgId,
         {
@@ -256,7 +284,7 @@ export async function mergeEbayLinesIntoZohoPo(
         { withTx: (_o, fn) => fn(client) },
       );
 
-      // 3. Cross-source equivalence edge.
+      // 4. Cross-source equivalence edge.
       await deps.recordEquivalence(
         orgId,
         {
@@ -269,13 +297,7 @@ export async function mergeEbayLinesIntoZohoPo(
         { query: (async (_o: OrgId, sql: string, params?: ReadonlyArray<unknown>) => client.query(sql, params)) as never },
       );
 
-      // 4. Delete the loser (CASCADE removes its links) + merge-log the collapse.
-      if (loser) {
-        await client.query(
-          `DELETE FROM receiving_lines WHERE id = $1 AND organization_id = $2`,
-          [loser.id, orgId],
-        );
-      }
+      // 5. Merge-log the collapse (the loser delete already ran in step 1).
       await client.query(
         `INSERT INTO inbound_purchase_merge_log (
            organization_id, winner_line_id, loser_line_id, merge_reason,

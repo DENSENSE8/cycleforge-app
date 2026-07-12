@@ -3,7 +3,6 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 
 const VALID_ACTION_TYPES = new Set<string>([
   'replaced',
@@ -60,7 +59,7 @@ function canMutate(action: ActionRow, ctxStaffId: number, ctxRole: string | null
  */
 export const PATCH = withAuth(
   async (req, ctx) => {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     // withAuth doesn't forward Next's route ctx; parse the id from the URL.
     const idRaw = req.nextUrl.pathname.split('/').pop() ?? '';
     const id = Number(decodeURIComponent(idRaw));
@@ -137,7 +136,7 @@ export const PATCH = withAuth(
  */
 export const DELETE = withAuth(
   async (req, ctx) => {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const idRaw = req.nextUrl.pathname.split('/').pop() ?? '';
     const id = Number(decodeURIComponent(idRaw));
     if (!Number.isFinite(id) || id <= 0) {

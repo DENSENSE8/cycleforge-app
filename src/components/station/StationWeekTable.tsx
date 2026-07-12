@@ -22,6 +22,8 @@ export interface StationWeekTableProps<T> {
   daySections: [string, T[]][];
   /** Message shown when there are no records for the week. */
   emptyMessage: string;
+  /** Typed first-run empty (zero rows, no search) — teaches instead of faint text. */
+  firstRunEmpty?: ReactNode;
   /** Scroll container ref (owned by the table controller for scroll resets). */
   scrollRef: React.Ref<HTMLDivElement>;
   /** Render one row. Receives the record, its in-day index, and the day key. */
@@ -49,6 +51,7 @@ export function StationWeekTable<T>({
   onNextWeek,
   daySections,
   emptyMessage,
+  firstRunEmpty,
   scrollRef,
   renderRow,
   tableId,
@@ -86,9 +89,15 @@ export function StationWeekTable<T>({
         />
         <div ref={scrollRef} data-testid="column-table-body" className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar w-full">
           {daySections.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-40 text-center">
-              <p className="font-medium italic text-text-soft opacity-20">{emptyMessage}</p>
-            </div>
+            firstRunEmpty ? (
+              <div className="mx-auto animate-in fade-in zoom-in duration-300 py-10">
+                {firstRunEmpty}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-40 text-center">
+                <p className="font-medium italic text-text-soft opacity-20">{emptyMessage}</p>
+              </div>
+            )
           ) : (
             <div className="flex flex-col w-full">
               {daySections.map(([date, records]) => (

@@ -8,7 +8,7 @@ import { cn } from '@/utils/_cn';
 const CONFIDENCE_CHIP: Record<SupportSuggestionResult['confidence'], string> = {
   high: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   medium: 'bg-amber-50 text-amber-700 ring-amber-200',
-  low: 'bg-gray-100 text-gray-600 ring-gray-200',
+  low: 'bg-surface-sunken text-text-muted ring-border-soft',
 };
 
 /**
@@ -38,11 +38,11 @@ export function SupportSuggestionPanel({
   };
 
   return (
-    <div className="shrink-0 border-t border-gray-100 bg-white px-4 py-2.5">
+    <div className="shrink-0 border-t border-border-hairline bg-surface-card px-4 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-micro font-black uppercase tracking-widest text-gray-500">
+        <span className="inline-flex items-center gap-1.5 text-micro font-black uppercase tracking-widest text-text-soft">
           <Sparkles className="h-3.5 w-3.5 text-blue-500" /> AI suggested reply
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-gray-500 ring-1 ring-inset ring-gray-200">
+          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
             Local
           </span>
         </span>
@@ -61,13 +61,13 @@ export function SupportSuggestionPanel({
       </div>
 
       {!hasQuestion ? (
-        <p className="mt-1.5 text-caption text-gray-400">
+        <p className="mt-1.5 text-caption text-text-faint">
           No customer message yet to draft a reply from.
         </p>
       ) : null}
 
       {suggest.isPending ? (
-        <p className="mt-2 inline-flex items-center gap-1.5 text-label text-gray-500">
+        <p className="mt-2 inline-flex items-center gap-1.5 text-label text-text-soft">
           <Loader2 className="h-4 w-4 animate-spin" /> Grounding in Bose docs &amp; drafting…
         </p>
       ) : null}
@@ -84,7 +84,7 @@ export function SupportSuggestionPanel({
       ) : null}
 
       {result ? (
-        <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50/60 p-3">
+        <div className="mt-2 rounded-xl border border-border-soft bg-surface-canvas/60 p-3">
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
             <span
               className={cn(
@@ -95,7 +95,7 @@ export function SupportSuggestionPanel({
               {result.confidence} confidence
             </span>
             {!result.grounded ? (
-              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-gray-500 ring-1 ring-inset ring-gray-200">
+              <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
                 no doc match
               </span>
             ) : null}
@@ -111,7 +111,7 @@ export function SupportSuggestionPanel({
             ))}
           </div>
 
-          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-gray-900">{result.suggestion}</p>
+          <p className="whitespace-pre-wrap text-caption leading-relaxed text-text-default">{result.suggestion}</p>
 
           <div className="mt-2.5 flex items-center gap-1.5">
             <Button

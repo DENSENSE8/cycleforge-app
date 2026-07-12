@@ -282,8 +282,8 @@ export function PoLinesAccordion({
   // workspace sees fresh siblings (in case a remote actor edited one).
   useEffect(() => {
     const handler = () => queryClient.invalidateQueries({ queryKey });
-    window.addEventListener('usav-refresh-data', handler);
-    return () => window.removeEventListener('usav-refresh-data', handler);
+    window.addEventListener('app-refresh-data', handler);
+    return () => window.removeEventListener('app-refresh-data', handler);
   }, [queryClient, queryKey]);
 
   // Single source of truth = the query cache. Original API order is preserved so
@@ -789,7 +789,7 @@ function CartonAddAction({ receivingId, unitIds }: { receivingId: number; unitId
       }
       toast.success(`Added off-PO · ${sel.item_name || sel.sku || 'item'}`);
       // The accordion invalidates its siblings query on this event.
-      window.dispatchEvent(new Event('usav-refresh-data'));
+      window.dispatchEvent(new Event('app-refresh-data'));
       setOpen(false);
     },
     [receivingId],

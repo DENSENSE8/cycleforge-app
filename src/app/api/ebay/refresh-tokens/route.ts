@@ -3,7 +3,7 @@ import { runEbayRefreshTokensJob } from '@/lib/jobs/ebay-refresh-tokens';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { withAuth } from '@/lib/auth/withAuth';
 import { isAuthorizedCronRequest } from '@/lib/cron/auth';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 
 /**
  * POST /api/ebay/refresh-tokens
@@ -23,7 +23,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // authorized cron request (CRON_SECRET / x-vercel-cron) or the dogfood service
   // org (USAV). Single-tenant USAV behavior is unchanged — its session IS the
   // service org, so the manual trigger keeps working.
-  if (!isAuthorizedCronRequest(req.headers) && ctx.organizationId !== USAV_ORG_ID) {
+  if (!isAuthorizedCronRequest(req.headers) && ctx.organizationId !== DOGFOOD_ORG_ID) {
     return NextResponse.json(
       { success: false, error: 'Forbidden: cross-org worker is restricted to the service identity.' },
       { status: 403 }

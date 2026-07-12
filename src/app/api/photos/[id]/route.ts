@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { deletePhoto } from '@/lib/photos/service';
 import { getReceivingPhotoDeleteMeta, countReceivingPhotos } from '@/lib/photos/queries/receiving-list';
@@ -34,7 +34,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Valid photo id is required' }, { status: 400 });
   }
 
-  const sid = request.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(request.cookies);
   const actor = await getCurrentUserBySid(sid);
   if (!actor) {
     return NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 });

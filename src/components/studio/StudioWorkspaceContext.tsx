@@ -117,7 +117,7 @@ export function StudioWorkspaceProvider({ children }: { children: ReactNode }) {
     markDirty,
   });
 
-  const { createDraft, saveDraft, publish, discardDraft, importTemplate } = useStudioPublish({
+  const { createDraft, saveDraft, publish, discardDraft, importTemplate, submitToCatalog } = useStudioPublish({
     definitionId,
     dirty,
     draftNodes,
@@ -194,6 +194,7 @@ export function StudioWorkspaceProvider({ children }: { children: ReactNode }) {
       publish,
       discardDraft,
       importTemplate,
+      submitToCatalog,
     }),
     [
       active,
@@ -242,6 +243,7 @@ export function StudioWorkspaceProvider({ children }: { children: ReactNode }) {
       publish,
       discardDraft,
       importTemplate,
+      submitToCatalog,
     ],
   );
 

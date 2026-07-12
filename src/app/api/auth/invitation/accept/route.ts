@@ -25,6 +25,7 @@ import {
 } from '@/lib/identity/invitations';
 import { PasswordError } from '@/lib/identity/password';
 import { logAuthEvent } from '@/lib/identity/memberships';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
@@ -58,6 +59,16 @@ const Body = z.object({
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
   const ua = req.headers.get('user-agent');
+
+  const rl = await checkRateLimitAsync({
+    headers: req.headers,
+    routeKey: 'auth-invitation-accept',
+    limit: 15,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429 });
+  }
 
   let parsed: z.infer<typeof Body>;
   try {

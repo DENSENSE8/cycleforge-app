@@ -32,7 +32,7 @@ export function useReceivingClaimModal(): ReceivingClaimModalController {
     setClaimRow(null);
     // Nudge the rail + dashboard to refetch (the cron resolves the exception
     // once Zoho syncs; the ticket # lands on the carton now).
-    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+    window.dispatchEvent(new CustomEvent('app-refresh-data'));
   }, []);
 
   return { claimRow, openClaim, closeClaim, onTicketCreated };

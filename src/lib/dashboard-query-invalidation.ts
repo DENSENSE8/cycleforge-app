@@ -37,5 +37,5 @@ export async function invalidateDashboardOrderQueries(queryClient: QueryClient) 
 /** One global signal for components that are not on React Query yet. */
 export function dispatchUsavRefreshData() {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+  window.dispatchEvent(new CustomEvent('app-refresh-data'));
 }

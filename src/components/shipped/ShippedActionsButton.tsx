@@ -14,8 +14,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import * as Popover from '@radix-ui/react-popover';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import {
   RefreshCw,
   ChevronDown,
@@ -204,11 +204,15 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
 
   // ── Pickup report (inline calendar) ────────────────────────────────────────
   const [reportBusy, setReportBusy] = useState(false);
-  const defaultMonth = defaultDateKey ? new Date(`${defaultDateKey}T00:00:00`) : new Date();
+  // Civil key → local calendar Date for the picker (see dateKeyToLocalDate).
+  const defaultMonth = defaultDateKey
+    ? (dateKeyToLocalDate(defaultDateKey) ?? new Date())
+    : new Date();
 
   const handlePickDate = async (date: Date | undefined) => {
     if (!date || reportBusy) return;
-    const dateKey = format(date, 'yyyy-MM-dd');
+    const dateKey = localDateToDateKey(date);
+    if (!dateKey) return;
     setOpen(false);
     setReportBusy(true);
     try {

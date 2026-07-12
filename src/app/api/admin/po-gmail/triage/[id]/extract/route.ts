@@ -16,7 +16,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { ApiError, errorResponse } from '@/lib/api';
 import { fetchMessage } from '@/lib/po-gmail/messages';
 import { extractWithLlm, type LlmFieldResult } from '@/lib/po-gmail/extract-llm';
@@ -66,7 +65,10 @@ export async function POST(
   const gate = await requireRoutePerm(req, 'admin.view');
   if (gate.denied) return gate.denied;
   const { organizationId } = gate.ctx;
-  const orgId = organizationId ?? USAV_ORG_ID;
+  if (!organizationId) {
+    return NextResponse.json({ error: 'NO_ORG' }, { status: 401 });
+  }
+  const orgId = organizationId;
 
   try {
     const { id } = await params;

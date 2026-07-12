@@ -2,9 +2,9 @@
 
 This is the **decided, environment-specific** plan for making the receiving photos
 that already sync to the office NAS display live on the Vercel website (for staff,
-remote staff, and Zendesk tickets). It resolves the open decisions in
-[`nas-photos-production-plan.md`](./nas-photos-production-plan.md) §10 with the
-actual hardware, domain, and approach chosen on 2026-06-02.
+remote staff, and Zendesk tickets). It resolves the open decisions left by the
+earlier generic NAS-photos production plan with the actual hardware, domain,
+and approach chosen on 2026-06-02.
 
 The runnable artifacts referenced here live in
 [`deploy/nas-photo-server/synology/`](../deploy/nas-photo-server/synology/)
@@ -132,6 +132,5 @@ The full, ordered, copy-paste steps are in
 
 ## 6. Pointers
 
-- Generic plan / rationale: [`nas-photos-production-plan.md`](./nas-photos-production-plan.md)
 - Runbook + compose + nginx: [`deploy/nas-photo-server/synology/`](../deploy/nas-photo-server/synology/)
 - Original LAN-only dev server: [`deploy/nas-photo-server/`](../deploy/nas-photo-server/)

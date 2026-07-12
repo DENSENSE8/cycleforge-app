@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { formatPSTTimestamp } from '@/utils/date';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
@@ -250,7 +249,7 @@ function extractEcwidContactInfo(order: any): string {
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const body = await req.json().catch(() => ({}));
     const maxPages = Math.max(1, Math.min(50, Number(body.maxPages || 10)));
 

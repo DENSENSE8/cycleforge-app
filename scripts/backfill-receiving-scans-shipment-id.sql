@@ -4,8 +4,8 @@
 -- Backfill historical receiving_scans.shipment_id (the FK to
 -- shipping_tracking_numbers added in 2026-06-08_stn_consolidation.sql, Phase 6).
 -- That migration only ADDED the nullable column + index; the prior data backfill
--- (2026-06-20_backfill_receiving_stn_linkage.sql) populated receiving +
--- receiving_lines + the receiving_shipments junction, but NOT receiving_scans —
+-- (2026-06-20_backfill_receiving_stn_linkage.sql) populated receiving_carton +
+-- receiving_line + the receiving_shipments junction, but NOT receiving_scans —
 -- this script closes that gap so every recoverable dock-scan event links to its
 -- canonical STN row by id.
 --
@@ -22,7 +22,7 @@
 --
 -- ── RUN ORDER ───────────────────────────────────────────────────────────────
 --   Run this AFTER scripts/verify-stn-consolidation.sql is green (it proves the
---   receiving.shipment_id spine is populated, which Pass 1 inherits from).
+--   receiving_carton.shipment_id spine is populated, which Pass 1 inherits from).
 --   verify-stn-consolidation.sql's own header names this script as a required
 --   step (S4 §6.3) before S5 (read cutover) and S6.
 --
@@ -37,11 +37,11 @@ BEGIN;
 -- ── Pass 1: inherit the parent carton's STN ─────────────────────────────────
 -- The receiving row already carries the canonical shipment_id (populated by
 -- 2026-06-20_backfill_receiving_stn_linkage.sql and back-stamped live by
--- linkScanToStn's `UPDATE receiving SET shipment_id = ...`). A scan inherits its
+-- linkScanToStn's `UPDATE receiving_carton SET shipment_id = ...`). A scan inherits its
 -- carton's tracking by definition, so this is the high-confidence majority path.
 UPDATE receiving_scans rs
    SET shipment_id = r.shipment_id
-  FROM receiving r
+  FROM receiving_carton r
  WHERE rs.receiving_id = r.id
    AND rs.shipment_id IS NULL
    AND r.shipment_id IS NOT NULL;

@@ -1,7 +1,7 @@
 import type { GateReason } from '@/lib/vision/frame-quality';
 
 export type ScanMode = 'live' | 'manual';
-export const SCAN_MODE_KEY = 'usav.identify.scanMode';
+export const SCAN_MODE_KEY = 'cf.identify.scanMode';
 
 /** Reticle border colour by gate state — green when a frame is good enough to send. */
 export const RETICLE_TINT: Record<GateReason, string> = {

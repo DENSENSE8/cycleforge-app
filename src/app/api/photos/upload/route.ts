@@ -133,7 +133,7 @@ async function resolveReceivingId(
 ): Promise<number | null> {
   const r = await tenantQuery<{ receiving_id: number }>(
     organizationId,
-    `SELECT receiving_id FROM receiving_lines WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    `SELECT receiving_id FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [lineId, organizationId],
   );
   return r.rows[0]?.receiving_id ?? null;

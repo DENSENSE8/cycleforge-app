@@ -1,4 +1,9 @@
 import type { CarrierCode, ShipmentStatusCategory } from '@/components/shipping/ShipmentStatusBadge';
+import {
+  dateKeyToLocalDate,
+  isDateKey,
+  localDateToDateKey,
+} from '@/utils/date';
 import { VALID_CARRIERS, VALID_STATUS, type ShippedTypeFilter } from './shipped-filter-constants';
 
 type ParamReader = URLSearchParams | { get: (k: string) => string | null };
@@ -29,13 +34,16 @@ export function parseStaffId(raw: string | null): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/**
+ * URL civil date (`YYYY-MM-DD`) → local calendar `Date` for react-day-picker.
+ * Host-TZ-safe: uses {@link dateKeyToLocalDate}, never `T00:00:00` re-zone.
+ */
 export function parseISODate(raw: string | null): Date | undefined {
-  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) return undefined;
-  const d = new Date(`${raw.trim()}T00:00:00`);
-  return Number.isFinite(d.getTime()) ? d : undefined;
+  if (!raw || !isDateKey(raw)) return undefined;
+  return dateKeyToLocalDate(raw.trim());
 }
 
+/** Local calendar `Date` from a picker → civil key for the URL. */
 export function toISODate(d: Date | undefined): string | null {
-  if (!d) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return localDateToDateKey(d);
 }

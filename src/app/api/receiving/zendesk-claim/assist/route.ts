@@ -141,7 +141,7 @@ async function fetchHermesAssist(body: unknown): Promise<Response> {
     method: 'POST',
     headers: getHermesHeaders({
       'content-type': 'application/json',
-      'X-Source': 'usav-receiving-claim-assist',
+      'X-Source': 'cycle-forge-receiving-claim-assist',
     }),
     body: JSON.stringify(body),
     signal: controller.signal,

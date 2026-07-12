@@ -45,8 +45,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       orgId,
       `SELECT rl.id,
               rl.receiving_id,
-              rl.zoho_purchaseorder_id,
-              COALESCE(rl.zoho_purchaseorder_number,
+              rz.zoho_purchaseorder_id,
+              COALESCE(rz.zoho_purchaseorder_number,
                        r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
               rl.sku,
               rl.item_name,
@@ -60,23 +60,26 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
               rl.created_at::text  AS created_at,
               sc.image_url,
               ${sqlLinePhotoCount('rl.id', 'rl.organization_id')}::int AS item_photo_count
-         FROM receiving_lines rl
+         FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt
               ON rlt.receiving_line_id = rl.id
              AND rlt.organization_id = rl.organization_id
-         LEFT JOIN receiving r ON (
+         LEFT JOIN receiving_line_zoho rz
+              ON rz.receiving_line_id = rl.id
+             AND rz.organization_id = rl.organization_id
+         LEFT JOIN receiving_carton r ON (
               (r.id = rl.receiving_id
                AND r.organization_id = rl.organization_id)
            OR (rl.receiving_id IS NULL
                AND r.source = 'zoho_po'
-               AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+               AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
                AND r.organization_id = rl.organization_id)
          )
          LEFT JOIN sku_catalog sc ON (sc.sku = rl.sku
                AND sc.organization_id = rl.organization_id)
         WHERE rl.organization_id = $2
-          AND (rl.zoho_purchaseorder_id = $1
-           OR rl.zoho_purchaseorder_number = $1
+          AND (rz.zoho_purchaseorder_id = $1
+           OR rz.zoho_purchaseorder_number = $1
            OR r.zoho_purchaseorder_number = $1)
         ORDER BY rl.id ASC`,
       [key, orgId],

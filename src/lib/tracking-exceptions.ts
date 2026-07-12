@@ -1,6 +1,6 @@
 import pool from '@/lib/db';
 import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export type ExceptionDomain = 'orders' | 'receiving';
@@ -60,7 +60,7 @@ export async function upsertOpenTrackingException(
   // INSERT is always stamped explicitly rather than relying on the GUC default.
   orgId?: OrgId,
 ): Promise<TrackingExceptionRecord | null> {
-  const effectiveOrgId = orgId ?? transitionalUsavOrgId();
+  const effectiveOrgId = orgId ?? transitionalDogfoodOrgId();
   const tracking = String(params.trackingNumber || '').trim();
   if (!tracking || tracking.includes(':')) return null;
 

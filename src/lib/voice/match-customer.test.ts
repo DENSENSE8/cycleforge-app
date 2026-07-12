@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { toE164, lastDigits } from './normalize-phone';
 import { matchCustomer, type MatchCustomerDeps } from './match-customer';
 import type { MatchedCustomer } from './types';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 
 // ── normalize-phone (pure) ────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ const HIT: MatchedCustomer = { name: 'Ada Lovelace', email: 'ada@x.io', phone: '
 
 test('matchCustomer prefers an org-scoped customers hit and skips Square', async () => {
   const { deps, calls } = fakes({ lookupCustomers: async () => HIT });
-  const result = await matchCustomer({ orgId: USAV_ORG_ID, e164: '+14155550100' }, deps);
+  const result = await matchCustomer({ orgId: DOGFOOD_ORG_ID, e164: '+14155550100' }, deps);
   assert.deepEqual(result, HIT);
   assert.deepEqual(calls.square, [], 'Square should not be queried when customers matched');
 });
@@ -61,7 +61,7 @@ test('matchCustomer prefers an org-scoped customers hit and skips Square', async
 test('matchCustomer falls back to Square when customers misses', async () => {
   const squareHit: MatchedCustomer = { name: 'Grace', email: null, phone: '+14155550100', source: 'square' };
   const { deps } = fakes({ lookupSquare: async () => squareHit });
-  const result = await matchCustomer({ orgId: USAV_ORG_ID, e164: '+14155550100' }, deps);
+  const result = await matchCustomer({ orgId: DOGFOOD_ORG_ID, e164: '+14155550100' }, deps);
   assert.equal(result?.source, 'square');
 });
 
@@ -74,14 +74,14 @@ test('matchCustomer matches on last-10 even when normalization fails', async () 
     },
   });
   // e164 null (unattributable) but a raw 10-digit number is present.
-  const result = await matchCustomer({ orgId: USAV_ORG_ID, e164: null, rawNumber: '(415) 555-0100' }, deps);
+  const result = await matchCustomer({ orgId: DOGFOOD_ORG_ID, e164: null, rawNumber: '(415) 555-0100' }, deps);
   assert.deepEqual(result, HIT);
   assert.deepEqual(seen, ['4155550100']);
 });
 
 test('matchCustomer returns null with too few digits to match', async () => {
   const { deps, calls } = fakes();
-  const result = await matchCustomer({ orgId: USAV_ORG_ID, e164: null, rawNumber: '0100' }, deps);
+  const result = await matchCustomer({ orgId: DOGFOOD_ORG_ID, e164: null, rawNumber: '0100' }, deps);
   assert.equal(result, null);
   assert.deepEqual(calls.customers, [], 'should not query with < 10 digits');
 });

@@ -18,6 +18,7 @@ import {
 } from '../shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 interface BoseModelListRow {
   id: number;
@@ -32,7 +33,7 @@ export function BoseModelsSidebarPanel() {
   const search = searchParams.get('search') ?? '';
   const selected = searchParams.get('model') ?? '';
 
-  const { data, isLoading } = useQuery<{ items: BoseModelListRow[] }>({
+  const { data, isLoading, isFetching } = useQuery<{ items: BoseModelListRow[] }>({
     queryKey: qk.boseModels.list(search, ''),
     queryFn: async () => {
       const q = search.trim();
@@ -47,17 +48,6 @@ export function BoseModelsSidebarPanel() {
 
   return (
     <AdminSidebarShell
-      search={{
-        value: search,
-        onChange: (v) =>
-          setParam((p) => {
-            if (v.trim()) p.set('search', v.trim());
-            else p.delete('search');
-          }),
-        onClear: () => setParam((p) => p.delete('search')),
-        placeholder: 'Search model number or name',
-        variant: 'blue',
-      }}
       action={
         <Button
           variant="ghost"
@@ -76,6 +66,22 @@ export function BoseModelsSidebarPanel() {
         </Button>
       }
     >
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={search}
+          onChange={(v) =>
+            setParam((p) => {
+              if (v.trim()) p.set('search', v.trim());
+              else p.delete('search');
+            })
+          }
+          onClear={() => setParam((p) => p.delete('search'))}
+          placeholder="Filter model number or name…"
+          isSearching={isFetching && !isLoading}
+        />
+      </div>
       {isLoading ? (
         <div className="px-2 py-6 text-center text-xs text-text-faint">Loading models…</div>
       ) : rows.length === 0 ? (

@@ -28,11 +28,12 @@
 
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import Link from 'next/link';
-import { Search, ChevronRight } from '@/components/Icons';
+import { Search, ChevronRight, Camera } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TrackingChip, getLast4, getLast4Serial } from '@/components/ui/CopyChip';
 import { formatRelativeTime } from '@/lib/search/search-recents';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
+import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import { cn } from '@/utils/_cn';
 import {
   CHIP_TONE_CLASSES,
@@ -57,6 +58,12 @@ export interface SearchResultRowProps {
    * that only close a popover can ignore the event and let the link navigate.
    */
   onNavigate?: (hit: AiSearchHit, event: ReactMouseEvent) => void;
+  /**
+   * Optional packout proof for the rep order-lookup rail — photos · packer ·
+   * scan-out/packed time. Only the workbench rail supplies it; every other
+   * caller omits it and the order row renders exactly as before.
+   */
+  packout?: NearMatchPackout;
 }
 
 // ── Per-density geometry ──────────────────────────────────────────────────────
@@ -99,14 +106,18 @@ function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
 }
 
 /** The Shopify-grade order row. Requires facets (doc-arm hits). */
-function OrderRow({ hit, active, optionId, density = 'compact', onNavigate }: SearchResultRowProps) {
+function OrderRow({ hit, active, optionId, density = 'compact', onNavigate, packout }: SearchResultRowProps) {
   const facets = hit.facets ?? {};
   const status = orderStatusTone(facets.status);
   const condition = facets.condition_grade;
   const platform = facets.source_platform;
   const tracking = facets.tracking_number;
   const carrier = facets.carrier;
-  const when = facets.happened_at ? formatRelativeTime(facets.happened_at) : null;
+  // Prefer the hydrated packout time (scan-out / packed) + its label; fall back
+  // to the generic facet happened_at when the rail didn't hydrate this row.
+  const whenSource = packout?.timeAt ?? facets.happened_at ?? null;
+  const when = whenSource ? formatRelativeTime(whenSource) : null;
+  const whenLabel = packout?.timeAt ? packout.timeLabel : null;
 
   return (
     <Link
@@ -137,9 +148,29 @@ function OrderRow({ hit, active, optionId, density = 'compact', onNavigate }: Se
         )}
       </span>
       {facets.status && <Chip label={facets.status} tone={status.tone} />}
-      {condition && <Chip label={condition} tone="amber" />}
-      {platform && <Chip label={platform} tone="gray" />}
-      {tracking && (
+      {/* On the rep rail (packout present) keep the row lean — title + status +
+          proof — and drop the secondary condition/platform/tracking chips that
+          would otherwise crowd out the product title in the narrow rail. */}
+      {!packout && condition && <Chip label={condition} tone="amber" />}
+      {!packout && platform && <Chip label={platform} tone="gray" />}
+      {/* Packout proof (rail only) — photos ● and packer, equal-weight with status. */}
+      {packout && packout.photoCount > 0 && (
+        <HoverTooltip
+          label={`${packout.photoCount} packing photo${packout.photoCount === 1 ? '' : 's'}`}
+          focusable={false}
+        >
+          <span className="hidden shrink-0 items-center gap-0.5 tabular-nums text-eyebrow font-black uppercase tracking-widest text-emerald-600 md:inline-flex">
+            <Camera className="h-3 w-3" />
+            {packout.photoCount}
+          </span>
+        </HoverTooltip>
+      )}
+      {packout?.packerName && (
+        <span className="hidden max-w-[7rem] shrink-0 truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint md:inline-flex">
+          {packout.packerName}
+        </span>
+      )}
+      {!packout && tracking && (
         <span className="hidden shrink-0 items-center gap-1 md:inline-flex">
           {carrier && (
             <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
@@ -151,7 +182,7 @@ function OrderRow({ hit, active, optionId, density = 'compact', onNavigate }: Se
       )}
       {when && (
         <span className="shrink-0 text-eyebrow font-semibold uppercase tracking-widest tabular-nums text-text-faint">
-          {when}
+          {whenLabel ? `${whenLabel} · ${when}` : when}
         </span>
       )}
     </Link>
@@ -275,9 +306,11 @@ function GenericRow({ hit, active, optionId, density = 'compact', onNavigate }: 
 }
 
 export function SearchResultRow(props: SearchResultRowProps) {
-  // Order variant only when the doc arm gave us facets to render richly;
-  // exact-identifier order hits (no facets) fall through to the generic row.
-  if (props.hit.entityType === 'order' && props.hit.facets != null) return <OrderRow {...props} />;
+  // Order variant when the doc arm gave us facets to render richly, OR when the
+  // rep workbench rail hydrated packout proof for it (so an exact-identifier
+  // order hit still shows photos/packer/time instead of the bare generic row).
+  if (props.hit.entityType === 'order' && (props.hit.facets != null || props.packout != null))
+    return <OrderRow {...props} />;
   if (props.hit.entityType === 'unit') return <UnitRow {...props} />;
   return <GenericRow {...props} />;
 }

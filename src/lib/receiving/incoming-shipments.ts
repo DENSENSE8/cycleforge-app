@@ -10,13 +10,15 @@ export interface IncomingShipmentRef {
   carrier: string;
 }
 
-/** Soft-join LATERAL body shared by org-scoped + global paths. */
+/** Soft-join LATERAL body shared by org-scoped + global paths.
+ *  Line-level zoho PO id reads from receiving_line_zoho (rz, joined by both
+ *  callers before this LATERAL); carton-level r.zoho_purchaseorder_id stays. */
 const RECEIVING_SOFT_JOIN = `
-             SELECT r.* FROM receiving r
+             SELECT r.* FROM receiving_carton r
               WHERE (r.id = rl.receiving_id
                  OR (rl.receiving_id IS NULL
                      AND r.source = 'zoho_po'
-                     AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id)
+                     AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                  OR (rl.receiving_id IS NULL
                      AND r.source = 'ebay'
                      AND r.source_order_id = rl.source_order_id
@@ -57,15 +59,15 @@ export async function selectIncomingShipmentIds(
     const universal = await isIncomingUniversal(orgId);
     const lineScope = universal
       ? `(
-            (rl.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
+            (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
             OR
-            (rl.zoho_purchaseorder_id IS NULL
+            (rz.zoho_purchaseorder_id IS NULL
              AND rl.inbound_source_type = 'ebay'
              AND rl.source_order_id IS NOT NULL
              AND ${notInboundMirrorTerminalPredicate('ebay')})
           )`
       : `(
-            (rl.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
+            (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
             OR
             (rl.inbound_source_type = 'ebay'
              AND rl.source_order_id IS NOT NULL
@@ -86,9 +88,11 @@ export async function selectIncomingShipmentIds(
                 stn.has_exception,
                 stn.latest_event_at,
                 stn.next_check_at
-           FROM receiving_lines rl
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
            LEFT JOIN zoho_po_mirror mirror
-             ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+             ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
            JOIN LATERAL (
              ${RECEIVING_SOFT_JOIN}
                 AND r.organization_id = $1
@@ -140,9 +144,11 @@ export async function selectIncomingShipmentIds(
               stn.has_exception,
               stn.latest_event_at,
               stn.next_check_at
-         FROM receiving_lines rl
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          LEFT JOIN zoho_po_mirror mirror
-           ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+           ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
          JOIN LATERAL (
            ${RECEIVING_SOFT_JOIN}
             ORDER BY (r.id = rl.receiving_id) DESC,
@@ -154,7 +160,7 @@ export async function selectIncomingShipmentIds(
         WHERE rl.workflow_status = 'EXPECTED'
           AND COALESCE(rl.quantity_received, 0) = 0
           AND (
-            (rl.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
+            (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
             OR
             (rl.inbound_source_type = 'ebay'
              AND rl.source_order_id IS NOT NULL)

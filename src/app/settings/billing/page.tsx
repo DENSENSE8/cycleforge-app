@@ -123,7 +123,7 @@ export default async function BillingPage() {
             })}
           </div>
           <p className="mt-3 text-[11.5px] text-text-soft">
-            Enterprise is sales-assisted — <a className="font-medium text-text-default hover:underline" href="mailto:sales@usav.example.com">contact us</a>.
+            Enterprise is sales-assisted — <a className="font-medium text-text-default hover:underline" href="mailto:sales@cycleforge.ai">contact us</a>.
           </p>
         </Card>
       </div>

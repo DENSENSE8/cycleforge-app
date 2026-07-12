@@ -300,8 +300,10 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
           WHERE e.status = 'pending'
             AND EXISTS (
               SELECT 1
-              FROM receiving_lines rl
-              WHERE rl.zoho_purchaseorder_number_norm = ANY(e.po_numbers_norm)
+              FROM receiving_line_zoho rz
+              JOIN receiving_line rl
+                ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
+              WHERE rz.zoho_purchaseorder_number_norm = ANY(e.po_numbers_norm)
             )`,
       );
       resolved += ar.rowCount ?? 0;

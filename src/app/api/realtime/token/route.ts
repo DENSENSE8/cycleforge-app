@@ -18,6 +18,9 @@ import {
   getStaffStationBridgeChannelName,
   getScanLogChannelName,
   getDbChannelPrefix,
+  getMasterPlanChannel,
+  getOpsPlansChannelName,
+  getForgeRunsChannelName,
 } from '@/lib/realtime/channels';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 
@@ -98,6 +101,22 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
 
   if (aiSessionChannel) {
     capability[aiSessionChannel] = ['subscribe', 'publish'];
+  }
+
+  // Agentic-loop master plan (Yjs over Ably) + ops-plans change feed.
+  // Least-privilege: plan viewers subscribe; only plan managers may publish
+  // CRDT sync messages (the Yjs protocol needs client publish — unlike the
+  // broadcast feeds above, peers answer each other's sync requests).
+  if (ctx.permissions.has('operations.plans.view')) {
+    capability[getOpsPlansChannelName(orgId)] = ['subscribe'];
+    capability[getMasterPlanChannel(orgId)] = ctx.permissions.has('operations.plans.manage')
+      ? ['subscribe', 'publish']
+      : ['subscribe'];
+  }
+
+  // Forge run feed — read-only, mirrors the GET /api/forge/runs permission.
+  if (ctx.permissions.has('assistant.chat')) {
+    capability[getForgeRunsChannelName(orgId)] = ['subscribe'];
   }
 
   // Defense in depth: assert every granted resource is inside this org's prefix.

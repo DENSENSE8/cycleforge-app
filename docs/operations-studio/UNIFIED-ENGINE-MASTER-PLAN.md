@@ -171,7 +171,7 @@ never blocks or risks the engine cutover:
 Studio is the per-tenant authoring/observe surface; much of it already exists (graph canvas,
 draft/publish, diagnostics gate, Live lens, station builder with `workflow_node_id` binding).
 
-- [ ] **Phase E–G: editable canvas UI** (per `NODE_WORKFLOW_IMPLEMENTATION_PLAN.md`) — finish
+- [ ] **Phase E–G: editable canvas UI** — finish
       node add/remove/connect on React Flow, config sheets per node type. *P2, L.*
 - [ ] **Decision-node editor** — config sheet for the `decision` node (§1.6); later the JDM editor.
 - [ ] **Live + Flow² lenses** — wire `workflow_runs` + `workflow_node_stats` into queue-depth /

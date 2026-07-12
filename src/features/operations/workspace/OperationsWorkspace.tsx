@@ -14,6 +14,7 @@ import { OperationsDashboard } from '@/features/operations/components/Operations
 import { OperationsAnalyticsView } from './OperationsAnalyticsView';
 import { OperationsInsightsView } from './OperationsInsightsView';
 import { OperationsHistoryView } from './OperationsHistoryView';
+import { OperationsPlansView } from './OperationsPlansView';
 import { SignalsWorkspace } from '@/features/signals/SignalsWorkspace';
 
 export function OperationsWorkspace() {
@@ -25,5 +26,6 @@ export function OperationsWorkspace() {
   if (mode === 'insights') return <OperationsInsightsView />;
   if (mode === 'history') return <OperationsHistoryView />;
   if (mode === 'signals') return <SignalsWorkspace />;
+  if (mode === 'plans') return <OperationsPlansView />;
   return <OperationsDashboard />;
 }

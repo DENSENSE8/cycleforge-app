@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import type { WeekRange } from '@/utils/date';
+import { diffDaysDateKey, type WeekRange } from '@/utils/date';
 import type { ReceivingPoGroup } from '@/components/station/receiving-lines-table-helpers';
 
 interface UseReceivingAutoWeekArgs {
@@ -48,12 +48,9 @@ export function useReceivingAutoWeek({
       .sort((a, b) => b.localeCompare(a))[0];
     if (!latest) return; // still loading or genuinely empty — keep waiting.
     autoWeekAppliedRef.current = true;
-    const curSunday = new Date(`${weekRange.startStr}T00:00:00`);
-    const latestDate = new Date(`${latest}T00:00:00`);
-    const diffDays = Math.round(
-      (curSunday.getTime() - latestDate.getTime()) / 86_400_000,
-    );
-    if (diffDays > 0) setWeekOffset(Math.ceil(diffDays / 7));
+    // Civil-day distance only — never host-local T00:00:00 reparse.
+    const diffDays = diffDaysDateKey(latest, weekRange.startStr);
+    if (diffDays != null && diffDays > 0) setWeekOffset(Math.ceil(diffDays / 7));
   }, [
     isHistoryMode,
     skipWeekFilter,

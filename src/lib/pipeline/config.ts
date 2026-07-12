@@ -21,10 +21,7 @@ function envStr(key: string, fallback: string): string {
 // ─── Paths ───────────────────────────────────────────────────
 
 /** Absolute path to the repo the pipeline improves. */
-export const REPO_PATH = envStr(
-  'PIPELINE_REPO_PATH',
-  '/Users/icecube/repos/USAV-Orders-Backend',
-);
+export const REPO_PATH = envStr('PIPELINE_REPO_PATH', process.cwd());
 
 /** Directory for exported LoRA adapters (shared between Mac + Jetson). */
 export const ADAPTER_DIR = envStr(

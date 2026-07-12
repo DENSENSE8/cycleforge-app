@@ -74,7 +74,7 @@ function getZendeskAuthConfig(): ZendeskAuthConfig | null {
 /**
  * Resolve the Zendesk auth config for a tenant.
  *   - orgId given  → read the org vault (provider 'zendesk'). The vault layer
- *     itself env-fallbacks ONLY for USAV_ORG_ID, so a non-USAV tenant without a
+ *     itself env-fallbacks ONLY for DOGFOOD_ORG_ID, so a non-USAV tenant without a
  *     vault row resolves to null — never USAV's creds.
  *   - orgId omitted → legacy env-only path (getZendeskAuthConfig).
  * Returns null when neither yields a complete credential set, so callers can

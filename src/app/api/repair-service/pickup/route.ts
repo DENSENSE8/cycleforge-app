@@ -5,7 +5,6 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 
 interface RepairLookupRow {
   id: number;
@@ -84,7 +83,7 @@ interface PickupRequestBody {
  *    still captures the customer's refusal.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const orgId = ctx.organizationId ?? USAV_ORG_ID;
+  const orgId = ctx.organizationId;
   const staffId = ctx.staffId;
 
   try {

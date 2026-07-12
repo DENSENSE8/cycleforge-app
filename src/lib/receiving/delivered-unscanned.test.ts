@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 
 import {
   deliveredUnscannedBaseSql,
+  emailDeliveredUnscannedBaseSql,
   getDeliveredUnscannedCount,
   INBOUND_SHIPMENT_PREDICATE,
   ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE,
@@ -53,4 +54,16 @@ test('getDeliveredUnscannedCount wraps the canonical base and binds the window',
 test('count tolerates an empty result set', async () => {
   const fakeClient = { query: async () => ({ rows: [] as Array<{ n: number }> }) };
   assert.equal(await getDeliveredUnscannedCount(fakeClient as never), 0);
+});
+
+test('email base reads the line zoho cluster from receiving_line_zoho (Wave-2 reader cutover)', () => {
+  for (const sql of [emailDeliveredUnscannedBaseSql(), emailDeliveredUnscannedBaseSql(30, '$1')]) {
+    // The order#↔PO# string-key join is on the street table, keyed back to the
+    // line via its PK; the output columns keep their frozen names.
+    assert.match(sql, /JOIN receiving_line_zoho rz\s+ON rz\.zoho_purchaseorder_number_norm = eds\.order_number_norm/);
+    assert.match(sql, /JOIN receiving_line rl\s+ON rl\.id = rz\.receiving_line_id/);
+    assert.match(sql, /rz\.zoho_purchaseorder_id,\s+rz\.zoho_purchaseorder_number/);
+    // No zoho-cluster reads left on the line spine.
+    assert.ok(!/rl\.zoho_/.test(sql), 'spine zoho read leaked back into the email base');
+  }
 });

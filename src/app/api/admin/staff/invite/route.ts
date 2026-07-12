@@ -1,10 +1,13 @@
 /**
- * POST /api/admin/staff/invite
+ * POST /api/admin/staff/invite  (SOFT-DEPRECATED)
  *
- * Creates a pending staff row + an enrollment token, then emails the
- * invitee a link to set their PIN. Returns the enrollment URL so the
- * caller can also show it as a copy-able link or QR (the existing
- * /m/enroll/[token] page already accepts these tokens).
+ * Legacy PIN-enrollment invite: creates a pending staff row + enrollment token,
+ * emails a link to set a PIN (/m/enroll/[token]). Superseded by the identity
+ * invitation flow (`/api/org/invitations` → `/api/auth/invitation/accept`),
+ * which provisions an account + membership and defaults the new member to the
+ * password path (org-login-gate wave 6.3). New admin "Invite" UI should call the
+ * identity flow; this endpoint stays only for backward compatibility and logs a
+ * deprecation warning on every call.
  *
  * Body: { name, role, email }
  *
@@ -33,6 +36,10 @@ function makeToken(): string {
 }
 
 export const POST = withAuth(async (req, ctx) => {
+  console.warn(
+    '[deprecated] POST /api/admin/staff/invite (PIN enrollment) — migrate to the identity invitation flow (/api/org/invitations). org=%s',
+    ctx.organizationId,
+  );
   let parsed: z.infer<typeof Body>;
   try {
     parsed = Body.parse(await req.json());

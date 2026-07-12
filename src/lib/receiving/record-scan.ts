@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
+import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 
 export type ReceivingScanSource = 'zoho_po' | 'unmatched';
 
@@ -30,7 +31,7 @@ async function linkScanToStn(
 ): Promise<boolean> {
   try {
     const orgRow = await pool.query<{ organization_id: string }>(
-      'SELECT organization_id FROM receiving WHERE id = $1 LIMIT 1',
+      'SELECT organization_id FROM receiving_carton WHERE id = $1 LIMIT 1',
       [receivingId],
     );
     const orgId = orgRow.rows[0]?.organization_id;
@@ -45,7 +46,7 @@ async function linkScanToStn(
       [scanId, shipmentId],
     );
     await pool.query(
-      `UPDATE receiving SET shipment_id = $2 WHERE id = $1 AND shipment_id IS NULL`,
+      `UPDATE receiving_carton SET shipment_id = $2 WHERE id = $1 AND shipment_id IS NULL`,
       [receivingId, shipmentId],
     );
     return true;
@@ -69,7 +70,7 @@ export async function recordReceivingScan(
   const result = await pool.query<{ id: number }>(
     `INSERT INTO receiving_scans
        (receiving_id, tracking_number, carrier, scanned_at, scanned_by, source, organization_id, intake_surface)
-     VALUES ($1, $2, $3, NOW(), $4, $5, (SELECT organization_id FROM receiving WHERE id = $1), $6)
+     VALUES ($1, $2, $3, NOW(), $4, $5, (SELECT organization_id FROM receiving_carton WHERE id = $1), $6)
      ON CONFLICT (tracking_number, receiving_id) DO UPDATE
        SET scanned_at = EXCLUDED.scanned_at,
            scanned_by = EXCLUDED.scanned_by,
@@ -80,12 +81,14 @@ export async function recordReceivingScan(
   );
   const scanId = Number(result.rows[0].id);
 
+  // Resolved once — used by both the ops-event stamp and the triage door stamp.
+  const orgRow = await pool.query<{ organization_id: string }>(
+    'SELECT organization_id FROM receiving_carton WHERE id = $1 LIMIT 1',
+    [receivingId],
+  );
+  const orgId = orgRow.rows[0]?.organization_id ?? null;
+
   try {
-    const orgRow = await pool.query<{ organization_id: string }>(
-      'SELECT organization_id FROM receiving WHERE id = $1 LIMIT 1',
-      [receivingId],
-    );
-    const orgId = orgRow.rows[0]?.organization_id ?? null;
     if (orgId) {
       // Phase 2 (ops-events unification): stamp the tenant's Studio-node
       // "where" axis. The scan's surface maps 1:1 onto a SURFACE_REGISTRY key
@@ -119,17 +122,16 @@ export async function recordReceivingScan(
 
   await linkScanToStn(scanId, receivingId, trackingNumber, source);
 
-  // Door-arrival stamp — TRIAGE surface only. Unbox scans must not touch
-  // received_at/received_by so the two modes stay independent on one carton.
-  if (intakeSurface === 'triage') {
-    await pool.query(
-      `UPDATE receiving
-          SET received_at = COALESCE(received_at, NOW()),
-              received_by = COALESCE(received_by, $2),
-              updated_at  = NOW()
-        WHERE id = $1`,
-      [receivingId, staffId],
-    );
+  // Door-arrival stamp — TRIAGE surface only. Unbox scans must not touch the
+  // door stamps so the two modes stay independent on one carton. Wave-3 writer
+  // inversion: the stamp lands DIRECTLY on the receiving_triage street table
+  // (COALESCE-once inside the helper — a re-scan never re-stamps the door);
+  // the spine columns are no longer written and are dropped in Wave 4.
+  if (intakeSurface === 'triage' && orgId) {
+    await upsertReceivingTriage(pool, orgId, receivingId, {
+      doorReceivedAt: 'now', // rendered as SQL NOW() by the helper
+      doorReceivedBy: staffId,
+    });
   }
 
   return scanId;

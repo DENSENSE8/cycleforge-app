@@ -41,6 +41,8 @@ function fakes(opts: {
     updateAssignment: async (input) => {
       updates.push(input);
     },
+    // Keep the happy path DB-free — real resolvePoRef hits Neon via pool.
+    resolvePoRef: async () => 'PO_20',
   };
 
   return { deps, updates };
@@ -66,6 +68,7 @@ test('reassignReceivingPhoto moves primary link to another receiving carton', as
   assert.equal(updates[0].photoId, 99);
   assert.equal(updates[0].targetEntityType, 'RECEIVING');
   assert.equal(updates[0].targetEntityId, 20);
+  assert.equal(updates[0].poRef, 'PO_20');
 });
 
 test('reassignReceivingPhoto is idempotent when target matches current link', async () => {

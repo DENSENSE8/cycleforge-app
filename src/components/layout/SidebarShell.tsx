@@ -3,65 +3,41 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { SIDEBAR_GUTTER, sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
-import { SidebarSearchBar, type SidebarSearchBarProps } from '@/components/ui/SidebarSearchBar';
 import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-system/components/FilterRefinementBar';
 
-/** The search props the shell forwards to its internal `<SidebarSearchBar>`. */
-export type SidebarShellSearch = SidebarSearchBarProps;
-
 /**
- * The ONE layout shell for every sidebar that has a header search.
+ * The ONE layout shell for every master sidebar.
  *
- * The sidebar-search drift bug was never the search *component* — every panel
- * already used {@link SidebarSearchBar}. It was that each panel hand-positioned
- * it: flush in one, nested inside an `overflow-y-auto` scroll body in another,
- * wrapped in `py-2`/`py-3`/`mt-4` in a third. So the band double-inset, the
- * gaps differed per page, and a `-mx-1.5` patch failed (negative margins clamp
- * inside the scroll body's implied `overflow-x`).
+ * Search is NOT a sidebar concern anymore: the global header pill
+ * ({@link GlobalHeaderSearch}) is the single search surface. A panel that wants
+ * a contextual filter registers it with the header via `usePageHeaderSearch`
+ * (`src/hooks/usePageHeader.ts`) — the sidebar renders NO search band. This is
+ * enforced by `sidebar-search-bar.guard.test.ts`.
  *
- * `SidebarShell` fixes this by owning the structure and **rendering the search
- * itself** from props — panels can no longer wrap or misposition it. The shape
- * is the proven-good one from Pending (`DashboardManagementPanel`):
+ * The shell owns the structure so panels supply only slots, never layout:
  *
  *   h-full flex flex-col overflow-hidden     ← outer column (never scrolls)
  *     headerAbove                            ← pinned: filterControl / eyebrow / mode rail
- *     <SidebarSearchBar/>  (flush)           ← the 40px band, a direct child
+ *     <FilterRefinementBar/> (optional)      ← the glassmorphic filter pill
  *     headerRows[]  (each a 40px pill band)  ← pinned: tabs / field scopes / chips
  *     headerBelow                            ← pinned, non-banded, OUTSIDE the scroll
  *     children  (flex-1 overflow-y-auto)     ← the only scrolling region
- *
- * Enforced by `sidebar-search-bar.guard.test.ts`: `SidebarSearchBar` may be
- * imported ONLY by this shell, so search can never be rendered directly again.
+ *     footer                                 ← pinned bottom, OUTSIDE the scroll
  */
 export interface SidebarShellProps {
   /**
-   * Search props — the shell renders `<SidebarSearchBar {...search}/>` flush.
-   * Omit for a shell with no header search (scan-only / nav-only panels).
-   * Typed as {@link SidebarSearchBarProps} (already `Omit<…, 'size'>`), so a
-   * height can never be passed and the 28/32px drift is impossible.
-   */
-  search?: SidebarSearchBarProps;
-
-  /**
    * Optional configuration for a unified filter bar. When provided, the shell
-   * renders a `<FilterRefinementBar variant="sidebar">` directly below the
-   * search bar.
+   * renders a `<FilterRefinementBar variant="sidebar">` at the top of the panel.
+   * This is a structured refinement UI, NOT a text-search band — search lives in
+   * the global header (see file header).
    */
   filter?: Omit<FilterRefinementBarProps, 'variant'>;
 
-  /**
-   * Focus-grouping wrapper around the rendered search. Receives the shell's own
-   * `<SidebarSearchBar>` node so a panel can keep `onFocus`/`onBlur` on a single
-   * element that also contains anything the search reveals (e.g. Shipped's
-   * "search by" field pills). When omitted, the search renders flush directly.
-   */
-  searchGroup?: (searchBar: ReactNode) => ReactNode;
-
-  /** Pinned rows ABOVE the search (filterControl, section eyebrow, mode rail).
+  /** Pinned rows ABOVE the filter (filterControl, section eyebrow, mode rail).
    *  Rendered raw, in order — the panel decides whether to band/gutter each. */
   headerAbove?: ReactNode;
 
-  /** Pinned 40px rows BELOW the search (tab pills, field-scope pills, chips).
+  /** Pinned 40px rows BELOW the filter (tab pills, field-scope pills, chips).
    *  The shell wraps each in `sidebarHeaderPillRowClass`, so panels never
    *  hand-wrap the band. Falsy entries are skipped (conditional rows). */
   headerRows?: Array<ReactNode | false | null | undefined>;
@@ -89,9 +65,7 @@ export interface SidebarShellProps {
 }
 
 export function SidebarShell({
-  search,
   filter,
-  searchGroup,
   headerAbove,
   headerRows,
   headerBelow,
@@ -102,16 +76,12 @@ export function SidebarShell({
   containerProps,
   className,
 }: SidebarShellProps) {
-  const searchBar = search ? <SidebarSearchBar {...search} /> : null;
-
   return (
     <Container
       {...containerProps}
       className={cn('flex h-full flex-col overflow-hidden', className)}
     >
       {headerAbove}
-
-      {searchBar ? (searchGroup ? searchGroup(searchBar) : searchBar) : null}
 
       {filter && (
         // Default (glassmorphic pill) variant, floated with the house gutter —

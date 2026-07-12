@@ -17,7 +17,7 @@ function fakes(opts: { parentExists?: boolean } = {}) {
   const client: TxClient = {
     query: (async (sql: string, params: unknown[] = []) => {
       calls.push({ sql, params });
-      if (/SELECT id FROM receiving_lines/.test(sql)) {
+      if (/SELECT id FROM receiving_line/.test(sql)) {
         return { rows: parentExists ? [{ id: params[0] }] : [], rowCount: parentExists ? 1 : 0 };
       }
       if (/INSERT INTO inbound_purchase_order_links/.test(sql)) {
@@ -68,11 +68,11 @@ test('primary upsert: validates parent, demotes, upserts, dual-writes cache + fa
   assert.equal(row.source_type, 'ebay');
 
   const sqls = calls.map((c) => c.sql);
-  assert.match(sqls[0], /SELECT id FROM receiving_lines/);
+  assert.match(sqls[0], /SELECT id FROM receiving_line/);
   assert.match(sqls[1], /UPDATE inbound_purchase_order_links\s+SET is_primary = false/);
   assert.match(sqls[2], /INSERT INTO inbound_purchase_order_links/);
   assert.match(sqls[2], /ON CONFLICT/);
-  assert.match(sqls[3], /UPDATE receiving_lines/);
+  assert.match(sqls[3], /UPDATE receiving_line/);
   assert.match(sqls[4], /INSERT INTO receiving_line_facts/);
   // facts payload validated → bogus stripped before serialization
   assert.deepEqual(calls[4].params, [ORG, 7, 'ebay_purchase', JSON.stringify({ sellerUsername: 'acme' })]);
@@ -87,10 +87,10 @@ test('non-primary upsert: no demote, no spine cache, no facts', async () => {
     deps,
   );
   const sqls = calls.map((c) => c.sql);
-  assert.match(sqls[0], /SELECT id FROM receiving_lines/);
+  assert.match(sqls[0], /SELECT id FROM receiving_line/);
   assert.match(sqls[1], /INSERT INTO inbound_purchase_order_links/);
   assert.equal(calls.length, 2, 'only parent-check + link insert should run');
-  assert.ok(!sqls.some((s) => /UPDATE receiving_lines/.test(s)));
+  assert.ok(!sqls.some((s) => /UPDATE receiving_line/.test(s)));
 });
 
 test('rejects an unregistered source before any SQL', async () => {
@@ -121,7 +121,7 @@ test('throws when the parent line does not exist for the org (link insert never 
     /receiving_line 999 not found/,
   );
   assert.equal(calls.length, 1, 'only the parent-existence SELECT should have run');
-  assert.match(calls[0].sql, /SELECT id FROM receiving_lines/);
+  assert.match(calls[0].sql, /SELECT id FROM receiving_line/);
 });
 
 test('findLineIdsBySource returns the distinct line ids', async () => {

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sheets as googleSheets } from '@googleapis/sheets';
 import { getGoogleAuth } from '@/lib/google-auth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { withAuth } from '@/lib/auth/withAuth';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
@@ -67,7 +66,7 @@ async function handlePost(req: NextRequest, ctx: { organizationId: string }) {
 
         const results: SyncResult[] = [];
 
-        await withTenantTransaction(ctx.organizationId ?? USAV_ORG_ID, async (client) => {
+        await withTenantTransaction(ctx.organizationId, async (client) => {
             const shippedResult = await syncShippedSheet({
                 organizationId: ctx.organizationId,
                 client,

@@ -98,6 +98,59 @@ test('IDOR: pin/create route rejects a staffId from another tenant (x-tenant-slu
   }
 });
 
+test('leak: staff-picker on apex host (no x-tenant-slug) returns an EMPTY list — never org #1 staff', { skip: !HAS_DB }, async () => {
+  const { default: pool } = await import('@/lib/db');
+  const { GET } = await import('@/app/api/auth/staff-picker/route');
+  await ensureOrgs(pool);
+  await pool.query(`DELETE FROM staff WHERE name LIKE 'apex-leak-%'`);
+  // Seed an active enrolled staff in org A (stands in for the USAV dogfood org).
+  await pool.query(
+    `INSERT INTO staff (organization_id, name, role, status) VALUES ($1, 'apex-leak-a', 'tech', 'active')`,
+    [ORG_A],
+  );
+  const prevDefault = process.env.DEFAULT_TENANT_SLUG;
+  delete process.env.DEFAULT_TENANT_SLUG;
+  try {
+    const req = new Request('http://localhost/api/auth/staff-picker', { method: 'GET' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await GET(req as any);
+    const body = (await res.json()) as { staff: unknown[] };
+    strictEqual(body.staff.length, 0, 'apex host must not leak any tenant staff');
+  } finally {
+    if (prevDefault !== undefined) process.env.DEFAULT_TENANT_SLUG = prevDefault;
+    await pool.query(`DELETE FROM staff WHERE name LIKE 'apex-leak-%'`);
+  }
+});
+
+test('leak: signin with a staffId from another tenant is rejected (org-scoped PIN verify)', { skip: !HAS_DB }, async () => {
+  const { default: pool } = await import('@/lib/db');
+  const { setStaffPin } = await import('@/lib/auth/pin');
+  const { POST } = await import('@/app/api/auth/signin/route');
+  await ensureOrgs(pool);
+  await pool.query(`DELETE FROM staff WHERE name LIKE 'signin-leak-%'`);
+  // Active, PIN-enrolled staff in org B.
+  const ins = await pool.query(
+    `INSERT INTO staff (organization_id, name, role, status) VALUES ($1, 'signin-leak-b', 'tech', 'active') RETURNING id`,
+    [ORG_B],
+  );
+  const staffB = (ins.rows[0] as { id: number }).id;
+  await setStaffPin(staffB, '4729', ORG_B);
+  try {
+    // Correct PIN, but the request carries org A's slug → cross-org → 404, never a session.
+    const req = new Request('http://localhost/api/auth/signin', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-tenant-slug': 'idor-iso-a' },
+      body: JSON.stringify({ staffId: staffB, pin: '4729' }),
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await POST(req as any);
+    strictEqual(res.status, 404, 'cross-tenant signin must 404');
+    strictEqual(res.cookies.get('cf_sid')?.value || res.cookies.get('usav_sid')?.value || null, null, 'no session cookie on cross-tenant signin');
+  } finally {
+    await pool.query(`DELETE FROM staff WHERE name LIKE 'signin-leak-%'`);
+  }
+});
+
 test('IDOR: assignments queries reject cross-org read/update/delete', { skip: !HAS_DB }, async () => {
   const { default: pool } = await import('@/lib/db');
   const { createAssignment, getAssignmentById, updateAssignment, deleteAssignment } =

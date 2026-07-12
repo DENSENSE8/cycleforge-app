@@ -175,7 +175,9 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     pageKey: 'packer',
     modeKey: 'standard',
     scan: null,
-    workflowNodeType: 'fulfillment',
+    // Engine node type (src/lib/workflow/nodes/pack.node.ts). Must match a real
+    // registered node so a template with a `pack` step seeds the pack surface.
+    workflowNodeType: 'pack',
     legacy: { pathname: '/packer', bareResolves: true },
   },
   test: {
@@ -187,7 +189,9 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     pageKey: 'tech',
     modeKey: 'testing',
     scan: null,
-    workflowNodeType: 'testing',
+    // Engine node type (src/lib/workflow/nodes/inspection.node.ts) — the test/QC
+    // step. Was the synthetic 'testing'; a template names it `inspection`.
+    workflowNodeType: 'inspection',
     legacy: { pathname: '/tech', params: { view: 'testing' } },
   },
   outbound: {
@@ -199,7 +203,10 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     pageKey: 'outbound',
     modeKey: 'labels',
     scan: null,
-    workflowNodeType: 'fulfillment',
+    // Engine node type (src/lib/workflow/nodes/ship.node.ts) — the ship-out step.
+    // Was the synthetic 'fulfillment'; pack + outbound now bind to distinct
+    // engine nodes (`pack` vs `ship`) so both station drafts seed.
+    workflowNodeType: 'ship',
     legacy: { pathname: '/outbound', bareResolves: true },
   },
 };

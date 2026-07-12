@@ -6,7 +6,14 @@
  */
 
 import { BUILTIN_IMAGE_TYPES } from '@/lib/photos/image-types';
-import { getCurrentPSTDateKey } from '@/utils/date';
+import {
+  addDaysToDateKey,
+  diffDaysDateKey,
+  formatDateKeyShort,
+  getCurrentPSTDateKey,
+  getRollingDaysStartKey,
+  getYesterdayPSTDateKey,
+} from '@/utils/date';
 
 export interface PhotoLibraryFilterState {
   dateFrom?: string;
@@ -246,10 +253,6 @@ export function parsePhotoLibraryViewMode(raw: string | null): PhotoLibraryViewM
   return 'folders';
 }
 
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function parseSourceScope(raw: string | null): PhotoLibrarySourceScope | undefined {
   if (
     raw === 'all' ||
@@ -274,27 +277,23 @@ export function datePresetFromFilters(filters: PhotoLibraryFilterState): PhotoLi
   const { dateFrom, dateTo } = filters;
   if (!dateFrom && !dateTo) return 'all';
 
-  const today = ymd(new Date());
-  const y = new Date();
-  y.setDate(y.getDate() - 1);
-  const yesterday = ymd(y);
+  // Warehouse civil “today” — never host-local ymd(new Date()).
+  const today = getCurrentPSTDateKey();
+  const yesterday = getYesterdayPSTDateKey(today);
 
   if (dateFrom === today && dateTo === today) return 'today';
   if (dateFrom === yesterday && dateTo === yesterday) return 'yesterday';
 
   if (dateFrom && dateTo) {
-    const start = new Date(`${dateFrom}T00:00:00`);
-    const end = new Date(`${dateTo}T00:00:00`);
-    const diffDays = Math.round((end.getTime() - start.getTime()) / 86_400_000);
-    const last7Start = new Date();
-    last7Start.setDate(last7Start.getDate() - 6);
-    if (diffDays === 6 && dateFrom === ymd(last7Start) && dateTo === today) return 'last7';
+    const diffDays = diffDaysDateKey(dateFrom, dateTo);
+    const last7Start = getRollingDaysStartKey(7, today);
+    if (diffDays === 6 && dateFrom === last7Start && dateTo === today) return 'last7';
   }
 
   return 'custom';
 }
 
-/** Folders view always opens on today's capture date (PST). */
+/** Folders view always opens on today's capture date (warehouse PST). */
 export function todayFoldersDateFilter(): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateTo'> {
   const today = getCurrentPSTDateKey();
   return { dateFrom: today, dateTo: today };
@@ -302,29 +301,16 @@ export function todayFoldersDateFilter(): Pick<PhotoLibraryFilterState, 'dateFro
 
 export function applyDatePreset(preset: PhotoLibraryDatePreset): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateTo'> {
   if (preset === 'all') return { dateFrom: undefined, dateTo: undefined };
-  const today = ymd(new Date());
+  const today = getCurrentPSTDateKey();
   if (preset === 'today') return { dateFrom: today, dateTo: today };
   if (preset === 'yesterday') {
-    const y = new Date();
-    y.setDate(y.getDate() - 1);
-    const d = ymd(y);
+    const d = addDaysToDateKey(today, -1);
     return { dateFrom: d, dateTo: d };
   }
   if (preset === 'last7') {
-    const start = new Date();
-    start.setDate(start.getDate() - 6);
-    return { dateFrom: ymd(start), dateTo: today };
+    return { dateFrom: getRollingDaysStartKey(7, today), dateTo: today };
   }
   return {};
-}
-
-function formatShortDatePst(dateKey: string): string {
-  const date = new Date(`${dateKey}T00:00:00`);
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
 }
 
 export function formatPhotoLibraryDateRange(filters: PhotoLibraryFilterState): string {
@@ -334,12 +320,12 @@ export function formatPhotoLibraryDateRange(filters: PhotoLibraryFilterState): s
   if (preset === 'yesterday') return 'Yesterday';
   if (preset === 'last7') return 'Last 7 days';
   if (filters.dateFrom && filters.dateTo) {
-    const from = formatShortDatePst(filters.dateFrom);
-    const to = formatShortDatePst(filters.dateTo);
+    const from = formatDateKeyShort(filters.dateFrom);
+    const to = formatDateKeyShort(filters.dateTo);
     return filters.dateFrom === filters.dateTo ? from : `${from} to ${to}`;
   }
-  if (filters.dateFrom) return `From ${formatShortDatePst(filters.dateFrom)}`;
-  if (filters.dateTo) return `Until ${formatShortDatePst(filters.dateTo)}`;
+  if (filters.dateFrom) return `From ${formatDateKeyShort(filters.dateFrom)}`;
+  if (filters.dateTo) return `Until ${formatDateKeyShort(filters.dateTo)}`;
   return 'Custom range';
 }
 

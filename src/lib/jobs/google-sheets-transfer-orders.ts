@@ -2,7 +2,7 @@ import { sheets as googleSheets } from '@googleapis/sheets';
 import { db } from '@/lib/drizzle/db';
 import pool from '@/lib/db';
 import { customers as customersTable, orders as ordersTable } from '@/lib/drizzle/schema';
-import { transitionalUsavOrgId, tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId, tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantDrizzle } from '@/lib/drizzle/tenant-db';
 import { getIntegrationCredentials, type EcwidCredentials, type GoogleSheetsCredentials } from '@/lib/integrations/credentials';
@@ -26,12 +26,12 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
  * spreadsheet id is supplied. USAV connects Google via env service-account creds
  * (GOOGLE_CLIENT_EMAIL/GOOGLE_PRIVATE_KEY) and has no organization_integrations
  * `google_sheets` row to read an id from, so this stays its source. Exported so
- * the cron fan-out can use it as USAV's includeUsavTransitional source while
+ * the cron fan-out can use it as USAV's includeDogfoodTransitional source while
  * every OTHER org supplies its OWN id from its google_sheets integration config.
  * A non-USAV caller MUST pass an explicit id — never default another tenant onto
  * USAV's sheet.
  */
-export const USAV_SOURCE_SPREADSHEET_ID = '1b8uvgk4q7jJPjGvFM2TQs3vMES1o9MiAfbEJ7P1TW9w';
+export const DOGFOOD_SOURCE_SPREADSHEET_ID = '1b8uvgk4q7jJPjGvFM2TQs3vMES1o9MiAfbEJ7P1TW9w';
 
 /**
  * The transfer source sheet for `orgId`, or null to skip the org.
@@ -46,7 +46,7 @@ export const USAV_SOURCE_SPREADSHEET_ID = '1b8uvgk4q7jJPjGvFM2TQs3vMES1o9MiAfbEJ
  * fallback's defaultSpreadsheetId) so the sheet-source rule has one home.
  */
 export async function resolveTransferSourceSpreadsheetId(orgId: OrgId): Promise<string | null> {
-  if (orgId === transitionalUsavOrgId()) return USAV_SOURCE_SPREADSHEET_ID;
+  if (orgId === transitionalDogfoodOrgId()) return DOGFOOD_SOURCE_SPREADSHEET_ID;
   const creds = await getIntegrationCredentials<GoogleSheetsCredentials>(orgId, 'google_sheets');
   const id = creds?.defaultSpreadsheetId?.trim();
   return id || null;
@@ -256,7 +256,7 @@ async function upsertOrderDeadline(orderId: number, deadlineAt: Date | null, org
        (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
      VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
      ON CONFLICT DO NOTHING`,
-    [transitionalUsavOrgId(), orderId, deadlineAt]
+    [transitionalDogfoodOrgId(), orderId, deadlineAt]
   );
 }
 
@@ -279,7 +279,7 @@ async function upsertOrderShipmentLinks(
   // Link every shipment to the order row via the unified shipment_links table
   // (the sole linkage SoT). The is_primary one matches primaryShipmentId; the
   // helper demotes the order's other primaries so exactly one stays primary.
-  const effectiveOrg = orgId ?? transitionalUsavOrgId();
+  const effectiveOrg = orgId ?? transitionalDogfoodOrgId();
   await withTenantTransaction(effectiveOrg, async (client) => {
     for (const sid of uniqueIds) {
       const isPrimary = primaryShipmentId != null && sid === primaryShipmentId;
@@ -320,16 +320,16 @@ export async function runGoogleSheetsTransferOrders(
   // (USAV-context) callers are byte-identical. The per-org cron fan-out passes
   // each org's OWN sheet id (from its google_sheets integration config) so a
   // tenant is never read from another tenant's sheet.
-  sourceSpreadsheetId: string = USAV_SOURCE_SPREADSHEET_ID,
+  sourceSpreadsheetId: string = DOGFOOD_SOURCE_SPREADSHEET_ID,
 ): Promise<GoogleSheetsTransferOrdersJobResult> {
   const startedAt = Date.now();
 
   // When orgId is omitted we keep EXACTLY today's behavior (raw pool + neon-http
-  // Drizzle `db` + transitionalUsavOrgId() stamping). When orgId is supplied we
+  // Drizzle `db` + transitionalDogfoodOrgId() stamping). When orgId is supplied we
   // route every tenant-table read/write through the GUC-carrying helpers
   // (tenantQuery / withTenantDrizzle) and scope/stamp by org. The `effectiveOrgId`
   // is what gets stamped on writes either way.
-  const effectiveOrgId: OrgId = orgId ?? transitionalUsavOrgId();
+  const effectiveOrgId: OrgId = orgId ?? transitionalDogfoodOrgId();
 
   progress({ type: 'phase', phase: 'starting' });
 
@@ -1095,7 +1095,7 @@ export async function runGoogleSheetsTransferOrders(
           values: {
             // Tenant scope: stamp the effective org. When called WITHOUT an
             // orgId (un-migrated cron callers) effectiveOrgId falls back to
-            // transitionalUsavOrgId() — byte-identical to the prior behavior.
+            // transitionalDogfoodOrgId() — byte-identical to the prior behavior.
             // When an orgId IS supplied it stamps that tenant. The explicit
             // stamp is required because Drizzle's neon-http client can't carry
             // the GUC, so orders.organization_id (NOT NULL) must be set here.
@@ -1246,7 +1246,7 @@ export async function runGoogleSheetsTransferOrders(
     progress({ type: 'phase', phase: 'publishing' });
     if (uniqueProcessedIds.length > 0) {
       await publishOrderChanged({
-        // effectiveOrgId === transitionalUsavOrgId() when no orgId was supplied
+        // effectiveOrgId === transitionalDogfoodOrgId() when no orgId was supplied
         // (byte-identical to prior behavior); targets the supplied tenant when present.
         organizationId: effectiveOrgId,
         orderIds: uniqueProcessedIds,

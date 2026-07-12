@@ -225,5 +225,4 @@ then unlock editing (ST4) once the owner already trusts the picture, then deepen
 ---
 
 *Layer map: Studio (this doc) → station composition (`station-builder-ui-plan.md`) → canvas
-mechanics (`NODE_UI_PLAN.md`) → engine & schema (`NODE_WORKFLOW_ARCHITECTURE.md`,
-`NODE_WORKFLOW_IMPLEMENTATION_PLAN.md`).*
+mechanics (`NODE_UI_PLAN.md`) → engine & schema (`NODE_WORKFLOW_ARCHITECTURE.md`).*

@@ -96,8 +96,8 @@ async function defaultFindShipmentId(
     orgId,
     `SELECT r.shipment_id
        FROM inbound_purchase_order_links l
-       JOIN receiving_lines rl ON rl.id = l.receiving_line_id
-       LEFT JOIN receiving r ON r.id = rl.receiving_id
+       JOIN receiving_line rl ON rl.id = l.receiving_line_id
+       LEFT JOIN receiving_carton r ON r.id = rl.receiving_id
       WHERE l.organization_id = $1
         AND l.source_type = $2
         AND l.source_order_id = $3

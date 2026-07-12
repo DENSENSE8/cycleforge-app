@@ -35,6 +35,8 @@ import {
   normalizeHistorySort,
 } from '@/lib/receiving/receiving-modes';
 import { microBadge } from '@/design-system/tokens/typography/presets';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 type ChipIcon = React.FC<{ className?: string }>;
 
@@ -177,35 +179,54 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
         Array.isArray(u.queryKey) && u.queryKey[0] === 'receiving-lines-table',
     }) > 0;
 
+  const placeholder = getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter');
+
   return (
     // shrink-0 section (not a full panel) — override the shell's h-full +
     // overflow-hidden so it sizes to content and the filter popover isn't clipped.
     <SidebarShell
       className="h-auto shrink-0 overflow-visible bg-surface-card"
-      search={{
-        value: draft,
-        onChange: setDraft,
-        placeholder: getReceivingHistoryPlaceholder(searchField),
-        isSearching: tableFetching,
-        variant: 'blue',
-        rightElement: (
-          <HoverTooltip label="Receive — scan a new tracking number" asChild>
-            <button
-              type="button"
-              onClick={() => {
-                onSwitchToReceiving();
-                queueMicrotask(() => {
-                  window.dispatchEvent(new CustomEvent('receiving-focus-scan'));
-                });
-              }}
-              className="ds-raw-button rounded-xl bg-emerald-500 p-2.5 text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
-              aria-label="Switch to receiving tab and focus scan field"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-          </HoverTooltip>
-        ),
-      }}
+      headerAbove={
+        // In-context list filter — local base SearchBar over History rows. Keeps
+        // the `draft` → debounced `?rh_q` sync (below) so deep links hydrate; the
+        // Receive "+" action rides along as the field's rightElement. Global pill
+        // stays global.
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={draft}
+            onChange={setDraft}
+            onClear={() => {
+              setDraft('');
+              replaceParams(setReceivingHistoryUrlParams(searchParams, { q: '' }));
+            }}
+            onSearch={(v) => {
+              setDraft(v);
+              replaceParams(setReceivingHistoryUrlParams(searchParams, { q: v }));
+            }}
+            placeholder={placeholder}
+            isSearching={tableFetching}
+            rightElement={
+              <HoverTooltip label="Receive — scan a new tracking number" asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSwitchToReceiving();
+                    queueMicrotask(() => {
+                      window.dispatchEvent(new CustomEvent('receiving-focus-scan'));
+                    });
+                  }}
+                  className="ds-raw-button rounded-xl bg-emerald-500 p-2 text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
+                  aria-label="Switch to receiving tab and focus scan field"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </HoverTooltip>
+            }
+          />
+        </div>
+      }
       filter={{
         label: 'Filters',
         refinements,

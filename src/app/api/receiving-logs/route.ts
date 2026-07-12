@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
 import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson } from '@/lib/cache/upstash-cache';
 import { upsertReceivingAssignment } from '@/lib/receiving/assignment-upsert';
@@ -17,7 +17,7 @@ let _receivingTableExists: boolean | null = null;
 async function checkReceivingTableExists(): Promise<boolean> {
     if (_receivingTableExists !== null) return _receivingTableExists;
     const check = await pool.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'receiving') AS exists`
+        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'receiving_carton') AS exists`
     );
     const exists = check.rows[0]?.exists ?? false;
     _receivingTableExists = exists;
@@ -40,7 +40,7 @@ async function checkReceivingScansTableExists(): Promise<boolean> {
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
     try {
-        const orgId = ctx.organizationId ?? USAV_ORG_ID;
+        const orgId = ctx.organizationId;
         const { searchParams } = new URL(request.url);
         const limit = parseInt(searchParams.get('limit') || '50');
         const offset = parseInt(searchParams.get('offset') || '0');
@@ -110,10 +110,15 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
             hasColumn('needs_test') ? 'r.needs_test' : 'FALSE AS needs_test',
             hasColumn('assigned_tech_id') ? 'r.assigned_tech_id' : 'NULL::int AS assigned_tech_id',
             hasColumn('target_channel') ? 'r.target_channel' : "NULL::text AS target_channel",
-            hasColumn('received_at') ? "to_char(r.received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at" : 'NULL::text AS received_at',
-            hasColumn('received_by') ? 'r.received_by' : 'NULL::int AS received_by',
-            hasColumn('unboxed_at') ? "to_char(r.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at" : 'NULL::text AS unboxed_at',
-            hasColumn('unboxed_by') ? 'r.unboxed_by' : 'NULL::int AS unboxed_by',
+            // Carton door/unbox stamps live on the street tables now
+            // (receiving_triage rt / receiving_unbox ru, 1:1 with the carton).
+            // The hasColumn() gates key off the spine schema, which still
+            // carries these columns this wave — only the VALUE source moves;
+            // output aliases stay frozen.
+            hasColumn('received_at') ? "to_char(rt.door_received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at" : 'NULL::text AS received_at',
+            hasColumn('received_by') ? 'rt.door_received_by AS received_by' : 'NULL::int AS received_by',
+            hasColumn('unboxed_at') ? "to_char(ru.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at" : 'NULL::text AS unboxed_at',
+            hasColumn('unboxed_by') ? 'ru.unboxed_by AS unboxed_by' : 'NULL::int AS unboxed_by',
             hasColumn('zoho_purchase_receive_id') ? 'r.zoho_purchase_receive_id' : "NULL::text AS zoho_purchase_receive_id",
             hasColumn('zoho_warehouse_id') ? 'r.zoho_warehouse_id' : "NULL::text AS zoho_warehouse_id",
             ...(hasReceivingScans
@@ -156,10 +161,17 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
             ? 'r.shipment_id IS NOT NULL'
             : 'FALSE';
 
+        // Street-table joins for the moved carton reads (1:1 PK joins — never
+        // multiply rows): triage door stamps on rt, unbox milestone on ru.
+        const streetJoins = `
+            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+            LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id`;
+
         const logs = await tenantQuery(orgId, `
             SELECT ${selectFields.join(', ')}
-            FROM receiving r
+            FROM receiving_carton r
             ${shipmentJoin}
+            ${streetJoins}
             ${scanJoin}
             WHERE ${hasTrackingClause}
               ${weekClause}
@@ -206,7 +218,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
 
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
     try {
-        const orgId = ctx.organizationId ?? USAV_ORG_ID;
+        const orgId = ctx.organizationId;
         const { searchParams } = new URL(request.url);
 
         // Bulk: `?ids=1,2,3` deletes the batch in ONE statement. The sidebar
@@ -226,7 +238,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
             }
             const result = await tenantQuery(
                 orgId,
-                `DELETE FROM receiving WHERE id = ANY($1::int[]) RETURNING id`,
+                `DELETE FROM receiving_carton WHERE id = ANY($1::int[]) RETURNING id`,
                 [ids]
             );
             const deleted = result.rows.map((r) => Number(r.id));
@@ -254,7 +266,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
 
         const result = await tenantQuery(
             orgId,
-            `DELETE FROM receiving WHERE id = $1 RETURNING id`,
+            `DELETE FROM receiving_carton WHERE id = $1 RETURNING id`,
             [id]
         );
 
@@ -279,7 +291,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
 
 export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     try {
-        const orgId = ctx.organizationId ?? USAV_ORG_ID;
+        const orgId = ctx.organizationId;
         const body = await request.json();
         const id = Number(body?.id);
         const tracking = String(body?.tracking ?? '').trim();
@@ -398,7 +410,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
             if (!nextNeedsTest && availableColumns.has('assigned_tech_id')) {
                 const currentRow = await tenantQuery<{ needs_test: boolean | null; assigned_tech_id: number | null }>(
                     orgId,
-                    `SELECT needs_test, assigned_tech_id FROM receiving WHERE id = $1`,
+                    `SELECT needs_test, assigned_tech_id FROM receiving_carton WHERE id = $1`,
                     [id]
                 );
                 if (currentRow.rows.length === 0) {
@@ -467,35 +479,55 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
                 values.push(targetChannelRaw);
             }
         }
-        if (availableColumns.has('unboxed_by') && unboxedByRaw !== undefined) {
+        // Unbox milestone actor moved to the unbox street table
+        // (receiving_unbox.unboxed_by) — Wave-3 writer inversion. Only the actor
+        // is written here (no timestamps: unboxed_at ownership stays with the
+        // unbox writers, e.g. mark-received). Gated on the body keys, not the
+        // spine schema probe — the spine columns are write-dead and drop next
+        // migration. Applied via upsertReceivingUnbox in the same transaction as
+        // the spine UPDATE below; the helper is COALESCE-once, so an already-
+        // stamped actor is never re-stamped.
+        let unboxPatch: { unboxedBy: number | null } | null = null;
+        if (unboxedByRaw !== undefined) {
             const parsed = Number(unboxedByRaw);
-            updates.push(`unboxed_by = $${idx++}`);
-            values.push(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
-        } else if (availableColumns.has('unboxed_by') && unboxedAtRaw !== undefined && unboxedAtRaw) {
-            updates.push(`unboxed_by = COALESCE(unboxed_by, $${idx++})`);
-            values.push(ctx.staffId);
-        }
-        if (availableColumns.has('unboxed_at') && unboxedAtRaw !== undefined) {
-            updates.push(`unboxed_at = $${idx++}`);
-            values.push(unboxedAtRaw ? String(unboxedAtRaw) : null);
+            unboxPatch = { unboxedBy: Number.isFinite(parsed) && parsed > 0 ? parsed : null };
+        } else if (unboxedAtRaw !== undefined && unboxedAtRaw) {
+            // Legacy shape: an unboxed_at-only payload used to stamp the current
+            // operator as the (first) unboxer. Keep that actor stamp.
+            unboxPatch = { unboxedBy: ctx.staffId ?? null };
         }
         if (availableColumns.has('updated_at')) {
             updates.push(`updated_at = NOW()`);
         }
 
-        if (updates.length === 0) {
+        if (updates.length === 0 && !unboxPatch) {
             return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
         }
 
         values.push(id);
-        const result = await tenantQuery(
-            orgId,
-            `UPDATE receiving
-             SET ${updates.join(', ')}
-             WHERE id = $${idx}
-             RETURNING id`,
-            values
-        );
+        // Spine UPDATE + street write for one logical edit stay in ONE tenant
+        // transaction (the spine UPDATE alone is equivalent to the old single
+        // statement when there's no unbox patch).
+        const result = await withTenantTransaction(orgId, async (client) => {
+            const upd = updates.length > 0
+                ? await client.query(
+                    `UPDATE receiving_carton
+                     SET ${updates.join(', ')}
+                     WHERE id = $${idx}
+                     RETURNING id`,
+                    values,
+                  )
+                : await client.query(
+                    // Unbox-actor-only payload: still verify the carton exists (and
+                    // bump updated_at, as the old unboxed_by SET did via this UPDATE).
+                    `UPDATE receiving_carton SET updated_at = NOW() WHERE id = $1 RETURNING id`,
+                    [id],
+                  );
+            if ((upd.rowCount ?? 0) > 0 && unboxPatch) {
+                await upsertReceivingUnbox(client, orgId, id, unboxPatch);
+            }
+            return upd;
+        });
 
         if (result.rowCount === 0) {
             return NextResponse.json({ error: 'Receiving log not found' }, { status: 404 });
@@ -513,7 +545,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
                 assigned_tech_id: number | null;
             }>(
                 orgId,
-                `SELECT needs_test, assigned_tech_id FROM receiving WHERE id = $1`,
+                `SELECT needs_test, assigned_tech_id FROM receiving_carton WHERE id = $1`,
                 [id]
             );
             if (currentRow.rows.length > 0) {

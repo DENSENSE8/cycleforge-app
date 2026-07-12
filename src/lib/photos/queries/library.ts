@@ -102,7 +102,7 @@ export function libraryFiltersFromSearchParams(
 
 /**
  * Build an EXISTS subquery matching photos linked (directly via RECEIVING, or
- * indirectly via RECEIVING_LINE) to a `receiving` row with the given `source`.
+ * indirectly via RECEIVING_LINE) to a `receiving_carton` row with the given `source`.
  * Returns the SQL fragment; pushes the source value onto `params`.
  */
 function receivingSourceExists(params: unknown[], source: string): string {
@@ -110,10 +110,10 @@ function receivingSourceExists(params: unknown[], source: string): string {
   const src = `$${params.length}`;
   return `EXISTS (
         SELECT 1 FROM photo_entity_links l
-         JOIN receiving r ON r.organization_id = p.organization_id AND (
+         JOIN receiving_carton r ON r.organization_id = p.organization_id AND (
                 (l.entity_type = 'RECEIVING' AND r.id = l.entity_id)
              OR (l.entity_type = 'RECEIVING_LINE' AND r.id = (
-                   SELECT rl.receiving_id FROM receiving_lines rl WHERE rl.id = l.entity_id))
+                   SELECT rl.receiving_id FROM receiving_line rl WHERE rl.id = l.entity_id))
               )
          WHERE l.photo_id = p.id
            AND l.organization_id = p.organization_id
@@ -124,7 +124,7 @@ function receivingSourceExists(params: unknown[], source: string): string {
 /**
  * Tracking-number match across BOTH photo→tracking paths:
  *  - packing:  PACKER_LOG → packer_logs.shipment_id → shipping_tracking_numbers
- *  - unboxing: RECEIVING (direct or via RECEIVING_LINE) → receiving.shipment_id → STN
+ *  - unboxing: RECEIVING (direct or via RECEIVING_LINE) → receiving_carton.shipment_id → STN
  * `tracking_number_normalized` is the canonical STN column (UNIQUE). Substring
  * ILIKE so a partial/last-N paste still resolves. One param, referenced 3×.
  */
@@ -141,12 +141,12 @@ function trackingExists(params: unknown[], tracking: string): string {
                  JOIN shipping_tracking_numbers stn ON stn.id = pl.shipment_id
                  WHERE pl.id = l.entity_id AND stn.tracking_number_normalized ILIKE ${t}))
           OR (l.entity_type = 'RECEIVING' AND EXISTS (
-                SELECT 1 FROM receiving r
+                SELECT 1 FROM receiving_carton r
                  JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
                  WHERE r.id = l.entity_id AND stn.tracking_number_normalized ILIKE ${t}))
           OR (l.entity_type = 'RECEIVING_LINE' AND EXISTS (
-                SELECT 1 FROM receiving_lines rl
-                 JOIN receiving r ON r.id = rl.receiving_id
+                SELECT 1 FROM receiving_line rl
+                 JOIN receiving_carton r ON r.id = rl.receiving_id
                  JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
                  WHERE rl.id = l.entity_id AND stn.tracking_number_normalized ILIKE ${t}))
            )
@@ -155,7 +155,7 @@ function trackingExists(params: unknown[], tracking: string): string {
 
 /**
  * Unified PO-photo finder. Resolves a typed identifier of `kind` to the set of
- * `receiving` cartons it belongs to, then matches photos linked to ANY of those
+ * `receiving_carton` cartons it belongs to, then matches photos linked to ANY of those
  * cartons (directly as RECEIVING, or via RECEIVING_LINE). The end goal: typing
  * an order#, tracking#, or serial# surfaces the whole PO's unboxing photos.
  *
@@ -165,11 +165,11 @@ function trackingExists(params: unknown[], tracking: string): string {
  * still resolves. One value param, referenced across the kind's resolver.
  *
  * Verified join paths (see deep-scan + migrations):
- *  - tracking → receiving.shipment_id → STN (+ shipment_links extra boxes)
- *  - serial   → serial_units.origin_receiving_line_id → receiving_lines.receiving_id
- *  - order    → receiving_lines.source_order_id / zoho_purchaseorder_number (returns
- *               bind the sales-order# as the carton PO#; see returned-serial-link.ts)
- *  - po       → receiving.zoho_purchaseorder_number (+ denormalized photos.po_ref)
+ *  - tracking → receiving_carton.shipment_id → STN (+ shipment_links extra boxes)
+ *  - serial   → serial_units.origin_receiving_line_id → receiving_line.receiving_id
+ *  - order    → receiving_line.source_order_id / receiving_line_zoho.zoho_purchaseorder_number
+ *               (returns bind the sales-order# as the carton PO#; see returned-serial-link.ts)
+ *  - po       → receiving_carton.zoho_purchaseorder_number (+ denormalized photos.po_ref)
  */
 /** The carton-id resolver subquery for ONE identifier kind. References $1 (org)
  *  and `v` (the value param). 'any' is composed from these, not handled here. */
@@ -177,7 +177,7 @@ function cartonResolverSql(kind: Exclude<PoFinderKind, 'any'>, v: string): strin
   switch (kind) {
     case 'tracking':
       return `
-        SELECT r.id FROM receiving r
+        SELECT r.id FROM receiving_carton r
           JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          WHERE r.organization_id = $1 AND stn.tracking_number_normalized ILIKE ${v}
         UNION
@@ -192,17 +192,22 @@ function cartonResolverSql(kind: Exclude<PoFinderKind, 'any'>, v: string): strin
           JOIN serial_unit_provenance p
             ON p.serial_unit_id = su.id AND p.origin_type = 'RECEIVING_LINE'
            AND p.origin_id IS NOT NULL AND p.organization_id = $1
-          JOIN receiving_lines rl ON rl.id = p.origin_id
+          JOIN receiving_line rl ON rl.id = p.origin_id
          WHERE su.organization_id = $1 AND su.serial_number ILIKE ${v}`;
     case 'order':
+      // Wave-2 reader cutover: the line's zoho PO number reads from
+      // receiving_line_zoho (rz, 1:1 on the line PK); source_order_id stays
+      // on the spine.
       return `
-        SELECT rl.receiving_id FROM receiving_lines rl
+        SELECT rl.receiving_id FROM receiving_line rl
+          LEFT JOIN receiving_line_zoho rz
+                 ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          WHERE rl.organization_id = $1
-           AND (rl.source_order_id ILIKE ${v} OR rl.zoho_purchaseorder_number ILIKE ${v})`;
+           AND (rl.source_order_id ILIKE ${v} OR rz.zoho_purchaseorder_number ILIKE ${v})`;
     case 'po':
     default:
       return `
-        SELECT r.id FROM receiving r
+        SELECT r.id FROM receiving_carton r
          WHERE r.organization_id = $1 AND r.zoho_purchaseorder_number ILIKE ${v}`;
   }
 }
@@ -211,7 +216,7 @@ function cartonResolverSql(kind: Exclude<PoFinderKind, 'any'>, v: string): strin
 function cartonExistsSql(resolver: string): string {
   return `EXISTS (
         SELECT 1 FROM photo_entity_links l
-         LEFT JOIN receiving_lines rlf
+         LEFT JOIN receiving_line rlf
                 ON l.entity_type = 'RECEIVING_LINE' AND rlf.id = l.entity_id
          WHERE l.photo_id = p.id
            AND l.organization_id = p.organization_id
@@ -352,7 +357,7 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
     clauses.push(`
       EXISTS (
         SELECT 1 FROM photo_entity_links l
-         LEFT JOIN receiving_lines rl
+         LEFT JOIN receiving_line rl
                 ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
          WHERE l.photo_id = p.id
            AND (
@@ -412,10 +417,10 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
     clauses.push(`
       EXISTS (
         SELECT 1 FROM photo_entity_links l
-         JOIN receiving r ON r.organization_id = p.organization_id AND (
+         JOIN receiving_carton r ON r.organization_id = p.organization_id AND (
                 (l.entity_type = 'RECEIVING' AND r.id = l.entity_id)
              OR (l.entity_type = 'RECEIVING_LINE' AND r.id = (
-                   SELECT rl.receiving_id FROM receiving_lines rl WHERE rl.id = l.entity_id)))
+                   SELECT rl.receiving_id FROM receiving_line rl WHERE rl.id = l.entity_id)))
          JOIN local_pickup_orders lpo ON lpo.receiving_id = r.id
          WHERE l.photo_id = p.id
            AND l.organization_id = p.organization_id
@@ -529,10 +534,10 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
                              WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
                                AND l.entity_type = 'PACKER_LOG') THEN 'packing'
                WHEN EXISTS (SELECT 1 FROM photo_entity_links l
-                              JOIN receiving r ON r.organization_id = p.organization_id AND (
+                              JOIN receiving_carton r ON r.organization_id = p.organization_id AND (
                                     (l.entity_type = 'RECEIVING' AND r.id = l.entity_id)
                                  OR (l.entity_type = 'RECEIVING_LINE' AND r.id = (
-                                       SELECT rl.receiving_id FROM receiving_lines rl WHERE rl.id = l.entity_id)))
+                                       SELECT rl.receiving_id FROM receiving_line rl WHERE rl.id = l.entity_id)))
                              WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
                                AND r.source = 'local_pickup') THEN 'local_pickup'
                WHEN EXISTS (SELECT 1 FROM photo_entity_links l

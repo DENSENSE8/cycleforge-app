@@ -1,5 +1,5 @@
 import type { OrgId } from '@/lib/tenancy/constants';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 export function getTrackingLast8(value: string): string {
   return String(value || '').replace(/\D/g, '').slice(-8);
@@ -306,6 +306,6 @@ export async function upsertOpenOrdersException(params: {
       created_at,
       updated_at
     ) VALUES ($1, $2, $3, 'not_found', 'open', $4::uuid, NOW(), NOW())`,
-    [tracking, params.sourceStation, params.staffId, transitionalUsavOrgId()]
+    [tracking, params.sourceStation, params.staffId, transitionalDogfoodOrgId()]
   );
 }

@@ -2,9 +2,12 @@
  * Read-only aggregator that stitches a complete receiving timeline together
  * from every source the system already records into:
  *
- *   • receiving               — carton-level (received_at/by, unboxed_at/by, QA, disposition)
- *   • receiving_lines         — per-SKU operational rows
- *   • receiving_lines.disposition_audit  — JSONB history of disposition changes
+ *   • receiving_carton        — carton-level (QA, disposition); door/unbox milestones
+ *                                read from the 1:1 street tables receiving_triage /
+ *                                receiving_unbox (Wave-2 reader cutover)
+ *   • receiving_line          — per-SKU operational rows; testing cluster reads from
+ *                                receiving_line_testing, zoho cluster from receiving_line_zoho
+ *   • receiving_line_testing.disposition_audit — JSONB history of disposition changes
  *   • inventory_events        — lifecycle (RECEIVED, TEST_*, PUTAWAY, …) tagged with receiving_id / receiving_line_id
  *   • audit_logs              — field-level before/after diffs (when instrumented)
  *   • photos                  — entity_type='RECEIVING'
@@ -13,8 +16,8 @@
  *   • replenishment_requests  — zoho_po_number + vendor (joined by zoho_po_id)
  *
  * One PO can span multiple cartons (and one carton can hold lines from
- * multiple POs) so we anchor on `receiving_lines.zoho_purchaseorder_id` and
- * pull cartons through the line→receiving FK.
+ * multiple POs) so we anchor on `receiving_line_zoho.zoho_purchaseorder_id`
+ * (1:1 with the line) and pull cartons through the line→receiving FK.
  */
 
 import 'server-only';
@@ -271,7 +274,7 @@ export async function listReceivingAuditPOs(
 
   // When orgId is present, allocate $1 for it and weave organization_id
   // predicates into every read against a tenant table; string-key joins
-  // (rr.zoho_po_id = rl.zoho_purchaseorder_id) also get an org-equality
+  // (rr.zoho_po_id = rz.zoho_purchaseorder_id) also get an org-equality
   // guard. When omitted, the SQL/params stay byte-identical to before.
   let orgIdx = '';
   let orgMatchingFilter = '';
@@ -285,7 +288,7 @@ export async function listReceivingAuditPOs(
     orgMatchingFilter = `AND rl.organization_id = ${orgIdx}
       AND (rr.zoho_po_id IS NULL OR rr.organization_id = rl.organization_id)`;
     orgPoAggFilter = `AND rl.organization_id = ${orgIdx}`;
-    orgWfFilter = `AND organization_id = ${orgIdx}`;
+    orgWfFilter = `AND rl.organization_id = ${orgIdx}`;
     orgSubqueryFilter = `AND rl2.organization_id = ${orgIdx}`;
     orgRrJoin = `AND rr.organization_id = ${orgIdx}`;
   }
@@ -293,7 +296,7 @@ export async function listReceivingAuditPOs(
   if (search) {
     params.push(`%${search}%`);
     const pIdx = `$${params.length}`;
-    searchClause = `AND (rl.zoho_purchaseorder_id ILIKE ${pIdx}
+    searchClause = `AND (rz.zoho_purchaseorder_id ILIKE ${pIdx}
                      OR rl.sku ILIKE ${pIdx}
                      OR rl.item_name ILIKE ${pIdx}
                      OR rr.zoho_po_number ILIKE ${pIdx})`;
@@ -305,32 +308,38 @@ export async function listReceivingAuditPOs(
 
   const sql = `
     WITH matching_pos AS (
-      SELECT DISTINCT rl.zoho_purchaseorder_id AS po_id
-      FROM receiving_lines rl
-      LEFT JOIN replenishment_requests rr ON rr.zoho_po_id = rl.zoho_purchaseorder_id
-      WHERE rl.zoho_purchaseorder_id IS NOT NULL
+      SELECT DISTINCT rz.zoho_purchaseorder_id AS po_id
+      FROM receiving_line rl
+      LEFT JOIN receiving_line_zoho rz
+        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+      LEFT JOIN replenishment_requests rr ON rr.zoho_po_id = rz.zoho_purchaseorder_id
+      WHERE rz.zoho_purchaseorder_id IS NOT NULL
       ${orgMatchingFilter}
       ${searchClause}
     ),
     po_agg AS (
       SELECT
-        rl.zoho_purchaseorder_id AS po_id,
+        rz.zoho_purchaseorder_id AS po_id,
         COUNT(*)::int AS line_count,
         COUNT(DISTINCT rl.receiving_id) FILTER (WHERE rl.receiving_id IS NOT NULL)::int AS carton_count,
         COALESCE(SUM(rl.quantity_expected), 0)::int AS quantity_expected,
         COALESCE(SUM(rl.quantity_received), 0)::int AS quantity_received,
         MAX(rl.updated_at) AS latest_event_at
-      FROM receiving_lines rl
-      WHERE rl.zoho_purchaseorder_id IN (SELECT po_id FROM matching_pos)
+      FROM receiving_line rl
+      LEFT JOIN receiving_line_zoho rz
+        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+      WHERE rz.zoho_purchaseorder_id IN (SELECT po_id FROM matching_pos)
       ${orgPoAggFilter}
-      GROUP BY rl.zoho_purchaseorder_id
+      GROUP BY rz.zoho_purchaseorder_id
     ),
     wf AS (
-      SELECT zoho_purchaseorder_id, workflow_status, COUNT(*)::int AS cnt
-      FROM receiving_lines
-      WHERE zoho_purchaseorder_id IN (SELECT po_id FROM matching_pos)
+      SELECT rz.zoho_purchaseorder_id, rl.workflow_status, COUNT(*)::int AS cnt
+      FROM receiving_line rl
+      LEFT JOIN receiving_line_zoho rz
+        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+      WHERE rz.zoho_purchaseorder_id IN (SELECT po_id FROM matching_pos)
       ${orgWfFilter}
-      GROUP BY zoho_purchaseorder_id, workflow_status
+      GROUP BY rz.zoho_purchaseorder_id, rl.workflow_status
     ),
     wf_agg AS (
       SELECT zoho_purchaseorder_id,
@@ -349,10 +358,14 @@ export async function listReceivingAuditPOs(
       COALESCE(wf_agg.workflow_counts, '{}'::jsonb) AS workflow_counts,
       po.latest_event_at,
       (
-        SELECT s.name FROM receiving_lines rl2
-        LEFT JOIN receiving r2 ON r2.id = rl2.receiving_id
-        LEFT JOIN staff s ON s.id = r2.received_by
-        WHERE rl2.zoho_purchaseorder_id = po.po_id
+        SELECT s.name FROM receiving_line rl2
+        LEFT JOIN receiving_line_zoho rz2
+          ON rz2.receiving_line_id = rl2.id AND rz2.organization_id = rl2.organization_id
+        LEFT JOIN receiving_carton r2 ON r2.id = rl2.receiving_id
+        LEFT JOIN receiving_triage rt2
+          ON rt2.receiving_id = r2.id AND rt2.organization_id = r2.organization_id
+        LEFT JOIN staff s ON s.id = rt2.door_received_by
+        WHERE rz2.zoho_purchaseorder_id = po.po_id
         ${orgSubqueryFilter}
         ORDER BY rl2.updated_at DESC NULLS LAST
         LIMIT 1
@@ -389,14 +402,37 @@ export async function getReceivingAuditPO(
 ): Promise<AuditPODetail | null> {
   if (!poId) return null;
 
+  // Wave-2 reader cutover: the testing cluster reads from receiving_line_testing
+  // (rlt) and the zoho cluster from receiving_line_zoho (rz); both are 1:1 side
+  // tables joined on the line PK, so no row multiplication. Output column names
+  // stay byte-identical to the old `SELECT *` so LineRow/AuditLine never change.
+  const lineSelect = `
+    SELECT rl.id, rl.receiving_id, rl.item_name, rl.sku,
+           rl.quantity, rl.quantity_received, rl.quantity_expected,
+           rl.workflow_status, rl.notes, rl.created_at, rl.updated_at,
+           rz.zoho_item_id, rz.zoho_line_item_id, rz.zoho_purchase_receive_id,
+           rz.zoho_purchaseorder_id, rz.zoho_sync_source, rz.zoho_synced_at,
+           COALESCE(rlt.qa_status, 'PENDING') AS qa_status,
+           rlt.disposition_code, rlt.condition_grade,
+           COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
+           rlt.disposition_final,
+           COALESCE(rlt.needs_test, false) AS needs_test,
+           rlt.assigned_tech_id
+      FROM receiving_line rl
+      LEFT JOIN receiving_line_zoho rz
+        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+      LEFT JOIN receiving_line_testing rlt
+        ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id`;
   const linesRes = orgId
     ? await tenantQuery(
         orgId,
-        `SELECT * FROM receiving_lines WHERE zoho_purchaseorder_id = $1 AND organization_id = $2 ORDER BY id`,
+        `${lineSelect}
+     WHERE rz.zoho_purchaseorder_id = $1 AND rl.organization_id = $2 ORDER BY rl.id`,
         [poId, orgId],
       )
     : await pool.query(
-        `SELECT * FROM receiving_lines WHERE zoho_purchaseorder_id = $1 ORDER BY id`,
+        `${lineSelect}
+     WHERE rz.zoho_purchaseorder_id = $1 ORDER BY rl.id`,
         [poId],
       );
   const lineRows = linesRes.rows as LineRow[];
@@ -409,19 +445,48 @@ export async function getReceivingAuditPO(
 
   const [cartonsResRaw, eventsResRaw, auditLogsResRaw, photosResRaw, serialsResRaw, vendorResRaw] =
     await Promise.all([
+      // Wave-2 reader cutover: carton door/unbox milestones read from the
+      // 1:1 street tables (receiving_triage rt / receiving_unbox ru), aliased
+      // back to the spine names so ReceivingRow/AuditCarton never change.
+      // Carton-level QA/disposition/zoho_* reads stay on the spine (out of
+      // scope this wave).
       cartonIds.length > 0
         ? orgId
           ? tenantQuery(
               orgId,
-              `SELECT r.*, stn.tracking_number_raw AS receiving_tracking_number
-                 FROM receiving r
+              `SELECT r.id, r.carrier, r.created_at, r.updated_at,
+                      r.qa_status, r.disposition_code, r.condition_grade,
+                      r.is_return, r.return_platform, r.return_reason, r.target_channel,
+                      r.assigned_tech_id, r.zoho_purchase_receive_id, r.support_notes,
+                      rt.door_received_at AS received_at,
+                      rt.door_received_by AS received_by,
+                      ru.unboxed_at AS unboxed_at,
+                      ru.unboxed_by AS unboxed_by,
+                      stn.tracking_number_raw AS receiving_tracking_number
+                 FROM receiving_carton r
+                 LEFT JOIN receiving_triage rt
+                   ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+                 LEFT JOIN receiving_unbox ru
+                   ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
                  LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
                 WHERE r.id = ANY($1::int[]) AND r.organization_id = $2 ORDER BY r.id`,
               [cartonIds, orgId],
             )
           : pool.query(
-              `SELECT r.*, stn.tracking_number_raw AS receiving_tracking_number
-                 FROM receiving r
+              `SELECT r.id, r.carrier, r.created_at, r.updated_at,
+                      r.qa_status, r.disposition_code, r.condition_grade,
+                      r.is_return, r.return_platform, r.return_reason, r.target_channel,
+                      r.assigned_tech_id, r.zoho_purchase_receive_id, r.support_notes,
+                      rt.door_received_at AS received_at,
+                      rt.door_received_by AS received_by,
+                      ru.unboxed_at AS unboxed_at,
+                      ru.unboxed_by AS unboxed_by,
+                      stn.tracking_number_raw AS receiving_tracking_number
+                 FROM receiving_carton r
+                 LEFT JOIN receiving_triage rt
+                   ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+                 LEFT JOIN receiving_unbox ru
+                   ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
                  LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
                 WHERE r.id = ANY($1::int[]) ORDER BY r.id`,
               [cartonIds],

@@ -1,5 +1,5 @@
 -- Source of Truth Database Schema
--- This schema mirrors Google Sheets structure for USAV Orders Backend
+-- This schema mirrors Google Sheets structure for the dogfood Orders Backend
 -- Created: January 5, 2026
 
 -- Drop tables if they exist (use with caution!)
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS packer_3 (
 );
 
 -- 9. RECEIVING TABLE
-CREATE TABLE IF NOT EXISTS receiving (
+CREATE TABLE IF NOT EXISTS receiving_carton (
     id SERIAL PRIMARY KEY,
     date_time TEXT,
     receiving_tracking_number TEXT,
@@ -174,7 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_tech_4_id ON tech_4(id);
 CREATE INDEX IF NOT EXISTS idx_packer_1_id ON packer_1(id);
 CREATE INDEX IF NOT EXISTS idx_packer_2_id ON packer_2(id);
 CREATE INDEX IF NOT EXISTS idx_packer_3_id ON packer_3(id);
-CREATE INDEX IF NOT EXISTS idx_receiving_id ON receiving(id);
+CREATE INDEX IF NOT EXISTS idx_receiving_id ON receiving_carton(id);
 CREATE INDEX IF NOT EXISTS idx_shipped_id ON shipped(id);
 CREATE INDEX IF NOT EXISTS idx_sku_stock_id ON sku_stock(id);
 CREATE INDEX IF NOT EXISTS idx_sku_id ON sku(id);
@@ -190,7 +190,7 @@ FROM information_schema.tables t
 WHERE table_schema = 'public'
 AND table_name IN (
     'orders', 'tech_1', 'tech_2', 'tech_3', 'tech_4',
-    'packer_1', 'packer_2', 'packer_3', 'receiving',
+    'packer_1', 'packer_2', 'packer_3', 'receiving_carton',
     'shipped', 'sku_stock', 'sku', 'repair_service'
 )
 ORDER BY table_name;
