@@ -51,4 +51,4 @@ export function homeModeLabel(mode: HomeMode): string {
  *   ?q=     mode-scoped search             (today / tasks)
  *   ?open=  right-pane focus key           (tasks / collab)
  */
-export const HOME_MODE_SCOPED_PARAMS = ['task', 'plan', 'view', 'q', 'open'] as const;
+export const HOME_MODE_SCOPED_PARAMS = ['task', 'plan', 'view', 'q', 'open', 'scope'] as const;

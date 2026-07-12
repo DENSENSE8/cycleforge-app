@@ -75,27 +75,6 @@ function HomeModePlaceholder({
   );
 }
 
-/** Tasks — detailed ops_plan_tasks Workbench. Plan §6.2 (Phase B). */
-export function HomeTasksPanel() {
-  return (
-    <HomeModePlaceholder
-      eyebrow="Home · Tasks"
-      title="Detailed task workbench"
-      blurb="A filterable list (mine / team / plan / station) on the left, a task detail on the right — status, assignee, due, notes, proof links, and Open collab. Claim, complete, and reopen without leaving Home."
-      wires={[
-        'GET /api/ops-plans/inbox — reuse isOpsPlansUnifiedInbox merge (plan §28)',
-        'Task detail + claim/complete/reopen via existing ops-plans task routes',
-        'Ably invalidation on org:{id}:ops_plans:changes',
-        'URL selection: ?mode=tasks&task=<uuid>&plan=<uuid>',
-      ]}
-      links={[
-        { label: 'Open operations', href: '/operations' },
-        { label: 'Open Today', href: '/' },
-      ]}
-    />
-  );
-}
-
 /** Collab — entity-anchored ops threads. Plan §6.3 (Phase D). */
 export function HomeCollabPanel() {
   return (
