@@ -109,5 +109,23 @@ module.exports = {
         NODE_OPTIONS: '--max-old-space-size=4096',
       },
     },
+
+    // ─── Master-plan sync daemon (agentic loop) ────────────
+    // Bridges ./master-plan.mdx ↔ Yjs ↔ Ably (org:{uuid}:forge:master-plan).
+    // Start: pm2 start ecosystem.config.cjs --only master-plan-sync
+    {
+      name: 'master-plan-sync',
+      script: 'npx',
+      args: 'tsx .cycle_forge_ops/scripts/master-plan-sync-daemon.mjs',
+      cwd: __dirname,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 5000,
+      env: {
+        ABLY_API_KEY: process.env.ABLY_API_KEY,
+        MASTER_PLAN_PATH: process.env.MASTER_PLAN_PATH || '',
+        MASTER_PLAN_ORG_ID: process.env.MASTER_PLAN_ORG_ID || process.env.FORGE_ORG_ID || '',
+      },
+    },
   ],
 };

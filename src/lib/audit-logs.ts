@@ -131,6 +131,8 @@ export const AUDIT_ENTITY = {
   NAV_DEFINITION: 'nav_definition',
   // Workflow graphs (Operations Studio layer 1)
   WORKFLOW_DEFINITION: 'workflow_definition',
+  // Curated template catalog (Template Platform Phase 4) — submitted/reviewed rows
+  WORKFLOW_TEMPLATE: 'workflow_template',
   // AI write path (universal-feed plan §2.6) — agent-proposed mutations
   AGENT_MUTATION: 'agent_mutation',
   // Per-staff rail dismiss (universal-feed plan Phase 4) — staff_rail_exclusions
@@ -148,6 +150,10 @@ export const AUDIT_ENTITY = {
   AI_SEARCH: 'ai_search',
   OPS_PLAN: 'ops_plan',
   OPS_PLAN_TASK: 'ops_plan_task',
+  // Agentic-loop master plan (master-plan.mdx ↔ Yjs ↔ /forge)
+  MASTER_PLAN: 'master_plan',
+  // In-app reported issue (FeedbackWidget → user_reported_issues)
+  USER_ISSUE: 'user_issue',
   // Pick-face (bin-to-bin) replenishment task (replenishment_tasks)
   REPLENISHMENT_TASK: 'replenishment_task',
 } as const;
@@ -263,6 +269,11 @@ export const AUDIT_ACTION = {
   OPS_PLAN_TASK_COMPLETE:  'ops_plan_task.complete',
   OPS_PLAN_TASK_CANCEL:    'ops_plan_task.cancel',
   OPS_PLAN_TASK_LINK:      'ops_plan_task.link',
+  // Agentic-loop master plan (plan-agent mutations via /api/forge/chat)
+  MASTER_PLAN_TICKET_STATUS: 'master_plan.ticket_status',
+  // In-app issue → fix → toast loop
+  USER_ISSUE_REPORT:       'user_issue.report',
+  USER_ISSUE_RESOLVE:      'user_issue.resolve',
   // Staff-to-staff messages (clipboard "send to staff")
   STAFF_MESSAGE_SEND:      'staff_message.send',
   // Photo library — minted N temporary signed share links for selected photos
@@ -410,6 +421,10 @@ export const AUDIT_ACTION = {
   WORKFLOW_PUBLISH:      'workflow.publish',
   // Cloning a system template into the org's definitions as a draft (Phase E4).
   WORKFLOW_TEMPLATE_IMPORT: 'workflow.template.import',
+  // Template Platform Phase 4 curation: an org submits its definition for the
+  // public catalog; a curator approves/rejects the submission.
+  WORKFLOW_TEMPLATE_SUBMIT: 'workflow.template.submit',
+  WORKFLOW_TEMPLATE_REVIEW: 'workflow.template.review',
   // AI write path (universal-feed plan §2.6) — apply / propose / revert.
   AGENT_MUTATION_APPLY:   'agent_mutation.apply',
   AGENT_MUTATION_PROPOSE: 'agent_mutation.propose',

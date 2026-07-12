@@ -4,7 +4,7 @@ export async function resolveReceivingSchema() {
   const result = await pool.query(
     `SELECT column_name
      FROM information_schema.columns
-     WHERE table_name = 'receiving'
+     WHERE table_name = 'receiving_carton'
        AND column_name = 'quantity'`
   );
 

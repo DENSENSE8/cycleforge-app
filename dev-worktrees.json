@@ -1,0 +1,79 @@
+{
+  "port": 3099,
+  "script": "dev:tunnel",
+  "appPort": 3000,
+  "trees": [
+    {
+      "id": "main",
+      "label": "Main · dogfood",
+      "path": ".",
+      "appPort": 3000,
+      "unlockParked": false,
+      "note": "Stations + shipping"
+    },
+    {
+      "id": "ai-chat",
+      "label": "AI chat",
+      "path": "../cycleforge-ai-chat",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/ai-chat · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "fba",
+      "label": "FBA prep",
+      "path": "../cycleforge-fba",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/fba · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "glass",
+      "label": "Glass design system",
+      "path": "../cycleforge-glass",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS-GLASS · docs/portfolio/INDEX.md"
+    },
+    {
+      "id": "home",
+      "label": "Home / My Day",
+      "path": "../cycleforge-home",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/home · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "inventory",
+      "label": "Inventory",
+      "path": "../cycleforge-inventory",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/inventory · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "sourcing",
+      "label": "Sourcing",
+      "path": "../cycleforge-sourcing",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/sourcing · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "studio",
+      "label": "Studio catalog follow-ups",
+      "path": "../cycleforge-studio-followups",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS-STUDIO · docs/portfolio/INDEX.md"
+    },
+    {
+      "id": "warehouse",
+      "label": "Warehouse",
+      "path": "../cycleforge-warehouse",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/warehouse · docs/portfolio/WORKTREE-LANES.md"
+    }
+  ]
+}

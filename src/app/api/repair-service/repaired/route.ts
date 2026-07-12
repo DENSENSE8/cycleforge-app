@@ -4,7 +4,6 @@ import { publishRepairChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 
 /**
  * POST /api/repair-service/repaired
@@ -22,7 +21,7 @@ import { USAV_ORG_ID } from '@/lib/tenancy/constants';
  * }
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const orgId = ctx.organizationId ?? USAV_ORG_ID;
+  const orgId = ctx.organizationId;
 
   try {
     const { repairId, assignmentId, repairedPart, assignedTechId } = await req.json();

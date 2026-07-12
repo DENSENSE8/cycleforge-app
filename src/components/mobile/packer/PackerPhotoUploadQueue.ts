@@ -50,7 +50,7 @@ interface QueueState {
 }
 
 // ─── Storage shape ──────────────────────────────────────────────────────────
-const STORAGE_KEY = 'usav.packer.upload_queue.v1';
+const STORAGE_KEY = 'cf.packer.upload_queue.v1';
 const STORAGE_VERSION = 1;
 const STORAGE_MAX_ENTRIES = 20;
 

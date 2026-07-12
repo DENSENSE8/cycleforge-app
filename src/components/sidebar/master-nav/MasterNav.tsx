@@ -7,6 +7,12 @@ import {
   type SidebarNavItem,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
+import {
+  getParkedSurfaceMeta,
+  isParkedSurfaceBlocked,
+  isParkedSurfaceKey,
+} from '@/lib/dogfood/parked-surfaces';
+import { PARKED_SURFACE_ICONS } from '@/components/dogfood/ParkedSurface';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { useActiveSidebarMode } from './useActiveSidebarMode';
 import { useSidebarModeNav } from './useSidebarModeNav';
@@ -100,6 +106,33 @@ export function MasterNav({
   const activePage = useMemo<SidebarPageNav>(() => {
     const found = pages.find((p) => p.id === pageId);
     if (found) return found;
+
+    // Parked surfaces are off APP_SIDEBAR_NAV but still addressable by URL.
+    // Never fall through to pages[0] (was showing "Operations" on /fba).
+    if (isParkedSurfaceKey(pageId)) {
+      const meta = getParkedSurfaceMeta(pageId);
+      const Icon = PARKED_SURFACE_ICONS[pageId];
+      const modeful = getSidebarPageNav(pageId);
+      // While blocked: header shows the real label, no mode rail (stand-in UI).
+      if (isParkedSurfaceBlocked(pageId)) {
+        return {
+          id: pageId,
+          label: meta.label,
+          href: meta.href,
+          icon: Icon,
+          kind: 'main',
+        };
+      }
+      if (modeful) return modeful;
+      return {
+        id: pageId,
+        label: meta.label,
+        href: meta.href,
+        icon: Icon,
+        kind: 'main',
+      };
+    }
+
     const fallbackItem = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
     return fallbackItem ? toPageNav(fallbackItem) : pages[0];
   }, [pages, pageId]);

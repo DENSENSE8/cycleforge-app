@@ -1,48 +1,21 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { test } from 'node:test';
 
 /**
- * Guards the sidebar-search standardization (see SidebarSearchBar.tsx).
+ * Guards the unified-search end state (docs/unified-global-search-consolidation-plan.md).
  *
- * The size mismatch bug happened because the 40px search band and the input
- * `size` were applied by hand at ~20 different call sites, so they drifted
- * (28px vs 32px) across pages and modes. The fix is the <SidebarSearchBar>
- * component, which owns BOTH and exposes no `size` prop.
+ * The global header pill (`GlobalHeaderSearch`) is the SINGLE search surface.
+ * Master sidebars no longer render a header search band: a panel that wants a
+ * contextual filter registers it with the header via `usePageHeaderSearch`
+ * (`src/hooks/usePageHeader.ts`). The old per-panel `<SidebarSearchBar>` band and
+ * its `sidebarHeaderSearchRowClass` 40px token are deleted.
  *
- * These tests fail the moment someone reintroduces the drift.
+ * These tests fail the moment someone reintroduces a sidebar search band.
  */
 
 const SRC_ROOT = join(process.cwd(), 'src');
-const SEARCH_BAND_TOKEN = 'sidebarHeaderSearchRowClass';
-const SEARCHBAR_SYMBOL = 'SidebarSearchBar';
-
-// The END STATE: <SidebarSearchBar> may be imported ONLY by <SidebarShell>, the
-// single component that renders the sidebar header search. The shell owns the
-// flush position + 40px band + scroll-body structure, so no panel can hand-wrap
-// or misposition the search again (that was the alignment-drift bug).
-//
-// MIGRATION IN PROGRESS: the panels below still render <SidebarSearchBar>
-// directly and are being moved onto <SidebarShell> phase by phase. Delete each
-// line as its panel is migrated; when only the three permanent entries remain,
-// the consolidation is complete.
-const SEARCHBAR_IMPORT_ALLOWLIST = new Set([
-  // <SidebarSearchBar> is now rendered ONLY by <SidebarShell>. Every sidebar
-  // panel passes search props to <SidebarShell> instead of rendering the bar.
-  'components/ui/SidebarSearchBar.tsx', // the definition
-  'components/ui/sidebar-search-bar.guard.test.ts', // this guard names the symbol
-  'components/layout/SidebarShell.tsx', // the ONE renderer
-]);
-
-// The ONLY files allowed to mention the 40px search band: the token's own
-// definition and the single component that wraps it. Everything else must go
-// through <SidebarSearchBar>.
-const BAND_ALLOWLIST = new Set([
-  'components/layout/header-shell.ts',
-  'components/ui/SidebarSearchBar.tsx',
-  'components/ui/sidebar-search-bar.guard.test.ts', // this guard names the token
-]);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -56,45 +29,52 @@ function walk(dir: string, out: string[] = []): string[] {
 
 const ALL_SOURCE_FILES = walk(SRC_ROOT);
 
-test('the 40px sidebar search band is referenced ONLY by SidebarSearchBar', () => {
-  const offenders: string[] = [];
-  for (const file of ALL_SOURCE_FILES) {
-    const rel = relative(SRC_ROOT, file).split('\\').join('/');
-    if (BAND_ALLOWLIST.has(rel)) continue;
-    if (readFileSync(file, 'utf8').includes(SEARCH_BAND_TOKEN)) offenders.push(rel);
-  }
-  assert.deepEqual(
-    offenders,
-    [],
-    `Do not hand-wrap the sidebar search band. Use <SidebarSearchBar> instead of ` +
-      `\`<div className={${SEARCH_BAND_TOKEN}}><SearchBar .../></div>\`. Offending files:\n` +
-      offenders.map((f) => `  - ${f}`).join('\n'),
+test('the deleted SidebarSearchBar component stays deleted', () => {
+  assert.ok(
+    !existsSync(join(SRC_ROOT, 'components/ui/SidebarSearchBar.tsx')),
+    'SidebarSearchBar was removed — sidebars must not render a header search band. ' +
+      'Register a contextual filter with the global header via usePageHeaderSearch instead.',
   );
 });
 
-test('SidebarSearchBar is imported ONLY through SidebarShell (no direct renders)', () => {
-  const offenders: string[] = [];
-  // Match an import statement that pulls in the symbol — not incidental mentions.
+test('no file imports a SidebarSearchBar symbol', () => {
   const importRe = /import[^;]*\bSidebarSearchBar\b[^;]*from/;
+  const offenders: string[] = [];
   for (const file of ALL_SOURCE_FILES) {
     const rel = relative(SRC_ROOT, file).split('\\').join('/');
-    if (SEARCHBAR_IMPORT_ALLOWLIST.has(rel)) continue;
+    if (rel === 'components/ui/sidebar-search-bar.guard.test.ts') continue; // this guard names the symbol
     if (importRe.test(readFileSync(file, 'utf8'))) offenders.push(rel);
   }
   assert.deepEqual(
     offenders,
     [],
-    `Do not render <${SEARCHBAR_SYMBOL}> directly. Pass search props to ` +
-      `<SidebarShell search={{…}} /> so the band + flush position can't drift. ` +
-      `Offending files:\n` + offenders.map((f) => `  - ${f}`).join('\n'),
+    'SidebarSearchBar no longer exists. Do not re-add a sidebar header search band — ' +
+      'the global header pill is the single search surface. Offending files:\n' +
+      offenders.map((f) => `  - ${f}`).join('\n'),
   );
 });
 
-test('SidebarSearchBar does not expose a `size` prop (height is locked)', () => {
-  const src = readFileSync(join(SRC_ROOT, 'components/ui/SidebarSearchBar.tsx'), 'utf8');
-  // The whole point: sidebars cannot pass a size, so 28px/32px drift is impossible.
+test('SidebarShell exposes no `search` prop (header owns search)', () => {
+  const src = readFileSync(join(SRC_ROOT, 'components/layout/SidebarShell.tsx'), 'utf8');
   assert.ok(
-    src.includes("Omit<SearchBarProps, 'size'>"),
-    'SidebarSearchBarProps must omit `size` so every sidebar header search is one height.',
+    !/\bsearch\??:/.test(src),
+    'SidebarShell must not declare a `search` prop. Panels register their contextual ' +
+      'filter with the global header via usePageHeaderSearch, not through the shell.',
+  );
+});
+
+test('the 40px sidebar search band token stays deleted', () => {
+  const offenders: string[] = [];
+  for (const file of ALL_SOURCE_FILES) {
+    const rel = relative(SRC_ROOT, file).split('\\').join('/');
+    if (rel === 'components/ui/sidebar-search-bar.guard.test.ts') continue; // this guard names the token
+    if (readFileSync(file, 'utf8').includes('sidebarHeaderSearchRowClass')) offenders.push(rel);
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'The `sidebarHeaderSearchRowClass` 40px search band was removed with SidebarSearchBar. ' +
+      'Do not reintroduce a hand-wrapped sidebar search band. Offending files:\n' +
+      offenders.map((f) => `  - ${f}`).join('\n'),
   );
 });

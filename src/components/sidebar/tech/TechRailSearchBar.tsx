@@ -3,7 +3,8 @@
 /**
  * Bottom-anchored client-side filter for the tech station rails (Testing +
  * Shipping). Mirrors {@link TriageCartonSearchBar} — a compact band pinned
- * below the scrollable rail, not the 40px header {@link SidebarSearchBar}.
+ * below the scrollable rail — a compact station-style filter, not the global
+ * header search (which is the only "search the app" surface).
  */
 
 import { useEffect, useState } from 'react';

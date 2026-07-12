@@ -1,6 +1,6 @@
 import { normalizeEnvValue } from '@/lib/env-utils';
 import { getIntegrationCredentials, type EbayCredentials } from '@/lib/integrations/credentials';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 
 /**
  * eBay Browse API client (secondary-market sourcing search).
@@ -105,7 +105,7 @@ export interface BrowseSearchResult {
  * Resolves eBay creds per-org via the integrations layer (env fallback for USAV).
  */
 export async function browseSearch(params: BrowseSearchParams): Promise<BrowseSearchResult> {
-  const orgId = params.orgId ?? USAV_ORG_ID;
+  const orgId = params.orgId ?? DOGFOOD_ORG_ID;
   const creds = await getIntegrationCredentials<EbayCredentials>(orgId, 'ebay');
   if (!creds) throw new Error('eBay credentials are not configured for this organization');
 

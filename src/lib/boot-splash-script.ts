@@ -17,14 +17,14 @@
  * self-removal is a safety net in case no BootGate ever claims it.
  *
  * The flag key and the element id below are duplicated by hand:
- *   - key  'usav:boot-splash'   must match BOOT_FLAG_KEY in `boot-flag.ts`
+ *   - key  'cf:boot-splash'   must match BOOT_FLAG_KEY in `boot-flag.ts`
  *   - id   '__boot_splash_pre'  must match the removal in `components/boot/BootGate.tsx`
  *   - z-index 2000              must match `tokens/z-index.ts` (splash)
  * Keep them in sync.
  */
 export const BOOT_SPLASH_SCRIPT = `(function(){
   try {
-    if (sessionStorage.getItem('usav:boot-splash') !== '1') return;
+    if (sessionStorage.getItem('cf:boot-splash') !== '1' && sessionStorage.getItem('usav:boot-splash') !== '1') return;
     var ID = '__boot_splash_pre';
     if (document.getElementById(ID)) return;
     var style = document.createElement('style');

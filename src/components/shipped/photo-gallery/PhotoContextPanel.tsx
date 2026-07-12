@@ -60,7 +60,8 @@ export function PhotoContextPanel({
 }) {
   const meta = photo?.meta;
   const panelPresence = useMotionPresence(framerPresence.photoContextPanel);
-  const panelTransition = useMotionTransition(framerTransition.photoContextPanelMount);
+  const panelMountTransition = useMotionTransition(framerTransition.photoContextPanelMount);
+  const panelUnmountTransition = useMotionTransition(framerTransition.photoContextPanelUnmount);
   // Hook must run unconditionally; it self-disables for null/invalid ids.
   const ticketSubject = useZendeskTicketSubject(meta?.ticketId ?? null);
 
@@ -81,7 +82,10 @@ export function PhotoContextPanel({
     <motion.aside
       data-testid="photo-context-panel"
       {...panelPresence}
-      transition={panelTransition}
+      transition={{
+        ...panelMountTransition,
+        exit: panelUnmountTransition,
+      }}
       aria-label="Photo details"
       className="relative z-20 flex h-full w-80 max-w-[85vw] shrink-0 flex-col gap-5 overflow-y-auto border-l border-glass/10 bg-scrim/60 px-5 pb-5 pt-6 backdrop-blur-xl"
       onClick={(e) => e.stopPropagation()}

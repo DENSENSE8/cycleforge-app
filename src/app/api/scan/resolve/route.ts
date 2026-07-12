@@ -190,7 +190,7 @@ async function lookupReceivingByPoNumber(po: string, organizationId: string): Pr
     const { rows } = await tenantQuery<{ id: number; zoho_purchaseorder_number: string | null }>(
       organizationId,
       `SELECT id, zoho_purchaseorder_number
-       FROM receiving
+       FROM receiving_carton
        WHERE (zoho_purchaseorder_number = $1
           OR zoho_purchaseorder_id = $1)
          AND organization_id = $2
@@ -423,7 +423,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
     return result;
   }
 
-  // 0b. Plain PO number (no `R-` prefix) — look it up in `receiving` and
+  // 0b. Plain PO number (no `R-` prefix) — look it up in `receiving_carton` and
   //     route to the same /m/r page.
   if (/^[A-Z0-9][A-Z0-9_\-]{2,}$/i.test(trimmed)) {
     const po = await lookupReceivingByPoNumber(trimmed, organizationId);

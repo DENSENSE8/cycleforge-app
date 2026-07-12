@@ -28,7 +28,11 @@ export async function getReceivingWorkOrders(orgId: string): Promise<WorkOrderRo
        wa.updated_at,
        st.name AS tech_name,
        sp.name AS packer_name
-     FROM receiving r
+     FROM receiving_carton r
+     -- Wave-2 reader cutover: carton received_at → receiving_triage (1:1).
+     LEFT JOIN receiving_triage rt
+       ON rt.receiving_id = r.id
+      AND rt.organization_id = r.organization_id
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
      LEFT JOIN LATERAL (
        SELECT *
@@ -55,12 +59,14 @@ export async function getReceivingWorkOrders(orgId: string): Promise<WorkOrderRo
               -- Carton is flagged for test AND it still has at least one line that
               -- needs testing. Per-line needs_test (cables toggled off) drops a
               -- carton out only once EVERY line is no-test; cartons not yet lined
-              -- (no receiving_lines rows) still show so they aren't hidden pre-unbox.
+              -- (no receiving_line rows) still show so they aren't hidden pre-unbox.
+              -- CARTON-level r.needs_test stays on the spine (legacy carton
+              -- duplicate — Wave-4 decision; not part of the Wave-2 moved set).
               COALESCE(r.needs_test, false) = true
               AND (
-                NOT EXISTS (SELECT 1 FROM receiving_lines rl WHERE rl.receiving_id = r.id AND rl.organization_id = $1)
+                NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = r.id AND rl.organization_id = $1)
                 OR EXISTS (
-                  SELECT 1 FROM receiving_lines rl
+                  SELECT 1 FROM receiving_line rl
                    LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
                    WHERE rl.receiving_id = r.id AND rl.organization_id = $1 AND COALESCE(rlt.needs_test, true) = true
                 )
@@ -72,7 +78,7 @@ export async function getReceivingWorkOrders(orgId: string): Promise<WorkOrderRo
      -- is_priority (pending-order match or manual toggle) floats urgent cartons
      -- to the top of the tester's queue, matching the unbox Prioritize rail.
      ORDER BY COALESCE(r.is_priority, false) DESC,
-              COALESCE(wa.deadline_at, r.received_at, r.created_at) ASC, r.id ASC
+              COALESCE(wa.deadline_at, rt.door_received_at, r.created_at) ASC, r.id ASC
      LIMIT 500`,
     [orgId]
   );

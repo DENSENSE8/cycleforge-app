@@ -24,7 +24,7 @@ function isInStandaloneMode(): boolean {
   );
 }
 
-const STORAGE_KEY = 'usav-install-dismissed';
+const STORAGE_KEY = 'cf-install-dismissed';
 
 export function InstallPrompt() {
   const [show, setShow] = useState(false);

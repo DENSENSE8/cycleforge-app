@@ -7,9 +7,10 @@ import { useDebounce } from '@/hooks';
 import { useAiQuickJump } from '@/hooks/useAiQuickJump';
 import { AiQuickJumpResults } from '@/components/search/AiQuickJumpResults';
 import { useInventorySearch, type InventoryResultRow } from '@/hooks/useInventorySearch';
-import { useInventoryCrossTabCounts } from '@/hooks/useInventoryCrossTabCounts';
-import { useInventoryRecentSearches } from '@/hooks/useInventoryRecentSearches';
 import { useInventoryUrlState } from '@/components/inventory/useInventoryUrlState';
+import { pushSearchRecent } from '@/lib/search/search-recents';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import {
     INVENTORY_BUCKETS,
     type AnyInventoryBucket,
@@ -32,11 +33,21 @@ import {
 } from '@/lib/inventory-search';
 import { InventorySidebarTabs } from './InventorySidebarTabs';
 import { InventoryFilterDropdown } from './InventorySidebarFilters';
-import { InventoryCrossTabHandoffCard } from './InventoryCrossTabHandoffCard';
 import { InventoryResultList } from './InventoryResultList';
-import { InventoryRecentSearches } from './InventoryRecentSearches';
 import { InventorySidebarFooter } from './InventorySidebarFooter';
 import { useMemo } from 'react';
+
+/** Tab → human label for the unified header recents scope chip. */
+const TAB_LABEL: Record<InventoryTab, string> = {
+    activity: 'Activity',
+    bins: 'Bins',
+    skus: 'SKUs',
+    units: 'Units',
+    alerts: 'Alerts',
+    counts: 'Counts',
+    triage: 'Triage',
+    pulse: 'Pulse',
+};
 
 function detailRefForRow(row: InventoryResultRow): { kind: InventoryDetailKind; ref: string } | null {
     switch (row.kind) {
@@ -118,22 +129,17 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
     const pathname = usePathname();
     const aiQuickJump = useAiQuickJump(trimmedQuery, { pageContext: pathname, limit: 5 });
 
-    const crossTab = useInventoryCrossTabCounts({
-        query: trimmedQuery,
-        currentTab: tab,
-    });
-
-    const recent = useInventoryRecentSearches(tab);
-
     // Persist a recent search entry once results resolve for a non-empty query.
+    // Recents now live in the unified header store (cf_search_recents_v1).
     useEffect(() => {
         if (!trimmedQuery || search.isFetching) return;
-        recent.push({
+        pushSearchRecent({
             query: trimmedQuery,
-            field,
+            scope: `inventory:${tab}`,
+            scopeLabel: `Inventory · ${TAB_LABEL[tab]}`,
             resultCount: search.rows.length,
         });
-        // Only when query/result count actually changes — push() dedupes.
+        // Only when query/result count actually changes — pushSearchRecent dedupes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [trimmedQuery, search.isFetching, search.rows.length]);
 
@@ -254,13 +260,21 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
         <SidebarShell
             as={motion.div}
             containerProps={{ initial: 'hidden', animate: 'visible', variants: containerVariants }}
-            search={{
-                value: inputValue,
-                onChange: setInputValue,
-                placeholder: getInventorySearchPlaceholder(tab, field),
-                isSearching: search.isFetching,
-                variant: 'blue',
-            }}
+            headerAbove={
+                // In-context list filter — local base SearchBar over the active
+                // inventory tab. The global header pill stays global (search app-wide).
+                <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+                    <SearchBar
+                        size="compact"
+                        variant="blue"
+                        value={inputValue}
+                        onChange={setInputValue}
+                        onClear={() => setInputValue('')}
+                        placeholder={getInventorySearchPlaceholder(tab, field)}
+                        isSearching={search.isFetching}
+                    />
+                </div>
+            }
             filter={{
                 label: 'Search Filters',
                 refinements,
@@ -293,7 +307,7 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
             ].filter(Boolean) as React.ReactNode[]}
             bodyClassName="scrollbar-hide pb-5 space-y-4"
         >
-            {/* Scroll area: helper text + cross-tab + results + recent + footer */}
+            {/* Scroll area: helper text + results + recent + footer */}
             <motion.div variants={itemVariants} initial="hidden" animate="visible" className="contents">
                 <p className={`${microBadge} text-text-soft px-1`}>
                     {getInventorySearchHelperText(tab, field)}
@@ -305,14 +319,6 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
                         className="rounded-xl border border-border-hairline bg-surface-card"
                     />
                 )}
-                {trimmedQuery.length > 0 ? (
-                    <InventoryCrossTabHandoffCard
-                        currentTab={tab}
-                        currentCount={search.rows.length}
-                        counts={crossTab}
-                        onJump={(nextTab) => setSidebarUrl({ tab: nextTab })}
-                    />
-                ) : null}
                 <InventoryResultList
                     rows={search.rows}
                     isFetching={search.isFetching}
@@ -336,11 +342,6 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
                             </div>
                         ) : undefined
                     }
-                />
-                <InventoryRecentSearches
-                    tab={tab}
-                    show={search.rows.length === 0}
-                    onSelect={(q) => setInputValue(q)}
                 />
                 <InventorySidebarFooter />
             </motion.div>

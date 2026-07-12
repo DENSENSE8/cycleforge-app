@@ -51,7 +51,8 @@ const BOOT_TIMEOUT_MS = 180_000;
 
 // Sentinel stamped on every seeded row so we never touch real data.
 const TAG = `__e2e_wf__${randomBytes(4).toString('hex')}`;
-const COOKIE_NAME = 'usav_sid';
+// Canonical session cookie (renamed from legacy usav_sid → cf_sid).
+const COOKIE_NAME = 'cf_sid';
 
 let pool;
 let seededLineIds = [];
@@ -106,7 +107,7 @@ async function seed() {
   console.log(`\n── Seeding (${TAG}) ──────────────`);
   for (const s of SEED) {
     const { rows } = await query(
-      `INSERT INTO receiving_lines
+      `INSERT INTO receiving_line
          (zoho_item_id, zoho_purchaseorder_id, item_name, sku,
           quantity_expected, quantity_received, workflow_status, receiving_type)
        VALUES ($1, $2, $3, $4, 1, $5, $6::inbound_workflow_status_enum, 'PO')
@@ -211,7 +212,7 @@ const PREDICATES = {
 
 async function bucketKeysByPredicate(predicate) {
   const { rows } = await query(
-    `SELECT item_name FROM receiving_lines
+    `SELECT item_name FROM receiving_line
       WHERE zoho_item_id LIKE $1 AND (${predicate})`,
     [`${TAG}_item_%`],
   );
@@ -341,7 +342,7 @@ async function cleanup() {
   try {
     if (seededLineIds.length) {
       await query('DELETE FROM inventory_events WHERE receiving_line_id = ANY($1)', [seededLineIds]);
-      await query('DELETE FROM receiving_lines WHERE id = ANY($1)', [seededLineIds]);
+      await query('DELETE FROM receiving_line WHERE id = ANY($1)', [seededLineIds]);
     }
     if (sessionSid) {
       await query('DELETE FROM staff_sessions WHERE sid = $1', [sessionSid]);

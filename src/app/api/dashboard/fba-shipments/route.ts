@@ -25,20 +25,17 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
       // Pre-migration fallback: old receiving-based query
       const receivingExists = await pool.query(
         `SELECT EXISTS (
-           SELECT 1 FROM information_schema.tables WHERE table_name = 'receiving'
+           SELECT 1 FROM information_schema.tables WHERE table_name = 'receiving_carton'
          ) AS exists`
       );
       if (!receivingExists.rows[0]?.exists) {
         return NextResponse.json({ success: true, rows: [], source: 'none' });
       }
 
-      const receivingColumns = await pool.query(
-        `SELECT column_name
-         FROM information_schema.columns
-         WHERE table_name = 'receiving'`
-      );
-      const hasReceivedAt = receivingColumns.rows.some((row) => row.column_name === 'received_at');
-      const receivedAtSelect = hasReceivedAt ? 'r.received_at::text' : 'NULL::text';
+      // Door-arrival stamp lives on receiving_triage (Wave-3 street cutover) —
+      // the old column-gated spine read would have silently gone NULL when
+      // receiving_carton.received_at dropped.
+      const receivedAtSelect = 'rt.door_received_at::text';
 
       const legacy = await pool.query(
         `SELECT
@@ -54,7 +51,8 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
            s.name AS assigned_tech_name,
            ${receivedAtSelect} AS received_at,
            'LEGACY' AS source
-         FROM receiving r
+         FROM receiving_carton r
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          LEFT JOIN staff s ON s.id = r.assigned_tech_id
          WHERE (r.shipment_id IS NOT NULL

@@ -18,7 +18,7 @@
 
 // ─── IndexedDB shim (tiny, deps-free) ──────────────────────────────────────
 
-const DB_NAME = 'usav-offline-queue';
+const DB_NAME = 'cf-offline-queue';
 const STORE = 'requests';
 const DB_VERSION = 1;
 

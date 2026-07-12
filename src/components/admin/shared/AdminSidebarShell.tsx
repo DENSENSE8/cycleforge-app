@@ -1,11 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { SidebarShell, type SidebarShellSearch } from '@/components/layout/SidebarShell';
+import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 interface AdminSidebarShellProps {
-  search?: SidebarShellSearch;
   filters?: ReactNode;
   stats?: ReactNode;
   action?: ReactNode;
@@ -13,17 +12,14 @@ interface AdminSidebarShellProps {
 }
 
 /**
- * Admin sidebar layout — now a thin wrapper over the house {@link SidebarShell}.
+ * Admin sidebar layout — a thin wrapper over the house {@link SidebarShell}.
  *
- * Every admin panel shares the SAME flush 40px search band, gutter
- * ({@link SIDEBAR_GUTTER}), and scroll-body structure as every other sidebar.
- * Panels pass search PROPS (not a `<SearchBar>` node); the shell renders
- * `<SidebarSearchBar>` so the input height is locked and can't drift. The
- * `filters` / `stats` / `action` slots are pinned, bordered rows below the
- * search (rendered outside the scroll body so they stay put).
+ * Search is owned by the global header pill (each admin panel registers a
+ * contextual filter via `usePageHeaderSearch`); this shell renders NO search
+ * band. The `filters` / `stats` / `action` slots are pinned, bordered rows at
+ * the top (rendered outside the scroll body so they stay put).
  */
 export function AdminSidebarShell({
-  search,
   filters,
   stats,
   action,
@@ -32,7 +28,6 @@ export function AdminSidebarShell({
   return (
     <SidebarShell
       className="bg-surface-card"
-      search={search}
       headerBelow={
         filters || stats || action ? (
           <>

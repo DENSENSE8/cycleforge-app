@@ -5,8 +5,8 @@ table. **LWA-only** auth (no AWS IAM/SigV4 — Amazon dropped that requirement
 2023-10-02), a zero-dependency SP-API client, and an incremental watermark sync that
 runs on a cron. This is **built and live** (Phase 1), not a plan.
 
-> Background: `docs/amazon-sp-api-order-import-plan.md` is the original design doc; the
-> code below is the shipped result.
+> Background: this began as the SP-API order-import design; the code below is the
+> shipped result.
 
 ## Tenancy model
 

@@ -184,7 +184,7 @@ export function ProductDetailsSection({
 
   const refreshAfterCatalogSave = () => {
     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-    window.dispatchEvent(new Event('usav-refresh-data'));
+    window.dispatchEvent(new Event('app-refresh-data'));
   };
 
   const canonicalSku = (skuIdentity.canonicalSku || shipped.sku || '').trim();

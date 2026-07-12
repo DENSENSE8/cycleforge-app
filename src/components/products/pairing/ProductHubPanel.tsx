@@ -6,7 +6,6 @@ import { Button } from '@/design-system/primitives';
 import { PRODUCT_HUB_PLATFORMS } from './platform-style';
 import { useProductHub } from './useProductHub';
 import { ListingResizePanel } from '@/components/listing/ListingResizePanel';
-import { isElectron } from '@/utils/isElectron';
 import { ProductHubHeader } from './product-hub/ProductHubHeader';
 import { ChannelSection } from './product-hub/ChannelSection';
 import { ManualPairForm } from './product-hub/ManualPairForm';
@@ -42,9 +41,8 @@ export function ProductHubPanel({ skuCatalogId, allowManualPair = false, headerT
   const snapshot = hub.snapshot;
 
   // Preview pane state: a row's external-link button selects its URL; the
-  // ListingResizePanel mounts the URL inside an embedded Electron webview.
+  // ListingResizePanel offers an open-externally affordance for that URL.
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
-  const canEmbedListing = isElectron();
   const openPreview = useCallback((url: string, label: string) => setPreview({ url, label }), []);
 
   if (hub.loading && !snapshot) {
@@ -117,7 +115,6 @@ export function ProductHubPanel({ skuCatalogId, allowManualPair = false, headerT
         <ListingResizePanel
           key={preview.url}
           url={preview.url}
-          canEmbed={canEmbedListing}
           title={preview.label}
           storageNamespace="productsPairing"
         />

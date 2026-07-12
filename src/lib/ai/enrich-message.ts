@@ -39,7 +39,7 @@ export async function enrichAssistantMessage(
   if (!contextBlock && !searchBlock) return base;
   const blocks = [contextBlock, searchBlock].filter(Boolean).join('\n\n');
   return (
-    `[Live USAV data - ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST]\n` +
+    `[Live workspace data - ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST]\n` +
     blocks +
     `\n\nUser question: ${trimmed}`
   );

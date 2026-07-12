@@ -15,7 +15,7 @@ export interface TicketReceivingRef {
   supportTicketId: number;
 }
 
-/** Synthetic line id (`-receiving_id`) for unfound cartons with no receiving_lines row. */
+/** Synthetic line id (`-receiving_id`) for unfound cartons with no receiving_line row. */
 export function isPlaceholderReceivingLineId(lineId: number | null | undefined): boolean {
   return lineId != null && lineId <= 0;
 }
@@ -158,7 +158,7 @@ async function resolveReceivingId(args: {
   if (args.lineId == null) return null;
   const parent = await tenantQuery<{ receiving_id: number | null }>(
     args.orgId,
-    `SELECT receiving_id FROM receiving_lines
+    `SELECT receiving_id FROM receiving_line
       WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [args.lineId, args.orgId],
   );
@@ -241,7 +241,7 @@ async function ticketFromShipmentLink(
     orgId,
     `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
             tl.zendesk_ticket_id
-       FROM receiving r
+       FROM receiving_carton r
        JOIN ticket_links tl
          ON tl.organization_id = r.organization_id
         AND tl.entity_type = 'SHIPMENT'
@@ -390,7 +390,7 @@ export async function resolveSupportTicketToReceiving(
   if (type === 'RECEIVING_LINE') {
     const parent = await tenantQuery<{ receiving_id: number | null }>(
       orgId,
-      `SELECT receiving_id FROM receiving_lines
+      `SELECT receiving_id FROM receiving_line
         WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [id, orgId],
     );
@@ -400,7 +400,7 @@ export async function resolveSupportTicketToReceiving(
   if (type === 'SHIPMENT') {
     const carton = await tenantQuery<{ id: string }>(
       orgId,
-      `SELECT id FROM receiving
+      `SELECT id FROM receiving_carton
         WHERE organization_id = $1 AND shipment_id = $2
         ORDER BY updated_at DESC
         LIMIT 1`,

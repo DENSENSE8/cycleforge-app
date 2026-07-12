@@ -24,11 +24,12 @@
  * transaction client, keeping the whole ingest atomic.
  */
 
-import { withTenantTransaction } from '@/lib/tenancy/db';
+import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { assertRegisteredInboundSource, INBOUND_SOURCE_FACT_KIND, type InboundSourceType } from './source-registry';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
 import { upsertInboundMirror } from './mirror';
+import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { linkShipment } from '@/lib/shipping/shipment-links';
 import { ensureReceivingForEbayOrder, ensureReceivingForPo } from '@/lib/receiving/attach-box';
@@ -89,12 +90,14 @@ export interface IngestPurchaseDeps {
   withTx: <T>(orgId: OrgId, fn: (client: TxClient) => Promise<T>) => Promise<T>;
   upsertPurchaseLink: typeof upsertPurchaseLink;
   upsertInboundMirror: typeof upsertInboundMirror;
+  upsertReceivingLineTesting: typeof upsertReceivingLineTesting;
 }
 
 const defaultDeps: IngestPurchaseDeps = {
   withTx: (orgId, fn) => withTenantTransaction(orgId, (client) => fn(client as unknown as TxClient)),
   upsertPurchaseLink,
   upsertInboundMirror,
+  upsertReceivingLineTesting,
 };
 
 /** Only the keys with a real value — keeps the facts payload tight. */
@@ -192,20 +195,21 @@ export async function ingestPurchase(
 
     if (receivingLineId == null) {
       // Create the pre-physical EXPECTED spine row (receiving_id NULL — no carton
-      // scanned yet, same shape as a Zoho PO pre-staging line). zoho_item_id NULL
-      // is allowed for marketplace lines since 2026-07-01l.
+      // scanned yet, same shape as a Zoho PO pre-staging line). The zoho/testing
+      // clusters moved off the spine (W3): a marketplace line has no rz row, and
+      // condition_grade lands on receiving_line_testing below.
       const inserted = await client.query<{ id: number }>(
-        `INSERT INTO receiving_lines (
-           receiving_id, zoho_item_id, sku, item_name,
-           quantity_expected, quantity_received, workflow_status, condition_grade,
+        `INSERT INTO receiving_line (
+           receiving_id, sku, item_name,
+           quantity_expected, quantity_received, workflow_status,
            receiving_type, source_system, source_order_id, source_line_item_id,
            inbound_source_type, platform_account_id, organization_id,
            manual_entry_at, created_at, updated_at
          ) VALUES (
-           NULL, NULL, $1, $2,
-           $3, 0, 'EXPECTED'::inbound_workflow_status_enum, $4::condition_grade_enum,
-           'PO', $5, $6, $7,
-           $5, $8, $9::uuid,
+           NULL, $1, $2,
+           $3, 0, 'EXPECTED'::inbound_workflow_status_enum,
+           'PO', $4, $5, $6,
+           $4, $7, $8::uuid,
            NOW(), NOW(), NOW()
          )
          RETURNING id`,
@@ -213,7 +217,6 @@ export async function ingestPurchase(
           input.sku?.trim() || null,
           input.itemName?.trim() || null,
           quantityExpected,
-          conditionGrade,
           sourceType,
           sourceOrderId,
           sourceLineItemId,
@@ -222,6 +225,24 @@ export async function ingestPurchase(
         ],
       );
       receivingLineId = inserted.rows[0].id;
+
+      // BIRTH INVARIANT: every receiving_line birth creates its 1:1
+      // receiving_line_testing row in the same transaction, with the explicit
+      // values the birth used to set on the spine. An eBay purchase carries the
+      // buyer-declared condition grade; it is not bench-test routed at intake
+      // (needs_test false — the spine birth never set it).
+      await deps.upsertReceivingLineTesting(
+        orgId,
+        receivingLineId,
+        {
+          needsTest: false,
+          qaStatus: 'PENDING',
+          dispositionCode: 'HOLD',
+          conditionGrade,
+          dispositionAudit: [],
+        },
+        { query: ((_o: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery },
+      );
     }
 
     // Primary purchase-identity link + spine-cache dual-write + marketplace facts,
@@ -243,7 +264,7 @@ export async function ingestPurchase(
     );
 
     // When tracking is present on an eBay purchase: register STN → ensure eBay
-    // (or merged Zoho) carton → link STN → stamp receiving_lines.receiving_id
+    // (or merged Zoho) carton → link STN → stamp receiving_line.receiving_id
     // if still null. Mirrors zoho-receiving-sync's registerShipmentPermissive +
     // carton upsert.
     const tracking = input.trackingNumber?.trim() || null;
@@ -254,14 +275,17 @@ export async function ingestPurchase(
       );
       if (shipment?.id) {
         const shipmentId = Number(shipment.id);
+        // Zoho identity read from the rz facts table (W3 — spine zoho columns are dead).
         const lineMeta = await client.query<{
           receiving_id: number | null;
           zoho_purchaseorder_id: string | null;
           zoho_purchaseorder_number: string | null;
         }>(
-          `SELECT receiving_id, zoho_purchaseorder_id, zoho_purchaseorder_number
-             FROM receiving_lines
-            WHERE id = $1 AND organization_id = $2::uuid
+          `SELECT rl.receiving_id, rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number
+             FROM receiving_line rl
+             LEFT JOIN receiving_line_zoho rz
+               ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+            WHERE rl.id = $1 AND rl.organization_id = $2::uuid
             LIMIT 1`,
           [receivingLineId, orgId],
         );
@@ -317,7 +341,7 @@ export async function ingestPurchase(
         );
 
         await client.query(
-          `UPDATE receiving_lines
+          `UPDATE receiving_line
               SET receiving_id = $2,
                   updated_at   = NOW()
             WHERE id = $1

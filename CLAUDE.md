@@ -27,9 +27,14 @@ The full rule list (always loaded via import) is the single source of truth:
 
 @.claude/rules/source-of-truth.md
 
+- **Dates:** civil `YYYY-MM-DD` vs instant (ISO Z) vs warehouse zone (`America/Los_Angeles`) — only via
+  `src/utils/date.ts`. Never `new Date(\`${day}T00:00:00\`)` / host-local “today” for ops day buckets
+  (guard: `src/utils/date-civil.guard.test.ts`).
+
 ## UI / design-system conventions
 
 House style is **simple, linear, icon-based, contextual** (Notion-like). Detail: see `.claude/rules/ui-design-system.md`.
+For scoped UX/UI audits and refactors, use the **`improve-ui`** skill — it chains critique, audit, normalize, and polish with an approval gate.
 
 - **Pick the display archetype first** — four archetypes, chosen by the region's job + input model: **station**
   (`scan → crossfade → display`), **workbench** (`list → select → detail → update`), **monitor** (observe / read-only

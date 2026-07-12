@@ -36,7 +36,7 @@ function walk(dir, out = []) {
 
 function patternsForDrop(table, column) {
   const aliases = [table];
-  if (table === 'receiving_lines') aliases.push('rl');
+  if (table === 'receiving_line') aliases.push('rl');
   const pats = [];
   for (const t of aliases) {
     pats.push(new RegExp(`\\b${t}\\.${column}\\b`, 'i'));

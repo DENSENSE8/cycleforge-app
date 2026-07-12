@@ -1,9 +1,9 @@
 # Tenancy hardening — docs index
 
-The build-out of [`../multi-tenancy-hardening-prompt.md`](../multi-tenancy-hardening-prompt.md) into a concrete, executable plan for this codebase.
+The build-out of the multi-tenancy hardening brief into a concrete, executable plan for this codebase.
 
 ## Start here
-- **[multi-tenancy-execution-plan.md](./multi-tenancy-execution-plan.md)** — the spine. Phases A→F with real table/route/file names, the BYPASSRLS keystone (§0), sequencing, and acceptance-criteria→proof mapping. Supersedes the role decision in [`../phase-1-rls-plan.md`](../phase-1-rls-plan.md).
+- **[multi-tenancy-execution-plan.md](./multi-tenancy-execution-plan.md)** — the spine. Phases A→F with real table/route/file names, the BYPASSRLS keystone (§0), sequencing, and acceptance-criteria→proof mapping. Supersedes the role decision from the earlier (since-superseded) Phase-1 RLS plan; the execution plan plus the `tenancy:usav-guard` ratchet are the living track.
 
 ## Generated ground truth (reproducible — do not hand-edit)
 - **[org-id-coverage.generated.md](./org-id-coverage.generated.md)** — per-table org_id/RLS state from `pg_catalog`. Regenerate: `npm run tenancy:coverage`.

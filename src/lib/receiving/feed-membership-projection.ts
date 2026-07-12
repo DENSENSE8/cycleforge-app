@@ -9,11 +9,13 @@
  *
  * CARTON-GRAIN + STABLE-COLUMN predicate (deliberately NOT a replica of the
  * rail's line-grain fetch SQL): a carton is "in triage" from arrival until it is
- * triaged or moved to unbox. Using the stable carton columns (received_at /
- * unboxed_at / unbox_opened_at / triage_complete / source) keeps this projection
- * from drifting against the evolving line-grain visibility rules (quantity,
- * workflow_status, serial_unit_provenance) that decide which LINES show inside a
- * carton — those don't change a carton's triage membership.
+ * triaged or moved to unbox. Using the stable carton facts (door_received_at +
+ * triage_complete on the receiving_triage street table, unboxed_at + opened_at
+ * on receiving_unbox — both 1:1 LEFT JOINs, no street row ≡ NULL/false — plus
+ * spine source) keeps this projection from drifting against the evolving
+ * line-grain visibility rules (quantity, workflow_status,
+ * serial_unit_provenance) that decide which LINES show inside a carton — those
+ * don't change a carton's triage membership.
  *
  *   state:
  *     needs_match — an unmatched carton awaiting a PO match (the Unfound tab).
@@ -71,9 +73,9 @@ export async function projectReceivingTriageMemberships(
            'RECEIVING',
            r.id,
            CASE WHEN r.source = 'unmatched' THEN 'needs_match' ELSE 'active' END,
-           COALESCE(r.received_at, r.receiving_date_time, r.created_at),
+           COALESCE(rt.door_received_at, r.receiving_date_time, r.created_at),
            COALESCE(
-             (SELECT rl.item_name FROM receiving_lines rl
+             (SELECT rl.item_name FROM receiving_line rl
                WHERE rl.receiving_id = r.id AND rl.item_name IS NOT NULL
                ORDER BY rl.id LIMIT 1),
              r.zoho_purchaseorder_number,
@@ -81,14 +83,18 @@ export async function projectReceivingTriageMemberships(
            ),
            CASE WHEN r.source = 'unmatched' THEN 'warning' ELSE 'default' END,
            r.priority_tier
-      FROM receiving r
-     WHERE r.triage_complete = false
-       AND r.unboxed_at IS NULL
-       AND r.unbox_opened_at IS NULL
-       AND COALESCE(r.received_at, r.receiving_date_time, r.created_at) >= NOW() - make_interval(days => ${days})
+      FROM receiving_carton r
+      LEFT JOIN receiving_triage rt
+        ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+      LEFT JOIN receiving_unbox ru
+        ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+     WHERE COALESCE(rt.triage_complete, false) = false
+       AND ru.unboxed_at IS NULL
+       AND ru.opened_at IS NULL
+       AND COALESCE(rt.door_received_at, r.receiving_date_time, r.created_at) >= NOW() - make_interval(days => ${days})
        AND (
          -- matched, arrived at dock, awaiting triage
-         (r.received_at IS NOT NULL AND r.source IS DISTINCT FROM 'unmatched')
+         (rt.door_received_at IS NOT NULL AND r.source IS DISTINCT FROM 'unmatched')
          OR
          -- unfound / unmatched (the Unfound tab) — any source='unmatched' carton,
          -- with or without lines (mirrors the live v_unfound_queue)
@@ -109,13 +115,17 @@ export async function projectReceivingTriageMemberships(
   const flipped = await deps.execute(sql`
     UPDATE feed_memberships fm
        SET state = 'done', updated_at = NOW()
-      FROM receiving r
+      FROM receiving_carton r
+      LEFT JOIN receiving_triage rt
+        ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+      LEFT JOIN receiving_unbox ru
+        ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
      WHERE fm.organization_id = r.organization_id
        AND fm.feed_key = 'receiving_triage'
        AND fm.entity_type = 'RECEIVING'
        AND fm.entity_id = r.id
        AND fm.state <> 'done'
-       AND (r.triage_complete = true OR r.unboxed_at IS NOT NULL OR r.unbox_opened_at IS NOT NULL)
+       AND (COALESCE(rt.triage_complete, false) = true OR ru.unboxed_at IS NOT NULL OR ru.opened_at IS NOT NULL)
     RETURNING fm.id
   `);
 

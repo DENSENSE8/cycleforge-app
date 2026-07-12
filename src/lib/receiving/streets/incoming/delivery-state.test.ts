@@ -66,6 +66,13 @@ test('isDeliveryState guards the union', () => {
 // These transcribe the EXACT originals from app/api/receiving-lines/route.ts and
 // assert the SoT reproduces them semantically — so replacing the inline copies
 // with deliveryStateCaseSql()/deliveryStateWhereSql() is provably behavior-preserving.
+//
+// Wave-2 reader cutover (2026-07-11): the moved-column reads inside these
+// predicates now come from the street tables — DELIVERED_EMAIL's normalized PO#
+// from receiving_line_zoho (rz_eds), DELIVERED_NOT_UNBOXED's unboxed milestone
+// from receiving_unbox (ru_ds, correlated NOT EXISTS) — so the pinned
+// expectations below are the street forms, deliberately updated from the
+// original spine transcriptions (r.unboxed_at / rl.zoho_purchaseorder_number_norm).
 
 test('deliveryStateCaseSql includes DELIVERED_NOT_UNBOXED after DELIVERED_UNOPENED', () => {
   const sql = deliveryStateCaseSql();
@@ -82,7 +89,10 @@ test('each facet WHERE is present for known facets', () => {
            AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
     DELIVERED_EMAIL: `EXISTS (
              SELECT 1 FROM email_delivery_signals eds
-              WHERE eds.order_number_norm = rl.zoho_purchaseorder_number_norm
+              JOIN receiving_line_zoho rz_eds
+                ON rz_eds.receiving_line_id = rl.id
+               AND rz_eds.organization_id = rl.organization_id
+              WHERE eds.order_number_norm = rz_eds.zoho_purchaseorder_number_norm
                 AND eds.organization_id = rl.organization_id
                 AND eds.delivered_at > NOW() - interval '30 days'
            )
@@ -115,5 +125,8 @@ test('each facet WHERE is present for known facets', () => {
   const dnu = deliveryStateWhereSql('DELIVERED_NOT_UNBOXED');
   assert.ok(dnu);
   assert.match(dnu!, /stn\.is_delivered = true/);
-  assert.match(dnu!, /unboxed_at IS NULL/);
+  // Wave-2: "not unboxed" reads the receiving_unbox street table via a
+  // correlated NOT EXISTS (no row / NULL unboxed_at ≡ old NULL spine value).
+  assert.match(dnu!, /NOT EXISTS \(\s*SELECT 1 FROM receiving_unbox ru_ds/);
+  assert.match(dnu!, /ru_ds\.unboxed_at IS NOT NULL/);
 });

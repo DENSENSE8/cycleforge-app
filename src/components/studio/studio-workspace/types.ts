@@ -15,7 +15,7 @@ import type {
   StudioZoom,
 } from '../studio-types';
 
-export type Busy = null | 'saving' | 'publishing' | 'drafting' | 'discarding';
+export type Busy = null | 'saving' | 'publishing' | 'drafting' | 'discarding' | 'submitting';
 
 export interface StudioWorkspaceValue {
   /** Whether the user is currently on the /studio route (provider is active). */
@@ -88,4 +88,6 @@ export interface StudioWorkspaceValue {
   discardDraft: () => Promise<void>;
   /** Clone a system template into the org as a new draft, then switch to it. */
   importTemplate: (templateId: number) => Promise<void>;
+  /** Submit the current definition to the community catalog for curator review. */
+  submitToCatalog: () => Promise<void>;
 }

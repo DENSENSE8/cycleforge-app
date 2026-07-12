@@ -11,7 +11,7 @@
  *      registered eBay app + RuName that every tenant's sellers grant consent
  *      to). Only the per-seller TOKENS are per-tenant, in ebay_accounts.
  *
- * getIntegrationCredentials already mirrors USAV's env creds for USAV_ORG_ID;
+ * getIntegrationCredentials already mirrors USAV's env creds for DOGFOOD_ORG_ID;
  * the explicit env fallback in (2) extends that to every other tenant for the
  * shared app — which is exactly the chosen model.
  */

@@ -61,7 +61,7 @@ async function main() {
            it.name AS zoho_name
       FROM serial_units su
       JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
-      JOIN receiving_lines rl ON rl.id = su.origin_receiving_line_id AND rl.item_name IS NOT NULL
+      JOIN receiving_line rl ON rl.id = su.origin_receiving_line_id AND rl.item_name IS NOT NULL
       LEFT JOIN items it ON it.zoho_item_id = rl.zoho_item_id AND it.status = 'active'
      WHERE GREATEST(
              similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),

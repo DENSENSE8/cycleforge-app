@@ -1,6 +1,6 @@
 /** Client-side "recent sign-ins" list for the staff picker (localStorage). */
 
-export const RECENT_SIGNINS_KEY = 'usav.recentSignins';
+export const RECENT_SIGNINS_KEY = 'cf.recentSignins';
 export const MAX_RECENT_SIGNINS = 3;
 
 export function readRecentSignins(): number[] {

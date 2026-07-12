@@ -547,10 +547,10 @@ export async function importCandidate(params: {
     }
 
     // 2. Receiving header (placeholder package for the inbound unbox).
-    //    receiving carries organization_id — stamp it so the inbound row is
+    //    receiving_carton carries organization_id — stamp it so the inbound row is
     //    owned by this org (was a NULL-org write bug before).
     const recv = await client.query<{ id: number }>(
-      `INSERT INTO receiving
+      `INSERT INTO receiving_carton
          (source, source_platform, carrier, needs_test, notes, organization_id, updated_at)
        VALUES ('sourcing_import', 'ebay', $1, true, $2, $3, NOW())
        RETURNING id`,

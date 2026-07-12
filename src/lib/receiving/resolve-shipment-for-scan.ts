@@ -31,7 +31,7 @@ export interface ShipmentScanResolution {
   shipmentId: number | null;
   /** Linked receiving carton id (newest), or null when no carton is linked yet. */
   receivingId: number | null;
-  /** `receiving.source` of the linked carton ('zoho_po' | 'unmatched' | …). */
+  /** `receiving_carton.source` of the linked carton ('zoho_po' | 'unmatched' | …). */
   receivingSource: string | null;
   matchKind: ScanMatchKind;
 }
@@ -99,7 +99,7 @@ export async function resolveShipmentForScan(
     orgId,
     `SELECT stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source
        FROM shipping_tracking_numbers stn
-       LEFT JOIN receiving r
+       LEFT JOIN receiving_carton r
          ON r.shipment_id = stn.id
          ${orgPredicate(orgId, '$2')}
       WHERE stn.tracking_number_normalized = $1
@@ -125,7 +125,7 @@ export async function resolveShipmentForScan(
     orgId,
     `SELECT stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source
        FROM shipping_tracking_numbers stn
-       JOIN receiving r ON r.shipment_id = stn.id
+       JOIN receiving_carton r ON r.shipment_id = stn.id
       WHERE (RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $1
           OR RIGHT(regexp_replace(stn.tracking_number_raw,        '\\D', '', 'g'), 8) = $1)
         ${orgPredicate(orgId, '$2')}

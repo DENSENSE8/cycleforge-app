@@ -113,6 +113,27 @@ test.describe('/api/realtime/token', () => {
     await assertValidToken(res);
   });
 
+  test('master-plan CRDT + ops-plans channels are granted per plan permissions', async ({ request }) => {
+    const res = await request.get('/api/realtime/token');
+    const status = res.status();
+    const body = await res.json();
+    skipIfAblyUnconfigured(status, body);
+    expect(status).toBe(200);
+    const { orgPrefix, capability } = await assertValidToken(res);
+
+    // The saved session is an admin → holds operations.plans.view AND .manage,
+    // so it gets the ops-plans feed (subscribe-only) and the master-plan Yjs
+    // channel with publish (managers merge CRDT edits; viewers subscribe only).
+    expect(
+      capability[`${orgPrefix}:ops_plans:changes`],
+      'ops-plans change feed granted (subscribe-only)',
+    ).toEqual(['subscribe']);
+    expect(
+      capability[`${orgPrefix}:forge:master-plan`],
+      'master-plan CRDT channel granted with publish for plan managers',
+    ).toEqual(expect.arrayContaining(['subscribe', 'publish']));
+  });
+
   test('an x-ai-session header grants that org-scoped AI session channel', async ({ request }) => {
     const sessionId = 'e2e-smoke-session';
     const res = await request.get('/api/realtime/token', { headers: { 'x-ai-session': sessionId } });

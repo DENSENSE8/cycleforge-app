@@ -4,7 +4,7 @@
  * In-memory cache for receiving table schema introspection.
  *
  * All receiving API routes need to know which columns exist in
- * `receiving` and `receiving_lines` to build dynamic queries.
+ * `receiving_carton` and `receiving_line` to build dynamic queries.
  * Querying information_schema on every request adds 2-6 round-trips.
  * This module caches the result for 5 minutes.
  * ─────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ export async function getReceivingSchema(): Promise<{
 
   const [schema, columnsRes] = await Promise.all([
     resolveReceivingSchema(),
-    pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving'`),
+    pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_carton'`),
   ]);
 
   _receivingColumns = new Set<string>(columnsRes.rows.map((r: any) => String(r.column_name)));
@@ -57,7 +57,7 @@ export async function getReceivingLineColumns(): Promise<Set<string>> {
   }
 
   const res = await pool.query(
-    `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_lines'`
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_line'`
   );
   _lineColumns = new Set<string>(res.rows.map((r: any) => String(r.column_name)));
   _lineExpiry = now + CACHE_TTL_MS;
@@ -78,10 +78,10 @@ export function bustReceivingSchemaCache(reason: string): void {
 }
 
 // One-shot per-process logger so we don't spam logs every request. Records
-// the missing column name + which side (receiving / receiving_lines) so ops
+// the missing column name + which side (receiving_carton / receiving_line) so ops
 // can spot schema drift in monitoring.
 const _missingColumnsLogged = new Set<string>();
-export function reportMissingReceivingColumn(table: 'receiving' | 'receiving_lines', column: string): void {
+export function reportMissingReceivingColumn(table: 'receiving_carton' | 'receiving_line', column: string): void {
   const key = `${table}:${column}`;
   if (_missingColumnsLogged.has(key)) return;
   _missingColumnsLogged.add(key);

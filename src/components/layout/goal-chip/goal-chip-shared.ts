@@ -84,8 +84,8 @@ export function removeLS(key: string): void {
   }
 }
 
-export const activeKey = (staffId: number) => `usav.hgoal.active.${staffId}`;
-export const modeKey = (staffId: number, st: StationKey) => `usav.hgoal.mode.${staffId}.${st}`;
+export const activeKey = (staffId: number) => `cf.hgoal.active.${staffId}`;
+export const modeKey = (staffId: number, st: StationKey) => `cf.hgoal.mode.${staffId}.${st}`;
 // Legacy v1 list keys — only read (then removed) by the one-time server import.
-export const todoKey = (staffId: number, st: StationKey) => `usav.hgoal.todo.${staffId}.${st}`;
-export const recurKey = (staffId: number, st: StationKey) => `usav.hgoal.recurring.${staffId}.${st}`;
+export const todoKey = (staffId: number, st: StationKey) => `cf.hgoal.todo.${staffId}.${st}`;
+export const recurKey = (staffId: number, st: StationKey) => `cf.hgoal.recurring.${staffId}.${st}`;

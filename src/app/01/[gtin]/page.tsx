@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { readSessionSid } from '@/lib/auth/session';
 import { resolveGs1 } from '@/lib/gs1/resolver';
 
 /**
@@ -22,7 +22,7 @@ export default async function GtinPage({
   params: Promise<{ gtin: string }>;
 }) {
   const { gtin } = await params;
-  const sid = (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(await cookies());
   const user = await getCurrentUserBySid(sid);
   const result = await resolveGs1(`/01/${gtin}`, { isInternal: user !== null, orgId: user?.organizationId });
   redirect(result.redirect);

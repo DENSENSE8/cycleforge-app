@@ -8,8 +8,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { useAuth } from '@/contexts/AuthContext';
 import { emitAppEvent, useEventBridge } from '@/hooks';
 import type { ShippedFormData } from '@/components/shipped';
@@ -115,21 +113,6 @@ export function useStationDetailsPanel(onActivate?: () => void): void {
 }
 
 /**
- * Unshipped-orders badge count. Reads the lightweight queue-counts endpoint
- * (Phase 2) — total only, NO row download — and dedupes with the sidebar's own
- * counts query (same key).
- *
- * @param enabled Gate the query (typically `routeKey === 'dashboard'`).
- */
-export function useUnshippedCount(enabled = true): number {
-  const { data } = useQuery({
-    ...unshippedQueueCountsQuery({}),
-    enabled,
-  });
-  return data?.total ?? 0;
-}
-
-/**
  * Returns a submit handler for the shared shipped/order intake form. Routes
  * `add_order` to `/api/orders/add` and everything else to `/api/shipped/submit`,
  * then fires the dashboard/station refresh events on success.
@@ -169,7 +152,7 @@ export function useShippedFormSubmit(
         }
         onSuccess();
         emitAppEvent('dashboard-refresh');
-        emitAppEvent('usav-refresh-data');
+        emitAppEvent('app-refresh-data');
       } catch {
         alert('Error submitting form. Please try again.');
       }

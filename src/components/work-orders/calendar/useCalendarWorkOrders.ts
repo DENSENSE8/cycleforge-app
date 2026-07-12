@@ -45,8 +45,8 @@ export function useCalendarWorkOrders(from: Date, to: Date) {
   // the calendar in sync with the queue without a manual refresh.
   useEffect(() => {
     const handler = () => void load();
-    window.addEventListener('usav-refresh-data', handler);
-    return () => window.removeEventListener('usav-refresh-data', handler);
+    window.addEventListener('app-refresh-data', handler);
+    return () => window.removeEventListener('app-refresh-data', handler);
   }, [load]);
 
   return { rows, loading, error, refetch: load };

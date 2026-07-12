@@ -249,30 +249,32 @@ These are identifiers, infrastructure, or historical records — not user-facing
 
 ### Acceptance criteria (Phase 4–6 complete)
 
-- [ ] No remaining `USAV Solutions` string literals in `src/` (except tests/fixtures referencing dogfood org name from DB).
-- [ ] Signed-in browser tab shows `{Page} · USAV Solutions` on dogfood tenant.
-- [ ] Repair print + walk-in receipt render letterhead from org settings.
-- [ ] About page shows Cycle Forge + support@cycleforge.ai.
-- [ ] Passkey registration shows “Cycle Forge” in password manager.
-- [ ] PWA manifest `name` is Cycle Forge.
-- [ ] E2E repair intake still passes.
+- [x] No remaining `USAV Solutions` string literals in `src/` (except migrations / DB seed).
+- [x] Signed-in browser tab shows org name (dogfood: USAV Solutions from DB) / signed-out Cycle Forge.
+- [x] Repair print + walk-in receipt render letterhead from org settings; on-screen repair preview uses `/api/org/letterhead`.
+- [x] About page shows Cycle Forge + support@cycleforge.ai.
+- [x] Passkey registration shows “Cycle Forge” in password manager.
+- [x] PWA manifest `name` is Cycle Forge.
+- [ ] E2E repair intake still passes (assert still matches dogfood org name from DB).
 
 ---
 
 ## 9. Prior audit reference
 
-Full grep inventory from initial scan (2026-07-01): 17 files with exact `USAV Solutions`, ~35–40 files for full user-facing rebrand. See git history or re-run:
+**2026-07-11 burn-down:** user-facing USAV product literals removed from `src/`; internal identifiers renamed (`DOGFOOD_ORG_ID`, `APP_REFRESH_DATA` / `app-refresh-data`, `cf_sid`, `cf.*` storage keys, `cycle-forge` observability). CI: `npm run branding:guard` + `npm run tenancy:dogfood-guard`.
+
+Full grep inventory from initial scan (2026-07-01): 17 files with exact `USAV Solutions`, ~35–40 files for full user-facing rebrand. Re-verify:
 
 ```bash
-rg -i 'USAV Solutions' --glob '!node_modules'
-rg 'USAV Orders' src/ electron/ public/
+npm run branding:guard
+rg -i 'USAV Solutions' src/ --glob '!**/migrations/**'
+rg 'USAV Orders' src/
 ```
 
 ---
 
 ## 10. Related docs
 
-- `docs/CYCLE-FORGE-WAVE-REVIEW.md` — roadmap wave review (engineering tasks)
 - `docs/second-tenant-onboarding-checklist.md` — multi-tenant onboarding
 - `src/lib/tenancy/settings.ts` — org settings schema (brand stub today)
 - `src/components/settings/sections/OrganizationSection.tsx` — Branding UI (editor only)
@@ -284,3 +286,4 @@ rg 'USAV Orders' src/ electron/ public/
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-07-01 | Branding interview + audit | Initial spec from stakeholder decisions |
+| 2026-07-11 | Hardcode purge | Phase 4–6 + internal identifier burn-down; branding:guard added |

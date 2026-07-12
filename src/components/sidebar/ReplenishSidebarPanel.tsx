@@ -7,6 +7,8 @@ import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 import { Button } from '@/design-system/primitives';
 import { AlertTriangle, RefreshCw } from '@/components/Icons';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 type ReplenishTab = 'need' | 'fifo';
 
@@ -86,10 +88,10 @@ export function ReplenishSidebarPanel() {
 
   useEffect(() => {
     window.addEventListener('dashboard-refresh', fetchCounts);
-    window.addEventListener('usav-refresh-data', fetchCounts);
+    window.addEventListener('app-refresh-data', fetchCounts);
     return () => {
       window.removeEventListener('dashboard-refresh', fetchCounts);
-      window.removeEventListener('usav-refresh-data', fetchCounts);
+      window.removeEventListener('app-refresh-data', fetchCounts);
     };
   }, [fetchCounts]);
 
@@ -154,14 +156,20 @@ export function ReplenishSidebarPanel() {
   return (
     <SidebarShell
       className="font-dm-sans bg-surface-card"
-      search={{
-        value: localSearch,
-        onChange: setLocalSearch,
-        onClear: () => setLocalSearch(''),
-        placeholder: 'Search SKU or item name…',
-        variant: 'emerald',
-        className: 'w-full',
-      }}
+      headerAbove={
+        /* In-context list filter — local base SearchBar. The debounced effect
+           above mirrors `localSearch` into `?rsku=`. Global header pill stays global. */
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={localSearch}
+            onChange={setLocalSearch}
+            onClear={() => setLocalSearch('')}
+            placeholder="Filter SKU or item name…"
+          />
+        </div>
+      }
       headerRows={[
         /* Tab pills — banded row directly below the search */
         <HorizontalButtonSlider

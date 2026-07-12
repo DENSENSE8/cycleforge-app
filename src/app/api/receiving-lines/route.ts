@@ -27,6 +27,12 @@ import {
 } from '@/lib/receiving/lines/build-sql';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { isWrongDestination } from '@/lib/receiving/wrong-destination';
+import {
+  upsertReceivingLineTesting,
+  upsertReceivingLineZoho,
+  type TestingFactsInput,
+  type ZohoFactsInput,
+} from '@/lib/receiving/facts/narrow';
 
 type LineSerial = {
   id: number;
@@ -256,8 +262,8 @@ export async function handleReceivingLinesGet(
       }
     }
 
-    // Unmatched/unfound cartons live in the `receiving` table with no
-    // `receiving_lines` row yet, so they never come back from the main query.
+    // Unmatched/unfound cartons live in the `receiving_carton` table with no
+    // `receiving_line` row yet, so they never come back from the main query.
     // Append them as placeholder rows for `all` AND `activity` — a scanned
     // unfound carton has been physically touched, so it belongs in the
     // activity feed that backs both the History table and the recent rail.
@@ -430,33 +436,66 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     }
 
     const orgId = ctx.organizationId as OrgId;
-    // receiving_lines.organization_id is NOT NULL with a loud-fail GUC default.
+    // receiving_line.organization_id is NOT NULL with a loud-fail GUC default.
     // Run under the org GUC AND stamp the column explicitly so the insert is
     // attributed to the caller's tenant (never the GUC fallback).
-    const result = await withTenantTransaction(orgId, (client) => client.query(
-      `INSERT INTO receiving_lines (
-        receiving_id, zoho_item_id, zoho_line_item_id, zoho_purchase_receive_id,
-        zoho_purchaseorder_id, item_name, sku,
-        quantity_received, quantity_expected,
-        qa_status, disposition_code, condition_grade, disposition_audit, notes,
-        needs_test, assigned_tech_id, organization_id
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,$16,$17)
-      RETURNING *`,
-      [
-        receivingId, zohoItemId, zohoLineItemId, zohoPurchaseReceiveId,
-        zohoPurchaseOrderId, itemName, sku,
-        quantityReceived, quantityExpected,
-        qaStatusRaw, dispositionRaw, conditionRaw, JSON.stringify(dispositionAudit), notes,
-        needsTest, assignedTechId, orgId,
-      ],
-    ));
+    //
+    // Wave-3 writer inversion: the birth is a THIN spine INSERT; the zoho
+    // cluster lands on receiving_line_zoho (rz) and the testing cluster on
+    // receiving_line_testing (rlt) — both in the SAME transaction with explicit
+    // values (birth invariant: every receiving_line has its rlt row).
+    const lineId = await withTenantTransaction(orgId, async (client) => {
+      const ins = await client.query<{ id: number }>(
+        `INSERT INTO receiving_line (
+          receiving_id, item_name, sku,
+          quantity_received, quantity_expected,
+          notes, organization_id
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        RETURNING id`,
+        [
+          receivingId, itemName, sku,
+          quantityReceived, quantityExpected,
+          notes, orgId,
+        ],
+      );
+      const newId = Number(ins.rows[0].id);
+      const txDeps = {
+        query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
+      };
+      await upsertReceivingLineZoho(orgId, newId, {
+        zohoItemId,
+        zohoLineItemId,
+        zohoPurchaseReceiveId,
+        zohoPurchaseOrderId,
+      }, txDeps);
+      await upsertReceivingLineTesting(orgId, newId, {
+        needsTest,
+        assignedTechId,
+        qaStatus: qaStatusRaw,
+        dispositionCode: dispositionRaw,
+        conditionGrade: conditionRaw,
+        dispositionAudit,
+      }, txDeps);
+      return newId;
+    });
 
-    const lineId = result.rows[0]?.id;
     await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'insert', rowId: String(lineId), source: 'receiving-lines.create' });
 
-    return NextResponse.json({ success: true, receiving_line: normalizeRow(result.rows[0]) }, { status: 201 });
+    // Envelope frozen ({ success, receiving_line }): compose the response by
+    // re-fetching through the street-sourced single-row builder (same shape the
+    // GET ?id= path serves) instead of the old spine RETURNING *.
+    const single = buildReceivingLineByIdSql(lineId, orgId);
+    const fresh = await tenantQuery(orgId, single.sql, single.params);
+    if (fresh.rows.length === 0) {
+      // Should be unreachable (we just committed the insert) — surface loudly.
+      return NextResponse.json(
+        { success: false, error: 'created receiving_line could not be re-read' },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ success: true, receiving_line: normalizeRow(fresh.rows[0]) }, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create receiving line';
     console.error('receiving-lines POST failed:', error);
@@ -483,26 +522,42 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     // A body payload for that key is still accepted (sidebar tracking edits
     // send it) — handled below via the canonical shipment path, not a column
     // write.
+    //
+    // Wave-3 writer inversion: only spine-staying text columns go in the dynamic
+    // spine UPDATE. The zoho cluster is collected into a receiving_line_zoho
+    // patch (rz) and the testing cluster into a receiving_line_testing patch
+    // (rlt) — both applied in the same transaction as the spine UPDATE below.
     const textFields: Array<[string, string | null]> = [
       ['item_name',                 String(body?.item_name ?? '').trim() || null],
       ['sku',                       String(body?.sku ?? '').trim() || null],
-      ['zoho_item_id',              String(body?.zoho_item_id ?? '').trim() || null],
-      ['zoho_line_item_id',         String(body?.zoho_line_item_id ?? '').trim() || null],
-      ['zoho_purchase_receive_id',  String(body?.zoho_purchase_receive_id ?? '').trim() || null],
-      ['zoho_purchaseorder_id',     String(body?.zoho_purchaseorder_id ?? '').trim() || null],
-      ['zoho_purchaseorder_number', String(body?.zoho_purchaseorder_number ?? '').trim() || null],
       ['notes',                     String(body?.notes ?? '').trim() || null],
       ['receiving_type',            String(body?.receiving_type ?? '').trim() || null],
       ['zendesk_ticket',            String(body?.zendesk_ticket ?? '').trim() || null],
     ];
     for (const [col, val] of textFields) {
-      if (Object.prototype.hasOwnProperty.call(body, col.replace('zoho_item_id', 'zoho_item_id'))) {
-        if (body[col] !== undefined) {
-          updates.push(`${col} = $${idx++}`);
-          values.push(val);
-        }
+      if (body[col] !== undefined) {
+        updates.push(`${col} = $${idx++}`);
+        values.push(val);
       }
     }
+
+    type ZohoTextKey =
+      | 'zohoItemId' | 'zohoLineItemId' | 'zohoPurchaseReceiveId'
+      | 'zohoPurchaseOrderId' | 'zohoPurchaseOrderNumber';
+    const zohoPatch: ZohoFactsInput = {};
+    const zohoTextFields: Array<[string, ZohoTextKey]> = [
+      ['zoho_item_id',              'zohoItemId'],
+      ['zoho_line_item_id',         'zohoLineItemId'],
+      ['zoho_purchase_receive_id',  'zohoPurchaseReceiveId'],
+      ['zoho_purchaseorder_id',     'zohoPurchaseOrderId'],
+      ['zoho_purchaseorder_number', 'zohoPurchaseOrderNumber'],
+    ];
+    for (const [col, key] of zohoTextFields) {
+      if (body[col] !== undefined) {
+        zohoPatch[key] = String(body[col] ?? '').trim() || null;
+      }
+    }
+    const testingPatch: TestingFactsInput = {};
 
     if (body?.receiving_id !== undefined) {
       const raw = body.receiving_id != null ? Number(body.receiving_id) : null;
@@ -529,8 +584,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       if (!QA_STATUSES.has(qa)) {
         return NextResponse.json({ success: false, error: 'Invalid qa_status' }, { status: 400 });
       }
-      updates.push(`qa_status = $${idx++}`);
-      values.push(qa);
+      testingPatch.qaStatus = qa;
     }
 
     if (body?.disposition_code !== undefined) {
@@ -538,8 +592,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       if (!DISPOSITIONS.has(d)) {
         return NextResponse.json({ success: false, error: 'Invalid disposition_code' }, { status: 400 });
       }
-      updates.push(`disposition_code = $${idx++}`);
-      values.push(d);
+      testingPatch.dispositionCode = d;
     }
 
     let isPartsCondition = false;
@@ -548,27 +601,34 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       if (!CONDITIONS.has(c)) {
         return NextResponse.json({ success: false, error: 'Invalid condition_grade' }, { status: 400 });
       }
-      updates.push(`condition_grade = $${idx++}`);
-      values.push(c);
+      testingPatch.conditionGrade = c;
       isPartsCondition = c === 'PARTS';
     }
 
     if (body?.disposition_audit !== undefined) {
-      updates.push(`disposition_audit = $${idx++}::jsonb`);
-      values.push(JSON.stringify(Array.isArray(body.disposition_audit) ? body.disposition_audit : []));
+      testingPatch.dispositionAudit = Array.isArray(body.disposition_audit) ? body.disposition_audit : [];
     }
 
     if (body?.assigned_tech_id !== undefined || body?.assignedTechId !== undefined) {
-      updates.push(`assigned_tech_id = $${idx++}`);
-      values.push(parsePositiveTechId(body?.assigned_tech_id ?? body?.assignedTechId));
+      testingPatch.assignedTechId = parsePositiveTechId(body?.assigned_tech_id ?? body?.assignedTechId);
     }
 
     if (body?.needs_test !== undefined || body?.needsTest !== undefined) {
       const nextNeedsTest = !!(body?.needs_test ?? body?.needsTest);
       if (!nextNeedsTest) {
+        // Testing facts live on receiving_line_testing (rlt) now — the guard
+        // reads the current assignment there (spine copies are write-dead).
+        // LEFT JOIN so a line whose rlt row is somehow missing still 404s only
+        // when the LINE is missing; a NULL rlt.needs_test is treated as
+        // "was needs-test" (same as the old spine NULL), keeping the guard
+        // conservative.
         const existing = await tenantQuery<{ needs_test: boolean | null; assigned_tech_id: number | null }>(
           orgId,
-          `SELECT needs_test, assigned_tech_id FROM receiving_lines WHERE id = $1 AND organization_id = $2`,
+          `SELECT rlt.needs_test, rlt.assigned_tech_id
+             FROM receiving_line rl
+             LEFT JOIN receiving_line_testing rlt
+               ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+            WHERE rl.id = $1 AND rl.organization_id = $2`,
           [id, orgId],
         );
         if (existing.rows.length === 0) {
@@ -590,42 +650,86 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
           }
         }
       }
-      updates.push(`needs_test = $${idx++}`);
-      values.push(nextNeedsTest);
+      testingPatch.needsTest = nextNeedsTest;
     } else if (isPartsCondition) {
       // A "For Parts" line skips testing entirely — clear needs_test so it
       // drops out of the test queue. Parts don't require a tech assignment,
       // so this bypasses the tech-assignment guard above.
-      updates.push(`needs_test = $${idx++}`);
-      values.push(false);
+      testingPatch.needsTest = false;
     }
 
     const hasTrackingEdit = body?.zoho_reference_number !== undefined;
-    if (updates.length === 0 && !hasTrackingEdit) {
+    const hasTestingPatch = Object.keys(testingPatch).length > 0;
+    const hasZohoPatch = Object.keys(zohoPatch).length > 0;
+    if (updates.length === 0 && !hasTestingPatch && !hasZohoPatch && !hasTrackingEdit) {
       return NextResponse.json({ success: false, error: 'No valid fields to update' }, { status: 400 });
     }
 
-    // Run the UPDATE only when there are real column writes. A tracking-only
+    // Run the column writes only when there are real ones. A tracking-only
     // edit (zoho_reference_number body key) runs purely through the shipment
     // path below since the column it used to write to was dropped in
     // 2026-04-15_drop_zoho_reference_number.sql.
+    //
+    // Spine UPDATE + rlt/rz facts upserts for one logical edit run in ONE
+    // tenant transaction: lock the line, apply the spine writes (or just bump
+    // updated_at, which the spine UPDATE used to do via trigger even for
+    // facts-only edits — it feeds the unbox_activity sort), then the facts.
     let updatedRow: { id: number; receiving_id: number | null } | null = null;
-    if (updates.length > 0) {
-      values.push(id);
-      const idParamN = values.length;
-      values.push(orgId);
-      const orgParamN = values.length;
-      const result = await tenantQuery<{ id: number; receiving_id: number | null }>(
-        orgId,
-        `UPDATE receiving_lines SET ${updates.join(', ')}
-          WHERE id = $${idParamN} AND organization_id = $${orgParamN}
-          RETURNING id, receiving_id`,
-        values,
-      );
-      if (result.rows.length === 0) {
+    if (updates.length > 0 || hasTestingPatch || hasZohoPatch) {
+      const txResult = await withTenantTransaction(orgId, async (client) => {
+        const lock = await client.query<{ id: number; receiving_id: number | null }>(
+          `SELECT id, receiving_id FROM receiving_line
+            WHERE id = $1 AND organization_id = $2
+            FOR UPDATE`,
+          [id, orgId],
+        );
+        if (lock.rows.length === 0) return null;
+        let row = lock.rows[0];
+        if (updates.length > 0) {
+          const updValues = [...values, id, orgId];
+          const upd = await client.query<{ id: number; receiving_id: number | null }>(
+            `UPDATE receiving_line SET ${updates.join(', ')}
+              WHERE id = $${updValues.length - 1} AND organization_id = $${updValues.length}
+              RETURNING id, receiving_id`,
+            updValues,
+          );
+          // RETURNING reflects a body-supplied receiving_id change (the lock
+          // SELECT above holds the pre-update value).
+          row = upd.rows[0] ?? row;
+        } else {
+          await client.query(
+            `UPDATE receiving_line SET updated_at = NOW()
+              WHERE id = $1 AND organization_id = $2`,
+            [id, orgId],
+          );
+        }
+        const txDeps = {
+          query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
+        };
+        if (hasTestingPatch) await upsertReceivingLineTesting(orgId, id, testingPatch, txDeps);
+        if (hasZohoPatch) {
+          await upsertReceivingLineZoho(orgId, id, zohoPatch, txDeps);
+          // The spine kept zoho_purchaseorder_number_norm as a GENERATED column;
+          // rz stores it plainly (2026-07-11_receiving_line_zoho_number_norm), so
+          // re-derive it with the same expression whenever the number changed.
+          // narrow.ts doesn't expose the norm field — inline in the same idiom.
+          if (zohoPatch.zohoPurchaseOrderNumber !== undefined) {
+            await client.query(
+              `UPDATE receiving_line_zoho
+                  SET zoho_purchaseorder_number_norm =
+                        NULLIF(upper(regexp_replace(COALESCE(zoho_purchaseorder_number, ''), '[^A-Za-z0-9]', '', 'g')), ''),
+                      updated_at = now()
+                WHERE receiving_line_id = $1 AND organization_id = $2`,
+              [id, orgId],
+            );
+          }
+        }
+        return row;
+      });
+      if (!txResult) {
         return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
       }
-      updatedRow = result.rows[0];
+      updatedRow = txResult;
     }
 
     // "For Parts" line → sort every serial already attached to this line into
@@ -671,7 +775,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       if (receivingIdForLine == null) {
         const existing = await tenantQuery<{ receiving_id: number | null }>(
           orgId,
-          `SELECT receiving_id FROM receiving_lines WHERE id = $1 AND organization_id = $2`,
+          `SELECT receiving_id FROM receiving_line WHERE id = $1 AND organization_id = $2`,
           [id, orgId],
         );
         if (existing.rows.length === 0) {
@@ -682,7 +786,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       if (shipment && receivingIdForLine != null) {
         await tenantQuery(
           orgId,
-          `UPDATE receiving SET shipment_id = $1 WHERE id = $2 AND organization_id = $3`,
+          `UPDATE receiving_carton SET shipment_id = $1 WHERE id = $2 AND organization_id = $3`,
           [shipment.id, receivingIdForLine, orgId],
         );
       }
@@ -692,10 +796,31 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-lines.update' });
 
     // Re-fetch with the shipment JOIN so the response carries the just-attached
-    // shipment's tracking/carrier/status fields.
+    // shipment's tracking/carrier/status fields. Wave-2 street cutover: moved
+    // columns read from the 1:1 street tables (rlt/rz/rt) with the same output
+    // names overriding the rl.* spine values — normalizeRow is untouched.
     const fresh = await tenantQuery(
       orgId,
       `SELECT rl.*,
+              COALESCE(rlt.needs_test, false)              AS needs_test,
+              rlt.assigned_tech_id                         AS assigned_tech_id,
+              rlt.qa_status                                AS qa_status,
+              rlt.disposition_code                         AS disposition_code,
+              rlt.condition_grade                          AS condition_grade,
+              rlt.disposition_final                        AS disposition_final,
+              COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
+              rlt.condition_set_at                         AS condition_set_at,
+              rz.zoho_item_id                              AS zoho_item_id,
+              rz.zoho_line_item_id                         AS zoho_line_item_id,
+              rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,
+              rz.zoho_purchaseorder_id                     AS zoho_purchaseorder_id,
+              rz.zoho_purchaseorder_number                 AS zoho_purchaseorder_number,
+              rz.zoho_purchaseorder_number_norm            AS zoho_purchaseorder_number_norm,
+              rz.zoho_sync_source                          AS zoho_sync_source,
+              rz.zoho_last_modified_time                   AS zoho_last_modified_time,
+              rz.zoho_synced_at                            AS zoho_synced_at,
+              rz.zoho_notes                                AS zoho_notes,
+              rz.unit_price                                AS unit_price,
               stn.tracking_number_raw AS receiving_tracking_number,
               r.carrier,
               r.source                     AS receiving_source,
@@ -707,7 +832,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
               r.support_notes              AS receiving_support_notes,
               r.zoho_notes                 AS receiving_zoho_notes,
               r.listing_url                AS receiving_listing_url,
-              r.received_at::text          AS receiving_received_at,
+              rt.door_received_at::text    AS receiving_received_at,
               -- Scan-based "last touched" time, matching view=activity so the
               -- post-save dispatchLineUpdated keeps the rail's timestamp intact.
               rs_agg.last_scan::text       AS last_scan_at,
@@ -716,8 +841,11 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
               stn.latest_status_category   AS shipment_status_category,
               stn.is_delivered             AS shipment_is_delivered,
               stn.delivered_at             AS shipment_delivered_at
-         FROM receiving_lines rl
-         LEFT JOIN receiving r                   ON r.id  = rl.receiving_id AND r.organization_id = rl.organization_id
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         LEFT JOIN receiving_carton r            ON r.id  = rl.receiving_id AND r.organization_id = rl.organization_id
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          LEFT JOIN LATERAL (
             SELECT MAX(rs.scanned_at) AS last_scan
             FROM receiving_scans rs
@@ -750,8 +878,8 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
     // single-`id` path stays for callers that target one specific line.
     const poId = (searchParams.get('po_id') || '').trim();
     // `shipment_id` hard-deletes a shipment-anchored "Delivered · not scanned"
-    // box that has no PO and no receiving_lines row — the only way to clear that
-    // synthetic Incoming row, since there's nothing in receiving_lines to delete.
+    // box that has no PO and no receiving_line row — the only way to clear that
+    // synthetic Incoming row, since there's nothing in receiving_line to delete.
     const shipmentIdParam = (searchParams.get('shipment_id') || '').trim();
 
     if (shipmentIdParam) {
@@ -763,7 +891,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       // shipment that has dock-scan activity (real receiving) or isn't delivered
       // — those aren't Incoming clutter and must not be hard-deleted here.
       // Tenancy: shipping_tracking_numbers has no organization_id, so org-scope
-      // by requiring the shipment to be referenced by a `receiving` carton in
+      // by requiring the shipment to be referenced by a `receiving_carton` row in
       // THIS org (org-owned). That both anchors the tenant and is the exact box
       // this synthetic Incoming row stands for — a cross-org shipment id 404s.
       // Run the guard + the hard-delete on the SAME tenant connection so the
@@ -775,12 +903,12 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
             WHERE stn.id = $1
               AND stn.is_delivered = true
               AND EXISTS (
-                SELECT 1 FROM receiving r3
+                SELECT 1 FROM receiving_carton r3
                  WHERE r3.shipment_id = stn.id
                    AND r3.organization_id = $2
               )
               AND NOT EXISTS (
-                SELECT 1 FROM receiving r2
+                SELECT 1 FROM receiving_carton r2
                 JOIN receiving_scans rs ON rs.receiving_id = r2.id
                 WHERE r2.shipment_id = stn.id
                   AND r2.organization_id = $2
@@ -811,9 +939,19 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
     }
 
     if (poId) {
+      // PO identity lives on receiving_line_zoho (rz) — the spine
+      // zoho_purchaseorder_id is write-dead and drops next migration, so the
+      // PO-wide delete resolves its lines through rz. rz rows cascade with
+      // their line.
       const result = await tenantQuery<{ id: number }>(
         orgId,
-        `DELETE FROM receiving_lines WHERE zoho_purchaseorder_id = $1 AND organization_id = $2 RETURNING id`,
+        `DELETE FROM receiving_line rl
+          USING receiving_line_zoho rz
+          WHERE rz.receiving_line_id = rl.id
+            AND rz.organization_id = rl.organization_id
+            AND rz.zoho_purchaseorder_id = $1
+            AND rl.organization_id = $2
+          RETURNING rl.id`,
         [poId, orgId],
       );
       if (result.rows.length === 0) {
@@ -844,11 +982,11 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       }
       // Delete + carton-source-link recompute on one tenant connection so the
       // org GUC stays set for the recompute (which reads/writes org-owned
-      // receiving / receiving_lines via the passed client). recomputeCartonSourceLink's
+      // receiving_carton / receiving_line via the passed client). recomputeCartonSourceLink's
       // signature is unchanged — it already accepts an optional `db`.
       const deleted = await withTenantTransaction(orgId, async (client) => {
         const result = await client.query<{ id: number; receiving_id: number | null }>(
-          `DELETE FROM receiving_lines WHERE id = ANY($1::int[]) AND organization_id = $2 RETURNING id, receiving_id`,
+          `DELETE FROM receiving_line WHERE id = ANY($1::int[]) AND organization_id = $2 RETURNING id, receiving_id`,
           [ids, orgId],
         );
         const deletedIds = result.rows.map((r) => Number(r.id));
@@ -881,7 +1019,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
 
     const deletedRow = await withTenantTransaction(orgId, async (client) => {
       const result = await client.query<{ id: number; receiving_id: number | null }>(
-        `DELETE FROM receiving_lines WHERE id = $1 AND organization_id = $2 RETURNING id, receiving_id`,
+        `DELETE FROM receiving_line WHERE id = $1 AND organization_id = $2 RETURNING id, receiving_id`,
         [id, orgId],
       );
       if (result.rows.length === 0) return null;
@@ -911,7 +1049,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
   }
 }, { permission: 'receiving.mark_received' });
 
-/** Label for unmatched cartons that have no `receiving_lines` yet (Recent + History). */
+/** Label for unmatched cartons that have no `receiving_line` yet (Recent + History). */
 const UNMATCHED_EMPTY_LINE_LABEL = 'Unfound PO';
 
 /**
@@ -1059,7 +1197,7 @@ function compareReceivingRowsByUnboxedAt(
 
 /**
  * `?sort=unbox_activity` comparator — JS mirror of the SQL
- * `GREATEST(r.unboxed_at, rl.updated_at)` axis, so the placeholder merge
+ * `GREATEST(ru.unboxed_at, rl.updated_at)` axis, so the placeholder merge
  * preserves the order. Unfound placeholders carry neither stamp and fall
  * through to scan-based recent activity, which is correct for them (they
  * only exist while physically present and untriaged).
@@ -1111,9 +1249,9 @@ function enrichIncomingTrackingIntegrity(
 
 function normalizeRow(row: Record<string, unknown>) {
   // Tracking identity resolves in priority order:
-  //   1. shipping_tracking_numbers (canonical — joined via receiving.shipment_id)
-  //   2. receiving.receiving_tracking_number (legacy text on the package)
-  //   3. receiving_lines.zoho_reference_number (legacy text on the line;
+  //   1. shipping_tracking_numbers (canonical — joined via receiving_carton.shipment_id)
+  //   2. receiving_carton.receiving_tracking_number (legacy text on the package)
+  //   3. receiving_line.zoho_reference_number (legacy text on the line;
   //      column may be absent post-retirement — guarded below)
   // See inbound-tracking unification plan (2026-04-15 migrations).
   const shipmentTracking    = (row.shipment_tracking_number as string | null) ?? null;
@@ -1129,7 +1267,7 @@ function normalizeRow(row: Record<string, unknown>) {
     : null;
 
   // Carrier from the canonical shipment row wins; fall back to the legacy
-  // receiving.carrier text. 'UNKNOWN' sentinel (from permissive registration)
+  // receiving_carton.carrier text. 'UNKNOWN' sentinel (from permissive registration)
   // is hidden — surfaces as null so UI renders plainly.
   const shipmentCarrierRaw = (row.shipment_carrier as string | null) ?? null;
   const shipmentCarrier = shipmentCarrierRaw && shipmentCarrierRaw.toUpperCase() !== 'UNKNOWN'
@@ -1238,7 +1376,7 @@ function normalizeRow(row: Record<string, unknown>) {
     updated_at:               (row.updated_at as string | null) ?? null,
     // Most-recent activity timestamp matching the server's sort order. For
     // view=testing this leads with tested_at (the verdict time the feed is
-    // ordered by); for view=recent/all it's the last scan. Falls through to
+    // ordered by); for view=all/activity it's the last scan. Falls through to
     // received_at / created_at so the rail can render a single "last touched"
     // field regardless of view.
     last_activity_at:         (row.viewed_at as string | null)

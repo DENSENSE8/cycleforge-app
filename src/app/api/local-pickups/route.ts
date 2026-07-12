@@ -49,7 +49,7 @@ function normalizePartsStatus(raw: unknown): 'COMPLETE' | 'MISSING_PARTS' {
 }
 
 async function fetchPickupDates(orgId: OrgId, search: string) {
-  // Tenant anchor: every local-pickup row hangs off a `receiving` carton, so
+  // Tenant anchor: every local-pickup row hangs off a `receiving_carton` row, so
   // scoping on r.organization_id isolates the whole result set.
   const params: unknown[] = [orgId];
   // carrier='LOCAL' is the canonical local-pickup signal. The legacy
@@ -74,7 +74,7 @@ async function fetchPickupDates(orgId: OrgId, search: string) {
       SELECT
         COALESCE(
           lpi.pickup_date,
-          (r.received_at AT TIME ZONE 'America/Los_Angeles')::date,
+          (rt.door_received_at AT TIME ZONE 'America/Los_Angeles')::date,
           (r.created_at AT TIME ZONE 'America/Los_Angeles')::date
         )::text AS pickup_date,
         COUNT(*)::int AS item_count,
@@ -87,7 +87,11 @@ async function fetchPickupDates(orgId: OrgId, search: string) {
           ),
           0
         )::numeric(12,2)::text AS total_value
-      FROM receiving r
+      FROM receiving_carton r
+      -- Wave-2 reader cutover: carton received_at → receiving_triage (1:1).
+      LEFT JOIN receiving_triage rt
+        ON rt.receiving_id = r.id
+       AND rt.organization_id = r.organization_id
       LEFT JOIN local_pickup_items lpi ON lpi.receiving_id = r.id
       ${where}
       GROUP BY 1
@@ -124,7 +128,7 @@ async function fetchPickupRows(orgId: OrgId, pickupDate: string, search: string)
         r.id AS receiving_id,
         COALESCE(
           lpi.pickup_date,
-          (r.received_at AT TIME ZONE 'America/Los_Angeles')::date,
+          (rt.door_received_at AT TIME ZONE 'America/Los_Angeles')::date,
           (r.created_at AT TIME ZONE 'America/Los_Angeles')::date
         )::text AS pickup_date,
         COALESCE(sp_ecwid.display_name, sc.product_title, lpi.product_title, 'Local Pickup') AS product_title,
@@ -143,9 +147,13 @@ async function fetchPickupRows(orgId: OrgId, pickupDate: string, search: string)
         )::numeric(12,2)::text AS total,
         NULL::text AS tracking_number,
         r.carrier,
-        COALESCE(r.received_at, r.created_at)::text AS received_at,
+        COALESCE(rt.door_received_at, r.created_at)::text AS received_at,
         wa.status AS work_order_status
-      FROM receiving r
+      FROM receiving_carton r
+      -- Wave-2 reader cutover: carton received_at → receiving_triage (1:1).
+      LEFT JOIN receiving_triage rt
+        ON rt.receiving_id = r.id
+       AND rt.organization_id = r.organization_id
       LEFT JOIN local_pickup_items lpi ON lpi.receiving_id = r.id
       LEFT JOIN sku_catalog sc ON sc.sku = lpi.sku AND sc.organization_id = r.organization_id
       LEFT JOIN LATERAL (
@@ -171,11 +179,11 @@ async function fetchPickupRows(orgId: OrgId, pickupDate: string, search: string)
       AND r.organization_id = $2
       AND COALESCE(
         lpi.pickup_date,
-        (r.received_at AT TIME ZONE 'America/Los_Angeles')::date,
+        (rt.door_received_at AT TIME ZONE 'America/Los_Angeles')::date,
         (r.created_at AT TIME ZONE 'America/Los_Angeles')::date
       ) = $1::date
       ${searchClause}
-      ORDER BY COALESCE(r.received_at, r.created_at) DESC, r.id DESC
+      ORDER BY COALESCE(rt.door_received_at, r.created_at) DESC, r.id DESC
     `,
     params
   );
@@ -212,7 +220,7 @@ async function upsertPickupDetail(orgId: OrgId, body: Record<string, unknown>) {
   // create/overwrite a pickup detail against another tenant's carton.
   const owner = await tenantQuery<{ id: number }>(
     orgId,
-    `SELECT id FROM receiving WHERE id = $1 AND organization_id = $2`,
+    `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2`,
     [receivingId, orgId],
   );
   if (owner.rows.length === 0) {
@@ -354,7 +362,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
 
     const recv = await tenantQuery<{ carrier: string | null }>(
       orgId,
-      `SELECT carrier FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT carrier FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, orgId],
     );
     if (recv.rows.length === 0) {

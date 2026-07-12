@@ -2,7 +2,7 @@
  * Carton ⇄ source-order linkage derivation.
  *
  * Industry-standard inbound model: a box (`receiving`) is a physical container;
- * each `receiving_lines` row reconciles to its OWN source order and is
+ * each `receiving_line` row reconciles to its OWN source order and is
  * acknowledged per line. The carton's `zoho_purchaseorder_number` is therefore
  * only a first-linked DISPLAY representative — never the source of truth.
  *
@@ -33,7 +33,7 @@ export async function recomputeCartonSourceLink(
   // repairs). Earliest line wins as the carton's display representative.
   const linked = await db.query(
     `SELECT source_order_id, source_system
-       FROM receiving_lines
+       FROM receiving_line
       WHERE receiving_id = $1
         AND source_order_id IS NOT NULL
         AND btrim(source_order_id) <> ''
@@ -43,7 +43,7 @@ export async function recomputeCartonSourceLink(
 
   const cartonRes = await db.query(
     `SELECT source, source_platform, zoho_purchaseorder_id
-       FROM receiving WHERE id = $1 LIMIT 1`,
+       FROM receiving_carton WHERE id = $1 LIMIT 1`,
     [receivingId],
   );
   const carton = cartonRes.rows[0] as
@@ -67,7 +67,7 @@ export async function recomputeCartonSourceLink(
   if (isUnmatched && !carton.zoho_purchaseorder_id) {
     const zohoLinked = await db.query(
       `SELECT zoho_purchaseorder_id, zoho_purchaseorder_number
-         FROM receiving_lines
+         FROM receiving_line
         WHERE receiving_id = $1
           AND zoho_purchaseorder_id IS NOT NULL
           AND btrim(zoho_purchaseorder_id) <> ''
@@ -86,14 +86,14 @@ export async function recomputeCartonSourceLink(
       // carton dedupe, not a simple promotion — leave it to the dedupe path and
       // skip rather than crash the relink. Only promote when the PO id is free.
       const held = await db.query(
-        `SELECT 1 FROM receiving
+        `SELECT 1 FROM receiving_carton
           WHERE zoho_purchaseorder_id = $1 AND source = 'zoho_po' AND id <> $2
           LIMIT 1`,
         [poId, receivingId],
       );
       if (held.rows.length === 0) {
         await db.query(
-          `UPDATE receiving
+          `UPDATE receiving_carton
               SET zoho_purchaseorder_id = $2,
                   zoho_purchaseorder_number = COALESCE($3, zoho_purchaseorder_number),
                   source = 'zoho_po',
@@ -112,7 +112,7 @@ export async function recomputeCartonSourceLink(
     if (!isUnmatched && !isEcwidDerived) return;
     const representative = String(linked.rows[0].source_order_id ?? '').trim();
     await db.query(
-      `UPDATE receiving
+      `UPDATE receiving_carton
           SET zoho_purchaseorder_number = $2,
               source = 'zoho_po',
               source_platform = 'ecwid',
@@ -125,7 +125,7 @@ export async function recomputeCartonSourceLink(
     // (clear PO# + pill). A real-PO carton is left untouched.
     if (!isEcwidDerived) return;
     await db.query(
-      `UPDATE receiving
+      `UPDATE receiving_carton
           SET zoho_purchaseorder_number = NULL,
               source = 'unmatched',
               source_platform = NULL,

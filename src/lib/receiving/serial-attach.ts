@@ -11,6 +11,7 @@ import {
   type InventoryEventStation,
 } from '@/lib/inventory/events';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
+import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 
 /**
  * Serial numbers as a SIDECAR. A `serial_units` row IS the item identity
@@ -19,7 +20,7 @@ import { attachTechSerial } from '@/lib/inventory/tech-serial';
  * receiving line is pure metadata CRUD:
  *
  *   - NO `sku_stock_ledger` delta
- *   - NO `receiving_lines.quantity_received` change
+ *   - NO `receiving_line.quantity_received` change
  *   - NO workflow_status advance / workflow NOTE
  *   - NO cap — a line may carry unlimited serials (a unit can ship several
  *     serials: a pair, multi-component, part serials, etc.)
@@ -28,7 +29,7 @@ import { attachTechSerial } from '@/lib/inventory/tech-serial';
  * the Receive action (`receiveLineUnits` in {@link ./receive-line}). These two
  * concerns are deliberately independent: scanning serials never moves stock.
  *
- * It DOES stamp the parent carton's `receiving.unboxed_at` (the first serial
+ * It DOES stamp the parent carton's `receiving_unbox.unboxed_at` (the first serial
  * scanned off a carton means the box was physically opened). Without this, a
  * serial-scanned-but-not-yet-Received carton stayed MATCHED/qty-0 and leaked
  * back into the "to unbox" scanned queue even though it had clearly been opened
@@ -72,20 +73,26 @@ async function loadLine(
   // When orgId is provided, add an explicit tenant predicate so a line from
   // another tenant is invisible (the GUC-wrapped client also backstops via RLS
   // once enforced). When omitted, behaviour is byte-identical to before.
+  // zoho_item_id reads from the receiving_line_zoho facts table (the spine
+  // column is a moved column, dropped in Wave 4).
   const r = orgId
     ? await client.query<SerialLineTarget>(
-        `SELECT id, receiving_id, sku, item_name, zoho_item_id,
-                quantity_expected, quantity_received, workflow_status::text AS workflow_status
-         FROM receiving_lines
-         WHERE id = $1 AND organization_id = $2
+        `SELECT rl.id, rl.receiving_id, rl.sku, rl.item_name, rz.zoho_item_id,
+                rl.quantity_expected, rl.quantity_received, rl.workflow_status::text AS workflow_status
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         WHERE rl.id = $1 AND rl.organization_id = $2
          LIMIT 1`,
         [lineId, orgId],
       )
     : await client.query<SerialLineTarget>(
-        `SELECT id, receiving_id, sku, item_name, zoho_item_id,
-                quantity_expected, quantity_received, workflow_status::text AS workflow_status
-         FROM receiving_lines
-         WHERE id = $1
+        `SELECT rl.id, rl.receiving_id, rl.sku, rl.item_name, rz.zoho_item_id,
+                rl.quantity_expected, rl.quantity_received, rl.workflow_status::text AS workflow_status
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         WHERE rl.id = $1
          LIMIT 1`,
         [lineId],
       );
@@ -242,23 +249,22 @@ export async function attachSerialToLine(
         orgId,
       );
 
-      // Stamp the carton "opened" — the first serial scanned off it is proof it
-      // was physically unboxed. COALESCE so re-scans / sibling-line scans never
-      // reset the original unbox time. Carton-scoped on purpose: opening one box
-      // moves the whole carton (all its lines) out of the scanned queue and into
-      // the unboxed rail. Deliberately NOT touching quantity_received /
+      // Stamp the carton "unboxed" — the first serial scanned off it is proof it
+      // was physically unboxed. Wave-3 writer inversion: the stamp lands
+      // DIRECTLY on the receiving_unbox street table (spine columns dropped in
+      // Wave 4). COALESCE-once inside the helper so re-scans / sibling-line
+      // scans never reset the original unbox time; intake_path derives in the
+      // same statement. Carton-scoped on purpose: opening one box moves the
+      // whole carton (all its lines) out of the scanned queue and into the
+      // unboxed rail. Deliberately NOT touching quantity_received /
       // workflow_status / the stock ledger — those stay owned by the Receive
-      // action (receiveLineUnits). Best-effort: a failure here must not lose the
-      // serial, so it never throws the transaction (the attach is the point).
+      // action (receiveLineUnits).
       if (line.receiving_id != null) {
-        await client.query(
-          `UPDATE receiving
-              SET unboxed_at = COALESCE(unboxed_at, NOW()),
-                  unboxed_by = COALESCE(unboxed_by, $2),
-                  updated_at = NOW()
-            WHERE id = $1 AND organization_id = $3`,
-          [line.receiving_id, input.staff_id ?? null, orgId],
-        );
+        await upsertReceivingUnbox(client, orgId, line.receiving_id, {
+          unboxedAt: 'now',
+          unboxedBy: input.staff_id ?? null,
+          deriveIntakePath: true,
+        });
       }
 
       return {

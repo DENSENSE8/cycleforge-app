@@ -3,8 +3,9 @@
  * (roi-execution/03 #8 decomposition).
  *
  * The safety net: `legacy-route-sql.fixture.ts` is a mechanical, byte-for-byte
- * extraction of the OLD inline GET logic from the route handler. Every combo
- * below asserts the new builders in `./build-sql` produce IDENTICAL
+ * extraction of the OLD inline GET logic from the route handler (regenerated
+ * 2026-07-11 with the Wave-2 street-cutover replacements — see its header).
+ * Every combo below asserts the new builders in `./build-sql` produce IDENTICAL
  * { sql, params } — SQL text equality is exact-string, so even a whitespace
  * drift fails. These are permanent: if build-sql is ever deliberately changed,
  * the fixture must be updated in the same PR.
@@ -68,14 +69,16 @@ const LIST_COMBOS: Combo[] = [
   { name: 'staff filter', qs: 'staff=7' },
   { name: 'staff filter junk value ignored', qs: 'staff=abc' },
   { name: 'staff filter on unbox_opened (actor clause)', qs: 'view=unbox_opened&staff=7' },
-  { name: 'view=recent', qs: 'view=recent' },
+  // view=recent was deleted (Wave-2 dead-arm removal) — it now parses to null
+  // and falls back to the default org-wide scoping, pinned here.
+  { name: 'removed view=recent falls back to default scoping', qs: 'view=recent' },
   { name: 'view=received', qs: 'view=received' },
   { name: 'view=all + search + include=serials (fetch-limit bump)', qs: 'view=all&search=R-12&include=serials' },
   { name: 'view=activity default sort', qs: 'view=activity' },
   { name: 'view=activity sort=unbox_activity', qs: 'view=activity&sort=unbox_activity' },
   { name: 'view=all sort=unboxed_newest', qs: 'view=all&sort=unboxed_newest' },
-  { name: 'view=recent sort=received_newest', qs: 'view=recent&sort=received_newest' },
-  { name: 'view=recent sort=scanned_oldest', qs: 'view=recent&sort=scanned_oldest' },
+  { name: 'view=all sort=received_newest', qs: 'view=all&sort=received_newest' },
+  { name: 'view=all sort=scanned_oldest', qs: 'view=all&sort=scanned_oldest' },
   { name: 'view=unbox_opened', qs: 'view=unbox_opened' },
   { name: 'view=scanned (zoho exclusion applied)', qs: 'view=scanned', opts: { applyScannedZohoExclusion: true } },
   { name: 'view=scanned (physical-state-first, exclusion off)', qs: 'view=scanned', opts: { applyScannedZohoExclusion: false } },
@@ -103,8 +106,10 @@ const LIST_COMBOS: Combo[] = [
   { name: 'view=incoming unknown delivery_state ignored', qs: 'view=incoming&delivery_state=NOT_A_BUCKET' },
   { name: 'view=incoming universal + inbound=ebay + link=zoho_pending', qs: 'view=incoming&inbound=ebay&link=zoho_pending', opts: { universalIncoming: true } },
   { name: 'view=incoming universal + inbound=zoho', qs: 'view=incoming&inbound=zoho', opts: { universalIncoming: true } },
-  { name: 'week range fallback (no view)', qs: 'week_start=2026-06-01&week_end=2026-06-07' },
-  { name: 'malformed week range silently ignored', qs: 'week_start=junk&week_end=2026-06-07' },
+  // The no-view ?week_start/?week_end fallback was deleted (Wave-2 dead-arm
+  // removal) — week params are now ignored entirely, pinned here.
+  { name: 'week params ignored (fallback arm removed)', qs: 'week_start=2026-06-01&week_end=2026-06-07' },
+  { name: 'malformed week params also ignored', qs: 'week_start=junk&week_end=2026-06-07' },
   { name: 'limit clamp + offset', qs: 'limit=900&offset=40' },
   { name: 'junk limit degrades to NaN exactly like the old code', qs: 'limit=abc' },
   { name: 'unknown view falls back to default scoping', qs: 'view=bogus&search=x' },

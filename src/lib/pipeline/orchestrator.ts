@@ -28,7 +28,7 @@ import { promisify } from 'node:util';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 import { pipelineTasks, pipelineCycles } from '@/lib/drizzle/schema';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import { discoverTasks } from './discover';
 import { implementTask } from './agent';
 import { validateChanges } from './validate';
@@ -114,7 +114,7 @@ async function persistAndFilterTasks(discovered: DiscoveredTask[]): Promise<Disc
     } else {
       // Insert new task
       await db.insert(pipelineTasks).values({
-        organizationId: transitionalUsavOrgId(),
+        organizationId: transitionalDogfoodOrgId(),
         taskHash: task.hash,
         title: task.title,
         source: task.source,
@@ -271,7 +271,7 @@ async function runCycle(): Promise<CycleResult> {
 
   // Create cycle record
   const [cycle] = await db.insert(pipelineCycles).values({
-    organizationId: transitionalUsavOrgId(),
+    organizationId: transitionalDogfoodOrgId(),
     startedAt: new Date(),
   }).returning({ id: pipelineCycles.id });
   const cycleId = cycle.id;

@@ -53,6 +53,28 @@ test('full zoho upsert maps every camelCase field to its column', async () => {
   assert.deepEqual(calls[0].params, [9, ORG, 'i1', 'po1', '12.50']);
 });
 
+test('zoho PO number auto-derives *_number_norm like the retired spine GENERATED column', async () => {
+  // number present → norm = upper + strip non-alnum
+  const derive = fakes();
+  await upsertReceivingLineZoho(ORG, 9, { zohoPurchaseOrderNumber: 'po-00 123a' }, derive.deps);
+  assert.match(derive.calls[0].sql, /zoho_purchaseorder_number, zoho_purchaseorder_number_norm/);
+  assert.deepEqual(derive.calls[0].params, [9, ORG, 'po-00 123a', 'PO00123A']);
+
+  // NULLIF('') semantics: all-symbol number → norm NULL (number written as-is)
+  const empty = fakes();
+  await upsertReceivingLineZoho(ORG, 9, { zohoPurchaseOrderNumber: '--' }, empty.deps);
+  assert.deepEqual(empty.calls[0].params, [9, ORG, '--', null]);
+
+  // null clears both; undefined touches neither
+  const clear = fakes();
+  await upsertReceivingLineZoho(ORG, 9, { zohoPurchaseOrderNumber: null }, clear.deps);
+  assert.deepEqual(clear.calls[0].params, [9, ORG, null, null]);
+
+  const skip = fakes();
+  await upsertReceivingLineZoho(ORG, 9, { zohoItemId: 'i1' }, skip.deps);
+  assert.doesNotMatch(skip.calls[0].sql, /zoho_purchaseorder_number/);
+});
+
 test('dispositionAudit jsonb is serialized to a string param', async () => {
   const { deps, calls } = fakes();
   await upsertReceivingLineTesting(ORG, 7, { dispositionAudit: [{ at: 't', code: 'PASS' }] }, deps);

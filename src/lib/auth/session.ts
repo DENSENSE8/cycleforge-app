@@ -19,8 +19,42 @@
 
 import { randomBytes } from 'node:crypto';
 import pool from '@/lib/db';
+import { parseOrgSettings } from '@/lib/tenancy/settings';
+import { enforceMaxConcurrentSessions, type ConcurrencyDeps } from '@/lib/auth/session-concurrency';
 
-export const SESSION_COOKIE_NAME = 'usav_sid';
+/**
+ * Canonical session cookie. Renamed from the legacy `usav_sid` (dogfood-branded)
+ * to the vendor-neutral `cf_sid`. During the transition every READER accepts
+ * either name (see {@link readSessionSid}); writers set `cf_sid` and clear the
+ * legacy cookie. The name is duplicated (inlined) in `src/proxy.ts` because the
+ * Edge runtime can't import this Node module — keep the two in sync.
+ */
+export const SESSION_COOKIE_NAME = 'cf_sid';
+/** Legacy cookie name — still honored on read during the 30-day migration. */
+export const LEGACY_SESSION_COOKIE_NAME = 'usav_sid';
+
+/** A cookie store with the minimal shape both `req.cookies` and `cookies()` expose. */
+interface CookieReader {
+  get(name: string): { value: string } | undefined;
+}
+
+/**
+ * Read the session sid preferring the canonical `cf_sid`, falling back to the
+ * legacy `usav_sid`. Returns `{ sid, legacy }` so callers can migrate a request
+ * that authenticated on the legacy cookie (re-issue `cf_sid`, clear `usav_sid`).
+ */
+export function readSessionCookie(store: CookieReader): { sid: string | null; legacy: boolean } {
+  const current = store.get(SESSION_COOKIE_NAME)?.value;
+  if (current) return { sid: current, legacy: false };
+  const legacy = store.get(LEGACY_SESSION_COOKIE_NAME)?.value;
+  if (legacy) return { sid: legacy, legacy: true };
+  return { sid: null, legacy: false };
+}
+
+/** Convenience: just the sid (cf_sid or legacy usav_sid), or null. */
+export function readSessionSid(store: CookieReader): string | null {
+  return readSessionCookie(store).sid;
+}
 
 export type DeviceKind = 'station' | 'personal' | 'phone';
 export type SessionPolicy = 'default' | 'extended' | 'persistent';
@@ -104,6 +138,22 @@ interface SessionDbRow {
   created_at: Date; last_seen_at: Date; expires_at: Date; revoked_at: Date | null;
 }
 
+/** Real-DB deps for {@link enforceMaxConcurrentSessions}. */
+const defaultConcurrencyDeps: ConcurrencyDeps = {
+  async listActiveSids(staffId) {
+    const r = await pool.query<{ sid: string; last_seen_at: Date }>(
+      `SELECT sid, last_seen_at FROM staff_sessions
+        WHERE staff_id = $1 AND revoked_at IS NULL AND expires_at > NOW()`,
+      [staffId],
+    );
+    return r.rows.map((row) => ({ sid: row.sid, lastSeenAt: row.last_seen_at }));
+  },
+  async revokeSids(sids) {
+    if (!sids.length) return;
+    await pool.query(`UPDATE staff_sessions SET revoked_at = NOW() WHERE sid = ANY($1) AND revoked_at IS NULL`, [sids]);
+  },
+};
+
 export async function createSession(opts: CreateSessionOpts): Promise<SessionRow> {
   const sid = newSid();
 
@@ -151,6 +201,23 @@ export async function createSession(opts: CreateSessionOpts): Promise<SessionRow
   if (!row) {
     throw new Error(`createSession: staff ${opts.staffId} not found`);
   }
+
+  // Enforce the org's maxConcurrentSessions cap (0 = unlimited). Best-effort:
+  // a failure here must never break sign-in. The just-created session is the
+  // newest, so trimming revokes the OLDEST devices, never this one.
+  try {
+    const settingsR = await pool.query<{ settings: unknown }>(
+      `SELECT o.settings FROM staff st JOIN organizations o ON o.id = st.organization_id WHERE st.id = $1`,
+      [opts.staffId],
+    );
+    const limit = parseOrgSettings(settingsR.rows[0]?.settings).maxConcurrentSessions;
+    if (limit > 0) {
+      await enforceMaxConcurrentSessions(opts.staffId, limit, defaultConcurrencyDeps);
+    }
+  } catch {
+    /* swallow — session already created; concurrency trim is best-effort */
+  }
+
   return {
     sid: row.sid,
     staffId: row.staff_id,

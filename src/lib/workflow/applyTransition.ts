@@ -39,7 +39,7 @@ import {
   type RecordInventoryEventInput,
 } from '@/lib/inventory/events';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { tapWorkflow, type WorkflowTapArgs, type WorkflowTapEvent } from './tap';
 
 export interface ApplyTransitionArgs {
@@ -108,7 +108,7 @@ export interface ApplyTransitionDeps {
 
 const defaultDeps: ApplyTransitionDeps = {
   transition,
-  recordEvent: (input, orgId) => recordInventoryEvent(input, undefined, orgId ?? USAV_ORG_ID),
+  recordEvent: (input, orgId) => recordInventoryEvent(input, undefined, orgId ?? DOGFOOD_ORG_ID),
   tap: tapWorkflow,
 };
 

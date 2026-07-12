@@ -15,7 +15,7 @@ observed, and linted for gaps.
 **Canonical docs (read the one for your layer before building):**
 `docs/operations-studio/README.md` (index) → `operations-studio-plan.md` (layer 1, the
 Studio) → `station-builder-ui-plan.md` (layer 2, blocks) → `NODE_UI_PLAN.md` (layer 3,
-canvas mechanics) → `NODE_WORKFLOW_ARCHITECTURE.md` + `NODE_WORKFLOW_IMPLEMENTATION_PLAN.md`
+canvas mechanics) → `NODE_WORKFLOW_ARCHITECTURE.md`
 (layer 4, engine — **already built** in `src/lib/workflow/`).
 
 ## Routing — which skill/layer does this work belong to?

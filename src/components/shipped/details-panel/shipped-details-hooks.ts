@@ -282,7 +282,7 @@ export function useShippedAssignment({ shipped: _shipped, setShipped, onUpdate }
           deadline_at: payload.deadline ?? current.deadline_at,
         }));
         emitAppEvent('dashboard-refresh');
-        emitAppEvent('usav-refresh-data');
+        emitAppEvent('app-refresh-data');
         onUpdate();
       } catch (error: any) {
         window.alert(error?.message || 'Failed to save assignment');

@@ -5,7 +5,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 /**
  * Receiving-lines COUNTS sibling (station-table-unification-plan §5 / §7.2).
  *
- * A lightweight `{ total, byDay }` tally over `receiving_lines` filtered ONLY by
+ * A lightweight `{ total, byDay }` tally over `receiving_line` filtered ONLY by
  * REAL indexed columns (tenant, `created_at` range, optional `assigned_tech_id`
  * and `workflow_status`) — so the SQL is unambiguously correct and never diverges
  * from a forked copy of the 2000-line list route's view-mode WHERE (Decision 3).
@@ -38,7 +38,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
     if (staffId != null) {
       params.push(staffId);
-      conditions.push(`rl.assigned_tech_id = $${params.length}`);
+      // assigned_tech_id lives on receiving_line_testing (street cutover).
+      conditions.push(
+        `EXISTS (SELECT 1 FROM receiving_line_testing rlt
+                  WHERE rlt.receiving_line_id = rl.id
+                    AND rlt.organization_id = rl.organization_id
+                    AND rlt.assigned_tech_id = $${params.length})`,
+      );
     }
     if (workflowStatus) {
       params.push(workflowStatus);
@@ -50,7 +56,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       SELECT
         to_char(rl.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD') AS day,
         COUNT(*)::int AS count
-      FROM receiving_lines rl
+      FROM receiving_line rl
       WHERE rl.organization_id = $1
         ${extraWhere}
       GROUP BY day

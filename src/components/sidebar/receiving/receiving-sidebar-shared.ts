@@ -159,7 +159,7 @@ export type PoContext = {
 export const RETURN_PLATFORM_LABELS: Record<string, string> = {
   AMZ: 'Amazon',
   EBAY_DRAGONH: 'eBay (DH)',
-  EBAY_USAV: 'eBay (USAV)',
+  EBAY_USAV: 'eBay',
   EBAY_MK: 'eBay (MK)',
   FBA: 'FBA',
   WALMART: 'Walmart',

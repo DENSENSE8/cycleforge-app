@@ -33,7 +33,7 @@ import type {
 import pool from '@/lib/db';
 import { getRpFromRequest } from '@/lib/auth/webauthn';
 
-export const ACCOUNT_PASSKEY_CHALLENGE_COOKIE = 'usav_acct_wac';
+export const ACCOUNT_PASSKEY_CHALLENGE_COOKIE = 'cf_acct_wac';
 
 interface AccountPasskeyRow {
   id: string;

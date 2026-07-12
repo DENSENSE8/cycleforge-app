@@ -332,5 +332,5 @@ S1+S2 deliver user-visible value (the email checklist) even if the drag-and-drop
 ---
 
 *Companion docs: `NODE_WORKFLOW_ARCHITECTURE.md` (process graph), `NODE_UI_PLAN.md` (editable
-canvas), `incoming-tracking-todo-plan.md` (the feature S2 reproduces), `god-component`
+canvas), the shipped incoming-tracking todo feature (which S2 reproduces), `god-component`
 cleanup memory (the refactor track S1 rides on).*

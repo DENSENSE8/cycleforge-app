@@ -28,7 +28,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // write below so a caller can't re-attribute a scan onto another org's carton.
     const meta = await tenantQuery<{ source: string | null; carrier: string | null }>(
       ctx.organizationId,
-      `SELECT source, carrier FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT source, carrier FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, ctx.organizationId],
     );
     const row = meta.rows[0];

@@ -1,7 +1,7 @@
 # Node UI — build plan
 
 > **Status:** Largely BUILT. The editable node-builder UI now lives in the Operations Studio (`/studio`): registry-driven nodes, a node palette/Library, an editable canvas (drag/connect/delete), and the full draft → publish lifecycle — including the generic schema-driven node config sheet (Phase C). The remaining deferred items are the live ItemTracker dot, the Audit↔engine toggle, and templates/onboarding.
-> **Companions:** `docs/operations-studio/NODE_WORKFLOW_ARCHITECTURE.md` (why/what), `docs/operations-studio/NODE_WORKFLOW_IMPLEMENTATION_PLAN.md` (full phasing), `docs/operations-studio/NODE_UI_PLAN.md` (this — the UI plan).
+> **Companions:** `docs/operations-studio/NODE_WORKFLOW_ARCHITECTURE.md` (why/what), `docs/operations-studio/NODE_UI_PLAN.md` (this — the UI plan). The engine implementation plan was executed and deleted (history in git).
 
 ## What already exists (don't rebuild)
 

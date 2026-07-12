@@ -43,27 +43,30 @@ export function deriveReceivingStepFlags(input: DeriveReceivingStepStatesInput):
   };
 }
 
-/** Walk left-to-right: first incomplete step is active; a step is done only when its gate passes AND all prior steps are done. */
+/**
+ * Completeness checklist, not a wizard: every step reflects its OWN data gate.
+ * The active step is the first incomplete one (the operator's next job), but a
+ * later step whose gate already passes still shows done — picking a condition
+ * before taking photos must read as Condition ✓ / Photos active, never
+ * Condition "pending". (The previous chain-gated walk masked own-gate-passing
+ * steps behind incomplete priors, so the bar misreported real data state on
+ * exactly the lines where operators work out of order.)
+ */
 export function deriveReceivingStepStates(
   input: DeriveReceivingStepStatesInput,
 ): Record<ReceivingStepKey, LinearStepState> {
   const flags = deriveReceivingStepFlags(input);
-  const states = Object.fromEntries(
-    RECEIVING_WORKFLOW_STEPS.map(({ key }) => [key, 'pending' as LinearStepState]),
-  ) as Record<ReceivingStepKey, LinearStepState>;
+  const states = {} as Record<ReceivingStepKey, LinearStepState>;
 
   let activeAssigned = false;
-  let priorChainDone = true;
   for (const { key } of RECEIVING_WORKFLOW_STEPS) {
-    const stepDone = priorChainDone && flags[key];
-    if (stepDone) {
+    if (flags[key]) {
       states[key] = 'done';
     } else if (!activeAssigned) {
       states[key] = 'active';
       activeAssigned = true;
-      priorChainDone = false;
     } else {
-      priorChainDone = false;
+      states[key] = 'pending';
     }
   }
 

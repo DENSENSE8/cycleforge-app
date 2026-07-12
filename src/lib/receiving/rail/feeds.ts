@@ -92,13 +92,13 @@ const TRIAGE_REFRESH: string[] = [
   'receiving-triage-refresh',
   'receiving-entry-added',
   'receiving-entry-deleted',
-  'usav-refresh-data',
+  'app-refresh-data',
 ];
 
 const UNBOX_REFRESH: string[] = [
   'receiving-unbox-refresh',
   'receiving-entry-deleted',
-  'usav-refresh-data',
+  'app-refresh-data',
 ];
 
 const notUnmatched = (r: ReceivingLineRow) => r.receiving_source !== 'unmatched';

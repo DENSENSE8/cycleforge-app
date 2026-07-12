@@ -7,16 +7,21 @@ interface Captured {
   params: unknown[];
 }
 
-/** DB-free fakes: a client that records queries + answers the carton-exists check. */
-function fakes(cartonExists = true) {
+/** DB-free fakes: a client that records queries + answers the existence probes. */
+function fakes(cartonExists = true, lineExists = true) {
   const queries: Captured[] = [];
   const recomputeCalls: number[] = [];
   const client: TxClient = {
     query: async (text: string, params: unknown[] = []) => {
       queries.push({ text, params });
-      // The carton existence probe is the only SELECT.
-      if (/SELECT id\s+FROM receiving\b/.test(text)) {
+      if (/SELECT id\s+FROM receiving_carton\b/.test(text)) {
         return cartonExists
+          ? { rows: [{ id: params[0] }], rowCount: 1 }
+          : { rows: [], rowCount: 0 };
+      }
+      // Line-membership probe (scope 'line' | 'both').
+      if (/SELECT id FROM receiving_line\b/.test(text)) {
+        return lineExists
           ? { rows: [{ id: params[0] }], rowCount: 1 }
           : { rows: [], rowCount: 0 };
       }
@@ -50,16 +55,23 @@ test('relink scope "both" rewrites the line, the carton header, and recomputes',
   assert.equal(res.ok, true);
   assert.equal(res.status, 200);
   assert.equal(res.poId, 'PO123');
+  assert.equal(res.linesUpdated, 1);
 
-  // Line rewrite carried the chosen PO id + number, scoped to the line + carton.
-  const lineUpdate = queries.find((q) => /UPDATE receiving_lines/.test(q.text));
-  assert.ok(lineUpdate, 'expected a receiving_lines UPDATE');
-  assert.ok(lineUpdate!.params.includes('PO123'));
-  assert.ok(lineUpdate!.params.includes(9));
+  // Line membership validated against the carton, then the zoho identity lands
+  // on receiving_line_zoho (W3 writer inversion — never the spine).
+  const probe = queries.find((q) => /SELECT id FROM receiving_line\b/.test(q.text));
+  assert.ok(probe, 'expected the line-membership probe');
+  assert.deepEqual(probe!.params, [9, 5, 'org-1']);
+  const rzUpsert = queries.find((q) => /INSERT INTO receiving_line_zoho/.test(q.text));
+  assert.ok(rzUpsert, 'expected a receiving_line_zoho upsert');
+  assert.deepEqual(rzUpsert!.params, [9, 'org-1', 'PO123', '6000', null]);
+  assert.ok(/zoho_purchaseorder_number_norm/.test(rzUpsert!.text), 'norm maintained with the number');
+  // No SKU correction supplied → no spine UPDATE at all.
+  assert.ok(!queries.some((q) => /UPDATE receiving_line\b/.test(q.text)), 'no spine write of moved zoho columns');
 
   // Carton header rewrite flips source to zoho_po (explicit override of upgrade-only).
   const cartonUpdate = queries.find(
-    (q) => /UPDATE receiving\b/.test(q.text) && /source = 'zoho_po'/.test(q.text),
+    (q) => /UPDATE receiving_carton\b/.test(q.text) && /source = 'zoho_po'/.test(q.text),
   );
   assert.ok(cartonUpdate, 'expected a receiving header UPDATE with source=zoho_po');
   assert.ok(cartonUpdate!.params.includes('PO123'));
@@ -78,11 +90,14 @@ test('relink scope "carton" rewrites every line and does NOT need a lineId', asy
   );
 
   assert.equal(res.ok, true);
-  // Carton-scope line update targets the whole carton (WHERE receiving_id).
-  const lineUpdate = queries.find((q) => /UPDATE receiving_lines/.test(q.text));
-  assert.ok(lineUpdate);
-  assert.ok(/WHERE receiving_id = \$3/.test(lineUpdate!.text));
-  assert.ok(lineUpdate!.params.includes(7));
+  // Carton-scope rewrite upserts rz for every line of the carton (INSERT..SELECT
+  // keyed on receiving_id), never touching the spine zoho columns.
+  const rzUpsert = queries.find((q) => /INSERT INTO receiving_line_zoho/.test(q.text));
+  assert.ok(rzUpsert, 'expected a receiving_line_zoho upsert');
+  assert.ok(/FROM receiving_line rl/.test(rzUpsert!.text));
+  assert.ok(/rl\.receiving_id = \$3/.test(rzUpsert!.text));
+  assert.deepEqual(rzUpsert!.params, ['PO9', '777', 7, 'org-1']);
+  assert.ok(!queries.some((q) => /UPDATE receiving_line\b/.test(q.text)), 'no spine write of moved zoho columns');
 });
 
 test('relink returns 404 when the carton is missing (no writes)', async () => {
@@ -101,7 +116,7 @@ test('relink returns 404 when the carton is missing (no writes)', async () => {
   assert.deepEqual(recomputeCalls, []);
 });
 
-test('SKU correction is threaded into the line UPDATE params', async () => {
+test('SKU correction stays on the spine; zoho_item_id rides the rz upsert', async () => {
   const { deps, queries } = fakes();
 
   await relinkReceivingPo(
@@ -117,8 +132,29 @@ test('SKU correction is threaded into the line UPDATE params', async () => {
     deps,
   );
 
-  const lineUpdate = queries.find((q) => /UPDATE receiving_lines/.test(q.text));
-  assert.ok(lineUpdate);
-  assert.ok(lineUpdate!.params.includes('ABC-123'));
-  assert.ok(lineUpdate!.params.includes('zi-99'));
+  // SKU is a spine-staying column — a narrow UPDATE carries only the sku.
+  const skuUpdate = queries.find((q) => /UPDATE receiving_line SET sku/.test(q.text));
+  assert.ok(skuUpdate, 'expected the sku-only spine UPDATE');
+  assert.deepEqual(skuUpdate!.params, ['ABC-123', 4, 'org-1']);
+  assert.ok(!/zoho_/.test(skuUpdate!.text), 'spine UPDATE must not touch zoho columns');
+  // zoho_item_id lands on rz, overwrite-when-provided.
+  const rzUpsert = queries.find((q) => /INSERT INTO receiving_line_zoho/.test(q.text));
+  assert.ok(rzUpsert);
+  assert.ok(rzUpsert!.params.includes('zi-99'));
+  assert.ok(/COALESCE\(EXCLUDED\.zoho_item_id, receiving_line_zoho\.zoho_item_id\)/.test(rzUpsert!.text));
+});
+
+test('line outside the carton → linesUpdated 0, no writes to the line', async () => {
+  const { deps, queries } = fakes(true, false);
+
+  const res = await relinkReceivingPo(
+    { receivingId: 3, lineId: 999, scope: 'line', zohoPurchaseorderId: 'PO5' },
+    'org-1',
+    deps,
+  );
+
+  assert.equal(res.ok, true);
+  assert.equal(res.linesUpdated, 0);
+  assert.ok(!queries.some((q) => /INSERT INTO receiving_line_zoho/.test(q.text)));
+  assert.ok(!queries.some((q) => /UPDATE receiving_line\b/.test(q.text)));
 });

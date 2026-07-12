@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 import {
   createSession,
   SESSION_COOKIE_NAME,
@@ -23,7 +24,16 @@ import {
 export const GET = withAuth(async (req: NextRequest) => {
   const base = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '';
   const fail = (reason: string) =>
-    NextResponse.redirect(`${base || ''}/?login_error=${reason}`);
+    NextResponse.redirect(`${base || ''}/signin?login_error=${reason}`);
+
+  // Per-IP throttle so a magic-link token can't be brute-forced by enumeration.
+  const rl = await checkRateLimitAsync({
+    headers: req.headers,
+    routeKey: 'auth-email-login-verify',
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (!rl.ok) return fail('rate_limited');
 
   const token = req.nextUrl.searchParams.get('token') ?? '';
   if (!token) return fail('missing');

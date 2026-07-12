@@ -33,7 +33,7 @@ export interface DeviceInfo {
   modeOverride: 'mobile' | 'desktop' | null;
 }
 
-const OVERRIDE_KEY = 'usav-device-mode';
+const OVERRIDE_KEY = 'cf-device-mode';
 
 /** Detect actual mobile hardware via Client Hints API → UA string fallback. */
 function detectMobileDevice(): boolean {

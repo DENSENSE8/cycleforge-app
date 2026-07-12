@@ -16,6 +16,7 @@
 
 import { useMemo, useState } from 'react';
 import { AdminSidebarShell } from '@/components/admin/shared';
+import { SearchBar } from '@/components/ui/SearchBar';
 import {
   STATIONS,
   IDENTIFIERS,
@@ -58,13 +59,6 @@ export function OperationsSidebarPanel() {
 
   return (
     <AdminSidebarShell
-      search={{
-        value: query,
-        onChange: setQuery,
-        onClear: () => setQuery(''),
-        placeholder: 'Search stations & info',
-        variant: 'blue',
-      }}
       filters={<FilterChips value={lens} onChange={setLens} />}
       stats={
         <p className="text-micro font-bold uppercase tracking-wider text-text-soft">
@@ -72,6 +66,16 @@ export function OperationsSidebarPanel() {
         </p>
       }
     >
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={query}
+          onChange={setQuery}
+          onClear={() => setQuery('')}
+          placeholder="Filter stations & info…"
+        />
+      </div>
       <div className="space-y-4 px-1">
         {show('station') && stations.length > 0 && (
           <Group title="Stations">

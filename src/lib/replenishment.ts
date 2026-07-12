@@ -824,18 +824,23 @@ export async function reconcilePOStatus(request: ReplenishmentRequestRow, orgId:
     return sum + toNumber(line?.quantity_received, 0);
   }, 0);
 
-  // Also check local receiving_lines for units received against this PO.
-  // String-key match (zoho_purchaseorder_id + zoho_item_id) is gated by
-  // receiving_lines.organization_id.
+  // Also check local receiving lines for units received against this PO.
+  // Line-level zoho identity lives on receiving_line_zoho (W2 reader cutover):
+  // key the lookup on rz (string-key match on zoho_purchaseorder_id +
+  // zoho_item_id, gated by rz.organization_id) and reach the spine via
+  // rz.receiving_line_id for the quantity/status columns.
   let localReceived = 0;
   if (request.zoho_po_id) {
     const localResult = await withTenantConnection(orgId, (c) => c.query(
-      `SELECT COALESCE(SUM(quantity_received), 0)::int AS total
-       FROM receiving_lines
-       WHERE zoho_purchaseorder_id = $1
-         AND zoho_item_id = $2
-         AND organization_id = $3
-         AND workflow_status = 'DONE'`,
+      `SELECT COALESCE(SUM(rl.quantity_received), 0)::int AS total
+       FROM receiving_line_zoho rz
+       JOIN receiving_line rl
+         ON rl.id = rz.receiving_line_id
+         AND rl.organization_id = rz.organization_id
+       WHERE rz.zoho_purchaseorder_id = $1
+         AND rz.zoho_item_id = $2
+         AND rz.organization_id = $3
+         AND rl.workflow_status = 'DONE'`,
       [request.zoho_po_id, request.zoho_item_id, orgId]
     ));
     localReceived = toNumber(localResult.rows[0]?.total, 0);

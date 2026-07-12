@@ -67,9 +67,9 @@ export async function listBoxesForReceiving(
 /**
  * Attach a tracking number to a receiving carton as a box. Registers the tracking
  * through the shipping backbone (idempotent), self-heals the primary junction row
- * (mirrors receiving.shipment_id), inserts the extra box as the next box_seq, and
+ * (mirrors receiving_carton.shipment_id), inserts the extra box as the next box_seq, and
  * returns the full box list. When the carton has no anchor yet, the first attached
- * box becomes the primary and stamps receiving.shipment_id.
+ * box becomes the primary and stamps receiving_carton.shipment_id.
  */
 export async function attachBoxToReceiving(params: {
   receivingId: number;
@@ -89,7 +89,7 @@ export async function attachBoxToReceiving(params: {
 
   return withTenantTransaction<AttachBoxResult>(organizationId, async (client) => {
     const cartonRes = await client.query<{ shipment_id: number | null; received_by: number | null }>(
-      `SELECT shipment_id, received_by FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT shipment_id, received_by FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, organizationId],
     );
     const carton = cartonRes.rows[0];
@@ -150,11 +150,11 @@ export async function attachBoxToReceiving(params: {
       boxSeq = box.box_seq;
       boxIsPrimary = box.is_primary;
 
-      // When this box became the carton's primary anchor, stamp receiving.shipment_id
+      // When this box became the carton's primary anchor, stamp receiving_carton.shipment_id
       // (only if empty — never overwrite the reference# anchor).
       if (makePrimary && !carton.shipment_id) {
         await client.query(
-          `UPDATE receiving SET shipment_id = $2, updated_at = NOW()
+          `UPDATE receiving_carton SET shipment_id = $2, updated_at = NOW()
            WHERE id = $1 AND shipment_id IS NULL`,
           [receivingId, shipmentId],
         );
@@ -187,7 +187,7 @@ export async function attachBoxToReceiving(params: {
 /**
  * Get-or-create the receiving carton for a PO — local only, no Zoho round-trip —
  * so a tracking can be attached BEFORE the box physically arrives (Incoming-tab
- * attach). Deliberately does NOT link the PO's receiving_lines or advance their
+ * attach). Deliberately does NOT link the PO's receiving_line or advance their
  * workflow: they stay EXPECTED / receiving_id NULL so the PO REMAINS in the
  * Incoming view. The carton just gives the tracking somewhere to anchor; lookup-po
  * adopts this same row (ON CONFLICT) when the box is physically scanned.
@@ -224,7 +224,7 @@ export async function ensureReceivingForPo(params: {
  * under source='ebay' (ux_receiving_ebay_order). Optionally stamps shipment_id
  * on first create / when the carton has none yet.
  *
- * Deliberately does NOT advance receiving_lines workflow: lines stay EXPECTED
+ * Deliberately does NOT advance receiving_line workflow: lines stay EXPECTED
  * so the order remains in Incoming. Soft-join via source_order_id (or a later
  * receiving_id stamp from ingestPurchase) surfaces carrier status.
  */

@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-11T06:25:13Z",
-  "totalRoutes": 812,
+  "generatedAt": "2026-07-12T00:32:39Z",
+  "totalRoutes": 834,
   "summary": {
-    "permissionGated": 697,
-    "authenticatedNoPermission": 38,
-    "anonymousIntentional": 75,
+    "permissionGated": 709,
+    "authenticatedNoPermission": 43,
+    "anonymousIntentional": 80,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -855,6 +855,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/auth/account/change-password/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
       "path": "/api/auth/account/passkey/[id]/route.ts",
       "methods": [
         "DELETE"
@@ -918,6 +927,15 @@
       "exemptReason": "auth-flow (sign-in / passkey / pin)"
     },
     {
+      "path": "/api/auth/act-as-staff/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
       "path": "/api/auth/email-login/request/route.ts",
       "methods": [
         "POST"
@@ -956,6 +974,24 @@
       "exemptReason": "auth-flow (sign-in / passkey / pin)"
     },
     {
+      "path": "/api/auth/oauth/[provider]/callback/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
+      "path": "/api/auth/oauth/[provider]/start/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
       "path": "/api/auth/passkey/authenticate/begin/route.ts",
       "methods": [
         "POST"
@@ -988,6 +1024,24 @@
         "POST"
       ],
       "gate": "getCurrentUser (ad-hoc)",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
+      "path": "/api/auth/password-reset/confirm/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
+      "path": "/api/auth/password-reset/request/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "NONE",
       "permission": null,
       "exemptReason": "auth-flow (sign-in / passkey / pin)"
     },
@@ -1105,6 +1159,15 @@
         "GET"
       ],
       "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
+      "path": "/api/auth/workspace/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
       "permission": null,
       "exemptReason": "auth-flow (sign-in / passkey / pin)"
     },
@@ -1691,15 +1754,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/desktop-app/release/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "NONE",
-      "permission": null,
-      "exemptReason": "public desktop release feed (polled pre-auth by the updater)"
-    },
-    {
       "path": "/api/documents/[id]/content/route.ts",
       "methods": [
         "GET"
@@ -2224,7 +2278,43 @@
       "exemptReason": null
     },
     {
+      "path": "/api/forge/chat/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.plans.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/forge/ingest/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/forge/master-plan/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.plans.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/forge/master-plan/seed/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.plans.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/forge/master-plan/sync/route.ts",
       "methods": [
         "POST"
       ],
@@ -2351,6 +2441,16 @@
       "gate": "NONE",
       "permission": null,
       "exemptReason": "health probe"
+    },
+    {
+      "path": "/api/home/feed/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
     },
     {
       "path": "/api/import-orders/route.ts",
@@ -2967,12 +3067,30 @@
       "exemptReason": null
     },
     {
+      "path": "/api/onboarding/recommend/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/onboarding/stats/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
       "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/onboarding/template/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.manage",
       "exemptReason": null
     },
     {
@@ -3500,6 +3618,15 @@
       ],
       "gate": "withAuth",
       "permission": "admin.manage_staff",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/org/letterhead/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -6396,12 +6523,48 @@
       "exemptReason": null
     },
     {
+      "path": "/api/studio/catalog/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/studio/catalog/submissions/[id]/review/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.catalog.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/studio/catalog/submissions/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.catalog.review",
+      "exemptReason": null
+    },
+    {
       "path": "/api/studio/definitions/[id]/discard/route.ts",
       "methods": [
         "DELETE"
       ],
       "gate": "withAuth",
       "permission": "studio.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/studio/definitions/[id]/export/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.view",
       "exemptReason": null
     },
     {
@@ -6415,6 +6578,15 @@
     },
     {
       "path": "/api/studio/definitions/[id]/publish/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/studio/definitions/[id]/submit/route.ts",
       "methods": [
         "POST"
       ],
@@ -6520,6 +6692,24 @@
       ],
       "gate": "withAuth",
       "permission": "studio.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/studio/templates/ai-vocabulary/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/studio/templates/import-package/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "studio.manage",
       "exemptReason": null
     },
     {
@@ -6840,6 +7030,15 @@
       ],
       "gate": "withAuth",
       "permission": "bin.set",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/user-issues/resolve/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {

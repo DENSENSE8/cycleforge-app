@@ -50,6 +50,11 @@ export interface ReassignReceivingPhotoDeps {
     targetEntityId: number;
     poRef: string | null;
   }) => Promise<void>;
+  /** Resolve denorm po_ref for the target entity (DB-backed in production). */
+  resolvePoRef: (
+    entityType: PhotoEntityType,
+    entityId: number,
+  ) => Promise<string | null>;
 }
 
 async function loadPrimaryLinkImpl(
@@ -75,7 +80,7 @@ async function loadPrimaryLinkImpl(
            ON l.photo_id = p.id
           AND l.organization_id = p.organization_id
           AND l.link_role = 'primary'
-         LEFT JOIN receiving_lines rl
+         LEFT JOIN receiving_line rl
            ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
         WHERE p.id = $1
           AND p.organization_id = $2
@@ -106,7 +111,7 @@ async function resolveTargetImpl(
   return withTenantTransaction(organizationId, async (client) => {
     if (entityType === 'RECEIVING') {
       const res = await client.query<{ id: string }>(
-        `SELECT id FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
         [entityId, organizationId],
       );
       if (res.rowCount === 0) return null;
@@ -120,7 +125,7 @@ async function resolveTargetImpl(
 
     const res = await client.query<{ id: string; receiving_id: string }>(
       `SELECT id, receiving_id
-         FROM receiving_lines
+         FROM receiving_line
         WHERE id = $1 AND organization_id = $2
         LIMIT 1`,
       [entityId, organizationId],
@@ -177,6 +182,7 @@ const defaultDeps: ReassignReceivingPhotoDeps = {
   loadPrimaryLink: loadPrimaryLinkImpl,
   resolveTarget: resolveTargetImpl,
   updateAssignment: updateAssignmentImpl,
+  resolvePoRef,
 };
 
 function scopesMatch(
@@ -213,7 +219,7 @@ export async function reassignReceivingPhoto(
     };
   }
 
-  const poRef = await resolvePoRef(input.targetEntityType, input.targetEntityId);
+  const poRef = await deps.resolvePoRef(input.targetEntityType, input.targetEntityId);
   await deps.updateAssignment({
     organizationId: input.organizationId,
     photoId: input.photoId,

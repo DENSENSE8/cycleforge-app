@@ -68,28 +68,38 @@ export async function buildReceivingClaimTemplate(
   const { receivingId, lineId, claimType, reason, poReceivingLink } = input;
 
   // When orgId is present, scope the read to the tenant: filter the
-  // org-bearing `receiving` row and align the org-bearing `receiving_lines`
+  // org-bearing `receiving_carton` row and align the org-bearing `receiving_line`
   // join on organization_id. `shipping_tracking_numbers` has no
   // organization_id column (NEEDS-COL) — it stays scoped via the integer
   // surrogate-PK join `s.id = r.shipment_id` off the tenant-filtered carton.
   // When omitted, behavior is byte-identical to the original raw-pool path.
+  // Wave-2 reader cutover: carton unbox facts come from receiving_unbox (ru)
+  // and line Zoho facts from receiving_line_zoho (rz) — both 1:1 street tables
+  // trigger-mirrored from the spine. Carton-level r.zoho_* fallbacks stay on
+  // the spine (out of the Wave-2 moved set).
   const recvSql = orgId
     ? `SELECT r.id,
             r.source_platform,
             r.intake_type,
-            r.unboxed_at,
+            ru.unboxed_at,
             su.name AS unboxed_by_name,
             s.tracking_number_raw AS tracking_number,
-            COALESCE(rl.zoho_purchaseorder_number, r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
-            COALESCE(rl.zoho_purchaseorder_id, r.zoho_purchaseorder_id) AS zoho_purchaseorder_id,
+            COALESCE(rz.zoho_purchaseorder_number, r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
+            COALESCE(rz.zoho_purchaseorder_id, r.zoho_purchaseorder_id) AS zoho_purchaseorder_id,
             rl.receiving_type
-     FROM receiving r
+     FROM receiving_carton r
+     LEFT JOIN receiving_unbox ru
+            ON ru.receiving_id = r.id
+           AND ru.organization_id = r.organization_id
      LEFT JOIN shipping_tracking_numbers s ON s.id = r.shipment_id
-     LEFT JOIN staff su ON su.id = r.unboxed_by AND su.organization_id = r.organization_id
-     LEFT JOIN receiving_lines rl
+     LEFT JOIN staff su ON su.id = ru.unboxed_by AND su.organization_id = r.organization_id
+     LEFT JOIN receiving_line rl
             ON rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
            AND ($2::int IS NULL OR rl.id = $2)
+     LEFT JOIN receiving_line_zoho rz
+            ON rz.receiving_line_id = rl.id
+           AND rz.organization_id = rl.organization_id
      WHERE r.id = $1
        AND r.organization_id = $3
      ORDER BY rl.id NULLS LAST
@@ -97,18 +107,20 @@ export async function buildReceivingClaimTemplate(
     : `SELECT r.id,
             r.source_platform,
             r.intake_type,
-            r.unboxed_at,
+            ru.unboxed_at,
             su.name AS unboxed_by_name,
             s.tracking_number_raw AS tracking_number,
-            COALESCE(rl.zoho_purchaseorder_number, r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
-            COALESCE(rl.zoho_purchaseorder_id, r.zoho_purchaseorder_id) AS zoho_purchaseorder_id,
+            COALESCE(rz.zoho_purchaseorder_number, r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
+            COALESCE(rz.zoho_purchaseorder_id, r.zoho_purchaseorder_id) AS zoho_purchaseorder_id,
             rl.receiving_type
-     FROM receiving r
+     FROM receiving_carton r
+     LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id
      LEFT JOIN shipping_tracking_numbers s ON s.id = r.shipment_id
-     LEFT JOIN staff su ON su.id = r.unboxed_by
-     LEFT JOIN receiving_lines rl
+     LEFT JOIN staff su ON su.id = ru.unboxed_by
+     LEFT JOIN receiving_line rl
             ON rl.receiving_id = r.id
            AND ($2::int IS NULL OR rl.id = $2)
+     LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id
      WHERE r.id = $1
      ORDER BY rl.id NULLS LAST
      LIMIT 1`;
@@ -143,7 +155,7 @@ export async function buildReceivingClaimTemplate(
     // resolves the carton's lines once for both halves.
     const serialSql = orgId
       ? `WITH lines AS (
-           SELECT id FROM receiving_lines WHERE receiving_id = $1 AND organization_id = $3
+           SELECT id FROM receiving_line WHERE receiving_id = $1 AND organization_id = $3
          )
          SELECT DISTINCT serial_number FROM (
            SELECT BTRIM(tsn.serial_number) AS serial_number
@@ -165,7 +177,7 @@ export async function buildReceivingClaimTemplate(
          ORDER BY serial_number
          LIMIT 50`
       : `WITH lines AS (
-           SELECT id FROM receiving_lines WHERE receiving_id = $1
+           SELECT id FROM receiving_line WHERE receiving_id = $1
          )
          SELECT DISTINCT serial_number FROM (
            SELECT BTRIM(tsn.serial_number) AS serial_number
@@ -198,11 +210,11 @@ export async function buildReceivingClaimTemplate(
   if (lineId) {
     const lineSql = orgId
       ? `SELECT rl.item_name, rl.sku, rl.quantity_received, rl.quantity_expected, rlt.condition_grade
-       FROM receiving_lines rl
+       FROM receiving_line rl
        LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
        WHERE rl.id = $1 AND rl.organization_id = $2 LIMIT 1`
       : `SELECT rl.item_name, rl.sku, rl.quantity_received, rl.quantity_expected, rlt.condition_grade
-       FROM receiving_lines rl
+       FROM receiving_line rl
        LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
        WHERE rl.id = $1 LIMIT 1`;
     const lineResult = orgId

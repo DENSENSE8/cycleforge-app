@@ -24,18 +24,33 @@ import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
 import { getSidebarTitle } from '@/lib/sidebar-titles';
 import { DashboardOrdersContextPanel } from '@/components/sidebar/DashboardOrdersContextPanel';
 import { AdminContextPanel } from '@/components/sidebar/AdminContextPanel';
+import { OrderWorkspaceSidebar } from '@/components/sidebar/order/OrderWorkspaceSidebar';
+import { ParkedSurface } from '@/components/dogfood/ParkedSurface';
+import {
+  isParkedSurfaceBlocked,
+  isParkedSurfaceKey,
+} from '@/lib/dogfood/parked-surfaces';
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context
  * panel. Each route maps to its own sidebar panel; the two complex routes
  * (dashboard orders, admin) live in their own components.
+ *
+ * Parked dogfood surfaces never mount their real panels — they render the same
+ * stand-in as the main pane (`ParkedSurface` sidebar variant).
  */
 export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () => void } = {}) {
   const pathname = usePathname();
   const { user } = useAuth();
   const routeKey = getSidebarRouteKey(pathname);
 
+  // Complete park: block real FBA/Studio/… sidebars, not just the main pane.
+  if (isParkedSurfaceBlocked(routeKey) && isParkedSurfaceKey(routeKey)) {
+    return <ParkedSurface surface={routeKey} variant="sidebar" />;
+  }
+
   if (routeKey === 'dashboard') return <DashboardOrdersContextPanel />;
+  if (routeKey === 'order') return <OrderWorkspaceSidebar />;
   if (routeKey === 'admin') return <AdminContextPanel />;
 
   if (routeKey === 'operations') return <OperationsSidebarPanel />;

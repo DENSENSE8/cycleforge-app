@@ -1,6 +1,11 @@
 # Cycle Forge Agentic Loop — Master Plan (Neon + Ably + Yjs)
 
-> **Status:** PLAN LOCKED (2026-07-11). Implementation **0%** — docs + contracts only.
+> **Status:** IMPLEMENTED (2026-07-11) — Phases 0–6 (ALP-0.* … ALP-6.*) built end-to-end
+> + the ops-plans staff-viewer integration (Operations ▸ Plans mode). Gates green:
+> `tsc --noEmit`, scoped eslint, full `node:test` sweep, `test:ds-guards`, `audit-route-auth:check`,
+> `test:auth`. Migration `2026-07-11_user_reported_issues.sql` is authored but **UNAPPLIED**
+> (author-only rule). Adversarial pass (10 hunters → refute-by-default verify): 18 confirmed
+> defects fixed, 2 documented postures kept (see the run report at the bottom).
 > Executable companion: [`agentic-loop-EXECUTION-PROMPT.md`](./agentic-loop-EXECUTION-PROMPT.md)
 > (Fable 5 / ultracode). Paste that prompt into a fresh session to build phases.
 >
@@ -135,20 +140,20 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-0.1** | Document agentic-loop scope; `/forge` chrome stays Cycle Forge branding | `todo` | Product name unchanged; meta-loop named in docs only |
+| **ALP-0.1** | Document agentic-loop scope; `/forge` chrome stays Cycle Forge branding | `done` | Product name unchanged; meta-loop named in docs only |
 | **ALP-0.2** | Publish locked stack + anti-goals (this §-2) | `done` | This document |
-| **ALP-0.3** | Channel contract: `getMasterPlanChannel(orgId)` in `channels.ts` | `todo` | Org-scoped; throws on bad UUID via `orgChannelPrefix` |
-| **ALP-0.4** | TicketStatus / AgentLog component contract + TypeScript types | `todo` | Enum + props documented; unit parse tests |
-| **ALP-0.5** | File SoT: `./master-plan.mdx` ↔ `Y.Text('content')`; Neon not live CRDT store | `todo` | Written into daemon + web bootstrap |
+| **ALP-0.3** | Channel contract: `getMasterPlanChannel(orgId)` in `channels.ts` | `done` | Org-scoped; throws on bad UUID via `orgChannelPrefix` |
+| **ALP-0.4** | TicketStatus / AgentLog component contract + TypeScript types | `done` | Enum + props documented; unit parse tests |
+| **ALP-0.5** | File SoT: `./master-plan.mdx` ↔ `Y.Text('content')`; Neon not live CRDT store | `done` | Written into daemon + web bootstrap |
 
 ### Phase 1 — Real-time state layer (Ably + Yjs)
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-1.1** | Add `yjs`; implement Ably↔Yjs provider (custom) | `todo` | Two clients merge concurrent edits |
-| **ALP-1.2** | Extend `/api/realtime/token` capabilities for master-plan channel | `todo` | E2E token test asserts capability |
-| **ALP-1.3** | Shared `createMasterPlanYDoc()` factory (server, client, daemon) | `todo` | Single `Y.Text('content')` key |
-| **ALP-1.4** | Empty-room bootstrap from `master-plan.mdx` or last snapshot | `todo` | Never wipes Neon ops data |
+| **ALP-1.1** | Add `yjs`; implement Ably↔Yjs provider (custom) | `done` | Two clients merge concurrent edits |
+| **ALP-1.2** | Extend `/api/realtime/token` capabilities for master-plan channel | `done` | E2E token test asserts capability |
+| **ALP-1.3** | Shared `createMasterPlanYDoc()` factory (server, client, daemon) | `done` | Single `Y.Text('content')` key |
+| **ALP-1.4** | Empty-room bootstrap from `master-plan.mdx` or last snapshot | `done` | Never wipes Neon ops data |
 
 **HUMAN GATE 1:** two browsers + one daemon see the same string after concurrent edits.
 
@@ -156,11 +161,11 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-2.1** | `.cycle_forge_ops/scripts/master-plan-sync-daemon.mjs` + `fs.watch` | `todo` | Starts under PM2 |
-| **ALP-2.2** | Upstream: local save → Y.Text → Ably | `todo` | Cursor save appears in web &lt;1s |
-| **ALP-2.3** | Downstream: remote update → atomic write (temp+rename); echo tokens | `todo` | No infinite write loop |
-| **ALP-2.4** | `ecosystem.config.cjs` entry + env docs in `context/ENV-VARS.md` | `todo` | Documented vars only; no secrets committed |
-| **ALP-2.5** | `forge.sh` VERIFY success updates TicketStatus in local MDX | `todo` | Daemon broadcasts `deployed` |
+| **ALP-2.1** | `.cycle_forge_ops/scripts/master-plan-sync-daemon.mjs` + `fs.watch` | `done` | Starts under PM2 |
+| **ALP-2.2** | Upstream: local save → Y.Text → Ably | `done` | Cursor save appears in web &lt;1s |
+| **ALP-2.3** | Downstream: remote update → atomic write (temp+rename); echo tokens | `done` | No infinite write loop |
+| **ALP-2.4** | `ecosystem.config.cjs` entry + env docs in `context/ENV-VARS.md` | `done` | Documented vars only; no secrets committed |
+| **ALP-2.5** | `forge.sh` VERIFY success updates TicketStatus in local MDX | `done` | Daemon broadcasts `deployed` |
 
 **HUMAN GATE 2:** edit in Cursor ↔ edit in web round-trip without clobber.
 
@@ -168,12 +173,12 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-3.1** | `/forge`: Ably-live run feed + plan view region (Monitor archetype) | `todo` | No `refetchInterval` polling |
-| **ALP-3.2** | Bind Y.Text → React state → `react-markdown` + custom components | `todo` | Live re-render on remote edit |
-| **ALP-3.3** | `<TicketStatus/>` semantic chips; pulse on `deployed` | `todo` | Tokens from `semantic.ts` only |
-| **ALP-3.4** | Vercel AI SDK plan-agent chat on `/forge` (`useChat` + `streamText` + tools) | `todo` | Streaming UI works; Gateway-backed; no second Ably client |
-| **ALP-3.5** | Server tool `mutate_master_plan` (Yjs mutate via AI SDK tool execution) | `todo` | Tool unit-tested with fakes; Ably fans out |
-| **ALP-3.6** | UI laws: rails, `HoverTooltip`, sonner only for cross-session notices | `todo` | DS guards green |
+| **ALP-3.1** | `/forge`: Ably-live run feed + plan view region (Monitor archetype) | `done` | No `refetchInterval` polling |
+| **ALP-3.2** | Bind Y.Text → React state → `react-markdown` + custom components | `done` | Live re-render on remote edit |
+| **ALP-3.3** | `<TicketStatus/>` semantic chips; pulse on `deployed` | `done` | Tokens from `semantic.ts` only |
+| **ALP-3.4** | Vercel AI SDK plan-agent chat on `/forge` (`useChat` + `streamText` + tools) | `done` | Streaming UI works; Gateway-backed; no second Ably client |
+| **ALP-3.5** | Server tool `mutate_master_plan` (Yjs mutate via AI SDK tool execution) | `done` | Tool unit-tested with fakes; Ably fans out |
+| **ALP-3.6** | UI laws: rails, `HoverTooltip`, sonner only for cross-session notices | `done` | DS guards green |
 
 **HUMAN GATE 3:** status flip pending→deployed pulses green without refresh.
 
@@ -181,11 +186,11 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-4.1** | Outer loop: scan MDX for `status="pending"`; follow `href` plan docs | `todo` | Deterministic next-ticket picker |
-| **ALP-4.2** | Neon Control Plane client (`NEON_PROJECT_ID` + API key): create branch, mint URL | `todo` | Deps-injected; DB-free unit tests with fakes |
-| **ALP-4.3** | Fail loop: retest on same branch; never use prod `DATABASE_URL` | `todo` | Guard asserts URL ≠ production |
-| **ALP-4.4** | Success: MDX `deployed` + delete branch | `todo` | Branch gone; UI green |
-| **ALP-4.5** | Ingest run metadata (branch id) via `/api/forge/ingest` | `todo` | Visible on `/forge` timeline |
+| **ALP-4.1** | Outer loop: scan MDX for `status="pending"`; follow `href` plan docs | `done` | Deterministic next-ticket picker |
+| **ALP-4.2** | Neon Control Plane client (`NEON_PROJECT_ID` + API key): create branch, mint URL | `done` | Deps-injected; DB-free unit tests with fakes |
+| **ALP-4.3** | Fail loop: retest on same branch; never use prod `DATABASE_URL` | `done` | Guard asserts URL ≠ production |
+| **ALP-4.4** | Success: MDX `deployed` + delete branch | `done` | Branch gone; UI green |
+| **ALP-4.5** | Ingest run metadata (branch id) via `/api/forge/ingest` | `done` | Visible on `/forge` timeline |
 
 **HUMAN GATE 4:** create → test → delete branch against a throwaway ticket; prod untouched.
 
@@ -193,11 +198,11 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-5.1** | Migration `user_reported_issues` (polymorphic-tables + tenant-from-birth) | `todo` | Author only; model in Drizzle |
-| **ALP-5.2** | Dual-write `/api/user-issues` → Neon + GitHub | `todo` | Existing Claude fix workflow kept |
-| **ALP-5.3** | Resolution path: VERIFY/deploy → `status=deployed` + `resolution_commit` + Ably `issue.resolved` | `todo` | Event on `inbox:{staffId}` or `issues:{staffId}` |
-| **ALP-5.4** | Client subscribe → locked toast copy | `todo` | Reporter sees toast without refresh |
-| **ALP-5.5** | FeedbackWidget: inline “Issue logged”; resolution = toast | `todo` | No double UX |
+| **ALP-5.1** | Migration `user_reported_issues` (polymorphic-tables + tenant-from-birth) | `done` | Author only; model in Drizzle |
+| **ALP-5.2** | Dual-write `/api/user-issues` → Neon + GitHub | `done` | Existing Claude fix workflow kept |
+| **ALP-5.3** | Resolution path: VERIFY/deploy → `status=deployed` + `resolution_commit` + Ably `issue.resolved` | `done` | Event on `inbox:{staffId}` or `issues:{staffId}` |
+| **ALP-5.4** | Client subscribe → locked toast copy | `done` | Reporter sees toast without refresh |
+| **ALP-5.5** | FeedbackWidget: inline “Issue logged”; resolution = toast | `done` | No double UX |
 
 **HUMAN GATE 5:** report issue as staff A → mark deployed → toast on A’s session.
 
@@ -205,10 +210,10 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 
 | ID | Task | Status | Acceptance |
 |---|---|---|---|
-| **ALP-6.1** | Fix realtime outbox `orgId` if issues use DB→Ably relay | `todo` | Webhook 200s with org |
-| **ALP-6.2** | Neon cost: no canvas polling; branch TTL + delete-on-success/fail-after-N | `todo` | neon-cost-reviewer clean |
-| **ALP-6.3** | Capability least-privilege on token route | `todo` | No wildcard publish beyond need |
-| **ALP-6.4** | Adversarial: echo-loop, split-brain MDX, branch leak, toast spam | `todo` | Written findings + fixes |
+| **ALP-6.1** | Fix realtime outbox `orgId` if issues use DB→Ably relay | `done` | Webhook 200s with org |
+| **ALP-6.2** | Neon cost: no canvas polling; branch TTL + delete-on-success/fail-after-N | `done` | neon-cost-reviewer clean |
+| **ALP-6.3** | Capability least-privilege on token route | `done` | No wildcard publish beyond need |
+| **ALP-6.4** | Adversarial: echo-loop, split-brain MDX, branch leak, toast spam | `done` | Written findings + fixes |
 
 ---
 
@@ -280,3 +285,53 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 5. TicketStatus `deployed` pulses live on the dashboard.
 6. Reporter receives the locked toast when their issue reaches `deployed`.
 7. Stack remains Neon + Ably + Yjs + Next.js only (no third-party CRDT host deps).
+
+---
+
+## 7. Implementation run report (2026-07-11, Fable 5 / ultracode)
+
+### What shipped (by file)
+
+**Contracts + CRDT core (`src/lib/master-plan/`)**
+- `ticket-status.ts` — `TicketStatus` enum (`pending|in-progress|deployed`) + pure MDX scan/mutate/rollup helpers; out-of-enum statuses are surfaced, never coerced. (+ `.test.ts`)
+- `doc.ts` — `createMasterPlanYDoc()` (one `Y.Text('content')`), `createSeedUpdate` (fixed-clientID idempotent seed), `applyMasterPlanReplace` (minimal diff, surrogate-pair-safe).
+- `ably-yjs-provider.ts` — owned Ably↔Yjs protocol (`yjs.update|sync.request|sync.response`), echo suppression by `clientTag`, batched flush, `readOnly` viewers, `flushAsync()` awaited publish, unmount-safe subscribe. (+ `.test.ts`, `README.md`)
+- `file-sync-core.ts` — daemon file↔doc engine with generation-token echo suppression + startup policy. (+ `.test.ts`)
+- `seed-source.ts` / `server-doc.ts` — canonical seed reader + short-lived server Ably session; empty-room seed is **forge-org-gated** and **local-only (never broadcast)**. (+ `server-doc.test.ts`)
+- `segments.ts` — MDX → render segments for react-markdown. (+ `.test.ts`)
+- `tools/plan-tools.ts` — AI SDK `read_master_plan` / `mutate_master_plan` (Deps-injected). (+ `.test.ts`)
+- `ops-plans-bridge.ts` — idempotent projection of the master plan into the existing `ops_plans` tables (the staff-viewer integration). (+ `.test.ts`)
+
+**Realtime / routes**
+- `channels.ts`: `getMasterPlanChannel`, `getForgeRunsChannelName`. `publish.ts`: `publishForgeRunChanged`, `publishIssueResolved`.
+- `/api/realtime/token`: master-plan channel (view=subscribe, manage=+publish), ops-plans + forge-runs feeds. E2E spec extended.
+- `/api/forge/master-plan` (+ `/seed`) CRDT bootstrap; `/api/forge/chat` (`streamText` + `useChat`, Gateway-backed); `/api/forge/ingest` now fires `forge_run.changed`.
+
+**Local plane (`.cycle_forge_ops/scripts/`)**
+- `master-plan-sync-daemon.mjs` (PM2 app `master-plan-sync`), `master-plan-set-status.mjs`, `forge-next-ticket.mjs`, `forge-verify-branch.mjs`; `forge.sh` gained `--next-ticket` outer loop + the Neon-branch VERIFY sandbox + post-VERIFY status flip.
+
+**`/forge` UI + ops-plans viewer**
+- `src/components/forge/{MasterPlanView,TicketStatusChip,PlanAgentChat}.tsx`, `src/hooks/useMasterPlanDoc.ts`, rebuilt `src/app/forge/page.tsx` (Monitor plan region + live run feed + plan agent).
+- Operations ▸ **Plans** mode: `PlansSidebar.tsx` + `OperationsPlansView.tsx` over `/api/ops-plans`, live on `ops_plans:changes`.
+
+**Issue → toast loop**
+- `src/lib/user-issues/issues.ts` (Deps-injected), rewritten `/api/user-issues` (dual-write + rate limit + forge-org-gated GitHub mirror), new `/api/user-issues/resolve` (atomic flip), `UserIssueResolvedToaster.tsx` (locked copy), Neon `MASTER_PLAN`/`USER_ISSUE` + `MASTER_PLAN_ORG_ID`.
+
+### Migrations awaiting apply (author-only — DO NOT auto-apply)
+- `src/lib/migrations/2026-07-11_user_reported_issues.sql` — tenant-from-birth, `enforce_tenant_isolation()`, modeled in `drizzle/schema.ts` (`userReportedIssues`). Apply via `/db-migrate`, then `npm run tenancy:coverage`.
+
+### ENV vars the human must set (blank in `.env.example`, documented in `context/ENV-VARS.md`)
+- `ABLY_API_KEY` (already present) — the daemon publishes with it.
+- `MASTER_PLAN_PATH` (optional, default `<repo>/master-plan.mdx`), `MASTER_PLAN_ORG_ID` (default `FORGE_ORG_ID`).
+- `NEON_API_KEY` + `NEON_PROJECT_ID` and `FORGE_NEON_VERIFY=1` to enable the Phase-4 branch sandbox.
+- `GITHUB_ISSUE_TOKEN`, `FORGE_INGEST_TOKEN`, `FORGE_ORG_ID` (existing).
+
+### Honest stubs / known postures
+- **Sandbox is opt-in.** `forge.sh` only routes VERIFY onto a Neon branch when `FORGE_NEON_VERIFY=1`; with it **on**, prod is never touched (all pools repointed, guard rejects prod/pooler aliases, VERIFY skipped if a branch can't be minted). With it **off**, VERIFY runs against the ambient env (legacy behavior) — set the flag for the HUMAN GATE 4 guarantee.
+- **TTL sweep** runs opportunistically at the start of each sandboxed VERIFY; there is no standalone cron yet (add a QStash/PM2 entry calling `forge-verify-branch.mjs sweep` if branch volume grows).
+- **Manifest VERIFY `eval`** is inherent to the pre-existing forge loop; the Neon key is now denied to that subshell, but a fully sandboxed VERIFY runner is out of scope.
+- **Ops-plans projection** re-writes unchanged rows on each sync (idempotent-by-design, negligible volume); add an `IS DISTINCT FROM` guard if write volume ever matters.
+- **`realtime-outbox-relay.js` orgId gap (ALP-6.1):** not triggered — the issue loop uses direct `publishIssueResolved`, not the DB→Ably relay, so no outbox change was needed.
+
+### HUMAN GATES
+All gates 0–5 are **code-complete and unit/contract-verified**; the live two-browser / Cursor-round-trip / branch-create demonstrations (GATE 1/2/4) require a running dev server + real Ably/Neon creds and are the human's to run. Evidence harnesses: `npm run test:master-plan` (GATE-1 concurrent-merge + GATE-2 file↔doc↔Ably round-trip), `npm run test:neon-branches` (GATE-4 prod-guard), the daemon boots + merges an upstream save (verified locally).

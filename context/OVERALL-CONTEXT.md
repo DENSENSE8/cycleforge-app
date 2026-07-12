@@ -22,7 +22,7 @@ with a heavy integration surface and a node-graph "Operations Studio" for modeli
 
 - **Stack:** Next.js 16 (App Router) · React 19 · TypeScript 5.9 · Tailwind 3.4 · Drizzle ORM +
   Neon/Postgres · TanStack Query · Framer Motion · `@xyflow/react` (node graph) · Ably (realtime) ·
-  `@gorules/zen-engine-wasm` (decision rules) · also packaged as an **Electron** desktop app.
+  `@gorules/zen-engine-wasm` (decision rules) · distributed as a **browser web app only**.
 - **Deploy:** Vercel (Git auto-deploy disabled — deploys via CLI). 35 Vercel cron entries hit
   `/api/cron/*`. CI is GitHub Actions (`.github/workflows/ci.yml`).
 - **Scale:** ~755 API route handlers (754 in the CI route-permission manifest), 152 Drizzle tables,
@@ -38,7 +38,7 @@ This is the **product** repo — `app.<domain>`. Two things live outside it:
   **separate public marketing/landing site** that *sells* this platform. Brand: **Cycle Forge**,
   *"Run your whole resale operation on one canvas."* The beta funnel form lives there and POSTs
   cross-origin to this repo's `/api/beta/*` (CORS-allowlisted). Keep pricing/claims in sync across
-  both repos; distribution decision is **browser web app only** (the Electron shell is legacy).
+  both repos; distribution is **browser web app only**.
   Branding rules: `docs/cycle-forge-branding-spec.md`. Both repos wire PostHog for analytics.
 - **USAV Solutions Inc** — the original single tenant. This began as USAV's internal tool and is
   being commercialized into a sellable B2B SaaS. The live org id is
@@ -55,7 +55,7 @@ verify, magic-link), (4) onboarding/activation, (5) legal review — ToS/Privacy
 `src/content/legal/{terms,privacy,dpa}.json`; CycleForge `/legal`) with a "Draft — pending legal
 review" banner; remaining work is owner-side (fill entity/jurisdiction placeholders, attorney review)
 plus keeping the two repos' copies in sync. Master plans:
-`docs/sellable-foundation-execution-plan.md`, `docs/todo/saas-commercialization-plan.md`,
+`docs/todo/saas-commercialization-plan.md`,
 `docs/second-tenant-onboarding-checklist.md`, `docs/tier0-go-live-runbook.md`.
 
 ### In flight right now (uncommitted working tree)
@@ -67,7 +67,7 @@ plus keeping the two repos' copies in sync. Master plans:
   Applied to the hottest station reference reads (`get-title-by-sku` stable slice, `manuals/resolve`,
   gtin, reason-codes), the per-scan read models (`order-detail`, FBA board/today, `po-by-ref`), the
   auth hot-path staff-overrides read, and the operations-dashboard pollers. Every entry fails open to
-  the DB and is reversible via `REDIS_CACHE_DISABLED`. Plan + status: `docs/todo/redis-caching-plan.md`.
+  the DB and is reversible via `REDIS_CACHE_DISABLED`.
 - **serial_unit_provenance polymorphic refactor — code-complete, uncommitted (2026-07-03).** The denormalized
   `serial_units.origin_*` family (`origin_source`/`origin_receiving_line_id`/`origin_tsn_id`/
   `origin_sku_id`) is replaced by the polymorphic `serial_unit_provenance` table (migration
@@ -82,7 +82,7 @@ plus keeping the two repos' copies in sync. Master plans:
 - **Live tracker:** `docs/partial/HUMAN-TODO.md` is the single "what's in flight / owner-gated" list
   (re-scanned per wave). Plan docs' own status headers lag the tree — e.g.
   `docs/todo/schema-wide-polymorphic-refactor-plan.md` still says "Phases 2–4 PLAN" while their
-  artifacts sit in the tree; `docs/partial/tier0-execution-checklist.md` is explicitly SUPERSEDED.
+  artifacts sit in the tree.
   Trust migrations/code over doc status lines.
 
 ## 3. Repo map — where things live
@@ -103,7 +103,6 @@ plus keeping the two repos' copies in sync. Master plans:
 | `docs/` | Plans & initiatives — `todo/`, `partial/`, `roadmap/`, `tenancy/`, `operations-studio/`, `integrations/`, `diagrams/`, `archive/` |
 | `.claude/` | Agent tooling — `rules/` (always-loaded conventions), `agents/`, `skills/`, `hooks/` |
 | `scripts/` | Migration runner, tenancy/route/permission audits, knip gate, diagrams, env push |
-| `electron/`, `server/` | Desktop shell + a standalone pipeline server |
 | `tests/e2e/` | Playwright specs (`global-setup.ts`, admin `storageState`) |
 
 ## 4. Core domain & lifecycle
@@ -221,8 +220,8 @@ cache-aside layer (`src/lib/cache/upstash-cache.ts`, Upstash over REST) — read
 **org-scoped keys and tags** (`cache:v2:{ns}:{org}:{key}`), invalidate-on-write at the route
 chokepoint, fail-open, kill-switchable (`REDIS_CACHE_DISABLED` / per-namespace `REDIS_CACHE_NS`), with
 per-namespace hit/miss metrics at `GET /api/admin/cache-stats`. **Never cache live lifecycle/stock
-state or a mutation response** — cache only stable sub-lookups (see `docs/todo/redis-caching-plan.md`
-§11 for the never-cache registry). Realtime deltas go over Ably (separate from persistence). Deep dive:
+state or a mutation response** — cache only stable sub-lookups.
+Realtime deltas go over Ably (separate from persistence). Deep dive:
 [`DATABASE.md`](./DATABASE.md), [`REALTIME-AND-CACHING.md`](./REALTIME-AND-CACHING.md).
 
 **Migration suffix convention (load-bearing):** the runner (`scripts/run-pending-migrations.mjs`)
@@ -406,5 +405,5 @@ idempotency (or a DB fallback), never the lock.
 - **What's in flight** — `docs/todo/` (planned), `docs/partial/` + `docs/partial/HUMAN-TODO.md`
   (owner-gated), `docs/roadmap/MASTER.md`.
 - **Diagrams** — `docs/diagrams/` (module graph, ER, order lifecycle).
-- **Selling it** — `docs/sellable-foundation-execution-plan.md`, `docs/tier0-go-live-runbook.md`.
+- **Selling it** — `docs/tier0-go-live-runbook.md`, `docs/second-tenant-onboarding-checklist.md`.
 - **Agent rules** — `CLAUDE.md` + `.claude/rules/*.md` (auto-loaded; the hard rules override defaults).

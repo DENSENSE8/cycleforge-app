@@ -1,5 +1,6 @@
 import pool from '@/lib/db';
-import { withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import {
   normalizeSerial,
   upsertSerialUnit,
@@ -13,6 +14,7 @@ import {
 } from '@/lib/inventory/events';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { escapeLike } from '@/lib/sql-like';
 
@@ -23,7 +25,7 @@ export interface ReceiveLineUnitsInput {
    *  ledger event is published on this org's channel. */
   organizationId: string;
 
-  /** receiving_lines.id */
+  /** receiving_line.id */
   receiving_line_id: number;
 
   /**
@@ -121,8 +123,8 @@ interface LineTarget {
   receiving_id: number | null;
   sku: string | null;
   item_name: string | null;
+  /** From receiving_line_zoho (Wave-3 inversion) — NULL for unmatched/manual lines. */
   zoho_item_id: string | null;
-  zoho_purchaseorder_id: string | null;
   quantity_expected: number | null;
   quantity_received: number;
   workflow_status: string | null;
@@ -139,15 +141,72 @@ async function loadLineForUpdate(
   client: import('pg').PoolClient,
   lineId: number,
 ): Promise<LineTarget | null> {
+  // zoho_item_id comes from the receiving_line_zoho facts table (Wave-3
+  // inversion — the spine zoho cluster is dying). FOR UPDATE OF rl: only the
+  // spine row is lockable (FOR UPDATE can't target the nullable side of an
+  // outer join), and the line row is the lock that serializes scans anyway.
   const r = await client.query<LineTarget>(
-    `SELECT id, receiving_id, sku, item_name, zoho_item_id, zoho_purchaseorder_id,
-            quantity_expected, quantity_received, workflow_status
-     FROM receiving_lines
-     WHERE id = $1
-     FOR UPDATE`,
+    `SELECT rl.id, rl.receiving_id, rl.sku, rl.item_name, rz.zoho_item_id,
+            rl.quantity_expected, rl.quantity_received, rl.workflow_status
+     FROM receiving_line rl
+     LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id
+     WHERE rl.id = $1
+     FOR UPDATE OF rl`,
     [lineId],
   );
   return r.rows[0] ?? null;
+}
+
+// States a `set_workflow_status: 'UNBOXED'` receive must never walk back from
+// when advanceOnly=true (already testing / received / finalized).
+const UNBOXED_ADVANCE_GUARD: ReadonlySet<string> = new Set([
+  'AWAITING_TEST', 'IN_TEST', 'PASSED', 'FAILED', 'RTV', 'SCRAP', 'DONE',
+]);
+
+// States a `set_workflow_status: 'MATCHED'` receive must never walk back from
+// when advanceOnly=true (already unboxed or beyond). scan_only passes
+// advanceOnly=false so its "Mark as scanned" revert can still rewind UNBOXED.
+const MATCHED_ADVANCE_GUARD: ReadonlySet<string> = new Set([
+  'UNBOXED', 'AWAITING_TEST', 'IN_TEST', 'PASSED', 'FAILED', 'RTV', 'SCRAP', 'DONE',
+]);
+
+/**
+ * Pure replica of the workflow CASE the legacy combined UPDATE used to run in
+ * SQL (Step D fold): explicit DONE always wins; explicit UNBOXED / MATCHED are
+ * advance-only-guarded; with no explicit target, qty completion auto-advances
+ * to UNBOXED; otherwise the line stays where it is. Returns the status the
+ * line should END UP in (=== `current` means "no transition").
+ *
+ * NULL semantics match SQL: a NULL current status fails the `IN (...)` guard
+ * (SQL NULL → not matched → ELSE branch), so explicit targets always apply.
+ */
+export function resolveReceiveWorkflowTarget(args: {
+  current: string | null;
+  explicit: 'UNBOXED' | 'DONE' | 'MATCHED' | null;
+  advanceOnly: boolean;
+  quantityExpected: number | null;
+  /** quantity_received BEFORE this call's increment. */
+  priorReceived: number;
+  /** Units actually counted by this call (0 for over-cap supplemental). */
+  effectiveUnits: number;
+}): string | null {
+  const { current, explicit, advanceOnly } = args;
+  if (explicit === 'DONE') return 'DONE';
+  if (explicit === 'UNBOXED') {
+    if (advanceOnly && current != null && UNBOXED_ADVANCE_GUARD.has(current)) return current;
+    return 'UNBOXED';
+  }
+  if (explicit === 'MATCHED') {
+    if (advanceOnly && current != null && MATCHED_ADVANCE_GUARD.has(current)) return current;
+    return 'MATCHED';
+  }
+  if (
+    args.quantityExpected != null &&
+    args.priorReceived + args.effectiveUnits >= args.quantityExpected
+  ) {
+    return 'UNBOXED';
+  }
+  return current;
 }
 
 function dedupeSerials(input: ReceiveLineUnitsInput): string[] {
@@ -167,7 +226,7 @@ function dedupeSerials(input: ReceiveLineUnitsInput): string[] {
 // ── Writer ─────────────────────────────────────────────────────────────────
 
 /**
- * Single writer for "units arrived against a receiving_lines row." Both
+ * Single writer for "units arrived against a receiving_line row." Both
  * /api/receiving/scan-serial (incremental, +1) and /api/receiving/mark-received-po
  * (finalize, +remaining) call this.
  *
@@ -179,8 +238,14 @@ function dedupeSerials(input: ReceiveLineUnitsInput): string[] {
  *   4. inventory_events RECEIVED row (joins to ledger via stock_ledger_id)
  *
  * Then once:
- *   5. UPDATE receiving_lines with QA/disp/cond/notes/workflow_status
- *      and quantity_received += effectiveUnits  (effectiveUnits=0 for supplemental)
+ *   5. Facts-only UPDATE receiving_line with notes and
+ *      quantity_received += effectiveUnits  (effectiveUnits=0 for supplemental),
+ *      plus QA/disp/cond upserted into receiving_line_testing on the same
+ *      tx client (Wave-3 writer inversion)
+ *   6. When the resolved workflow target differs from the current status,
+ *      transitionReceivingLine() (the guarded chokepoint) moves
+ *      workflow_status + coarse status/timestamps and emits the one NOTE
+ *      transition event (client_event_id `<clientEventId>:workflow-<to>`)
  *
  * Supplemental serials: PO lines are NOT hard-capped at quantity_expected.
  * A tech can keep scanning extras for a line; each extra still lands in
@@ -193,7 +258,7 @@ function dedupeSerials(input: ReceiveLineUnitsInput): string[] {
  * Bug B is fixed: non-serialized units also emit a ledger row.
  *
  * upsertSerialUnit() MUST run on this same PoolClient (`{ dbClient: client }`).
- * A second pooled connection would block on the receiving_lines row locked by
+ * A second pooled connection would block on the receiving_line row locked by
  * FOR UPDATE (FK check on origin_receiving_line_id) until Neon times out.
  */
 export async function receiveLineUnits(
@@ -201,7 +266,7 @@ export async function receiveLineUnits(
 ): Promise<ReceiveLineUnitsResult> {
   // withTenantTransaction owns BEGIN / SET LOCAL app.current_org / COMMIT /
   // ROLLBACK / release. One transaction means the SELECT ... FOR UPDATE on
-  // receiving_lines holds for the lifetime of the callback, so concurrent
+  // receiving_line holds for the lifetime of the callback, so concurrent
   // scan-serial requests on the same line block on this lock and reads/writes
   // serialize correctly. It also sets the org GUC, so every inventory_events /
   // sku_stock_ledger insert inside auto-stamps organization_id (the column
@@ -602,11 +667,24 @@ export async function receiveLineUnits(
     }
   }
 
-  // 3. Update the line in one shot — runs on the SAME client as the SELECT
+  // 3. Facts-only line UPDATE — runs on the SAME client as the SELECT
   //    FOR UPDATE so it inherits the row lock. quantity_received += units;
-  //    flip workflow based on caller intent + computed completeness.
-  //    Over-cap scans pass effectiveUnits=0 so the counter never goes above
-  //    quantity_expected even when extras were logged as supplemental.
+  //    notes COALESCE. Over-cap scans pass effectiveUnits=0 so
+  //    the counter never goes above quantity_expected even when extras were
+  //    logged as supplemental.
+  //
+  //    workflow_status is deliberately NOT in this SET list (Step D fold).
+  //    Listing it — even via a CASE that keeps the same value — fires the
+  //    coarse trg_receiving_line_coarse_status trigger on EVERY receive call,
+  //    which could COALESCE-stamp lifecycle timestamps (e.g. the triage-owned
+  //    scanned_at) on rows that were not actually transitioning. The status
+  //    half now goes through transitionReceivingLine() below, only for rows
+  //    that really change.
+  //
+  //    qa/disposition/condition are receiving_line_testing facts (Wave-3
+  //    inversion) — written below via upsertReceivingLineTesting on this same
+  //    client, preserving the former COALESCE($n, col) semantics: a provided
+  //    value overwrites; null/unset leaves the stored value untouched.
   const explicitWorkflow = input.set_workflow_status ?? null;
   const effectiveUnits = isOverCap ? 0 : units;
   const update = await client.query<{
@@ -617,56 +695,34 @@ export async function receiveLineUnits(
     quantity_expected: number | null;
     workflow_status: string | null;
   }>(
-    `UPDATE receiving_lines
+    `UPDATE receiving_line
      SET quantity_received = quantity_received + $2,
-         qa_status        = COALESCE($3, qa_status),
-         disposition_code = COALESCE($4, disposition_code),
-         condition_grade  = COALESCE($5, condition_grade),
-         notes            = COALESCE($6, notes),
-         workflow_status = CASE
-           WHEN $7::text = 'DONE'
-             THEN 'DONE'::inbound_workflow_status_enum
-           WHEN $7::text = 'UNBOXED'
-             THEN CASE
-               -- Advance-only: never walk an already-testing/received line back to
-               -- UNBOXED (mirrors the MATCHED branch guard). A real receive advances
-               -- EXPECTED/ARRIVED/MATCHED straight to UNBOXED — skipping the coarse
-               -- SCANNED state so it never stamps the triage-owned scanned_at.
-               WHEN $8::boolean = true
-                    AND workflow_status IN ('AWAITING_TEST','IN_TEST','PASSED','FAILED','RTV','SCRAP','DONE')
-                 THEN workflow_status
-               ELSE 'UNBOXED'::inbound_workflow_status_enum
-             END
-           WHEN $7::text = 'MATCHED'
-             THEN CASE
-               -- Advance-only: never walk an already-unboxed/received line back to
-               -- MATCHED (a normal receive after a first-scan unbox). scan_only
-               -- passes advanceOnly=false so its "Mark as scanned" revert still works.
-               WHEN $8::boolean = true
-                    AND workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','FAILED','RTV','SCRAP','DONE')
-                 THEN workflow_status
-               ELSE 'MATCHED'::inbound_workflow_status_enum
-             END
-           WHEN quantity_expected IS NOT NULL
-                AND (quantity_received + $2) >= quantity_expected
-             THEN 'UNBOXED'::inbound_workflow_status_enum
-           ELSE workflow_status
-         END,
+         notes            = COALESCE($3, notes),
          updated_at = NOW()
      WHERE id = $1
      RETURNING id, sku, item_name, quantity_received,
                quantity_expected, workflow_status::text AS workflow_status`,
-    [
-      line.id,
-      effectiveUnits,
-      input.qa_status ?? null,
-      input.disposition_code ?? null,
-      input.condition_grade ?? null,
-      input.notes ?? null,
-      explicitWorkflow,
-      input.advanceOnly ?? false,
-    ],
+    [line.id, effectiveUnits, input.notes ?? null],
   );
+
+  if (
+    input.qa_status != null ||
+    input.disposition_code != null ||
+    input.condition_grade != null
+  ) {
+    await upsertReceivingLineTesting(
+      input.organizationId,
+      line.id,
+      {
+        qaStatus: input.qa_status ?? undefined,
+        dispositionCode: input.disposition_code ?? undefined,
+        conditionGrade: input.condition_grade ?? undefined,
+      },
+      // Bound to the tx client so the facts write shares the row lock +
+      // rollback semantics of the receive transaction.
+      { query: ((_org, sql, p) => client.query(sql, p as unknown[])) as typeof tenantQuery },
+    );
+  }
 
   const updated = update.rows[0] ?? {
     id: line.id,
@@ -677,38 +733,61 @@ export async function receiveLineUnits(
     workflow_status: line.workflow_status,
   };
 
-  // 4. Workflow-stage transition audit. The per-unit RECEIVED events above
-  //    capture stock movement, but the line's workflow_status advance
-  //    (EXPECTED → MATCHED / UNBOXED / DONE, whether explicit or auto on
-  //    qty-completion) was previously invisible to the audit timeline. Emit one
-  //    NOTE event carrying prev/next so the receiving half of the trail shows
-  //    stage changes the same way the testing half (status/route.ts) already
-  //    does. Fires only on a real change; idempotent via the client_event_id
-  //    suffix so retries don't duplicate.
+  // 4. Workflow-stage transition through the guarded chokepoint (Step D fold —
+  //    was a workflow CASE inside the UPDATE above plus a hand-rolled NOTE
+  //    event). The target is computed in TS from the FOR-UPDATE-locked row
+  //    (resolveReceiveWorkflowTarget replicates the old CASE exactly:
+  //    explicit DONE | advance-only UNBOXED/MATCHED | auto-UNBOXED on qty
+  //    completion | unchanged). CHECK-AND-SKIP: only a real change calls the
+  //    chokepoint — an identity transition would still fire the coarse trigger
+  //    and emit a spurious event. transitionReceivingLine owns the guarded
+  //    workflow_status UPDATE (+ coarse status/timestamps) AND emits the one
+  //    NOTE inventory_event (prev/next status), replacing the hand-rolled
+  //    emission. The `:workflow-<to>` client_event_id suffix is load-bearing:
+  //    batch replay-detection above LIKEs on `<clientEventId>:%` and the
+  //    UNIQUE(client_event_id) retry idempotency both key off this lineage.
   const prevWorkflow = line.workflow_status ?? null;
-  const nextWorkflow = updated.workflow_status ?? null;
+  const nextWorkflow = resolveReceiveWorkflowTarget({
+    current: prevWorkflow,
+    explicit: explicitWorkflow,
+    advanceOnly: input.advanceOnly ?? false,
+    quantityExpected:
+      line.quantity_expected != null ? Number(line.quantity_expected) : null,
+    priorReceived,
+    effectiveUnits,
+  });
   if (nextWorkflow && nextWorkflow !== prevWorkflow) {
-    const transition = await recordInventoryEvent({
-      event_type: 'NOTE',
-      actor_staff_id: input.staff_id ?? null,
-      station,
-      receiving_id: line.receiving_id,
-      receiving_line_id: line.id,
-      sku: updated.sku,
-      prev_status: prevWorkflow,
-      next_status: nextWorkflow,
-      scan_token: input.scan_token ?? null,
-      client_event_id: input.client_event_id
-        ? `${input.client_event_id}:workflow-${nextWorkflow}`
-        : null,
-      notes: `Stage ${workflowStageLabel(prevWorkflow)} → ${workflowStageLabel(nextWorkflow)}`,
-      payload: {
-        workflow_transition: true,
-        from: prevWorkflow,
+    const tr = await transitionReceivingLine(
+      {
+        receivingLineId: line.id,
         to: nextWorkflow,
+        actorStaffId: input.staff_id ?? null,
+        station,
+        eventType: 'NOTE',
+        clientEventId: input.client_event_id
+          ? `${input.client_event_id}:workflow-${nextWorkflow}`
+          : null,
+        receivedBy: input.staff_id ?? null,
+        notes: `Stage ${workflowStageLabel(prevWorkflow)} → ${workflowStageLabel(nextWorkflow)}`,
+        payload: {
+          workflow_transition: true,
+          from: prevWorkflow,
+          to: nextWorkflow,
+          ...(input.scan_token ? { scan_token: input.scan_token } : {}),
+        },
       },
-    }, client, input.organizationId);
-    inventoryEventIds.push(transition.id);
+      client,
+      input.organizationId,
+    );
+    if (!tr.ok) {
+      // 404 is impossible (the row is locked in this tx) and no expectedFrom is
+      // passed, so a failure here means something is deeply wrong — throw so
+      // the whole receive transaction rolls back rather than half-applying.
+      throw new Error(
+        `receiveLineUnits: workflow transition ${prevWorkflow ?? '?'} → ${nextWorkflow} failed (${tr.status}): ${tr.error}`,
+      );
+    }
+    inventoryEventIds.push(tr.eventId);
   }
 
     return {
@@ -727,7 +806,9 @@ export async function receiveLineUnits(
         quantity_received: Number(updated.quantity_received),
         quantity_expected:
           updated.quantity_expected != null ? Number(updated.quantity_expected) : null,
-        workflow_status: updated.workflow_status,
+        // The facts UPDATE no longer touches workflow_status, so its RETURNING
+        // value is pre-transition — report the resolved (post-chokepoint) state.
+        workflow_status: nextWorkflow ?? updated.workflow_status,
         is_complete:
           updated.quantity_expected != null &&
           Number(updated.quantity_received) >= Number(updated.quantity_expected),

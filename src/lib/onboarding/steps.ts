@@ -30,6 +30,8 @@ export interface OnboardingStats {
   integrationsConnected: number;
   /** True once any inventory event exists — the org scanned its first unit. */
   firstScanDone: boolean;
+  /** True once the org has an active workflow_definitions row (its ops SOP is chosen). */
+  hasActiveWorkflow: boolean;
 }
 
 /** All-zero stats — the degrade-not-fail fallback and the brand-new-org shape. */
@@ -39,9 +41,10 @@ export const EMPTY_ONBOARDING_STATS: OnboardingStats = {
   staff: 0,
   integrationsConnected: 0,
   firstScanDone: false,
+  hasActiveWorkflow: false,
 };
 
-export type OnboardingStepId = 'connect' | 'order' | 'receive' | 'scan' | 'invite';
+export type OnboardingStepId = 'workflow' | 'connect' | 'order' | 'receive' | 'scan' | 'invite';
 
 export interface OnboardingStep {
   id: OnboardingStepId;
@@ -62,6 +65,13 @@ export interface OnboardingStep {
  * extensions are additive config, not a redesign.
  */
 export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
+  {
+    id: 'workflow',
+    label: 'Choose how you run ops',
+    description: 'Start from a proven workflow template for your kind of shop.',
+    href: '/onboarding/template',
+    doneWhen: (s) => s.hasActiveWorkflow,
+  },
   {
     id: 'connect',
     label: 'Connect a sales channel',

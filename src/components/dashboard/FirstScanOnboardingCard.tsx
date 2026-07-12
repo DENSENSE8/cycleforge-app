@@ -50,13 +50,15 @@ const STAGE_CHIP =
  * Permission gate. Rendering the data-owning inner component conditionally keeps
  * `useOperationsRoi` from mounting at all for a user without `operations.view`.
  */
-export function FirstScanOnboardingCard({ variant = 'band' }: { variant?: 'band' | 'sidebar' }) {
+type FirstScanVariant = 'band' | 'sidebar' | 'pane';
+
+export function FirstScanOnboardingCard({ variant = 'band' }: { variant?: FirstScanVariant }) {
   const { isLoaded, has } = useAuth();
   if (!isLoaded || !has('operations.view')) return null;
   return <FirstScanOnboardingCardInner variant={variant} />;
 }
 
-function FirstScanOnboardingCardInner({ variant }: { variant: 'band' | 'sidebar' }) {
+function FirstScanOnboardingCardInner({ variant }: { variant: FirstScanVariant }) {
   const router = useRouter();
   const { data, isLoading, isError } = useOperationsRoi();
 
@@ -65,18 +67,22 @@ function FirstScanOnboardingCardInner({ variant }: { variant: 'band' | 'sidebar'
   // the ROI card owns the loading state and the established-shop hero.
   if (isLoading || isError || !data || data.hasData) return null;
 
+  const isCompact = variant === 'sidebar' || variant === 'pane';
+
   return (
     <section
       className={
-        variant === 'sidebar'
-          ? 'bg-surface-card'
+        isCompact
+          ? variant === 'pane'
+            ? ''
+            : 'bg-surface-card'
           : 'shrink-0 border-b border-border-hairline bg-surface-card px-4 py-3'
       }
       aria-label="Get started — scan your first unit"
     >
       <div
         className={`rounded-xl border border-border-accent bg-gradient-to-br from-surface-accent to-surface-card ${
-          variant === 'sidebar' ? 'px-3 py-3' : 'px-5 py-4'
+          variant === 'pane' ? 'px-4 py-3' : isCompact ? 'px-3 py-3' : 'px-5 py-4'
         }`}
       >
         {/* Eyebrow — welcoming, not an error tone. */}

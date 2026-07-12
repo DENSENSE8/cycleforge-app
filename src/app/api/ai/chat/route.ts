@@ -139,14 +139,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // terminal toolset when the query needs fresh Neon data.
     //
     // Session continuity is handled via the X-Hermes-Session-Id header —
-    // Hermes persists the conversation in ~/.hermes-usav/state.db so
+    // Hermes persists the conversation in ~/.hermes-cycleforge/state.db so
     // follow-up turns ("and yesterday?") see the prior context.
     const hermesRes = await fetch(`${getHermesApiUrl()}/chat/completions`, {
       method: 'POST',
       headers: getHermesHeaders({
         'Content-Type': 'application/json',
         'X-Hermes-Session-Id': sessionId,
-        'X-Source': 'usav',
+        'X-Source': 'cycle-forge',
       }),
       body: JSON.stringify({
         model: getHermesModel(),

@@ -10,6 +10,8 @@ import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { triageStatusChipClass } from '@/lib/inventory-triage-status';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 /** Subset of the `tracking_exceptions` row the triage queue needs. */
 export interface TriageRow {
@@ -100,13 +102,21 @@ export function InventoryTriageSidebar() {
         <SidebarShell
             as={motion.div}
             containerProps={{ initial: 'hidden', animate: 'visible', variants: containerVariants }}
-            search={{
-                value: inputValue,
-                onChange: setInputValue,
-                placeholder: 'Search by tracking number…',
-                isSearching: isFetching,
-                variant: 'blue',
-            }}
+            headerAbove={
+                // In-context list filter — local base SearchBar over the triage
+                // queue. The global header pill stays global (search app-wide).
+                <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+                    <SearchBar
+                        size="compact"
+                        variant="blue"
+                        value={inputValue}
+                        onChange={setInputValue}
+                        onClear={() => setInputValue('')}
+                        placeholder="Filter tracking numbers…"
+                        isSearching={isFetching}
+                    />
+                </div>
+            }
             headerRows={[
                 <HorizontalButtonSlider
                     key="status"

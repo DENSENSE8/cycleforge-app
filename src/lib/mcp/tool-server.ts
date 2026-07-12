@@ -20,7 +20,7 @@ import type { AssistantToolCtx, AssistantToolRunResult } from '@/lib/assistant/t
 
 /** The MCP protocol revision this server implements. */
 export const MCP_PROTOCOL_VERSION = '2025-06-18';
-const MCP_SERVER_INFO = { name: 'usav-assistant-tools', version: '1.0.0' } as const;
+const MCP_SERVER_INFO = { name: 'cycle-forge-assistant-tools', version: '1.0.0' } as const;
 
 export interface McpToolEntry {
   name: string;

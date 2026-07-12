@@ -11,6 +11,8 @@ import { microBadge } from '@/design-system/tokens/typography/presets';
 import { inventoryStatusBadgeClass } from '@/components/inventory/status-classes';
 import type { UnitListRow, UnitListResponse } from '@/components/inventory/types';
 import { cn } from '@/utils/_cn';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 function useUnitsList(q: string) {
     return useQuery<UnitListRow[]>({
@@ -68,13 +70,21 @@ export function InventoryPulseSidebar() {
         <SidebarShell
             as={motion.div}
             containerProps={{ initial: 'hidden', animate: 'visible', variants: containerVariants }}
-            search={{
-                value: inputValue,
-                onChange: setInputValue,
-                placeholder: 'Search serial, SKU, or title…',
-                isSearching: isFetching,
-                variant: 'blue',
-            }}
+            headerAbove={
+                // In-context list filter — local base SearchBar over the pulse unit
+                // list. The global header pill stays global (search app-wide).
+                <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+                    <SearchBar
+                        size="compact"
+                        variant="blue"
+                        value={inputValue}
+                        onChange={setInputValue}
+                        onClear={() => setInputValue('')}
+                        placeholder="Filter serial, SKU, or title…"
+                        isSearching={isFetching}
+                    />
+                </div>
+            }
             bodyClassName="scrollbar-hide pb-5 space-y-2"
         >
             <p className={`${microBadge} px-1 text-text-soft`}>

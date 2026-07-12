@@ -14,7 +14,7 @@ spend/wk, fill-rate, time-to-source, cost vs target; Operations chart primitives
 Residual: order-exception (`backorder`) collector, alert_type CHECK widening migration
 (`pending_sku`/`reorder`/`backorder`), sell-side items; external approvals stay owner-gated.
 · **Created:** 2026-06-13 · **Supersedes scope of:**
-`docs/bose-parts-sourcing-engine-plan.md` (kept as the origin/backend runbook).
+the original Bose-parts sourcing engine plan (executed; history in git).
 
 This plan turns the existing **Bose-parts** sourcing engine into a **universal sourcing &
 procurement hub**: every system that produces a "we need to buy/find this" signal feeds one
@@ -220,7 +220,7 @@ unchanged UX, just brand-neutral copy and a generic endpoint name.
 → rolls `last_known_cost_cents` → drops into the normal unbox flow. Changes:
 - `source_platform` derives from the candidate's adapter `source` (not hardcoded `'ebay'`),
   using `src/lib/source-platform.ts` (already has ebay/amazon/walmart/aliexpress/etc.). When
-  the platform/account/type catalog lands (`docs/platform-account-type-catalog-plan.md`),
+  the platform/account/type catalog lands,
   resolve through it instead — additive, no break.
 - On unbox, stamp `part_acquisitions.serial_unit_id` + condition (the receiving pipeline
   already creates the unit) to close the cost→resale margin loop.

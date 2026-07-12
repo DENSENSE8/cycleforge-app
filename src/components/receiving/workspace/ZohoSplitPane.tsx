@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import EmbeddedBrowser from '@/components/EmbeddedBrowser';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 
@@ -25,31 +24,18 @@ function buildZohoUrl(detail: OpenPaneDetail): string {
 }
 
 /**
- * Right-side overlay that mounts the Zoho Inventory web UI inside the Electron
- * shell (`<webview>` — bypasses X-Frame-Options). Hidden by default. The flow-
- * header "Open in Zoho" action dispatches `open-zoho-pane` with the PO id /
- * number; this component listens and reveals the pane.
+ * Right-side overlay for opening a Zoho Inventory purchase order. Zoho blocks
+ * iframe embedding (X-Frame-Options), so the pane surfaces an "Open in Zoho"
+ * deep link. Hidden by default; the flow-header action dispatches
+ * `open-zoho-pane` with the PO id / number.
  *
  * The pane has a draggable left edge; width is persisted across sessions.
- * In a regular browser tab (no Electron), the event is ignored so the action
- * falls back to its `window.open` behavior.
  */
 export function ZohoSplitPane() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [isElectron, setIsElectron] = useState(false);
   const widthRef = useRef(DEFAULT_WIDTH);
-
-  useEffect(() => {
-    setIsElectron(
-      typeof window !== 'undefined' &&
-        Boolean(
-          (window as Window & { desktopApp?: { isElectron?: boolean } })
-            .desktopApp?.isElectron,
-        ),
-    );
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -65,7 +51,7 @@ export function ZohoSplitPane() {
   useEffect(() => {
     const handler = (e: Event) => {
       // Tell the dispatcher the pane handled this — caller does NOT fall
-      // back to window.open. Browser users get the "open externally" link
+      // back to window.open. Operators get the "open externally" link
       // inside the pane instead.
       e.preventDefault();
       const detail = ((e as CustomEvent).detail || {}) as OpenPaneDetail;
@@ -139,26 +125,19 @@ export function ZohoSplitPane() {
       </header>
 
       <div className="min-h-0 flex-1">
-        {isElectron ? (
-          <EmbeddedBrowser url={url} className="h-full" />
-        ) : (
-          // Browser tab fallback — Zoho blocks iframe embedding, so we surface
-          // the same "open externally" affordance the rest of the receiving
-          // workspace uses (see the LISTING PREVIEW card).
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-label text-text-soft">
-            <p className="leading-snug">
-              Embedded Zoho is only available in the desktop app.
-            </p>
-            <a
-              href={url}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-caption font-black uppercase tracking-[0.16em] text-white hover:bg-blue-700"
-            >
-              Open in Zoho
-            </a>
-          </div>
-        )}
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-label text-text-soft">
+          <p className="leading-snug">
+            Purchase orders open in the inventory provider. Use the link below to view the PO.
+          </p>
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-caption font-black uppercase tracking-[0.16em] text-white hover:bg-blue-700"
+          >
+            Open in Zoho
+          </a>
+        </div>
       </div>
     </aside>
   );

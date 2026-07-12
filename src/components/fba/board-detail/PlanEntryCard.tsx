@@ -54,7 +54,7 @@ export function PlanEntryCard({
     setDeleting(false);
     if (result.ok) {
       onDeleted();
-      window.dispatchEvent(new Event('usav-refresh-data'));
+      window.dispatchEvent(new Event('app-refresh-data'));
     } else {
       setDeleteError(result.error || 'Failed to remove');
     }

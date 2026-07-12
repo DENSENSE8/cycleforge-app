@@ -140,7 +140,7 @@ export function useUnmatchedItems({
           toast.error(b?.error ?? `Could not set the receiving type (${res.status})`);
           return;
         }
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
             detail: { receiving_id: receivingId, ...payload },
@@ -296,7 +296,7 @@ export function useUnmatchedItems({
           // Mirror onto every surface holding this carton (workspace header
           // chips, rails, unfound queue) — same events the repair-service
           // link fires.
-          window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+          window.dispatchEvent(new CustomEvent('app-refresh-data'));
           window.dispatchEvent(
             new CustomEvent('receiving-package-updated', {
               detail: {
@@ -322,7 +322,7 @@ export function useUnmatchedItems({
         }
 
         await refreshLines();
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         if (addBody.line?.id) {
           window.dispatchEvent(
             new CustomEvent('receiving-line-updated', {
@@ -432,7 +432,7 @@ export function useUnmatchedItems({
           | { zoho_purchaseorder_number: string | null; source: string | null; source_platform: string | null }
           | null
           | undefined;
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         window.dispatchEvent(
           new CustomEvent('receiving-package-updated', {
             detail: {
@@ -460,7 +460,7 @@ export function useUnmatchedItems({
         toast.success(
           opts?.allowOffPo ? `Added off-PO · ${label}` : `Acknowledged · ${label}`,
         );
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         // Upgrade an unfound stub / refresh the open panel — carton stays unmatched
         // unless the server promoted it (no source_order_id on catalog-only adds).
         onLinked?.({
@@ -509,7 +509,7 @@ export function useUnmatchedItems({
         // Re-evaluate carton-level state: if the operator just removed the
         // last line, the carton goes back to "unfound" and the queue may
         // want to re-surface it.
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
       } catch (err) {
         setLines(prev);
         toast.error(err instanceof Error ? err.message : 'Remove failed');

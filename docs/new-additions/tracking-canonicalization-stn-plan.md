@@ -127,6 +127,4 @@ No new infrastructure. Three narrow changes:
 - Shipping re-export + status maps: `src/lib/shipping/normalize.ts`.
 - STN funnel + matching: `src/lib/shipping/sync-shipment.ts`, `src/lib/shipping/repository.ts`.
 - Receiving scan ingestion: `src/lib/receiving/record-scan.ts`, `src/app/api/receiving/lookup-po/route.ts`.
-- Related plans: `docs/receiving-scans-stn-link-plan.md`, `docs/incoming-tracking-todo-plan.md`,
-  `docs/tracking-live-sync-plan.md`.
 - Related memory: `project_zoho_two_credential_paths`, `project_tracking_last8_match`.

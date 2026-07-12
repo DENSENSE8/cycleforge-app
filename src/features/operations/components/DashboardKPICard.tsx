@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 
 type LucideIcon = React.ComponentType<{ className?: string; size?: number | string }>;
 
@@ -54,6 +55,8 @@ export const DashboardKPICard: React.FC<DashboardKPICardProps> = ({
   const valueMatch = value.match(/^([\d,]+)(.*)$/);
   const valueHead = valueMatch?.[1] ?? value;
   const valueTail = valueMatch?.[2] ?? '';
+  const numericHead = Number(String(valueHead).replace(/,/g, ''));
+  const animateHead = Number.isFinite(numericHead) && Boolean(valueMatch);
   const heights = [38, 62, 44, 78, 56, 88, 48];
 
   return (
@@ -91,9 +94,16 @@ export const DashboardKPICard: React.FC<DashboardKPICardProps> = ({
       </div>
 
       <div className="mb-1 flex items-baseline gap-1">
-        <span className="text-[34px] font-extrabold leading-none tracking-tight text-text-default tabular-nums sm:text-[40px]">
-          {valueHead}
-        </span>
+        {animateHead ? (
+          <AnimatedStat
+            value={numericHead}
+            className="text-[34px] font-extrabold leading-none tracking-tight text-text-default sm:text-[40px]"
+          />
+        ) : (
+          <span className="text-[34px] font-extrabold leading-none tracking-tight text-text-default tabular-nums sm:text-[40px]">
+            {valueHead}
+          </span>
+        )}
         {valueTail && (
           <span className="text-[20px] font-medium leading-none tracking-tight text-text-soft tabular-nums sm:text-[22px]">
             {valueTail}

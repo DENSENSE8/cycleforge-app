@@ -7,17 +7,19 @@ import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import type { FilterRefinement } from '@/design-system/components/FilterRefinementBar';
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import type { IncomingSort } from '@/components/sidebar/receiving/IncomingPaneHeader';
+import {
+  dateKeyToLocalDate,
+  isDateKey,
+  localDateToDateKey,
+} from '@/utils/date';
 import { TILES, TONE } from './incoming-tiles';
 import type { IncomingDeliveryState } from './incoming-summary-types';
 
-const toISODate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const toISODate = (d: Date) => localDateToDateKey(d);
 
 const parseISODate = (raw: string | null): Date | undefined => {
-  if (!raw) return undefined;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) return undefined;
-  const d = new Date(`${raw.trim()}T00:00:00`);
-  return Number.isFinite(d.getTime()) ? d : undefined;
+  if (!raw || !isDateKey(raw)) return undefined;
+  return dateKeyToLocalDate(raw.trim());
 };
 
 /**

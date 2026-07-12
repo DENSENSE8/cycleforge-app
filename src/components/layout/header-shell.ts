@@ -39,13 +39,7 @@ export const sidebarNavOverlayBandClass = cn(
   SIDEBAR_GUTTER,
 );
 export const sidebarHeaderRowClass = `flex min-h-[44px] items-center ${SIDEBAR_GUTTER} py-1`;
-// 40px search-bar band — locks the sidebar search row to the SAME 40px grid as
-// sidebarHeaderPillRowClass so a search row stacked above a pill/tab row reads as
-// one continuous column instead of two bands of slightly different height. Use this
-// (not sidebarHeaderRowClass, which is min-h-[44px]) wherever a search bar is the
-// pinned header chrome of a sidebar panel.
-export const sidebarHeaderSearchRowClass = `flex h-[40px] shrink-0 items-center ${SIDEBAR_GUTTER}`;
-export const sidebarHeaderControlClass = 'h-full min-h-[44px] w-full appearance-none bg-surface-card px-3 py-1 pr-8 text-left text-micro font-black uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover';
+export const sidebarHeaderControlClass ='h-full min-h-[44px] w-full appearance-none bg-surface-card px-3 py-1 pr-8 text-left text-micro font-black uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover';
 
 export const mainStickyHeaderClass = 'shrink-0 sticky top-0 z-10 border-b border-border-hairline bg-surface-card/95 backdrop-blur-sm';
 export const mainStickyHeaderRowClass = 'flex min-h-[44px] items-center justify-between gap-4 px-4 py-1';

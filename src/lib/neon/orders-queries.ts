@@ -139,6 +139,9 @@ const ORDER_SERIALS_CTE = `
       pl.packed_by,
       to_char(pl.packed_at, 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
       to_char(pack_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
+      to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
+      ship_out.shipped_out_by                AS shipped_out_by,
+      shipped_out_staff.name                 AS shipped_out_by_name,
       pl.packer_photos_url,
       pl.tracking_type,
       COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
@@ -255,6 +258,18 @@ const ORDER_SERIALS_CTE = `
       ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC
       LIMIT 1
     ) test_sal ON true
+    -- Dock scan-out (SHIP_CONFIRM) for this order's shipment — the "left the
+    -- warehouse" timestamp + who scanned it out. Mirrors packer-logs-week.ts.
+    LEFT JOIN LATERAL (
+      SELECT
+        MAX(so.created_at) AS ship_confirmed_at,
+        (ARRAY_AGG(so.staff_id ORDER BY so.created_at DESC))[1] AS shipped_out_by
+      FROM station_activity_logs so
+      WHERE so.activity_type = 'SHIP_CONFIRM'
+        AND o.shipment_id IS NOT NULL
+        AND so.shipment_id = o.shipment_id
+    ) ship_out ON true
+    LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
     LEFT JOIN tech_serial_numbers tsn ON tsn.shipment_id = o.shipment_id AND o.shipment_id IS NOT NULL
     WHERE COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
             OR stn.is_out_for_delivery OR stn.is_delivered, false)
@@ -267,7 +282,8 @@ const ORDER_SERIALS_CTE = `
              stn.carrier,
              wa_t.assigned_tech_id, wa_p.assigned_packer_id,
              pl.packed_by, pl.packed_at, pl.packer_photos_url, pl.tracking_type,
-             pack_sal.created_at, test_sal.created_at
+             pack_sal.created_at, test_sal.created_at,
+             ship_out.ship_confirmed_at, ship_out.shipped_out_by, shipped_out_staff.name
   )`;
 
 // Search path variant: swaps the carrier-accepted gate for a packer-scan gate.

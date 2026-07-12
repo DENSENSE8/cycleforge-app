@@ -62,7 +62,7 @@ export function ZohoInboundStatusBanner() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['zoho-health'] });
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     },
   });
 

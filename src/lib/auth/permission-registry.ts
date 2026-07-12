@@ -169,6 +169,11 @@ export const PERMISSIONS = [
   // publish workflows. Non-destructive + reversible (a re-park is one scan away),
   // so it's friction-free — no stepUp.
   { id: 'studio.recover',           category: 'ops', label: 'Recover stuck workflow items (unpark)' },
+  // Template Platform Phase 4 curation gate: moderate org-submitted workflow
+  // templates for the public catalog (review queue, approve/reject). Distinct
+  // from studio.manage (author your OWN org's graphs) — this blesses another
+  // org's submission for every tenant, so it's a platform-curator privilege.
+  { id: 'studio.catalog.review',    category: 'ops', label: 'Review & curate submitted workflow templates' },
   { id: 'reports.view',             category: 'ops', label: 'View reports' },
   { id: 'reports.export',           category: 'ops', label: 'Export reports' },
   { id: 'print.label',              category: 'ops', label: 'Print labels' },

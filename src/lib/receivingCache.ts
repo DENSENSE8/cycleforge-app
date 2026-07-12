@@ -7,7 +7,7 @@
  * the same promise and get the same data when it resolves.
  *
  * The promise is cleared after resolution so that a manual refresh (e.g.
- * triggered by a usav-refresh-data event) always fetches fresh data. Because
+ * triggered by a app-refresh-data event) always fetches fresh data. Because
  * both components handle the refresh event synchronously in the same event-loop
  * turn, the first call creates a new promise and the second call shares it.
  */

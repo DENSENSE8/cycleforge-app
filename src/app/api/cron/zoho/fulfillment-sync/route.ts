@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         const perOrg = await forEachOrgWithProvider(
           'zoho',
           (orgId) => syncShippedOrdersToZoho({ since, dryRun: dryRunOverride, limit, orgId }),
-          { includeUsavTransitional: true },
+          { includeDogfoodTransitional: true },
         );
 
         const totals = { scanned: 0, completed: 0, skipped: 0, errored: 0 };

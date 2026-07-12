@@ -15,6 +15,7 @@
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { Search, Loader2 } from '@/components/Icons';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
+import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import { SearchResultRow, type SearchRowDensity } from './SearchResultRow';
 
 export interface AiQuickJumpResultsProps {
@@ -29,6 +30,10 @@ export interface AiQuickJumpResultsProps {
    * close a popover can ignore the event and let the link navigate.
    */
   onNavigate?: (hit: AiSearchHit, event: ReactMouseEvent) => void;
+  /** Highlighted order id (rep workbench rail selection). */
+  activeId?: number | null;
+  /** Per-order packout proof, keyed by order id (rep workbench rail only). */
+  packoutById?: Record<number, NearMatchPackout>;
   className?: string;
 }
 
@@ -37,6 +42,8 @@ export function AiQuickJumpResults({
   searching = false,
   density = 'compact',
   onNavigate,
+  activeId,
+  packoutById,
   className,
 }: AiQuickJumpResultsProps) {
   if (hits.length === 0 && !searching) return null;
@@ -54,7 +61,13 @@ export function AiQuickJumpResults({
       <ul className="divide-y divide-border-hairline">
         {hits.map((hit) => (
           <li key={`${hit.entityType}:${hit.id}`}>
-            <SearchResultRow hit={hit} density={density} onNavigate={onNavigate} />
+            <SearchResultRow
+              hit={hit}
+              density={density}
+              onNavigate={onNavigate}
+              active={hit.entityType === 'order' && activeId != null && hit.id === activeId}
+              packout={hit.entityType === 'order' ? packoutById?.[hit.id] : undefined}
+            />
           </li>
         ))}
       </ul>

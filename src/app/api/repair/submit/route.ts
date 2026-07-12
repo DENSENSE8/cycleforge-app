@@ -10,11 +10,10 @@ import { findOrCreateRepairCustomer, linkCustomerToRepair } from '@/lib/neon/cus
 import { put } from '@vercel/blob';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
     try {
-        const orgId = ctx.organizationId ?? USAV_ORG_ID;
+        const orgId = ctx.organizationId;
         const body = await req.json();
         const { customer, product, repairReasons, repairNotes, serialNumber, price, notes, assignedTechId, signatureDataUrl, signatureStrokes } = body;
         const normalizedProductTitle = String(product?.model || '').trim();

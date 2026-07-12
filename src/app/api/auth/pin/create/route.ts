@@ -4,7 +4,7 @@
  * Self-serve PIN creation for an unenrolled staff. Public endpoint that ONLY
  * succeeds when staff.pin_hash IS NULL — it cannot be used to reset or
  * overwrite an existing PIN. After setting the PIN, mints a session and sets
- * the usav_sid cookie so the user lands authenticated.
+ * the cf_sid session cookie so the user lands authenticated.
  *
  * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'phone' | 'personal', deviceLabel?: string }
  *
@@ -15,8 +15,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
+import { parseOrgSettings } from '@/lib/tenancy/settings';
 import { hashPin, isObviousPin, PinError } from '@/lib/auth/pin';
 import {
   createSession,
@@ -38,18 +38,6 @@ function clientIp(req: NextRequest): string | null {
 function asDeviceKind(raw: unknown): DeviceKind {
   if (raw === 'station' || raw === 'personal' || raw === 'phone') return raw;
   return 'station';
-}
-
-// Tenant scope: this public kiosk route must only enroll staff belonging to the
-// tenant the request is for. Mirror the staff-picker resolver — `x-tenant-slug`
-// (set by proxy.ts) → org; apex host → USAV (transitional); unknown slug → a
-// nil UUID so a cross-tenant staffId matches nothing. Without this, an attacker
-// can enroll an unenrolled staff in ANY org by guessing sequential ids.
-async function resolveOrgId(req: NextRequest): Promise<string> {
-  const slug = req.headers.get('x-tenant-slug');
-  if (!slug) return USAV_ORG_ID;
-  const org = await getOrganizationBySlug(slug);
-  return org?.id ?? '00000000-0000-0000-0000-000000000000';
 }
 
 export async function POST(req: NextRequest) {
@@ -86,7 +74,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Tenant scope: a staffId from another org matches no row here → 404.
-    const orgId = await resolveOrgId(req);
+    // Apex / unknown slug → nil org → the UPDATE below matches nothing → 404,
+    // so this public kiosk route can never enroll a dogfood tenant's staff.
+    const orgId = await resolveOrgIdFromRequest(req);
+    if (orgId === NIL_ORG_ID) {
+      return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 404 });
+    }
+
+    // Org policy: when requirePasskeyForNewStaff is on, new staff must enroll a
+    // passkey — self-serve PIN creation is refused so a PIN-only account can't
+    // slip past the stricter device policy.
+    const settingsR = await pool.query<{ settings: unknown }>(
+      `SELECT settings FROM organizations WHERE id = $1 LIMIT 1`,
+      [orgId],
+    );
+    if (parseOrgSettings(settingsR.rows[0]?.settings).requirePasskeyForNewStaff) {
+      return NextResponse.json({ error: 'PASSKEY_REQUIRED' }, { status: 403 });
+    }
 
     // Conditional update: only set if pin_hash IS NULL. If another request
     // beats us to it (or an admin enrolled them in the meantime), we get

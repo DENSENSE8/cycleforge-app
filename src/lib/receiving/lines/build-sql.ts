@@ -2,10 +2,18 @@
  * SQL builders for GET /api/receiving-lines (and its testing twin).
  *
  * Extracted VERBATIM from the route handler (roi-execution/03 #8). Every SQL
- * string, correlated-subquery fragment, param ordering, and view branch is a
- * byte-identical move of the old inline logic — build-sql.test.ts pins this
- * against a transcription of the legacy code. Pure + sync: async inputs
- * (feature flags, viewer identity) are resolved by the route and passed in.
+ * string, correlated-subquery fragment, param ordering, and view branch is
+ * pinned by build-sql.test.ts against a transcription of the legacy code.
+ * Pure + sync: async inputs (feature flags, viewer identity) are resolved by
+ * the route and passed in.
+ *
+ * Wave-2 street cutover (receiving spine refactor): every READ of a moved
+ * column goes through the 1:1 street tables — receiving_triage rt /
+ * receiving_unbox ru (carton grain) and receiving_line_testing rlt /
+ * receiving_line_zoho rz (line grain) — while writers still stamp the spine
+ * and DB triggers mirror at verified 0-drift parity. Output aliases are
+ * byte-identical to the spine era, so normalizeRow and clients are untouched.
+ * The fixture was regenerated with the same mechanical edits in the same PR.
  */
 import {
   NOT_ZOHO_RECEIVED_PREDICATE,
@@ -62,13 +70,13 @@ export function currentLineIsMatchSql(alias: string): string {
 }
 
 // Priority rank for the receiving "Prioritize" views (?sort=priority). Lower
-// rank sorts to the top. An explicitly-flagged carton (receiving.is_priority —
+// rank sorts to the top. An explicitly-flagged carton (receiving_carton.is_priority —
 // pending-order match or manual toggle) is rank 0 and leads everything. Next, an
 // unfound/untagged carton is the most urgent thing to triage (you can't act
 // until it's identified); once a platform is tagged the order is amazon → ebay →
 // goodwill; everything else trails. The platform half is derived at read time
-// from receiving.source_platform, so re-tagging a carton immediately
-// re-prioritizes it. References the `r` alias (the LATERAL receiving join in
+// from receiving_carton.source_platform, so re-tagging a carton immediately
+// re-prioritizes it. References the `r` alias (the LATERAL receiving_carton join in
 // every list query below).
 // A manual priority_tier override (0..3) wins outright via COALESCE; falls back
 // to the legacy is_priority boolean (rank 0), then the platform-derived rank.
@@ -89,13 +97,36 @@ const RECEIVING_PRIORITY_RANK_SQL = priorityRankSql({
 // the primary rank would silently reshuffle the entire live Prioritize tab the
 // moment this shipped. Mirrors receivingTriageLanePolicy's lane values
 // (src/lib/receiving/triage-lane-policy.ts) — keep in sync if that list changes.
-const RECEIVING_LANE_RANK_SQL = laneRankSql('r.priority_lane');
+const RECEIVING_LANE_RANK_SQL = laneRankSql('rt.priority_lane');
 
 /** `?id=<n>` — single row, full detail joins. Params: `[id, orgId]`. */
 export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
   return {
     sql:
       `SELECT rl.*,
+                -- Wave-2 street cutover: moved line-cluster columns are read
+                -- from their 1:1 street tables (receiving_line_testing rlt /
+                -- receiving_line_zoho rz); the duplicate output names override
+                -- the rl.* spine values (last column wins in pg row objects).
+                COALESCE(rlt.needs_test, false)              AS needs_test,
+                rlt.assigned_tech_id                         AS assigned_tech_id,
+                rlt.qa_status                                AS qa_status,
+                rlt.disposition_code                         AS disposition_code,
+                rlt.condition_grade                          AS condition_grade,
+                rlt.disposition_final                        AS disposition_final,
+                COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
+                rlt.condition_set_at                         AS condition_set_at,
+                rz.zoho_item_id                              AS zoho_item_id,
+                rz.zoho_line_item_id                         AS zoho_line_item_id,
+                rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,
+                rz.zoho_purchaseorder_id                     AS zoho_purchaseorder_id,
+                rz.zoho_purchaseorder_number                 AS zoho_purchaseorder_number,
+                rz.zoho_purchaseorder_number_norm            AS zoho_purchaseorder_number_norm,
+                rz.zoho_sync_source                          AS zoho_sync_source,
+                rz.zoho_last_modified_time                   AS zoho_last_modified_time,
+                rz.zoho_synced_at                            AS zoho_synced_at,
+                rz.zoho_notes                                AS zoho_notes,
+                rz.unit_price                                AS unit_price,
                 stn.tracking_number_raw AS receiving_tracking_number,
                 r.carrier,
                 r.source                     AS receiving_source,
@@ -103,20 +134,20 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 r.intake_type                AS receiving_intake_type,
                 COALESCE(r.is_priority, false) AS is_priority,
                 r.priority_tier                AS priority_tier,
-                r.triage_complete,
-                r.triage_completed_at::text    AS triage_completed_at,
-                r.unbox_only_intake,
-                r.staging_location_id,
-                r.priority_lane,
-                r.pairing_state,
+                COALESCE(rt.triage_complete, false) AS triage_complete,
+                rt.triage_completed_at::text    AS triage_completed_at,
+                COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
+                rt.staging_location_id,
+                rt.priority_lane,
+                COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
                 r.listing_url                AS receiving_listing_url,
-                r.received_at::text          AS receiving_received_at,
-                r.unboxed_at::text           AS receiving_unboxed_at,
-                r.received_by                AS receiving_received_by,
-                r.unboxed_by                 AS receiving_unboxed_by,
+                rt.door_received_at::text          AS receiving_received_at,
+                ru.unboxed_at::text           AS receiving_unboxed_at,
+                rt.door_received_by                AS receiving_received_by,
+                ru.unboxed_by                 AS receiving_unboxed_by,
                 staff_rb.name                AS received_by_name,
                 staff_ub.name                AS unboxed_by_name,
                 COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
@@ -138,11 +169,13 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 -- over the PO line's listing-style item_name and over the
                 -- marketplace catalog title — the Zoho SKU's own title governs.
                 (SELECT name FROM items
-                  WHERE zoho_item_id = rl.zoho_item_id AND status = 'active'
+                  WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count
-         FROM receiving_lines rl
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback. Partial
          -- unique index ux_receiving_zoho_po_matched (source='zoho_po') ensures
          -- at most one PO-matched receiving row per PO, so no dedup needed.
@@ -153,12 +186,12 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
          -- one, deterministically: direct FK wins, else prefer a row that
          -- actually carries a shipment, else the newest.
          LEFT JOIN LATERAL (
-           SELECT r.* FROM receiving r
+           SELECT r.* FROM receiving_carton r
             WHERE r.organization_id = rl.organization_id
               AND (r.id = rl.receiving_id
                OR (rl.receiving_id IS NULL
                    AND r.source = 'zoho_po'
-                   AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id)
+                   AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
                    AND r.source = 'ebay'
                    AND r.source_order_id = rl.source_order_id
@@ -168,14 +201,16 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                      r.id DESC
             LIMIT 1
          ) r ON TRUE
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN LATERAL (
             SELECT MAX(rs.scanned_at) AS last_scan
             FROM receiving_scans rs
             WHERE rs.receiving_id = r.id
          ) rs_agg ON TRUE
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-         LEFT JOIN staff staff_rb                ON staff_rb.id = r.received_by
-         LEFT JOIN staff staff_ub                ON staff_ub.id = r.unboxed_by
+         LEFT JOIN staff staff_rb                ON staff_rb.id = rt.door_received_by
+         LEFT JOIN staff staff_ub                ON staff_ub.id = ru.unboxed_by
          LEFT JOIN LATERAL (
            SELECT rs.scanned_at, rs.scanned_by
            FROM receiving_scans rs
@@ -204,7 +239,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
          LEFT JOIN sku_catalog sc                ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
                                                  AND GREATEST(
                                                        similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),
-                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rl.zoho_item_id AND status = 'active' LIMIT 1), '')))
+                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rz.zoho_item_id AND status = 'active' LIMIT 1), '')))
                                                      ) >= 0.25
          WHERE rl.id = $1 AND rl.organization_id = $2`,
     params: [id, orgId],
@@ -224,6 +259,29 @@ export function buildReceivingLinesByReceivingIdSql(
     lines: {
       sql:
         `SELECT rl.*,
+                -- Wave-2 street cutover: moved line-cluster columns are read
+                -- from their 1:1 street tables (receiving_line_testing rlt /
+                -- receiving_line_zoho rz); the duplicate output names override
+                -- the rl.* spine values (last column wins in pg row objects).
+                COALESCE(rlt.needs_test, false)              AS needs_test,
+                rlt.assigned_tech_id                         AS assigned_tech_id,
+                rlt.qa_status                                AS qa_status,
+                rlt.disposition_code                         AS disposition_code,
+                rlt.condition_grade                          AS condition_grade,
+                rlt.disposition_final                        AS disposition_final,
+                COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
+                rlt.condition_set_at                         AS condition_set_at,
+                rz.zoho_item_id                              AS zoho_item_id,
+                rz.zoho_line_item_id                         AS zoho_line_item_id,
+                rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,
+                rz.zoho_purchaseorder_id                     AS zoho_purchaseorder_id,
+                rz.zoho_purchaseorder_number                 AS zoho_purchaseorder_number,
+                rz.zoho_purchaseorder_number_norm            AS zoho_purchaseorder_number_norm,
+                rz.zoho_sync_source                          AS zoho_sync_source,
+                rz.zoho_last_modified_time                   AS zoho_last_modified_time,
+                rz.zoho_synced_at                            AS zoho_synced_at,
+                rz.zoho_notes                                AS zoho_notes,
+                rz.unit_price                                AS unit_price,
                   stn.tracking_number_raw AS receiving_tracking_number,
                   r.carrier,
                   r.source                     AS receiving_source,
@@ -235,10 +293,10 @@ export function buildReceivingLinesByReceivingIdSql(
                   r.support_notes              AS receiving_support_notes,
                   r.zoho_notes                 AS receiving_zoho_notes,
                   r.listing_url                AS receiving_listing_url,
-                  r.triage_complete,
-                  r.triage_completed_at::text    AS triage_completed_at,
-                  r.unbox_only_intake,
-                  r.received_at::text          AS receiving_received_at,
+                  COALESCE(rt.triage_complete, false) AS triage_complete,
+                  rt.triage_completed_at::text    AS triage_completed_at,
+                  COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
+                  rt.door_received_at::text          AS receiving_received_at,
                   -- Carton unbox stamp — REQUIRED. normalizeRow maps row.unboxed_at
                   -- ONLY from receiving_unboxed_at, so omitting it here returned
                   -- unboxed_at:null for every line on this path. The post-receive
@@ -247,7 +305,7 @@ export function buildReceivingLinesByReceivingIdSql(
                   -- clobbered the good unboxed_at with null → getUnboxActivityAt
                   -- collapsed → the just-received carton sank below the top-N and
                   -- DISAPPEARED. Mirror the other SELECT branches (view=activity).
-                  r.unboxed_at::text           AS receiving_unboxed_at,
+                  ru.unboxed_at::text           AS receiving_unboxed_at,
                   -- Scan-based "last touched" time, matching view=activity so
                   -- package-sibling refreshes merged into the rail keep the
                   -- correct timestamp (see single-row branch above).
@@ -263,12 +321,16 @@ export function buildReceivingLinesByReceivingIdSql(
                 -- over the PO line's listing-style item_name and over the
                 -- marketplace catalog title — the Zoho SKU's own title governs.
                 (SELECT name FROM items
-                  WHERE zoho_item_id = rl.zoho_item_id AND status = 'active'
+                  WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                   sc.id                        AS sku_catalog_id,
                   ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count
-           FROM receiving_lines rl
-           LEFT JOIN receiving r                   ON r.id  = rl.receiving_id AND r.organization_id = rl.organization_id
+           FROM receiving_line rl
+           LEFT JOIN receiving_carton r                   ON r.id  = rl.receiving_id AND r.organization_id = rl.organization_id
+           LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+           LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+           LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (
               SELECT MAX(rs.scanned_at) AS last_scan
               FROM receiving_scans rs
@@ -282,7 +344,7 @@ export function buildReceivingLinesByReceivingIdSql(
            LEFT JOIN sku_catalog sc                ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
                                                    AND GREATEST(
                                                          similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),
-                                                         similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rl.zoho_item_id AND status = 'active' LIMIT 1), '')))
+                                                         similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rz.zoho_item_id AND status = 'active' LIMIT 1), '')))
                                                        ) >= 0.25
            WHERE rl.receiving_id = $1 AND rl.organization_id = $2
            ORDER BY rl.id ASC`,
@@ -290,14 +352,16 @@ export function buildReceivingLinesByReceivingIdSql(
     },
     pkg: {
       sql:
-        `SELECT received_at::text AS received_at,
-                  unboxed_at::text AS unboxed_at,
-                  created_at::text AS created_at,
-                  return_platform::text AS return_platform,
-                  source_platform,
-                  COALESCE(is_return, false) AS is_return
-           FROM receiving
-           WHERE id = $1 AND organization_id = $2
+        `SELECT rt.door_received_at::text AS received_at,
+                  ru.unboxed_at::text AS unboxed_at,
+                  r.created_at::text AS created_at,
+                  r.return_platform::text AS return_platform,
+                  r.source_platform,
+                  COALESCE(r.is_return, false) AS is_return
+           FROM receiving_carton r
+           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+           LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+           WHERE r.id = $1 AND r.organization_id = $2
            LIMIT 1`,
       params,
     },
@@ -324,7 +388,7 @@ export interface ReceivingLinesListSqlInput {
 export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): BuiltListSql {
   const {
     search, searchField, searchScope, qaFilter, dispFilter, workflowFilter,
-    weekStart, weekEnd, view, deliveryStateFilter, poFrom, poTo,
+    view, deliveryStateFilter, poFrom, poTo,
     incomingSort, historySort, wantsPrioritySort, testerId, limit, offset,
     inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
   } = input.query;
@@ -354,8 +418,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     switch (searchField) {
       case 'po':
         conditions.push(
-          `(COALESCE(rl.zoho_purchaseorder_id::text, '') ILIKE $${idx}
-             OR COALESCE(rl.zoho_purchaseorder_number, '') ILIKE $${idx}
+          `(COALESCE(rz.zoho_purchaseorder_id::text, '') ILIKE $${idx}
+             OR COALESCE(rz.zoho_purchaseorder_number, '') ILIKE $${idx}
              OR COALESCE(rl.source_order_id, '') ILIKE $${idx}
              OR COALESCE(r.zoho_purchaseorder_number, '') ILIKE $${idx})`,
         );
@@ -374,7 +438,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       case 'sku':
         conditions.push(
           `(COALESCE(rl.sku, '') ILIKE $${idx}
-             OR COALESCE(rl.zoho_item_id, '') ILIKE $${idx})`,
+             OR COALESCE(rz.zoho_item_id, '') ILIKE $${idx})`,
         );
         values.push(p);
         idx++;
@@ -401,10 +465,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
         const orClauses = [
           `COALESCE(rl.item_name, '') ILIKE $${patternIdx}`,
           `COALESCE(rl.sku, '') ILIKE $${patternIdx}`,
-          `COALESCE(rl.zoho_purchaseorder_id::text, '') ILIKE $${patternIdx}`,
-          `COALESCE(rl.zoho_purchaseorder_number, '') ILIKE $${patternIdx}`,
+          `COALESCE(rz.zoho_purchaseorder_id::text, '') ILIKE $${patternIdx}`,
+          `COALESCE(rz.zoho_purchaseorder_number, '') ILIKE $${patternIdx}`,
           `COALESCE(rl.source_order_id, '') ILIKE $${patternIdx}`,
-          `COALESCE(rl.zoho_item_id, '') ILIKE $${patternIdx}`,
+          `COALESCE(rz.zoho_item_id, '') ILIKE $${patternIdx}`,
           `COALESCE(r.zoho_purchaseorder_number, '') ILIKE $${patternIdx}`,
           `COALESCE(stn.tracking_number_raw, '') ILIKE $${patternIdx}`,
           `COALESCE(stn.tracking_number_raw, '') ILIKE $${patternIdx}`,
@@ -440,11 +504,11 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     idx++;
   }
   if (qaFilter && QA_STATUSES.has(qaFilter)) {
-    conditions.push(`rl.qa_status = $${idx++}`);
+    conditions.push(`rlt.qa_status = $${idx++}`);
     values.push(qaFilter);
   }
   if (dispFilter && DISPOSITIONS.has(dispFilter)) {
-    conditions.push(`rl.disposition_code = $${idx++}`);
+    conditions.push(`rlt.disposition_code = $${idx++}`);
     values.push(dispFilter);
   }
   if (workflowFilter && WORKFLOW_STATUSES.has(workflowFilter)) {
@@ -456,7 +520,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   if (staffFilterRaw && Number.isFinite(staffFilterId) && staffFilterId > 0) {
     const unboxActorClause =
       view === 'unbox_opened'
-        ? ` OR r.unbox_opened_by = $${idx} OR EXISTS (
+        ? ` OR ru.opened_by = $${idx} OR EXISTS (
                SELECT 1 FROM ops_events oe_ub
                 WHERE oe_ub.organization_id = r.organization_id
                   AND oe_ub.entity_type = 'receiving'
@@ -466,7 +530,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
              )`
         : '';
     conditions.push(
-      `(r.received_by = $${idx} OR r.unboxed_by = $${idx} OR EXISTS (
+      `(rt.door_received_by = $${idx} OR ru.unboxed_by = $${idx} OR EXISTS (
            SELECT 1 FROM receiving_scans rs_staff
            WHERE rs_staff.receiving_id = r.id AND rs_staff.scanned_by = $${idx}
          )${unboxActorClause})`,
@@ -474,14 +538,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     values.push(staffFilterId);
     idx++;
   }
-  // `view` overrides week-range scoping. Otherwise week range still applies.
-  if (view === 'recent') {
-    // Recently scanned, not yet matched to a PO or received. MATCHED and
-    // anything further live in the Received tab.
-    conditions.push(
-      `rl.workflow_status IN ('EXPECTED','ARRIVED')`,
-    );
-  } else if (view === 'received') {
+  // `view` selects the WHERE arm; no/unknown view = the org-wide default set.
+  // (Wave-2 dead-arm removal: `view=recent` and the no-view ?week_start/
+  // ?week_end fallback had zero consumers and were deleted.)
+  if (view === 'received') {
     // "Received" = physically in the warehouse. Anything from MATCHED
     // onward qualifies (the row strip labels MATCHED as "RECEIVED").
     // Terminal fails (SCRAP, RTV, FAILED) are excluded — they land in
@@ -510,7 +570,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       `(
            rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
            OR COALESCE(rl.quantity_received, 0) > 0
-           OR r.unboxed_at IS NOT NULL
+           OR ru.unboxed_at IS NOT NULL
          )`,
     );
   } else if (view === 'scanned') {
@@ -529,9 +589,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       // receiving_scans row, so treat an existing scan as proof of arrival too.
       // Self-healing for rows scanned before the upsert was fixed; new scans now
       // stamp received_at directly.
-      `(r.received_at IS NOT NULL
+      `(rt.door_received_at IS NOT NULL
           OR EXISTS (SELECT 1 FROM receiving_scans rs_scanned WHERE rs_scanned.receiving_id = r.id))
-         AND r.unboxed_at IS NULL
+         AND ru.unboxed_at IS NULL
          -- Ops event spine: a carton that's been unboxed must never leak back
          -- into the triage "to unbox" queue even if legacy stamps (unboxed_at /
          -- qty_received / workflow_status) failed to roll up.
@@ -548,7 +608,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          -- …and the line has produced NO units. A serial_unit means the carton
          -- was already unboxed/labeled/received at the unit level — but a
          -- unit-level receive doesn't always roll up to the line's
-         -- quantity_received / workflow_status / receiving.unboxed_at, so those
+         -- quantity_received / workflow_status / receiving_carton.unboxed_at, so those
          -- alone let an already-unboxed carton leak back into the "to unbox"
          -- queue. Origin-line existence is the authoritative "this was opened"
          -- signal, so exclude it here.
@@ -599,17 +659,17 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     // scope to that tech's own assignments (assigned_tech_id) so each tech's
     // queue is theirs; unassigned units still show in the all-staff feed.
     conditions.push(
-      `rl.needs_test = true
+      `COALESCE(rlt.needs_test, false) = true
          AND (rl.workflow_status IS NULL
               OR rl.workflow_status NOT IN ('PASSED','DONE','FAILED','RTV','SCRAP'))
          AND (
            rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST')
            OR COALESCE(rl.quantity_received, 0) > 0
-           OR r.unboxed_at IS NOT NULL
+           OR ru.unboxed_at IS NOT NULL
          )`,
     );
     if (Number.isFinite(testerId) && testerId > 0) {
-      conditions.push(`rl.assigned_tech_id = $${idx}`);
+      conditions.push(`rlt.assigned_tech_id = $${idx}`);
       values.push(testerId);
       idx++;
     }
@@ -640,7 +700,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       conditions.push(
         `rl.workflow_status = 'EXPECTED'
            AND COALESCE(rl.quantity_received, 0) = 0
-           AND rl.zoho_purchaseorder_id IS NOT NULL
+           AND rz.zoho_purchaseorder_id IS NOT NULL
            -- Hide POs Zoho now reports received/closed/cancelled (mirror status),
            -- so a received order drops off Incoming after a Refresh-Zoho sync.
            AND ${NOT_ZOHO_RECEIVED_PREDICATE}
@@ -662,9 +722,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
         `rl.workflow_status = 'EXPECTED'
            AND COALESCE(rl.quantity_received, 0) = 0
            AND (
-             (rl.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
+             (rz.zoho_purchaseorder_id IS NOT NULL AND ${NOT_ZOHO_RECEIVED_PREDICATE})
              OR
-             (rl.zoho_purchaseorder_id IS NULL
+             (rz.zoho_purchaseorder_id IS NULL
               AND rl.inbound_source_type = 'ebay'
               AND ${notInboundMirrorTerminalPredicate('ebay')})
            )
@@ -678,7 +738,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       }
       // ?link=zoho_pending — eBay lines still awaiting their Zoho PO.
       if (incomingLinkParam === 'zoho_pending') {
-        conditions.push(`rl.zoho_purchaseorder_id IS NULL`);
+        conditions.push(`rz.zoho_purchaseorder_id IS NULL`);
       }
     }
 
@@ -702,7 +762,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       conditions.push(
         `stn.is_delivered = true
            AND COALESCE(rl.quantity_received, 0) = 0
-           AND (r.id IS NULL OR r.unboxed_at IS NULL)
+           AND (r.id IS NULL OR ru.unboxed_at IS NULL)
            AND rl.workflow_status NOT IN (
              'UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE','FAILED','RTV','SCRAP'
            )`,
@@ -715,7 +775,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       conditions.push(
         `EXISTS (
              SELECT 1 FROM email_delivery_signals eds
-              WHERE eds.order_number_norm = rl.zoho_purchaseorder_number_norm
+              WHERE eds.order_number_norm = rz.zoho_purchaseorder_number_norm
                 AND eds.organization_id = rl.organization_id
                 AND eds.delivered_at > NOW() - interval '30 days'
            )
@@ -783,16 +843,14 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       );
       values.push(poTo);
     }
-  } else if (/^\d{4}-\d{2}-\d{2}$/.test(weekStart) && /^\d{4}-\d{2}-\d{2}$/.test(weekEnd)) {
-    conditions.push(`rl.created_at >= $${idx++}::date AND rl.created_at < ($${idx++}::date + INTERVAL '1 day')`);
-    values.push(weekStart, weekEnd);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  // view=recent sorts by the most recent tracking→PO pairing event for the
-  // carton (max receiving_scans.scanned_at), so freshly-paired lines rise
-  // to the top. Falls back to receiving.received_at, then rl.created_at.
+  // view=all/activity sort by the most recent tracking→PO pairing event for
+  // the carton (max receiving_scans.scanned_at), so freshly-paired lines rise
+  // to the top. Falls back to the triage door stamp (rt.door_received_at),
+  // then rl.created_at.
   // view=received sorts by updated_at (when the line was last touched).
   // Default mirrors the prior behavior.
   // Incoming uses its own sort axis driven by `?sort=`:
@@ -812,9 +870,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   let orderBy =
     view === 'incoming'
       ? incomingOrderBy
-      : view === 'recent' || view === 'all' || view === 'activity'
+      : view === 'all' || view === 'activity'
         ? (historySort === 'unboxed_newest'
-            ? `ORDER BY r.unboxed_at::text DESC NULLS LAST, rl.id DESC`
+            ? `ORDER BY ru.unboxed_at::text DESC NULLS LAST, rl.id DESC`
             : historySort === 'received_newest'
               // "Received" = the line's terminal DONE transition. Not yet-DONE
               // lines have a NULL received_done_at and sort last.
@@ -823,16 +881,16 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
               // GREATEST skips NULLs in Postgres, so this is "unbox time or
               // last line write, whichever is later"; created_at backstops
               // rows with neither.
-              ? `ORDER BY COALESCE(GREATEST(r.unboxed_at, rl.updated_at)::text, rl.created_at::text) DESC NULLS LAST, rl.id DESC`
+              ? `ORDER BY COALESCE(GREATEST(ru.unboxed_at, rl.updated_at)::text, rl.created_at::text) DESC NULLS LAST, rl.id DESC`
             : historySort === 'scanned_oldest'
-              ? `ORDER BY COALESCE(scan_first.scanned_at::text, r.received_at::text, rl.created_at::text) ASC, rl.id ASC`
-              : `ORDER BY COALESCE(scan_first.scanned_at::text, r.received_at::text, rl.created_at::text) DESC, rl.id DESC`)
+              ? `ORDER BY COALESCE(scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) ASC, rl.id ASC`
+              : `ORDER BY COALESCE(scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) DESC, rl.id DESC`)
         : view === 'scanned'
           // Newest door-scan first — the triage to-do reads like an inbox.
-          ? `ORDER BY r.received_at::text DESC NULLS LAST, rl.id DESC`
+          ? `ORDER BY rt.door_received_at::text DESC NULLS LAST, rl.id DESC`
         : view === 'unbox_opened'
           // Newest Unbox-surface scan first — matches the Unboxed sidebar sort.
-          ? `ORDER BY COALESCE(r.unbox_opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, r.received_at::text, rl.created_at::text) DESC NULLS LAST, rl.id DESC`
+          ? `ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) DESC NULLS LAST, rl.id DESC`
         : view === 'testing'
           // Sort the "tested" feed by the SAME verdict time the rail renders
           // (tr_agg.tested_at) so the timeline reads monotonically. Ordering by
@@ -844,7 +902,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
             // with the freshest units at the top. Unbox time is the truest
             // "just arrived for testing" axis; fall back to the door scan,
             // then the line's own write/create time.
-            ? `ORDER BY COALESCE(r.unboxed_at, r.received_at, rl.updated_at, rl.created_at)::text DESC NULLS LAST, rl.id DESC`
+            ? `ORDER BY COALESCE(ru.unboxed_at, rt.door_received_at, rl.updated_at, rl.created_at)::text DESC NULLS LAST, rl.id DESC`
           : view === 'viewed'
             // Newest-opened first — your recents read like a back button.
             ? (viewedParamIdx > 0
@@ -852,20 +910,20 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 : `ORDER BY rl.id DESC`)
           : view === 'received'
             ? `ORDER BY COALESCE(rl.updated_at::text, rl.created_at::text) DESC, rl.id DESC`
-            : `ORDER BY COALESCE(rl.zoho_last_modified_time, rl.created_at::text) DESC, rl.id DESC`;
+            : `ORDER BY COALESCE(rz.zoho_last_modified_time, rl.created_at::text) DESC, rl.id DESC`;
   // ?sort=priority: source-platform rank first, recency second. Scoped to
   // view=scanned — the feed behind both Prioritize surfaces (triage Prioritize
   // tab + unbox Prioritize toggle). Deliberately NOT applied to activity/all:
   // those append unmatched-carton placeholders and re-sort in JS by recent
   // activity (below), which would silently override the priority order. scanned
   // skips both, so the SQL order is the final order. rs_agg isn't joined for
-  // scanned, so the recency tiebreak uses received_at.
+  // scanned, so the recency tiebreak uses the triage door stamp.
   if (wantsPrioritySort && view === 'scanned') {
-    orderBy = `ORDER BY ${RECEIVING_PRIORITY_RANK_SQL} ASC, ${RECEIVING_LANE_RANK_SQL} ASC, r.received_at::text DESC NULLS LAST, rl.id DESC`;
+    orderBy = `ORDER BY ${RECEIVING_PRIORITY_RANK_SQL} ASC, ${RECEIVING_LANE_RANK_SQL} ASC, rt.door_received_at::text DESC NULLS LAST, rl.id DESC`;
   }
-  // The lateral aggregate is needed for view=recent and view=all so the
+  // The lateral aggregate is needed for view=all and view=activity so the
   // most recently paired cartons bubble up. Cheap at this scale.
-  const recentScansJoin = view === 'recent' || view === 'all' || view === 'activity' || view === 'unbox_opened'
+  const recentScansJoin = view === 'all' || view === 'activity' || view === 'unbox_opened'
     ? `LEFT JOIN LATERAL (
             SELECT MAX(rs.scanned_at) AS last_scan
             FROM receiving_scans rs
@@ -886,7 +944,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // joined for view=unbox_opened (see unboxOpenedJoin); the column is the query
   // SoT, the ops_event the legacy fallback — same COALESCE the Overview uses.
   const unboxOpenedSelect = view === 'unbox_opened'
-    ? `, COALESCE(r.unbox_opened_at, unbox_open.unbox_opened_at)::text AS unbox_opened_at`
+    ? `, COALESCE(ru.opened_at, unbox_open.unbox_opened_at)::text AS unbox_opened_at`
     : '';
 
   // Fetch extra line rows when `view=all` so merged Zoho-less placeholders
@@ -894,7 +952,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   const lineFetchLimit = view === 'all' ? Math.min(limit + 200, 600) : limit;
   values.push(lineFetchLimit, offset);
 
-  const lastScanSelect = view === 'recent' || view === 'all' || view === 'activity'
+  const lastScanSelect = view === 'all' || view === 'activity'
     ? `, rs_agg.last_scan::text AS last_scan_at`
     : '';
 
@@ -913,7 +971,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // feed is ordered by so the rail renders "received Xm ago" matching the sort
   // order (mapRow folds needs_test_at into last_activity_at first).
   const needsTestSelect = view === 'needs-test'
-    ? `, COALESCE(r.unboxed_at, r.received_at, rl.updated_at, rl.created_at)::text AS needs_test_at`
+    ? `, COALESCE(ru.unboxed_at, rt.door_received_at, rl.updated_at, rl.created_at)::text AS needs_test_at`
     : '';
   const testedAggJoin = view === 'testing'
     ? `LEFT JOIN LATERAL (
@@ -941,7 +999,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                   WHEN stn.is_delivered = true
                        AND ${SHIPMENT_SCANNED_PREDICATE}
                        AND COALESCE(rl.quantity_received, 0) = 0
-                       AND r.unboxed_at IS NULL
+                       AND ru.unboxed_at IS NULL
                        AND rl.workflow_status NOT IN (
                          'UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE','FAILED','RTV','SCRAP'
                        )
@@ -1003,10 +1061,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                WHERE v.receiving_line_id = rl.id AND v.staff_id = $${viewedParamIdx})::text AS viewed_at`
       : '';
   const incomingExtrasJoin = needsZohoMirror
-    ? `LEFT JOIN zoho_po_mirror mirror ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+    ? `LEFT JOIN zoho_po_mirror mirror ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
        LEFT JOIN LATERAL (
          SELECT e.event_city, e.event_postal_code
-           FROM shipping_tracking_events e
+           FROM shipment_tracking_events e
           WHERE e.shipment_id = stn.id
           ORDER BY e.event_occurred_at DESC NULLS LAST, e.id DESC
           LIMIT 1
@@ -1029,12 +1087,35 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 
   const listSql =
     `SELECT rl.*,
+                -- Wave-2 street cutover: moved line-cluster columns are read
+                -- from their 1:1 street tables (receiving_line_testing rlt /
+                -- receiving_line_zoho rz); the duplicate output names override
+                -- the rl.* spine values (last column wins in pg row objects).
+                COALESCE(rlt.needs_test, false)              AS needs_test,
+                rlt.assigned_tech_id                         AS assigned_tech_id,
+                rlt.qa_status                                AS qa_status,
+                rlt.disposition_code                         AS disposition_code,
+                rlt.condition_grade                          AS condition_grade,
+                rlt.disposition_final                        AS disposition_final,
+                COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
+                rlt.condition_set_at                         AS condition_set_at,
+                rz.zoho_item_id                              AS zoho_item_id,
+                rz.zoho_line_item_id                         AS zoho_line_item_id,
+                rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,
+                rz.zoho_purchaseorder_id                     AS zoho_purchaseorder_id,
+                rz.zoho_purchaseorder_number                 AS zoho_purchaseorder_number,
+                rz.zoho_purchaseorder_number_norm            AS zoho_purchaseorder_number_norm,
+                rz.zoho_sync_source                          AS zoho_sync_source,
+                rz.zoho_last_modified_time                   AS zoho_last_modified_time,
+                rz.zoho_synced_at                            AS zoho_synced_at,
+                rz.zoho_notes                                AS zoho_notes,
+                rz.unit_price                                AS unit_price,
                 stn.tracking_number_raw AS receiving_tracking_number,
                 r.carrier,
-                r.received_at::text          AS receiving_received_at,
-                r.unboxed_at::text           AS receiving_unboxed_at,
-                r.received_by                AS receiving_received_by,
-                r.unboxed_by                 AS receiving_unboxed_by,
+                rt.door_received_at::text          AS receiving_received_at,
+                ru.unboxed_at::text           AS receiving_unboxed_at,
+                rt.door_received_by                AS receiving_received_by,
+                ru.unboxed_by                 AS receiving_unboxed_by,
                 staff_rb.name                AS received_by_name,
                 staff_ub.name                AS unboxed_by_name,
                 -- first_scanned_at is the genuine door/tracking scan ONLY. It feeds
@@ -1050,12 +1131,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 r.intake_type                AS receiving_intake_type,
                 COALESCE(r.is_priority, false) AS is_priority,
                 r.priority_tier                AS priority_tier,
-                r.triage_complete,
-                r.triage_completed_at::text    AS triage_completed_at,
-                r.unbox_only_intake,
-                r.staging_location_id,
-                r.priority_lane,
-                r.pairing_state,
+                COALESCE(rt.triage_complete, false) AS triage_complete,
+                rt.triage_completed_at::text    AS triage_completed_at,
+                COALESCE(ru.intake_path = 'unbox_only', false) AS unbox_only_intake,
+                rt.staging_location_id,
+                rt.priority_lane,
+                COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
                 r.zoho_purchaseorder_number  AS receiving_zoho_purchaseorder_number,
                 r.support_notes              AS receiving_support_notes,
                 r.zoho_notes                 AS receiving_zoho_notes,
@@ -1071,7 +1152,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 -- over the PO line's listing-style item_name and over the
                 -- marketplace catalog title — the Zoho SKU's own title governs.
                 (SELECT name FROM items
-                  WHERE zoho_item_id = rl.zoho_item_id AND status = 'active'
+                  WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count
@@ -1083,7 +1164,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 ${platformAccountSelect}
                 ${viewedAtSelect}
                 ${unboxOpenedSelect}
-         FROM receiving_lines rl
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          -- Soft JOIN: direct FK when set, else PO#-based fallback (see note above).
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po
@@ -1092,12 +1175,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          -- one, deterministically: direct FK wins, else prefer a row that
          -- actually carries a shipment, else the newest.
          LEFT JOIN LATERAL (
-           SELECT r.* FROM receiving r
+           SELECT r.* FROM receiving_carton r
             WHERE r.organization_id = rl.organization_id
               AND (r.id = rl.receiving_id
                OR (rl.receiving_id IS NULL
                    AND r.source = 'zoho_po'
-                   AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id)
+                   AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
                    AND r.source = 'ebay'
                    AND r.source_order_id = rl.source_order_id
@@ -1107,6 +1190,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                      r.id DESC
             LIMIT 1
          ) r ON TRUE
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          -- sku_catalog SKU-string join pinned to the line's org (cross-tenant SKU collision).
          -- Title-guarded too: only attach when the catalog row is the SAME
@@ -1115,10 +1200,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          LEFT JOIN sku_catalog sc                ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
                                                  AND GREATEST(
                                                        similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),
-                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rl.zoho_item_id AND status = 'active' LIMIT 1), '')))
+                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rz.zoho_item_id AND status = 'active' LIMIT 1), '')))
                                                      ) >= 0.25
-         LEFT JOIN staff staff_rb                ON staff_rb.id = r.received_by
-         LEFT JOIN staff staff_ub                ON staff_ub.id = r.unboxed_by
+         LEFT JOIN staff staff_rb                ON staff_rb.id = rt.door_received_by
+         LEFT JOIN staff staff_ub                ON staff_ub.id = ru.unboxed_by
          LEFT JOIN LATERAL (
            SELECT rs.scanned_at, rs.scanned_by
            FROM receiving_scans rs
@@ -1147,7 +1232,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          LIMIT $${idx} OFFSET $${idx + 1}`;
 
   const countSql =
-    `SELECT COUNT(*) AS total FROM receiving_lines rl
+    `SELECT COUNT(*) AS total FROM receiving_line rl
+         LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po
          -- receiving rows, the old ON-clause matched them all (row
@@ -1155,12 +1242,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          -- one, deterministically: direct FK wins, else prefer a row that
          -- actually carries a shipment, else the newest.
          LEFT JOIN LATERAL (
-           SELECT r.* FROM receiving r
+           SELECT r.* FROM receiving_carton r
             WHERE r.organization_id = rl.organization_id
               AND (r.id = rl.receiving_id
                OR (rl.receiving_id IS NULL
                    AND r.source = 'zoho_po'
-                   AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id)
+                   AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
                OR (rl.receiving_id IS NULL
                    AND r.source = 'ebay'
                    AND r.source_order_id = rl.source_order_id
@@ -1170,6 +1257,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                      r.id DESC
             LIMIT 1
          ) r ON TRUE
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          ${incomingExtrasJoin}
          ${where}`;
@@ -1182,7 +1271,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
 
 /**
  * Unmatched/unfound cartons live in the `receiving` table with no
- * `receiving_lines` row yet, so they never come back from the main query.
+ * `receiving_line` row yet, so they never come back from the main query.
  * They're appended as placeholder rows for `all` AND `activity` — a scanned
  * unfound carton has been physically touched, so it belongs in the
  * activity feed that backs both the History table and the recent rail.
@@ -1231,8 +1320,8 @@ export function buildUnmatchedPlaceholdersSql(
         `SELECT r.id,
                   stn.tracking_number_raw AS receiving_tracking_number,
                   r.carrier,
-                  r.received_at::text          AS receiving_received_at,
-                  r.unboxed_at::text           AS receiving_unboxed_at,
+                  rt.door_received_at::text          AS receiving_received_at,
+                  ru.unboxed_at::text           AS receiving_unboxed_at,
                   r.created_at::text           AS created_at,
                   r.support_notes              AS receiving_support_notes,
                   r.zoho_notes                 AS receiving_zoho_notes,
@@ -1250,10 +1339,12 @@ export function buildUnmatchedPlaceholdersSql(
                   stn.delivered_at::text       AS shipment_delivered_at,
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ops_scan.last_scanned_at, rs_agg.last_scan)::text       AS last_scan_at,
-                  COALESCE(r.unbox_opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
+                  COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
                 ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count
-           FROM receiving r
+           FROM receiving_carton r
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+           LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (
                SELECT rs.scanned_at, rs.scanned_by
                FROM receiving_scans rs
@@ -1287,12 +1378,12 @@ export function buildUnmatchedPlaceholdersSql(
            WHERE r.organization_id = $1
              AND r.source IN ('unmatched', 'local_pickup')
              AND NOT EXISTS (
-               SELECT 1 FROM receiving_lines rl
+               SELECT 1 FROM receiving_line rl
                 WHERE rl.receiving_id = r.id
                   AND rl.organization_id = r.organization_id
              )
              ${unmatchedSearchSql}
-           ORDER BY COALESCE(rs_agg.last_scan::text, r.received_at::text, r.created_at::text) DESC NULLS LAST,
+           ORDER BY COALESCE(rs_agg.last_scan::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`,
       params: unmatchedSearchVals,
@@ -1300,12 +1391,12 @@ export function buildUnmatchedPlaceholdersSql(
     count: {
       sql:
         `SELECT COUNT(*)::bigint AS n
-             FROM receiving r
+             FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
             WHERE r.organization_id = $1
               AND r.source IN ('unmatched', 'local_pickup')
               AND NOT EXISTS (
-                SELECT 1 FROM receiving_lines rl
+                SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id
                    AND rl.organization_id = r.organization_id
               )
@@ -1359,8 +1450,8 @@ export function buildUnboxOpenedPlaceholdersSql(
         `SELECT r.id,
                   stn.tracking_number_raw AS receiving_tracking_number,
                   r.carrier,
-                  r.received_at::text          AS receiving_received_at,
-                  r.unboxed_at::text           AS receiving_unboxed_at,
+                  rt.door_received_at::text          AS receiving_received_at,
+                  ru.unboxed_at::text           AS receiving_unboxed_at,
                   r.created_at::text           AS created_at,
                   r.support_notes              AS receiving_support_notes,
                   r.zoho_notes                 AS receiving_zoho_notes,
@@ -1377,10 +1468,12 @@ export function buildUnboxOpenedPlaceholdersSql(
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at::text       AS shipment_delivered_at,
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
-                  COALESCE(r.unbox_opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
+                  COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
                   ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count
-           FROM receiving r
+           FROM receiving_carton r
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+           LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (
                SELECT rs.scanned_at, rs.scanned_by
                FROM receiving_scans rs
@@ -1409,12 +1502,12 @@ export function buildUnboxOpenedPlaceholdersSql(
            WHERE r.organization_id = $1
              AND ${UNBOX_OPENED_PREDICATE_SQL}
              AND NOT EXISTS (
-               SELECT 1 FROM receiving_lines rl
+               SELECT 1 FROM receiving_line rl
                 WHERE rl.receiving_id = r.id
                   AND rl.organization_id = r.organization_id
              )
              ${unboxSearchSql}
-           ORDER BY COALESCE(r.unbox_opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, r.received_at::text, r.created_at::text) DESC NULLS LAST,
+           ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`,
       params: unboxSearchVals,
@@ -1422,12 +1515,13 @@ export function buildUnboxOpenedPlaceholdersSql(
     count: {
       sql:
         `SELECT COUNT(*)::bigint AS n
-             FROM receiving r
+             FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+             LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
             WHERE r.organization_id = $1
               AND ${UNBOX_OPENED_PREDICATE_SQL}
               AND NOT EXISTS (
-                SELECT 1 FROM receiving_lines rl
+                SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id
                    AND rl.organization_id = r.organization_id
               )

@@ -76,12 +76,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const mirror = await syncOnePoMirror(poId, ctx.organizationId);
 
     // 2. Shipment re-poll, if this PO's receiving row has one linked.
-    //    receiving is tenant-owned — scope to this org so a PO id from another
+    //    receiving_carton is tenant-owned — scope to this org so a PO id from another
     //    tenant can't resolve a foreign shipment to re-poll.
     const recvRes = await tenantQuery<{ shipment_id: number | null }>(
       ctx.organizationId,
       `SELECT r.shipment_id
-         FROM receiving r
+         FROM receiving_carton r
         WHERE r.source = 'zoho_po'
           AND r.zoho_purchaseorder_id = $1
           AND r.organization_id = $2

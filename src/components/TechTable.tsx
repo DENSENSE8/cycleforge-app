@@ -24,6 +24,7 @@ import {
 import { techRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { formatTechCopyRow, TECH_COPY_HEADER } from '@/lib/station/format-station-copy-row';
 import { TECH_HISTORY_SELECTION_SCOPE } from '@/lib/selection/station-scopes';
+import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
 
 const TECH_LANE_ICON: Record<TechLaneIconKey, React.ComponentType<{ className?: string }>> = {
   clock: Clock,
@@ -138,6 +139,7 @@ export function TechTable({ testedBy }: TechTableProps) {
         savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
         savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
         emptyMessage="No tech records found"
+        firstRunEmpty={<ContextualEmptyState state="no-work" />}
         pipeline={{
           records: orderedRecords,
           lanes: TECH_LANES,
@@ -170,6 +172,7 @@ export function TechTable({ testedBy }: TechTableProps) {
       onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
       daySections={daySections}
       emptyMessage="No tech records found"
+      firstRunEmpty={<ContextualEmptyState state="no-work" />}
       scrollRef={scrollRef}
       renderRow={renderRow}
       tableId="tech"

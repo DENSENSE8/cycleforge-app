@@ -19,7 +19,7 @@ import {
   resolveUsavLegacyZohoCredentials,
   type ZohoCredentials,
 } from '@/lib/integrations/credentials';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import { accountsDomain, buildZohoUrl, getInventoryBaseUrl } from '@/lib/zoho/url';
 
 export type { ZohoCredentials };
@@ -54,7 +54,7 @@ function isComplete(creds: ZohoCredentials | null | undefined): creds is ZohoCre
  * ZOHO_* env vars; refresh token from ZOHO_REFRESH_TOKEN env or ebay_accounts.ZOHO_MAIN.
  */
 async function loadLegacyZohoCredentials(orgId: OrgId): Promise<ZohoCredentials | null> {
-  if (orgId !== USAV_ORG_ID) return null;
+  if (orgId !== DOGFOOD_ORG_ID) return null;
   return resolveUsavLegacyZohoCredentials();
 }
 

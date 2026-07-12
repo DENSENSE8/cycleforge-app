@@ -310,7 +310,7 @@ are text. Renaming a bin can silently orphan a unit's location.
 
 ## 9. Consolidate audit + scan-resolution duplication (lower priority)
 
-- **Audit:** four systems coexist (`audit_logs` normalized + 69 routes, `auth_audit`, `station_activity_logs`, and ad-hoc JSONB `receiving_lines.disposition_audit` / `orders.status_history`). Normalize the JSONB trails into `audit_logs` rows; keep the other three (they serve distinct purposes). Aligns with `docs/audit-trail-anchor-plan.md`.
+- **Audit:** four systems coexist (`audit_logs` normalized + 69 routes, `auth_audit`, `station_activity_logs`, and ad-hoc JSONB `receiving_lines.disposition_audit` / `orders.status_history`). Normalize the JSONB trails into `audit_logs` rows; keep the other three (they serve distinct purposes). Aligns with the shipped audit-trail-anchor work.
 - **Scan resolution:** `scan-resolver.ts` is the canonical classifier, but `barcode-routing.ts` re-defines GS1 AI regexes and `testing/resolve-testing-scan.ts` does ad-hoc API matching. Make `scan-resolver.ts` the single source; have the others compose it. (Ties to the `[[barcode-routing]]` GS1 work.)
 
 ---

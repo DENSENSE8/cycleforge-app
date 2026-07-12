@@ -15,7 +15,7 @@
  *     Resolves the order by ORDER NUMBER (no serial, so no allocation flip) and
  *     persists the same carton/line linkage.
  *
- * persistReturnLinkage (shared) writes: receiving_lines.source_order_id +
+ * persistReturnLinkage (shared) writes: receiving_line.source_order_id +
  * source_system + receiving_type='RETURN' + listing_url, the receiving_line_return
  * typed fact, and promotes an unfound carton → found RETURN (is_return,
  * return_platform, intake_type='RETURN', source unmatched→zoho_po with the order#
@@ -32,8 +32,10 @@ import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolvePriorOutbound, normalizeSerial, upsertSerialUnit } from '@/lib/neon/serial-units-queries';
 import { attachSerialToLine } from '@/lib/receiving/serial-attach';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { upsertReceivingLineReturn } from '@/lib/receiving/facts/narrow';
+import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { resolveReceivingExceptionsByReceivingId } from '@/lib/tracking-exceptions';
 import { recordReceivingException } from '@/lib/receiving/exceptions';
 import { getExternalUrlByItemNumber, getPlatformKeyByItemNumber } from '@/utils/external-item-url';
@@ -130,6 +132,11 @@ type PersistLinkageDeps = {
   upsertReceivingLineReturn: typeof upsertReceivingLineReturn;
   resolveReceivingExceptionsByReceivingId: (receivingId: number, client: PoolClient) => Promise<number>;
   listingUrlForItemNumber: (itemNumber: string | null | undefined) => string | null;
+  /** Status chokepoint (Step D) — the only writer of workflow_status. */
+  transitionLine: typeof transitionReceivingLine;
+  /** Carton unbox street writer (Wave-3 inversion) — the unboxed stamp lives
+   *  on receiving_unbox now, not the spine. Injected for DB-free tests. */
+  upsertUnbox: typeof upsertReceivingUnbox;
 };
 
 // ─── Platform mapping ──────────────────────────────────────────────────────────
@@ -176,7 +183,13 @@ function resolveReturnPlatformCols(
  */
 export async function persistReturnLinkage(
   client: PoolClient,
-  params: { receivingLineId: number; receivingId: number | null; order: ReturnLinkageOrder; reason: string },
+  params: {
+    receivingLineId: number;
+    receivingId: number | null;
+    order: ReturnLinkageOrder;
+    reason: string;
+    actorStaffId?: number | null;
+  },
   orgId: OrgId,
   deps: PersistLinkageDeps,
 ): Promise<ReturnLinkagePersisted> {
@@ -189,7 +202,7 @@ export async function persistReturnLinkage(
   if (receivingId != null) {
     const cr = await client.query<CartonState>(
       `SELECT source, zoho_purchaseorder_id, source_platform
-         FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+         FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, orgId],
     );
     carton = cr.rows[0];
@@ -200,29 +213,49 @@ export async function persistReturnLinkage(
     return { eligible: false, promotedToFound: false, listingUrl, returnPlatform, sourcePlatform, workflowStatus: null };
   }
 
-  // Per-line source order + typed RETURN (lights up the existing RETURN UI).
-  // A return is RECEIVED by the act of processing it (there is no Zoho-PO
-  // receive step), so advance a pre-receive line → UNBOXED (the enum's
-  // "physically received" state; the UI labels MATCHED/UNBOXED+ as RECEIVED).
-  // Guarded so it never regresses a tested/DONE line. Stock + quantity stay
-  // owned by the Receive action — this only moves the line off "scanned".
+  // Per-line source order linkage (lights up the existing RETURN UI). The
+  // linkage UPDATE deliberately does NOT list workflow_status, so the coarse
+  // trigger no longer fires (and can't spuriously stamp lifecycle timestamps)
+  // on a line whose status isn't changing. The row lock this UPDATE takes also
+  // covers the status read in RETURNING.
   const lineUpd = await client.query<{ workflow_status: string | null }>(
-    `UPDATE receiving_lines
+    `UPDATE receiving_line
         SET source_order_id   = $2,
             source_system     = COALESCE(source_system, $3),
             receiving_type    = 'RETURN',
             listing_url       = COALESCE(listing_url, $4),
             listing_reference = COALESCE(listing_reference, $5),
-            workflow_status   = CASE
-              WHEN workflow_status IN ('EXPECTED','ARRIVED','MATCHED')
-                THEN 'UNBOXED'::inbound_workflow_status_enum
-              ELSE workflow_status END,
             updated_at        = NOW()
       WHERE id = $1 AND organization_id = $6
       RETURNING workflow_status::text AS workflow_status`,
     [receivingLineId, order.orderId, sourcePlatform, listingUrl, order.itemNumber, orgId],
   );
-  const workflowStatus = lineUpd.rows[0]?.workflow_status ?? null;
+  const currentStatus = lineUpd.rows[0]?.workflow_status ?? null;
+
+  // A return is RECEIVED by the act of processing it (there is no Zoho-PO
+  // receive step), so advance a pre-receive line → UNBOXED (the enum's
+  // "physically received" state; the UI labels MATCHED/UNBOXED+ as RECEIVED).
+  // Check-and-skip so a tested/DONE line is never regressed and an identity
+  // write never re-fires the coarse trigger. skipEvent: both callers record
+  // their own richer inventory_event after this returns (Step D fold).
+  let workflowStatus = currentStatus;
+  if (currentStatus === 'EXPECTED' || currentStatus === 'ARRIVED' || currentStatus === 'MATCHED') {
+    const tr = await deps.transitionLine(
+      {
+        receivingLineId,
+        to: 'UNBOXED',
+        actorStaffId: params.actorStaffId ?? null,
+        skipEvent: true,
+      },
+      client,
+      orgId,
+    );
+    if (tr.ok) {
+      workflowStatus = tr.to;
+    } else {
+      console.warn('persistReturnLinkage: UNBOXED advance declined (kept current status)', tr);
+    }
+  }
 
   // Typed 1:1 return fact, on the transaction client so it commits atomically.
   const txDeps = {
@@ -238,23 +271,32 @@ export async function persistReturnLinkage(
   // Promote the carton: flag the return + platform + type, flip an unmatched
   // carton to zoho_po with the order# as the DISPLAY representative
   // (zoho_purchaseorder_id stays NULL → no unique-index collision). COALESCE so a
-  // real platform/PO# already present is preserved.
+  // real platform/PO# already present is preserved. These classification columns
+  // all STAY on the spine (Wave-4 decisions).
   const promo = await client.query(
-    `UPDATE receiving
+    `UPDATE receiving_carton
         SET is_return                 = true,
             return_platform           = COALESCE(return_platform, $2),
             source_platform           = COALESCE(source_platform, $3),
             intake_type               = 'RETURN',
             zoho_purchaseorder_number = COALESCE(zoho_purchaseorder_number, $4),
             source                    = CASE WHEN source = 'unmatched' THEN 'zoho_po' ELSE source END,
-            -- A processed return is unboxed/received, not just scanned. COALESCE
-            -- so a serial scan that already stamped it keeps the original time.
-            unboxed_at                = COALESCE(unboxed_at, NOW()),
             updated_at                = NOW()
       WHERE id = $1 AND organization_id = $5`,
     [receivingId, returnPlatform, sourcePlatform, order.orderId, orgId],
   );
   const promotedToFound = (promo.rowCount ?? 0) > 0;
+
+  // A processed return is unboxed/received, not just scanned. Wave-3 writer
+  // inversion: the unboxed stamp moved off the promo UPDATE onto the
+  // receiving_unbox street table (COALESCE-once inside the helper — a serial
+  // scan that already stamped it keeps the original time). Same tx client, so
+  // it commits atomically with the promotion. No unboxedBy: the old spine
+  // write never attributed this stamp either.
+  await deps.upsertUnbox(client, orgId, receivingId, {
+    unboxedAt: 'now',
+    deriveIntakePath: true,
+  });
 
   // Clear the open NO_PO / carrier-mismatch exception → leaves the Unfound queue.
   await deps.resolveReceivingExceptionsByReceivingId(receivingId, client);
@@ -319,6 +361,8 @@ const defaultDeps: ReturnedSerialLinkDeps = {
   resolveReceivingExceptionsByReceivingId,
   recordInventoryEvent,
   listingUrlForItemNumber: getExternalUrlByItemNumber,
+  transitionLine: transitionReceivingLine,
+  upsertUnbox: upsertReceivingUnbox,
   tap: tapWorkflow,
   emitSignal: emitEntitySignalSafe,
   recordException: recordReceivingException,
@@ -360,7 +404,7 @@ export async function linkReturnedSerial(
     if (!prior || !prior.orderId) {
       if (input.receivingId != null) {
         await client.query(
-          `UPDATE receiving SET is_return = true, updated_at = NOW()
+          `UPDATE receiving_carton SET is_return = true, updated_at = NOW()
             WHERE id = $1 AND organization_id = $2
               AND NOT (source = 'zoho_po' AND zoho_purchaseorder_id IS NOT NULL)`,
           [input.receivingId, orgId],
@@ -382,6 +426,7 @@ export async function linkReturnedSerial(
           accountSource: prior.accountSource,
         },
         reason,
+        actorStaffId: input.staffId ?? null,
       },
       orgId,
       deps,
@@ -535,6 +580,8 @@ const importDefaultDeps: ImportSalesOrderDeps = {
   resolveReceivingExceptionsByReceivingId,
   recordInventoryEvent,
   listingUrlForItemNumber: getExternalUrlByItemNumber,
+  transitionLine: transitionReceivingLine,
+  upsertUnbox: upsertReceivingUnbox,
 };
 
 interface OrderRow {
@@ -567,7 +614,7 @@ export async function importSalesOrderByNumber(
     // FIRST/CHANGED link, so re-committing the same order number never
     // double-counts one physical return in the "top reasons" aggregates.
     const priorLink = await client.query<{ source_order_id: string | null }>(
-      `SELECT source_order_id FROM receiving_lines WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT source_order_id FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [input.receivingLineId, orgId],
     );
     const priorSourceOrderId = priorLink.rows[0]?.source_order_id ?? null;
@@ -603,6 +650,7 @@ export async function importSalesOrderByNumber(
           accountSource: o.account_source,
         },
         reason,
+        actorStaffId: input.staffId ?? null,
       },
       orgId,
       deps,

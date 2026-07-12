@@ -26,8 +26,8 @@ import { parseBody } from '@/lib/schemas/parse';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { readSessionSid } from '@/lib/auth/session';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 
 const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
 
@@ -36,7 +36,7 @@ const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
 // as anonymous-style so the legacy callers (which still send body.staffId)
 // keep working until the route is migrated to a withAuth-friendly shape.
 async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
-  const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(req.cookies);
   const user = await getCurrentUserBySid(sid);
   // markAuditWritten is a no-op here — this route doesn't use the withAuth
   // wrapper so there's no audit floor to opt out of. The shape matches
@@ -142,9 +142,12 @@ export async function PATCH(
     // un-scoped behavior (orgId undefined).
     const ctx = await resolveCtx(request);
     const orgId = ctx.organizationId ?? undefined;
-    // The idempotency cache requires a concrete tenant; anonymous (legacy QR)
-    // callers fall back to USAV so the org-scoped cache row still resolves.
-    const idempotencyOrgId: OrgId = ctx.organizationId ?? USAV_ORG_ID;
+    // The idempotency CACHE row (not data scoping — that uses `orgId` above,
+    // which is undefined for anon) requires a concrete tenant key. Anonymous
+    // legacy-QR callers fall back to the dogfood org for the cache NAMESPACE
+    // only; the actual location write remains unscoped for them. This is the
+    // one sanctioned dogfood fallback here (guard-allowlisted).
+    const idempotencyOrgId: OrgId = ctx.organizationId ?? DOGFOOD_ORG_ID;
 
     // ─── Idempotency: replay cached responses for the same key ──────────────
     const idempotencyKey = readIdempotencyKey(request, body?.clientEventId ?? body?.idempotencyKey);

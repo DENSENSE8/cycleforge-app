@@ -44,7 +44,7 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
         const set = new Set(statuses);
         return pending.filter((r) => set.has(String(r.item_status)));
       }}
-      refreshEvents={['usav-refresh-data', 'fba-print-shipped', 'fba-plan-created']}
+      refreshEvents={['app-refresh-data', 'fba-print-shipped', 'fba-plan-created']}
       selectedId={null}
       eyebrowTitle={eyebrowTitle}
       emptyText="Nothing here yet."

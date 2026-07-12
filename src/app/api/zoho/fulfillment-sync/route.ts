@@ -99,10 +99,10 @@ export const POST = withAuth(
         // Scope the audit_logs INSERT under the tenant GUC so the row lands as
         // RLS-subject once app_tenant is live. This route is authed (withAuth),
         // so the real session tenant is available — use it directly rather than
-        // the transitionalUsavOrgId() service-org fallback the truly session-less
+        // the transitionalDogfoodOrgId() service-org fallback the truly session-less
         // crons in this folder rely on.
         // TODO(multi-tenant): the heavy syncShippedOrdersToZoho() path still
-        // resolves its tenant via transitionalUsavOrgId() internally; thread
+        // resolves its tenant via transitionalDogfoodOrgId() internally; thread
         // ctx.organizationId into it once that module is org-aware.
         const orgId: OrgId = ctx.organizationId;
         await withTenantTransaction(orgId, (client) =>

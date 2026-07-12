@@ -28,7 +28,7 @@ export default function RedesignedMobilePickQueue() {
   const { data, isLoading } = useMobileFeedQuery<ShippedOrder>({
     queryKey: PENDING_QUERY_KEY,
     queryFn: () => fetchPendingOrdersData({}),
-    realtime: { invalidation: { dashboard: true }, windowEvents: ['usav-refresh-data', 'dashboard-refresh'] },
+    realtime: { invalidation: { dashboard: true }, windowEvents: ['app-refresh-data', 'dashboard-refresh'] },
   });
 
   // Queue reads top-down in deadline/priority order — no reverse, no auto-scroll.

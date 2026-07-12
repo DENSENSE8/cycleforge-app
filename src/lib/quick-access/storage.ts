@@ -1,7 +1,7 @@
 /**
  * localStorage adapters for the Quick Access feature. Two keys:
- *   - `usav.quickAccess`        — settings + pinned pages (written rarely)
- *   - `usav.quickAccessRecent`  — recent visits (written on every navigation)
+ *   - `cf.quickAccess`        — settings + pinned pages (written rarely)
+ *   - `cf.quickAccessRecent`  — recent visits (written on every navigation)
  *
  * Recents live in their own key so a page navigation doesn't have to
  * serialize the full settings + pinned list on each write.
@@ -16,8 +16,12 @@ import {
   type RecentVisit,
 } from './types';
 
-const SETTINGS_KEY = 'usav.quickAccess';
-const RECENTS_KEY = 'usav.quickAccessRecent';
+import { readMigratedItem } from '@/lib/storage/migrate-key';
+
+const SETTINGS_KEY = 'cf.quickAccess';
+const RECENTS_KEY = 'cf.quickAccessRecent';
+const LEGACY_SETTINGS_KEY = 'usav.quickAccess';
+const LEGACY_RECENTS_KEY = 'usav.quickAccessRecent';
 
 export const DEFAULT_SETTINGS: QuickAccessSettings = {
   version: 1,
@@ -50,7 +54,7 @@ function safeWrite(key: string, value: unknown): void {
 
 export function getSettings(): QuickAccessSettings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-  const raw = window.localStorage.getItem(SETTINGS_KEY);
+  const raw = readMigratedItem(window.localStorage, SETTINGS_KEY, LEGACY_SETTINGS_KEY);
   const parsed = safeParse<Partial<QuickAccessSettings>>(raw, {});
   return {
     ...DEFAULT_SETTINGS,
@@ -137,7 +141,7 @@ export function reorderPins(orderedIds: string[]): QuickAccessSettings {
 
 export function getRecents(): RecentVisit[] {
   if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(RECENTS_KEY);
+  const raw = readMigratedItem(window.localStorage, RECENTS_KEY, LEGACY_RECENTS_KEY);
   const parsed = safeParse<RecentVisit[]>(raw, []);
   return Array.isArray(parsed) ? parsed : [];
 }

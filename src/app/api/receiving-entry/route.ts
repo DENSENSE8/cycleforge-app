@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { type OrgId } from '@/lib/tenancy/constants';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { getCarrier } from '@/lib/tracking-format';
 import { formatPSTTimestamp } from '@/utils/date';
 import { createCacheLookupKey, getCachedJson, setCachedJson, invalidateCacheTags } from '@/lib/cache/upstash-cache';
@@ -12,6 +13,7 @@ import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { recordReceivingScan } from '@/lib/receiving/record-scan';
+import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { withAuth } from '@/lib/auth/withAuth';
 import { resolveReceivingTypeId } from '@/lib/catalog/org-catalog';
 
@@ -35,10 +37,76 @@ function getPSTWeekRange(pstTimestamp: string): { startStr: string; endStr: stri
     return { startStr: fmt(monday), endStr: fmt(friday) };
 }
 
+/**
+ * Background auto-match linker (chokepoint fold, §7 Step D). Inside ONE tenant
+ * transaction: lock the candidate lines (`lockSql` must SELECT
+ * `id, workflow_status::text AS workflow_status … FOR UPDATE`), link them to the
+ * carton via a raw UPDATE that deliberately does NOT list workflow_status
+ * (listing it fires the coarse trigger and COALESCE-stamps scanned_at even on
+ * rows that aren't transitioning — Scanned is triage-owned), then advance ONLY
+ * currently-EXPECTED/ARRIVED rows to MATCHED through transitionReceivingLine
+ * (executor mode — same tx; skipEvent: this background auto-match has never
+ * emitted per-line inventory_events, and still doesn't). Lines already at or
+ * beyond MATCHED keep the linkage but are never status-regressed — the old
+ * unconditional SET could pull an UNBOXED/DONE line back to MATCHED.
+ * Returns how many lines were linked (0 = no candidates found).
+ */
+async function linkAndMatchLines(
+    orgId: OrgId,
+    receivingId: number,
+    actorStaffId: number | null,
+    lockSql: string,
+    lockParams: unknown[],
+): Promise<number> {
+    return withTenantTransaction(orgId, async (client) => {
+        const locked = await client.query<{ id: number; workflow_status: string }>(
+            lockSql,
+            lockParams,
+        );
+        if (locked.rows.length === 0) return 0;
+
+        const lineIds = locked.rows.map((r) => r.id);
+        await client.query(
+            `UPDATE receiving_line
+             SET receiving_id = $1,
+                 updated_at   = NOW()
+             WHERE id = ANY($2::int[])
+               AND organization_id = $3`,
+            [receivingId, lineIds, orgId],
+        );
+
+        const skipped: Array<{ id: number; workflow_status: string }> = [];
+        for (const row of locked.rows) {
+            if (row.workflow_status !== 'EXPECTED' && row.workflow_status !== 'ARRIVED') {
+                skipped.push(row);
+                continue;
+            }
+            await transitionReceivingLine(
+                {
+                    receivingLineId: row.id,
+                    to: 'MATCHED',
+                    actorStaffId,
+                    station: 'RECEIVING',
+                    skipEvent: true,
+                },
+                client,
+                orgId,
+            );
+        }
+        if (skipped.length > 0) {
+            console.warn(
+                'receiving-entry auto-match: linked without status change (already at/beyond MATCHED): ' +
+                    skipped.map((r) => `${r.id}:${r.workflow_status}`).join(', '),
+            );
+        }
+        return locked.rows.length;
+    });
+}
+
 // POST - Add entry to receiving table
 export const POST = withAuth(async (request: NextRequest, ctx) => {
     try {
-        const orgId = ctx.organizationId ?? USAV_ORG_ID;
+        const orgId = ctx.organizationId;
         const body = await request.json();
         const { trackingNumber, carrier: providedCarrier } = body;
         const skipZohoMatch = !!(body?.skipZohoMatch ?? body?.skip_zoho_match);
@@ -114,6 +182,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         // no-op until then. The is_return text column stays the cache.
         const typeId = await resolveReceivingTypeId(ctx.organizationId, { isReturn });
 
+        // Door stamp (received_at/received_by) moved to the triage street table
+        // (receiving_triage.door_received_at/door_received_by) — written via
+        // upsertReceivingTriage inside the insert transaction below. Deliberately
+        // NOT in this probe-driven column list so the dynamic INSERT can't
+        // silently regress to spine writes.
         const valuesByColumn: Record<string, any> = {
             [dateColumn]: now,
             // Legacy receiving_tracking_number dropped — tracking lives in STN
@@ -121,8 +194,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             shipment_id: shipment?.id ?? null,
             carrier: detectedCarrier,
             source,
-            received_at: now,
-            received_by: ctx.staffId,
             condition_grade: conditionGrade,
             qa_status: qaStatus,
             disposition_code: dispositionCode,
@@ -152,13 +223,23 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         }
 
         const valuePlaceholders = insertColumns.map((_, i) => `$${i + 1}`).join(', ');
-        const inserted = await tenantQuery(
-            orgId,
-            `INSERT INTO receiving (${insertColumns.join(', ')})
-             VALUES (${valuePlaceholders})
-             RETURNING id`,
-            insertValues
-        );
+        // Carton INSERT + triage door stamp in ONE tenant transaction. The door
+        // stamp is triage-owned street state (receiving-entry is a dock intake),
+        // so it lands on receiving_triage — never the spine. The helper is
+        // COALESCE-once, so a pre-existing door stamp is never re-stamped.
+        const inserted = await withTenantTransaction(orgId, async (client) => {
+            const ins = await client.query(
+                `INSERT INTO receiving_carton (${insertColumns.join(', ')})
+                 VALUES (${valuePlaceholders})
+                 RETURNING id`,
+                insertValues,
+            );
+            await upsertReceivingTriage(client, orgId, Number(ins.rows[0].id), {
+                doorReceivedAt: now,
+                doorReceivedBy: ctx.staffId ?? null,
+            });
+            return ins;
+        });
 
         const newRecord = {
             id: String(inserted.rows[0].id),
@@ -213,32 +294,34 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             // ── Zoho auto-match (slow, best-effort) — skip for bulk scans ──
             if (skipZohoMatch) return;
             try {
-                // 1a. Check local receiving_lines first
-                const localUnmatched = await tenantQuery<{ id: number; zoho_purchaseorder_id: string | null }>(
+                // 1a. Check local receiving_lines first — lock, link, and advance
+                // via the guarded chokepoint in one tenant transaction (see
+                // linkAndMatchLines above).
+                // Zoho identity lives on receiving_line_zoho (rz) now — the spine
+                // zoho columns are write-dead and drop in the next migration, so
+                // the candidate match keys off rz. FOR UPDATE OF rl: lock only the
+                // line rows (an outer-join side can't be locked).
+                const localLinkedCount = await linkAndMatchLines(
                     orgId,
-                    `SELECT id, zoho_purchaseorder_id
-                     FROM receiving_lines
-                     WHERE receiving_id IS NULL
+                    newReceivingId,
+                    ctx.staffId ?? null,
+                    `SELECT rl.id, rl.workflow_status::text AS workflow_status
+                     FROM receiving_line rl
+                     LEFT JOIN receiving_line_zoho rz
+                       ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+                     WHERE rl.receiving_id IS NULL
+                       AND rl.organization_id = $3
                        AND (
-                         zoho_purchase_receive_id = $1
-                         OR notes ILIKE $2
+                         rz.zoho_purchase_receive_id = $1
+                         OR rl.notes ILIKE $2
                        )
-                     LIMIT 50`,
-                    [trackingNumber, `%${trackingNumber}%`]
+                     ORDER BY rl.id
+                     LIMIT 50
+                     FOR UPDATE OF rl`,
+                    [trackingNumber, `%${trackingNumber}%`, orgId]
                 );
 
-                if (localUnmatched.rows.length > 0) {
-                    const lineIds = localUnmatched.rows.map((r) => r.id);
-                    await tenantQuery(
-                        orgId,
-                        `UPDATE receiving_lines
-                         SET receiving_id    = $1,
-                             workflow_status = 'MATCHED'::inbound_workflow_status_enum,
-                             updated_at      = NOW()
-                         WHERE id = ANY($2::int[])`,
-                        [newReceivingId, lineIds]
-                    );
-                } else {
+                if (localLinkedCount === 0) {
                     // 1b. Search Zoho Purchase Receives by tracking (bound to
                     // the authenticated tenant's Zoho credentials).
                     const zohoReceives = await withZohoOrg(ctx.organizationId, () =>
@@ -252,7 +335,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
                         if (prId) {
                             await tenantQuery(
                                 orgId,
-                                `UPDATE receiving
+                                `UPDATE receiving_carton
                                  SET zoho_purchase_receive_id = $1, updated_at = NOW()
                                  WHERE id = $2 AND zoho_purchase_receive_id IS NULL`,
                                 [prId, newReceivingId]
@@ -263,26 +346,26 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
                             if (!poId || matchedPoIds.includes(poId)) continue;
                             matchedPoIds.push(poId);
 
-                            const existingLines = await tenantQuery<{ id: number }>(
+                            // Same fold as 1a: lock this PO's unmatched lines,
+                            // link them, and advance only EXPECTED/ARRIVED to
+                            // MATCHED through the chokepoint — one tenant tx per PO.
+                            const poLinkedCount = await linkAndMatchLines(
                                 orgId,
-                                `SELECT id FROM receiving_lines
-                                 WHERE zoho_purchaseorder_id = $1 AND receiving_id IS NULL
-                                 LIMIT 1`,
-                                [poId]
+                                newReceivingId,
+                                ctx.staffId ?? null,
+                                `SELECT rl.id, rl.workflow_status::text AS workflow_status
+                                 FROM receiving_line rl
+                                 JOIN receiving_line_zoho rz
+                                   ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+                                 WHERE rz.zoho_purchaseorder_id = $1
+                                   AND rl.receiving_id IS NULL
+                                   AND rl.organization_id = $2
+                                 ORDER BY rl.id
+                                 FOR UPDATE OF rl`,
+                                [poId, orgId]
                             );
 
-                            if (existingLines.rows.length > 0) {
-                                await tenantQuery(
-                                    orgId,
-                                    `UPDATE receiving_lines
-                                     SET receiving_id    = $1,
-                                         workflow_status = 'MATCHED'::inbound_workflow_status_enum,
-                                         updated_at      = NOW()
-                                     WHERE zoho_purchaseorder_id = $2
-                                       AND receiving_id IS NULL`,
-                                    [newReceivingId, poId]
-                                );
-                            } else {
+                            if (poLinkedCount === 0) {
                                 await importZohoPurchaseOrderToReceiving(ctx.organizationId, poId, {
                                     receivingId: newReceivingId,
                                     workflowStatus: 'MATCHED',
@@ -352,7 +435,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
 // GET - Fetch all receiving logs
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -374,7 +457,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                 stn.tracking_number_raw AS tracking,
                 r.carrier,
                 ${countExpr.replace(/\bquantity\b/g, 'r.quantity')} AS quantity
-             FROM receiving r
+             FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
              WHERE r.shipment_id IS NOT NULL
              ORDER BY r.id DESC

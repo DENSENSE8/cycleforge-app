@@ -45,8 +45,8 @@ export function useRepairsTable(search?: string | null, tab: RepairTab = 'active
     const handleRefresh = () => {
       queryClient.invalidateQueries({ queryKey: qk.repairs.all });
     };
-    window.addEventListener('usav-refresh-data', handleRefresh);
-    return () => window.removeEventListener('usav-refresh-data', handleRefresh);
+    window.addEventListener('app-refresh-data', handleRefresh);
+    return () => window.removeEventListener('app-refresh-data', handleRefresh);
   }, [queryClient]);
 
   return query;

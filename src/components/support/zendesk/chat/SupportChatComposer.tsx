@@ -277,7 +277,7 @@ export function SupportChatComposer({
           placeholder={
             isPublic ? 'Reply to the customer…  (⌘↵ to send)' : 'Internal note — not emailed…  (⌘↵ to send)'
           }
-          className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-[13px] leading-relaxed text-text-default outline-none placeholder:text-text-faint"
+          className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-label leading-relaxed text-text-default outline-none placeholder:text-text-faint"
         />
         <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
           <span className="text-caption text-text-faint">{hint}</span>

@@ -1,5 +1,5 @@
 /**
- * Debug script: tests the full Zoho PO → receiving_lines sync pipeline.
+ * Debug script: tests the full Zoho PO → receiving_line sync pipeline.
  * Run: node scripts/debug-zoho-sync.mjs
  *
  * Pass --write to actually commit changes to the DB (default is dry-run).
@@ -113,15 +113,15 @@ async function main() {
   // ── Step 4: Check DB schema ──────────────────────────────────────────────────
   console.log('\n=== STEP 4: Check DB schema ===');
   const [recSchema, lineSchema] = await Promise.all([
-    pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='receiving' ORDER BY ordinal_position`),
-    pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='receiving_lines' ORDER BY ordinal_position`),
+    pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='receiving_carton' ORDER BY ordinal_position`),
+    pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name='receiving_line' ORDER BY ordinal_position`),
   ]);
   const recCols = new Set(recSchema.rows.map(r => r.column_name));
   const lineCols = new Set(lineSchema.rows.map(r => r.column_name));
-  console.log('  receiving cols:', [...recCols].join(', '));
-  console.log('  receiving_lines cols:', [...lineCols].join(', '));
-  console.log('  zoho_purchaseorder_id in receiving:', recCols.has('zoho_purchaseorder_id'));
-  console.log('  zoho_purchaseorder_id in receiving_lines:', lineCols.has('zoho_purchaseorder_id'));
+  console.log('  receiving_carton cols:', [...recCols].join(', '));
+  console.log('  receiving_line cols:', [...lineCols].join(', '));
+  console.log('  zoho_purchaseorder_id in receiving_carton:', recCols.has('zoho_purchaseorder_id'));
+  console.log('  zoho_purchaseorder_id in receiving_line:', lineCols.has('zoho_purchaseorder_id'));
 
   // ── Step 5: Simulate / execute import ────────────────────────────────────────
   console.log(`\n=== STEP 5: ${DRY_RUN ? 'Simulate' : 'Execute'} import of PO ${poId} ===`);
@@ -149,7 +149,7 @@ async function main() {
   };
 
   const validRecCols = Object.keys(recValues).filter(c => recCols.has(c));
-  console.log('  receiving cols to insert:', validRecCols.join(', '));
+  console.log('  receiving_carton cols to insert:', validRecCols.join(', '));
 
   const lineItems = po.line_items || [];
   let validLines = 0;
@@ -173,7 +173,7 @@ async function main() {
     let mode = 'created';
     if (recCols.has('zoho_purchaseorder_id')) {
       const existing = await client.query(
-        `SELECT id FROM receiving WHERE zoho_purchaseorder_id = $1 ORDER BY id DESC LIMIT 1`,
+        `SELECT id FROM receiving_carton WHERE zoho_purchaseorder_id = $1 ORDER BY id DESC LIMIT 1`,
         [normalizedPoId]
       );
       if (existing.rows[0]?.id) {
@@ -185,7 +185,7 @@ async function main() {
     if (receivingId) {
       const setClauses = validRecCols.map((c, i) => `${c} = $${i+1}`).join(', ');
       await client.query(
-        `UPDATE receiving SET ${setClauses} WHERE id = $${validRecCols.length + 1}`,
+        `UPDATE receiving_carton SET ${setClauses} WHERE id = $${validRecCols.length + 1}`,
         [...validRecCols.map(c => recValues[c]), receivingId]
       );
     } else {
@@ -193,14 +193,14 @@ async function main() {
       const vals = cols.map(c => recValues[c]);
       const placeholders = cols.map((_, i) => `$${i+1}`).join(', ');
       const r = await client.query(
-        `INSERT INTO receiving (${cols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+        `INSERT INTO receiving_carton (${cols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
         vals
       );
       receivingId = r.rows[0].id;
     }
 
     // Delete existing lines
-    await client.query(`DELETE FROM receiving_lines WHERE receiving_id = $1`, [receivingId]);
+    await client.query(`DELETE FROM receiving_line WHERE receiving_id = $1`, [receivingId]);
 
     // Insert line items
     let insertedLines = 0;
@@ -231,7 +231,7 @@ async function main() {
       const vals = cols.map(c => lineValues[c]);
       const placeholders = cols.map((c, i) => c === 'disposition_audit' ? `$${i+1}::jsonb` : `$${i+1}`);
       await client.query(
-        `INSERT INTO receiving_lines (${cols.join(', ')}) VALUES (${placeholders.join(', ')})`,
+        `INSERT INTO receiving_line (${cols.join(', ')}) VALUES (${placeholders.join(', ')})`,
         vals
       );
       insertedLines++;
@@ -239,8 +239,8 @@ async function main() {
 
     await client.query('COMMIT');
     console.log(`\n✅ Imported PO ${poNumber}:`);
-    console.log(`   receiving.id = ${receivingId}  (${mode})`);
-    console.log(`   receiving_lines inserted: ${insertedLines}`);
+    console.log(`   receiving_carton.id = ${receivingId}  (${mode})`);
+    console.log(`   receiving_line inserted: ${insertedLines}`);
     client.release();
   } catch (e) {
     await client.query('ROLLBACK').catch(() => {});

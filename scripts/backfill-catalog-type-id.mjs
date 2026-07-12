@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * backfill-catalog-type-id.mjs — populate receiving.type_id from the carton's
+ * backfill-catalog-type-id.mjs — populate receiving_carton.type_id from the carton's
  * effective intake_type, the one-shot backfill named by migration
  * 2026-06-14f_catalog_type_fk_accounts_seed.sql (Phase 2 of
  * docs/platform-account-type-catalog-plan.md).
  *
  * WHAT: maps each receiving carton's effective receiving flow to a row in the
  * org-scoped `types` catalog (migration 2026-06-13g) and writes that id into the
- * additive `receiving.type_id` FK. The text columns (receiving.intake_type /
+ * additive `receiving_carton.type_id` FK. The text columns (receiving_carton.intake_type /
  * is_return) stay as the denormalized cache — this is purely additive.
  *
  * SLUG RESOLUTION — mirrors `receivingTypeSlug` in src/lib/catalog/org-catalog.ts
@@ -22,13 +22,13 @@
  * same org (exactly like resolveReceivingTypeId / getOrgTypes). A row whose slug
  * has no active type resolves to NULL and is reported, never silently dropped.
  *
- * SAFE: NULL-only — only fills receiving.type_id where it is currently NULL,
+ * SAFE: NULL-only — only fills receiving_carton.type_id where it is currently NULL,
  * never overwrites an existing binding → idempotent + re-runnable. Org-by-org
  * inside a tenant transaction (SET LOCAL app.current_org). SoR boundary: reads /
  * writes Postgres only; never touches Zoho, never mutates a serial. --apply logs
  * the affected ids so the run is auditable / reversible.
  *
- * GUARDED: receiving.type_id (2026-06-14f) and the `types` table (2026-06-13g)
+ * GUARDED: receiving_carton.type_id (2026-06-14f) and the `types` table (2026-06-13g)
  * are both behind migrations that may be unapplied. The script detects a missing
  * column / table and no-ops with a loud warning instead of crashing.
  *
@@ -75,7 +75,7 @@ function receivingTypeSlug({ intakeType, isReturn }) {
 }
 void receivingTypeSlug; // referenced for documentation parity
 
-/** SQL transliteration of receivingTypeSlug over the `receiving r` alias. */
+/** SQL transliteration of receivingTypeSlug over the `receiving_carton r` alias. */
 const EFFECTIVE_SLUG_SQL = `
   COALESCE(
     NULLIF(LOWER(BTRIM(r.intake_type)), ''),
@@ -119,7 +119,7 @@ function projectionSql(typeIdGated) {
            t.id    AS type_id,
            t.label AS type_label,
            COUNT(*)::int AS n
-      FROM receiving r
+      FROM receiving_carton r
       LEFT JOIN types t
         ON t.organization_id = r.organization_id
        AND t.is_active
@@ -133,7 +133,7 @@ function projectionSql(typeIdGated) {
 
 /** Per-org apply: fill type_id only where NULL, resolving slug → active type. */
 const APPLY_SQL = `
-  UPDATE receiving r
+  UPDATE receiving_carton r
      SET type_id = t.id
     FROM types t
    WHERE r.organization_id = $1
@@ -177,7 +177,7 @@ async function main() {
 
   // ── Migration gates ───────────────────────────────────────────────────────
   const hasTypesTable = await tableExists('types');
-  const hasTypeIdCol = await columnExists('receiving', 'type_id');
+  const hasTypeIdCol = await columnExists('receiving_carton', 'type_id');
 
   if (!hasTypesTable) {
     console.warn(
@@ -191,7 +191,7 @@ async function main() {
 
   if (!hasTypeIdCol) {
     console.warn(
-      '\n⚠️  `receiving.type_id` column is absent — migration 2026-06-14f is unapplied.\n' +
+      '\n⚠️  `receiving_carton.type_id` column is absent — migration 2026-06-14f is unapplied.\n' +
         '   Apply that migration first, then re-run this backfill.',
     );
     if (APPLY) {
@@ -245,11 +245,11 @@ async function main() {
   fs.writeFileSync(logPath, JSON.stringify({ org: ONLY_ORG, updatedByOrg }, null, 2));
 
   await reportOrdersByAccountSource();
-  console.log(`\nSet receiving.type_id on ${total} row(s) across ${orgIds.length} org(s).`);
+  console.log(`\nSet receiving_carton.type_id on ${total} row(s) across ${orgIds.length} org(s).`);
   console.log(`Affected ids logged to ${logPath}`);
   if (allIds.length > 0) {
     console.log(
-      `Reverse with: UPDATE receiving SET type_id = NULL WHERE id = ANY('{${allIds.join(',')}}'::int[]);\n`,
+      `Reverse with: UPDATE receiving_carton SET type_id = NULL WHERE id = ANY('{${allIds.join(',')}}'::int[]);\n`,
     );
   }
 }

@@ -10,9 +10,9 @@
  *
  * This helper re-runs the same Zoho tracking search that lookup-po does,
  * and if it now finds a PO, promotes the receiving in place:
- *   • receiving.source           → 'zoho_po'
- *   • receiving.zoho_purchaseorder_id → matched PO id
- *   • receiving_lines             → imported from the Zoho PO
+ *   • receiving_carton.source           → 'zoho_po'
+ *   • receiving_carton.zoho_purchaseorder_id → matched PO id
+ *   • receiving_line             → imported from the Zoho PO
  *   • tracking_exceptions        → resolved
  *   • unfound_overlay            → checked (operator can ignore the row)
  *
@@ -39,7 +39,7 @@ export interface ReconcileResult {
   promoted: boolean;
   /** Set when promoted; the Zoho PO id that won the match. */
   zohoPurchaseorderId?: string;
-  /** Number of receiving_lines created by the Zoho import. */
+  /** Number of receiving_line created by the Zoho import. */
   linesImported?: number;
   /** Number of tracking_exceptions rows closed. */
   exceptionsResolved?: number;
@@ -68,7 +68,7 @@ export async function reconcileUnmatchedReceiving(
     `SELECT r.id, r.source,
             stn.tracking_number_raw AS receiving_tracking_number,
             r.organization_id
-       FROM receiving r
+       FROM receiving_carton r
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
       WHERE r.id = $1
       LIMIT 1`,
@@ -137,7 +137,7 @@ export async function reconcileUnmatchedReceiving(
   let promoted = false;
   try {
     const promoteRes = await pool.query<{ id: number }>(
-      `UPDATE receiving
+      `UPDATE receiving_carton
           SET source = 'zoho_po',
               zoho_purchaseorder_id = $1,
               updated_at = NOW()
@@ -262,7 +262,7 @@ export async function sweepUnmatchedReceivings(
 
   const candidates = await pool.query<{ id: number }>(
     `SELECT id
-       FROM receiving
+       FROM receiving_carton
       WHERE source = 'unmatched'
         AND shipment_id IS NOT NULL
         AND receiving_date_time > NOW() - ($1 || ' days')::interval

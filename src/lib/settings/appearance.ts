@@ -7,7 +7,10 @@
  * <html> so any component can read them via var(--ui-density) / etc.
  */
 
-const KEY = 'usav.appearance';
+import { readMigratedItem } from '@/lib/storage/migrate-key';
+
+const KEY = 'cf.appearance';
+const LEGACY_KEY = 'usav.appearance';
 
 export type Density = 'compact' | 'cozy' | 'comfortable';
 
@@ -27,7 +30,7 @@ export const DENSITY_OPTIONS: Density[] = ['compact', 'cozy', 'comfortable'];
 export function getAppearance(): AppearanceSettings {
   if (typeof window === 'undefined') return DEFAULT_APPEARANCE;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = readMigratedItem(window.localStorage, KEY, LEGACY_KEY);
     if (!raw) return DEFAULT_APPEARANCE;
     const parsed = JSON.parse(raw) as Partial<AppearanceSettings>;
     const density: Density = DENSITY_OPTIONS.includes(parsed.density as Density)

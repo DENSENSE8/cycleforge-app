@@ -1,15 +1,19 @@
 # Unified Global Search — Sidebar Removal & Recents Plan
 
-> **Status:** Phase 0 SHIPPED (code-complete, flag-gated OFF) · Created 2026-07-05  
+> **Status:** ✅ **SHIPPED — END STATE (2026-07-11).** The global header pill is the single search surface; every master-sidebar search band is gone.  
 > **Goal:** One search control in the global header. Remove search bars from every master-sidebar panel. Add a recents dropdown on focus and a dedicated `/search` history surface reachable from the search UI itself — no copy/paste to re-run a query.  
-> **Related:** `docs/ai-search-modernization-plan.md`, `docs/design-system/master-sidebar-nav-migration-plan.md`, `src/components/layout/GlobalHeaderSearch.tsx`, `src/components/search/SearchWorkspace.tsx`
+> **Related:** `src/components/layout/GlobalHeaderSearch.tsx`, `src/components/search/SearchWorkspace.tsx`, `src/hooks/usePageHeader.ts`
 
-> **⚠️ Transition constraint (user directive 2026-07-05):** the sidebar search bars **stay in place** throughout this migration — they remain the fallback until the global header search is complete. Phase 0 is therefore purely **additive**: nothing is removed, `migrateLegacyRecents()` is **non-destructive** (legacy keys retained; the sidebars still read them), and the whole recents layer is gated behind `NEXT_PUBLIC_UNIFIED_HEADER_SEARCH` (default OFF → header byte-identical to today). Sidebar removal begins only in the later phases, once the header is signed off.
+> **~~Transition constraint (user directive 2026-07-05)~~ — SUPERSEDED 2026-07-11.** The "keep sidebar search until sign-off" fallback constraint no longer applies. Per the 2026-07-11 full-authority directive the end state was shipped in one pass: sidebar bands deleted outright, no dual-path, no flag-gated coexistence.
 
-## Execution status
+## Execution status — SHIPPED END STATE (2026-07-11)
 
-- **Phase 0 — Foundation: SHIPPED 2026-07-05 (flag OFF by default).** All deliverables code-complete + tsc-clean; unit tests green (`npm run test:ai-search`, +20 → 90). See the Phase 0 checklist below. Not yet exercised in a running app (flag is off) — enable `NEXT_PUBLIC_UNIFIED_HEADER_SEARCH=true` to try the recents loop.
-- Phases 1–7 — not started (sidebar migrations; gated on the header being signed off + the flag flip).
+- **Header is the SoT.** `GlobalHeaderSearch` owns global retrieval (recents ⇄ AI/classic preview, ⌘K, Enter → `/search?q=`) **and** contextual per-page filtering. Every former sidebar search band now registers a contextual filter via `usePageHeaderSearch` (`src/hooks/usePageHeader.ts`); the sidebar renders no search band.
+- **Sidebar search band DELETED.** `SidebarShell.search` / `AdminSidebarShell.search` props and the `<SidebarSearchBar>` component are removed, along with the `sidebarHeaderSearchRowClass` 40px band token. The guard test (`sidebar-search-bar.guard.test.ts`) now enforces the *absence* of a sidebar search band.
+- **All ~30 panels migrated:** dashboard cluster (Unshipped/Shipped/Management/Warranty), Operations (Live/History, flag dual-path collapsed), Inventory (+pulse/triage/graph), Products, Warehouse, Goals, Audit, Repair, Replenish, Sourcing, Plans, Receiving (Incoming/History), Photos, Labels, Scan-out, and the Admin cluster (Logs/FBA-catalog/Staff/Compatibility/Bose/Suppliers/Workflow). Station scan bars, compact bottom-anchored filters (`TechRailSearchBar`, `TriageCartonSearchBar`), and modal/workspace pickers are exempt (unchanged).
+- **Cross-surface handoff cards DELETED:** `DashboardShippedSearchHandoffCard`, `OutboundLabelsSearchHandoffCard`, `InventoryCrossTabHandoffCard` + their count hooks + the `openShippedMatches`/`openOutboundLabels` controller wiring. No replacement handoff UI (real detail-panel events like `dispatchOpenShippedDetails` are kept).
+- **Recents unified:** one `usav_search_recents_v1` store via `pushSearchRecent`/`useSearchRecents`; per-panel `RecentSearchesList`/`InventoryRecentSearches`/`useInventoryRecentSearches` deleted. Legacy per-panel history keys (`dashboard_search_history`, `shipped_search_history`, `inventory_search_history_*`) are seeded once by `migrateLegacyRecents()` then no longer written by any panel.
+- **Verification:** `tsc` clean on all migrated files (only 2 pre-existing, unrelated errors in `receiving/pending-unboxing/route.ts`); guard test 4/4, `search-recents`+`search-scope-labels` 20/20, `npm run test:ai-search` 108/108; changed files lint-clean.
 
 ---
 
@@ -390,14 +394,12 @@ Migrate **3 representative panels** to prove the pattern:
 - [ ] Update `sidebar-search-bar.guard.test.ts` → `sidebar-shell-no-search.guard.test.ts`
 - [ ] Remove duplicate `SearchField` from `SearchWorkspace` (header is SoT; page reads `?q=` from URL only)
 - [ ] Delete legacy hooks: `useDashboardSearchHistory`, `useInventoryRecentSearches` storage fns
-- [ ] Update `docs/design-system/master-sidebar-nav-migration-plan.md` cross-reference
 - [ ] Flip `NEXT_PUBLIC_UNIFIED_HEADER_SEARCH` default **ON**
 
 ### Phase 7 — CommandBar consolidation (optional, 2 days)
 
 - [ ] Dedupe preview fetch paths
 - [ ] Add “Recently opened” section from `command-bar-recent` alongside query recents
-- [ ] Document in `docs/ai-search-modernization-plan.md` Phase 3 tail
 
 ---
 

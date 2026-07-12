@@ -73,7 +73,7 @@ export async function PATCH(
     const lineRes = await tenantQuery<LineRow>(
       orgId,
       `SELECT id, zoho_purchaseorder_id, zoho_line_item_id, sku, item_name
-         FROM receiving_lines
+         FROM receiving_line
         WHERE id = $1 AND organization_id = $2
         LIMIT 1`,
       [lineId, orgId],
@@ -85,7 +85,7 @@ export async function PATCH(
 
     const updateRes = await tenantQuery<{ id: number }>(
       orgId,
-      `UPDATE receiving_lines SET zoho_notes = $1, updated_at = NOW()
+      `UPDATE receiving_line SET zoho_notes = $1, updated_at = NOW()
          WHERE id = $2 AND organization_id = $3 RETURNING id`,
       [next, lineId, orgId],
     );
@@ -107,7 +107,7 @@ export async function PATCH(
     if (zoho.resolved_line_item_id && zoho.resolved_line_item_id !== line.zoho_line_item_id) {
       await tenantQuery(
         orgId,
-        `UPDATE receiving_lines SET zoho_line_item_id = $1, updated_at = NOW()
+        `UPDATE receiving_line SET zoho_line_item_id = $1, updated_at = NOW()
            WHERE id = $2 AND organization_id = $3`,
         [zoho.resolved_line_item_id, lineId, orgId],
       );

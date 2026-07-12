@@ -17,6 +17,7 @@ import {
   AdminPickerRow,
   useAdminUrlState,
 } from '../shared';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 interface BoseModelListRow {
   id: number;
@@ -31,7 +32,7 @@ export function CompatibilitySidebarPanel() {
   const search = searchParams.get('search') ?? '';
   const selected = searchParams.get('boseModelId') ?? '';
 
-  const { data, isLoading } = useQuery<{ items: BoseModelListRow[] }>({
+  const { data, isLoading, isFetching } = useQuery<{ items: BoseModelListRow[] }>({
     queryKey: qk.boseModels.list(search, ''),
     queryFn: async () => {
       const q = search.trim();
@@ -45,19 +46,23 @@ export function CompatibilitySidebarPanel() {
   const rows = useMemo(() => data?.items ?? [], [data]);
 
   return (
-    <AdminSidebarShell
-      search={{
-        value: search,
-        onChange: (v) =>
-          setParam((p) => {
-            if (v.trim()) p.set('search', v.trim());
-            else p.delete('search');
-          }),
-        onClear: () => setParam((p) => p.delete('search')),
-        placeholder: 'Filter by model',
-        variant: 'blue',
-      }}
-    >
+    <AdminSidebarShell>
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={search}
+          onChange={(v) =>
+            setParam((p) => {
+              if (v.trim()) p.set('search', v.trim());
+              else p.delete('search');
+            })
+          }
+          onClear={() => setParam((p) => p.delete('search'))}
+          placeholder="Filter by model…"
+          isSearching={isFetching && !isLoading}
+        />
+      </div>
       <ul className="space-y-1.5">
         <li>
           <AdminPickerRow

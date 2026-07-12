@@ -34,6 +34,15 @@ test('brand-new org: every step pending', () => {
   assert.equal(completedStepCount(ONBOARDING_STEPS, zero), 0);
 });
 
+test('workflow: done iff the org has an active workflow definition', () => {
+  assert.equal(step('workflow').doneWhen(stats({ hasActiveWorkflow: true })), true);
+  assert.equal(step('workflow').doneWhen(stats({ orders: 9, integrationsConnected: 2 })), false);
+});
+
+test('workflow is the first step in the catalog (chooser gates ops readiness)', () => {
+  assert.equal(ONBOARDING_STEPS[0].id, 'workflow');
+});
+
 test('connect: done iff an active integration exists', () => {
   assert.equal(step('connect').doneWhen(stats({ integrationsConnected: 1 })), true);
   assert.equal(step('connect').doneWhen(stats({ orders: 5, staff: 3 })), false);
@@ -66,7 +75,7 @@ test('completedStepCount tallies mixed progress', () => {
 
 test('stepsForPlan(trial) shows the whole v1 ladder (maxStaff 5 keeps invite)', () => {
   const ids = stepsForPlan('trial').map((s) => s.id);
-  assert.deepEqual(ids, ['connect', 'order', 'receive', 'scan', 'invite']);
+  assert.deepEqual(ids, ['workflow', 'connect', 'order', 'receive', 'scan', 'invite']);
 });
 
 test('every plan in the catalog resolves to a non-empty, ordered subset', () => {
@@ -95,6 +104,7 @@ test('all-done stats self-dismiss the card (completed === visible length)', () =
     staff: 2,
     integrationsConnected: 1,
     firstScanDone: true,
+    hasActiveWorkflow: true,
   });
   const visible = stepsForPlan('trial');
   assert.equal(completedStepCount(visible, done), visible.length);

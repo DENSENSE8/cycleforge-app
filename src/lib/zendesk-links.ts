@@ -243,7 +243,7 @@ export async function getEntityPhotos(
     );
     const parent = await tenantQuery<{ receiving_id: number | null }>(
       organizationId,
-      `SELECT receiving_id FROM receiving_lines WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT receiving_id FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [entity.id, organizationId],
     );
     const receivingId = parent.rows[0]?.receiving_id;

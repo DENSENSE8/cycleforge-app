@@ -227,7 +227,7 @@ export function useDataWipeController() {
         const kind: WipeOutcome['kind'] = success ? 'wiped' : 'failed';
         setOutcome({ kind, method: wipeMethod, idempotent: Boolean(data.idempotent), unit });
         playWipeCue(kind);
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
 
         // Act-and-clear: the finished unit gets out of the way for the next scan.
         clearAutoHideTimer();

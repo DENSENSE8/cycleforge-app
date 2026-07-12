@@ -29,6 +29,7 @@ export const GET = withAuth(
           name: workflowTemplates.name,
           description: workflowTemplates.description,
           category: workflowTemplates.category,
+          isDefault: workflowTemplates.isDefault,
           graph: workflowTemplates.graph,
         })
         .from(workflowTemplates)
@@ -45,6 +46,7 @@ export const GET = withAuth(
           category: r.category,
           nodeCount: Array.isArray(graph.nodes) ? graph.nodes.length : 0,
           edgeCount: Array.isArray(graph.edges) ? graph.edges.length : 0,
+          isDefault: Boolean(r.isDefault),
         };
       });
 

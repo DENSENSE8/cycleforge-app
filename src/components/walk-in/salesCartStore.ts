@@ -190,7 +190,7 @@ export async function checkout(): Promise<void> {
       isSubmitting: false,
       successMessage: 'Sent to terminal — waiting for payment',
     });
-    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+    window.dispatchEvent(new CustomEvent('app-refresh-data'));
   } catch (err) {
     setState({
       isSubmitting: false,

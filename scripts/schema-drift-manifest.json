@@ -1,8 +1,8 @@
 [
   {
-    "table": "receiving_lines",
+    "table": "receiving_line",
     "column": "zoho_reference_number",
     "migration": "2026-04-15_drop_zoho_reference_number.sql",
-    "note": "Canonical tracking is shipping_tracking_numbers / receiving.shipment_id"
+    "note": "Canonical tracking is shipping_tracking_numbers / receiving_carton.shipment_id"
   }
 ]

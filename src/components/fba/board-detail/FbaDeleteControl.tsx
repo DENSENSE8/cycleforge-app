@@ -36,7 +36,7 @@ export function FbaDeleteControl({ entries, onDeleted }: { entries: PlanEntry[];
       if (errors.length > 0) {
         setError(errors.join('; '));
       } else {
-        window.dispatchEvent(new Event('usav-refresh-data'));
+        window.dispatchEvent(new Event('app-refresh-data'));
         onDeleted();
       }
     } catch {

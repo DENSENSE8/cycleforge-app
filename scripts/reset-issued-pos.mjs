@@ -2,14 +2,14 @@
 /**
  * One-off cleanup before the new May-8-forward Zoho PO import policy.
  *
- *   1. DELETE every EXPECTED, untouched receiving_lines row that came from
+ *   1. DELETE every EXPECTED, untouched receiving_line row that came from
  *      a Zoho PO sync. Touched rows (quantity_received > 0) stay so we
  *      don't blow away an in-flight receive.
- *   2. DELETE every `receiving` row with source='zoho_po' that no longer
- *      has any receiving_lines pointing at it. Cascade-deletes clean up
+ *   2. DELETE every `receiving_carton` row with source='zoho_po' that no longer
+ *      has any receiving_line pointing at it. Cascade-deletes clean up
  *      receiving_scans + photos automatically (see migrations 2026-04-14
  *      and 2026-03-05). serial_units / inventory_events / tech_serial_numbers
- *      reference receiving_lines.id with ON DELETE SET NULL, so audit
+ *      reference receiving_line.id with ON DELETE SET NULL, so audit
  *      lineage is preserved even when the line is gone.
  *   3. Pin `sync_cursors.zoho_purchase_orders` to 2026-05-08T00:00:00Z so
  *      the next incoming-po-sync cron only pulls deltas modified since then.
@@ -48,26 +48,26 @@ async function main() {
   // ── Preview counts ────────────────────────────────────────────────────────
   const linesPreview = await pool.query(
     `SELECT COUNT(*)::int AS count
-       FROM receiving_lines
+       FROM receiving_line
       WHERE workflow_status = 'EXPECTED'
         AND COALESCE(quantity_received, 0) = 0
         AND zoho_purchaseorder_id IS NOT NULL`,
   );
   const linesToDelete = linesPreview.rows[0].count;
-  console.log(`receiving_lines (issued + untouched): ${linesToDelete}`);
+  console.log(`receiving_line (issued + untouched): ${linesToDelete}`);
 
   const recvPreview = await pool.query(
     `SELECT COUNT(*)::int AS count
-       FROM receiving r
+       FROM receiving_carton r
       WHERE r.source = 'zoho_po'
         AND NOT EXISTS (
-          SELECT 1 FROM receiving_lines rl
+          SELECT 1 FROM receiving_line rl
            WHERE rl.receiving_id = r.id
              AND (rl.workflow_status <> 'EXPECTED' OR COALESCE(rl.quantity_received, 0) > 0)
         )`,
   );
   const recvToDelete = recvPreview.rows[0].count;
-  console.log(`receiving rows (zoho_po, untouched after lines deleted): ${recvToDelete}`);
+  console.log(`receiving_carton rows (zoho_po, untouched after lines deleted): ${recvToDelete}`);
 
   const cursorBefore = await pool.query(
     `SELECT last_synced_at FROM sync_cursors WHERE resource = 'zoho_purchase_orders'`,
@@ -89,24 +89,24 @@ async function main() {
   try {
     await client.query('BEGIN');
 
-    // 1. Delete untouched EXPECTED receiving_lines.
+    // 1. Delete untouched EXPECTED receiving_line rows.
     const delLines = await client.query(
-      `DELETE FROM receiving_lines
+      `DELETE FROM receiving_line
         WHERE workflow_status = 'EXPECTED'
           AND COALESCE(quantity_received, 0) = 0
           AND zoho_purchaseorder_id IS NOT NULL`,
     );
-    console.log(`  deleted receiving_lines: ${delLines.rowCount}`);
+    console.log(`  deleted receiving_line: ${delLines.rowCount}`);
 
-    // 2. Delete orphaned zoho_po receiving rows (no remaining lines).
+    // 2. Delete orphaned zoho_po receiving_carton rows (no remaining lines).
     const delRecv = await client.query(
-      `DELETE FROM receiving r
+      `DELETE FROM receiving_carton r
         WHERE r.source = 'zoho_po'
           AND NOT EXISTS (
-            SELECT 1 FROM receiving_lines rl WHERE rl.receiving_id = r.id
+            SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = r.id
           )`,
     );
-    console.log(`  deleted receiving (zoho_po, orphan): ${delRecv.rowCount}`);
+    console.log(`  deleted receiving_carton (zoho_po, orphan): ${delRecv.rowCount}`);
 
     // 3. Pin the sync cursor so the next delta pull only sees POs modified
     //    on or after 2026-05-08. `getSyncCursor` reads `last_synced_at` and

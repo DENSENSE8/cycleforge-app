@@ -107,7 +107,7 @@ export function MobileReceivingList({
         event: 'receiving_photo_request',
         enabled: !!stationBridgeChannel && staffId > 0,
       },
-      windowEvents: ['usav-refresh-data'],
+      windowEvents: ['app-refresh-data'],
     },
   });
 

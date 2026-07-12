@@ -3,7 +3,7 @@
  *
  * Body: { staffId: number, pin?: string, deviceKind?: 'station' | 'personal', deviceLabel?: string }
  *
- * Default: verifies the PIN, creates a session, sets the httpOnly `usav_sid`
+ * Default: verifies the PIN, creates a session, sets the httpOnly `cf_sid`
  * cookie, audits the result.
  *
  * Pinless mode: when `AUTH_PINLESS_SIGNIN=true`, an empty/missing `pin` skips
@@ -19,11 +19,14 @@ import {
   createSession,
   cookieMaxAgeForSession,
   SESSION_COOKIE_NAME,
+  LEGACY_SESSION_COOKIE_NAME,
   type DeviceKind,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { findActiveShift, clockIn } from '@/lib/auth/shift-clock';
 import { getStaffAuthMethod } from '@/lib/auth/auth-policy';
+import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
@@ -49,6 +52,22 @@ export async function POST(req: NextRequest) {
   let staffIdForAudit: number | null = null;
 
   try {
+    // Per-IP throttle: this route verifies PINs by staffId, so it must resist
+    // credential-stuffing bursts. Warns (does not hard-fail) when Upstash is
+    // unset — see api-guard boot warning.
+    const rl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-signin',
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'RATE_LIMITED' },
+        { status: 429, headers: rl.retryAfterSec ? { 'retry-after': String(rl.retryAfterSec) } : undefined },
+      );
+    }
+
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const staffId = Number((body as { staffId?: unknown }).staffId);
     const pin = String((body as { pin?: unknown }).pin ?? '');
@@ -59,6 +78,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'staffId' }, { status: 400 });
     }
     staffIdForAudit = staffId;
+
+    // Tenant scope: resolve the org from the request BEFORE verifying anything.
+    // Apex / unknown slug → nil org → 404, so an unscoped PIN can never sign in
+    // globally (the leak). PIN + pinless paths below are both org-scoped.
+    const orgId = await resolveOrgIdFromRequest(req);
+    if (orgId === NIL_ORG_ID) {
+      await audit({
+        staffId, event: 'signin.pin', result: 'denied', ip, userAgent: ua,
+        detail: { reason: 'tenant_required' },
+      });
+      return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 404 });
+    }
 
     // WS6.1: staff forced onto password auth must use the account
     // (email + password) entry point — refuse the station PIN/pinless path.
@@ -87,9 +118,10 @@ export async function POST(req: NextRequest) {
         `SELECT name, role, COALESCE(status, 'active') AS status, default_home_path, default_home_path_mobile
            FROM staff
           WHERE id = $1
+            AND organization_id = $2
             AND COALESCE(active, true) = true
           LIMIT 1`,
-        [staffId],
+        [staffId, orgId],
       );
       const found = lookup.rows[0];
       if (!found) {
@@ -101,7 +133,7 @@ export async function POST(req: NextRequest) {
       }
       row = found;
     } else {
-      row = await verifyStaffPin(staffId, pin);
+      row = await verifyStaffPin(staffId, pin, orgId);
     }
     if (row.status !== 'active') {
       await audit({
@@ -166,6 +198,9 @@ export async function POST(req: NextRequest) {
       sameSite: 'lax',
       path: '/',
       maxAge: cookieMaxAgeForSession(session),
+    });
+    res.cookies.set(LEGACY_SESSION_COOKIE_NAME, '', {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0,
     });
     return res;
   } catch (err) {

@@ -26,7 +26,7 @@ config({ path: '.env' });
 const APPLY = process.argv.includes('--apply');
 
 async function main() {
-  const { USAV_ORG_ID } = await import('../src/lib/tenancy/constants');
+  const { DOGFOOD_ORG_ID } = await import('../src/lib/tenancy/constants');
   const { upsertIntegrationCredentials, getIntegrationCredentials } = await import(
     '../src/lib/integrations/credentials'
   );
@@ -69,9 +69,9 @@ async function main() {
   console.log(`  refresh_token: ${legacyRefresh ? 'ebay_accounts.ZOHO_MAIN' : 'ZOHO_REFRESH_TOKEN env'} (${refreshToken.slice(0, 6)}…)`);
   console.log(`  zoho org id:   ${zohoOrgId}`);
   console.log(`  data center:   ${domain}`);
-  console.log(`  target:        organization_integrations(${USAV_ORG_ID}, 'zoho')`);
+  console.log(`  target:        organization_integrations(${DOGFOOD_ORG_ID}, 'zoho')`);
 
-  const existing = await getIntegrationCredentials<ZohoCredentials>(USAV_ORG_ID, 'zoho');
+  const existing = await getIntegrationCredentials<ZohoCredentials>(DOGFOOD_ORG_ID, 'zoho');
   if (existing) {
     console.log(`  note:          a 'zoho' vault row already exists for USAV (will be overwritten).`);
   }
@@ -113,7 +113,7 @@ async function main() {
   }
 
   await upsertIntegrationCredentials({
-    orgId: USAV_ORG_ID,
+    orgId: DOGFOOD_ORG_ID,
     provider: 'zoho',
     payload,
     displayLabel: `Migrated · org ${zohoOrgId}`,

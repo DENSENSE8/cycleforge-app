@@ -395,12 +395,12 @@ export function buildTestLabelCommands(
   copies = 1,
 ): string {
   const f: LabelFields = {
-    platform: 'USAV print test',
+    platform: 'print test',
     date: sanitize(dateStr),
     cond: sanitize(deviceLabel),
     po: size.label,
     noteLines: [],
-    data: 'USAV-TEST',
+    data: 'CF-TEST',
   };
   if (language === 'zpl') return zpl(f, size, copies);
   if (language === 'escpos') return escpos(f, copies);

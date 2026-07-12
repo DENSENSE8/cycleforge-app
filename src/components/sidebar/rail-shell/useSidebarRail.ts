@@ -111,7 +111,7 @@ export function useSidebarRail<TRow>({
   }, [updateEvent, getId, sortRowsByActivity]);
 
   // Ids removed via `deleteEvent`/`deleteGroupEvent`. These MUST outlive the
-  // refetch: `usav-refresh-data` invalidates the query right after a delete, but
+  // refetch: `app-refresh-data` invalidates the query right after a delete, but
   // that refetch can race the server (eventually-consistent read / GET cache not
   // yet evicted for this view) and hand back the just-deleted rows. The
   // data-mirror effect would then write them straight back into `localRows`. So

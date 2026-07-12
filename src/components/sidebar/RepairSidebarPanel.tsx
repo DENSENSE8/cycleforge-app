@@ -13,6 +13,7 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { toast } from '@/lib/toast';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 // Incoming repairs now live in the Receiving incoming display, so this queue
 // only exposes Active and Done.
@@ -169,6 +170,18 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
     }
   };
 
+  const commitSearch = () =>
+    updateParams((params) => {
+      if (searchValue.trim()) params.set('search', searchValue.trim());
+      else params.delete('search');
+    });
+
+  const openNewRepair = () => {
+    setIntakeDraft(undefined);
+    setSelectedFavoriteId(null);
+    setShowIntakeForm(true);
+  };
+
   const handleUseFavorite = async (favorite: FavoriteSkuRecord) => {
     setIsFetchingFavorite(true);
     try {
@@ -185,41 +198,42 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
     <SidebarShell
       className="bg-surface-card"
       headerAbove={
-        !hideSectionHeader ? (
-          <div className={`border-b border-border-hairline ${SIDEBAR_GUTTER} pt-4 pb-3`}>
-            <p className={`${sectionLabel} text-orange-500`}>Repair Service</p>
-            <h2 className={`mt-1 ${cardTitle}`}>Repairs</h2>
+        <>
+          <div className={`flex items-center justify-between gap-2 border-b border-border-hairline ${SIDEBAR_GUTTER} pt-4 pb-3`}>
+            {!hideSectionHeader ? (
+              <div>
+                <p className={`${sectionLabel} text-orange-500`}>Repair Service</p>
+                <h2 className={`mt-1 ${cardTitle}`}>Repairs</h2>
+              </div>
+            ) : (
+              <span />
+            )}
+            <HoverTooltip label="New repair" asChild>
+              <IconButton
+                type="button"
+                onClick={openNewRepair}
+                disabled={isSubmitting}
+                ariaLabel="Open new repair order form"
+                icon={<Plus className="h-5 w-5 text-white" />}
+                className="shrink-0 rounded-xl bg-orange-500 p-2.5 text-white transition-colors hover:bg-orange-600 disabled:bg-border-emphasis"
+              />
+            </HoverTooltip>
           </div>
-        ) : null
+          {/* In-context list filter — local base SearchBar. The global header
+              pill stays global. */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchValue}
+              onChange={setSearchValue}
+              onClear={handleClearSearch}
+              onSearch={() => commitSearch()}
+              placeholder="Filter repairs, tickets, SKU…"
+            />
+          </div>
+        </>
       }
-      search={{
-        value: searchValue,
-        onChange: setSearchValue,
-        onSearch: () =>
-          updateParams((params) => {
-            if (searchValue.trim()) params.set('search', searchValue.trim());
-            else params.delete('search');
-          }),
-        onClear: handleClearSearch,
-        placeholder: 'Search repairs, tickets, SKU…',
-        variant: 'orange',
-        rightElement: (
-          <HoverTooltip label="New repair" asChild>
-          <IconButton
-            type="button"
-            onClick={() => {
-              setIntakeDraft(undefined);
-              setSelectedFavoriteId(null);
-              setShowIntakeForm(true);
-            }}
-            disabled={isSubmitting}
-            ariaLabel="Open new repair order form"
-            icon={<Plus className="h-5 w-5 text-white" />}
-            className="rounded-xl bg-orange-500 p-2.5 text-white transition-colors hover:bg-orange-600 disabled:bg-border-emphasis"
-          />
-          </HoverTooltip>
-        ),
-      }}
       headerRows={[
         !masterNavEnabled ? (
           <HorizontalButtonSlider

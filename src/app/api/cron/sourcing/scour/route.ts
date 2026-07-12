@@ -22,7 +22,7 @@ export const maxDuration = 300;
  * getIntegrationCredentials(orgId,'ebay')), and marks the run under its own org.
  * Orgs without eBay connected are never iterated (nothing to scour with), so the
  * old cross-tenant risk — a non-USAV org scouring on USAV's creds — is gone.
- * includeUsavTransitional keeps USAV in the sweep while its eBay creds still come
+ * includeDogfoodTransitional keeps USAV in the sweep while its eBay creds still come
  * from env (envFallback is USAV-only), preserving USAV's exact behavior. Per-org
  * failures are isolated by forEachOrgWithProvider.
  */
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         const perOrg = await forEachOrgWithProvider(
           'ebay',
           (orgId) => runScourWatch(orgId),
-          { includeUsavTransitional: true },
+          { includeDogfoodTransitional: true },
         );
 
         const totals = { checked: 0, withHits: 0, candidatesSaved: 0 };

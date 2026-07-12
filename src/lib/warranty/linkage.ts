@@ -14,7 +14,7 @@
 import type { PoolClient } from 'pg';
 import { createAuthorization, findByNumber, type RmaAuthorizationRow } from '@/lib/rma/authorizations';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import { getClaim } from './claims';
 import type { WarrantyClaimDetail } from './types';
 
@@ -162,7 +162,7 @@ export async function issueRmaForClaim(
    */
   orgId?: OrgId | null,
 ): Promise<RmaLinkResult> {
-  const txOrg: OrgId = orgId ?? USAV_ORG_ID;
+  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   let rma: RmaAuthorizationRow | null = null;
   let alreadyReturned = false;
   try {
@@ -241,7 +241,7 @@ export async function linkRmaByNumber(
   const rma = await findByNumber(rmaNumber, orgId ?? null);
   if (!rma) return { ok: false, status: 404, error: 'RMA not found' };
 
-  const txOrg: OrgId = orgId ?? USAV_ORG_ID;
+  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   let alreadyReturned = false;
   try {
     const linkResult = await withTenantTransaction(txOrg, async (client): Promise<
@@ -300,7 +300,7 @@ export async function handoffToRepair(
    */
   orgId?: OrgId | null,
 ): Promise<RepairHandoffResult> {
-  const txOrg: OrgId = orgId ?? USAV_ORG_ID;
+  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   try {
     const txResult = await withTenantTransaction(txOrg, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true; repairServiceId: number }
@@ -409,7 +409,7 @@ export async function unlinkRma(
   /** Optional tenant scope — org-filters every warranty_claims read/write. */
   orgId?: OrgId | null,
 ): Promise<RmaUnlinkResult> {
-  const txOrg: OrgId = orgId ?? USAV_ORG_ID;
+  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   try {
     const txResult = await withTenantTransaction(txOrg, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true }
@@ -454,7 +454,7 @@ export async function detachRepairHandoff(
   /** Optional tenant scope — org-filters the claim precheck + warranty_claims UPDATE. */
   orgId?: OrgId | null,
 ): Promise<RepairDetachResult> {
-  const txOrg: OrgId = orgId ?? USAV_ORG_ID;
+  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   let revertedToApproved = false;
   try {
     const txResult = await withTenantTransaction(txOrg, async (client): Promise<

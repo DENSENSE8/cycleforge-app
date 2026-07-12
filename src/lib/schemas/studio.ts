@@ -70,6 +70,53 @@ export const StudioTemplateImportBody = z.object({
 });
 export type StudioTemplateImportInput = z.infer<typeof StudioTemplateImportBody>;
 
+/**
+ * Body for POST /api/onboarding/template (Template Platform Phase 1). The
+ * first-run chooser installs a chosen system template into the org via
+ * installTemplateIntoOrg (activate: 'if_system'). Just the template id — the org
+ * comes from the auth ctx, never the body.
+ */
+export const OnboardingTemplateChooseBody = z.object({
+  templateId: z.number().int().positive(),
+});
+export type OnboardingTemplateChooseInput = z.infer<typeof OnboardingTemplateChooseBody>;
+
+/**
+ * Body for POST /api/onboarding/recommend (Template Platform Phase 5). Free-text
+ * intake describing how the shop runs ops; the recommender ranks EXISTING system
+ * templates and returns their slugs (never invents one, never activates). Purely
+ * a read/ranking — the owner still confirms via the chooser.
+ */
+export const OnboardingRecommendBody = z.object({
+  text: z.string().trim().min(1).max(4000),
+  category: z.string().max(64).nullable().optional(),
+});
+export type OnboardingRecommendInput = z.infer<typeof OnboardingRecommendBody>;
+
+/**
+ * Body for POST /api/studio/definitions/[id]/submit (Template Platform Phase 4).
+ * Submit one of the org's OWN definitions to the curated catalog for review.
+ * All fields optional — catalog metadata overrides; the definition id is in the
+ * path and the org comes from the auth ctx.
+ */
+export const StudioTemplateSubmitBody = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  category: z.string().max(64).nullable().optional(),
+});
+export type StudioTemplateSubmitInput = z.infer<typeof StudioTemplateSubmitBody>;
+
+/**
+ * Body for POST /api/studio/catalog/submissions/[id]/review (Phase 4 curation).
+ * A curator (studio.catalog.review) approves → public/approved, or rejects →
+ * private/rejected. Optional note is recorded in the audit trail.
+ */
+export const StudioTemplateReviewBody = z.object({
+  decision: z.enum(['approve', 'reject']),
+  note: z.string().max(2000).optional(),
+});
+export type StudioTemplateReviewInput = z.infer<typeof StudioTemplateReviewBody>;
+
 export const StudioGraphSaveBody = z
   .object({
     nodes: z.array(StudioGraphNodeSchema).max(200),

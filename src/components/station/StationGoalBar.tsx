@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import {
   getStationGoalBarThemeClasses,
   type StationTheme,
@@ -31,8 +32,13 @@ export default function StationGoalBar({
   return (
     <div className="space-y-1.5 px-1">
       <div className="flex items-center justify-between">
-        <p className={`text-eyebrow font-black ${progressTextClass} tabular-nums`}>{count}/{safeGoal} {label}</p>
-        <p className="text-eyebrow font-black text-text-faint uppercase tracking-widest">{remaining} {remainingLabel}</p>
+        <p className={`text-eyebrow font-black ${progressTextClass} tabular-nums`}>
+          <AnimatedStat value={count} speed="fast" className="inline" />/
+          <AnimatedStat value={safeGoal} speed="fast" className="inline" /> {label}
+        </p>
+        <p className="text-eyebrow font-black text-text-faint uppercase tracking-widest">
+          <AnimatedStat value={remaining} speed="fast" className="inline" /> {remainingLabel}
+        </p>
       </div>
       <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
         <motion.div

@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Settings,
 } from '@/components/Icons';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { framerGesture, framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import { getOrderIdLast4 } from '@/hooks/useStationTestingController';
@@ -240,7 +241,7 @@ function FeedbackBody({
           },
         }),
       );
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     } catch (e) {
       console.error(e);
       window.alert('Could not undo.');
@@ -299,20 +300,18 @@ function FeedbackBody({
               }}
             />
           </div>
-          <motion.span
-            key={`${scanned}-${qty}`}
-            initial={{ opacity: 0.6, y: 2 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={framerTransition.quantityBump}
-            className="shrink-0 text-micro font-black tabular-nums text-text-muted"
-          >
-            {scanned}/{qty}
+          <span className="inline-flex shrink-0 items-baseline text-micro font-black text-text-muted">
+            <AnimatedStat value={scanned} speed="fast" />
+            <span>/</span>
+            <AnimatedStat value={qty} speed="fast" />
             {remaining > 0 ? (
-              <span className="ml-1 font-bold text-text-faint">· {remaining} left</span>
+              <span className="ml-1 font-bold text-text-faint">
+                · <AnimatedStat value={remaining} speed="fast" className="inline" /> left
+              </span>
             ) : (
               <span className="ml-1 font-bold text-emerald-600">· complete</span>
             )}
-          </motion.span>
+          </span>
         </div>
 
         <AnimatePresence initial={false}>

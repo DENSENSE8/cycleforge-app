@@ -71,7 +71,7 @@ export async function relinkReceivingPo(
 
   return deps.runTx(orgId, async (client) => {
     const carton = await client.query(
-      `SELECT id FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, orgId],
     );
     if (carton.rowCount === 0) {
@@ -81,36 +81,72 @@ export async function relinkReceivingPo(
       };
     }
 
-    // ── LINE rewrite ────────────────────────────────────────────────────────
-    // updated_at is trigger-maintained on receiving_lines (never set by hand).
+    // ── LINE rewrite (W3 writer inversion) ──────────────────────────────────
+    // The line's zoho identity lives on receiving_line_zoho (the spine zoho
+    // columns are dead); only the SKU correction still touches the spine.
+    // Inline upserts (not facts/narrow.ts) because relink must also maintain the
+    // derived zoho_purchaseorder_number_norm (GENERATED on the old spine column)
+    // and needs overwrite-when-provided semantics on zoho_item_id.
     let linesUpdated = 0;
     if (scope === 'carton') {
       // Re-point every line of the carton at the chosen PO.
       const res = await client.query(
-        `UPDATE receiving_lines
-            SET zoho_purchaseorder_id = $1, zoho_purchaseorder_number = $2
-          WHERE receiving_id = $3 AND organization_id = $4`,
+        `INSERT INTO receiving_line_zoho (
+           receiving_line_id, organization_id,
+           zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm)
+         SELECT rl.id, rl.organization_id, $1, $2,
+                NULLIF(upper(regexp_replace($2, '[^A-Za-z0-9]', '', 'g')), '')
+           FROM receiving_line rl
+          WHERE rl.receiving_id = $3 AND rl.organization_id = $4
+         ON CONFLICT (receiving_line_id) DO UPDATE SET
+           zoho_purchaseorder_id          = EXCLUDED.zoho_purchaseorder_id,
+           zoho_purchaseorder_number      = EXCLUDED.zoho_purchaseorder_number,
+           zoho_purchaseorder_number_norm = EXCLUDED.zoho_purchaseorder_number_norm,
+           updated_at                     = now()`,
         [zohoPurchaseorderId, poNumber, receivingId, orgId],
       );
       linesUpdated = res.rowCount ?? 0;
     } else if (lineId != null && lineId > 0) {
-      // Re-point this line, plus the optional SKU correction.
-      const res = await client.query(
-        `UPDATE receiving_lines
-            SET zoho_purchaseorder_id = $1,
-                zoho_purchaseorder_number = $2,
-                sku = COALESCE($5, sku),
-                zoho_item_id = COALESCE($6, zoho_item_id)
-          WHERE id = $3 AND receiving_id = $7 AND organization_id = $4`,
-        [zohoPurchaseorderId, poNumber, lineId, orgId, sku, zohoItemId, receivingId],
+      // Validate the line belongs to this carton + org (the old UPDATE's WHERE),
+      // then re-point it, plus the optional SKU correction (spine-staying).
+      const lineProbe = await client.query(
+        `SELECT id FROM receiving_line
+          WHERE id = $1 AND receiving_id = $2 AND organization_id = $3`,
+        [lineId, receivingId, orgId],
       );
-      linesUpdated = res.rowCount ?? 0;
+      if ((lineProbe.rowCount ?? 0) > 0) {
+        if (sku != null) {
+          // updated_at is trigger-maintained on receiving_line (never set by hand).
+          await client.query(
+            `UPDATE receiving_line SET sku = $1
+              WHERE id = $2 AND organization_id = $3`,
+            [sku, lineId, orgId],
+          );
+        }
+        await client.query(
+          `INSERT INTO receiving_line_zoho (
+             receiving_line_id, organization_id,
+             zoho_purchaseorder_id, zoho_purchaseorder_number, zoho_purchaseorder_number_norm,
+             zoho_item_id)
+           VALUES ($1, $2, $3, $4,
+                   NULLIF(upper(regexp_replace($4, '[^A-Za-z0-9]', '', 'g')), ''),
+                   $5)
+           ON CONFLICT (receiving_line_id) DO UPDATE SET
+             zoho_purchaseorder_id          = EXCLUDED.zoho_purchaseorder_id,
+             zoho_purchaseorder_number      = EXCLUDED.zoho_purchaseorder_number,
+             zoho_purchaseorder_number_norm = EXCLUDED.zoho_purchaseorder_number_norm,
+             zoho_item_id                   = COALESCE(EXCLUDED.zoho_item_id, receiving_line_zoho.zoho_item_id),
+             updated_at                     = now()`,
+          [lineId, orgId, zohoPurchaseorderId, poNumber, zohoItemId],
+        );
+        linesUpdated = 1;
+      }
     }
 
     // ── CARTON header rewrite (explicit override of upgrade-only) ────────────
     if (scope === 'carton' || scope === 'both') {
       await client.query(
-        `UPDATE receiving
+        `UPDATE receiving_carton
             SET zoho_purchaseorder_id = $1,
                 zoho_purchaseorder_number = $2,
                 source = 'zoho_po',

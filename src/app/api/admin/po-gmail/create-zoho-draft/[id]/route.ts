@@ -36,7 +36,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import {
   createPurchaseOrder,
   searchVendorsByName,
@@ -87,7 +86,7 @@ function buildZohoUrl(purchaseOrderId: string): string {
 }
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  const orgId = ctx.organizationId ?? USAV_ORG_ID;
+  const orgId = ctx.organizationId;
   const rowId = pathRowId(request.nextUrl);
   if (!rowId) {
     return NextResponse.json({ success: false, error: 'invalid path' }, { status: 400 });

@@ -24,7 +24,7 @@ export type StationThemeColor = StationTheme;
 
 type ForcedStationScanType = 'TRACKING' | 'SERIAL' | 'FNSKU' | 'REPAIR';
 
-const LAST_MANUAL_STORAGE_PREFIX = 'usav:last-manual:tech:';
+const LAST_MANUAL_STORAGE_PREFIX = 'cf:last-manual:tech:';
 const COMPLETED_ORDER_AUTO_HIDE_MS = 2 * 60 * 1000;
 
 function newStationIdempotencyKey(): string {
@@ -209,7 +209,7 @@ export function useStationTestingController({
   // ── misc helpers ──────────────────────────────────────────────────────────────
   const triggerGlobalRefresh = () => {
     if (onComplete) onComplete();
-    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+    window.dispatchEvent(new CustomEvent('app-refresh-data'));
   };
 
   const clearFeedback = () => {

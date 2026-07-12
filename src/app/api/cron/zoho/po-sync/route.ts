@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
           );
           return { report, autoResolved: resolved.rowCount ?? 0 };
         },
-        { includeUsavTransitional: true },
+        { includeDogfoodTransitional: true },
       );
 
       // Aggregate.

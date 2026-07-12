@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { revokeSession, loadSession, SESSION_COOKIE_NAME } from '@/lib/auth/session';
+import { revokeSession, loadSession, SESSION_COOKIE_NAME, LEGACY_SESSION_COOKIE_NAME, readSessionSid } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { clockOut } from '@/lib/auth/shift-clock';
 
@@ -18,7 +18,7 @@ function clientIp(req: NextRequest): string | null {
 }
 
 export async function POST(req: NextRequest) {
-  const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(req.cookies);
   let punchSummary: { id: number; breakMinutes: number } | null = null;
   if (sid) {
     // Sign-out == clock-out. Look up the session's staff before revoking
@@ -38,12 +38,14 @@ export async function POST(req: NextRequest) {
     });
   }
   const res = NextResponse.json({ ok: true, punch: punchSummary });
-  res.cookies.set(SESSION_COOKIE_NAME, '', {
+  const clearOpts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     path: '/',
     maxAge: 0,
-  });
+  };
+  res.cookies.set(SESSION_COOKIE_NAME, '', clearOpts);
+  res.cookies.set(LEGACY_SESSION_COOKIE_NAME, '', clearOpts); // drop legacy too
   return res;
 }

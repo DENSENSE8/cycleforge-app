@@ -31,7 +31,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     // ── Shipment-anchored fallback (no resolved PO) ─────────────────────────
     // A "Delivered · not scanned" box whose tracking# never resolved to a Zoho
-    // PO has no zoho_po_mirror / receiving_lines rows, so the PO-keyed read below
+    // PO has no zoho_po_mirror / receiving_line rows, so the PO-keyed read below
     // returns nothing. When the panel opens such a row it passes `shipment_id`
     // instead: return the same response shape with `po: null` + empty line_items,
     // populated only with the shipment header + carrier event trail (and notes
@@ -66,13 +66,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       if (!stn) {
         return NextResponse.json({ success: false, error: 'shipment not found' }, { status: 404 });
       }
+      // Wave-2 reader cutover: the carton's door-received stamp reads from the
+      // receiving_triage street table (rt.door_received_at, 1:1 with the
+      // carton); output alias stays `received_at` so the response is unchanged.
       const recvRes = await tenantQuery<{ id: number; support_notes: string | null; received_at: string | null }>(
         orgId,
-        `SELECT id, support_notes, received_at::text
-           FROM receiving
-          WHERE shipment_id = $1
-            AND organization_id = $2
-          ORDER BY id
+        `SELECT r.id, r.support_notes, rt.door_received_at::text AS received_at
+           FROM receiving_carton r
+           LEFT JOIN receiving_triage rt
+             ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+          WHERE r.shipment_id = $1
+            AND r.organization_id = $2
+          ORDER BY r.id
           LIMIT 1`,
         [sid, orgId],
       );
@@ -144,10 +149,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         orgId,
         `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
                 rl.workflow_status::text AS workflow_status,
-                rl.zoho_purchaseorder_id, rl.zoho_purchaseorder_number,
+                -- Wave-2 reader cutover: line zoho cluster reads from
+                -- receiving_line_zoho rz (1:1; LEFT JOIN ≡ the old spine NULLs).
+                rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number,
                 rl.platform_account_id, rl.receiving_id
            FROM inbound_purchase_order_links l
-           JOIN receiving_lines rl ON rl.id = l.receiving_line_id AND rl.organization_id = l.organization_id
+           JOIN receiving_line rl ON rl.id = l.receiving_line_id AND rl.organization_id = l.organization_id
+           LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
           WHERE l.organization_id = $1 AND l.source_type = $2 AND l.source_order_id = $3
           ORDER BY l.is_primary DESC, rl.id
           LIMIT 200`,
@@ -349,7 +357,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       `SELECT r.id,
               r.shipment_id,
               r.support_notes,
-              r.received_at::text,
+              -- Wave-2 reader cutover: door-received stamp from receiving_triage
+              -- (1:1 street table); alias keeps the response key received_at.
+              rt.door_received_at::text       AS received_at,
               stn.tracking_number_raw         AS shipment_tracking_number_raw,
               stn.carrier                     AS shipment_carrier,
               stn.latest_status_category      AS shipment_status_category,
@@ -357,7 +367,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
               stn.delivered_at::text          AS shipment_delivered_at,
               stn.last_checked_at::text       AS shipment_last_checked_at,
               stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
-         FROM receiving r
+         FROM receiving_carton r
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
         WHERE r.source = 'zoho_po'
           AND r.zoho_purchaseorder_id = $1
@@ -428,10 +439,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         workflow_status: string | null;
       }>(
         orgId,
-        `SELECT id, zoho_line_item_id, quantity_received, workflow_status::text
-           FROM receiving_lines
-          WHERE zoho_purchaseorder_id = $1
-            AND organization_id = $2
+        // Wave-2 reader cutover: keyed + read through receiving_line_zoho rz
+        // (every line with ANY zoho field has an rz row, so joining rz first
+        // and reaching rl via its PK is exactly the old spine filter).
+        `SELECT rl.id, rz.zoho_line_item_id, rl.quantity_received, rl.workflow_status::text
+           FROM receiving_line_zoho rz
+           JOIN receiving_line rl ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
+          WHERE rz.zoho_purchaseorder_id = $1
+            AND rz.organization_id = $2
           LIMIT 500`,
         [poId, orgId],
       );
@@ -477,7 +492,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         // ie.organization_id, and aligns the staff/serial_units LEFT JOINs so a
         // cross-tenant actor_name / serial_number can't surface. The id sets
         // themselves are already this-org-only (derived from the org-gated
-        // receiving_lines / receiving reads above), but this closes the
+        // receiving_line / receiving_carton reads above), but this closes the
         // bypass-pool path the un-threaded call previously took.
         receiveEvents = await readInventorySpine({ lineIds, cartonIds, order: 'desc', limit: 50 }, orgId);
       } catch (err) {

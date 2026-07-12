@@ -1,5 +1,5 @@
 import pool from '@/lib/db';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 export async function getSyncCursor(resource: string): Promise<Date | null> {
   const res = await pool.query<{ last_synced_at: string | null }>(
@@ -26,6 +26,6 @@ export async function updateSyncCursor(resource: string, lastSyncedAt: Date): Pr
      ON CONFLICT (resource) DO UPDATE SET
        last_synced_at = EXCLUDED.last_synced_at,
        updated_at = NOW()`,
-    [resource, lastSyncedAt.toISOString(), transitionalUsavOrgId()]
+    [resource, lastSyncedAt.toISOString(), transitionalDogfoodOrgId()]
   );
 }

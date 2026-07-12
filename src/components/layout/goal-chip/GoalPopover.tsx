@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, Check, Clock, RotateCcw, Barcode } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { RECUR_INTERVALS, STATION_LABEL, toneFor } from './goal-chip-shared';
 import { GoalRing } from './GoalRing';
 import { TaskList } from './TaskList';
@@ -43,7 +44,8 @@ export function GoalPopover({
             <p className="text-[13px] font-bold tracking-tight text-text-default">Today&apos;s {STATION_LABEL[active]} goal</p>
             <p className="mt-0.5 flex items-center gap-1.5">
               <span className="text-micro font-semibold tabular-nums text-text-soft">
-                {chipCount.value} / {chipCount.total}
+                <AnimatedStat value={chipCount.value} speed="fast" className="inline" /> /{' '}
+                <AnimatedStat value={chipCount.total} speed="fast" className="inline" />
               </span>
               <span className={cn('rounded-full px-1.5 py-px text-[8.5px] font-black uppercase tracking-wider ring-1', tone.chip)}>
                 {tone.label}
@@ -132,8 +134,12 @@ export function GoalPopover({
             {g.mode === 'scans' ? (
               <div className="px-3.5 py-3.5">
                 <div className="flex items-end justify-between">
-                  <span className="text-[28px] font-extrabold leading-none tabular-nums text-text-default">{view.scanCount}</span>
-                  <span className="pb-0.5 text-label font-bold tabular-nums text-text-faint">of {view.target}</span>
+                  <span className="text-[28px] font-extrabold leading-none tabular-nums text-text-default">
+                    <AnimatedStat value={view.scanCount} />
+                  </span>
+                  <span className="pb-0.5 text-label font-bold tabular-nums text-text-faint">
+                    of <AnimatedStat value={view.target} className="inline" />
+                  </span>
                 </div>
                 <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-surface-sunken ring-1 ring-border-soft">
                   <motion.div
@@ -148,7 +154,7 @@ export function GoalPopover({
                   Live deduped scans for this station.
                 </p>
                 <p className="mt-1 text-[10.5px] font-bold tabular-nums" style={{ color: tone.ring }}>
-                  {Math.max(0, view.target - view.scanCount)} scans left to hit goal
+                  <AnimatedStat value={Math.max(0, view.target - view.scanCount)} className="inline" /> scans left to hit goal
                 </p>
               </div>
             ) : g.mode === 'recurring' ? (

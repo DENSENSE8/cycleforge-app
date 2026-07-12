@@ -39,7 +39,7 @@ function fakes(opts: { candidates?: Array<Record<string, unknown>>; losers?: Arr
         return { rows: [{ tracking_number: null, zoho_reference_number: null, zoho_notes: null, zoho_purchaseorder_number: 'PO-1' }], rowCount: 1 };
       }
       if (/JOIN inbound_purchase_order_links el/.test(sql)) return { rows: opts.candidates ?? [], rowCount: (opts.candidates ?? []).length };
-      if (/SELECT rl\.id, rl\.zoho_purchaseorder_id/.test(sql)) return { rows: opts.losers ?? [], rowCount: (opts.losers ?? []).length };
+      if (/SELECT rl\.id, rz\.zoho_purchaseorder_id/.test(sql)) return { rows: opts.losers ?? [], rowCount: (opts.losers ?? []).length };
       return { rows: [], rowCount: 1 };
     }) as TxClient['query'],
   };
@@ -79,8 +79,41 @@ test('one match + one loser → full merge: link + equivalence + delete loser + 
   assert.equal(equivCalls[0].sourceTypeB, 'zoho');
   assert.equal(equivCalls[0].linkReason, 'tracking');
   // loser deleted + merge log written
-  assert.ok(calls.some((c) => /DELETE FROM receiving_lines/.test(c.sql) && c.params.includes(77)));
+  assert.ok(calls.some((c) => /DELETE FROM receiving_line/.test(c.sql) && c.params.includes(77)));
   assert.ok(calls.some((c) => /INSERT INTO inbound_purchase_merge_log/.test(c.sql)));
+  // W2b reader cutover: the loser read keys on receiving_line_zoho, not spine zoho columns
+  const loserSql = calls.find((c) => /SELECT rl\.id, rz\.zoho_purchaseorder_id/.test(c.sql))?.sql ?? '';
+  assert.match(loserSql, /LEFT JOIN receiving_line_zoho rz/);
+  assert.match(loserSql, /AND rz\.zoho_purchaseorder_id = \$2/);
+  assert.ok(!/rl\.zoho_line_item_id|rl\.zoho_item_id/.test(loserSql), 'loser read must not hit spine zoho columns');
+
+  // W3 writer inversion: the winner adopts the zoho identity on receiving_line_zoho,
+  // COALESCE-once on line-item/item ids, norm derived from the number — and the
+  // spine receiving_line is never UPDATEd (moved columns are dead there).
+  const rzIdx = calls.findIndex((c) => /INSERT INTO receiving_line_zoho/.test(c.sql));
+  assert.ok(rzIdx >= 0, 'expected a receiving_line_zoho upsert for the winner');
+  const rz = calls[rzIdx];
+  assert.deepEqual(rz.params, [50, ORG, 'Z-1', 'PO-1', 'L9', 'I9']);
+  assert.match(rz.sql, /ON CONFLICT \(receiving_line_id\)/);
+  assert.match(rz.sql, /COALESCE\(receiving_line_zoho\.zoho_line_item_id, EXCLUDED\.zoho_line_item_id\)/);
+  assert.match(rz.sql, /COALESCE\(receiving_line_zoho\.zoho_item_id, EXCLUDED\.zoho_item_id\)/);
+  assert.match(rz.sql, /zoho_purchaseorder_number_norm/);
+  assert.ok(!calls.some((c) => /UPDATE receiving_line\b/.test(c.sql)), 'no spine write of moved zoho columns');
+  // the loser delete runs BEFORE the winner's rz upsert (frees the org+PO+line-item natural key)
+  const delIdx = calls.findIndex((c) => /DELETE FROM receiving_line/.test(c.sql));
+  assert.ok(delIdx >= 0 && delIdx < rzIdx, 'loser delete must precede the winner rz upsert');
+});
+
+test('missing signals load from the rz facts table, not spine zoho columns', async () => {
+  const { deps, calls } = fakes({ candidates: [] });
+  // No tracking/reference/notes supplied → the signals SELECT must run.
+  await mergeEbayLinesIntoZohoPo(ORG, { zohoPurchaseOrderId: 'Z-1' }, deps);
+  const signalSql = calls.find((c) => /shipping_tracking_numbers stn/.test(c.sql))?.sql ?? '';
+  assert.match(signalSql, /LEFT JOIN receiving_line_zoho rz/);
+  assert.match(signalSql, /WHERE rl\.organization_id = \$1 AND rz\.zoho_purchaseorder_id = \$2/);
+  assert.match(signalSql, /rz\.zoho_purchaseorder_number/);
+  assert.match(signalSql, /COALESCE\(rc\.zoho_notes, rz\.zoho_notes\)/);
+  assert.ok(!/rl\.zoho_/.test(signalSql), 'signal read must not hit spine zoho columns');
 });
 
 test('ambiguous (2 matches, 1 loser) → augment both, never delete', async () => {
@@ -95,7 +128,11 @@ test('ambiguous (2 matches, 1 loser) → augment both, never delete', async () =
   assert.equal(r.matched, 2);
   assert.ok(r.augmented.every((a) => a.loserLineId === null), 'ambiguous → no loser deletion');
   assert.equal(linkCalls.length, 2);
-  assert.ok(!calls.some((c) => /DELETE FROM receiving_lines/.test(c.sql)), 'must not delete on ambiguity');
+  assert.ok(!calls.some((c) => /DELETE FROM receiving_line/.test(c.sql)), 'must not delete on ambiguity');
+  // both winners still adopt the zoho identity on rz (with null line-item/item ids)
+  const rzCalls = calls.filter((c) => /INSERT INTO receiving_line_zoho/.test(c.sql));
+  assert.equal(rzCalls.length, 2);
+  assert.deepEqual(rzCalls.map((c) => c.params[4]), [null, null], 'no loser → no adopted line-item id');
 });
 
 test('candidate present but no signal match → nothing merged', async () => {

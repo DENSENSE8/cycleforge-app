@@ -26,7 +26,7 @@ async function main() {
   const stn = await pool.query(
     `SELECT stn.id, stn.tracking_number_normalized, r.id AS receiving_id
        FROM shipping_tracking_numbers stn
-       LEFT JOIN receiving r ON r.shipment_id = stn.id
+       LEFT JOIN receiving_carton r ON r.shipment_id = stn.id
       WHERE RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $1
       LIMIT 5`,
     [last8],
@@ -36,13 +36,13 @@ async function main() {
 
   const rl = await pool.query(
     `SELECT id, receiving_id, zoho_purchaseorder_id, zoho_reference_number
-       FROM receiving_lines
+       FROM receiving_line
       WHERE zoho_reference_number IS NOT NULL
         AND RIGHT(regexp_replace(zoho_reference_number, '\\D', '', 'g'), 8) = $1
       LIMIT 5`,
     [last8],
   );
-  console.log(`\n[receiving_lines.zoho_reference_number last-8 match] rows=${rl.rows.length}`);
+  console.log(`\n[receiving_line.zoho_reference_number last-8 match] rows=${rl.rows.length}`);
   for (const r of rl.rows) console.log('  ', r);
 
   await pool.end();

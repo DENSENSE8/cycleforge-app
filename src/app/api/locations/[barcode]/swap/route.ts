@@ -21,13 +21,13 @@ import { parseBody } from '@/lib/schemas/parse';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/session';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { readSessionSid } from '@/lib/auth/session';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 
 const ROUTE_LOCATION_SWAP = 'locations.barcode.swap';
 
 async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
-  const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(req.cookies);
   const user = await getCurrentUserBySid(sid);
   const noopMark = () => {};
   return user
@@ -77,9 +77,11 @@ export async function POST(
     // tenant-scoped. Anonymous callers fall back to legacy un-scoped behavior.
     const ctx = await resolveCtx(request);
     const orgId = ctx.organizationId ?? undefined;
-    // The idempotency cache requires a concrete tenant; anonymous (legacy QR)
-    // callers fall back to USAV so the org-scoped cache row still resolves.
-    const idempotencyOrgId: OrgId = ctx.organizationId ?? USAV_ORG_ID;
+    // Idempotency CACHE namespace only (data scoping uses `orgId` above, which
+    // is undefined for anon legacy-QR callers). Anonymous callers fall back to
+    // the dogfood org for the cache key namespace; the swap write stays
+    // unscoped for them. Sanctioned dogfood fallback (guard-allowlisted).
+    const idempotencyOrgId: OrgId = ctx.organizationId ?? DOGFOOD_ORG_ID;
 
     // ─── Idempotency: replay cached responses for the same key ──────────────
     const idempotencyKey = readIdempotencyKey(

@@ -57,7 +57,7 @@ export async function unpairReceivingCarton(
     const cartonRes = await client.query(
       `SELECT zoho_purchaseorder_id, zoho_purchaseorder_number, source, source_platform,
               intake_type, is_return, return_platform
-         FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+         FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [receivingId, orgId],
     );
     const before = cartonRes.rows[0] as UnpairCartonResult['before'];
@@ -66,14 +66,12 @@ export async function unpairReceivingCarton(
     }
 
     // ── Strip per-line linkage (source order + PO) ──────────────────────────
-    // updated_at is trigger-maintained on receiving_lines (never set by hand).
+    // updated_at is trigger-maintained on receiving_line (never set by hand).
     const linesRes = await client.query(
-      `UPDATE receiving_lines
+      `UPDATE receiving_line
           SET source_order_id = NULL,
               is_repair_service = FALSE,
               source_system = NULL,
-              zoho_purchaseorder_id = NULL,
-              zoho_purchaseorder_number = NULL,
               receiving_type = CASE
                 WHEN receiving_type = 'RETURN' THEN NULL
                 ELSE receiving_type
@@ -90,12 +88,30 @@ export async function unpairReceivingCarton(
       [receivingId, orgId],
     );
 
+    // Line zoho identity lives on receiving_line_zoho (W3 writer inversion — the
+    // spine zoho columns are dead): clear it there. Targeted UPDATE, not an
+    // upsert — a line with no rz row has nothing to clear. Norm follows the
+    // number (it was GENERATED on the old spine column).
+    await client.query(
+      `UPDATE receiving_line_zoho rz
+          SET zoho_purchaseorder_id = NULL,
+              zoho_purchaseorder_number = NULL,
+              zoho_purchaseorder_number_norm = NULL,
+              updated_at = now()
+        WHERE rz.organization_id = $2
+          AND rz.receiving_line_id IN (
+            SELECT id FROM receiving_line
+             WHERE receiving_id = $1 AND organization_id = $2
+          )`,
+      [receivingId, orgId],
+    );
+
     // Typed return facts (serial-link / import-sales-order) — drop with the pairing.
     await client.query(
       `DELETE FROM receiving_line_return
         WHERE organization_id = $2
           AND receiving_line_id IN (
-            SELECT id FROM receiving_lines
+            SELECT id FROM receiving_line
              WHERE receiving_id = $1 AND organization_id = $2
           )`,
       [receivingId, orgId],
@@ -107,7 +123,7 @@ export async function unpairReceivingCarton(
     // Return-specific columns are cleared so a serial-unlinked box cannot stay
     // classified as RETURN while `source` reads unmatched.
     await client.query(
-      `UPDATE receiving
+      `UPDATE receiving_carton
           SET zoho_purchaseorder_id = NULL,
               zoho_purchaseorder_number = NULL,
               source = 'unmatched',

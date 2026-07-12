@@ -26,6 +26,8 @@ interface ShippedDetailsPanelContentProps {
   showShippingTimestamp?: boolean;
   showSerialNumber?: boolean;
   productDetailsFirst?: boolean;
+  /** Lead the shipping card with packout provenance (rep order-detail view). */
+  provenanceFirst?: boolean;
   editableShippingFields?: EditableShippingFields;
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
@@ -47,6 +49,7 @@ export function ShippedDetailsPanelContent({
   showShippingTimestamp = false,
   showSerialNumber = true,
   productDetailsFirst = false,
+  provenanceFirst = false,
   editableShippingFields,
   activeSection,
   variant = 'flat',
@@ -146,6 +149,7 @@ export function ShippedDetailsPanelContent({
               showSerialNumber={showSerialNumber}
               editableShippingFields={editableShippingFields}
               prepackedSku={prepackedSku}
+              provenanceFirst={provenanceFirst}
             />,
           )
         : null}

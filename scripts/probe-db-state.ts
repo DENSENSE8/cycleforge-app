@@ -10,7 +10,7 @@ async function main() {
       AND tablename IN (
         'sku', 'sku_stock', 'sku_stock_ledger', 'sku_catalog',
         'sku_platform_ids', 'serial_units', 'photos',
-        'receiving_lines', 'locations', 'location_transfers',
+        'receiving_line', 'locations', 'location_transfers',
         'shipping_tracking_numbers', 'orders', 'staff', 'packer_logs',
         'tech_serial_numbers', 'station_activity_logs'
       )

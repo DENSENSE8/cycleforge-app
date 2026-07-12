@@ -38,14 +38,19 @@ async function loadCandidateLines(
 ): Promise<ReceivingLineCandidate[]> {
   // GUC-scoped read: app.current_org is set for the duration and the explicit
   // organization_id predicate keeps another tenant's lines invisible (defense in
-  // depth alongside RLS once enforced).
+  // depth alongside RLS once enforced). Line-level zoho columns live on
+  // receiving_line_zoho (W2 reader cutover) — 1:1 LEFT JOIN keyed on the line PK,
+  // so a line without zoho identity still returns (null zoho fields, as before).
   const r = await tenantQuery<ReceivingLineCandidate>(
     orgId,
-    `SELECT id, receiving_id, sku, quantity_expected, quantity_received,
-            zoho_item_id, zoho_purchaseorder_id
-     FROM receiving_lines
-     WHERE receiving_id = $1 AND organization_id = $2
-     ORDER BY id ASC`,
+    `SELECT rl.id, rl.receiving_id, rl.sku, rl.quantity_expected, rl.quantity_received,
+            rz.zoho_item_id, rz.zoho_purchaseorder_id
+     FROM receiving_line rl
+     LEFT JOIN receiving_line_zoho rz
+       ON rz.receiving_line_id = rl.id
+       AND rz.organization_id = rl.organization_id
+     WHERE rl.receiving_id = $1 AND rl.organization_id = $2
+     ORDER BY rl.id ASC`,
     [receivingId, orgId],
   );
   return r.rows;

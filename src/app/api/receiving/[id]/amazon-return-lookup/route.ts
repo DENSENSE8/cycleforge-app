@@ -43,7 +43,7 @@ export async function POST(
   const cartonRes = await tenantQuery<{ tracking: string | null }>(
     orgId,
     `SELECT stn.tracking_number_raw AS tracking
-       FROM receiving r
+       FROM receiving_carton r
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
       WHERE r.id = $1 AND r.organization_id = $2
       LIMIT 1`,
@@ -92,7 +92,7 @@ export async function POST(
   const cols = classificationToColumns('AMAZON_RETURN');
   await tenantQuery(
     orgId,
-    `UPDATE receiving
+    `UPDATE receiving_carton
         SET source_platform = $2, is_return = $3, return_platform = $4, updated_at = NOW()
       WHERE id = $1 AND organization_id = $5`,
     [receivingId, cols.source_platform, cols.is_return, cols.return_platform, orgId],

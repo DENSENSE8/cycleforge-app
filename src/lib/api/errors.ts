@@ -19,6 +19,10 @@ export class ApiError extends Error {
     return new ApiError(400, message, details);
   }
 
+  static unauthorized(message = 'Unauthorized') {
+    return new ApiError(401, message);
+  }
+
   static notFound(entity: string, id?: string | number) {
     return new ApiError(404, `${entity} not found${id != null ? `: ${id}` : ''}`);
   }

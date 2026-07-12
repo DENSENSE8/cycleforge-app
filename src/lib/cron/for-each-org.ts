@@ -20,7 +20,7 @@
 import type { PoolClient } from 'pg';
 import { adminPool } from '@/lib/db';
 import { withTenantConnection } from '@/lib/tenancy/db';
-import { USAV_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';
 
@@ -102,7 +102,7 @@ export interface ForEachProviderOptions {
    * must keep serving USAV during the env→vault transition. Retire once USAV's
    * credentials are migrated into the vault.
    */
-  includeUsavTransitional?: boolean;
+  includeDogfoodTransitional?: boolean;
 }
 
 /**
@@ -124,8 +124,8 @@ export async function forEachOrgWithProvider<T>(
   options: ForEachProviderOptions = {},
 ): Promise<OrgRunResult<T>[]> {
   const orgIds = await listOrgsWithProvider(provider);
-  if (options.includeUsavTransitional && !orgIds.includes(USAV_ORG_ID)) {
-    orgIds.push(USAV_ORG_ID);
+  if (options.includeDogfoodTransitional && !orgIds.includes(DOGFOOD_ORG_ID)) {
+    orgIds.push(DOGFOOD_ORG_ID);
   }
   const results: OrgRunResult<T>[] = [];
   for (const orgId of orgIds) {

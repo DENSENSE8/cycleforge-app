@@ -6,7 +6,7 @@ import { withAuth } from '@/lib/auth/withAuth';
  * GET /api/packing-logs/history?limit=10
  *
  * Returns the signed-in staff's most recent packed orders for the phone
- * history popover. Auth comes from the `usav_sid` cookie via withAuth.
+ * history popover. Auth comes from the `cf_sid` session cookie via withAuth.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {

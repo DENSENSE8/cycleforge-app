@@ -191,8 +191,8 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
 
   useEffect(() => {
     const handler = () => { void fetchHistory(); };
-    window.addEventListener('usav-refresh-data', handler);
-    return () => window.removeEventListener('usav-refresh-data', handler);
+    window.addEventListener('app-refresh-data', handler);
+    return () => window.removeEventListener('app-refresh-data', handler);
   }, [fetchHistory]);
 
   const scanLogChannel = safeChannelName(() => getScanLogChannelName(orgId!, staffId));

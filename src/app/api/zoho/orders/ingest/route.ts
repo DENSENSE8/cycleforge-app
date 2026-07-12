@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { orderSyncService, type ChannelOrder } from '@/services/OrderSyncService';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -14,7 +13,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   }
 
   try {
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const body = (await request.json()) as Partial<ChannelOrder> & { enqueue?: boolean };
     const shouldEnqueue = body.enqueue === true || request.nextUrl.searchParams.get('enqueue') === 'true';
 

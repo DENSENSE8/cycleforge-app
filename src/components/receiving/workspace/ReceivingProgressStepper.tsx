@@ -158,8 +158,9 @@ export function LinearWorkflowStepper({
  *   Scan → Photos → Condition → Serial → Print
  *
  * State is *derived* from the row — never stored — so it always reflects the
- * current source of truth. The "active" dot is the next pending step; earlier
- * steps render as done, later steps render as pending.
+ * current source of truth. The "active" dot is the first step whose data gate
+ * fails (the operator's next job); every other step shows done the moment its
+ * own gate passes, regardless of order — a completeness checklist, not a wizard.
  */
 export function ReceivingProgressStepper({
   row,

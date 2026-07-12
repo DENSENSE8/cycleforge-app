@@ -11,7 +11,7 @@ import { UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 /**
  * Module-singleton store for in-flight SERIAL_UNIT testing-scan photo uploads —
  * the exact mirror of the receiving `photoUploadQueue`, in a fully separate
- * namespace (localStorage key `usav.unit.upload_queue.v1`, entityType
+ * namespace (localStorage key `cf.unit.upload_queue.v1`, entityType
  * `SERIAL_UNIT`, photoType `testing_photo`). The packer scans a printed unit
  * label at the station → the phone captures photos → they upload here.
  * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
@@ -50,7 +50,7 @@ interface QueueState {
 }
 
 // ─── Storage shape ──────────────────────────────────────────────────────────
-const STORAGE_KEY = 'usav.unit.upload_queue.v1';
+const STORAGE_KEY = 'cf.unit.upload_queue.v1';
 const STORAGE_VERSION = 1;
 const STORAGE_MAX_ENTRIES = 20;
 

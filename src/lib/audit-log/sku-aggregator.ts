@@ -122,7 +122,7 @@ export async function listSkus(opts: ListOpts, orgId?: OrgId): Promise<SkuSummar
              COALESCE(rl.sku, ie.sku, '') AS sku,
              rl.item_name AS item_name
         FROM inventory_events ie
-        LEFT JOIN receiving_lines rl ON rl.id = ie.receiving_line_id${rlOrg}
+        LEFT JOIN receiving_line rl ON rl.id = ie.receiving_line_id${rlOrg}
        WHERE COALESCE(rl.sku, ie.sku, '') <> ''${ieOrg}
     )
     SELECT sku,
@@ -275,9 +275,11 @@ export async function getSkuDetail(
             s.name AS actor_name,
             rl.item_name,
             rl.receiving_id,
-            rl.zoho_purchaseorder_id
+            rz.zoho_purchaseorder_id
        FROM inventory_events ie
-       LEFT JOIN receiving_lines rl ON rl.id = ie.receiving_line_id${rlOrg}
+       LEFT JOIN receiving_line rl ON rl.id = ie.receiving_line_id${rlOrg}
+       LEFT JOIN receiving_line_zoho rz
+              ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
        LEFT JOIN staff s ON s.id = ie.actor_staff_id
        WHERE ${recWhere}${ieOrg}
        ORDER BY ie.occurred_at DESC

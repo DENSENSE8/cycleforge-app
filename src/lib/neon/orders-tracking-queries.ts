@@ -21,7 +21,7 @@
  */
 import type { PoolClient } from 'pg';
 import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';
-import { transitionalUsavOrgId, withTenantTransaction } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { linkShipment, unlinkShipment, setPrimaryShipmentLink } from '@/lib/shipping/shipment-links';
 
@@ -38,7 +38,7 @@ type Tx = Pick<PoolClient, 'query'>;
 // an OPTIONAL `organizationId` and STAMP it explicitly on every INSERT:
 //   - shipping_tracking_numbers (tenant-owned, has organization_id)
 //   - order_shipment_links      (tenant-owned, has organization_id)
-// When the caller doesn't thread one we fall back to transitionalUsavOrgId(),
+// When the caller doesn't thread one we fall back to transitionalDogfoodOrgId(),
 // which preserves today's single-tenant (USAV) behavior exactly while letting
 // multi-tenant callers pass their real `ctx.organizationId`. All current callers
 // (orders/assign, orders/[id]/tracking, shipped/scan-out) have ctx.organizationId
@@ -68,7 +68,7 @@ export async function upsertOrderTracking(
   client: Tx,
   organizationId?: OrgId,
 ): Promise<void> {
-  const orgId = organizationId ?? transitionalUsavOrgId();
+  const orgId = organizationId ?? transitionalDogfoodOrgId();
   const existingOrders = await client.query(
     `SELECT id, shipment_id
      FROM orders
@@ -404,7 +404,7 @@ export async function createAdditionalShipmentLink(
   client: Tx,
   organizationId?: OrgId,
 ): Promise<number> {
-  const orgId = organizationId ?? transitionalUsavOrgId();
+  const orgId = organizationId ?? transitionalDogfoodOrgId();
   const rawTracking = String(shippingTrackingNumber || '').trim();
   if (!rawTracking) throw new Error('Tracking number is required');
 
@@ -601,7 +601,7 @@ export interface ApplyOrderTrackingOps {
   /**
    * Owning org. Threaded into every tenant-owned INSERT (shipping_tracking_numbers,
    * order_shipment_links) so they stamp organization_id explicitly. Omitted →
-   * transitionalUsavOrgId() (today's single-tenant USAV behavior).
+   * transitionalDogfoodOrgId() (today's single-tenant USAV behavior).
    */
   organizationId?: OrgId;
 }
@@ -699,7 +699,7 @@ export async function reconcileOrderTrackingSet(
     [primaryShipmentId, orderIds],
   );
   if (primaryShipmentId) {
-    const orgId = organizationId ?? transitionalUsavOrgId();
+    const orgId = organizationId ?? transitionalDogfoodOrgId();
     for (const orderId of orderIds) {
       await setPrimaryShipmentLink(orgId, 'ORDER', orderId, primaryShipmentId, client);
     }
@@ -717,7 +717,7 @@ export async function applyOrderTrackingOps(
   ops: ApplyOrderTrackingOps,
 ): Promise<ApplyOrderTrackingResult> {
   const { orderIds, setTrackingNumbers, primaryTrackingNumber, edits, creates, deletes, setPrimaryShipmentId, organizationId } = ops;
-  const orgId = organizationId ?? transitionalUsavOrgId();
+  const orgId = organizationId ?? transitionalDogfoodOrgId();
   // Run the whole multi-statement batch on the tenant pool inside ONE
   // GUC-scoped transaction (SET LOCAL app.current_org). The low-level helpers
   // receive this same tenant client, so every write is RLS-subject and

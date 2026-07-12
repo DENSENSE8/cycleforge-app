@@ -16,7 +16,9 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
 import type { AssistantPageContext } from '@/lib/assistant/context-store';
 
-export const ASSISTANT_HIGHLIGHT_EVENT = 'usav:assistant-highlight';
+import { ASSISTANT_HIGHLIGHT_EVENT } from '@/lib/app-events';
+
+export { ASSISTANT_HIGHLIGHT_EVENT };
 
 export interface AssistantMessage {
   id: string;

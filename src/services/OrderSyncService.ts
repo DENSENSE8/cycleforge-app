@@ -86,7 +86,7 @@ export class OrderSyncService {
    * Phase 3a: tenant scoping. The orgId must be supplied by the caller —
    * either from the authenticated session (`ctx.organizationId`) for routes
    * that receive webhooks under a tenant subdomain, or from
-   * `transitionalUsavOrgId()` for the QStash batch reconciliation job
+   * `transitionalDogfoodOrgId()` for the QStash batch reconciliation job
    * (which is single-tenant until tenant-aware cron lands).
    */
   async ingestExternalOrder(orgId: string, rawOrder: ChannelOrder) {

@@ -216,7 +216,7 @@ export function useFbaPlanData({ activeMode, refreshToken, orgId }: UseFbaPlanDa
   }, [activeMode, loadPendingPlans]);
 
   useEventBridge({
-    'usav-refresh-data': () => loadPendingPlans(),
+    'app-refresh-data': () => loadPendingPlans(),
     'dashboard-refresh': () => loadPendingPlans(),
     'fba-plan-created': () => loadPendingPlans(),
     'fba-print-shipped': () => loadPendingPlans(),

@@ -10,13 +10,13 @@
  * Pure data only — no JSX.
  */
 
-import { Activity, BarChart3, Sparkles, History, Barcode, MapPin, PackageCheck, Zap } from '@/components/Icons';
+import { Activity, BarChart3, Sparkles, History, Barcode, MapPin, PackageCheck, Zap, ClipboardList } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { JourneyDimension } from '@/lib/timeline/journey';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals';
+export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans';
 
 /**
  * `live` is the default and stays on the bare `/operations` path (no `?mode=`)
@@ -37,6 +37,11 @@ export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'si
  *               happen" layer. Deliberately a SEPARATE mode (plan Decision D2):
  *               Studio-anchored, registry-extensible, cross-linked to History,
  *               never merged into the History event firehose.
+ * - plans     → strategic ops plans (ops_plans tables) — staff home for plan
+ *               progress over /api/ops-plans: list (sidebar) → phases + tasks
+ *               (Workbench). Bridged agentic-loop plan can deepen with
+ *               ?view=live (Monitor MDX + plan agent). Live via
+ *               `ops_plans:changes` — no polling. `/forge` redirects here.
  */
 export const OPERATIONS_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'live',      label: 'Live',      icon: Activity },
@@ -44,12 +49,13 @@ export const OPERATIONS_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'insights',  label: 'Insights',  icon: Sparkles },
   { id: 'history',   label: 'History',   icon: History },
   { id: 'signals',   label: 'Signals',   icon: Zap },
+  { id: 'plans',     label: 'Plans',     icon: ClipboardList },
 ];
 
 export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
-  return raw === 'analytics' || raw === 'insights' || raw === 'history' || raw === 'signals'
+  return raw === 'analytics' || raw === 'insights' || raw === 'history' || raw === 'signals' || raw === 'plans'
     ? raw
     : 'live';
 }
@@ -77,7 +83,7 @@ export const OPERATIONS_MODE_SCOPED_PARAMS = [
   'types',    // multi event-type filter (CSV)
   'status',   // status filter
   'sources',  // spine filter (CSV)
-  'view',     // applied saved-view id
+  'view',     // history: saved-view id · plans: `live` for agentic-loop console
   'cursor',   // browse keyset cursor (transient; cleared on filter change)
   // ── Signals mode ──
   'signalsView', // timeline (default) | browse

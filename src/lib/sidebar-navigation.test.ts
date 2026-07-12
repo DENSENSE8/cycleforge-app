@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   APP_SIDEBAR_NAV,
+  PARKED_SIDEBAR_NAV_IDS,
   getSidebarNavItems,
   isSidebarRouteMobileRestricted,
   SIDEBAR_PAGE_NAV,
@@ -12,8 +13,37 @@ import {
   resolveSidebarMode,
 } from '@/lib/sidebar-navigation';
 
-test('getSidebarNavItems returns the full sidebar list by default', () => {
-  assert.deepEqual(getSidebarNavItems(), APP_SIDEBAR_NAV);
+test('getSidebarNavItems returns the full sidebar list by default (parked sub-routes filtered)', () => {
+  // A row that rides a parked surface (`parkedSurface`, e.g. studio-catalog on
+  // the parked `studio` surface) is dropped while that surface is locked, so a
+  // sub-route link never dead-ends on the ParkedSurface stand-in. Force the
+  // locked default regardless of the ambient env, then everything else returns
+  // verbatim.
+  const prevA = process.env.DOGFOOD_FULL_SURFACE;
+  const prevB = process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
+  delete process.env.DOGFOOD_FULL_SURFACE;
+  delete process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
+  try {
+    const expected = APP_SIDEBAR_NAV.filter((item) => !item.parkedSurface);
+    assert.deepEqual(getSidebarNavItems(), expected);
+  } finally {
+    if (prevA === undefined) delete process.env.DOGFOOD_FULL_SURFACE;
+    else process.env.DOGFOOD_FULL_SURFACE = prevA;
+    if (prevB === undefined) delete process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
+    else process.env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE = prevB;
+  }
+});
+
+test('a parked sub-route row (studio-catalog) reappears once its surface is unlocked', () => {
+  const prev = process.env.DOGFOOD_FULL_SURFACE;
+  process.env.DOGFOOD_FULL_SURFACE = '1';
+  try {
+    const ids = getSidebarNavItems().map((item) => item.id);
+    assert.equal(ids.includes('studio-catalog'), true);
+  } finally {
+    if (prev === undefined) delete process.env.DOGFOOD_FULL_SURFACE;
+    else process.env.DOGFOOD_FULL_SURFACE = prev;
+  }
 });
 
 test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
@@ -23,10 +53,30 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   assert.equal(navIds.includes('support'), false);
   assert.equal(navIds.includes('admin'), false);
   assert.equal(navIds.includes('dashboard'), true);
-  assert.equal(navIds.includes('fba'), true);
+  // FBA / inventory / studio / etc. are parked off prod nav (dogfood surface).
+  assert.equal(navIds.includes('fba'), false);
   // /repair is routed onto the 'walk-in' nav entry — there's no standalone
   // sidebar item for it.
   assert.equal(navIds.includes('walk-in'), true);
+});
+
+test('dogfood prod nav omits parked surfaces', () => {
+  const navIds = new Set(getSidebarNavItems().map((item) => item.id));
+  for (const id of [
+    'home',
+    'sourcing',
+    'inventory',
+    'warehouse',
+    'fba',
+    'studio',
+    'ai-chat',
+  ]) {
+    assert.equal(navIds.has(id), false, `${id} should be parked off APP_SIDEBAR_NAV`);
+  }
+  // Stations + shipping stay visible.
+  for (const id of ['dashboard', 'receiving', 'outbound', 'tech', 'packer']) {
+    assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
+  }
 });
 
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
@@ -109,11 +159,16 @@ test('mode ids are unique within each page', () => {
   }
 });
 
-// Every modeful page id must be a real nav route, and carry a resolver.
-test('SIDEBAR_PAGE_NAV pages are real APP_SIDEBAR_NAV routes with resolvers', () => {
+// Every modeful page id must be a real nav route OR a parked deep-link page,
+// and carry a resolver. Parked pages keep SIDEBAR_PAGE_NAV so /fba?mode=… etc.
+// still resolve when opened by URL / topic-worktree previews.
+test('SIDEBAR_PAGE_NAV pages are prod-nav or parked routes with resolvers', () => {
   const navIds = new Set(APP_SIDEBAR_NAV.map((item) => item.id));
   for (const page of SIDEBAR_PAGE_NAV) {
-    assert.ok(navIds.has(page.id), `${page.id} is not in APP_SIDEBAR_NAV`);
+    assert.ok(
+      navIds.has(page.id) || PARKED_SIDEBAR_NAV_IDS.has(page.id as never),
+      `${page.id} is not in APP_SIDEBAR_NAV and not in PARKED_SIDEBAR_NAV_IDS`,
+    );
     assert.equal(typeof page.resolveMode, 'function', `${page.id} missing resolveMode`);
   }
 });
@@ -208,10 +263,14 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // FBA defaults to combine, not the leftmost-listed plan.
   assert.equal(resolveSidebarMode('fba', at('/fba')), 'combine');
   assert.equal(resolveSidebarMode('fba', at('/fba', 'mode=plan')), 'plan');
-  // Dashboard: bare presence params, shipped wins; default + legacy ?pending → unshipped.
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'shipped');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'unshipped');
-  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'unshipped');
+  // Dashboard: Unshipped + Shipped collapsed into one "Outbound" nav mode; the
+  // Unshipped/Shipped split is now a top-left tab in the main content, so both
+  // `?shipped` and `?unshipped` (+ legacy `?pending` + bare) resolve to Outbound.
+  // `?warranty` stays its own mode.
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'outbound');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'outbound');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'outbound');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'warranty=')), 'warranty');
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
   // param-based so it resolves identically on the canonical route + legacy alias.
@@ -227,4 +286,10 @@ test('getSidebarRouteKey maps the Test surface + legacy alias to tech', () => {
   assert.equal(getSidebarRouteKey('/test'), 'tech');
   assert.equal(getSidebarRouteKey('/test/'), 'tech');
   assert.equal(getSidebarRouteKey('/tech'), 'tech');
+});
+
+test('getSidebarRouteKey maps the dedicated order workspace to order', () => {
+  assert.equal(getSidebarRouteKey('/o/6057'), 'order');
+  assert.equal(getSidebarRouteKey('/o/12-34567-89012'), 'order');
+  assert.equal(getSidebarRouteKey('/o'), 'order');
 });

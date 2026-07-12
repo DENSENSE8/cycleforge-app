@@ -3,6 +3,7 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import { useStepUp } from '@/components/providers/StepUpProvider';
 import { fetchWithStepUp } from '@/components/auth/StepUpModal';
+import { toast } from '@/lib/toast';
 import type { Annotation, StudioGraphEdge, StudioGraphNode } from '../studio-types';
 import type { Busy } from './types';
 
@@ -160,5 +161,30 @@ export function useStudioPublish({
     [setParams],
   );
 
-  return { createDraft, saveDraft, publish, discardDraft, importTemplate };
+  // Submit the current definition to the community catalog for curator review.
+  // Mirrors importTemplate's resolve/error handling, but keyed by the shared
+  // `submitting` busy flag; a plain fetch (no step-up) — studio.manage is
+  // enforced server-side. Success/failure surface as toasts, not the header
+  // actionError line, since this is a fire-and-forget submission.
+  const submitToCatalog = useCallback(async () => {
+    if (!definitionId) return;
+    setBusy('submitting');
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/studio/definitions/${definitionId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'catalog submission failed');
+      toast.success('Submitted to the community catalog for curator review');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'catalog submission failed');
+    } finally {
+      setBusy(null);
+    }
+  }, [definitionId]);
+
+  return { createDraft, saveDraft, publish, discardDraft, importTemplate, submitToCatalog };
 }

@@ -31,7 +31,27 @@ FORGE_INGEST_TOKEN="${FORGE_INGEST_TOKEN:-}"
 mkdir -p "$MANIFEST_DIR"
 
 FEATURE="$*"
-[ -z "$FEATURE" ] && { echo "Usage: forge.sh <feature request>"; exit 1; }
+
+# ── Outer loop (ALP-4.1): `forge.sh --next-ticket` picks the first pending
+# `<TicketStatus/>` from master-plan.mdx deterministically, flips it to
+# in-progress, and exports FORGE_TICKET_ID so the post-VERIFY hook can flip it
+# to deployed. Requires tsx (repo devDependency).
+if [ "$FEATURE" = "--next-ticket" ]; then
+  TICKET_LINE=$( (cd "$REPO_ROOT" && npx tsx .cycle_forge_ops/scripts/forge-next-ticket.mjs) ) || {
+    rc=$?
+    if [ "$rc" = "10" ]; then echo "No pending tickets in master-plan.mdx — nothing to do."; exit 0; fi
+    echo "Failed to read master-plan.mdx (rc=$rc)"; exit 1
+  }
+  FORGE_TICKET_ID="${TICKET_LINE%%$'\t'*}"
+  TICKET_HREF="${TICKET_LINE#*$'\t'}"
+  export FORGE_TICKET_ID
+  FEATURE="Execute master-plan ticket $FORGE_TICKET_ID${TICKET_HREF:+ (plan doc: $TICKET_HREF)}. Read the plan doc first; implement exactly that ticket."
+  ( cd "$REPO_ROOT" && npx tsx .cycle_forge_ops/scripts/master-plan-set-status.mjs "$FORGE_TICKET_ID" in-progress ) \
+    || echo "⚠ could not flip $FORGE_TICKET_ID to in-progress (non-fatal)"
+  echo "🎯 Picked ticket $FORGE_TICKET_ID"
+fi
+
+[ -z "$FEATURE" ] && { echo "Usage: forge.sh <feature request> | forge.sh --next-ticket"; exit 1; }
 
 RUN_UID=$(date +%Y%m%d-%H%M%S)
 MANIFEST="$MANIFEST_DIR/$RUN_UID.md"
@@ -93,15 +113,81 @@ _ingest runUid="$RUN_UID" stage=sync stageStatus=ok detail="memory updated" gitD
 echo "✅ [4/4] VERIFY — running tests declared in the manifest's ### VERIFY section..."
 _ingest runUid="$RUN_UID" stage=verify stageStatus=running
 VERIFY_CMD=$(awk '/^### VERIFY/{f=1;next} f&&/npm run|tsx|playwright/{print;exit}' "$MANIFEST" || true)
+
+# ── Neon ephemeral branch sandbox (ALP-4.2..4.4 / ALP-6.2..6.4) ───────────────
+# When FORGE_NEON_VERIFY=1 (+ NEON_API_KEY/NEON_PROJECT_ID configured), VERIFY
+# runs against a fresh CoW branch of production, NEVER production itself:
+# create → run with EVERY DB pool env pointed at the branch → success: delete ·
+# failure: keep for retry. The mjs client hard-fails if the minted URL resolves
+# to the production endpoint (incl. pooler aliases). Opportunistic TTL sweep of
+# stale branches runs first so leaks self-heal even without a cron.
+#
+# SAFETY: values are parsed line-wise (never `eval`'d — a connection URI's `&`
+# would background) and if the flag is on but a branch URL can't be minted, the
+# VERIFY is SKIPPED, never silently run against prod.
+BRANCH_ID=""
+BRANCH_DATABASE_URL=""
+NEON_VERIFY_ABORT=0
+if [ "${FORGE_NEON_VERIFY:-0}" = "1" ] && [ -n "$VERIFY_CMD" ]; then
+  ( cd "$REPO_ROOT" && npx tsx .cycle_forge_ops/scripts/forge-verify-branch.mjs sweep ) || true
+  if BRANCH_OUT=$( (cd "$REPO_ROOT" && npx tsx .cycle_forge_ops/scripts/forge-verify-branch.mjs create "$RUN_UID") ); then
+    BRANCH_ID=$(printf '%s\n' "$BRANCH_OUT"    | sed -n 's/^BRANCH_ID=//p'           | head -1)
+    BRANCH_DATABASE_URL=$(printf '%s\n' "$BRANCH_OUT" | sed -n 's/^BRANCH_DATABASE_URL=//p' | head -1)
+  fi
+  if [ -z "$BRANCH_DATABASE_URL" ]; then
+    echo "   ⛔ Neon verify branch unavailable — SKIPPING VERIFY (never runs on prod when the sandbox is requested)"
+    _ingest runUid="$RUN_UID" stage=verify stageStatus=failed detail="neon branch unavailable; verify skipped" runStatus=error
+    VERIFY_CMD=""
+    NEON_VERIFY_ABORT=1
+  else
+    echo "   🌱 Neon verify branch: $BRANCH_ID"
+  fi
+fi
+
 if [ -n "$VERIFY_CMD" ]; then
   echo "   → $VERIFY_CMD"
-  if ( cd "$REPO_ROOT" && eval "$VERIFY_CMD" ); then
+  # Point ALL Neon pools (src/lib/db.ts reads DATABASE_URL / TENANT_APP_DATABASE_URL
+  # / ADMIN_DATABASE_URL) at the branch, and DENY the Control-Plane key to the
+  # VERIFY subshell so a hostile `### VERIFY` line can't exfiltrate it.
+  if ( cd "$REPO_ROOT" && \
+       if [ -n "$BRANCH_DATABASE_URL" ]; then \
+         env NEON_API_KEY= \
+             DATABASE_URL="$BRANCH_DATABASE_URL" \
+             DATABASE_URL_UNPOOLED="$BRANCH_DATABASE_URL" \
+             TENANT_APP_DATABASE_URL="$BRANCH_DATABASE_URL" \
+             ADMIN_DATABASE_URL="$BRANCH_DATABASE_URL" \
+             bash -c "$VERIFY_CMD"; \
+       else eval "$VERIFY_CMD"; fi ); then
     echo "   ✅ tests passed"
-    _ingest runUid="$RUN_UID" stage=verify stageStatus=ok detail="$VERIFY_CMD" runStatus=passed
+    _ingest runUid="$RUN_UID" stage=verify stageStatus=ok \
+      detail="$VERIFY_CMD${BRANCH_ID:+ [neon-branch:$BRANCH_ID]}" runStatus=passed
+    # Success → the ephemeral branch has served its purpose; delete it (ALP-4.4).
+    if [ -n "$BRANCH_ID" ]; then
+      ( cd "$REPO_ROOT" && npx tsx .cycle_forge_ops/scripts/forge-verify-branch.mjs delete "$BRANCH_ID" ) \
+        || echo "   ⚠ could not delete verify branch $BRANCH_ID (TTL sweep will catch it)"
+    fi
+    # ── Post-VERIFY master-plan hook (ALP-2.5) ─────────────────────────────
+    # When this run was picked from a `<TicketStatus status="pending">` in
+    # master-plan.mdx (Phase 4 outer loop exports FORGE_TICKET_ID), flip the
+    # ticket to `deployed`. Best-effort like _ingest — NEVER aborts the run
+    # (set -e is active). The sync daemon broadcasts the flip to /forge live.
+    if [ -n "${FORGE_TICKET_ID:-}" ]; then
+      RESOLUTION_COMMIT=$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo "")
+      ( cd "$REPO_ROOT" && npx tsx .cycle_forge_ops/scripts/master-plan-set-status.mjs \
+          "$FORGE_TICKET_ID" deployed ${RESOLUTION_COMMIT:+"$RESOLUTION_COMMIT"} ) \
+        || echo "   ⚠ master-plan status update failed (non-fatal)"
+    fi
   else
     echo "   ❌ tests failed — inspect $MANIFEST"
-    _ingest runUid="$RUN_UID" stage=verify stageStatus=failed detail="$VERIFY_CMD" runStatus=failed
+    # Failure → KEEP the branch for retry (TTL sweep reclaims it later).
+    [ -n "$BRANCH_ID" ] && echo "   🌱 verify branch kept for retry: $BRANCH_ID"
+    _ingest runUid="$RUN_UID" stage=verify stageStatus=failed \
+      detail="$VERIFY_CMD${BRANCH_ID:+ [neon-branch:$BRANCH_ID kept]}" runStatus=failed
   fi
+elif [ "$NEON_VERIFY_ABORT" = "1" ]; then
+  # The sandbox was requested but unavailable — already ingested runStatus=error
+  # above. Do NOT re-record this as a passed/skipped run.
+  echo "   ⛔ VERIFY not run (Neon sandbox unavailable) — run recorded as error."
 else
   echo "   ⚠ no VERIFY command found in manifest; run targeted tests manually."
   _ingest runUid="$RUN_UID" stage=verify stageStatus=skipped detail="no VERIFY command in manifest" runStatus=passed

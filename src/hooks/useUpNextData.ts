@@ -259,10 +259,10 @@ export function useUpNextData({ techId, onAllCompleted }: UseUpNextDataOptions) 
   // broadcast refresh events so data stays in sync without waiting for the poll.
   useEffect(() => {
     const handleRefresh = () => refreshRef.current();
-    window.addEventListener('usav-refresh-data', handleRefresh);
+    window.addEventListener('app-refresh-data', handleRefresh);
     window.addEventListener('dashboard-refresh', handleRefresh);
     return () => {
-      window.removeEventListener('usav-refresh-data', handleRefresh);
+      window.removeEventListener('app-refresh-data', handleRefresh);
       window.removeEventListener('dashboard-refresh', handleRefresh);
     };
   }, []);

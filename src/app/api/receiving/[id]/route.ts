@@ -13,6 +13,10 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { getOrgPlatforms, getOrgTypes } from '@/lib/catalog/org-catalog';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
 import { isTriageLane } from '@/lib/receiving/triage-lane-policy';
+import {
+  upsertReceivingTriage,
+  type CartonTriagePatch,
+} from '@/lib/receiving/streets/carton-street-write';
 
 const SOURCE_PLATFORMS = new Set([
   'zoho',
@@ -86,6 +90,9 @@ export async function GET(
          r.is_return,
          r.return_platform,
          r.return_reason,
+         -- CARTON-level testing cluster (needs_test/assigned_tech_id/qa_status/
+         -- disposition_code/condition_grade) stays on the spine — legacy carton
+         -- duplicates, Wave-4 decision (not part of the Wave-2 moved set).
          r.needs_test,
          r.assigned_tech_id,
          r.target_channel,
@@ -99,31 +106,39 @@ export async function GET(
          r.support_notes,
          r.listing_url,
          -- 3-stage operator lifecycle: Scanned (tracking_scanned_*, door scan) →
-         -- Unboxed (r.unboxed_at, first Unbox-surface scan) → Received (the terminal
+         -- Unboxed (ru.unboxed_at, first Unbox-surface scan) → Received (the terminal
          -- DONE time = MAX(receiving_lines.received_done_at)). "Received" is NOT the
          -- unbox event: a carton can be unboxed (9:05) yet not finished/received.
          to_char(recv_done.received_done_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at,
          recv_done.received_by                                       AS received_by,
-         to_char(r.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS')   AS unboxed_at,
-         r.unboxed_by,
+         to_char(ru.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS')  AS unboxed_at,
+         ru.unboxed_by,
          -- Tracking-scan provenance. Prefer the earliest receiving_scans row
          -- (per-scan audit log) so we surface the literal tracking-scan event;
-         -- fall back to receiving.received_at / received_by for rows that
-         -- pre-date the scans-log or were created via other paths.
+         -- fall back to the triage door scan (rt.door_received_at/_by) for rows
+         -- that pre-date the scans-log or were created via other paths.
          to_char(
-           COALESCE(rs_first.scanned_at, r.received_at)::timestamp,
+           COALESCE(rs_first.scanned_at, rt.door_received_at)::timestamp,
            'YYYY-MM-DD HH24:MI:SS'
          ) AS tracking_scanned_at,
-         COALESCE(rs_first.scanned_by, r.received_by) AS tracking_scanned_by,
+         COALESCE(rs_first.scanned_by, rt.door_received_by) AS tracking_scanned_by,
          staff_scan.name AS tracking_scanned_by_name,
-         to_char(r.unbox_opened_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unbox_opened_at,
-         r.unbox_opened_by,
+         to_char(ru.opened_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unbox_opened_at,
+         ru.opened_by AS unbox_opened_by,
          staff_unbox_open.name AS unbox_opened_by_name,
          staff_unbox.name AS unboxed_by_name,
          staff_recv.name AS received_by_name,
          to_char(r.created_at::timestamp, 'YYYY-MM-DD HH24:MI:SS')   AS created_at,
          to_char(r.updated_at::timestamp, 'YYYY-MM-DD HH24:MI:SS')   AS updated_at
-       FROM receiving r
+       FROM receiving_carton r
+       -- Wave-2 reader cutover: carton triage/unbox facts come from the 1:1
+       -- street tables (trigger-mirrored from the spine at 0 drift).
+       LEFT JOIN receiving_triage rt
+         ON rt.receiving_id = r.id
+        AND rt.organization_id = r.organization_id
+       LEFT JOIN receiving_unbox ru
+         ON ru.receiving_id = r.id
+        AND ru.organization_id = r.organization_id
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
        LEFT JOIN LATERAL (
          SELECT id FROM local_pickup_orders
@@ -144,14 +159,14 @@ export async function GET(
          SELECT MAX(rl.received_done_at) AS received_done_at,
                 (ARRAY_AGG(rl.received_by ORDER BY rl.received_done_at DESC NULLS LAST)
                    FILTER (WHERE rl.received_by IS NOT NULL))[1] AS received_by
-         FROM receiving_lines rl
+         FROM receiving_line rl
          WHERE rl.receiving_id = r.id AND rl.organization_id = $2
            AND rl.received_done_at IS NOT NULL
        ) recv_done ON TRUE
-       LEFT JOIN staff staff_scan ON staff_scan.id = COALESCE(rs_first.scanned_by, r.received_by)
-       LEFT JOIN staff staff_unbox_open ON staff_unbox_open.id = r.unbox_opened_by
-       LEFT JOIN staff staff_unbox ON staff_unbox.id = r.unboxed_by
-       LEFT JOIN staff staff_recv ON staff_recv.id = COALESCE(recv_done.received_by, r.unboxed_by)
+       LEFT JOIN staff staff_scan ON staff_scan.id = COALESCE(rs_first.scanned_by, rt.door_received_by)
+       LEFT JOIN staff staff_unbox_open ON staff_unbox_open.id = ru.opened_by
+       LEFT JOIN staff staff_unbox ON staff_unbox.id = ru.unboxed_by
+       LEFT JOIN staff staff_recv ON staff_recv.id = COALESCE(recv_done.received_by, ru.unboxed_by)
        WHERE r.id = $1 AND r.organization_id = $2
        LIMIT 1`,
       [id, orgId],
@@ -177,9 +192,9 @@ export async function GET(
          rlt.disposition_code,
          rlt.condition_grade,
          rl.workflow_status::text                          AS workflow_status,
-         rl.zoho_purchaseorder_id,
-         rl.zoho_purchaseorder_number,
-         rl.zoho_line_item_id,
+         rz.zoho_purchaseorder_id,
+         rz.zoho_purchaseorder_number,
+         rz.zoho_line_item_id,
          rl.receiving_type,
          rl.intake_type,
          rl.source_platform_pill,
@@ -189,11 +204,14 @@ export async function GET(
          rl.notes,
          to_char(rl.created_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
          to_char(rl.updated_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS updated_at
-       FROM receiving_lines rl
+       FROM receiving_line rl
        LEFT JOIN receiving_line_testing rlt
          ON rlt.receiving_line_id = rl.id
         AND rlt.organization_id = rl.organization_id
-       LEFT JOIN receiving r_cart ON r_cart.id = rl.receiving_id
+       LEFT JOIN receiving_line_zoho rz
+         ON rz.receiving_line_id = rl.id
+        AND rz.organization_id = rl.organization_id
+       LEFT JOIN receiving_carton r_cart ON r_cart.id = rl.receiving_id
        LEFT JOIN shipping_tracking_numbers stn_line ON stn_line.id = r_cart.shipment_id
        WHERE rl.receiving_id = $1 AND rl.organization_id = $2
        ORDER BY rl.id ASC`,
@@ -410,6 +428,12 @@ export async function PATCH(
     const values: unknown[] = [];
     let idx = 1;
 
+    // Triage staging fields (staging_location_id / priority_lane) moved to the
+    // receiving_triage street table (Wave-3 writer inversion) — collected here
+    // and applied via upsertReceivingTriage in the same transaction as the
+    // spine UPDATE. Overwrite semantics: the picker can change or clear them.
+    const triagePatch: CartonTriagePatch = {};
+
     if (Object.prototype.hasOwnProperty.call(body, 'support_notes')) {
       const raw = body.support_notes;
       const next = raw == null || raw === '' ? null : String(raw).trim() || null;
@@ -603,8 +627,7 @@ export async function PATCH(
           );
         }
       }
-      updates.push(`staging_location_id = $${idx++}`);
-      values.push(next);
+      triagePatch.stagingLocationId = next;
     }
 
     if (Object.prototype.hasOwnProperty.call(body, 'priority_lane')) {
@@ -616,11 +639,11 @@ export async function PATCH(
           { status: 400 },
         );
       }
-      updates.push(`priority_lane = $${idx++}`);
-      values.push(next);
+      triagePatch.priorityLane = next;
     }
 
-    if (updates.length === 0) {
+    const hasTriagePatch = Object.keys(triagePatch).length > 0;
+    if (updates.length === 0 && !hasTriagePatch) {
       return NextResponse.json({ success: false, error: 'No valid fields to update' }, { status: 400 });
     }
 
@@ -631,14 +654,21 @@ export async function PATCH(
     // Snapshot + UPDATE in one GUC-scoped transaction so the audit diff and the
     // write see the same tenant. The UPDATE carries an explicit org predicate
     // (defense in depth alongside RLS); a row owned by another org never matches.
+    // Staging/lane land on the receiving_triage street table in the SAME
+    // transaction (Wave-3 writer inversion) — atomicity is preserved.
     const { before, result } = await withTenantTransaction(ctx.organizationId, async (client) => {
-      // Snapshot the row before the update so the audit row carries a real diff.
+      // Snapshot the row before the update so the audit row carries a real
+      // diff. Staging/lane read from the triage street table (Wave-2 cutover;
+      // the spine columns are dropped in Wave 4).
       const beforeRow = await client.query(
-        `SELECT id, source_platform, intake_type, is_return, return_platform,
-                zoho_purchaseorder_id, zoho_purchaseorder_number,
-                shipment_id, support_notes, listing_url, source,
-                staging_location_id, priority_lane
-         FROM receiving WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        `SELECT r.id, r.source_platform, r.intake_type, r.is_return, r.return_platform,
+                r.zoho_purchaseorder_id, r.zoho_purchaseorder_number,
+                r.shipment_id, r.support_notes, r.listing_url, r.source,
+                rt.staging_location_id, rt.priority_lane
+         FROM receiving_carton r
+         LEFT JOIN receiving_triage rt
+           ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         WHERE r.id = $1 AND r.organization_id = $2 LIMIT 1`,
         [id, ctx.organizationId],
       );
       const before = beforeRow.rows[0] ?? null;
@@ -654,20 +684,36 @@ export async function PATCH(
         shipment_id: number | null;
         support_notes: string | null;
         listing_url: string | null;
-        staging_location_id: number | null;
-        priority_lane: string | null;
       }>(
-        `UPDATE receiving SET ${updates.join(', ')}
+        `UPDATE receiving_carton SET ${updates.join(', ')}
          WHERE id = $${values.length - 1} AND organization_id = $${orgParamIdx}
-         RETURNING id, source_platform, intake_type, is_return, return_platform, zoho_purchaseorder_id, zoho_purchaseorder_number, shipment_id, support_notes, listing_url, staging_location_id, priority_lane`,
+         RETURNING id, source_platform, intake_type, is_return, return_platform, zoho_purchaseorder_id, zoho_purchaseorder_number, shipment_id, support_notes, listing_url`,
         values,
       );
+
+      if (result.rows.length > 0 && hasTriagePatch) {
+        await upsertReceivingTriage(client, ctx.organizationId, id, triagePatch);
+      }
+
       return { before, result };
     });
 
     if (result.rows.length === 0) {
       return NextResponse.json({ success: false, error: 'receiving not found' }, { status: 404 });
     }
+
+    // The spine RETURNING no longer carries the moved triage columns — compose
+    // the response with frozen keys from the values just written (or the
+    // street-sourced before-snapshot when this request didn't touch them).
+    const receivingRow = {
+      ...result.rows[0],
+      staging_location_id: Object.prototype.hasOwnProperty.call(triagePatch, 'stagingLocationId')
+        ? triagePatch.stagingLocationId ?? null
+        : ((before as { staging_location_id?: number | null } | null)?.staging_location_id ?? null),
+      priority_lane: Object.prototype.hasOwnProperty.call(triagePatch, 'priorityLane')
+        ? triagePatch.priorityLane ?? null
+        : ((before as { priority_lane?: string | null } | null)?.priority_lane ?? null),
+    };
 
     await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
     await publishReceivingLogChanged({
@@ -683,7 +729,7 @@ export async function PATCH(
       entityType: AUDIT_ENTITY.RECEIVING,
       entityId: id,
       before,
-      after: result.rows[0],
+      after: receivingRow,
       method: 'manual',
     });
 
@@ -706,7 +752,7 @@ export async function PATCH(
           {
             success: false,
             error: zoho.error || 'Zoho PO notes update failed',
-            receiving: result.rows[0],
+            receiving: receivingRow,
             zoho_notes: zohoNoteEdited,
             zoho,
           },
@@ -717,7 +763,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      receiving: result.rows[0],
+      receiving: receivingRow,
       ...(zoho != null ? { zoho_notes: zohoNoteEdited, zoho } : {}),
     });
   } catch (error) {

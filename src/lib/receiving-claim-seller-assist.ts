@@ -102,7 +102,7 @@ async function fetchHermes(body: unknown): Promise<Response> {
     method: 'POST',
     headers: getHermesHeaders({
       'content-type': 'application/json',
-      'X-Source': 'usav-receiving-claim-assist-seller',
+      'X-Source': 'cycle-forge-receiving-claim-assist-seller',
     }),
     body: JSON.stringify(body),
     signal: controller.signal,

@@ -38,6 +38,12 @@ interface ShippingInformationSectionProps {
   showShippingTimestamp?: boolean;
   editableShippingFields?: EditableShippingFields;
   prepackedSku?: PrepackedSkuInfo | null;
+  /**
+   * Lead the card with the packout provenance (Tested / Packed / Scanned Out)
+   * above the shipping fields — the rep "prove the packout" order-detail view.
+   * Default keeps the original order (Order ID first) for the dashboard slide-over.
+   */
+  provenanceFirst?: boolean;
 }
 
 export function ShippingInformationSection({
@@ -49,6 +55,7 @@ export function ShippingInformationSection({
   showShippingTimestamp = false,
   editableShippingFields,
   prepackedSku,
+  provenanceFirst = false,
 }: ShippingInformationSectionProps) {
   const accountSourceLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
 
@@ -89,6 +96,33 @@ export function ShippingInformationSection({
         ? 'text-micro font-black uppercase tracking-wide text-yellow-600'
         : 'text-micro font-black uppercase tracking-wide text-text-soft';
   const showProvenance = Boolean(shipped.packed_at && shipped.packed_at !== '1');
+
+  const provenanceRows = showProvenance ? (
+    <>
+      <DetailsPanelRow label="Tested By">
+        <div className="flex items-center justify-between gap-3">
+          <p className="truncate text-sm font-bold text-text-default">{techNameDisplay}</p>
+          <DateTimeValue value={shipped.test_date_time} />
+        </div>
+      </DetailsPanelRow>
+      <DetailsPanelRow label="Packed By">
+        <div className="flex items-center justify-between gap-3">
+          <p className="truncate text-sm font-bold text-text-default">{packerNameDisplay}</p>
+          <DateTimeValue value={packedAtSource} />
+        </div>
+      </DetailsPanelRow>
+      <DetailsPanelRow label="Scanned Out">
+        {isScannedOut ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate text-sm font-bold text-text-default">{scannedOutByDisplay}</p>
+            <DateTimeValue value={shipped.ship_confirmed_at} />
+          </div>
+        ) : (
+          <p className="text-sm font-bold text-text-faint">N/A</p>
+        )}
+      </DetailsPanelRow>
+    </>
+  ) : null;
 
   return (
     <section className="space-y-3">
@@ -137,6 +171,8 @@ export function ShippingInformationSection({
       </div>
 
       <div className="space-y-0">
+        {provenanceFirst ? provenanceRows : null}
+
         {showShippingTimestamp ? (
           <DetailsPanelRow label="Shipped">
             <p className="text-sm font-bold text-text-default">
@@ -214,32 +250,7 @@ export function ShippingInformationSection({
           <SerialNumbersRow serials={serialNumberRows} />
         ) : null}
 
-        {showProvenance ? (
-          <>
-            <DetailsPanelRow label="Tested By">
-              <div className="flex items-center justify-between gap-3">
-                <p className="truncate text-sm font-bold text-text-default">{techNameDisplay}</p>
-                <DateTimeValue value={shipped.test_date_time} />
-              </div>
-            </DetailsPanelRow>
-            <DetailsPanelRow label="Packed By">
-              <div className="flex items-center justify-between gap-3">
-                <p className="truncate text-sm font-bold text-text-default">{packerNameDisplay}</p>
-                <DateTimeValue value={packedAtSource} />
-              </div>
-            </DetailsPanelRow>
-            <DetailsPanelRow label="Scanned Out">
-              {isScannedOut ? (
-                <div className="flex items-center justify-between gap-3">
-                  <p className="truncate text-sm font-bold text-text-default">{scannedOutByDisplay}</p>
-                  <DateTimeValue value={shipped.ship_confirmed_at} />
-                </div>
-              ) : (
-                <p className="text-sm font-bold text-text-faint">N/A</p>
-              )}
-            </DetailsPanelRow>
-          </>
-        ) : null}
+        {!provenanceFirst ? provenanceRows : null}
 
         {prepackedSku ? <PrepackedSkuRow sku={prepackedSku} /> : null}
 

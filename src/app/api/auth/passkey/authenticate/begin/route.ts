@@ -10,11 +10,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { buildAuthenticationOptions, PASSKEY_CHALLENGE_COOKIE } from '@/lib/auth/webauthn';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = await checkRateLimitAsync({
+      headers: req.headers, routeKey: 'auth-passkey-authenticate-begin', limit: 30, windowMs: 10 * 60 * 1000,
+    });
+    if (!rl.ok) return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec }, { status: 429 });
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const staffIdRaw = (body as { staffId?: unknown }).staffId;
     const staffId = staffIdRaw !== undefined ? Number(staffIdRaw) : null;

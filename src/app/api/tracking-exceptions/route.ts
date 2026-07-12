@@ -71,7 +71,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
              r.carrier AS receiving_carrier
         FROM tracking_exceptions te
         LEFT JOIN staff s ON s.id = te.staff_id
-        LEFT JOIN receiving r ON r.id = te.receiving_id
+        LEFT JOIN receiving_carton r ON r.id = te.receiving_id
        WHERE ${where.join(' AND ')}
        ORDER BY te.status = 'open' DESC, te.created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}

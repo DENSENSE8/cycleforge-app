@@ -20,7 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserBySid } from './current-user';
-import { SESSION_COOKIE_NAME } from './session';
+import { readSessionSid } from './session';
 import { hasStepUp } from './stepup';
 import { requiresStepUp, rolesIncludeAdmin, type PermissionString } from './permissions';
 import { audit } from './audit';
@@ -172,7 +172,7 @@ export function withAuth(
   opts: WithAuthOpts = {},
 ): RouteHandler {
   return async (req, _routeCtx) => {
-    const sid = req.cookies.get(SESSION_COOKIE_NAME)?.value ?? null;
+    const sid = readSessionSid(req.cookies);
     const user = await getCurrentUserBySid(sid);
 
     // Hidden flag toggled by `ctx.markAuditWritten()`. We don't put it on

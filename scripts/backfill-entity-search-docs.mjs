@@ -31,7 +31,7 @@ import { Pool } from 'pg';
 const SOURCES = {
   ORDER: 'SELECT organization_id, id FROM orders WHERE organization_id IS NOT NULL',
   SERIAL_UNIT: 'SELECT organization_id, id FROM serial_units WHERE organization_id IS NOT NULL',
-  RECEIVING: 'SELECT organization_id, id FROM receiving WHERE organization_id IS NOT NULL',
+  RECEIVING: 'SELECT organization_id, id FROM receiving_carton WHERE organization_id IS NOT NULL',
   SKU: 'SELECT organization_id, id FROM sku_catalog WHERE organization_id IS NOT NULL',
   REPAIR: 'SELECT organization_id, id FROM repair_service WHERE organization_id IS NOT NULL',
   FBA_SHIPMENT: 'SELECT organization_id, id FROM fba_shipments WHERE organization_id IS NOT NULL',

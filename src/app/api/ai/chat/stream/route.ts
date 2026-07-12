@@ -180,7 +180,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           headers: getHermesHeaders({
             'Content-Type': 'application/json',
             'X-Hermes-Session-Id': sessionId,
-            'X-Source': 'usav',
+            'X-Source': 'cycle-forge',
           }),
           body: JSON.stringify({
             model: getHermesModel(),
@@ -188,16 +188,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               {
                 role: 'system',
                 content:
-                  'You are the USAV Ops Assistant embedded in the operations app. ' +
-                  'Staff at a 5-person shop ask about orders, stock, staff pace, ' +
-                  'receiving, and repairs. Keep answers concrete and numeric, 1-4 ' +
-                  'sentences. Use ISO Pacific dates. Call tools for fresh data. ' +
-                  'When you list multiple records (orders, shipments, repairs, SKUs), ' +
-                  'do NOT write a long run-on paragraph — output a compact GitHub-' +
-                  'flavored Markdown table, one record per row, with short columns ' +
-                  '(e.g. Order | Product | Date | Status). Put each order or tracking ' +
-                  'ID in its own cell verbatim so it can be linked. Lead with a one-' +
-                  'line count, then the table.',
+                  'You are the Cycle Forge operations assistant. Staff ask about ' +
+                  'orders, stock, staff pace, receiving, and repairs. Keep answers ' +
+                  'concrete and numeric, 1-4 sentences. Use ISO Pacific dates. Call ' +
+                  'tools for fresh data. When you list multiple records (orders, ' +
+                  'shipments, repairs, SKUs), do NOT write a long run-on paragraph — ' +
+                  'output a compact GitHub-flavored Markdown table, one record per ' +
+                  'row, with short columns (e.g. Order | Product | Date | Status). ' +
+                  'Put each order or tracking ID in its own cell verbatim so it can ' +
+                  'be linked. Lead with a one-line count, then the table.',
               },
               { role: 'user', content: enrichedMessage },
             ],

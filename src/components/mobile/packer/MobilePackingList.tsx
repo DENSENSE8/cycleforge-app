@@ -30,7 +30,7 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
       const json = await res.json();
       return Array.isArray(json) ? (json as PackerLogRow[]) : [];
     },
-    realtime: { windowEvents: ['packer-log-updated', 'usav-refresh-data'] },
+    realtime: { windowEvents: ['packer-log-updated', 'app-refresh-data'] },
   });
 
   const { rows, scrollRef, freshIds } = useFeedWindow(data, { limit, anchor: 'bottom' });

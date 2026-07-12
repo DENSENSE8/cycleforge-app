@@ -13,9 +13,12 @@
  *   4. manual: explicit line_ids provided by the operator
  *
  * After matching:
- *   - Sets receiving_lines.receiving_id = receiving.id
- *   - Advances workflow_status:  EXPECTED → MATCHED
- *   - Optionally sets workflow_status = UNBOXED if unboxed=true is passed
+ *   - Sets receiving_line.receiving_id = receiving.id (linkage — always, via a
+ *     raw UPDATE that deliberately does NOT touch workflow_status)
+ *   - Advances workflow_status through transitionReceivingLine() (skipEvent):
+ *     → MATCHED from EXPECTED/ARRIVED, or → UNBOXED from EXPECTED/ARRIVED/MATCHED
+ *     when unboxed=true. Lines already at/beyond the target keep their linkage
+ *     but are never status-regressed.
  *   - If any matched line has needs_test=true, upserts a work_assignment
  *
  * Body:
@@ -45,6 +48,17 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
+
+// Which current statuses may advance when a match links lines (chokepoint fold,
+// §7 Step D). → MATCHED only from pre-match states; → UNBOXED additionally from
+// MATCHED. Lines already at/beyond the target keep their linkage but are never
+// status-regressed (the old unconditional SET could pull a DONE line back to
+// MATCHED on a re-match).
+const MATCH_ADVANCE_FROM: Record<'MATCHED' | 'UNBOXED', ReadonlySet<string>> = {
+  MATCHED: new Set(['EXPECTED', 'ARRIVED']),
+  UNBOXED: new Set(['EXPECTED', 'ARRIVED', 'MATCHED']),
+};
 
 const WORKFLOW_STATUS_PRIORITY = [
   'DONE',
@@ -106,7 +120,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const outcome = await withTenantTransaction<MatchOutcome>(orgId, async (client) => {
       // Verify the receiving row exists AND belongs to this tenant (cross-org 404s).
       const receivingRow = await client.query<{ id: number }>(
-        `SELECT id FROM receiving WHERE id = $1 AND organization_id = $2`,
+        `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2`,
         [receivingId, orgId]
       );
       if (receivingRow.rows.length === 0) {
@@ -121,12 +135,19 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         // Manual operator selection
         const ids = lineIdsRaw.map(Number).filter((n: number) => Number.isFinite(n) && n > 0);
         if (ids.length > 0) {
+          // Line testing facts (needs_test / assigned_tech_id) live on
+          // receiving_line_testing (rlt, 1:1 — every line has a row).
           const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-            `SELECT id, needs_test, assigned_tech_id
-             FROM receiving_lines
-             WHERE id = ANY($1::int[])
-               AND (receiving_id IS NULL OR receiving_id = $2)
-               AND organization_id = $3`,
+            `SELECT rl.id,
+                    COALESCE(rlt.needs_test, false) AS needs_test,
+                    rlt.assigned_tech_id
+             FROM receiving_line rl
+             LEFT JOIN receiving_line_testing rlt
+               ON rlt.receiving_line_id = rl.id
+              AND rlt.organization_id = rl.organization_id
+             WHERE rl.id = ANY($1::int[])
+               AND (rl.receiving_id IS NULL OR rl.receiving_id = $2)
+               AND rl.organization_id = $3`,
             [ids, receivingId, orgId]
           );
           candidateLines = rows.rows;
@@ -134,13 +155,24 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         }
       }
 
+      // Line Zoho match keys live on receiving_line_zoho (rz, 1:1 — every
+      // Zoho-bearing line has a row, so LEFT JOIN + WHERE rz.col = $1 is
+      // exactly the old spine filter).
       if (candidateLines.length === 0 && zohoPurchaseReceiveId) {
         const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-          `SELECT id, needs_test, assigned_tech_id
-           FROM receiving_lines
-           WHERE zoho_purchase_receive_id = $1
-             AND receiving_id IS NULL
-             AND organization_id = $2`,
+          `SELECT rl.id,
+                  COALESCE(rlt.needs_test, false) AS needs_test,
+                  rlt.assigned_tech_id
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id
+            AND rz.organization_id = rl.organization_id
+           LEFT JOIN receiving_line_testing rlt
+             ON rlt.receiving_line_id = rl.id
+            AND rlt.organization_id = rl.organization_id
+           WHERE rz.zoho_purchase_receive_id = $1
+             AND rl.receiving_id IS NULL
+             AND rl.organization_id = $2`,
           [zohoPurchaseReceiveId, orgId]
         );
         candidateLines = rows.rows;
@@ -149,11 +181,19 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
       if (candidateLines.length === 0 && zohoPurchaseOrderId) {
         const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-          `SELECT id, needs_test, assigned_tech_id
-           FROM receiving_lines
-           WHERE zoho_purchaseorder_id = $1
-             AND receiving_id IS NULL
-             AND organization_id = $2`,
+          `SELECT rl.id,
+                  COALESCE(rlt.needs_test, false) AS needs_test,
+                  rlt.assigned_tech_id
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id
+            AND rz.organization_id = rl.organization_id
+           LEFT JOIN receiving_line_testing rlt
+             ON rlt.receiving_line_id = rl.id
+            AND rlt.organization_id = rl.organization_id
+           WHERE rz.zoho_purchaseorder_id = $1
+             AND rl.receiving_id IS NULL
+             AND rl.organization_id = $2`,
           [zohoPurchaseOrderId, orgId]
         );
         candidateLines = rows.rows;
@@ -162,11 +202,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
       if (candidateLines.length === 0 && sku) {
         const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-          `SELECT id, needs_test, assigned_tech_id
-           FROM receiving_lines
-           WHERE sku = $1
-             AND receiving_id IS NULL
-             AND organization_id = $2`,
+          `SELECT rl.id,
+                  COALESCE(rlt.needs_test, false) AS needs_test,
+                  rlt.assigned_tech_id
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_testing rlt
+             ON rlt.receiving_line_id = rl.id
+            AND rlt.organization_id = rl.organization_id
+           WHERE rl.sku = $1
+             AND rl.receiving_id IS NULL
+             AND rl.organization_id = $2`,
           [sku, orgId]
         );
         candidateLines = rows.rows;
@@ -183,12 +228,30 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const nextStatus = unboxed ? 'UNBOXED' : 'MATCHED';
       const lineIds = candidateLines.map((r) => r.id);
 
+      // Lock the candidates and read their current lifecycle state. The linkage
+      // UPDATE below deliberately does NOT list workflow_status: listing it fires
+      // the coarse trigger on EVERY candidate (even non-transitioning ones),
+      // COALESCE-stamping scanned_at on rows that never went through triage
+      // (Scanned is triage-owned). Only genuinely-advancing lines go through the
+      // chokepoint after this.
+      const lockedLines = await client.query<{ id: number; workflow_status: string }>(
+        `SELECT id, workflow_status::text AS workflow_status
+         FROM receiving_line
+         WHERE id = ANY($1::int[])
+           AND organization_id = $2
+         ORDER BY id
+         FOR UPDATE`,
+        [lineIds, orgId]
+      );
+
+      // Linkage/facts half: receiving_id (+ the unboxed_by notes addendum) for
+      // EVERY candidate — matching always links, whatever the lifecycle state.
       const updateParts: string[] = [
-        `receiving_id    = $1`,
-        `workflow_status = $2::inbound_workflow_status_enum`,
+        `receiving_id = $1`,
+        `updated_at   = NOW()`,
       ];
-      const updateVals: unknown[] = [receivingId, nextStatus];
-      let paramIdx = 3;
+      const updateVals: unknown[] = [receivingId];
+      let paramIdx = 2;
 
       if (unboxed && unboxedBy) {
         // Mirror unboxed_by to lines for audit trail (stored as notes addendum for now)
@@ -202,12 +265,51 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       updateVals.push(orgId);
       const orgParam = paramIdx + 1;
       await client.query(
-        `UPDATE receiving_lines
+        `UPDATE receiving_line
          SET ${updateParts.join(', ')}
          WHERE id = ANY($${lineIdsParam}::int[])
            AND organization_id = $${orgParam}`,
         updateVals
       );
+
+      // Lifecycle half — through the guarded chokepoint (§7 Step D), inside this
+      // same transaction (executor mode: the FOR UPDATE above makes the
+      // chokepoint's own re-lock a no-op). skipEvent: this route audits
+      // RECEIVING_MATCH on the carton and never emitted per-line inventory
+      // events — that stays true. Only sensible advances transition:
+      // → MATCHED from EXPECTED/ARRIVED; → UNBOXED from EXPECTED/ARRIVED/MATCHED.
+      const advanceFrom = MATCH_ADVANCE_FROM[nextStatus];
+      const skippedLines: Array<{ id: number; workflow_status: string }> = [];
+      for (const row of lockedLines.rows) {
+        if (!advanceFrom.has(row.workflow_status)) {
+          skippedLines.push(row);
+          continue;
+        }
+        const tr = await transitionReceivingLine(
+          {
+            receivingLineId: row.id,
+            to: nextStatus,
+            actorStaffId: unboxedBy ?? null,
+            station: 'RECEIVING',
+            skipEvent: true,
+          },
+          client,
+          orgId,
+        );
+        if (!tr.ok) {
+          // The row is locked by this tx, so only a pathological state lands
+          // here — keep the linkage, surface the declined advance.
+          console.warn(
+            `receiving/match: line ${row.id} ${row.workflow_status} → ${nextStatus} declined (${tr.error}) — linked without status change`,
+          );
+        }
+      }
+      if (skippedLines.length > 0) {
+        console.warn(
+          `receiving/match: linked without status change (already at/beyond ${nextStatus}): ` +
+            skippedLines.map((l) => `${l.id}:${l.workflow_status}`).join(', '),
+        );
+      }
 
       // ── Create work_assignments for lines that need testing ─────────────────
       const testLines = candidateLines.filter((l) => l.needs_test && l.assigned_tech_id);
@@ -327,13 +429,43 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
       // receiving_lines is org-filtered; staff is tenant-owned so the join is
       // org-aligned (st.organization_id = rl.organization_id) to keep a tech
       // name from one tenant off another's line.
+      // Moved line facts (testing cluster → receiving_line_testing rlt, Zoho
+      // cluster → receiving_line_zoho rz; both 1:1 PK joins) are re-selected
+      // AFTER rl.* under their frozen spine names — pg builds row objects in
+      // field order, so the street value shadows the spine copy and the
+      // response shape stays byte-identical.
       tenantQuery(
         orgId,
         `SELECT rl.*,
+                COALESCE(rlt.needs_test, false)              AS needs_test,
+                rlt.assigned_tech_id                         AS assigned_tech_id,
+                rlt.qa_status                                AS qa_status,
+                rlt.disposition_code                         AS disposition_code,
+                rlt.condition_grade                          AS condition_grade,
+                rlt.disposition_final                        AS disposition_final,
+                COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
+                rlt.condition_set_at                         AS condition_set_at,
+                rz.zoho_item_id                              AS zoho_item_id,
+                rz.zoho_line_item_id                         AS zoho_line_item_id,
+                rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,
+                rz.zoho_purchaseorder_id                     AS zoho_purchaseorder_id,
+                rz.zoho_purchaseorder_number                 AS zoho_purchaseorder_number,
+                rz.zoho_purchaseorder_number_norm            AS zoho_purchaseorder_number_norm,
+                rz.zoho_sync_source                          AS zoho_sync_source,
+                rz.zoho_last_modified_time                   AS zoho_last_modified_time,
+                rz.zoho_synced_at                            AS zoho_synced_at,
+                rz.zoho_notes                                AS zoho_notes,
+                rz.unit_price                                AS unit_price,
                 st.name AS assigned_tech_name
-         FROM receiving_lines rl
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_testing rlt
+           ON rlt.receiving_line_id = rl.id
+          AND rlt.organization_id = rl.organization_id
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id
+          AND rz.organization_id = rl.organization_id
          LEFT JOIN staff st
-           ON st.id = rl.assigned_tech_id
+           ON st.id = rlt.assigned_tech_id
           AND st.organization_id = rl.organization_id
          WHERE rl.receiving_id = $1
            AND rl.organization_id = $2
@@ -353,7 +485,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                 r.zoho_purchase_receive_id,
                 r.zoho_purchaseorder_id,
                 r.qa_status
-         FROM receiving r
+         FROM receiving_carton r
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          WHERE r.id = $1
            AND r.organization_id = $2`,

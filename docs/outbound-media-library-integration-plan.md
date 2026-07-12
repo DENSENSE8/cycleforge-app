@@ -2,7 +2,7 @@
 
 **Status:** Phase A + B + C + D (core) shipped (2026-07-01)  
 **Created:** 2026-07-01  
-**Depends on:** [outbound-documents-plan.md](./outbound-documents-plan.md), [media-library-modernization-plan.md](./media-library-modernization-plan.md)
+**Depends on:** [outbound-documents-plan.md](./outbound-documents-plan.md) and the shipped media-library modernization work
 
 ## Vision
 

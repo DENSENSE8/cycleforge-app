@@ -29,7 +29,7 @@ test('conditionSet alone does not mark print done (no isComplete shortcut)', () 
   assert.equal(flags.print, false);
 });
 
-test('later steps stay pending when photos incomplete even if serials exist', () => {
+test('steps with passing gates show done even while an earlier step is active', () => {
   const states = deriveReceivingStepStates({
     ...base,
     serialCount: 1,
@@ -37,9 +37,33 @@ test('later steps stay pending when photos incomplete even if serials exist', ()
     labelPrinted: true,
   });
   assert.equal(states.photos, 'active');
-  assert.equal(states.condition, 'pending');
-  assert.equal(states.serial, 'pending');
+  assert.equal(states.condition, 'done');
+  assert.equal(states.serial, 'done');
+  assert.equal(states.print, 'done');
+});
+
+test('active is the FIRST failing gate; done steps after it keep their check', () => {
+  const states = deriveReceivingStepStates({
+    ...base,
+    photoCount: 2,
+    serialCount: 1,
+    conditionSet: false,
+    labelPrinted: false,
+  });
+  assert.equal(states.photos, 'done');
+  assert.equal(states.condition, 'active');
+  assert.equal(states.serial, 'done');
   assert.equal(states.print, 'pending');
+  assert.equal(
+    activeReceivingStepKey({
+      ...base,
+      photoCount: 2,
+      serialCount: 1,
+      conditionSet: false,
+      labelPrinted: false,
+    }),
+    'condition',
+  );
 });
 
 test('all gates pass: every step done', () => {

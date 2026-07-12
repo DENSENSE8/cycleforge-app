@@ -61,8 +61,7 @@ Fulfillment & shipping · Support · Communications · Storage & Backup · AI.
 - Prefer `receiving_line_zoho` / external-id helpers over scattering `zoho_item_id` in UI
   props; `items.zoho_item_id` is treated as "inventory external id" in the domain layer.
 - `source='zoho_po'` enum values stay; display resolves via the source registry.
-- **Token SoT** = `organization_integrations` (see
-  `docs/integrations/token-sot-consolidation-plan.md`).
+- **Token SoT** = `organization_integrations` (per the shipped token-SoT consolidation).
 
 ## ⚠️ Env-fallback burn-down — BLOCKED prerequisite
 

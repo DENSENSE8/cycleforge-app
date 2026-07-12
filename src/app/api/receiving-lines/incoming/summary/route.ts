@@ -57,18 +57,22 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
       expected_today: number;
     }>(
       orgId,
+      // Wave-2 reader cutover: the line's zoho cluster reads from
+      // receiving_line_zoho `rz` (1:1 on receiving_line_id; a row exists for
+      // every line with ANY zoho field), matching the build-sql incoming
+      // facets so these tile counts can't drift from the rendered rows.
       `SELECT
-         COUNT(DISTINCT rl.zoho_purchaseorder_id)::int AS issued,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id)::int AS issued,
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.is_delivered = true
              AND NOT EXISTS (
                SELECT 1 FROM receiving_scans rs WHERE rs.receiving_id = r.id
              )
          )::int AS delivered_unopened,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.latest_status_category = 'OUT_FOR_DELIVERY'
          )::int AS arriving_today,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.id IS NOT NULL
              AND COALESCE(stn.is_terminal, false) = false
              AND COALESCE(stn.is_delivered, false) = false
@@ -78,42 +82,43 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
                    AND stn.latest_event_at < (NOW() - interval '72 hours'))
              )
          )::int AS stalled,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.latest_status_category IN ('IN_TRANSIT','ACCEPTED','LABEL_CREATED')
          )::int AS in_transit,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.id IS NOT NULL
              AND stn.tracking_blocked_reason IS NULL
              AND (stn.latest_status_category IS NULL OR stn.latest_status_category = 'UNKNOWN')
              AND NOT ${CARRIER_MISMATCH_PREDICATE}
          )::int AS pending_carrier,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE ${CARRIER_MISMATCH_PREDICATE}
          )::int AS carrier_mismatch,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.tracking_blocked_reason IS NOT NULL
              AND COALESCE(stn.is_delivered, false) = false
          )::int AS tracking_unavailable,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.id IS NULL
          )::int AS awaiting_tracking,
-         COUNT(DISTINCT rl.zoho_purchaseorder_id) FILTER (
+         COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE mirror.expected_delivery_date = (NOW() AT TIME ZONE 'America/Los_Angeles')::date
          )::int AS expected_today
-       FROM receiving_lines rl
-       LEFT JOIN receiving r ON (
+       FROM receiving_line rl
+       LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+       LEFT JOIN receiving_carton r ON (
             r.id = rl.receiving_id
          OR (rl.receiving_id IS NULL
              AND r.source = 'zoho_po'
-             AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+             AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
              -- String-key join (PO id) collides across tenants; pin to same org.
              AND r.organization_id = rl.organization_id)
        )
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-       LEFT JOIN zoho_po_mirror mirror ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+       LEFT JOIN zoho_po_mirror mirror ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
        WHERE rl.workflow_status = 'EXPECTED'
          AND COALESCE(rl.quantity_received, 0) = 0
-         AND rl.zoho_purchaseorder_id IS NOT NULL
+         AND rz.zoho_purchaseorder_id IS NOT NULL
          -- Tenant ownership: only this org's incoming PO lines.
          AND rl.organization_id = $1
          -- Drop POs Zoho now reports received/closed/cancelled, so a
@@ -148,7 +153,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     // badges agree by construction. Threaded orgId → the helper takes its
     // GUC-wrapped tenant branch (the `pool` arg is ignored there, kept only to
     // satisfy the required positional), pinning the org-bearing aliases
-    // (receiving/receiving_scans) inside the shared predicates so the tile no
+    // (receiving_carton/receiving_scans) inside the shared predicates so the tile no
     // longer counts other tenants' delivered-unscanned boxes.
     row.delivered_unopened = await getDeliveredUnscannedCount(pool, undefined, orgId);
     const delivered_not_unboxed = await getDeliveredNotUnboxedCount(orgId);
@@ -195,15 +200,17 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
                   stn.is_terminal,
                   stn.latest_status_category,
                   stn.last_error_code
-             FROM receiving_lines rl
+             FROM receiving_line rl
+             LEFT JOIN receiving_line_zoho rz
+               ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
              LEFT JOIN zoho_po_mirror mirror
-               ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+               ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
              JOIN LATERAL (
-               SELECT r.* FROM receiving r
+               SELECT r.* FROM receiving_carton r
                 WHERE r.id = rl.receiving_id
                    OR (rl.receiving_id IS NULL
                        AND r.source = 'zoho_po'
-                       AND r.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+                       AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
                        -- String-key join (PO id) collides across tenants; pin to same org.
                        AND r.organization_id = rl.organization_id)
                 ORDER BY (r.id = rl.receiving_id) DESC,
@@ -214,7 +221,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
              JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
             WHERE rl.workflow_status = 'EXPECTED'
               AND COALESCE(rl.quantity_received, 0) = 0
-              AND rl.zoho_purchaseorder_id IS NOT NULL
+              AND rz.zoho_purchaseorder_id IS NOT NULL
               -- Tenant ownership: only this org's incoming PO lines.
               AND rl.organization_id = $1
               AND ${NOT_ZOHO_RECEIVED_PREDICATE}
@@ -284,9 +291,11 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
       const er = await tenantQuery<{ ebay_pending: number }>(
         orgId,
         `SELECT COUNT(*) FILTER (
-                  WHERE rl.inbound_source_type = 'ebay' AND rl.zoho_purchaseorder_id IS NULL
+                  WHERE rl.inbound_source_type = 'ebay' AND rz.zoho_purchaseorder_id IS NULL
                 )::int AS ebay_pending
-           FROM receiving_lines rl
+           FROM receiving_line rl
+           LEFT JOIN receiving_line_zoho rz
+             ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
           WHERE rl.organization_id = $1
             AND rl.workflow_status = 'EXPECTED'
             AND COALESCE(rl.quantity_received, 0) = 0`,

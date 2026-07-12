@@ -122,22 +122,27 @@ mode. Original rationale kept below for that follow-up.
   inventory-adjust Reason picker (https://mobbin.com/screens/ee506676-fb77-4659-a814-7b71d600a76d) via
   reason_codes.
 
-## Implemented — 2026-07-10, branch `worktree-unbox-ux` (worktree `.claude/worktrees/unbox-ux`)
+## Restored to cycleforge-app main — 2026-07-11
 
-- **Stepper truth-fix (#2, interim):** `deriveReceivingStepStates` no longer chain-gates completion —
-  each step shows done when its own data gate passes; active = first failing gate (completeness
-  checklist, not a wizard). Tests updated (`derive-receiving-step-states.test.ts`, 6/6 pass).
-- **Serial capture hardening (#5, client half):** `SerialCard` now (a) blocks duplicate serials
-  already saved on the line (inline rose notice with last-4, comma-paste batches filtered), and
-  (b) warns when a scan classifies as a carrier tracking number via `classifyInput` — re-submitting
-  the same value overrides. Inline notice under the field, never a toast. Org-scoped server dupe
-  check remains the backstop.
-- **Receive-bar disabled reason (#3, UI half):** `useUnboxLineController` exposes
+> Source: Claude file-history session `874e77ae` (Jul 10 worktree-unbox-ux). The original
+> work lived only in `USAV-Orders-Backend/.claude/worktrees/unbox-ux`, was never pushed, and
+> was excluded from the USAV → CycleForge merge. Desktop quick-wins below are **shipped on
+> main**; strategic items (#1 defect chips, full #2 readiness bar, #6–7) remain open (ROI-D1).
+
+- **Stepper truth-fix (#2, interim) — shipped:** `deriveReceivingStepStates` no longer
+  chain-gates completion — each step shows done when its own data gate passes; active = first
+  failing gate (completeness checklist, not a wizard). Tests: `derive-receiving-step-states.test.ts`, 6/6.
+- **Serial capture hardening (#5, client half) — shipped:** `SerialCard` (a) blocks duplicate
+  serials already saved on the line (inline rose notice with last-4, comma-paste batches filtered),
+  and (b) warns when a scan classifies as a carrier tracking number via `classifyInput` —
+  re-submitting the same value overrides. Inline notice under the field, never a toast.
+  Org-scoped server dupe check remains the backstop. Multi-qty `ReceivingUnitRows` path deferred
+  to ROI-D1.
+- **Receive-bar disabled reason (#3, UI half) — shipped:** `useUnboxLineController` exposes
   `combinedReviewDisabledReason` (link / PO-or-SKU / serial-confirmation blockers);
   `LineReceiveActionBar` renders it as a visible amber line above the pill when disabled.
 
-Verified: stepper tests 6/6; `tsc --noEmit` introduces no new errors (19 pre-existing on main);
-DS ratchet-guard failures on this commit are pre-existing baseline drift in untouched files.
+Verified on restore: stepper tests 6/6; no new `tsc` errors in transfer files.
 
 ## Quick wins vs strategic bets
 

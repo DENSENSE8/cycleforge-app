@@ -21,7 +21,7 @@
  */
 
 import pool from '@/lib/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import {
   getIntegrationCredentials,
   upsertIntegrationCredentials,
@@ -64,7 +64,7 @@ export class PoGmailNotConnectedError extends Error {
  */
 export class PoGmailWrongTenantError extends Error {
   constructor() {
-    super('PO mailbox belongs to USAV; other tenants cannot access it.');
+    super('PO mailbox is not configured for this workspace');
     this.name = 'PoGmailWrongTenantError';
   }
 }
@@ -75,21 +75,21 @@ export class PoGmailWrongTenantError extends Error {
  * `orgId` (defaulting to USAV's) and asserts it through here. Any non-USAV
  * org throws before a single byte of the token is read or refreshed.
  */
-export function assertUsavMailbox(orgId: string): void {
-  if (orgId !== USAV_ORG_ID) {
+export function assertDogfoodMailbox(orgId: string): void {
+  if (orgId !== DOGFOOD_ORG_ID) {
     throw new PoGmailWrongTenantError();
   }
 }
 
 /**
- * Soft, non-throwing companion to {@link assertUsavMailbox}. The PO Gmail
+ * Soft, non-throwing companion to {@link assertDogfoodMailbox}. The PO Gmail
  * mailbox is a global singleton owned by USAV (see {@link PoGmailWrongTenantError}),
  * so it is only ever "available" to USAV today.
  *
  * Route handlers should call this FIRST and, when it returns false, short-circuit
  * with a clean "not configured for this org" result (empty list / `{ configured:
  * false }`) BEFORE invoking any token-touching function (`getAccessToken`,
- * `poGmailFetch`, …). Those functions still hard-guard via `assertUsavMailbox`,
+ * `poGmailFetch`, …). Those functions still hard-guard via `assertDogfoodMailbox`,
  * so security is unchanged — this predicate just lets callers degrade gracefully
  * instead of catching a thrown `PoGmailWrongTenantError`.
  *
@@ -98,7 +98,7 @@ export function assertUsavMailbox(orgId: string): void {
  * hard guard). A non-USAV org is never available regardless of connection state.
  */
 export function isPoGmailAvailableForOrg(orgId: string): boolean {
-  return orgId === USAV_ORG_ID;
+  return orgId === DOGFOOD_ORG_ID;
 }
 
 // ─── Vault path (organization_integrations, provider='gmail') ───────────────
@@ -106,7 +106,7 @@ export function isPoGmailAvailableForOrg(orgId: string): boolean {
 /**
  * The vault row for this org's PO mailbox, or null when the org hasn't been
  * migrated / connected through the vault yet (→ legacy-table fallback).
- * Caller must have already run the assertUsavMailbox tenant guard.
+ * Caller must have already run the assertDogfoodMailbox tenant guard.
  */
 async function loadVaultCreds(orgId: string): Promise<GmailCredentials | null> {
   const creds = await getIntegrationCredentials<GmailCredentials>(orgId, 'gmail');
@@ -256,8 +256,8 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
   };
 }
 
-export async function getAccessToken(orgId: string = USAV_ORG_ID): Promise<string> {
-  assertUsavMailbox(orgId);
+export async function getAccessToken(orgId: string = DOGFOOD_ORG_ID): Promise<string> {
+  assertDogfoodMailbox(orgId);
 
   // Vault-preferred: when an organization_integrations row exists, it is the
   // token SoT. Legacy google_oauth_tokens is only read when no vault row.
@@ -285,19 +285,19 @@ export async function getAccessToken(orgId: string = USAV_ORG_ID): Promise<strin
 export async function poGmailFetch(
   url: string,
   init: RequestInit = {},
-  orgId: string = USAV_ORG_ID,
+  orgId: string = DOGFOOD_ORG_ID,
 ): Promise<Response> {
-  assertUsavMailbox(orgId);
+  assertDogfoodMailbox(orgId);
   const token = await getAccessToken(orgId);
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${token}`);
   return fetch(url, { ...init, headers });
 }
 
-export async function getConnectedEmail(orgId: string = USAV_ORG_ID): Promise<string | null> {
+export async function getConnectedEmail(orgId: string = DOGFOOD_ORG_ID): Promise<string | null> {
   // Non-USAV tenants must not learn anything about USAV's mailbox — return
   // empty rather than throwing so connection-status reads degrade quietly.
-  if (orgId !== USAV_ORG_ID) return null;
+  if (orgId !== DOGFOOD_ORG_ID) return null;
   const vault = await loadVaultCreds(orgId);
   if (vault) return vault.accountEmail ?? null;
   const { rows } = await pool.query<{ account_email: string | null }>(

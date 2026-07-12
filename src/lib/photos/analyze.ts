@@ -111,7 +111,7 @@ async function analyzeWithHermes(input: {
   try {
     const { args, model } = await hermesToolCall<PhotoAnalysisMetadata>({
       systemPrompt:
-        'You enrich USAV warehouse photo catalog metadata for search. ' +
+        'You enrich warehouse photo catalog metadata for search. ' +
         'Infer likely OCR snippets, scene labels, and visible damage from PO context and photo type. ' +
         'Be conservative on damage_detected — only true when context strongly suggests damage/claim.',
       userText: [

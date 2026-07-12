@@ -1,7 +1,7 @@
 /**
  * Single import surface for tenant code.
  *
- *   import { withTenantConnection, getOrganization, USAV_ORG_ID } from '@/lib/tenancy';
+ *   import { withTenantConnection, getOrganization, DOGFOOD_ORG_ID } from '@/lib/tenancy';
  */
 
 export * from './constants';

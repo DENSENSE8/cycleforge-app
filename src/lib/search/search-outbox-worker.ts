@@ -102,11 +102,15 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
     LEFT JOIN items i        ON i.zoho_item_id = su.zoho_item_id
     WHERE su.organization_id = $1 AND su.id = ANY($2::bigint[])`,
-  // `receiving` is a security_invoker compat view (receiving-spine rename), so
-  // Postgres can't prove PK functional dependency — a GROUP BY r.id would
-  // reject the bare r.* columns ("column r.carrier must appear in GROUP BY").
-  // Aggregate the only 1:many join (receiving_lines) in a LATERAL so the outer
-  // SELECT needs no GROUP BY at all; stn is 1:1 on shipment_id.
+  // Aggregate the only 1:many join (receiving_line) in a LATERAL so the outer
+  // SELECT needs no GROUP BY at all; stn is 1:1 on shipment_id. (The LATERAL
+  // shape predates the receiving-spine rename — it was required while
+  // `receiving` was a security_invoker compat view — and stays because it
+  // keeps the outer SELECT GROUP-BY-free.) Wave-2 reader cutover: the carton
+  // door milestone reads from receiving_triage (rt, 1:1), aliased back to
+  // `received_at` so buildReceivingDoc's field contract never changes.
+  // Carton-level qa/condition/zoho_purchaseorder_number stay on the spine
+  // (out of scope this wave).
   RECEIVING: `
     SELECT r.id,
            stn.tracking_number_raw                                AS tracking_number,
@@ -116,14 +120,16 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            r.support_notes, r.zoho_notes,
            r.condition_grade::text AS condition_grade,
            r.qa_status::text       AS qa_status,
-           r.received_at, r.created_at,
+           rt.door_received_at AS received_at, r.created_at,
            lines.line_item_names, lines.line_skus
-    FROM receiving r
+    FROM receiving_carton r
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+    LEFT JOIN receiving_triage rt
+           ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
     LEFT JOIN LATERAL (
       SELECT COALESCE(STRING_AGG(DISTINCT rl.item_name, ' '), '') AS line_item_names,
              COALESCE(STRING_AGG(DISTINCT rl.sku, ' '), '')       AS line_skus
-      FROM receiving_lines rl WHERE rl.receiving_id = r.id
+      FROM receiving_line rl WHERE rl.receiving_id = r.id
     ) lines ON TRUE
     WHERE r.organization_id = $1 AND r.id = ANY($2::bigint[])`,
   SKU: `

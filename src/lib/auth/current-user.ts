@@ -1,6 +1,6 @@
 /**
  * Server-side helpers to resolve the current authenticated staff from the
- * `usav_sid` cookie. Used by route handlers, server actions, and the
+ * `cf_sid` session cookie. Used by route handlers, server actions, and the
  * `requirePermission` page guard.
  *
  * Phase 2 of the editable-roles work: the effective permission set is now
@@ -17,7 +17,7 @@
 
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
-import { loadSession, SESSION_COOKIE_NAME, type SessionRow } from './session';
+import { loadSession, readSessionSid, type SessionRow } from './session';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 import { computeEffectivePermissions, type PermissionString, type StaffRole } from './permissions-shared';
@@ -140,7 +140,7 @@ async function buildCurrentUser(session: SessionRow | null): Promise<CurrentUser
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const store = await cookies();
-  const sid = store.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const sid = readSessionSid(store);
   const session = await loadSession(sid);
   return buildCurrentUser(session);
 }

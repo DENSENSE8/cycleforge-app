@@ -130,7 +130,7 @@ async function fetchZohoItemImage(
 ): Promise<{ bytes: Buffer; contentType: string } | null> {
   // Resolve credentials and the Zoho org from the authenticated tenant. Wrap in
   // withZohoOrg so any client entry point reached below the queue boundary also
-  // binds this org rather than falling back to the USAV_ORG_ID default.
+  // binds this org rather than falling back to the DOGFOOD_ORG_ID default.
   return withZohoOrg(orgId, async () => {
     const creds = await loadZohoCredentials(orgId);
     const token = await getAccessToken(orgId, creds);

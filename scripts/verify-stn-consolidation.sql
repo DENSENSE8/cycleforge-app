@@ -52,7 +52,7 @@ WHERE shipment_id IS NULL;
 
 \echo '== Q3: delivered-unscanned PO resolution — unified vs legacy =='
 -- For the SAME shipment-anchored delivered-unscanned set, does resolving the PO
--- via receiving_lines.shipment_id agree with the legacy (receiving row / ref#)
+-- via receiving_line.shipment_id agree with the legacy (receiving_carton row / ref#)
 -- path? regressions = a shipment the legacy path resolved but unified did NOT
 -- (must be 0). improvements = unified resolved one legacy missed (expected > 0,
 -- that's the whole point — blank SKU/order# rows now resolve).
@@ -62,15 +62,15 @@ WITH du AS (
    WHERE stn.is_delivered = true
      AND stn.delivered_at > NOW() - interval '30 days'
      AND NOT EXISTS (
-       SELECT 1 FROM receiving r2
+       SELECT 1 FROM receiving_carton r2
         JOIN receiving_scans rs ON rs.receiving_id = r2.id
        WHERE r2.shipment_id = stn.id
      )
 ), resolved AS (
   SELECT du.shipment_id,
-         -- legacy: linked receiving row, else tracking#→reference# match
+         -- legacy: linked receiving_carton row, else tracking#→reference# match
          COALESCE(
-           (SELECT r.zoho_purchaseorder_id FROM receiving r
+           (SELECT r.zoho_purchaseorder_id FROM receiving_carton r
              WHERE r.shipment_id = du.shipment_id AND r.zoho_purchaseorder_id IS NOT NULL
              ORDER BY r.id LIMIT 1),
            (SELECT m.zoho_purchaseorder_id FROM zoho_po_mirror m
@@ -78,8 +78,8 @@ WITH du AS (
                AND regexp_replace(upper(m.reference_number),'[^A-Z0-9]','','g') = du.tn
              LIMIT 1)
          ) AS legacy_po,
-         -- unified: direct via receiving_lines.shipment_id
-         (SELECT rl.zoho_purchaseorder_id FROM receiving_lines rl
+         -- unified: direct via receiving_line.shipment_id
+         (SELECT rl.zoho_purchaseorder_id FROM receiving_line rl
            WHERE rl.shipment_id = du.shipment_id AND rl.zoho_purchaseorder_id IS NOT NULL
            ORDER BY rl.id LIMIT 1) AS unified_po
     FROM du
@@ -100,8 +100,8 @@ SELECT
   count(*) FILTER (WHERE rl.shipment_id IS NOT NULL)                                AS linked_lines,
   round(100.0 * count(*) FILTER (WHERE rl.shipment_id IS NOT NULL)
         / NULLIF(count(*),0), 1)                                                    AS linked_lines_pct
-FROM receiving_lines rl
-JOIN receiving r ON r.id = rl.receiving_id
+FROM receiving_line rl
+JOIN receiving_carton r ON r.id = rl.receiving_id
 WHERE r.shipment_id IS NOT NULL;
 
 \echo '== Q5: S6 drop-safety — tracking recoverable from shipment_id→STN =='
@@ -119,10 +119,10 @@ WHERE COALESCE(rs.tracking_number, '') <> ''
     OR NOT EXISTS (SELECT 1 FROM shipping_tracking_numbers stn WHERE stn.id = rs.shipment_id)
   );
 
-\echo '== Q5b: S6 drop-safety — receiving.receiving_tracking_number recoverable =='
+\echo '== Q5b: S6 drop-safety — receiving_carton.receiving_tracking_number recoverable =='
 -- Same gate for the carton-level legacy TEXT column.
 SELECT count(*) AS carton_tracking_only_on_receiving
-FROM receiving r
+FROM receiving_carton r
 WHERE COALESCE(r.receiving_tracking_number, '') <> ''
   AND r.receiving_tracking_number NOT LIKE '%:%'
   AND length(regexp_replace(upper(r.receiving_tracking_number),'[^A-Z0-9]','','g')) >= 8

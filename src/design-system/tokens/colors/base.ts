@@ -2,7 +2,7 @@ export const baseColors = {
   white: '#ffffff',
   black: '#000000',
   transparent: 'transparent',
-  // USAV brand navy palette
+  // Cycle Forge brand navy palette
   navy: {
     50:  '#f0f4fb',
     100: '#dde6f5',

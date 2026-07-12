@@ -18,6 +18,7 @@ import { Button } from '@/design-system/primitives';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { AiQuickJumpResults } from '@/components/search/AiQuickJumpResults';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
+import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import { cn } from '@/utils/_cn';
 import {
   CATEGORY_LABELS,
@@ -45,6 +46,15 @@ export interface SearchResultsSurfaceProps {
    * the state).
    */
   onLoadingChange?: (loading: boolean) => void;
+  /**
+   * Fires with the current result set each time a query settles, so a host can
+   * react to the hits (the rep workbench auto-selects the top order match).
+   */
+  onResults?: (hits: AiSearchHit[]) => void;
+  /** Highlighted order id — the rep workbench rail's current selection. */
+  activeHitId?: number | null;
+  /** Per-order packout proof for the rail rows (rep workbench only). */
+  packoutById?: Record<number, NearMatchPackout>;
   className?: string;
 }
 
@@ -64,6 +74,9 @@ export function SearchResultsSurface({
   onTabChange,
   onSelectHit,
   onLoadingChange,
+  onResults,
+  activeHitId,
+  packoutById,
   className,
 }: SearchResultsSurfaceProps) {
   const q = query.trim();
@@ -129,6 +142,11 @@ export function SearchResultsSurface({
     onLoadingChange?.(state.status === 'loading');
   }, [state.status, onLoadingChange]);
   useEffect(() => () => onLoadingChange?.(false), [onLoadingChange]);
+
+  // Surface the settled hit set to the host (rep workbench top-match auto-select).
+  useEffect(() => {
+    if (state.status === 'done') onResults?.(state.hits);
+  }, [state.status, state.hits, onResults]);
 
   // Overview: group by entityType in the fixed category order.
   const grouped = useMemo(() => {
@@ -224,6 +242,8 @@ export function SearchResultsSurface({
               <AiQuickJumpResults
                 hits={group.hits.slice(0, 5)}
                 onNavigate={onSelectHit}
+                activeId={activeHitId}
+                packoutById={packoutById}
                 density="comfortable"
                 className="[&>p]:hidden"
               />
@@ -238,6 +258,8 @@ export function SearchResultsSurface({
           <AiQuickJumpResults
             hits={state.hits}
             onNavigate={onSelectHit}
+            activeId={activeHitId}
+            packoutById={packoutById}
             density="comfortable"
             className="[&>p]:hidden"
           />

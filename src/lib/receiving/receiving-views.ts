@@ -14,9 +14,10 @@
 /**
  * Every server-supported value of `?view=`.
  *
- * - `all`      — recent + received union; INCLUDES untouched-incoming EXPECTED
- *                rows. The broad bucket used by the Receive workspace.
- * - `recent`   — freshly scanned, not yet matched/received.
+ * - `all`      — the broad search/scan-resolution bucket; INCLUDES
+ *                untouched-incoming EXPECTED rows. Used by the Receive
+ *                workspace. (`recent` was removed in the Wave-2 dead-arm
+ *                cleanup — zero consumers.)
  * - `received` — physically in the warehouse (MATCHED → DONE).
  * - `incoming` — Zoho POs issued but not yet touched (EXPECTED, 0 received).
  * - `activity` — `all` minus untouched-incoming. The "what was actually
@@ -42,7 +43,6 @@
  */
 export const RECEIVING_VIEWS = [
   'all',
-  'recent',
   'received',
   'incoming',
   'activity',
@@ -65,7 +65,7 @@ export function isReceivingView(value: unknown): value is ReceivingView {
 /**
  * Parse a raw `?view=` query value. Returns the matched {@link ReceivingView},
  * or `null` for anything unrecognized/absent (the server treats `null` as
- * "fall back to week-range scoping").
+ * org-wide default scoping).
  */
 export function parseReceivingView(raw: string | null | undefined): ReceivingView | null {
   if (!raw) return null;

@@ -97,7 +97,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       async (client) => {
         const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
           `SELECT id, receiving_id
-           FROM receiving_lines
+           FROM receiving_line
            WHERE id = $1
              AND organization_id = $2
            LIMIT 1`,
@@ -205,7 +205,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       (client) =>
         client.query<{ id: number; receiving_line_id: number | null; receiving_id: number | null }>(
           `DELETE FROM tech_serial_numbers tsn
-           USING receiving_lines rl
+           USING receiving_line rl
            WHERE tsn.id = $1
              AND tsn.station_source = 'RECEIVING'
              AND rl.id = tsn.receiving_line_id

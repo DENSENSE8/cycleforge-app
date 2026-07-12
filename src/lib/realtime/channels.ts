@@ -8,7 +8,7 @@
  *   2. `orgChannelPrefix()` THROWS on a missing/malformed org id, so a publisher
  *      can never accidentally build an un-namespaced (cross-tenant) channel.
  *
- * Server publishers pass `ctx.organizationId` (or `transitionalUsavOrgId()` for
+ * Server publishers pass `ctx.organizationId` (or `transitionalDogfoodOrgId()` for
  * the transitional jobs). Client subscribers pass `user.organizationId` from the
  * auth context and must wrap construction in `safeChannelName()` (which returns
  * '' instead of throwing) so a not-yet-hydrated user gates `enabled=false`
@@ -26,6 +26,7 @@ export const DEFAULT_DASHBOARD_CHANNEL = 'dashboard:operations';
 export const DEFAULT_OPS_PLANS_CHANNEL = 'ops_plans:changes';
 export const DEFAULT_WALKIN_CHANNEL = 'walkin:changes';
 export const DEFAULT_MASTER_PLAN_CHANNEL = 'forge:master-plan';
+export const DEFAULT_FORGE_RUNS_CHANNEL = 'forge:runs';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -110,6 +111,10 @@ export const getWalkInChannelName = (orgId: string) =>
  */
 export const getMasterPlanChannel = (orgId: string) =>
   `${orgChannelPrefix(orgId)}:${DEFAULT_MASTER_PLAN_CHANNEL}`;
+
+/** Cycle Forge run-history change feed (ingest → dashboard, no polling). */
+export const getForgeRunsChannelName = (orgId: string) =>
+  `${orgChannelPrefix(orgId)}:${DEFAULT_FORGE_RUNS_CHANNEL}`;
 
 // ─── DB-row change channels ────────────────────────────────────────────────
 

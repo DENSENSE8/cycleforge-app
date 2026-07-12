@@ -86,7 +86,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
       addLog(`eBay: ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`, 'success');
       onRefresh?.();
       window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     },
     onError: (error: Error) => {
       addLog(`eBay sync: ${error.message}`, 'error');
@@ -99,7 +99,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
       addLog(`Ecwid: ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`, 'success');
       onRefresh?.();
       window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     },
     onError: (error: Error) => {
       addLog(`Ecwid sync: ${error.message}`, 'error');
@@ -132,7 +132,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
       }
       onRefresh?.();
       window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-      window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+      window.dispatchEvent(new CustomEvent('app-refresh-data'));
     },
     onError: (error: Error) => {
       addLog(`Integrity check: ${error.message}`, 'error');

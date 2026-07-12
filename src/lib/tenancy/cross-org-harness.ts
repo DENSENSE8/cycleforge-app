@@ -21,7 +21,7 @@
  */
 
 import type { Pool } from 'pg';
-import { USAV_ORG_ID } from './constants';
+import { DOGFOOD_ORG_ID } from './constants';
 
 export const TEST_ORG_A = '00000000-0000-0000-0000-0000000000aa';
 export const TEST_ORG_B = '00000000-0000-0000-0000-0000000000bb';
@@ -171,7 +171,7 @@ export async function proveRlsIsolatesScratch(
 export async function proveRlsIsolatesForcedTable(
   pool: Pool,
   table: string,
-  populatedOrg: string = USAV_ORG_ID,
+  populatedOrg: string = DOGFOOD_ORG_ID,
   otherOrg: string = TEST_ORG_B,
 ): Promise<{ forced: boolean; own: number; cross: number }> {
   const f = await pool.query<{ forced: boolean }>(

@@ -8,7 +8,7 @@
  *
  * Matched cartons add OFF-PO (`allow_off_po`) — an extra item the Zoho PO
  * doesn't list; unmatched cartons add a normal line. On success it fires
- * `usav-refresh-data` (PoLinesAccordion refetches) + invalidates the receiving
+ * `app-refresh-data` (PoLinesAccordion refetches) + invalidates the receiving
  * feeds, so the new line shows immediately.
  */
 import { useState } from 'react';
@@ -66,7 +66,7 @@ export function CartonAddInline({
     toast.success(allowOffPo ? `Added off-PO · ${sel.item_name || sel.sku || 'item'}` : 'Item added');
     // PoLinesAccordion invalidates its siblings query on this event; the feeds
     // refresh keeps the rails/table in sync.
-    window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+    window.dispatchEvent(new CustomEvent('app-refresh-data'));
     invalidateReceivingFeeds(queryClient);
   };
 

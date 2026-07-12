@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Flag, TrendingUp } from '@/components/Icons';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import type { DashboardData } from '@/features/operations/types';
 
 /**
@@ -118,8 +119,11 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
               <Flag className="h-3 w-3" /> Today’s goal
             </span>
             <h1 className="mt-1.5 text-[26px] font-extrabold leading-none tracking-tight text-text-default sm:text-[30px]">
-              <span className="tabular-nums">{totals.current.toLocaleString()}</span>
-              <span className="text-text-soft"> / {totals.goal.toLocaleString()}</span>
+              <AnimatedStat value={totals.current} className="tabular-nums" />
+              <span className="text-text-soft">
+                {' '}
+                / <AnimatedStat value={totals.goal} className="inline tabular-nums" />
+              </span>
               <span className="ml-2 text-[14px] font-bold text-text-muted">units</span>
             </h1>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -133,7 +137,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
                   <span style={{ color: tone.ring }}>
                     <TrendingUp className="h-3 w-3" />
                   </span>
-                  {remaining.toLocaleString()} to go
+                  <AnimatedStat value={remaining} className="inline" /> to go
                 </span>
               ) : (
                 <span className="text-caption font-semibold text-text-muted">
@@ -162,7 +166,8 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
                       {s.station}
                     </span>
                     <span className="text-micro font-bold tabular-nums text-text-muted">
-                      {s.current}/{s.goal}
+                      <AnimatedStat value={s.current} className="inline" />/
+                      <AnimatedStat value={s.goal} className="inline" />
                     </span>
                   </div>
                   <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-canvas">

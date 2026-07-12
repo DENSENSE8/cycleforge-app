@@ -2,7 +2,7 @@
 /**
  * backfill-scanned-received-at.mjs — stamp received_at on door-scanned cartons.
  *
- * WHY: the Incoming Zoho sync pre-creates a `receiving` row (received_at NULL)
+ * WHY: the Incoming Zoho sync pre-creates a `receiving_carton` row (received_at NULL)
  * for every issued PO, and historically the door scan's upsert hit ON CONFLICT
  * and never stamped received_at (fixed in lookup-po upsertMatchedReceiving). The
  * Prioritize / unbox Queue feeds (view=scanned) key on received_at, so those
@@ -57,7 +57,7 @@ const FIND_SQL = `
          r.source,
          s.first_scan,
          (r.unboxed_at IS NOT NULL) AS already_unboxed
-    FROM receiving r
+    FROM receiving_carton r
     JOIN (
       SELECT receiving_id,
              MIN(scanned_at) AS first_scan
@@ -70,7 +70,7 @@ const FIND_SQL = `
    ORDER BY r.organization_id, r.id`;
 
 const UPDATE_SQL = `
-  UPDATE receiving r
+  UPDATE receiving_carton r
      SET received_at = s.first_scan,
          received_by = COALESCE(r.received_by, s.first_by),
          updated_at  = NOW()
@@ -124,7 +124,7 @@ async function main() {
   console.log(`\nStamped received_at on ${ids.length} receiving rows.`);
   console.log(`Affected ids logged to ${logPath}`);
   console.log(
-    `Reverse with: UPDATE receiving SET received_at = NULL WHERE id = ANY('{${ids.join(',')}}'::int[]);\n`,
+    `Reverse with: UPDATE receiving_carton SET received_at = NULL WHERE id = ANY('{${ids.join(',')}}'::int[]);\n`,
   );
   await pool.end();
 }

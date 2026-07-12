@@ -64,15 +64,17 @@ function makeDeps(opts: {
   const captured = {
     resolveCalled: 0,
     upsertReturn: [] as Array<Record<string, unknown>>,
+    unboxUpserts: [] as Array<{ receivingId: number; patch: Record<string, unknown> }>,
     exceptionsResolved: [] as number[],
     events: [] as Array<Record<string, unknown>>,
     taps: [] as Array<Record<string, unknown>>,
+    transitions: [] as Array<Record<string, unknown>>,
   };
 
   const client = {
     query: async (sql: string, params: unknown[] = []) => {
       calls.push({ sql, params });
-      if (sql.includes('FROM receiving WHERE id')) {
+      if (sql.includes('FROM receiving_carton WHERE id')) {
         return { rows: opts.carton ? [opts.carton] : [], rowCount: opts.carton ? 1 : 0 };
       }
       if (sql.includes('FROM orders')) {
@@ -80,6 +82,11 @@ function makeDeps(opts: {
       }
       if (sql.includes('UPDATE order_unit_allocations')) {
         return { rows: [], rowCount: opts.allocFlipCount ?? 0 };
+      }
+      // Linkage UPDATE returns the line's CURRENT status (pre-advance) so the
+      // check-and-skip chokepoint gate sees an advanceable row.
+      if (sql.includes('UPDATE receiving_line') && sql.includes('RETURNING workflow_status')) {
+        return { rows: [{ workflow_status: 'MATCHED' }], rowCount: 1 };
       }
       return { rows: [], rowCount: 1 };
     },
@@ -104,6 +111,26 @@ function makeDeps(opts: {
       return { id: 1 } as unknown;
     }) as unknown as ReturnedSerialLinkDeps['recordInventoryEvent'],
     listingUrlForItemNumber: (item) => getExternalUrlByItemNumber(item),
+    upsertUnbox: (async (
+      _client: unknown,
+      _org: string,
+      receivingId: number,
+      patch: Record<string, unknown>,
+    ) => {
+      captured.unboxUpserts.push({ receivingId, patch });
+    }) as unknown as ReturnedSerialLinkDeps['upsertUnbox'],
+    transitionLine: (async (input: Record<string, unknown>) => {
+      captured.transitions.push(input);
+      return {
+        ok: true,
+        eventId: -1,
+        from: 'MATCHED',
+        to: input.to,
+        changed: true,
+        coarse: 'UNBOXED',
+        receivingId: 5,
+      };
+    }) as unknown as ReturnedSerialLinkDeps['transitionLine'],
     tap: (async (args: Record<string, unknown>) => {
       captured.taps.push(args);
     }) as unknown as ReturnedSerialLinkDeps['tap'],
@@ -140,12 +167,27 @@ test('unfound carton + resolved v2 order → full link, allocation flip, promote
   assert.ok(
     calls.some((c) => c.sql.includes('UPDATE order_unit_allocations') && c.sql.includes("state = 'SHIPPED'")),
   );
-  // Per-line source order persisted + typed RETURN.
-  assert.ok(calls.some((c) => c.sql.includes('UPDATE receiving_lines') && c.sql.includes("receiving_type")));
-  // The return is advanced to UNBOXED (received), not left scanned, and the
-  // carton is stamped unboxed_at (off the scanned queue).
-  assert.ok(calls.some((c) => c.sql.includes('UPDATE receiving_lines') && c.sql.includes("'UNBOXED'")));
-  assert.ok(calls.some((c) => c.sql.includes('UPDATE receiving') && c.sql.includes('unboxed_at')));
+  // Per-line source order persisted + typed RETURN. The linkage UPDATE must NOT
+  // list workflow_status (Step D: lifecycle only via the chokepoint).
+  assert.ok(calls.some((c) => c.sql.includes('UPDATE receiving_line') && c.sql.includes("receiving_type")));
+  assert.ok(
+    !calls.some((c) => c.sql.includes('UPDATE receiving_line') && /SET[\s\S]*workflow_status\s*=/.test(c.sql)),
+  );
+  // The return is advanced to UNBOXED (received) via transitionReceivingLine
+  // (skipEvent — the RETURNED event is the richer record), and the carton is
+  // stamped unboxed (off the scanned queue) via the receiving_unbox street
+  // writer — NOT the spine (Wave-3 writer inversion).
+  assert.equal(captured.transitions.length, 1);
+  assert.equal(captured.transitions[0].to, 'UNBOXED');
+  assert.equal(captured.transitions[0].skipEvent, true);
+  assert.equal(captured.transitions[0].actorStaffId, 3);
+  assert.equal(captured.unboxUpserts.length, 1);
+  assert.equal(captured.unboxUpserts[0].receivingId, 5);
+  assert.equal(captured.unboxUpserts[0].patch.unboxedAt, 'now');
+  assert.equal(captured.unboxUpserts[0].patch.deriveIntakePath, true);
+  assert.equal(captured.unboxUpserts[0].patch.unboxedBy, undefined);
+  // The spine promo UPDATE no longer writes the moved unboxed_at column.
+  assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_carton') && c.sql.includes('unboxed_at')));
   // Carton promoted off the Unfound queue (the CASE flip is the tell).
   assert.ok(calls.some((c) => c.sql.includes("CASE WHEN source = 'unmatched'")));
   // Typed return fact written with the mapped platform + order.
@@ -176,9 +218,10 @@ test('real Zoho-PO carton → allocation flip only, never reclassified', async (
   assert.equal(res.linked, true); // order still resolved
   assert.equal(res.allocationReturned, true); // orders-side truth still closed
   assert.equal(res.promotedToFound, false); // but the PO carton is untouched
-  assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_lines')));
+  assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_line')));
   assert.ok(!calls.some((c) => c.sql.includes("CASE WHEN source = 'unmatched'")));
   assert.equal(captured.upsertReturn.length, 0);
+  assert.equal(captured.unboxUpserts.length, 0); // ineligible → no unbox stamp either
   assert.equal(captured.exceptionsResolved.length, 0);
 });
 
@@ -195,9 +238,11 @@ test('no prior order resolved → flags is_return only, no order import', async 
   assert.equal(res.matchedOrder, null);
   assert.equal(res.allocationReturned, false);
   // Carton flagged a return, but NOT promoted/imported (no order to import).
+  // The is_return flag UPDATE stays on the spine (not a moved column).
   assert.ok(calls.some((c) => c.sql.includes('SET is_return = true, updated_at')));
   assert.ok(!calls.some((c) => c.sql.includes("CASE WHEN source = 'unmatched'")));
   assert.equal(captured.upsertReturn.length, 0);
+  assert.equal(captured.unboxUpserts.length, 0); // no linkage → no unbox stamp
   assert.equal(captured.exceptionsResolved.length, 0);
   assert.equal(captured.events.length, 0);
   // Still a genuine physical return (status was already flipped upstream by
@@ -248,6 +293,9 @@ test('importSalesOrderByNumber: order# resolves → imports return, promotes, no
   assert.equal(captured.upsertReturn[0].returnPlatform, 'AMZ');
   // No serial → no allocation flip on the order-number path.
   assert.ok(!calls.some((c) => c.sql.includes('UPDATE order_unit_allocations')));
+  // Import stamps the carton unboxed via the street writer (same linkage core).
+  assert.equal(captured.unboxUpserts.length, 1);
+  assert.equal(captured.unboxUpserts[0].patch.unboxedAt, 'now');
   assert.deepEqual(captured.exceptionsResolved, [5]);
 });
 
@@ -265,6 +313,6 @@ test('importSalesOrderByNumber: unknown order# → clean no-op (caller falls bac
 
   assert.equal(res.imported, false);
   assert.equal(res.matchedOrder, null);
-  assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_lines')));
+  assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_line')));
   assert.equal(captured.upsertReturn.length, 0);
 });

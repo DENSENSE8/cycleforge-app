@@ -8,7 +8,7 @@
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { getAccessToken, getInventoryBaseUrl } from '@/lib/zoho/core';
 import { withZohoOrg, hasZohoOrgBinding } from '@/lib/zoho/tenant-context';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import {
   paginateZohoList,
   zohoGet,
@@ -32,7 +32,7 @@ export type { ZohoCircuitOpenError, ZohoRateLimitError };
 // once lookup-po binds ctx.organizationId itself.
 function withTransitionalZohoOrgIfUnbound<T>(fn: () => Promise<T>): Promise<T> {
   if (hasZohoOrgBinding()) return fn();
-  return withZohoOrg(transitionalUsavOrgId(), fn);
+  return withZohoOrg(transitionalDogfoodOrgId(), fn);
 }
 
 export async function searchItemBySku(sku: string) {

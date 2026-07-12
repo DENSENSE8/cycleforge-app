@@ -23,7 +23,7 @@ import { transition } from '@/lib/inventory/state-machine';
 import { resolvePriorOutbound } from '@/lib/neon/serial-units-queries';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { isPlacementStrangleRmaRestock } from '@/lib/feature-flags';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import { tapWorkflow } from '@/lib/workflow/tap';
@@ -392,7 +392,7 @@ export async function recordDisposition(
               },
             },
             client,
-            orgId ?? USAV_ORG_ID,
+            orgId ?? DOGFOOD_ORG_ID,
           );
           eventId = event.id;
 
@@ -410,7 +410,7 @@ export async function recordDisposition(
             // With no decision node authored it resolves nothing → restock stays
             // bin-less, exactly as before; an org that authors a rule gets the
             // unit physically placed + current_location set, no app change.
-            const effectiveOrg = orgId ?? USAV_ORG_ID;
+            const effectiveOrg = orgId ?? DOGFOOD_ORG_ID;
             let restockBinId: number | null = null;
             let restockBinName: string | null = null;
 

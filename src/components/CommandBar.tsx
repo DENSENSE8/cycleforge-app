@@ -243,8 +243,8 @@ export function CommandBar() {
   // event name; redirect to the inline header search field.
   useEffect(() => {
     const onOpen = () => dispatchGlobalSearchFocus();
-    window.addEventListener('usav-command-bar-open', onOpen);
-    return () => window.removeEventListener('usav-command-bar-open', onOpen);
+    window.addEventListener('app-command-bar-open', onOpen);
+    return () => window.removeEventListener('app-command-bar-open', onOpen);
   }, []);
 
   // Reset state on open / close on route change. Opening also resolves the

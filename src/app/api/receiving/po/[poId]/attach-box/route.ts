@@ -10,7 +10,6 @@ import {
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { INBOUND_SOURCE_TYPES } from '@/lib/inbound/source-registry';
 
 /** Sargable `= ANY(...)` list for the polymorphic-link fallback (see resolvePo). */
@@ -50,13 +49,19 @@ async function resolvePo(
   poIdInput: string,
 ): Promise<{ poId: string; poNumber: string | null } | null> {
   const norm = poIdInput.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // Line-level Zoho facts live on receiving_line_zoho (rz, 1:1 with the line;
+  // every Zoho-bearing line has a row, so LEFT JOIN + WHERE rz.col is exactly
+  // the old spine filter).
   const resolved = await tenantQuery<{ zoho_purchaseorder_id: string; zoho_purchaseorder_number: string | null }>(
     orgId,
-    `SELECT zoho_purchaseorder_id, zoho_purchaseorder_number
-       FROM receiving_lines
-      WHERE zoho_purchaseorder_id = $1
-         OR zoho_purchaseorder_number_norm = $2
-      ORDER BY id DESC
+    `SELECT rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number
+       FROM receiving_line rl
+       LEFT JOIN receiving_line_zoho rz
+         ON rz.receiving_line_id = rl.id
+        AND rz.organization_id = rl.organization_id
+      WHERE rz.zoho_purchaseorder_id = $1
+         OR rz.zoho_purchaseorder_number_norm = $2
+      ORDER BY rl.id DESC
       LIMIT 1`,
     [poIdInput, norm],
   );
@@ -85,14 +90,16 @@ async function resolvePo(
     const link = await tenantQuery<{ zoho_purchaseorder_id: string; zoho_purchaseorder_number: string | null }>(
       orgId,
       `SELECT z.source_order_id AS zoho_purchaseorder_id,
-              rl.zoho_purchaseorder_number
+              rz.zoho_purchaseorder_number
          FROM inbound_purchase_order_links l
          JOIN inbound_purchase_order_links z
            ON z.receiving_line_id = l.receiving_line_id
           AND z.organization_id  = l.organization_id
           AND z.source_type = 'zoho'
-         JOIN receiving_lines rl
+         JOIN receiving_line rl
            ON rl.id = l.receiving_line_id AND rl.organization_id = l.organization_id
+         LEFT JOIN receiving_line_zoho rz
+           ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
         WHERE l.organization_id = $1
           AND l.source_type = ANY($3::text[])
           AND l.source_order_id = $2
@@ -120,7 +127,7 @@ export async function GET(
   try {
     const gate = await requireRoutePerm(request, 'receiving.mark_received');
     if (gate.denied) return gate.denied;
-    const orgId = gate.ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = gate.ctx.organizationId;
 
     const { poId: poIdRaw } = await params;
     const poIdInput = decodeURIComponent(String(poIdRaw ?? '')).trim();
@@ -141,7 +148,7 @@ export async function GET(
 
     const carton = await tenantQuery<{ id: number }>(
       orgId,
-      `SELECT id FROM receiving
+      `SELECT id FROM receiving_carton
         WHERE source = 'zoho_po' AND zoho_purchaseorder_id = $1
         ORDER BY id DESC
         LIMIT 1`,
@@ -173,7 +180,7 @@ export async function POST(
     const gate = await requireRoutePerm(request, 'receiving.mark_received');
     if (gate.denied) return gate.denied;
     const ctx = gate.ctx;
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
     const staffId = Number(ctx.staffId) || null;
 
     const { poId: poIdRaw } = await params;

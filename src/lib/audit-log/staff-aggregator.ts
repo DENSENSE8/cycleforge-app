@@ -127,9 +127,11 @@ export async function getStaffDetail(
             ie.event_type,
             rl.sku,
             rl.item_name,
-            rl.zoho_purchaseorder_id
+            rz.zoho_purchaseorder_id
        FROM inventory_events ie
-       JOIN receiving_lines rl ON rl.id = ie.receiving_line_id
+       JOIN receiving_line rl ON rl.id = ie.receiving_line_id
+       LEFT JOIN receiving_line_zoho rz
+              ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
       WHERE ie.actor_staff_id = $1${buildClauses('ie.occurred_at')}${orgPred('ie')}
       ORDER BY ie.occurred_at DESC
       LIMIT 500`,

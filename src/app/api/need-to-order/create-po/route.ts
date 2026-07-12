@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireInternalToken } from '@/lib/internal-api';
 import { createDraftPurchaseOrders } from '@/lib/replenishment';
-import { transitionalUsavOrgId } from '@/lib/tenancy/db';
+import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 export async function POST(req: NextRequest) {
   const authError = requireInternalToken(req);
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     // ZOHO_ORG_TRANSITIONAL: internal-token route has no session, so the
     // service-org shim supplies the tenant. Replenishment fns now REQUIRE
     // an orgId (the unscoped fallback path was removed).
-    const created = await createDraftPurchaseOrders(replenishmentIds, transitionalUsavOrgId());
+    const created = await createDraftPurchaseOrders(replenishmentIds, transitionalDogfoodOrgId());
     return NextResponse.json({ success: true, created_pos: created });
   } catch (error: any) {
     return NextResponse.json(

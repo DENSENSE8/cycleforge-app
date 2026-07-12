@@ -19,7 +19,7 @@ interface Props {
   onSelectedLineChange: (id: number | null) => void;
 }
 
-const LAST_TESTING_LINE_KEY = 'usav:testing:last-line-id';
+const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
 
 export function TestingLineWorkspace({ staffId, selectedLineId, onSelectedLineChange }: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);

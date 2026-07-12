@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { after } from 'next/server';
@@ -53,22 +53,43 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     );
   }
 
-  const result = await tenantQuery<{
-    id: number;
-    receiving_id: number | null;
-    condition_grade: Grade;
-    condition_set_at: string | null;
-  }>(
-    ctx.organizationId,
-    `UPDATE receiving_lines
-        SET condition_grade = $1::condition_grade_enum,
-            condition_set_at = COALESCE(condition_set_at, NOW()),
-            updated_at = NOW()
-      WHERE id = $2 AND organization_id = $3
-      RETURNING id, receiving_id, condition_grade, condition_set_at::text AS condition_set_at`,
-    [grade, lineId, ctx.organizationId],
-  );
-  const updated = result.rows[0];
+  // Wave-3 writer inversion: condition_grade + condition_set_at are
+  // receiving_line_testing facts now. Inline UPSERT (narrow.ts can't express
+  // the COALESCE-once first-set stamp): grade always overwrites,
+  // condition_set_at keeps the first explicit set — same semantics the old
+  // spine UPDATE had. The FOR UPDATE spine read preserves the 404 and locks
+  // the line for the duration, like the former single-statement UPDATE did.
+  const updated = await withTenantTransaction(ctx.organizationId, async (client) => {
+    const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
+      `SELECT id, receiving_id FROM receiving_line
+        WHERE id = $1 AND organization_id = $2
+        FOR UPDATE`,
+      [lineId, ctx.organizationId],
+    );
+    const line = lineRes.rows[0];
+    if (!line) return null;
+    const upsert = await client.query<{
+      condition_grade: Grade;
+      condition_set_at: string | null;
+    }>(
+      `INSERT INTO receiving_line_testing (
+          receiving_line_id, organization_id, condition_grade, condition_set_at)
+       VALUES ($1, $2, $3::condition_grade_enum, NOW())
+       ON CONFLICT (receiving_line_id) DO UPDATE SET
+         condition_grade  = EXCLUDED.condition_grade,
+         condition_set_at = COALESCE(receiving_line_testing.condition_set_at, EXCLUDED.condition_set_at),
+         updated_at       = now()
+       RETURNING condition_grade::text AS condition_grade,
+                 condition_set_at::text AS condition_set_at`,
+      [lineId, ctx.organizationId, grade],
+    );
+    return {
+      id: line.id,
+      receiving_id: line.receiving_id,
+      condition_grade: upsert.rows[0].condition_grade,
+      condition_set_at: upsert.rows[0].condition_set_at,
+    };
+  });
   if (!updated) {
     return NextResponse.json(
       { success: false, error: `line ${lineId} not found` },

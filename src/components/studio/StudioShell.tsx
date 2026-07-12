@@ -17,7 +17,7 @@
  */
 
 import { useLocalStorage } from '@/hooks';
-import { ChevronLeft, ChevronRight, Plus, Sparkles } from '@/components/Icons';
+import { ChevronLeft, ChevronRight, Plus, Sparkles, Upload } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { useStudioWorkspace } from './StudioWorkspaceContext';
 import { useStudioSimulation } from './useStudioSimulation';
@@ -72,6 +72,7 @@ export function StudioShell() {
     saveDraft,
     publish,
     discardDraft,
+    submitToCatalog,
   } = useStudioWorkspace();
 
   // Global-assistant context: flow-display skill + focused-node selection (plan §-2.2).
@@ -254,6 +255,31 @@ export function StudioShell() {
                 </Button>
               </>
             )}
+            {/* Submit-to-catalog reads the LIVE definition, so it sits OUTSIDE
+                the draft-only branch — a manager can share the active version or
+                a draft alike. Plain fetch (no step-up); studio.manage is
+                server-enforced. */}
+            <HoverTooltip
+              label={
+                dirty
+                  ? 'Save your draft first — submit packages the last saved version, not unsaved edits.'
+                  : 'Submit this operation as a template to the community catalog for curator review.'
+              }
+              asChild
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void submitToCatalog()}
+                disabled={busy !== null || dirty}
+                ariaLabel="Submit this operation as a template to the community catalog for curator review."
+                icon={<Upload className="h-3.5 w-3.5" />}
+                className="h-auto gap-1 rounded-md border border-border-soft bg-surface-card px-2.5 py-1 text-xs font-semibold text-text-muted hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy === 'submitting' ? 'Submitting…' : 'Submit to catalog'}
+              </Button>
+            </HoverTooltip>
           </div>
         )}
         {actionError && <span className="text-caption font-semibold text-rose-600">{actionError}</span>}

@@ -19,7 +19,7 @@ import type {
   RecentVisit,
 } from './types';
 
-const STORAGE_EVENT_KEY = 'usav.quickAccess.changed';
+const STORAGE_EVENT_KEY = 'cf.quickAccess.changed';
 
 function emitChanged() {
   if (typeof window === 'undefined') return;

@@ -9,7 +9,7 @@ import {
   resolveQuickAccessLabelFromLocation,
 } from './page-label';
 
-const STORAGE_EVENT_KEY = 'usav.quickAccess.changed';
+const STORAGE_EVENT_KEY = 'cf.quickAccess.changed';
 
 /**
  * Records page visits for the Quick Access "Recent" list. Mount once in the

@@ -15,6 +15,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/utils/_cn';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { SearchBar } from '@/components/ui/SearchBar';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SidebarNavOverlaySlider } from '@/components/sidebar/SidebarNavOverlaySlider';
@@ -46,12 +48,11 @@ import {
   type OperationsMode,
 } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { useOperationsMode } from '@/components/sidebar/operations/useOperationsMode';
+import { PlansSidebar } from '@/components/sidebar/operations/PlansSidebar';
 import { useOperationsTimelineUrlState } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
-import { usePageHeaderSearch } from '@/hooks/usePageHeader';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { SearchRecentsDropdown } from '@/components/search/SearchRecentsDropdown';
 import { useOperationsSearchBusy } from '@/components/operations/operations-search-status';
-import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
 import { isOperationsHistoryBrowseEnabled } from '@/lib/operations/operations-history-flags';
 import { HistoryBrowseFilters } from '@/components/sidebar/operations/HistoryBrowseFilters';
 import { pushSearchRecent } from '@/lib/search/search-recents';
@@ -103,6 +104,7 @@ export function OperationsSidebarPanel() {
   if (mode === 'insights') return <InsightsSidebar modeToggle={modeToggle} />;
   if (mode === 'history') return <HistorySidebar modeToggle={modeToggle} />;
   if (mode === 'signals') return <SignalsSidebar modeToggle={modeToggle} />;
+  if (mode === 'plans') return <PlansSidebar modeToggle={modeToggle} />;
   return <LiveSidebar modeToggle={modeToggle} />;
 }
 
@@ -147,10 +149,25 @@ function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
   return (
     <SidebarShell
-      search={{ value: q, onChange: setQ, placeholder: 'Search live activity…', variant: 'blue' }}
+      headerAbove={
+        <>
+          {modeToggle}
+          {/* In-context list filter — local base SearchBar; the global header
+              pill stays global (search any order across the app). */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={q}
+              onChange={setQ}
+              onClear={() => setQ('')}
+              placeholder="Filter live activity…"
+            />
+          </div>
+        </>
+      }
       bodyClassName="pt-0 pb-6"
     >
-      {modeToggle}
       <div className={cn('space-y-4 pt-4')}>
         <div className="grid grid-cols-2 gap-2">
           {kpis.map((k) => {
@@ -433,9 +450,21 @@ function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
             </div>
           </>
         ) : (
-          <p className="text-caption leading-5 text-text-muted">
-            Search from the header bar, then select a signal to inspect its detail.
-          </p>
+          <div className="space-y-2">
+            {/* In-context filter — local base SearchBar over signal notes (?q=);
+                the global header pill stays global (search any order app-wide). */}
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchParams.get('q') ?? ''}
+              onChange={(v) => setParam('q', v)}
+              onClear={() => setParam('q', '')}
+              placeholder="Filter signal notes…"
+            />
+            <p className="text-caption leading-5 text-text-muted">
+              Select a signal from the list to inspect its detail.
+            </p>
+          </div>
         )}
       </div>
     </SidebarShell>
@@ -446,86 +475,57 @@ function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 
 function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
   const url = useOperationsTimelineUrlState();
-  const unifiedOn = isUnifiedHeaderSearchEnabled();
-  // Browse-feed filters show when the browse region is on-screen (flag on, not
-  // focused on a record). The URL setters they drive already exist.
+  // Browse-feed filters show when the browse region is on-screen (not focused
+  // on a record). The URL setters they drive already exist.
   const showFilters = isOperationsHistoryBrowseEnabled() && !url.focused;
   const { recents, remove, clear } = useSearchRecents({ scope: 'operations:history' });
   // Reflect the browse fetch on the header pill's spinner (results pane owns
   // the fetch; this is the cross-subtree bridge).
   const searchBusy = useOperationsSearchBusy();
 
-  const placeholder =
-    url.dim === 'order'
-      ? 'Search an order number…'
-      : url.dim === 'serial'
-        ? 'Search a serial number…'
-        : 'Search a tracking number…';
+  // Enter on an exact identifier fast-paths straight to that record's timeline
+  // (keeps the paste-a-number reflex); otherwise it commits a ?q= browse and
+  // records a recent (the SearchRecentsDropdown below re-runs them).
+  const handleHistorySearch = (v: string) => {
+    const t = v.trim();
+    if (!t) return;
+    if (looksLikeIdentifier(t)) {
+      url.setEntity(t);
+      return;
+    }
+    pushSearchRecent({
+      query: t,
+      scope: 'operations:history',
+      scopeLabel: 'Operations · History',
+      scopeHref: `/operations?mode=history&q=${encodeURIComponent(t)}`,
+    });
+    url.setQ(t);
+  };
 
-  // Flag ON: the GLOBAL header drives an operations ?q= browse (results in the
-  // right pane); recents live here. Enter on an exact identifier fast-paths
-  // straight to that record's timeline (keeps today's paste-a-number reflex).
-  // Flag OFF: control is null → header stays global, sidebar owns entity search.
-  usePageHeaderSearch(
-    unifiedOn
-      ? {
-          value: url.q,
-          onChange: (v) => url.setQ(v),
-          onClear: () => url.setQ(''),
-          onSearch: (v) => {
-            const t = v.trim();
-            if (!t) return;
-            if (looksLikeIdentifier(t)) {
-              url.setEntity(t);
-              return;
-            }
-            pushSearchRecent({
-              query: t,
-              scope: 'operations:history',
-              scopeLabel: 'Operations · History',
-              scopeHref: `/operations?mode=history&q=${encodeURIComponent(t)}`,
-            });
-            url.setQ(t);
-          },
-          placeholder: 'Search shipped orders, serials, tracking…',
-          debounceMs: 300,
-          isSearching: searchBusy,
-        }
-      : null,
-    [unifiedOn, url.q, url.dim, searchBusy],
-  );
-
-  // Flag OFF: pure record lookup — pick a dimension, paste a number. The right
-  // pane teaches the empty state; the body stays clean.
-  if (!unifiedOn) {
-    return (
-      <SidebarShell
-        search={{
-          value: url.entityValue,
-          onChange: (v) => url.setEntity(v),
-          placeholder,
-          variant: 'blue',
-          debounceMs: 250,
-        }}
-        bodyClassName="pt-0"
-      >
-        {modeToggle}
-        <SidebarNavOverlaySlider
-          items={JOURNEY_DIMENSION_ITEMS}
-          value={url.dim}
-          onChange={(id) => url.setDim(id as JourneyDimension)}
-          aria-label="Journey dimension"
-        />
-        {showFilters ? <HistoryBrowseFilters url={url} /> : null}
-      </SidebarShell>
-    );
-  }
-
-  // Flag ON: no sidebar search bar (the header owns it). Dimension toggle scopes
-  // the exact-id fast-path and the drill dimension; recent searches re-run ?q=.
+  // In-context list filter (local base SearchBar); the global header pill stays
+  // global (search any order across the app).
   return (
-    <SidebarShell bodyClassName="pt-0">
-      {modeToggle}
+    <SidebarShell
+      headerAbove={
+        <>
+          {modeToggle}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={url.q}
+              onChange={(v) => url.setQ(v)}
+              onClear={() => url.setQ('')}
+              onSearch={handleHistorySearch}
+              placeholder="Filter shipped orders, serials, tracking…"
+              debounceMs={300}
+              isSearching={searchBusy}
+            />
+          </div>
+        </>
+      }
+      bodyClassName="pt-0"
+    >
       <SidebarNavOverlaySlider
         items={JOURNEY_DIMENSION_ITEMS}
         value={url.dim}

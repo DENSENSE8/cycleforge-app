@@ -77,6 +77,20 @@ export const OrgSettingsSchema = z.object({
   // When true, every new staff invite must use a passkey (no PIN). For
   // customers with stricter device policies.
   requirePasskeyForNewStaff: z.boolean().default(false),
+  // Staff sign-in model for this workspace — the two avenues:
+  //   'individual' (default) — every staff has their OWN account (email+password,
+  //      passkey, or SSO) and sign-in lands them straight in. The standard
+  //      per-person SaaS model.
+  //   'shared' — ONE shared workspace account (email+password) fronts an
+  //      "umbrella" staff list. After the shared login you pick which staff you
+  //      are and are signed in AS them with NO PIN. The common small-business
+  //      pattern where the whole floor shares one login. The shared account's
+  //      own profile is hidden from the umbrella list.
+  // Both avenues coexist on /signin: a person with their own email always signs
+  // in individually; a shared workspace account opens the umbrella picker.
+  // Read by /api/auth/account/signin (returns the picker) and
+  // /api/auth/act-as-staff (authorizes the PIN-less switch).
+  staffLoginModel: z.enum(['individual', 'shared']).default('individual'),
   // Hard cap on simultaneous active sessions per staff. 0 = unlimited.
   maxConcurrentSessions: z.number().int().min(0).default(0),
   // Warranty term (days) used by the Warranty Claim Logger clock. Per-org,
@@ -252,6 +266,16 @@ export function getAllNasBaseUrls(settings: OrgSettings): string[] {
   return [servers.test, servers.prod]
     .map((u) => (u || '').trim().replace(/\/+$/, ''))
     .filter(Boolean);
+}
+
+/**
+ * Does this workspace use the SHARED-account umbrella staff picker (the small-
+ * business avenue) instead of per-person email logins? When true, an
+ * email+password sign-in returns the staff roster and picking a name signs in
+ * as that staff with no PIN. See OrgSettingsSchema.staffLoginModel.
+ */
+export function isSharedStaffAccountOrg(settings: OrgSettings): boolean {
+  return settings.staffLoginModel === 'shared';
 }
 
 /** Packing-checklist enforcement mode for this org. See OrgSettingsSchema.packing. */

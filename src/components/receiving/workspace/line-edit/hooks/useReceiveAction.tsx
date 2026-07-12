@@ -300,16 +300,16 @@ export function useReceiveAction(
           }
 
           // Refresh every receiving feed atomically via the shared helper.
-          // `usav-refresh-data` stays for non-receiving listeners that also key
+          // `app-refresh-data` stays for non-receiving listeners that also key
           // off the global signal.
           invalidateReceivingFeeds(queryClient);
-          window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+          window.dispatchEvent(new CustomEvent('app-refresh-data'));
 
           // Fire-and-forget row refresh. The /api/receiving-lines query can run
           // 10–30s under load; awaiting it inline used to pin the loading state
           // for the full statement_timeout window even when the receive itself
           // had already succeeded. The receiving-logs realtime channel and the
-          // usav-refresh-data event above reconcile the row independently if
+          // app-refresh-data event above reconcile the row independently if
           // this is slow.
           if (markRes.ok) {
             void (async () => {

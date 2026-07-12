@@ -99,7 +99,7 @@ export async function upsertPurchaseLink(
   return deps.withTx(orgId, async (client) => {
     // 1. Parent-existence validation (app-side, per the polymorphic contract).
     const parent = await client.query<{ id: number }>(
-      `SELECT id FROM receiving_lines WHERE id = $1 AND organization_id = $2`,
+      `SELECT id FROM receiving_line WHERE id = $1 AND organization_id = $2`,
       [input.receivingLineId, orgId],
     );
     if (parent.rows.length === 0) {
@@ -146,7 +146,7 @@ export async function upsertPurchaseLink(
     // 4. Dual-write the spine transition cache from the primary link.
     if (isPrimary && syncSpineCache) {
       await client.query(
-        `UPDATE receiving_lines
+        `UPDATE receiving_line
             SET inbound_source_type = $3,
                 source_order_id     = $4,
                 source_line_item_id = $5,

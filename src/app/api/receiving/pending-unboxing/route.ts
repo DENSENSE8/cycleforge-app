@@ -5,7 +5,7 @@
  * joined with their matched receiving_lines (Zoho PO item data).
  *
  * A row is "pending unboxing" when:
- *   receiving.unboxed_at IS NULL
+ *   receiving_unbox.unboxed_at IS NULL (street table; NULL when no row yet)
  *   OR any of its lines have workflow_status IN ('ARRIVED','MATCHED')
  *
  * Response shape:
@@ -82,16 +82,18 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     ]);
     const hasColumn = (name: string) => {
       const present = availableColumns.has(name);
-      if (!present) reportMissingReceivingColumn('receiving', name);
+      if (!present) reportMissingReceivingColumn('receiving_carton', name);
       return present;
     };
     const hasLineColumn = (name: string) => {
       const present = availableLineColumns.has(name);
-      if (!present) reportMissingReceivingColumn('receiving_lines', name);
+      if (!present) reportMissingReceivingColumn('receiving_line', name);
       return present;
     };
+    // Wave-2 reader cutover: carton received_at is read from the 1:1
+    // receiving_triage street table (rt.door_received_at, trigger-mirrored).
     const receivedAtSelect = hasColumn('received_at')
-      ? "to_char(r.received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at"
+      ? "to_char(rt.door_received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at"
       : 'NULL::text AS received_at';
     const dateColumnRef = `r.${dateColumn}`;
     const receivingDateSelect = `to_char(${dateColumnRef}::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS created_at`;
@@ -102,27 +104,29 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     const orgParamRef = hasLineColumn('workflow_status') ? '$3' : '$2';
     const workflowFilterClause = hasLineColumn('workflow_status')
       ? `EXISTS (
-             SELECT 1 FROM receiving_lines rl
+             SELECT 1 FROM receiving_line rl
              WHERE rl.receiving_id = r.id
                AND rl.organization_id = r.organization_id
                AND rl.workflow_status = ANY($1::inbound_workflow_status_enum[])
            )`
       : `EXISTS (
-             SELECT 1 FROM receiving_lines rl
+             SELECT 1 FROM receiving_line rl
              WHERE rl.receiving_id = r.id
                AND rl.organization_id = r.organization_id
            )`;
     const workflowStatusSelect = hasLineColumn('workflow_status')
       ? 'rl.workflow_status'
       : "'MATCHED'::text AS workflow_status";
+    // Wave-2 reader cutover: line Zoho facts come from receiving_line_zoho (rz),
+    // 1:1 with the line (a row exists for every line with any Zoho field).
     const zohoPurchaseOrderIdSelect = hasLineColumn('zoho_purchaseorder_id')
-      ? 'rl.zoho_purchaseorder_id'
+      ? 'rz.zoho_purchaseorder_id'
       : 'NULL::text AS zoho_purchaseorder_id';
     const zohoPurchaseReceiveIdSelect = hasLineColumn('zoho_purchase_receive_id')
-      ? 'rl.zoho_purchase_receive_id'
+      ? 'rz.zoho_purchase_receive_id'
       : 'NULL::text AS zoho_purchase_receive_id';
     const zohoLineItemIdSelect = hasLineColumn('zoho_line_item_id')
-      ? 'rl.zoho_line_item_id'
+      ? 'rz.zoho_line_item_id'
       : 'NULL::text AS zoho_line_item_id';
     const qaStatusSelect = hasLineColumn('qa_status')
       ? 'rlt.qa_status'
@@ -174,18 +178,24 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
               ${receivedAtSelect},
               ${receivingDateSelect},
               r.qa_status,
-              to_char(r.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at,
-              r.unboxed_by,
+              to_char(ru.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at,
+              ru.unboxed_by,
               r.zoho_purchase_receive_id,
               r.zoho_purchaseorder_id
-       FROM receiving r
+       FROM receiving_carton r
+       LEFT JOIN receiving_triage rt
+         ON rt.receiving_id = r.id
+        AND rt.organization_id = r.organization_id
+       LEFT JOIN receiving_unbox ru
+         ON ru.receiving_id = r.id
+        AND ru.organization_id = r.organization_id
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-       WHERE r.unboxed_at IS NULL
+       WHERE ru.unboxed_at IS NULL
          AND r.organization_id = ${orgParamRef}
          AND (
            ${workflowFilterClause}
            OR NOT EXISTS (
-             SELECT 1 FROM receiving_lines rl2
+             SELECT 1 FROM receiving_line rl2
              WHERE rl2.receiving_id = r.id
                AND rl2.organization_id = r.organization_id
            )
@@ -237,10 +247,13 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
               ${assignedTechIdSelect},
               st.name AS assigned_tech_name,
               ${notesSelect}
-       FROM receiving_lines rl
+       FROM receiving_line rl
        LEFT JOIN receiving_line_testing rlt
          ON rlt.receiving_line_id = rl.id
         AND rlt.organization_id = rl.organization_id
+       LEFT JOIN receiving_line_zoho rz
+         ON rz.receiving_line_id = rl.id
+        AND rz.organization_id = rl.organization_id
        LEFT JOIN staff st
          ON st.id = ${assignedTechJoin}
         AND st.organization_id = rl.organization_id

@@ -11,7 +11,7 @@ import { mapScanToDesktopRoute } from '@/lib/scan-history-route';
  * of the desktop phone-history popover — scan on the phone, see it here.
  *
  * Staff scoping is enforced server-side: the staff id comes from the verified
- * `usav_sid` session (ctx.staffId), NEVER from the request. The source data is
+ * `cf_sid` session (ctx.staffId), NEVER from the request. The source data is
  * `mobile_scan_events`, which the resolver already writes on every scan.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {

@@ -66,8 +66,10 @@ export async function fetchMatchesByNormalizedPoNumbers(
        m.status,
        (
          SELECT array_agg(DISTINCT rl.workflow_status::text)
-           FROM receiving_lines rl
-          WHERE rl.zoho_purchaseorder_id = m.zoho_purchaseorder_id
+           FROM receiving_line_zoho rz
+           JOIN receiving_line rl
+             ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
+          WHERE rz.zoho_purchaseorder_id = m.zoho_purchaseorder_id
        ) AS workflow_statuses
      FROM zoho_po_mirror m
      WHERE m.zoho_purchaseorder_number_norm = ANY($1::text[])`,

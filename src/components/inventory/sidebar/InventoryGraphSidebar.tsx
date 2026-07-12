@@ -8,6 +8,8 @@ import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 /**
  * Sidebar panel for the SKU graph mode (`/inventory/graph`).
@@ -53,13 +55,21 @@ export function InventoryGraphSidebar() {
         <SidebarShell
             as={motion.div}
             containerProps={{ initial: 'hidden', animate: 'visible', variants: containerVariants }}
-            search={{
-                value: inputValue,
-                onChange: setInputValue,
-                placeholder: 'Search SKU to explore…',
-                isSearching: isFetching,
-                variant: 'blue',
-            }}
+            headerAbove={
+                // In-context list filter — local base SearchBar over the SKU graph
+                // list. The global header pill stays global (search app-wide).
+                <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+                    <SearchBar
+                        size="compact"
+                        variant="blue"
+                        value={inputValue}
+                        onChange={setInputValue}
+                        onClear={() => setInputValue('')}
+                        placeholder="Filter SKUs to explore…"
+                        isSearching={isFetching}
+                    />
+                </div>
+            }
             bodyClassName="scrollbar-hide pb-5 space-y-2"
         >
             <p className={`${microBadge} px-1 text-text-soft`}>

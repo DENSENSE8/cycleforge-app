@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getSkuCatalogBySku } from '@/lib/neon/sku-catalog-queries';
 import { upsertSerialUnit } from '@/lib/neon/serial-units-queries';
@@ -111,7 +110,7 @@ export const POST = withAuth(
     const skuForStorage = catalog?.sku || baseProductSku || productSku;
 
     const actorId = ctx.staffId ?? null;
-    const orgId = ctx.organizationId ?? USAV_ORG_ID;
+    const orgId = ctx.organizationId;
 
     // 1. One station_activity_logs row covering the whole batch. Carries
     //    the print payload + metadata so the future Recently Printed view

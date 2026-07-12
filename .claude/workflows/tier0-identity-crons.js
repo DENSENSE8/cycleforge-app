@@ -67,14 +67,14 @@ IDENTITY-LAYER RULES (security-critical — be conservative):
 const CRON_RULES = `
 SESSION-LESS CRON/WEBHOOK RULES (no ctx.organizationId available):
 - These have no session. For the SINGLE-tenant interim, resolve a service org and run the DB work under it so the GUC is set + tables are scoped:
-  import { transitionalUsavOrgId } from '@/lib/tenancy/db'  →  const orgId = transitionalUsavOrgId();
+  import { transitionalDogfoodOrgId } from '@/lib/tenancy/db'  →  const orgId = transitionalDogfoodOrgId();
   then route the tenant-table reads/writes through tenantQuery(orgId, …)/withTenantTransaction(orgId, …) (or pass orgId into the now-optional-org shared sync modules).
 - Add a clear \`// TODO(multi-tenant): resolve org from the webhook payload / per-connection mapping instead of the USAV service org\` at each resolution point. This is the documented 2nd-tenant follow-up — do NOT invent payload parsing now.
-- Wrap the disable: an eslint-disable-next-line for the transitionalUsavOrgId call is fine (it's the sanctioned interim). Preserve all existing behavior; only add GUC scoping + the org arg.
+- Wrap the disable: an eslint-disable-next-line for the transitionalDogfoodOrgId call is fine (it's the sanctioned interim). Preserve all existing behavior; only add GUC scoping + the org arg.
 `.trim()
 
 const COMMON = `
-Imports: import { tenantQuery, withTenantTransaction, transitionalUsavOrgId } from '@/lib/tenancy/db'; import type { OrgId } from '@/lib/tenancy/constants'.
+Imports: import { tenantQuery, withTenantTransaction, transitionalDogfoodOrgId } from '@/lib/tenancy/db'; import type { OrgId } from '@/lib/tenancy/constants'.
 Backbone shared modules are optional-orgId after Phase 1 — pass orgId into their calls. Check docs/tenancy/org-id-coverage.generated.md for whether a table has organization_id before adding an explicit filter (it was just regenerated; the NEEDS-COL column migration is now APPLIED so most tables have it). Do NOT run whole-repo tsc (concurrent edits). Re-read each edited file. Preserve every response shape + status code.
 `.trim()
 
@@ -96,7 +96,7 @@ const results = await pipeline(units,
     { label: `mig:${u.key}`, phase: 'Routes', schema: MIGRATE_SCHEMA })
     .then((mig) => ({ u, mig })),
   (prev) => agent(
-    `Adversarially review the ${prev.u.kind} tenant-scoping of: ${prev.u.files.join(', ')}. Migrator reported: ${JSON.stringify({ closed: prev.mig && prev.mig.leaksClosed, stopped: prev.mig && prev.mig.stoppedFiles })}. Re-read current contents. For identity: confirm every staff/staff_passkeys/staff_sessions read+write is org-scoped, [id] routes 404 on cross-org, roles left global, and NO credential/sign-in logic was altered. For crons: confirm a service org (transitionalUsavOrgId) scopes the DB work + a multi-tenant TODO is present. Flag remaining cross-tenant leaks or compile risks. Do NOT edit.`,
+    `Adversarially review the ${prev.u.kind} tenant-scoping of: ${prev.u.files.join(', ')}. Migrator reported: ${JSON.stringify({ closed: prev.mig && prev.mig.leaksClosed, stopped: prev.mig && prev.mig.stoppedFiles })}. Re-read current contents. For identity: confirm every staff/staff_passkeys/staff_sessions read+write is org-scoped, [id] routes 404 on cross-org, roles left global, and NO credential/sign-in logic was altered. For crons: confirm a service org (transitionalDogfoodOrgId) scopes the DB work + a multi-tenant TODO is present. Flag remaining cross-tenant leaks or compile risks. Do NOT edit.`,
     { label: `ver:${prev.u.key}`, phase: 'Verify', schema: VERIFY_SCHEMA })
     .then((verify) => ({ unit: prev.u.key, kind: prev.u.kind, files: prev.u.files, mig: prev.mig, verify })),
 )

@@ -25,7 +25,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     }
 
     // Bind the authenticated tenant so the Zoho client reads THIS org (not the
-    // USAV_ORG_ID default that currentZohoOrgId() returns when unbound). Without
+    // DOGFOOD_ORG_ID default that currentZohoOrgId() returns when unbound). Without
     // this wrap, any tenant searching by tracking would hit USAV's Zoho POs.
     const purchaseOrders = await withZohoOrg(ctx.organizationId, () =>
       searchPurchaseOrdersByTracking(trackingNumber),

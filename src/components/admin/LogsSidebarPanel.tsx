@@ -20,6 +20,7 @@ import {
 } from './shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 type LogKind = 'all' | 'audit' | 'sal';
 
@@ -138,26 +139,6 @@ export function LogsSidebarPanel() {
 
   return (
     <AdminSidebarShell
-      search={{
-        value: search,
-        onChange: (v) => {
-          setOffset(0);
-          setParam((p) => {
-            p.set('section', 'logs');
-            if (v.trim()) p.set('search', v.trim());
-            else p.delete('search');
-          });
-        },
-        onClear: () => {
-          setOffset(0);
-          setParam((p) => {
-            p.set('section', 'logs');
-            p.delete('search');
-          });
-        },
-        placeholder: 'Search action, source, entity',
-        variant: 'blue',
-      }}
       filters={
         <AdminFilterChips
           options={KIND_OPTIONS}
@@ -190,6 +171,30 @@ export function LogsSidebarPanel() {
         />
       }
     >
+      <div className="pb-2">
+        <SearchBar
+          size="compact"
+          variant="blue"
+          value={search}
+          onChange={(v) => {
+            setOffset(0);
+            setParam((p) => {
+              p.set('section', 'logs');
+              if (v.trim()) p.set('search', v.trim());
+              else p.delete('search');
+            });
+          }}
+          onClear={() => {
+            setOffset(0);
+            setParam((p) => {
+              p.set('section', 'logs');
+              p.delete('search');
+            });
+          }}
+          placeholder="Filter action, source, entity…"
+          isSearching={query.isFetching && !query.isLoading}
+        />
+      </div>
       {query.isLoading ? (
         <div className="px-2 py-6 text-center text-xs text-text-faint">Loading logs…</div>
       ) : rows.length === 0 ? (

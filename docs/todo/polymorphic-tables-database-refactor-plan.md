@@ -14,6 +14,75 @@
 > **Step E (vocab unification) SHIPPED** (2026-07-05): the server `RECEIVING_PRIORITY_RANK_SQL` /
 > `RECEIVING_LANE_RANK_SQL` now derive from `display/precedence.ts` (`priorityRankSql`/`laneRankSql`),
 > proven byte-identical — the last hardcoded copies are gone.
+> **CANONICAL-NAME CUTOVER + COMPAT VIEWS DROPPED — SHIPPED** (2026-07-11): every remaining raw-SQL
+> reference to the legacy names (145 files / 524 lines across src/, tests/, scripts/ — SQL strings,
+> information_schema probes, schema-drift manifest, `source-schema.sql` bootstrap, SQL-string test
+> assertions, the build-sql↔fixture parity pair) was repointed to `receiving_carton` / `receiving_line`;
+> gate grep is zero. The compat views were then dropped (`2026-07-11_receiving_drop_compat_views.sql`,
+> applied). JSON API envelope keys (`receiving_lines:`/`receiving_line:`) deliberately keep the legacy
+> names — response contract, not SQL. Bonus tenancy fix in the same wave: `v_unfound_queue` flipped to
+> `security_invoker=true` (`2026-07-11_v_unfound_queue_security_invoker.sql`) — it was definer-semantics
+> over the FORCE-RLS spines; smoke-verified org-scoped through `app_tenant` (wrong-org GUC sees 0 rows).
+> Gates: tsc clean, 383 receiving+inbound unit tests green, build-sql fixture byte-parity holds, row
+> counts unchanged (carton 2177 / line 1363 / triage 2041 / unbox 1967 / scans 2171).
+> **Owner override (2026-07-11 run):** the receive-to-zoho-e2e-green gate on Phase 2 was explicitly
+> lifted for the dogfood cutover (no external tenants); Step D tail folds proceed per-writer with unit
+> gates instead.
+> **STEP D COMPLETE (2026-07-11):** `transitionReceivingLine` is now the ONLY `workflow_status` writer
+> (§10 criterion met — see §8 step 9 for the 12 folded sites, the `DONE→IN_TEST` graph edit, and the
+> deliberate regression-bug fixes that shipped with the folds). `receiveLineUnits` remains the single
+> units-arrived writer and now emits its transition event through the chokepoint.
+> **READER CUTOVER (Wave 2) — SHIPPED (2026-07-11, same run):** every standalone READ of a moved
+> column now sources from its street/facts table. Two 5-agent passes (W2a core + W2b sweep) cut over:
+> `build-sql.ts` (all view arms/ORDER families/placeholder builders/`?id=`/`?receiving_id=`, with
+> street-sourced duplicates shadowing `SELECT rl.*`/`r.*` so normalizeRow + clients needed ZERO
+> changes), the shared predicate fragments (`UNBOX_OPENED_PREDICATE_SQL`, delivered-unscanned,
+> delivery-state — re-expressed internally over street tables with unchanged export/alias contracts),
+> triage routes (metrics/done/staging-map), carton detail + queues + AI tools, audit aggregators,
+> search-outbox loader, photos queries, incoming route family, PO family, receiving-logs, replenishment,
+> inbound linkage libs, po-gmail, and jobs. Dead multiplexer arms deleted: `view=recent` + the no-view
+> week-range fallback (grep-proven zero consumers). Gap closed en route:
+> `2026-07-11_receiving_line_zoho_number_norm.sql` added `zoho_purchaseorder_number_norm` to
+> `receiving_line_zoho` (backfilled 0-drift, dual-write trigger + predicate widened, org-led index) so
+> the normalized-PO join key reads could move. Incidental live-bug fix: the `incoming`/`scanned`/
+> `activity` arms' shipment-event LATERAL referenced non-existent `shipping_tracking_events`
+> (→ `shipment_tracking_events`) — those views were 500ing since commit c09346663. The byte-parity
+> fixture guard survives (regenerated mechanically, 91/91). Verified: live EXPLAIN sweep of all 25
+> builder statements CLEAN + execute-smoke on scanned/incoming/activity/unbox_opened returning real
+> rows; tsc, 638 unit tests, `next build` all green.
+> **Remaining spine readers of moved columns are ONLY writer-internal probes/RETURNING** (mark-received,
+> lookup-po, zoho-receiving-sync, complete-triage's UPDATE gate, attach-box, receiving-logs PATCH) —
+> exactly the surface Wave 3's writer inversion restructures.
+> **WRITER INVERSION (Wave 3) + COLUMN DROPS (Wave 4 / §8 step 13) — SHIPPED (2026-07-11, same run):**
+> Every writer of a moved column now writes the street/facts tables directly. New SoT writer:
+> `src/lib/receiving/streets/carton-street-write.ts` (`upsertReceivingTriage`/`upsertReceivingUnbox` —
+> COALESCE-once stamps, overwrite fields, in-statement `intake_path` derivation); line facts through
+> `facts/narrow.ts` (which now auto-derives `rz.zoho_purchaseorder_number_norm`, mirroring the retired
+> GENERATED spine column). Inverted: record-scan, unbox-scan-opened, complete-triage (idempotency key
+> moved to `receiving_triage.triage_client_event_id`, org-led unique), serial-attach, returned-serial-link,
+> `[id]` PUT, mark-received(-po), receiveLineUnits, lines/[id]/{status,condition}, recordTestVerdict,
+> zoho-receiving-sync (thin births + rz-keyed dedupe replacing spine ON CONFLICT), zoho purchase-receive,
+> webhooks, receiving-lines POST/PATCH, add-unmatched-line, receiving-entry, receiving-logs, lookup-po,
+> merge/manual-link/relink/unpair, ingest-purchase (+ birth invariant: every line birth creates its
+> `receiving_line_testing` row explicitly; live default `needs_test=false` verified and preserved).
+> Migrations: `2026-07-11_receiving_triage_client_event_id_street.sql`,
+> `2026-07-11d_receiving_retire_dualwrite_outbox_rewire.sql` (dual-write triggers/fns DROPPED; carton
+> search-outbox trigger recreated minus `received_at`; new enqueue trigger on `receiving_triage`),
+> `2026-07-11e_receiving_drop_moved_columns.sql` (14 carton + 19 line columns DROPPED; `v_unfound_queue`
+> recreated over `receiving_unbox`, still security_invoker; gotcha: the spine's GENERATED `…_number_norm`
+> had to drop before its source column). **Spine now: `receiving_carton` 34 cols / `receiving_line` 35
+> cols** (from 48/54), rows 2177/1363 preserved. Verified: live EXPLAIN sweep CLEAN post-drop with
+> byte-identical execute-smoke totals (6/92/1218/158), rollback write-smoke of all four street writers
+> (incl. intake_path + norm derivation), tenant smoke through the recreated view, tsc, 631 unit tests,
+> `next build` — all green. DoD greps: 0 legacy table refs, 0 `workflow_status` SET writes outside the
+> state machine, 0 dropped-column writes.
+> **REMAINING (staged, not blocking the schema arc):** the carton-level legacy duplicate columns
+> (needs_test/qa/disposition/condition, carton zoho_*, support_notes/zendesk/exception dual-stamps,
+> `receiving_date_time`, `quantity`) — each needs a per-column semantic decision (plan Appendix);
+> `receiving_id`→`carton_id` (churns client DTOs); mark-received→`receiveLineUnits` receive-path
+> convergence; per-street endpoint decomposition of §8 steps 6–12 (application-architecture follow-up);
+> optional FORCE-RLS promotion of the street/facts tables (currently armed-not-forced — raw-pool street
+> writers in record-scan/unbox-scan-opened must move to the tenant pool first).
 > **STILL GATED — Phase 2 reader/writer cutover (§8 steps 6–13) + Step D write-collapse:** these rewrite the live
 > 2,075-line `?view=` multiplexer + the 5 write paths and, per §7/§9, MUST be verified per-PR against
 > `tests/e2e/receive-to-zoho.spec.ts`. That e2e is currently RED (uncommitted receiving-UI WIP), and Step D would
@@ -684,11 +753,20 @@ tenancy, idempotency) asserted unchanged.
       zoho-pending→UNBOXED, local→DONE, confirm UNBOXED→DONE). Added `transitionReceivingLine({skipEvent})` so the
       routes keep emitting their single combined event (no double-write); `expectedFrom:'UNBOXED'` reproduces the
       confirm guard. Verified: `skipEvent` unit test + 103 receiving unit tests green, tsc clean.
-    - ⛔ **Step D tail — 6 more raw `SET workflow_status` writers** found by grep (not in the plan's original Step D
-      scope): `mark-received` (single DONE), `lookup-po` (adoption `EXPECTED→MATCHED` CASE, also sets receiving_id),
-      `receiving-entry` (×2 bulk MATCHED), `zoho-receiving-sync` (sync CASE), `zoho-received-reconcile` (DONE),
-      `tracking-match-reconcile` (MATCHED). These are bulk/linkage UPDATEs (write more than status) in less-tested
-      sync/cron paths — fold each carefully per-site to meet the §10 "zero inline workflow_status" criterion.
+    - ✅ **Step D tail — SHIPPED (2026-07-11).** ALL remaining raw `SET workflow_status` writers folded onto
+      `transitionReceivingLine` (12 fold units across 10 files): `match` (bulk adopt), `lookup-po`
+      (`linkLocalPoLinesToReceiving`), `mark-received` (×2), `receiving-entry` (×2, shared `linkAndMatchLines`
+      helper), `zoho-receiving-sync` (adopt + late-line), `zoho-received-reconcile` (CTE→locked-select),
+      `tracking-match-reconcile` (restructured per-org — also FIXED its zero-tenant-scoping + cross-tenant
+      scan/carton join), `recordTestVerdict` (rollup), `receiveLineUnits` (the big one — hand-rolled workflow NOTE
+      event deleted; chokepoint emits it with the same `:workflow-<to>` client_event_id lineage), and
+      `returned-serial-link` (`persistReturnLinkage`, Deps-injected). Graph edit: `DONE→IN_TEST` added (re-test of
+      a passed rollup). Fold recipe everywhere: linkage/facts UPDATE stops listing `workflow_status` (kills the
+      spurious coarse-trigger `scanned_at` stamps on non-transitioning rows), locked select, check-and-skip
+      chokepoint call in executor mode (`skipEvent` where the route emits its own combined event). Deliberate
+      fixes shipped with it: match/receiving-entry no longer regress DONE/IN_TEST lines to MATCHED; mark-received's
+      DONE promotion now guards with `expectedFrom:'UNBOXED'` (409 = skip). DoD grep: zero `workflow_status` in any
+      UPDATE SET list outside `state-machine.ts`. Gates: tsc clean, 444 unit tests green, `next build` green.
 10. **PR:** `streets/unbox` lane; converge `mark-received*` on `receiveLineUnits`; remove remaining `view=` arms.
 11. **PR:** `streets/door` lane (decompose `lookup-po`); classify via `kinds/registry.ts`.
 12. **PR:** delete the now-empty `/api/receiving-lines` multiplexer + `normalizeRow` DTO-for-all.
@@ -707,6 +785,10 @@ tenancy, idempotency) asserted unchanged.
     compat views under the old names (safe for the ~900 live raw-SQL refs; RLS preserved). `ON CONFLICT` sites +
     Drizzle models repointed to the base tables. The views are the temporary shim removed once every raw ref is
     migrated to the canonical names (part of steps 6–12).
+    - ✅ **Shim RETIRED (2026-07-11)** — all raw refs mass-migrated to the canonical names (145 files; grep-clean)
+      and the compat views dropped (`2026-07-11_receiving_drop_compat_views.sql`). Future spine column drops no
+      longer need the drop-view→drop-column→recreate-view dance from `2026-07-05e`; only `v_unfound_queue`
+      (now `security_invoker`) remains as a spine-dependent view to recreate when its selected columns move.
 
 ---
 

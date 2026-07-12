@@ -15,7 +15,7 @@
 | **1a. Studio sidebar** | [studio-sidebar-plan.md](studio-sidebar-plan.md) | The `/studio` left rail as the command surface: depth × lens adaptive section registry, collapsible sections, palettes (nodes/templates/blocks/sources), Live/Issues/Versions/People | 🛠 SB0 built (consolidated rail + View dropdown + collapsible Inspector); SB1+ planned |
 | **2. Station composition** | [station-builder-ui-plan.md](station-builder-ui-plan.md) | Block palette + dnd into sidebar slots + Source/Display/Actions config sheet; block / data-source / action registries; `station_definitions` | 📝 planned |
 | **3. Canvas mechanics** | [NODE_UI_PLAN.md](NODE_UI_PLAN.md) | Editable React Flow canvas: OperationNode, palette, connect/save, node config panel, ItemTracker | 📝 deferred build plan |
-| **4. Engine & schema** | [NODE_WORKFLOW_ARCHITECTURE.md](NODE_WORKFLOW_ARCHITECTURE.md) · [NODE_WORKFLOW_IMPLEMENTATION_PLAN.md](NODE_WORKFLOW_IMPLEMENTATION_PLAN.md) | Node contract, registry, runtime/router/advance, graph tables, QStash durability | ✅ **engine core built** (`src/lib/workflow/`, tables in schema) |
+| **4. Engine & schema** | [NODE_WORKFLOW_ARCHITECTURE.md](NODE_WORKFLOW_ARCHITECTURE.md) | Node contract, registry, runtime/router/advance, graph tables, QStash durability | ✅ **engine core built** (`src/lib/workflow/`, tables in schema) |
 
 Key invariants that hold across all layers:
 

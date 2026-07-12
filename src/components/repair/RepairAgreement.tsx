@@ -3,7 +3,7 @@
 import React from 'react';
 import { SignaturePad, type SignatureData } from './SignaturePad';
 import type { RepairFormData } from './RepairIntakeForm';
-import { useAuth } from '@/contexts/AuthContext';
+import { useOrgLetterhead } from '@/hooks/useOrgLetterhead';
 
 interface RepairAgreementProps {
   formData: RepairFormData;
@@ -12,10 +12,8 @@ interface RepairAgreementProps {
 }
 
 export function RepairAgreement({ formData, signatureData, onSignatureChange }: RepairAgreementProps) {
-  // On-screen preview only — the printed/signed form (/api/repair-service/print/[id])
-  // is the source of truth and pulls the full letterhead from org settings.
-  const { user } = useAuth();
-  const orgName = user?.organizationName || 'Workspace';
+  // On-screen preview — matches printed form letterhead from org settings.
+  const letterhead = useOrgLetterhead();
   const today = new Date().toLocaleDateString('en-US', {
     month: '2-digit',
     day: '2-digit',
@@ -44,10 +42,16 @@ export function RepairAgreement({ formData, signatureData, onSignatureChange }: 
           </p>
         </div>
         <div className="text-right">
-          <p className="text-micro font-black text-text-default uppercase tracking-tight">{orgName}</p>
-          <p className="text-eyebrow text-text-faint">16161 Gothard St. Suite A</p>
-          <p className="text-eyebrow text-text-faint">Huntington Beach, CA 92647</p>
-          <p className="text-eyebrow text-text-faint">(714) 596-6888</p>
+          <p className="text-micro font-black text-text-default uppercase tracking-tight">{letterhead.name}</p>
+          {letterhead.addressLine1 ? (
+            <p className="text-eyebrow text-text-faint">{letterhead.addressLine1}</p>
+          ) : null}
+          {letterhead.addressLine2 ? (
+            <p className="text-eyebrow text-text-faint">{letterhead.addressLine2}</p>
+          ) : null}
+          {letterhead.phone ? (
+            <p className="text-eyebrow text-text-faint">{letterhead.phone}</p>
+          ) : null}
         </div>
       </div>
 
@@ -78,12 +82,12 @@ export function RepairAgreement({ formData, signatureData, onSignatureChange }: 
       </div>
 
       {/* Terms */}
-      <div className="space-y-2 text-caption text-text-muted leading-relaxed border-l-4 border-orange-600 pl-4">
+      <div className="space-y-2 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-caption leading-relaxed text-text-muted">
         <p>
           Your Bose product has been received into our repair center. Under normal circumstances it will
           be repaired within the next <span className="font-black text-text-default">3–10 working days</span> and returned to you.
         </p>
-        <p className="font-black text-text-default uppercase tracking-wide text-micro">
+        <p className="text-micro font-black uppercase tracking-wide text-text-default">
           30-Day Warranty on all repair services.
         </p>
       </div>

@@ -2,7 +2,7 @@
 /**
  * Backfill ops_events from legacy receiving audit sources:
  *   - receiving_scans → TRACKING_SCANNED (one per scan row)
- *   - receiving.unboxed_at → UNBOX_CONFIRMED (one per receiving row)
+ *   - receiving_carton.unboxed_at → UNBOX_CONFIRMED (one per receiving row)
  *
  * Idempotent via client_event_id.
  *
@@ -67,7 +67,7 @@ async function main() {
       rs.scanned_by,
       r.organization_id
     FROM receiving_scans rs
-    JOIN receiving r ON r.id = rs.receiving_id
+    JOIN receiving_carton r ON r.id = rs.receiving_id
     WHERE r.organization_id IS NOT NULL
       AND rs.scanned_at >= NOW() - ($1::int * INTERVAL '1 day')
     ORDER BY rs.id ASC
@@ -103,7 +103,7 @@ async function main() {
     scansInserted += r.rowCount ?? 0;
   }
 
-  // 2) receiving.unboxed_at → UNBOX_CONFIRMED (last N days)
+  // 2) receiving_carton.unboxed_at → UNBOX_CONFIRMED (last N days)
   const unboxRes = await pool.query(
     `
     SELECT
@@ -111,7 +111,7 @@ async function main() {
       r.organization_id,
       r.unboxed_at,
       r.unboxed_by
-    FROM receiving r
+    FROM receiving_carton r
     WHERE r.unboxed_at IS NOT NULL
       AND r.organization_id IS NOT NULL
       AND r.unboxed_at >= NOW() - ($1::int * INTERVAL '1 day')

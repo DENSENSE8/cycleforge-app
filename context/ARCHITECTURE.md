@@ -16,8 +16,7 @@ USAV Orders Backend is an internal operations platform for a 5-person warehouse 
 | Caching | Upstash Redis + in-memory (`src/lib/cache.ts`) |
 | Job Scheduling | Vercel Cron (primary) + Upstash QStash (legacy/on-demand) |
 | File Storage | Vercel Blob |
-| Desktop | Electron |
-| Deployment | Vercel (web), Electron Builder (desktop), PM2 (pipeline) |
+| Deployment | Vercel (web), PM2 (pipeline) |
 | AI Pipeline | Local MLX inference + Jetson Orin Nano CUDA training |
 
 ## Directory Structure

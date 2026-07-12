@@ -23,8 +23,10 @@ import { PhotoLabelsSection } from './PhotoLabelsSection';
 import { MediaSavedViewsSection } from './MediaSavedViewsSection';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StaffRecipient } from '@/components/quick-access/StaffRecipientList';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
-const SEARCH_PLACEHOLDER = 'PO, order, tracking, serial, ticket, or text…';
+const SEARCH_PLACEHOLDER = 'Filter PO, order, tracking, serial, or ticket…';
 
 export function PhotoLibrarySidebarPanel() {
   const { filters, display, patch, setDatePreset, clearStructured, applyView } =
@@ -93,14 +95,26 @@ export function PhotoLibrarySidebarPanel() {
   return (
     <SidebarShell
       className="bg-surface-card"
-      search={{
-        value: searchInput,
-        onChange: setSearchInput,
-        onClear: () => setSearchInput(''),
-        placeholder: SEARCH_PLACEHOLDER,
-        isSearching: query.isFetching && !query.isLoading,
-        variant: 'blue',
-      }}
+      headerAbove={
+        // In-context list filter — local base SearchBar over the media library.
+        // Keeps the `searchInput` → debounced `poFinder` sync (above) so deep links
+        // hydrate; global header pill stays global.
+        <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+          <SearchBar
+            size="compact"
+            variant="blue"
+            value={searchInput}
+            onChange={setSearchInput}
+            onClear={() => setSearchInput('')}
+            onSearch={(v) => {
+              const t = v.trim();
+              patch({ poFinder: t || undefined, poFinderKind: t ? 'any' : undefined, q: undefined });
+            }}
+            placeholder={SEARCH_PLACEHOLDER}
+            isSearching={query.isFetching && !query.isLoading}
+          />
+        </div>
+      }
       filter={{
         label: 'Media filters',
         refinements,

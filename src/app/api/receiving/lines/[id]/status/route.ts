@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import {
@@ -113,7 +114,7 @@ export async function POST(
     }>(
       orgId,
       `SELECT id, receiving_id, sku, workflow_status::text AS workflow_status
-       FROM receiving_lines WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+       FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
       [lineId, orgId],
     );
     const line = lineRes.rows[0];
@@ -155,19 +156,33 @@ export async function POST(
       }
     }
     // Testing facts (qa/disposition/condition) + notes — the non-lifecycle half of
-    // the former combined UPDATE (same COALESCE-only semantics + guard condition).
+    // the former combined UPDATE (same guard condition). Wave-3 writer inversion:
+    // qa/disposition/condition live on receiving_line_testing now; only notes
+    // stays on the spine. One transaction keeps the two writes as atomic as the
+    // former single statement. Partial-upsert semantics replicate the former
+    // COALESCE($n, col): a provided value overwrites, null leaves it untouched.
     if (nextWorkflow || qaStatus || dispositionCode || conditionGrade) {
-      await tenantQuery(
-        orgId,
-        `UPDATE receiving_lines
-         SET qa_status        = COALESCE($2, qa_status),
-             disposition_code = COALESCE($3, disposition_code),
-             condition_grade  = COALESCE($4, condition_grade),
-             notes            = COALESCE($5, notes),
-             updated_at       = NOW()
-         WHERE id = $1 AND organization_id = $6`,
-        [lineId, qaStatus, dispositionCode, conditionGrade, notes, orgId],
-      );
+      await withTenantTransaction(orgId, async (client) => {
+        await client.query(
+          `UPDATE receiving_line
+           SET notes      = COALESCE($2, notes),
+               updated_at = NOW()
+           WHERE id = $1 AND organization_id = $3`,
+          [lineId, notes, orgId],
+        );
+        if (qaStatus || dispositionCode || conditionGrade) {
+          await upsertReceivingLineTesting(
+            orgId,
+            lineId,
+            {
+              qaStatus: qaStatus ?? undefined,
+              dispositionCode: dispositionCode ?? undefined,
+              conditionGrade: conditionGrade ?? undefined,
+            },
+            { query: ((_org, sql, p) => client.query(sql, p as unknown[])) as typeof tenantQuery },
+          );
+        }
+      });
     }
 
     // ─── Update serial_units.current_status + the lifecycle event ───────────

@@ -43,7 +43,7 @@ const INBOUND_SOURCE_SYSTEMS_SQL = INBOUND_SOURCE_SYSTEMS.map((s) => `'${s}'`).j
  * has a receiving row OR its source_system is a receiving origin.
  */
 export const INBOUND_SHIPMENT_PREDICATE = `(
-  EXISTS (SELECT 1 FROM receiving r WHERE r.shipment_id = stn.id)
+  EXISTS (SELECT 1 FROM receiving_carton r WHERE r.shipment_id = stn.id)
   OR stn.source_system IN (${INBOUND_SOURCE_SYSTEMS_SQL})
 )`;
 
@@ -69,7 +69,7 @@ export const INBOUND_SHIPMENT_PREDICATE = `(
  *       inside an unrelated scan is ~0.02 expected across the whole table.
  *
  *   (b) Shipment link — a scan tied to a receiving row for this shipment
- *       (`receiving.shipment_id`), or the scan's own `shipment_id`. Kept as a net
+ *       (`receiving_carton.shipment_id`), or the scan's own `shipment_id`. Kept as a net
  *       for the rare box whose scanned barcode shares no last-8 with the Zoho
  *       number but whose carton row WAS resolved to the shipment.
  *
@@ -90,7 +90,7 @@ export const INBOUND_SHIPMENT_PREDICATE = `(
  * predicate below AND the delivered-from-scan derivation (reconcile-delivered's
  * 'receiving_scan' pass, which needs the earliest matching `rs.scanned_at`) share
  * ONE definition of "this scan is for this shipment" — last-8 of the tracking, or
- * the shipment link. Callers must join `receiving_scans rs LEFT JOIN receiving r2
+ * the shipment link. Callers must join `receiving_scans rs LEFT JOIN receiving_carton r2
  * ON r2.id = rs.receiving_id`.
  */
 export const SHIPMENT_SCAN_MATCH_CONDITION = `(
@@ -108,7 +108,7 @@ export const SHIPMENT_SCAN_MATCH_CONDITION = `(
 export const SHIPMENT_SCANNED_PREDICATE = `EXISTS (
   SELECT 1
     FROM receiving_scans rs
-    LEFT JOIN receiving r2 ON r2.id = rs.receiving_id
+    LEFT JOIN receiving_carton r2 ON r2.id = rs.receiving_id
    WHERE ${SHIPMENT_SCAN_MATCH_CONDITION}
 )`;
 
@@ -135,7 +135,7 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
   // when `orgParam` is omitted (the un-migrated callers' contract).
   const inboundPredicate = orgParam
     ? `(
-  EXISTS (SELECT 1 FROM receiving r WHERE r.shipment_id = stn.id AND r.organization_id = ${orgParam})
+  EXISTS (SELECT 1 FROM receiving_carton r WHERE r.shipment_id = stn.id AND r.organization_id = ${orgParam})
   OR stn.source_system IN (${INBOUND_SOURCE_SYSTEMS_SQL})
 )`
     : INBOUND_SHIPMENT_PREDICATE;
@@ -143,7 +143,7 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
     ? `EXISTS (
       SELECT 1
         FROM receiving_scans rs
-        LEFT JOIN receiving r2 ON r2.id = rs.receiving_id
+        LEFT JOIN receiving_carton r2 ON r2.id = rs.receiving_id
        WHERE rs.organization_id = ${orgParam}
          AND ${SHIPMENT_SCAN_MATCH_CONDITION}
     )`
@@ -154,7 +154,7 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
    WHERE COALESCE(mm.status, '') IN (${ZOHO_TERMINAL_STATUSES_SQL})
      AND (
        mm.zoho_purchaseorder_id = (
-         SELECT r.zoho_purchaseorder_id FROM receiving r
+         SELECT r.zoho_purchaseorder_id FROM receiving_carton r
           WHERE r.shipment_id = stn.id AND r.zoho_purchaseorder_id IS NOT NULL
             AND r.organization_id = ${orgParam}
           ORDER BY r.id LIMIT 1
@@ -176,7 +176,7 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
            = stn.tracking_number_normalized
   )
   OR EXISTS (
-    SELECT 1 FROM receiving r
+    SELECT 1 FROM receiving_carton r
      WHERE r.shipment_id = stn.id
        AND r.zoho_purchaseorder_id IS NOT NULL
        AND r.organization_id = ${orgParam}
@@ -242,7 +242,7 @@ export const NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE = `NOT EXISTS (
    WHERE COALESCE(mm.status, '') IN (${ZOHO_TERMINAL_STATUSES_SQL})
      AND (
        mm.zoho_purchaseorder_id = (
-         SELECT r.zoho_purchaseorder_id FROM receiving r
+         SELECT r.zoho_purchaseorder_id FROM receiving_carton r
           WHERE r.shipment_id = stn.id AND r.zoho_purchaseorder_id IS NOT NULL
           ORDER BY r.id LIMIT 1
        )
@@ -256,7 +256,7 @@ export const NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE = `NOT EXISTS (
 
 /**
  * SQL predicate (references alias `stn`) — TRUE when the shipment ties to a
- * Zoho PO (reference# match or a linked `receiving.zoho_purchaseorder_id`).
+ * Zoho PO (reference# match or a linked `receiving_carton.zoho_purchaseorder_id`).
  * Required for delivered-unscanned: unfound / unmatched dock scans must not
  * surface as "Delivered · not scanned".
  */
@@ -268,7 +268,7 @@ export const ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE = `(
            = stn.tracking_number_normalized
   )
   OR EXISTS (
-    SELECT 1 FROM receiving r
+    SELECT 1 FROM receiving_carton r
      WHERE r.shipment_id = stn.id
        AND r.zoho_purchaseorder_id IS NOT NULL
   )
@@ -307,7 +307,7 @@ export const CARRIER_MISMATCH_PREDICATE = `(
  *
  * The join key is the normalized order# — identical normalization on both
  * sides (email_delivery_signals.order_number_norm ===
- * receiving_lines.zoho_purchaseorder_number_norm), which is how an eBay
+ * receiving_line_zoho.zoho_purchaseorder_number_norm), which is how an eBay
  * sales-order# auto-bound into the carton PO# lines up. One row per order#,
  * most-recent delivery email winning the dedupe.
  */
@@ -315,17 +315,23 @@ export function emailDeliveredUnscannedBaseSql(
   windowDays: number = DELIVERED_UNSCANNED_WINDOW_DAYS,
   orgParam?: string,
 ): string {
-  // email_delivery_signals (eds) and receiving_lines (rl) both carry
+  // email_delivery_signals (eds) and receiving_line (rl) both carry
   // organization_id, so when an org param is supplied we pin them explicitly and
   // also align the org on the string-key join (order_number_norm) and the inner
   // receiving/receiving_scans NOT-EXISTS. zoho_po_mirror is NEEDS-COL and is
   // scoped transitively through the org-pinned `rl` join. The string stays
   // byte-identical when `orgParam` is omitted.
+  //
+  // Wave-2 reader cutover: the line's zoho cluster (zoho_purchaseorder_id /
+  // _number / _number_norm) reads from receiving_line_zoho `rz` (1:1, PK
+  // receiving_line_id; rz rows exist for every line with ANY zoho field), so
+  // the string-key join is now eds↔rz and rl hangs off rz's PK.
   const orgFilter = orgParam
     ? `
        AND eds.organization_id = ${orgParam}
        AND rl.organization_id = ${orgParam}
-       AND rl.organization_id = eds.organization_id`
+       AND rl.organization_id = eds.organization_id
+       AND rz.organization_id = eds.organization_id`
     : '';
   // The original inner predicate is an OR-chain; when we append an org AND it must
   // bind across the whole OR, so wrap it in parens ONLY in the org-scoped variant.
@@ -334,12 +340,12 @@ export function emailDeliveredUnscannedBaseSql(
     ? `(r2.id = rl.receiving_id
              OR (rl.receiving_id IS NULL
                  AND r2.source = 'zoho_po'
-                 AND r2.zoho_purchaseorder_id = rl.zoho_purchaseorder_id))
+                 AND r2.zoho_purchaseorder_id = rz.zoho_purchaseorder_id))
             AND r2.organization_id = ${orgParam} AND rs.organization_id = ${orgParam}`
     : `r2.id = rl.receiving_id
              OR (rl.receiving_id IS NULL
                  AND r2.source = 'zoho_po'
-                 AND r2.zoho_purchaseorder_id = rl.zoho_purchaseorder_id)`;
+                 AND r2.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)`;
   return `
     SELECT DISTINCT ON (eds.order_number_norm)
            eds.order_number,
@@ -348,20 +354,23 @@ export function emailDeliveredUnscannedBaseSql(
            eds.email_subject,
            eds.email_from,
            eds.gmail_msg_id,
-           rl.zoho_purchaseorder_id,
-           rl.zoho_purchaseorder_number
+           rz.zoho_purchaseorder_id,
+           rz.zoho_purchaseorder_number
       FROM email_delivery_signals eds
-      JOIN receiving_lines rl
-        ON rl.zoho_purchaseorder_number_norm = eds.order_number_norm
+      JOIN receiving_line_zoho rz
+        ON rz.zoho_purchaseorder_number_norm = eds.order_number_norm
+      JOIN receiving_line rl
+        ON rl.id = rz.receiving_line_id
+       AND rl.organization_id = rz.organization_id
       LEFT JOIN zoho_po_mirror mirror
-        ON mirror.zoho_purchaseorder_id = rl.zoho_purchaseorder_id
+        ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
      WHERE eds.delivered_at > NOW() - (${windowDays} || ' days')::interval
        AND rl.workflow_status = 'EXPECTED'
        AND COALESCE(rl.quantity_received, 0) = 0
        AND ${NOT_ZOHO_RECEIVED_PREDICATE}${orgFilter}
        AND NOT EXISTS (
          SELECT 1
-           FROM receiving r2
+           FROM receiving_carton r2
            JOIN receiving_scans rs ON rs.receiving_id = r2.id
           WHERE ${innerPoMatch}
        )
@@ -458,7 +467,7 @@ export async function getEmailDeliveredUnscannedCount(
   orgId?: OrgId,
 ): Promise<number> {
   if (orgId) {
-    // email_delivery_signals + receiving_lines both carry org_id; pin them via $1.
+    // email_delivery_signals + receiving_line both carry org_id; pin them via $1.
     const { rows } = await tenantQuery<{ n: number }>(
       orgId,
       `SELECT COUNT(*)::int AS n FROM ( ${emailDeliveredUnscannedBaseSql(windowDays, '$1')} ) d`,

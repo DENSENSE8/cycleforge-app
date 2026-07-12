@@ -276,25 +276,34 @@ function InviteModal({ onClose, onInvited }: InviteModalProps) {
   const [enrollmentUrl, setEnrollmentUrl] = useState<string | null>(null);
 
   const submit = useCallback(async () => {
+    if (!form.email.trim()) {
+      setError('An email is required — new teammates sign in with email + password.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const r = await fetch('/api/admin/staff/invite', {
+      // Identity invitation flow (account + membership, password path) — replaces
+      // the deprecated PIN-enrollment invite (org-login-gate wave 6.3).
+      const r = await fetch('/api/org/invitations', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          name: form.name.trim(),
+          email: form.email.trim(),
           role: form.role,
-          email: form.email.trim() || undefined,
         }),
       });
-      const data = await r.json();
+      const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        setError(data.error || `HTTP ${r.status}`);
+        setError(
+          (data as { error?: string }).error === 'INVALID_INPUT'
+            ? 'Enter a valid email address.'
+            : (data as { error?: string }).error || `HTTP ${r.status}`,
+        );
         return;
       }
-      setEnrollmentUrl(data.enrollmentUrl);
+      setEnrollmentUrl((data as { inviteUrl?: string }).inviteUrl ?? null);
     } finally {
       setBusy(false);
     }
@@ -307,7 +316,7 @@ function InviteModal({ onClose, onInvited }: InviteModalProps) {
       <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 shadow-2xl">
         <h2 className="text-[16px] font-semibold text-text-default">Invite a teammate</h2>
         <p className="mt-1 text-label text-text-soft">
-          They'll get a link to set their PIN. If you provide an email we send the invite automatically.
+          They&apos;ll get an email link to join and set a password. They can add a station PIN later from Settings → Security.
         </p>
 
         {enrollmentUrl ? (

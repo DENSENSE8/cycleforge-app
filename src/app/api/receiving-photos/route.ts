@@ -118,13 +118,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ctx.organizationId as OrgId,
       `SELECT to_char(
                 COALESCE(
-                  r.received_at,
+                  rt.door_received_at,
                   (SELECT MIN(rs.scanned_at) FROM receiving_scans rs WHERE rs.receiving_id = r.id),
                   r.created_at
                 ) AT TIME ZONE 'UTC',
                 'YYYY-MM-DD"T"HH24:MI:SS"Z"'
               ) AS created_at
-         FROM receiving r WHERE r.id = $1 AND r.organization_id = $2 LIMIT 1`,
+         FROM receiving_carton r
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+        WHERE r.id = $1 AND r.organization_id = $2 LIMIT 1`,
       [receivingId, ctx.organizationId],
     );
 

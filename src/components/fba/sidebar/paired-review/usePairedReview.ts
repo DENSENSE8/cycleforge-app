@@ -17,7 +17,7 @@ import {
   FBA_REEDIT_SHIPMENT,
   FBA_SELECTION_ADJUSTED,
   FBA_SEND_SHIPMENT_TO_PAIRED_REVIEW,
-  USAV_REFRESH_DATA,
+  APP_REFRESH_DATA,
   FBA_SCAN_STATUS,
   FBA_ACTIVE_SHIPMENTS_REFRESH,
 } from '@/lib/fba/events';
@@ -474,7 +474,7 @@ export function usePairedReview({
       window.dispatchEvent(new CustomEvent(FBA_SCAN_STATUS, { detail: msg }));
       window.dispatchEvent(new CustomEvent(FBA_PRINT_SHIPPED));
       window.dispatchEvent(new CustomEvent(FBA_ACTIVE_SHIPMENTS_REFRESH));
-      window.dispatchEvent(new CustomEvent(USAV_REFRESH_DATA));
+      window.dispatchEvent(new CustomEvent(APP_REFRESH_DATA));
     } catch (err: any) {
       setError(err?.message || 'Failed to attach tracking');
     } finally {

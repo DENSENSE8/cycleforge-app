@@ -1,21 +1,18 @@
 'use client';
 
-import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ShippedFormData } from '@/components/shipped';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
 import { Plus } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { DashboardShippedSearchHandoffCard } from '@/components/dashboard/DashboardShippedSearchHandoffCard';
-import { OutboundLabelsSearchHandoffCard } from '@/components/dashboard/OutboundLabelsSearchHandoffCard';
 import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
-import { FirstScanOnboardingCard } from '@/components/dashboard/FirstScanOnboardingCard';
-import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
+
 import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
 import { motion } from 'framer-motion';
-import { RecentSearchesList } from '@/components/sidebar/RecentSearchesList';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { SearchBar } from '@/components/ui/SearchBar';
 
 interface UnshippedSidebarProps {
   showIntakeForm?: boolean;
@@ -26,14 +23,6 @@ interface UnshippedSidebarProps {
   hideSectionHeader?: boolean;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
-  onOpenShippedMatches?: (searchQuery: string) => void;
-  onOpenLabelsMatches?: (searchQuery: string) => void;
-}
-
-interface SearchHistory {
-  query: string;
-  timestamp: Date;
-  resultCount?: number;
 }
 
 export default function UnshippedSidebar(props: UnshippedSidebarProps) {
@@ -49,69 +38,7 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     hideSectionHeader = false,
     searchValue = '',
     onSearchChange,
-    onOpenShippedMatches,
-    onOpenLabelsMatches,
   } = props;
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-  const [showAllSearchHistory, setShowAllSearchHistory] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setSearchQuery(searchValue);
-  }, [searchValue]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('dashboard_search_history');
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      setSearchHistory(
-        parsed.map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp),
-        }))
-      );
-    } catch (_error) {
-      setSearchHistory([]);
-    }
-  }, []);
-
-  const saveSearchHistory = (query: string) => {
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery) return;
-    const newHistory = [
-      { query: trimmedQuery, timestamp: new Date() },
-      ...searchHistory.filter((item) => item.query !== trimmedQuery).slice(0, 4),
-    ];
-    setSearchHistory(newHistory);
-    localStorage.setItem('dashboard_search_history', JSON.stringify(newHistory));
-  };
-
-  const handleSearch = useCallback(async (query: string) => {
-    const trimmedQuery = query.trim();
-    if (trimmedQuery) {
-      saveSearchHistory(trimmedQuery);
-    }
-    await onSearchChange?.(trimmedQuery);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onSearchChange]);
-
-  const handleInputChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      handleSearch(value);
-    }, 400);
-  }, [handleSearch]);
-
-  const clearSearchHistory = () => {
-    setSearchHistory([]);
-    setShowAllSearchHistory(false);
-    localStorage.removeItem('dashboard_search_history');
-  };
-
   const handleOpenIntakeForm = () => {
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set('new', 'true');
@@ -166,8 +93,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     },
   };
 
-  const visibleSearchHistory = showAllSearchHistory ? searchHistory : searchHistory.slice(0, 3);
-
   const content = (
     <SidebarShell
       as={motion.div}
@@ -189,29 +114,37 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
               </p>
             </motion.header>
           ) : null}
+          {/* In-context list filter — a local base SearchBar (NOT the deleted
+              sidebar band / SidebarShell.search). Drives the dashboard ?search=
+              param so the order list filters in place. The global header pill
+              stays global (search any order across the app). */}
+          <motion.div
+            variants={itemVariants}
+            className={`${SIDEBAR_GUTTER} ${hideSectionHeader ? 'pt-4' : 'pt-3'} pb-2`}
+          >
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchValue}
+              onChange={(v) => onSearchChange?.(v)}
+              onClear={() => onSearchChange?.('')}
+              placeholder="Filter orders…"
+              rightElement={
+                <HoverTooltip label="New Order Entry" asChild>
+                  <button
+                    type="button"
+                    onClick={handleOpenIntakeForm}
+                    className="ds-raw-button rounded-xl bg-emerald-500 p-2.5 text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
+                    aria-label="Open new order entry form"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </HoverTooltip>
+              }
+            />
+          </motion.div>
         </>
       }
-      search={{
-        value: searchQuery,
-        onChange: handleInputChange,
-        onSearch: handleSearch,
-        onClear: () => { setSearchQuery(''); handleSearch(''); },
-        inputRef: searchInputRef,
-        placeholder: 'Search orders, serials...',
-        variant: 'blue',
-        rightElement: (
-          <HoverTooltip label="New Order Entry" asChild>
-            <button
-              type="button"
-              onClick={handleOpenIntakeForm}
-              className="ds-raw-button rounded-xl bg-emerald-500 p-2.5 text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
-              aria-label="Open new order entry form"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-          </HoverTooltip>
-        ),
-      }}
       // The PENDING / TESTED / BLOCKED status legend was removed: the Unshipped
       // swim-lane board now sorts orders into those exact lanes, so a sidebar
       // click-to-filter legend on the same three states was redundant.
@@ -220,35 +153,12 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
       <OrdersSyncPopover
         onRefresh={() => {
           window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-          window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+          window.dispatchEvent(new CustomEvent('app-refresh-data'));
         }}
       />
       <div className="space-y-3 border-t border-border-hairline pt-3">
-        <FirstScanOnboardingCard variant="sidebar" />
-        <GettingStartedChecklist variant="sidebar" />
         <ThroughputRoiCard variant="sidebar" />
       </div>
-      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="space-y-4">
-        <RecentSearchesList
-          items={visibleSearchHistory}
-          totalCount={searchHistory.length}
-          expanded={showAllSearchHistory}
-          onToggleExpanded={() => setShowAllSearchHistory((current) => !current)}
-          onClear={clearSearchHistory}
-          onSelect={(query) => {
-            setSearchQuery(query);
-            handleSearch(query);
-          }}
-        />
-        <DashboardShippedSearchHandoffCard
-          searchQuery={searchQuery}
-          onOpenShippedMatches={onOpenShippedMatches}
-        />
-        <OutboundLabelsSearchHandoffCard
-          searchQuery={searchQuery}
-          onOpenLabelsMatches={onOpenLabelsMatches}
-        />
-      </motion.div>
     </SidebarShell>
   );
 

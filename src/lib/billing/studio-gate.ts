@@ -36,7 +36,7 @@
 
 import { hasFeature } from './entitlements';
 import { readOrgFeatureFlag } from '../feature-flags';
-import { USAV_ORG_ID, type OrgId } from '../tenancy/constants';
+import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 
 /** Env var that flips Studio entitlement enforcement from dormant → live. */
 export const STUDIO_ENFORCEMENT_ENV = 'STUDIO_ENTITLEMENT_ENFORCED';
@@ -48,10 +48,9 @@ export const STUDIO_ORG_FLAG = 'studio';
  * The dogfood / internal org that runs the live deployment. It is exempt from
  * Studio gating ALWAYS — even with enforcement on and whatever its plan — so
  * we can never lock ourselves (or the consolidated internal tenant) out.
- * This is org #1 (USAV Solutions), the same id the
- * 2026-06-20d_consolidate_dogfood_org migration folds stray data onto.
+ * Re-exported from tenancy constants (org #1).
  */
-export const DOGFOOD_ORG_ID: OrgId = USAV_ORG_ID;
+export { DOGFOOD_ORG_ID };
 
 /**
  * True only when `STUDIO_ENTITLEMENT_ENFORCED` is explicitly truthy. Default

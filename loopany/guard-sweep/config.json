@@ -1,0 +1,11 @@
+{
+  "name": "Morning guard sweep",
+  "cron": "0 9 * * 1-5",
+  "workflow": "const { execSync } = await import('node:child_process');\nconst { writeFileSync, mkdirSync } = await import('node:fs');\nconst { join } = await import('node:path');\n\nconst workdir = '/Users/icecube/repos/cycleforge-app';\nconst loopDir = join(workdir, 'loopany/guard-sweep');\nmkdirSync(loopDir, { recursive: true });\n\nconst checks = [\n  { name: 'audit-route-auth', cmd: 'pnpm audit-route-auth:check' },\n  { name: 'schema-drift-guard', cmd: 'pnpm schema:drift-guard:check' },\n  { name: 'tenancy-guard', cmd: 'pnpm tenancy:guard:check' },\n  { name: 'ds-guards', cmd: 'pnpm test:ds-guards' },\n];\n\nconst failures = [];\nfor (const { name, cmd } of checks) {\n  try {\n    execSync(cmd, { cwd: workdir, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 300000 });\n  } catch (e) {\n    failures.push({\n      name,\n      code: e.status ?? 1,\n      stdout: String(e.stdout ?? ''),\n      stderr: String(e.stderr ?? ''),\n    });\n  }\n}\n\nconst now = new Date().toISOString().slice(0, 10);\nconst allGreen = failures.length === 0;\n\nif (allGreen) {\n  return {\n    state: {\n      lastStatus: 'green',\n      lastRun: now,\n      failureCount: 0,\n      failedChecks: [],\n    },\n  };\n}\n\nconst report = [\n  '---',\n  'type: alert',\n  `title: Guard sweep failures (${now})`,\n  `date: ${now}`,\n  '---',\n  '',\n  `# Guard sweep — ${now}`,\n  '',\n  `${failures.length} of ${checks.length} checks failed.`,\n  '',\n  ...failures.flatMap((f) => [\n    `## ${f.name} (exit ${f.code})`,\n    '```',\n    (f.stderr || f.stdout || '(no output)').trim().slice(0, 4000),\n    '```',\n    '',\n  ]),\n].join('\\n');\n\nwriteFileSync(join(loopDir, 'report.md'), report);\n\nreturn {\n  message: `Guard sweep: ${failures.length}/${checks.length} failed (${failures.map((f) => f.name).join(', ')})`,\n  state: {\n    lastStatus: 'red',\n    lastRun: now,\n    failureCount: failures.length,\n    failedChecks: failures.map((f) => f.name),\n  },\n};",
+  "workdir": "/Users/icecube/repos/cycleforge-app",
+  "taskFile": "/Users/icecube/repos/cycleforge-app/loopany/guard-sweep/README.md",
+  "stateSchema": [
+    { "key": "failureCount", "label": "Failures", "unit": "" }
+  ],
+  "notify": "auto"
+}

@@ -4,9 +4,9 @@ _Goal: inventory every **manual, human-driven task** across the USAV ops app tha
 existing Hermes AI integration could plausibly take over (draft, classify, match, predict,
 or fully automate), and sequence them by value and effort._
 
-Author pass: 2026-06-03. Status: proposal / discovery. Companion to
-[`ai-chat-ux-plan.md`](./ai-chat-ux-plan.md) (which covers the chat *surface*; this doc
-covers everything the agent could *do* beyond chat).
+Author pass: 2026-06-03. Status: proposal / discovery. Companion to the AI chat UX
+work (which covered the chat *surface*; this doc covers everything the agent could
+*do* beyond chat).
 
 ---
 

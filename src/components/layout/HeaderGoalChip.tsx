@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { AnchoredLayer } from '@/design-system';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { ChevronDown } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { STATION_LABEL, toneFor } from './goal-chip/goal-chip-shared';
@@ -45,7 +46,9 @@ export function HeaderGoalChip() {
         <span className="flex flex-col items-start leading-none">
           <span className="text-caption font-bold tracking-tight text-text-default">{STATION_LABEL[g.active]}</span>
           <span className="mt-0.5 text-eyebrow font-semibold tabular-nums text-text-soft">
-            {chipCount.value}/{chipCount.total} {chipCount.unit}
+            <AnimatedStat value={chipCount.value} speed="fast" className="inline" />
+            /
+            <AnimatedStat value={chipCount.total} speed="fast" className="inline" /> {chipCount.unit}
           </span>
         </span>
         <ChevronDown className={cn('h-3 w-3 text-text-faint transition-transform duration-200', g.open && 'rotate-180')} />

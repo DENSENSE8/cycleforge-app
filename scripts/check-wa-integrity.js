@@ -232,8 +232,8 @@ async function check6_orphanedRows() {
     },
     {
       entityType: 'RECEIVING',
-      table: 'receiving',
-      label: 'receiving',
+      table: 'receiving_carton',
+      label: 'receiving_carton',
     },
   ];
 

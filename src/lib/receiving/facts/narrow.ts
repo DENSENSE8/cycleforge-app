@@ -18,6 +18,7 @@
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { normalizeScanKey } from '@/lib/receiving/scan/normalize';
 import type { FactsDeps } from './store';
 
 const defaultDeps: FactsDeps = { query: tenantQuery };
@@ -71,6 +72,11 @@ export interface ZohoFactsInput {
   zohoLineItemId?: string | null;
   zohoPurchaseReceiveId?: string | null;
   zohoPurchaseOrderId?: string | null;
+  /**
+   * Writing this also writes zoho_purchaseorder_number_norm, derived exactly like
+   * the retired spine GENERATED column (`NULLIF(upper(strip non-alnum), '')`) so
+   * the two can never drift. `undefined` leaves both untouched; `null` clears both.
+   */
   zohoPurchaseOrderNumber?: string | null;
   zohoReferenceNumber?: string | null;
   zohoSyncSource?: string | null;
@@ -92,6 +98,12 @@ export function upsertReceivingLineZoho(
     zoho_purchase_receive_id: f.zohoPurchaseReceiveId,
     zoho_purchaseorder_id: f.zohoPurchaseOrderId,
     zoho_purchaseorder_number: f.zohoPurchaseOrderNumber,
+    zoho_purchaseorder_number_norm:
+      f.zohoPurchaseOrderNumber === undefined
+        ? undefined
+        : f.zohoPurchaseOrderNumber === null
+          ? null
+          : normalizeScanKey(f.zohoPurchaseOrderNumber) || null,
     zoho_reference_number: f.zohoReferenceNumber,
     zoho_sync_source: f.zohoSyncSource,
     zoho_last_modified_time: f.zohoLastModifiedTime,

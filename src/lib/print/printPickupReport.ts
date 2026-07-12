@@ -1,13 +1,13 @@
 /**
  * Daily carrier pickup report — letter-size printout for the warehouse hand-off
- * log. Follows the same silent-print / popup-fallback pipeline as
- * {@link ./printLabel}, but renders a full-page table instead of a thermal
- * label. The computed columns (tracking counts, customer/FBA split) are
- * pre-filled; "Checked By" and "Notes" are left blank to sign by hand.
+ * log. Prints via a hidden iframe + `window.print()` (or a popup fallback if
+ * the iframe path is unavailable). The computed columns (tracking counts,
+ * customer/FBA split) are pre-filled; "Checked By" and "Notes" are left blank
+ * to sign by hand.
  */
 
 import { escapeLabelHtml } from '@/lib/print/printLabel';
-import { printHtmlSilent } from '@/lib/print/silentPrint';
+import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import type { PickupReportData } from '@/lib/shipped/pickup-report';
 
 export interface PickupReportPrintOptions {
@@ -108,8 +108,7 @@ window.onafterprint=function(){setTimeout(function(){window.close();},80);};
 }
 
 /**
- * Render and print the daily pickup report. Tries Electron silent-print first;
- * falls back to a browser popup + window.print() outside the desktop shell.
+ * Render and print the daily pickup report via iframe (or popup fallback).
  */
 export function printPickupReport(
   data: PickupReportData,
@@ -118,19 +117,14 @@ export function printPickupReport(
   if (typeof window === 'undefined') return;
   const html = buildPickupReportHtml(data, opts);
 
-  void printHtmlSilent(html, {
-    pageSize: 'Letter',
-    margins: { marginType: 'default' },
-    waitMs: 300,
-  }).then((handled) => {
-    if (handled) return;
-    const w = window.open('', '_blank', 'width=900,height=1100');
-    if (!w) {
-      console.warn('printPickupReport: popup blocked');
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-  });
+  if (printHtmlInIframe(html, { name: 'Pickup report' })) return;
+
+  const w = window.open('', '_blank', 'width=900,height=1100');
+  if (!w) {
+    console.warn('printPickupReport: popup blocked');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }

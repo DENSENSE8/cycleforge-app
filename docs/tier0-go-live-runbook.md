@@ -65,13 +65,13 @@ Everything is built + verified; what remains is live config.
 ---
 
 ## Sequencing
-`Stripe (Part A)` and `E1 steps 1–4` are independent and can both be done now. `E1 step 5` (per-table FORCE) proceeds as the route burn-down completes for each table — tracked in `docs/tier0-execution-checklist.md`.
+`Stripe (Part A)` and `E1 steps 1–4` are independent and can both be done now. `E1 step 5` (per-table FORCE) proceeds as the route burn-down completes for each table.
 
 ---
 
 ## Part C — activate Waves 2–6 (Zoho multi-tenancy, webhooks, crons, credentials, Phase B)
 
-Waves 2–6 (2026-06-20, recorded in `docs/tenancy/SESSION-2026-06-19-route-hardening.md`) made the Zoho/integration surface tenant-safe **in code**. The code is deployed-safe today (single-tenant USAV behaves identically); these steps light it up for real multi-tenant.
+Waves 2–6 (2026-06-20) made the Zoho/integration surface tenant-safe **in code**. The code is deployed-safe today (single-tenant USAV behaves identically); these steps light it up for real multi-tenant.
 
 ### C1 — apply the new migrations (with the matching deploy)
 All additive + idempotent. Apply via `npm run db:migrate`. **Ordering matters for the two that pair with code** — deploy the Waves 2–6 code first (or together), because their writers reference the new columns:

@@ -1,6 +1,6 @@
 /**
  * Receiving-line state machine — the guarded chokepoint for
- * `receiving_lines.workflow_status`.
+ * `receiving_line.workflow_status`.
  *
  * Mirrors the serial-unit `transition()` (src/lib/inventory/state-machine.ts):
  * every receiving-line status change should route through `transitionReceivingLine()`
@@ -36,7 +36,7 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import {
   recordInventoryEvent,
   type InventoryEventStation,
@@ -63,7 +63,7 @@ const INBOUND_TRANSITIONS: Readonly<Record<string, ReadonlySet<string>>> = {
   FAILED:        new Set(['RTV', 'SCRAP', 'IN_TEST', 'DONE']),
   RTV:           new Set(['DONE', 'SCRAP']),
   SCRAP:         new Set(['DONE']),
-  DONE:          new Set(['UNBOXED', 'AWAITING_TEST' /* reconcile/undo reopen */]),
+  DONE:          new Set(['UNBOXED', 'AWAITING_TEST' /* reconcile/undo reopen */, 'IN_TEST' /* re-test of a fully-passed rollup (TEST_AGAIN on a DONE line) */]),
 };
 
 export type ReceivingLineGuardResult = { ok: true } | { ok: false; reason: string };
@@ -180,9 +180,9 @@ async function runReceivingLineTransition(
     }>(
       orgId
         ? `SELECT workflow_status::text AS workflow_status, receiving_id, sku
-             FROM receiving_lines WHERE id = $1 AND organization_id = $2 FOR UPDATE`
+             FROM receiving_line WHERE id = $1 AND organization_id = $2 FOR UPDATE`
         : `SELECT workflow_status::text AS workflow_status, receiving_id, sku
-             FROM receiving_lines WHERE id = $1 FOR UPDATE`,
+             FROM receiving_line WHERE id = $1 FOR UPDATE`,
       orgId ? [input.receivingLineId, orgId] : [input.receivingLineId],
     );
     const row = lockedQ.rows[0];
@@ -214,7 +214,7 @@ async function runReceivingLineTransition(
     // optional exception_code set.
     await client.query(
       orgId
-        ? `UPDATE receiving_lines SET
+        ? `UPDATE receiving_line SET
              workflow_status       = $2::inbound_workflow_status_enum,
              receiving_line_status = $3,
              scanned_at  = CASE WHEN $3 = 'SCANNED'  THEN COALESCE(scanned_at,  NOW()) ELSE scanned_at  END,
@@ -224,7 +224,7 @@ async function runReceivingLineTransition(
              exception_code = COALESCE($5, exception_code),
              updated_at = NOW()
            WHERE id = $1 AND organization_id = $6`
-        : `UPDATE receiving_lines SET
+        : `UPDATE receiving_line SET
              workflow_status       = $2::inbound_workflow_status_enum,
              receiving_line_status = $3,
              scanned_at  = CASE WHEN $3 = 'SCANNED'  THEN COALESCE(scanned_at,  NOW()) ELSE scanned_at  END,
@@ -264,7 +264,7 @@ async function runReceivingLineTransition(
             },
           },
           client,
-          orgId ?? USAV_ORG_ID,
+          orgId ?? DOGFOOD_ORG_ID,
         );
 
     if (useOwnTx) await client.query('COMMIT');

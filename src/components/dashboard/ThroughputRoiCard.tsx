@@ -25,6 +25,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { AnimatedStat, type AnimatedStatProps } from '@/design-system/components/AnimatedStat';
 import {
   TrendingUp,
   ChevronUp,
@@ -95,9 +96,10 @@ function RoiHero({ data, variant }: { data: OperationsRoiData; variant: 'band' |
         <div className="min-w-0">
           <RoiEyebrow />
           <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className={`font-black leading-none tabular-nums text-text-default ${sidebar ? 'text-2xl' : 'text-3xl'}`}>
-              {unitsThisWeek.toLocaleString()}
-            </span>
+            <AnimatedStat
+              value={unitsThisWeek}
+              className={`font-black leading-none text-text-default ${sidebar ? 'text-2xl' : 'text-3xl'}`}
+            />
             <span className="text-caption font-semibold uppercase tracking-wide text-text-faint">
               units
             </span>
@@ -115,7 +117,8 @@ function RoiHero({ data, variant }: { data: OperationsRoiData; variant: 'band' |
         >
           <SecondaryStat
             label="Units / labor-hr"
-            value={unitsPerLaborHour > 0 ? unitsPerLaborHour.toFixed(1) : '0'}
+            value={unitsPerLaborHour}
+            format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
             tooltip="Units advanced per clocked labor-hour over the last 7 days — the headline ROI metric."
             compact={sidebar}
           />
@@ -168,17 +171,23 @@ function SecondaryStat({
   value,
   tooltip,
   compact = false,
+  format,
 }: {
   label: string;
-  value: string;
+  value: number;
   tooltip: string;
   compact?: boolean;
+  format?: AnimatedStatProps['format'];
 }) {
   return (
     <HoverTooltip asChild label={tooltip} focusable={false}>
       <div className={compact ? 'min-w-0' : 'px-3'}>
         <p className={EYEBROW}>{label}</p>
-        <p className={`mt-0.5 font-bold tabular-nums text-text-default ${compact ? 'text-sm' : 'text-base'}`}>{value}</p>
+        <AnimatedStat
+          value={value}
+          format={format}
+          className={`mt-0.5 font-bold text-text-default ${compact ? 'text-sm' : 'text-base'}`}
+        />
       </div>
     </HoverTooltip>
   );
@@ -197,11 +206,10 @@ function StuckStat({ value, compact = false }: { value: number; compact?: boolea
         <p className={EYEBROW}>Units stuck</p>
         <div className="mt-0.5 flex items-center gap-1">
           {attention ? <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> : null}
-          <p
-            className={`font-bold tabular-nums ${compact ? 'text-sm' : 'text-base'} ${attention ? 'text-amber-700' : 'text-text-default'}`}
-          >
-            {value}
-          </p>
+          <AnimatedStat
+            value={value}
+            className={`font-bold ${compact ? 'text-sm' : 'text-base'} ${attention ? 'text-amber-700' : 'text-text-default'}`}
+          />
         </div>
       </div>
     </HoverTooltip>

@@ -9,7 +9,7 @@ import { deriveReceivingLineStatus, resolveReceivingLineStatus } from './workflo
 
 // ─── Deps / db fakes ──────────────────────────────────────────────────────────
 // transitionReceivingLine issues: a SELECT … FOR UPDATE (the lock), then an
-// UPDATE receiving_lines. With a `db` passed and NO orgId it takes the executor
+// UPDATE receiving_line. With a `db` passed and NO orgId it takes the executor
 // path → no BEGIN/COMMIT, no set_config. The fake routes canned rows by
 // inspecting the SQL and captures every call + the event so we assert on the
 // result AND what was threaded — fully DB-free.
@@ -34,7 +34,7 @@ function fakes(locked: LockedRow | null) {
         calls.selectParams = params ?? null;
         return { rows: locked ? [locked] : [] };
       }
-      if (/UPDATE receiving_lines/.test(sql)) {
+      if (/UPDATE receiving_line/.test(sql)) {
         calls.updateSql = sql;
         calls.updateParams = params ?? null;
         return { rows: [], rowCount: 1 };
@@ -194,4 +194,26 @@ test('guardReceivingLine: identity ok, modeled edge ok, unmodeled rejected', () 
   assert.equal(guardReceivingLine('UNBOXED', 'UNBOXED').ok, true);
   assert.equal(guardReceivingLine('EXPECTED', 'MATCHED').ok, true);
   assert.equal(guardReceivingLine('SCRAP', 'MATCHED').ok, false);
+});
+
+test('DONE → IN_TEST is a modeled edge (re-test of a fully-passed rollup)', async () => {
+  // Guard-level: modeled, so strict mode must accept it.
+  assert.equal(guardReceivingLine('DONE', 'IN_TEST').ok, true);
+
+  // Full transition under strict:true — proves it is on the allow-list, not
+  // just riding the permissive log-and-proceed default.
+  const { db, deps, calls } = fakes({ workflow_status: 'DONE', receiving_id: 11, sku: 'Z' });
+  const res = await transitionReceivingLine(
+    { receivingLineId: 11, to: 'IN_TEST', strict: true },
+    db,
+    undefined,
+    deps,
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(res.from, 'DONE');
+  assert.equal(res.to, 'IN_TEST');
+  assert.equal(res.changed, true);
+  assert.equal(res.coarse, 'RECEIVED');
+  assert.ok(calls.updateParams?.includes('IN_TEST'));
 });

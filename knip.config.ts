@@ -21,12 +21,7 @@ const config: KnipConfig = {
     'src/app/m/**/*.ts',
     'src/app/m/**/*.tsx',
 
-    // Electron shell
-    'electron/main.js',
-    'electron/preload.js',
-
-    // Server / pipeline entry points
-    'server/index.js',
+    // Pipeline entry points
     'src/lib/pipeline/orchestrator.ts',
 
     // Scripts that are part of the production surface (cron, workers, etc.)

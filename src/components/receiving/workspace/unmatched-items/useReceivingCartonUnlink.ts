@@ -44,7 +44,7 @@ export function useReceivingCartonUnlink() {
         }
 
         dispatchReceivingCartonUnlinkPatch(receivingId, lineId);
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         invalidateReceivingFeeds(queryClient);
         onSuccess?.();
         toast.success('Unlinked — back on the Unfound queue');

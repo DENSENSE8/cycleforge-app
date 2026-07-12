@@ -50,12 +50,22 @@ export function isDeliveryState(v: unknown): v is DeliveryState {
 }
 
 // ── Shared predicate fragments (defined once) ───────────────────────────────
+// Wave-2 reader cutover: the carton "unboxed" milestone reads from the
+// receiving_unbox street table (ru.unboxed_at, 1:1 with the carton) via a
+// correlated NOT EXISTS — no row / NULL unboxed_at ≡ the old NULL spine value —
+// so consumers of these fragments need no extra join.
+const NOT_UNBOXED_STREET = `NOT EXISTS (
+             SELECT 1 FROM receiving_unbox ru_ds
+              WHERE ru_ds.receiving_id = r.id
+                AND ru_ds.organization_id = r.organization_id
+                AND ru_ds.unboxed_at IS NOT NULL
+           )`;
 const DELIVERED_UNOPENED = `stn.is_delivered = true\n           AND NOT ${SHIPMENT_SCANNED_PREDICATE}`;
 /** Carrier delivered + dock-scanned + still not unboxed (CASE badge only). */
 const DELIVERED_NOT_UNBOXED_CASE = `stn.is_delivered = true
            AND ${SHIPMENT_SCANNED_PREDICATE}
            AND COALESCE(rl.quantity_received, 0) = 0
-           AND r.unboxed_at IS NULL
+           AND ${NOT_UNBOXED_STREET}
            AND rl.workflow_status NOT IN (
              'UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE','FAILED','RTV','SCRAP'
            )`;
@@ -66,7 +76,7 @@ const DELIVERED_NOT_UNBOXED_CASE = `stn.is_delivered = true
  */
 const DELIVERED_NOT_UNBOXED_WHERE = `stn.is_delivered = true
            AND COALESCE(rl.quantity_received, 0) = 0
-           AND (r.id IS NULL OR r.unboxed_at IS NULL)
+           AND (r.id IS NULL OR ${NOT_UNBOXED_STREET})
            AND rl.workflow_status NOT IN (
              'UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE','FAILED','RTV','SCRAP'
            )`;
@@ -93,9 +103,16 @@ const PENDING_CARRIER_CASE = `stn.latest_status_category IS NULL OR stn.latest_s
 const PENDING_CARRIER_WHERE = `stn.id IS NOT NULL
             AND (stn.latest_status_category IS NULL OR stn.latest_status_category = 'UNKNOWN')
             AND NOT ${CARRIER_MISMATCH_PREDICATE}`;
+// Wave-2 reader cutover: the line's normalized PO# reads from
+// receiving_line_zoho (rz_eds.zoho_purchaseorder_number_norm, 1:1 with the
+// line; rz rows exist for every line with ANY zoho field), joined inside the
+// EXISTS so consumers of the fragment need no extra join.
 const DELIVERED_EMAIL_WHERE = `EXISTS (
              SELECT 1 FROM email_delivery_signals eds
-              WHERE eds.order_number_norm = rl.zoho_purchaseorder_number_norm
+              JOIN receiving_line_zoho rz_eds
+                ON rz_eds.receiving_line_id = rl.id
+               AND rz_eds.organization_id = rl.organization_id
+              WHERE eds.order_number_norm = rz_eds.zoho_purchaseorder_number_norm
                 AND eds.organization_id = rl.organization_id
                 AND eds.delivered_at > NOW() - interval '30 days'
            )

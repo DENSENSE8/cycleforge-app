@@ -1,13 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { PrintPreferences } from '@/components/settings/PrintPreferences';
-import { isElectron } from '@/lib/print/silentPrint';
 
 export function HardwareSection() {
-  const [inElectron, setInElectron] = useState(false);
-  useEffect(() => { setInElectron(isElectron()); }, []);
-
   return (
     <div className="space-y-6">
       <header>
@@ -25,9 +20,7 @@ export function HardwareSection() {
           The camera used for QR / barcode scanning across the app.
         </p>
         <p className="mt-3 text-xs text-text-muted">
-          {inElectron
-            ? 'Camera selection follows your OS default. Change which camera is used in Windows → Settings → Bluetooth & devices → Cameras.'
-            : 'Camera selection is browser-managed. Use the browser permission popup the first time you scan.'}
+          Camera selection is browser-managed. Use the browser permission popup the first time you scan.
         </p>
       </div>
 

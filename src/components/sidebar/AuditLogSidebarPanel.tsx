@@ -8,6 +8,7 @@ import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { useAuditLogFilterRefinements, AuditLogFilterDropdown } from '@/components/audit-log/AuditLogFilterStrip';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { SearchBar } from '@/components/ui/SearchBar';
 import {
   AUDIT_SECTIONS,
   AUDIT_SECTION_ITEMS,
@@ -36,6 +37,8 @@ export function AuditLogSidebarPanel() {
 
   const { refinements, clearAll } = useAuditLogFilterRefinements();
 
+  const isTrace = activeSection?.id === 'trace';
+
   const switchSection = (target: AuditSection) => {
     // Preserve shared filters (day/start/end/staffId) across section changes.
     const params = new URLSearchParams(searchParams.toString());
@@ -47,34 +50,37 @@ export function AuditLogSidebarPanel() {
   return (
     <SidebarShell
       headerAbove={
-        <div className={`${SIDEBAR_GUTTER} py-3 border-b border-border-hairline`}>
-          <p className={`px-1 ${sectionLabel} text-emerald-600`}>Audit Log</p>
-          <p className={`mt-1 px-1 text-caption font-semibold leading-snug text-text-soft`}>
-            Who, when, and what changed.
-          </p>
-        </div>
-      }
-      search={{
-        value: searchQuery,
-        onChange: setSearchQuery,
-        // Trace is a submit-to-search section: Enter (or the Trace button)
-        // pushes the typed serial into `?serial=`. Other sections filter live.
-        onSearch:
-          activeSection?.id === 'trace'
-            ? (value) => {
+        <>
+          <div className={`${SIDEBAR_GUTTER} py-3 border-b border-border-hairline`}>
+            <p className={`px-1 ${sectionLabel} text-emerald-600`}>Audit Log</p>
+            <p className={`mt-1 px-1 text-caption font-semibold leading-snug text-text-soft`}>
+              Who, when, and what changed.
+            </p>
+          </div>
+          {/* In-context list filter — local base SearchBar. Trace is a
+              submit-to-search input (Enter pushes the serial into `?serial=`);
+              others filter live. The global header pill stays global. */}
+          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+            <SearchBar
+              size="compact"
+              variant="blue"
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onClear={() => setSearchQuery('')}
+              onSearch={(value) => {
                 const v = value.trim();
                 if (!v) return;
-                const params = new URLSearchParams(searchParams.toString());
-                params.set('serial', v);
-                router.replace(`/audit-log/trace?${params.toString()}`);
-              }
-            : undefined,
-        placeholder:
-          activeSection?.id === 'trace'
-            ? 'Scan or enter a serial…'
-            : `Search ${activeSection?.label || 'audit'}...`,
-        variant: 'blue',
-      }}
+                if (isTrace) {
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('serial', v);
+                  router.replace(`/audit-log/trace?${params.toString()}`);
+                }
+              }}
+              placeholder={isTrace ? 'Scan or enter a serial…' : `Filter ${activeSection?.label || 'audit'}...`}
+            />
+          </div>
+        </>
+      }
       filter={{
         label: 'Audit Filters',
         refinements,

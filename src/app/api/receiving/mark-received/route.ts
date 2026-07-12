@@ -17,9 +17,12 @@ import {
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { withAuth } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
+import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { upsertSerialUnit, recordOriginProvenance } from '@/lib/neon/serial-units-queries';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
+import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getReceivingDefaultPutawayBin } from '@/lib/settings/accessors';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -542,12 +545,18 @@ export const POST = withAuth(async (request, ctx) => {
 
     const hasZohoReceive = Boolean(zohoPoId && zohoLineItemId);
 
-    // Capture before-state for audit_logs diff.
+    // Capture before-state for audit_logs diff. Testing facts (qa/disposition/
+    // condition) now live on receiving_line_testing (Wave-3 writer inversion) —
+    // the spine columns are slated to drop, so read the facts table here.
     const beforeRes = await tenantQuery(
       ctx.organizationId,
-      `SELECT quantity_received, quantity_expected, workflow_status, qa_status,
-              disposition_code, condition_grade
-         FROM receiving_lines WHERE id = $1 AND organization_id = $2`,
+      `SELECT rl.quantity_received, rl.quantity_expected, rl.workflow_status,
+              rlt.qa_status::text AS qa_status,
+              rlt.disposition_code::text AS disposition_code,
+              rlt.condition_grade::text AS condition_grade
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id
+        WHERE rl.id = $1 AND rl.organization_id = $2`,
       [receivingLineId, ctx.organizationId],
     );
     const beforeRow = (beforeRes.rows as Array<{
@@ -564,31 +573,93 @@ export const POST = withAuth(async (request, ctx) => {
     //    createPurchaseReceive succeeds; then we set DONE. UNBOXED — not
     //    MATCHED — so a Zoho-pending line can't be mistaken for (or re-queued
     //    as) a merely door-scanned carton.
-    const lineUpdate = await tenantQuery(
-      ctx.organizationId,
-      `UPDATE receiving_lines
-       SET qa_status = $1,
-           disposition_code = $2,
-           condition_grade = $3,
-           notes = $4,
-           workflow_status = CASE
-             WHEN $6 THEN 'UNBOXED'::inbound_workflow_status_enum
-             ELSE 'DONE'::inbound_workflow_status_enum
-           END,
-           quantity_received = GREATEST(
-             COALESCE(quantity_received, 0),
-             COALESCE(quantity_expected, 1)
-           )
-       WHERE id = $5 AND organization_id = $7
-       RETURNING *`,
-      [qaStatus, dispositionCode, conditionGrade, notes, receivingLineId, hasZohoReceive, ctx.organizationId],
-    );
+    //
+    //    Chokepoint fold (§7 Step D): the facts half (qa/disposition/condition/
+    //    notes/quantity) is a raw UPDATE that deliberately does NOT list
+    //    workflow_status — the coarse trigger (trg_receiving_line_coarse_status)
+    //    fires whenever workflow_status appears in a SET clause, even unchanged,
+    //    and would COALESCE-stamp lifecycle timestamps on a non-transitioning
+    //    re-receive. The lifecycle half routes through transitionReceivingLine()
+    //    inside the SAME tenant transaction (the facts UPDATE's row lock makes
+    //    the chokepoint's FOR UPDATE re-lock a no-op) and ONLY when the status
+    //    actually changes (check-and-skip in TS). skipEvent: this route's
+    //    applyInventoryV2Effects emits the RECEIVED inventory_event and the
+    //    route records the PO_RECEIVE audit — the chokepoint must not
+    //    double-write. IN_TEST→UNBOXED / AWAITING_TEST→UNBOXED are unmodeled
+    //    edges in INBOUND_TRANSITIONS: the permissive guard logs and proceeds
+    //    (deliberately NOT added to the graph — a re-receive of a line already
+    //    in testing is a bounce-back we want surfaced in the logs, not modeled).
+    const targetWorkflowStatus = hasZohoReceive ? 'UNBOXED' : 'DONE';
+    const foldedLine = await withTenantTransaction(ctx.organizationId, async (client) => {
+      // Wave-3 writer inversion: qa/disposition/condition are receiving_line_testing
+      // facts now — the spine UPDATE keeps only the columns that stay on the spine
+      // (notes + quantity_received). Same transaction = same atomicity the single
+      // statement had.
+      const lineUpdate = await client.query(
+        `UPDATE receiving_line
+         SET notes = $1,
+             quantity_received = GREATEST(
+               COALESCE(quantity_received, 0),
+               COALESCE(quantity_expected, 1)
+             ),
+             updated_at = NOW()
+         WHERE id = $2 AND organization_id = $3
+         RETURNING *`,
+        [notes, receivingLineId, ctx.organizationId],
+      );
+      const row = lineUpdate.rows[0];
+      if (!row) return null;
+      // Overwrite semantics, exactly like the former spine SET (this route always
+      // supplies all three). Bound to the tx client so the facts write commits
+      // atomically with the spine row above.
+      await upsertReceivingLineTesting(
+        ctx.organizationId,
+        receivingLineId,
+        { qaStatus, dispositionCode, conditionGrade },
+        { query: ((_org, sql, p) => client.query(sql, p as unknown[])) as typeof tenantQuery },
+      );
+      // RETURNING * predates the facts write (and the spine columns are dying) —
+      // patch the in-memory row so the response/audit "after" see what we wrote,
+      // exactly like the Step-D fold does for workflow_status below.
+      row.qa_status = qaStatus;
+      row.disposition_code = dispositionCode;
+      row.condition_grade = conditionGrade;
+      const currentStatus = String(row.workflow_status ?? '').trim().toUpperCase();
+      if (currentStatus !== targetWorkflowStatus) {
+        const tr = await transitionReceivingLine(
+          {
+            receivingLineId,
+            to: targetWorkflowStatus,
+            actorStaffId: staffId,
+            receivedBy: staffId,
+            skipEvent: true,
+          },
+          client,
+          ctx.organizationId,
+        );
+        if (tr.ok) {
+          // The facts UPDATE's RETURNING row predates the lifecycle write —
+          // patch it so downstream consumers (response payload, audit "after",
+          // the workflowStatus readout) see the post-transition status exactly
+          // as they did before the fold.
+          row.workflow_status = tr.to;
+          row.receiving_line_status = tr.coarse;
+        } else {
+          // Defensive only: 404 can't happen (the row is locked above) and no
+          // expectedFrom is passed — keep the facts write, surface the skip.
+          console.warn(
+            `[mark-received] workflow transition ${currentStatus} → ${targetWorkflowStatus} skipped for line ${receivingLineId}: ${tr.error}`,
+          );
+        }
+      }
+      return row;
+    });
 
-    if (lineUpdate.rows.length === 0) {
+    if (!foldedLine) {
       return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
     }
 
-    let line = lineUpdate.rows[0];
+    let line = foldedLine;
     const qtyReceived = Number(line.quantity_received) || 1;
     let zohoReceiveOk = !hasZohoReceive;
     let zohoReceiveError: string | null = null;
@@ -672,23 +743,43 @@ export const POST = withAuth(async (request, ctx) => {
       console.warn('mark-received: applyInventoryV2Effects failed', err);
     }
 
-    // 3. Update receiving row unboxed_at if set. Capture whether THIS call is the
-    // one that newly unboxed the carton (COALESCE keeps an existing timestamp),
-    // plus the carton flags, so the tech-station inbox is nudged exactly once.
+    // 3. Stamp the carton's unboxed milestone on the UNBOX street table (Wave-3
+    // writer inversion — the spine unboxed_* columns are dying). The helper is
+    // COALESCE-once (first stamp wins), so "just unboxed" = the street row had
+    // no unboxed_at before this call. Carton flags (is_return/is_priority stay
+    // spine) are read in the same tx so the tech-station inbox is nudged once.
     if (receivingId) {
-      const cartonUpd = await tenantQuery<{ is_return: boolean | null; is_priority: boolean | null; just_unboxed: boolean; tracking: string | null }>(
-        ctx.organizationId,
-        `UPDATE receiving SET unboxed_at = COALESCE(unboxed_at, $1),
-                              unboxed_by = COALESCE(unboxed_by, $2),
-                              updated_at = $1
-          WHERE id = $3 AND organization_id = $4
-          RETURNING is_return, is_priority,
-                    (unboxed_at = $1) AS just_unboxed,
-                    (SELECT s.tracking_number_raw FROM shipping_tracking_numbers s
-                      WHERE s.id = receiving.shipment_id) AS tracking`,
-        [now, staffId, receivingId, ctx.organizationId],
-      ).catch(() => null);
-      const carton = cartonUpd?.rows?.[0];
+      const carton = await withTenantTransaction(ctx.organizationId, async (client) => {
+        const meta = await client.query<{
+          is_return: boolean | null;
+          is_priority: boolean | null;
+          prev_unboxed_at: string | null;
+          tracking: string | null;
+        }>(
+          `SELECT r.is_return, r.is_priority,
+                  ru.unboxed_at AS prev_unboxed_at,
+                  (SELECT s.tracking_number_raw FROM shipping_tracking_numbers s
+                    WHERE s.id = r.shipment_id) AS tracking
+             FROM receiving_carton r
+             LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id
+            WHERE r.id = $1 AND r.organization_id = $2
+            LIMIT 1`,
+          [receivingId, ctx.organizationId],
+        );
+        const row = meta.rows[0];
+        if (!row) return null;
+        await upsertReceivingUnbox(client, ctx.organizationId, receivingId, {
+          unboxedAt: 'now',
+          unboxedBy: staffId,
+          deriveIntakePath: true,
+        });
+        return {
+          is_return: row.is_return,
+          is_priority: row.is_priority,
+          just_unboxed: row.prev_unboxed_at == null,
+          tracking: row.tracking,
+        };
+      }).catch(() => null);
       if (carton?.just_unboxed) {
         after(async () => {
           try {
@@ -728,7 +819,7 @@ export const POST = withAuth(async (request, ctx) => {
           ctx.organizationId,
           `SELECT stn.tracking_number_raw AS tracking,
                   r.shipment_id
-             FROM receiving r
+             FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
             WHERE r.id = $1 AND r.organization_id = $2
             LIMIT 1`,
@@ -753,7 +844,7 @@ export const POST = withAuth(async (request, ctx) => {
         if (shipment?.id) {
           await tenantQuery(
             ctx.organizationId,
-            `UPDATE receiving
+            `UPDATE receiving_carton
                 SET shipment_id = $1, updated_at = NOW()
               WHERE id = $2 AND shipment_id IS NULL AND organization_id = $3`,
             [shipment.id, receivingId, ctx.organizationId],
@@ -813,16 +904,32 @@ export const POST = withAuth(async (request, ctx) => {
           }),
         );
         zohoReceiveOk = true;
-        const doneUp = await tenantQuery(
+        // Chokepoint fold (§7 Step D) — mirrors mark-received-po's folded
+        // UNBOXED→DONE promotion. expectedFrom:'UNBOXED' is a deliberate guard
+        // the former raw UPDATE lacked: a line advanced elsewhere while the
+        // Zoho call was in flight now returns 409 and is SKIPPED (logged,
+        // non-fatal) instead of being unconditionally overwritten to DONE.
+        // skipEvent: applyInventoryV2Effects already emitted the RECEIVED
+        // inventory_event and this route records the PO_RECEIVE audit below.
+        const doneTr = await transitionReceivingLine(
+          {
+            receivingLineId,
+            to: 'DONE',
+            expectedFrom: 'UNBOXED',
+            actorStaffId: staffId,
+            skipEvent: true,
+          },
+          undefined,
           ctx.organizationId,
-          `UPDATE receiving_lines
-             SET workflow_status = 'DONE'::inbound_workflow_status_enum,
-                 updated_at = NOW()
-           WHERE id = $1 AND organization_id = $2
-           RETURNING *`,
-          [receivingLineId, ctx.organizationId],
         );
-        if (doneUp.rows[0]) line = doneUp.rows[0];
+        if (doneTr.ok) {
+          line.workflow_status = doneTr.to;
+          line.receiving_line_status = doneTr.coarse;
+        } else {
+          console.warn(
+            `[mark-received] UNBOXED→DONE promotion skipped for line ${receivingLineId} (${doneTr.status}): ${doneTr.error}`,
+          );
+        }
 
         try {
           const existing = await withZohoOrg(ctx.organizationId, () => getPurchaseOrderById(zohoPoId));

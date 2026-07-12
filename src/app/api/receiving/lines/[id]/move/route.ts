@@ -150,7 +150,7 @@ export async function POST(
         receiving_id: number | null;
         sku: string | null;
       }>(
-        `SELECT id, receiving_id, sku FROM receiving_lines WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        `SELECT id, receiving_id, sku FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
         [lineId, orgId],
       );
       const line = lineRes.rows[0];

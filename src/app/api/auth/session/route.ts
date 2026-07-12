@@ -17,9 +17,23 @@ import { NextResponse } from 'next/server';
 import {
   loadSessionWithReason,
   SESSION_COOKIE_NAME,
+  LEGACY_SESSION_COOKIE_NAME,
+  readSessionCookie,
   touchSession,
   cookieMaxAgeForSession,
 } from '@/lib/auth/session';
+
+/** Clear the legacy `usav_sid` cookie (Max-Age=0) — used once a request has
+ *  migrated onto `cf_sid`. */
+function clearLegacyCookie(res: NextResponse): void {
+  res.cookies.set(LEGACY_SESSION_COOKIE_NAME, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+}
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { resolveEnvelopeMemberships } from '@/lib/identity/memberships';
@@ -28,7 +42,7 @@ export const runtime = 'nodejs';
 
 export async function GET() {
   const store = await cookies();
-  const sid = store.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const { sid, legacy } = readSessionCookie(store);
   const { session, reason } = await loadSessionWithReason(sid);
 
   if (!session) {
@@ -52,6 +66,7 @@ export async function GET() {
         path: '/',
         maxAge: 0,
       });
+      clearLegacyCookie(res); // also drop any stale usav_sid
     }
     return res;
   }
@@ -129,6 +144,9 @@ export async function GET() {
     path: '/',
     maxAge: cookieMaxAgeForSession({ expiresAt: slidExpiresAt }),
   });
+  // Migrate-on-touch: a request that authenticated via the legacy usav_sid gets
+  // re-issued cf_sid above; drop the legacy cookie so it migrates exactly once.
+  if (legacy) clearLegacyCookie(res);
 
   return res;
 }

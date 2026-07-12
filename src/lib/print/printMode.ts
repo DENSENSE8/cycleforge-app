@@ -1,9 +1,8 @@
 /**
  * Per-workstation "silent printing" switch.
  *
- * ON (default): label prints go straight to the configured printer with no
- * dialog — the Electron silent path, or the WebUSB / Web Serial raw path in a
- * browser tab.
+ * ON (default): label prints go straight to the paired WebUSB / Web Serial
+ * printer with no dialog when a profile is configured.
  *
  * OFF: those silent paths are skipped and the label is handed to the browser's
  * normal print dialog (via the hidden iframe + `window.print()`), so an operator
@@ -12,16 +11,19 @@
  * live — see {@link ./browserPrint}).
  */
 
-const KEY = 'usav.silentPrint';
+import { readMigratedItem } from '@/lib/storage/migrate-key';
+
+const KEY = 'cf.silentPrint';
+const LEGACY_KEY = 'usav.silentPrint';
 
 /** Event dispatched on the window when the flag changes, so open settings
  *  panels / other surfaces can react without a reload. */
-export const SILENT_PRINT_CHANGED_EVENT = 'usav:silent-print-changed';
+export const SILENT_PRINT_CHANGED_EVENT = 'cf:silent-print-changed';
 
 export function isSilentPrintEnabled(): boolean {
   if (typeof window === 'undefined') return true;
   try {
-    const v = window.localStorage.getItem(KEY);
+    const v = readMigratedItem(window.localStorage, KEY, LEGACY_KEY);
     // Default ON — only an explicit "0"/"false" turns it off.
     return !(v === '0' || v === 'false');
   } catch {

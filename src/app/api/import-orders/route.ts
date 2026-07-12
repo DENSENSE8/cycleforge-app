@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/drizzle/db';
 import { orders as ordersTable } from '@/lib/drizzle/schema';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { USAV_ORG_ID } from '@/lib/tenancy/constants';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
@@ -37,7 +36,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             })
         ).returning({ id: ordersTable.id });
 
-        const orgId = ctx.organizationId ?? USAV_ORG_ID;
+        const orgId = ctx.organizationId;
 
         for (let i = 0; i < insertedOrders.length; i += 1) {
             const parsedShipByDate = data[i]?.shipByDate ? new Date(data[i].shipByDate) : null;

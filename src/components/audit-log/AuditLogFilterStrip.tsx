@@ -17,6 +17,13 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, User, X } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  getCurrentPSTDateKey,
+  getRollingDaysStartKey,
+  getYesterdayPSTDateKey,
+  toPSTDateKey,
+  warehouseDayUtcBounds,
+} from '@/utils/date';
 
 type Preset = 'today' | 'yesterday' | 'last7' | 'custom' | 'all';
 
@@ -28,16 +35,11 @@ interface StaffOption {
   event_count: number;
 }
 
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function localBounds(day: string): { start: string; end: string } {
-  // Build local-TZ bounds, then send as UTC ISO.
-  const [y, m, d] = day.split('-').map((s) => parseInt(s, 10));
-  const start = new Date(y, m - 1, d, 0, 0, 0, 0);
-  const end = new Date(y, m - 1, d, 23, 59, 59, 999);
-  return { start: start.toISOString(), end: end.toISOString() };
+/** Warehouse civil day → UTC ISO bounds (not browser-local midnight). */
+function dayBounds(day: string): { start: string; end: string } {
+  const b = warehouseDayUtcBounds(day);
+  if (!b) return { start: '', end: '' };
+  return { start: b.startIso, end: b.endIso };
 }
 
 function presetFromParams(params: URLSearchParams): Preset {
@@ -46,10 +48,8 @@ function presetFromParams(params: URLSearchParams): Preset {
   const end = params.get('end');
   if (start || end) return 'custom';
   if (!day) return 'all';
-  const today = ymd(new Date());
-  const y = new Date();
-  y.setDate(y.getDate() - 1);
-  const yest = ymd(y);
+  const today = getCurrentPSTDateKey();
+  const yest = getYesterdayPSTDateKey(today);
   if (day === today) return 'today';
   if (day === yest) return 'yesterday';
   return 'custom';
@@ -80,21 +80,18 @@ export function useAuditLogFilterRefinements() {
       p.delete('start');
       p.delete('end');
       if (kind === 'all') return;
-      if (kind === 'today') p.set('day', ymd(new Date()));
+      if (kind === 'today') p.set('day', getCurrentPSTDateKey());
       else if (kind === 'yesterday') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        p.set('day', ymd(y));
+        p.set('day', getYesterdayPSTDateKey());
       } else if (kind === 'last7') {
-        const start = new Date();
-        start.setDate(start.getDate() - 6);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        p.set('start', start.toISOString());
-        p.set('end', end.toISOString());
+        const today = getCurrentPSTDateKey();
+        const startKey = getRollingDaysStartKey(7, today);
+        const startB = dayBounds(startKey);
+        const endB = dayBounds(today);
+        p.set('start', startB.start);
+        p.set('end', endB.end);
       } else if (kind === 'custom') {
-        const { start, end } = localBounds(ymd(new Date()));
+        const { start, end } = dayBounds(getCurrentPSTDateKey());
         p.set('start', start);
         p.set('end', end);
       }
@@ -132,11 +129,11 @@ export function useAuditLogFilterRefinements() {
     state: { preset, staffId, searchParams },
     actions: { applyPreset, setStaffId, setCustomStart: (day: string) => {
         if (!day) { replaceParams((p) => p.delete('start')); return; }
-        const { start } = localBounds(day);
+        const { start } = dayBounds(day);
         replaceParams((p) => { p.delete('day'); p.set('start', start); });
       }, setCustomEnd: (day: string) => {
         if (!day) { replaceParams((p) => p.delete('end')); return; }
-        const { end } = localBounds(day);
+        const { end } = dayBounds(day);
         replaceParams((p) => { p.delete('day'); p.set('end', end); });
       }
     }
@@ -150,13 +147,13 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
     const s = state.searchParams.get('start');
     if (!s) return '';
     const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? '' : ymd(d);
+    return Number.isNaN(d.getTime()) ? '' : (toPSTDateKey(d) || '');
   })();
   const customEnd = (() => {
     const e = state.searchParams.get('end');
     if (!e) return '';
     const d = new Date(e);
-    return Number.isNaN(d.getTime()) ? '' : ymd(d);
+    return Number.isNaN(d.getTime()) ? '' : (toPSTDateKey(d) || '');
   })();
 
   const presetOptions: Array<{ id: Preset; label: string }> = [
@@ -254,22 +251,19 @@ export function AuditLogFilterStrip() {
       p.delete('start');
       p.delete('end');
       if (kind === 'all') return;
-      if (kind === 'today') p.set('day', ymd(new Date()));
+      if (kind === 'today') p.set('day', getCurrentPSTDateKey());
       else if (kind === 'yesterday') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        p.set('day', ymd(y));
+        p.set('day', getYesterdayPSTDateKey());
       } else if (kind === 'last7') {
-        const start = new Date();
-        start.setDate(start.getDate() - 6);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date();
-        end.setHours(23, 59, 59, 999);
-        p.set('start', start.toISOString());
-        p.set('end', end.toISOString());
+        const today = getCurrentPSTDateKey();
+        const startKey = getRollingDaysStartKey(7, today);
+        const startB = dayBounds(startKey);
+        const endB = dayBounds(today);
+        p.set('start', startB.start);
+        p.set('end', endB.end);
       } else if (kind === 'custom') {
         // Seed today's bounds so the date inputs have something to show.
-        const { start, end } = localBounds(ymd(new Date()));
+        const { start, end } = dayBounds(getCurrentPSTDateKey());
         p.set('start', start);
         p.set('end', end);
       }
@@ -281,7 +275,7 @@ export function AuditLogFilterStrip() {
       replaceParams((p) => p.delete('start'));
       return;
     }
-    const { start } = localBounds(day);
+    const { start } = dayBounds(day);
     replaceParams((p) => {
       p.delete('day');
       p.set('start', start);
@@ -293,7 +287,7 @@ export function AuditLogFilterStrip() {
       replaceParams((p) => p.delete('end'));
       return;
     }
-    const { end } = localBounds(day);
+    const { end } = dayBounds(day);
     replaceParams((p) => {
       p.delete('day');
       p.set('end', end);
@@ -312,13 +306,13 @@ export function AuditLogFilterStrip() {
     const s = searchParams.get('start');
     if (!s) return '';
     const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? '' : ymd(d);
+    return Number.isNaN(d.getTime()) ? '' : (toPSTDateKey(d) || '');
   })();
   const customEnd = (() => {
     const e = searchParams.get('end');
     if (!e) return '';
     const d = new Date(e);
-    return Number.isNaN(d.getTime()) ? '' : ymd(d);
+    return Number.isNaN(d.getTime()) ? '' : (toPSTDateKey(d) || '');
   })();
 
   const presetOptions: Array<{ id: Preset; label: string }> = [

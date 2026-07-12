@@ -84,7 +84,7 @@ export function captureError(err: unknown, ctx: ErrorContext = {}): void {
     event_id: eventId,
     timestamp: Date.now() / 1000,
     platform: 'javascript',
-    server_name: 'usav-orders',
+    server_name: 'cycle-forge',
     level: 'error',
     environment: ENV,
     release: RELEASE,
@@ -99,7 +99,7 @@ export function captureError(err: unknown, ctx: ErrorContext = {}): void {
   };
 
   const envelope = [
-    JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString(), sdk: { name: 'usav-orders.inhouse', version: '0.1.0' } }),
+    JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString(), sdk: { name: 'cycle-forge.inhouse', version: '0.1.0' } }),
     JSON.stringify({ type: 'event', content_type: 'application/json' }),
     JSON.stringify(event),
   ].join('\n');

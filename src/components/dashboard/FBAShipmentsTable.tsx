@@ -57,7 +57,7 @@ function QtyCellWithRemove({ row }: { row: FBAShipmentLifecycleRow }) {
       });
       if (del.ok) {
         await queryClient.invalidateQueries({ queryKey: ['dashboard-fba-shipments'] });
-        window.dispatchEvent(new CustomEvent('usav-refresh-data'));
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
         window.dispatchEvent(new CustomEvent('dashboard-refresh'));
       }
     } finally {

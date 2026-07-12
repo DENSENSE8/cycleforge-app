@@ -10,15 +10,19 @@ import { buildTemplateSurfaceSeeds, seedTemplateSurfaces } from './template-surf
 import type { TemplateGraphNode } from './templates';
 import type { OrgId } from '@/lib/tenancy/constants';
 
+// Real engine node types (src/lib/workflow/nodes/*.node.ts): receiving,
+// inspection, pack, ship — NOT the old synthetic testing/fulfillment.
 const nodes: TemplateGraphNode[] = [
   { id: 'tpl-recv', type: 'receiving', x: 0, y: 0 },
-  { id: 'tpl-test', type: 'testing', x: 1, y: 0 },
-  { id: 'tpl-ship', type: 'fulfillment', x: 2, y: 0 },
-  { id: 'tpl-unmapped', type: 'not-a-surface-node', x: 3, y: 0 },
+  { id: 'tpl-inspect', type: 'inspection', x: 1, y: 0 },
+  { id: 'tpl-pack', type: 'pack', x: 2, y: 0 },
+  { id: 'tpl-ship', type: 'ship', x: 3, y: 0 },
+  { id: 'tpl-unmapped', type: 'not-a-surface-node', x: 4, y: 0 },
 ];
 const idMap = new Map<string, string>([
   ['tpl-recv', 'n-recv-1'],
-  ['tpl-test', 'n-test-1'],
+  ['tpl-inspect', 'n-inspect-1'],
+  ['tpl-pack', 'n-pack-1'],
   ['tpl-ship', 'n-ship-1'],
   ['tpl-unmapped', 'n-unmapped-1'],
 ]);
@@ -31,16 +35,19 @@ test('a receiving node seeds every receiving surface, bound to the re-minted id'
   for (const s of seeds) assert.equal(s.workflowNodeId, 'n-recv-1');
 });
 
-test('testing + fulfillment nodes seed their surfaces', () => {
-  const seeds = buildTemplateSurfaceSeeds([nodes[1], nodes[2]], idMap);
+test('inspection + pack + ship nodes each seed their own surface', () => {
+  const seeds = buildTemplateSurfaceSeeds([nodes[1], nodes[2], nodes[3]], idMap);
   const keys = new Set(seeds.map((s) => s.surfaceKey));
-  assert.ok(keys.has('test'), 'testing node → test surface');
-  assert.ok(keys.has('pack'), 'fulfillment node → pack surface');
-  assert.ok(keys.has('outbound'), 'fulfillment node → outbound surface');
+  assert.ok(keys.has('test'), 'inspection node → test surface');
+  assert.ok(keys.has('pack'), 'pack node → pack surface');
+  assert.ok(keys.has('outbound'), 'ship node → outbound surface');
+  // Distinct engine nodes now back pack vs outbound (were both 'fulfillment').
+  assert.equal(seeds.find((s) => s.surfaceKey === 'pack')?.workflowNodeId, 'n-pack-1');
+  assert.equal(seeds.find((s) => s.surfaceKey === 'outbound')?.workflowNodeId, 'n-ship-1');
 });
 
 test('a node whose type binds no surface, or that is unmapped, is skipped', () => {
-  assert.deepEqual(buildTemplateSurfaceSeeds([nodes[3]], idMap), []);
+  assert.deepEqual(buildTemplateSurfaceSeeds([nodes[4]], idMap), []);
   // Node present but not in the id map → skipped (no unmapped ids smuggled in).
   assert.deepEqual(buildTemplateSurfaceSeeds([nodes[0]], new Map()), []);
 });

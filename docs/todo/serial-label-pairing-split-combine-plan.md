@@ -8,11 +8,11 @@ context is acknowledged** in receiving and testing — without forking the exist
 **Status:** PLAN (not yet built). **Date:** 2026-07-06.
 
 **Related (already shipped / in flight):**
-- `docs/partial/handling-unit-lpn-plan.md` — LPN combine/split at the **physical box** layer (DONE)
-- `context/inventory_system_upgrade_plan.md` — GS1 Digital Link + per-unit state machine
-- `docs/todo/packing-checklist-plan.md` — pack-time BOM acknowledgement (orthogonal; ships at pack)
+- the shipped handling-unit LPN work — LPN combine/split at the **physical box** layer (DONE)
+- the inventory-system upgrade design — GS1 Digital Link + per-unit state machine
+- the packing-checklist work — pack-time BOM acknowledgement (orthogonal; ships at pack)
 - `docs/todo/polymorphic-tables-database-refactor-plan.md` — line vs unit grain for testing facts
-- `docs/todo/testing-priority-needs-test-plan.md` — queue priority vs needs-test (orthogonal axis)
+- the testing-priority / needs-test work — queue priority vs needs-test (orthogonal axis)
 
 ---
 
@@ -468,7 +468,7 @@ All routes: `withAuth` → Zod → domain helper → `recordAudit` → `client_e
 
 ### Phase 4 — GS1 + logistic labels (optional) — **later**
 
-Align with `inventory_system_upgrade_plan.md` Phase 1:
+Align with the inventory-system upgrade design (its Phase 1):
 - Product: `(01)GTIN(21)serial` when `sku_catalog.gtin` present
 - Carton: SSCC `(00)` for outbound — separate from prebox manifest
 

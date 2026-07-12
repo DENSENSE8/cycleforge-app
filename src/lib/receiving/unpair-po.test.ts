@@ -22,11 +22,11 @@ function fakes(carton: Record<string, unknown> | null = {
   const client: TxClient = {
     query: async (text: string, params: unknown[] = []) => {
       queries.push({ text, params });
-      if (/SELECT[\s\S]*FROM receiving\b/.test(text) && /source_platform/.test(text)) {
+      if (/SELECT[\s\S]*FROM receiving_carton\b/.test(text) && /source_platform/.test(text)) {
         return carton ? { rows: [carton], rowCount: 1 } : { rows: [], rowCount: 0 };
       }
-      // UPDATE receiving_lines reports 2 lines cleared.
-      if (/UPDATE receiving_lines/.test(text)) return { rows: [], rowCount: 2 };
+      // The spine line-clearing UPDATE reports 2 lines cleared.
+      if (/UPDATE receiving_line\s+SET source_order_id/.test(text)) return { rows: [], rowCount: 2 };
       return { rows: [], rowCount: 1 };
     },
   };
@@ -52,19 +52,28 @@ test('unpair clears line linkage + carton header and returns the before-snapshot
     return_platform: 'AMZ',
   });
 
-  // Lines: source order + PO stripped, scoped by receiving_id + org.
-  const lineUpd = queries.find((q) => /UPDATE receiving_lines/.test(q.text));
-  assert.ok(lineUpd, 'expected a receiving_lines UPDATE');
+  // Lines: source-order linkage stripped on the spine (spine-staying columns only).
+  const lineUpd = queries.find((q) => /UPDATE receiving_line\s+SET source_order_id/.test(q.text));
+  assert.ok(lineUpd, 'expected a receiving_line UPDATE');
   assert.ok(/source_order_id = NULL/.test(lineUpd!.text));
   assert.ok(/is_repair_service = FALSE/.test(lineUpd!.text));
   assert.ok(/receiving_type = CASE/.test(lineUpd!.text));
+  assert.ok(!/zoho_/.test(lineUpd!.text), 'spine UPDATE must not touch moved zoho columns');
   assert.deepEqual(lineUpd!.params, [7, 'org-1']);
+
+  // The line PO identity is cleared on receiving_line_zoho (W3 writer inversion).
+  const rzClear = queries.find((q) => /UPDATE receiving_line_zoho rz/.test(q.text));
+  assert.ok(rzClear, 'expected a receiving_line_zoho clear');
+  assert.ok(/zoho_purchaseorder_id = NULL/.test(rzClear!.text));
+  assert.ok(/zoho_purchaseorder_number = NULL/.test(rzClear!.text));
+  assert.ok(/zoho_purchaseorder_number_norm = NULL/.test(rzClear!.text));
+  assert.deepEqual(rzClear!.params, [7, 'org-1']);
 
   const returnFactsDel = queries.find((q) => /DELETE FROM receiving_line_return/.test(q.text));
   assert.ok(returnFactsDel, 'expected receiving_line_return DELETE');
 
   // Carton: explicit downgrade back to unmatched (PO + platform + return cleared).
-  const cartonUpd = queries.find((q) => /UPDATE receiving\b/.test(q.text) && /source = 'unmatched'/.test(q.text));
+  const cartonUpd = queries.find((q) => /UPDATE receiving_carton\b/.test(q.text) && /source = 'unmatched'/.test(q.text));
   assert.ok(cartonUpd, 'expected a carton downgrade UPDATE');
   assert.ok(/zoho_purchaseorder_id = NULL/.test(cartonUpd!.text));
   assert.ok(/source_platform = NULL/.test(cartonUpd!.text));
