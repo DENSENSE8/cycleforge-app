@@ -17,6 +17,7 @@ import {
   History,
   Inbox,
   Layers,
+  Layout,
   LayoutDashboard,
   Link2,
   List,
@@ -143,6 +144,10 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
+  // Home (personal triage + Plan/forge). Parked-aware: shown first only when the
+  // Home surface is unlocked (`DOGFOOD_FULL_SURFACE`), hidden for customers — so
+  // the locked-prod-nav tests still see it absent (HOME-OPS plan §3.4/§28).
+  { id: 'home',              label: 'Home',        href: '/',                   icon: Layout,          kind: 'main',    parkedSurface: 'home' },
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view' },
   { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
   { id: 'walk-in',           label: 'Walk-In',     href: '/walk-in',            icon: ShoppingCart,    kind: 'main',    requires: 'walk_in.view' },

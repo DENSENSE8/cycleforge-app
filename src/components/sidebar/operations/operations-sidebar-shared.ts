@@ -10,7 +10,7 @@
  * Pure data only — no JSX.
  */
 
-import { Activity, BarChart3, Sparkles, History, Barcode, MapPin, PackageCheck, Zap, ClipboardList } from '@/components/Icons';
+import { Activity, BarChart3, Sparkles, History, Barcode, MapPin, PackageCheck, Zap } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { JourneyDimension } from '@/lib/timeline/journey';
 
@@ -49,7 +49,9 @@ export const OPERATIONS_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'insights',  label: 'Insights',  icon: Sparkles },
   { id: 'history',   label: 'History',   icon: History },
   { id: 'signals',   label: 'Signals',   icon: Zap },
-  { id: 'plans',     label: 'Plans',     icon: ClipboardList },
+  // 'plans' removed as a primary Operations mode — forge/plans moved to Home
+  // (HOME-OPS plan §3.2). `?mode=plans` still resolves via the URL SoT and is
+  // redirected to Home by OperationsWorkspace, so bookmarks keep working.
 ];
 
 export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
