@@ -89,7 +89,7 @@ export function MyDayWorkspace() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
         <span className="ml-2 text-caption font-medium text-text-muted">Loading My Day…</span>
       </div>
@@ -98,7 +98,7 @@ export function MyDayWorkspace() {
 
   if (isError || !data) {
     return (
-      <div className="flex h-[calc(100vh-64px)] items-center justify-center px-6">
+      <div className="flex h-full items-center justify-center px-6">
         <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
           <p className="text-caption font-bold text-rose-700">Could not load My Day. Try refreshing.</p>
         </div>
@@ -113,7 +113,7 @@ export function MyDayWorkspace() {
     data.queueCards.length > 0;
 
   return (
-    <div className="flex h-[calc(100vh-64px)] min-h-0 overflow-hidden bg-surface-canvas text-text-default">
+    <div className="flex h-full min-h-0 overflow-hidden bg-surface-canvas text-text-default">
       {/* Left: ranked work list */}
       <div className="flex w-full max-w-md flex-col border-r border-border-soft bg-surface-card shadow-sm lg:w-[380px]">
         <div className="flex items-center justify-between border-b border-border-hairline px-4 py-3">
