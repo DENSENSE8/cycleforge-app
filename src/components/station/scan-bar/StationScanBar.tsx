@@ -138,9 +138,19 @@ export function StationScanBar({
   const modeButtonCount = showModeButtons ? visibleModes.length : 0;
   const hasActiveRightContent = hasRightContent && rightContent != null;
   const showRight = hasActiveRightContent || showPaste || modeButtonCount > 0;
+  // Count every right-rail chip so the input's pr-* clears the glass rail.
+  // mode+paste (or mode+spinner) used to keep pr-28 and clip/overlap icons.
+  const rightChipCount =
+    modeButtonCount + (showPaste ? 1 : 0) + (hasActiveRightContent ? 1 : 0);
 
   const padLeft = leadingIcon ? STATION_SCAN_BAR_PAD_LEFT_CLASS : STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS;
-  const padRight = showRight ? (modeButtonCount >= 2 ? 'pr-40' : 'pr-28') : 'pr-4';
+  const padRight = !showRight
+    ? 'pr-4'
+    : rightChipCount >= 3
+      ? 'pr-44'
+      : rightChipCount >= 2
+        ? 'pr-36'
+        : 'pr-24';
   const modeBtnShell = modeButtonCount >= 2 ? STATION_SCAN_BAR_MODE_BTN_COMPACT : STATION_SCAN_BAR_MODE_BTN;
 
   return (
@@ -222,7 +232,7 @@ export function StationScanBar({
             )}
           >
             {modeButtonCount > 0 ? (
-              <div className="flex items-center gap-0">
+              <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="Scan mode">
                 {visibleModes.includes('plan') ? (
                   <button
                     type="button"
@@ -238,7 +248,7 @@ export function StationScanBar({
                         : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
                     )}
                   >
-                    <ClipboardList className="h-3.5 w-3.5" />
+                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />
                   </button>
                 ) : null}
                 {visibleModes.includes('select') ? (
@@ -256,19 +266,25 @@ export function StationScanBar({
                         : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
                     )}
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5 shrink-0" />
                   </button>
                 ) : null}
               </div>
             ) : null}
-            {hasActiveRightContent && rightContent}
+            {hasActiveRightContent ? (
+              <div className="flex shrink-0 items-center">{rightContent}</div>
+            ) : null}
             {showPaste ? (
               <IconButton
                 onClick={() => void handlePasteClick()}
-                className={cn(STATION_SCAN_BAR_MODE_BTN_COMPACT, STATION_SCAN_BAR_MODE_BTN_INACTIVE)}
+                className={cn(
+                  STATION_SCAN_BAR_MODE_BTN_COMPACT,
+                  STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                  'shrink-0',
+                )}
                 title="Paste from clipboard"
                 ariaLabel="Paste from clipboard"
-                icon={<Clipboard className="h-3.5 w-3.5" />}
+                icon={<Clipboard className="h-3.5 w-3.5 shrink-0" />}
               />
             ) : null}
           </div>

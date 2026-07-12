@@ -1,13 +1,45 @@
-# Precision Operations Architecture
+# Kinetic Ledger — Cycle Forge design system
 
-This design system implements the "Kinetic Ledger" direction for dense operations interfaces.
+This folder is the code SoT for **Kinetic Ledger**: data-first reseller-ops UI — dense, state-colored, scan-aware,
+multi-tenant. **Legible throughput** over document calm.
+
+**Agent law (always-on):** root `AGENTS.md` → Kinetic Ledger five laws.  
+**Recipes:** `.claude/rules/ui-design-system.md`, `.claude/rules/contextual-display.md`.
 
 ## North Star
 
+### Product identity
+
+- Multi-tenant **reseller operations** (warehouse floors, boards, tables, timelines, Studio graph, mobile scan).
+- Industry blend: **ops density** (Carbon / Stripe Dashboard) + **Linear chrome discipline** + **POS/scan floors** + **Studio canvas**.
+- Not a document product skin. Calm chrome is fine; document whitespace as the product shape is not.
+
+### Five laws
+
+1. **Facts and state drive chrome** — chrome never invents a second story.
+2. **Region contracts** (Station / Workbench / Monitor / Canvas) are I/O + persistence — not layout skins.
+3. **Data shape chooses primary surface** — table | list | board | card | timeline | KPI zones | canvas.
+4. **Presentation kinds resolve via SoT modules** — labels, tones, chips, dates, capabilities, search hits; views stay dumb.
+5. **Compose named primitives/blocks; grow the SoT when wrong** — pattern evolution, not freeze.
+
+### Density modes (map to spacing density tokens when building)
+
+| Mode | When | Feel |
+|---|---|---|
+| `floor` | Station / mobile scan | One focus, big state, fail loud |
+| `ops` | Daily pick+edit, boards, tables | Dense rows, inline actions |
+| `rollup` | Analytics / goals | KPI heroes, named SectionCard zones |
+| `studio` | Graph authoring | Spatial canvas; inspector secondary |
+
+Token density presets also exist as `compact` / `standard` / `spacious` in `tokens/spacing.ts` — use them under the mode above.
+
+### Visual principles
+
 - Data-first hierarchy and compact scanning.
-- Line-based separators over card-heavy layouts.
+- Line-based separators over **random** card-heavy soup (named rollup cards and boards are allowed).
 - Functional color cues for instant state recognition.
-- Inline editing and inline actions as the default interaction model.
+- Inline editing and inline actions as the default interaction model for ops surfaces.
+- Typed chips / status presentation via SoTs — not ad-hoc pill invention.
 
 ## Implemented In This Folder
 
@@ -159,12 +191,13 @@ the dark-mode flip of these tones is **T2**.
 
 ## System Rules
 
-- No card dependency for ordinary data rows.
+- Prefer **rows + dividers** for ordinary collections — not nested card grids as list items.
+- Named rollup zones (`SectionCard`, `KpiStrip`) and pipeline boards are first-class when data shape requires them.
 - Primary separation through ghost borders and tonal shifts.
-- Labels: 9px, uppercase, heavy weight, tracked.
+- Labels: 9px, uppercase, heavy weight, tracked (see typography presets).
 - Values: 13px bold, with monospace for technical identifiers.
-- Status communication via text + underline, not pill badges.
-- Interaction micro-motion: 100-150ms.
+- **Status / identifiers:** resolve via presentation SoTs — `StatusText` / lifecycle tones / typed `CopyChip` / condition chips as appropriate. Do not invent a parallel badge system.
+- Interaction micro-motion: 100–150ms; named Framer presets only (`foundations/motion-framer.ts` + reduced-motion hooks).
 
 ## Desktop ↔ Mobile Design Mapping
 

@@ -1,15 +1,14 @@
 'use client';
 
-import {
-  OrderIdChip,
-  PlatformChip,
-  TrackingOrSkuScanChip,
-  TrackingCountChip,
-  getLast4,
-} from '@/components/ui/CopyChip';
-import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
+import { TrackingCountChip } from '@/components/ui/CopyChip';
+import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { RowTitle, RowMetaColumns } from '@/components/ui/RowMetaColumns';
-import { getOrderPlatformColor, getOrderPlatformBorderColor, isFbaOrder } from '@/utils/order-platform';
+import {
+  getOrderPlatformColor,
+  getOrderPlatformBorderColor,
+  isFbaOrder,
+  marketplaceOrderUrl,
+} from '@/utils/order-platform';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -58,30 +57,6 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
   );
   const trackingValue = trackings.size === 1 ? [...trackings][0] : '';
 
-  const platformNode = !isFba ? (
-    <PlatformChip
-      label={platformLabel}
-      underlineClass={getOrderPlatformBorderColor(platformLabel)}
-      iconClass={platformIconClass}
-      onClick={() => {
-        if (productPageUrl) window.open(productPageUrl, '_blank', 'noopener,noreferrer');
-      }}
-    />
-  ) : null;
-  const trackingNode = trackingValue
-    ? <TrackingOrSkuScanChip value={trackingValue} />
-    : trackings.size > 1
-      ? <TrackingCountChip count={trackings.size} />
-      : null;
-
-  // The row's platform / order-id / tracking columns line up column-for-column
-  // with the child rows beneath.
-  const columns: ChipColumn[] = [
-    { key: 'platform', width: CHIP_COL.platform, node: platformNode },
-    { key: 'orderid', width: CHIP_COL.id, node: <OrderIdChip value={orderId} display={getLast4(orderId)} /> },
-    { key: 'tracking', width: CHIP_COL.tracking, node: trackingNode },
-  ];
-
   return (
     <div className={dashboardOrderRowShellClass(isMobile)}>
       <div className="flex min-w-0 flex-col">
@@ -98,18 +73,23 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
           rest={groupPrice ? <span className="normal-case tracking-normal text-text-success">{groupPrice}</span> : null}
         />
       </div>
-      {isMobile ? (
-        <div className={dashboardOrderRowChipsClass(true)}>
-          {platformNode}
-          <OrderIdChip value={orderId} display={getLast4(orderId)} dense />
-          {trackingValue
-            ? <TrackingOrSkuScanChip value={trackingValue} />
-            : trackings.size > 1
-              ? <TrackingCountChip count={trackings.size} dense />
-              : null}
+      {trackings.size > 1 ? (
+        <div className={dashboardOrderRowChipsClass(isMobile)}>
+          <TrackingCountChip count={trackings.size} dense={isMobile} />
         </div>
       ) : (
-        <ChipColumns columns={columns} />
+        <OrderIdentityChips
+          platformLabel={platformLabel}
+          platformIconClass={platformIconClass}
+          platformBorderClass={getOrderPlatformBorderColor(platformLabel)}
+          productPageUrl={productPageUrl}
+          marketplaceOrderUrl={marketplaceOrderUrl(orderId, first.account_source)}
+          isFba={isFba}
+          orderId={orderId}
+          hideOrderId={false}
+          tracking={trackingValue}
+          isMobile={isMobile}
+        />
       )}
     </div>
   );

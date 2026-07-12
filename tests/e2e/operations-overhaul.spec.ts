@@ -1,39 +1,27 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Operations page overhaul smoke (P3-ADM-01).
+ * Operations Live — slim Monitor smoke (dashboard-ops-ux plan, Slices 2–3 + 8).
  *
- * Drives the live /operations page read-only and asserts the three acceptance
- * pillars render in order:
- *   A. Goal-first — the "Today's goal" hero is the FIRST section (above the KPI
- *      snapshot), showing the floor-wide goal ring + units.
- *   B. Live stats — the KPI snapshot ("Numbers at a glance") + live feed render
- *      from /api/dashboard/operations (org-scoped, polled + Ably-patched).
- *   C. Agent hooks — the "Agents paired to the workflow" row lists the local
- *      agents (Hermes / Vision / Workflow engine), each deep-linking to /studio.
+ * Live is a **Monitor**: Goal → KPIs → Exceptions → Pipeline → Feed (+ modal).
+ * The demoted sections (Agents, StaffGoals, Inventory, Velocity, Matrix/
+ * PerformanceGoals, Support) and the `PendingOrdersTable` order ledger were
+ * unmounted from Live — a ledger is a Workbench, the wrong archetype on a
+ * Monitor. This spec asserts the surviving pillars render in order AND that the
+ * order ledger is gone.
  *
  * Read-only: it never mutates and takes no build lock (mirrors
  * design-demo-showcase.spec.ts). Desktop project only.
  */
 
-test.describe('Operations overhaul', () => {
-  test('goal hero is first, live stats + agent hooks render', async ({ page }) => {
+test.describe('Operations Live (slim Monitor)', () => {
+  test('goal hero is first, live stats + feed render, no order ledger', async ({ page }) => {
     test.skip(test.info().project.name === 'mobile', 'Desktop operations surface');
 
     await page.goto('/operations');
 
     // ── A. Goal-first: the goal hero ── (eyebrow is the top section)
     await expect(page.getByText("Today's goal", { exact: false }).first()).toBeVisible();
-
-    // ── C. Agent hooks: the local-agents row + a Studio deep-link ──
-    await expect(
-      page.getByRole('heading', { name: /Agents paired to the workflow/i }),
-    ).toBeVisible();
-    for (const name of ['Hermes', 'Vision', 'Workflow engine']) {
-      await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
-    }
-    // At least one agent card links into the Studio graph.
-    await expect(page.getByRole('link', { name: /Map in Studio/i }).first()).toBeVisible();
 
     // ── B. Live stats: the KPI snapshot + live feed ──
     await expect(page.getByRole('heading', { name: 'Numbers at a glance' })).toBeVisible();
@@ -50,5 +38,10 @@ test.describe('Operations overhaul', () => {
       return (pos & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     }, await snapshot.elementHandle());
     expect(order, 'goal hero should precede the KPI snapshot').toBeTruthy();
+
+    // ── Slim: the order ledger ("Outbound pending orders") is NOT on Live ──
+    // A pending-orders table is a Workbench (durable selection + edit); it lives
+    // on /dashboard, not on the Monitor. Its section header must not render here.
+    await expect(page.getByText('Outbound pending orders', { exact: false })).toHaveCount(0);
   });
 });

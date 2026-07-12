@@ -45,8 +45,8 @@ export function useDashboardSearchController() {
     [],
   );
   const showIntakeForm = searchParams.get('new') === 'true';
-  // FBA and Warranty render their own detail surfaces, not the shipped/unshipped panel.
-  const detailsEnabled = orderView !== 'fba' && orderView !== 'warranty';
+  // FBA renders its own detail surface, not the shipped/unshipped panel.
+  const detailsEnabled = orderView !== 'fba';
 
   const updateSearch = useCallback((mutate: (params: URLSearchParams) => void, nextPathname = '/dashboard') => {
     const nextParams = new URLSearchParams(searchParams.toString());

@@ -45,7 +45,7 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     label: 'Home',
     href: '/',
     blurb: 'We’re still building this view. Your day-to-day work lives in shipping and the stations.',
-    primaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
+    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
     secondaryCta: { href: '/pack', label: 'Open Packing' },
   },
   sourcing: {
@@ -53,7 +53,7 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     label: 'Sourcing',
     href: '/sourcing',
     blurb: 'Sourcing is still being built. You can keep working from orders and receiving for now.',
-    primaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
+    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
     secondaryCta: { href: '/unbox', label: 'Open Unbox' },
   },
   inventory: {
@@ -61,7 +61,7 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     label: 'Inventory',
     href: '/inventory',
     blurb: 'This inventory workspace is still in progress. Stock work continues through packing and receiving.',
-    primaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
+    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
     secondaryCta: { href: '/pack', label: 'Open Packing' },
   },
   warehouse: {
@@ -70,15 +70,15 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     href: '/warehouse',
     blurb: 'Warehouse map and bins are still in progress. Receiving and shipping remain available.',
     primaryCta: { href: '/unbox', label: 'Open Unbox' },
-    secondaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
+    secondaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
   },
   fba: {
     key: 'fba',
     label: 'FBA prep',
-    href: '/fba',
-    blurb: 'FBA prep is still in progress. For outbound work, use Orders / Shipping or labels.',
-    primaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
-    secondaryCta: { href: '/outbound', label: 'Open Outbound labels' },
+    href: '/outbound?mode=fba',
+    blurb: 'FBA prep now lives under Outbound (Ready queue + FBA station). Status stays on Dashboard.',
+    primaryCta: { href: '/outbound?mode=fba', label: 'Open FBA prep' },
+    secondaryCta: { href: '/outbound?mode=ready', label: 'Open Ready queue' },
   },
   studio: {
     key: 'studio',
@@ -86,7 +86,7 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     href: '/studio',
     blurb: 'Studio is still in progress. Floor activity is available under Operations.',
     primaryCta: { href: '/operations', label: 'Go to Operations' },
-    secondaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
+    secondaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
   },
   'ai-chat': {
     key: 'ai-chat',
@@ -94,7 +94,7 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     href: '/ai-chat',
     blurb: 'This chat workspace is still in progress. You can continue from Operations or shipping.',
     primaryCta: { href: '/operations', label: 'Go to Operations' },
-    secondaryCta: { href: '/dashboard', label: 'Go to Orders / Shipping' },
+    secondaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
   },
 };
 

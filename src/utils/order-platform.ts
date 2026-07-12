@@ -70,3 +70,39 @@ export function getOrderSourceTag(
 ): 'FBA' | 'Orders' {
   return isFbaOrder(orderId, accountSource) ? 'FBA' : 'Orders';
 }
+
+/**
+ * Marketplace order detail URL for "Open on {platform}" from identity chips.
+ * Returns null when the channel/id shape is unknown (menu row stays hidden).
+ */
+export function marketplaceOrderUrl(
+  orderId: string | null | undefined,
+  accountSource: string | null | undefined,
+): string | null {
+  const oid = String(orderId ?? '').trim();
+  if (!oid || oid === 'Not available' || oid === 'N/A') return null;
+  if (isFbaOrder(oid, accountSource)) return null;
+
+  const label = getOrderPlatformLabel(oid, accountSource).toLowerCase();
+  const src = String(accountSource || '').trim().toLowerCase();
+
+  // Amazon MFN order id shape 123-1234567-1234567
+  if (label === 'amazon' || /^\d{3}-\d+-\d+$/.test(oid)) {
+    return `https://sellercentral.amazon.com/orders-v3/order/${encodeURIComponent(oid)}`;
+  }
+  // eBay order id 12-12345-12345 (or longer legacy forms)
+  if (label === 'ebay' || src === 'ebay' || /^\d{2}-\d+-\d+$/.test(oid)) {
+    return `https://www.ebay.com/mesh/ord/details?orderid=${encodeURIComponent(oid)}`;
+  }
+  // Walmart 15-digit
+  if (label === 'walmart' || src === 'walmart' || /^\d{15}$/.test(oid)) {
+    return `https://seller.walmart.com/orders/manage-orders?orderId=${encodeURIComponent(oid)}`;
+  }
+  // Ecwid storefront admin — best-effort; tenant store id is not always known client-side
+  if (label === 'ecwid' || src === 'ecwid') {
+    return null;
+  }
+
+  return null;
+}
+

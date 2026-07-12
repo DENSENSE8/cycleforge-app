@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { outboundOrderByIdQuery } from '@/lib/queries/outbound-queries';
@@ -8,6 +8,8 @@ import { LabelsOrderWorkspace } from '@/components/outbound/labels/LabelsOrderWo
 import { LabelsQueueTable } from '@/components/outbound/labels/LabelsQueueTable';
 import { OutboundDocumentsPrintView } from '@/components/outbound/labels/OutboundDocumentsPrintView';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
+import { ReadyQueueTable } from '@/components/outbound/ready/ReadyQueueTable';
+import { FbaOutboundWorkspace } from '@/components/fba/FbaOutboundWorkspace';
 import { ShippedDetailsPanel } from '@/components/shipped/ShippedDetailsPanel';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
@@ -70,6 +72,24 @@ export function OutboundWorkspace() {
     ...useMotionPresence(framerPresence.workbenchPane),
     transition: useMotionTransition(framerTransition.workbenchPaneMount),
   };
+
+  if (mode === 'fba') {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex h-full w-full items-center justify-center bg-surface-card">
+            <LoadingSpinner size="lg" className="text-violet-600" />
+          </div>
+        }
+      >
+        <FbaOutboundWorkspace />
+      </Suspense>
+    );
+  }
+
+  if (mode === 'ready') {
+    return <ReadyQueueTable searchQuery={q} />;
+  }
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden">

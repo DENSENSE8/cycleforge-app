@@ -112,7 +112,7 @@ export function SecondaryKPITiles({ summary }: Props) {
         sub="Pending orders flagged"
         Icon={AlertCircle}
         tone={{ ring: 'bg-rose-50', text: 'text-rose-700', pulse: 'bg-rose-500' }}
-        href="/orders?filter=out_of_stock"
+        href="/dashboard?unshipped&ustatus=BLOCKED"
         sourceDef={OPERATIONS_SECONDARY_KPI_SOURCES.outOfStock}
       />
       <SecondaryTile

@@ -4,19 +4,20 @@ description: Enforces the canonical sidebar/mode architecture when adding any ne
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-# Sidebar & Mode — the one true pattern
+# Sidebar & Mode — the master–detail Workbench recipe
 
-Every page in this app is a **contextual sidebar + a mostly-visual right pane**. New
-functionality is added as a **mode** inside that page's sidebar — NOT as a new
-floating panel, a new top-bar tab, a bespoke `useState` view-switcher, or a chunk of
-chrome bolted onto the right pane. This skill exists because new features keep getting
-wired up "as a different method" instead of plugging into the existing mode system.
+**Scope:** pages that already use (or correctly need) the **sidebar map + focus pane** Workbench
+recipe for mode-scoped pick+edit. This is **not** “every Cycle Forge surface is dual-pane” —
+Kinetic Ledger (`AGENTS.md`) allows tables, boards, stations, and rollups as primary surfaces.
 
-When you are adding a feature, view, list, tab, filter, or search to any page, follow
-this contract exactly. If a requirement seems to fight the contract, stop and surface
-it — do not invent a parallel mechanism.
+When you are adding a feature, view, list, tab, filter, or search **to a sidebar-driven page**,
+follow this contract. If the job is Station, pure Monitor, Canvas, or a table/board-primary Workbench
+without a mode sidebar, **do not force this skill** — use `contextual-display.md` + the right child recipe.
 
-## The four laws
+This skill exists because new features keep getting wired as floating panels or right-pane chrome
+instead of modes on pages that already use `SidebarShell`.
+
+## The four laws (sidebar-driven Workbench pages)
 
 1. **A new feature display = a new MODE in the sidebar.** Modes are a `XxxMode` string
    union + a `XxxMODE_ITEMS: HorizontalSliderItem[]` array, rendered with
@@ -25,7 +26,7 @@ it — do not invent a parallel mechanism.
 2. **Search ALWAYS lives in the sidebar**, and is rendered by `SidebarShell` via its
    `search` prop. Never render `<SidebarSearchBar>` yourself, never put a search input
    in the right pane.
-3. **The right pane is mainly VISUAL DISPLAY.** It reacts to what the sidebar selects.
+3. **The right pane is mainly VISUAL DISPLAY / focus surface.** It reacts to what the sidebar selects.
    It does not own search, mode switching, or filtering. Selection flows sidebar → pane
    via URL params (`?open=`) or a CustomEvent — not via the right pane reaching back.
 4. **The sidebar is contextual per page AND per mode.** Each mode shows its own search

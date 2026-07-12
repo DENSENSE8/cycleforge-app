@@ -10,6 +10,7 @@
 |-------|-----------|
 | **Live Now vs Change + ticket status (app)** | `/forge` → Operations ▸ Plans live — **`CONN-*` tickets are in repo-root `master-plan.mdx`** (extracted from the HTML). See [`connections-mdx-forge-plan.md`](../todo/connections-mdx-forge-plan.md) |
 | **Re-extract checkboxes → MDX** | `node scripts/extract-connections-mdx.mjs --write` then `--check` |
+| **Org adoption checklist (QA / customers)** | `POST /api/ops-plans/from-template` `{ "templateKey": "connections_gap_adoption" }` — stamps **your** `organization_id`; tasks use `conn-adopt:*` |
 | **Viewing the legacy browser HTML (deprecated)** | [`staff-connections-planning.html`](./staff-connections-planning.html) — **mirror only**; localStorage checkboxes do **not** sync to forge |
 | **Running or taking a 1-on-1 staff upgrade** | [`staff/INDEX.md`](./staff/INDEX.md) — upgrade hub + topic catalog |
 | **Updating a human-readable plan** | A file under [`staff/`](./staff/) — edit freely |

@@ -1,23 +1,28 @@
 # Contextual display rules — master index
 
-One house style (`ui-design-system.md`), but **four display archetypes**. Which one a surface follows is decided by
-the **user's job and input model**, not by the feature area. **Pick the archetype first**, then apply the shared house
-style *inside* it. Mixing two archetypes in one region — a browse list inside a station, related items where the picker
-belongs, edit controls bolted onto a read-only dashboard — is the **single most common way these surfaces start to feel
-wrong**.
+House identity is **Kinetic Ledger** (`AGENTS.md`, `ui-design-system.md`, `src/design-system/DESIGN_SYSTEM.md`).
+This file is the **entry point** for **region contracts** and **data-driven surfaces**.
 
-This file is the **entry point** and the **decision algorithm**. The four archetypes and the cross-cutting motion/timeline
-patterns each have a deep child doc under `display/` (see [the index](#index-of-child-docs)). Read this file to pick the
-archetype; read the child doc to build it.
+**Contracts are not layout skins.** Station / Workbench / Monitor / Canvas answer *what may scan, select, edit, or observe* — not “must be sidebar + right pane” or “no grids.”
+
+Pick in this order:
+
+1. **Region contract** (`pickArchetype` Q1→Q4)
+2. **Data shape → primary surface**
+3. **Density** (`floor` | `ops` | `rollup` | `studio`)
+4. **Compose / grow** named shells; resolve presentation kinds via SoTs
+
+Mixing two **contracts** in one region — a browse list inside a station, edit controls bolted onto a pure observe surface — is the single most common way surfaces feel wrong.
 
 The discriminator, in one line: **does the region react to a *scanner*, an *observer*, a *graph*, or a *pointer*?**
 
+Child recipes: [display/](display/) (see [index](#index-of-child-docs)).
+
 ---
 
-## The decision algorithm (pick the archetype first)
+## Step A — Pick the region contract
 
-A mechanical procedure for picking the archetype — run it **per region**, not per page. A page with N jobs is N
-regions; each region gets exactly one archetype.
+A mechanical procedure — run it **per region**, not per page. A page with N jobs is N regions; each region gets exactly one contract.
 
 ### Discriminator questions — run in order, first **yes** wins
 
@@ -27,34 +32,13 @@ regions; each region gets exactly one archetype.
   and **no durable selection** (read-only, filters are throwaway URL params)? → **Monitor.**
 - **Q3 — TOPOLOGY (node-graph?):** Is the primary surface a **spatial node-graph** the user **pans / zooms / focuses**
   (semantic-zoom depths, overlay lenses, an inspector as secondary detail)? → **Canvas.**
-- **Q4 — DEFAULT (pick + edit):** Otherwise the user **picks a record from a list and edits it** (durable,
+- **Q4 — DEFAULT (pick + edit):** Otherwise the user **picks a record and edits it** (durable,
   URL-addressable selection, CRUD). → **Workbench.** Workbench is the fallthrough.
 - **Q5 — CARDINALITY sanity check:** one transient entity at a time → Station; many records you navigate+edit →
   Workbench; an append-only event stream you read → Monitor; a graph of nodes+edges → Canvas. If cardinality contradicts
   Q1–Q4, **re-read the JOB** — the job wins, never the feature area.
 - **Q6 — RISK / PERSISTENCE:** act-and-clear (no undo trail in URL) → Station; edit-and-keep (persists via CRUD route) →
   Workbench; nothing persists (pure read) → Monitor; draft→publish of a definition → Canvas.
-
-### Procedure
-
-1. **Name the JOB and INPUT MODEL in one sentence** — e.g. "operator scans cartons to receive them" / "author edits a
-   SKU's QC checklist" / "manager watches today's throughput" / "owner reshapes the ops graph". **Do not** start from the
-   route or the feature area.
-2. **Run Q1→Q4 in order; the first yes selects the archetype for THIS REGION.** Scanner → Station; observe-only →
-   Monitor; node-graph → Canvas; everything else → Workbench.
-3. **If a page hosts multiple jobs** (a scan bench with an inspector; a Monitor page with a clickable detail), **split it
-   into regions** and run the algorithm per region. Each region obeys exactly one archetype.
-4. **Instantiate the chosen archetype's scaffold** from its child doc (Station = scan bar + active card; Workbench =
-   sidebar picker + right pane; Monitor = filter + `EventTimeline`/rollup; Canvas = React-Flow + inspector). **Reuse the
-   named reference modules; compose rails, never fork them.**
-5. **Apply the shared house style INSIDE the archetype** (`ui-design-system.md`: semantic tokens, linear scaffold,
-   one-row anatomy, eyebrow+chips, `HoverTooltip`, icon pairing).
-6. **Wire motion** from [`display/motion-crossfade.md`](display/motion-crossfade.md): Station crossfades the active card;
-   Workbench/Monitor-detail crossfades the right pane (never the list); Canvas repaints overlays on lens/zoom (never
-   crossfades the graph). Route every preset through `useMotionTransition`/`useMotionPresence` so `prefers-reduced-motion`
-   is automatic.
-7. **Re-check the [anti-mix rules](#choosing--not-mixing).** If any fires, you picked the wrong archetype or didn't split
-   regions — go back to step 2.
 
 ### `pickArchetype()` — the decision table as code
 
@@ -67,253 +51,199 @@ function pickArchetype(region) {
     return 'monitor';                                            // Q2 — read-only stream/rollup
   if (region.dataShape === 'node-graph' && region.navigation === 'pan-zoom-focus')
     return 'canvas';                                             // Q3 — spatial graph
-  return 'workbench';                                            // Q4 — default: list→select→detail→edit
+  return 'workbench';                                            // Q4 — default: pick → edit
 }
-// A page with N jobs => split into N regions, run per region; never blend two archetypes in one region.
+// A page with N jobs => split into N regions, run per region; never blend two contracts in one region.
 // On ambiguity, the JOB (observe vs edit vs act-and-clear vs reshape) decides — not the feature area or route.
 ```
 
-> **Code home (operator surfaces refactor).** This algorithm is implemented in
-> `src/lib/stations/archetype.ts` (`pickArchetype()` — explicit hint wins, else runs Q1→Q4). Each
-> first-class operator surface declares its archetype in the closed `SURFACE_REGISTRY`
-> (`src/lib/stations/surface-keys.ts`): a stable `SurfaceKey` (`unbox`, `triage`, `incoming`, …) → route
-> + archetype + permission + `station_definitions` `page_key`/`mode_key`. A surface renders its legacy
-> tree by default and, once an org publishes a composition + enables `surface_composed_render`, through
-> the `SurfaceRenderer`/`StationSlot` host (`resolveSurface` / `SurfaceGate`). See
-> `docs/todo/studio-driven-operator-surfaces-refactor-plan.md`.
+> **Code home.** Implemented in `src/lib/stations/archetype.ts` (`pickArchetype()` — explicit hint wins, else Q1→Q4).
+> First-class surfaces declare contracts in `SURFACE_REGISTRY` (`src/lib/stations/surface-keys.ts`).
+> Composed render path: `SurfaceRenderer` / `StationSlot` when `surface_composed_render` is on.
+> See `docs/todo/studio-driven-operator-surfaces-refactor-plan.md`.
 
 ---
 
-## At a glance
+## Step B — Data shape → primary surface
 
-| | **Station** (scan) | **Workbench** (browse/edit) | **Monitor** (observe) | **Canvas** (node-graph) |
+**After** the contract, choose the primary surface from data — not from habit.
+
+| Data shape | Primary surface | Secondary (optional) |
+|---|---|---|
+| Singleton transient | Station active card | HUD / offline |
+| Singleton durable | Fact stack + actions | Timeline / related tools |
+| Many records + pick | List **or** table **or** board | Inspector / fact stack / drawer |
+| Event stream | Timeline / feed | Filter band only |
+| Rollup metrics | KPI strip + SectionCards | Drill filters |
+| Definition graph | Canvas | Inspector |
+
+**Context rail / right pane / detail drawer = optional secondary.** It is a common Workbench *recipe*, not Workbench identity.
+
+Density defaults: Station → `floor`; Workbench collection edit → `ops`; Monitor → `rollup`; Canvas → `studio`.
+
+---
+
+## At a glance (contracts)
+
+| | **Station** | **Workbench** | **Monitor** | **Canvas** |
 |---|---|---|---|---|
-| Driven by | a scanner | a pointer | data flowing in (poll/SSE) | pan / zoom / focus |
-| Primary input | focus-locked scan bar | searchable sidebar picker | ephemeral filter params | the canvas + lenses |
-| Selection | ephemeral (one at a time) | durable, URL-addressable (`?skuId=`) | none (filters only) | durable focus (`?focus=`) |
-| What crossfades | the **active card** | the **right pane** (detail), not the list | the detail/drill, not the stream | overlay repaint on lens/zoom, not the graph |
-| Sidebar role | minimal chrome / none | the master picker (never forked) | mode/filter rail | mode + lens rail; inspector is secondary |
-| Persistence | act-and-clear | edit-and-keep (CRUD) | nothing persists (pure read) | draft → publish |
-| Empty / error | "station down" is first-class | teaching empty + retryable, degrade-not-fail | empty range / no-events teaching state | empty graph / failed-version state |
-| Reference modules | `StationScanBar`, `StationPacking`, `PackChecklist`, `OfflineBanner` | `ProductsWorkspace`, `QcChecklistWorkspace`, `SidebarRailShell` | `OperationsWorkspace`, `EventTimeline` | `StudioShell`, `StudioCanvas`, `StudioInspector` |
-| Deep dive | [station.md](display/station.md) | [workbench.md](display/workbench.md) | [monitor-and-canvas.md](display/monitor-and-canvas.md) | [monitor-and-canvas.md](display/monitor-and-canvas.md) |
+| Driven by | scanner | pointer | stream / poll | pan / zoom / focus |
+| Job | act-and-clear | pick + edit | observe | reshape definition |
+| Selection | ephemeral | durable URL | none (filters only) | durable focus URL |
+| What may crossfade | **active card** | **focus detail region** (pane/drawer/stack) — never the collection map | drill/detail only — never the stream | overlay repaint — never the graph |
+| Common primary surfaces | scan card | list / table / board / master–detail | timeline / KPI rollup | React Flow graph |
+| Persistence | act-and-clear | CRUD | none | draft → publish |
+| Empty / error | station-down first-class | teaching empty + degrade-not-fail | empty range teaching | empty graph / failed version |
+| Density default | `floor` | `ops` | `rollup` | `studio` |
+| Reference modules | `StationScanBar`, `StationPacking`, `PackChecklist`, `OfflineBanner` | `ProductsWorkspace`, `SidebarRailShell`, boards/tables in feature folders | `MonitorPageShell`, `SectionCard`, `KpiStrip`, `EventTimeline` | `StudioShell`, `StudioCanvas`, `StudioInspector` |
+| Deep dive | [station.md](display/station.md) | [workbench.md](display/workbench.md) | [monitor-and-canvas.md](display/monitor-and-canvas.md) · [monitor-rollup-blocks.md](display/monitor-rollup-blocks.md) | [monitor-and-canvas.md](display/monitor-and-canvas.md) |
 
 ---
 
-## The four archetypes in brief
+## The four contracts in brief
 
 ### Station — `scan → crossfade → display`
 
-**Scanner-driven.** A **persistent, focus-locked scan bar** pinned at the top; below it a **single "active entity" card**
-that *replaces* the previous one on each scan. Minimal chrome (goal/throughput HUD). Selection is **ephemeral** — resolve
-→ act → clear → re-focus for the next scan; never written to the URL. **"Station down" is first-class** — offline /
-printer-down / scale-down show via `OfflineBanner` and never block the next scan. Reference modules:
-`src/components/station/scan-bar/StationScanBar.tsx`, `src/components/station/StationPacking.tsx`,
-`src/components/station/PackChecklist.tsx`, `src/lib/station-scan-routing.ts`, `src/lib/scan-hotkey/store.ts`,
-`src/components/layout/OfflineBanner.tsx`. The mobile scan flows (`ScanInput`/`UniversalScan` on `MobileShell`) are the
-**same archetype on a phone shell**, not a fifth one.
+**Scanner-driven.** Focus-locked scan bar + single active-entity card that *replaces* on each scan. Selection is **ephemeral** — never URL. Station-down is first-class (`OfflineBanner`). Density **`floor`**. Presentation of the active unit is a **fact stack** resolved via SoTs.
 
-> Rule of thumb: if the input is a scanner and the operator's hands are busy, the **screen serves the scan, not the
-> pointer.** Don't add browsable lists, hover-reveal detail, or persistent selection — they slow the only thing that
-> matters here (the next scan). → Deep dive: [`display/station.md`](display/station.md).
+> Screen serves the scan, not the pointer. No competing browse grids. → [display/station.md](display/station.md).
 
-### Workbench — `list → select → detail → update`
+### Workbench — `select → edit → persist`
 
-**Pointer-driven.** The **sidebar is the primary picker** — a searchable master list, the stable navigator for every mode
-in the page. The **right pane is the selected record's detail/editor**, and selection is carried in the **URL**
-(`?skuId=`) so every view is deep-linkable. **Compose the rail, never fork it** (`SidebarRailShell`); related/similar is
-**progressive disclosure** *below* the picker, never an inverted sidebar. Empty/error must **teach and degrade** — a
-failing sub-resource renders empty, it never 500s the whole record. Reference modules:
-`src/components/products/ProductsWorkspace.tsx`, `src/components/products/QcChecklistWorkspace.tsx`,
-`src/components/sidebar/SidebarRailShell.tsx`, `src/components/ui/HorizontalButtonSlider.tsx`,
-`src/components/receiving/ReceivingRightPane.tsx`.
+**Pointer-driven pick+edit** with **durable, URL-addressable selection** and CRUD. That is the contract.
 
-> Rule of thumb: if the user **picks from a list and edits**, the **sidebar is the map and the right pane is the
-> workspace.** Keep the map stable; transition the workspace. → Deep dive: [`display/workbench.md`](display/workbench.md).
+**Common recipes** (data shape picks one):
+
+1. **Master–detail** — sidebar picker (`SidebarShell` / `SidebarRailShell`) + right-pane workspace (Products, many receiving flows).
+2. **Table or board + optional inspector** — collection is primary (orders queue, FBA board); context opens on selection.
+3. **Fact stack / form** — single durable record focused without a heavy dual pane.
+
+Do **not** force recipe (1) when the data is a board or wide table. When using a sidebar picker, **compose the rail, never fork**; mode rail lives with the picker; related/similar is progressive disclosure below the map, never an inverted sidebar.
+
+References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShell.tsx`, `ReceivingRightPane.tsx`, FBA/order boards.
+
+→ [display/workbench.md](display/workbench.md).
 
 ### Monitor — `filter → stream → read`
 
-**Observe-only.** A full-page org-scoped **timeline / KPI rollup**; newest-first, **no edit, no durable selection**,
-filters are ephemeral URL params, data flows in (poll/SSE). The Operations master page's live/analytics/history modes and
-the shared `EventTimeline` history surface are the reference. Analytics must use **org-scoped inventory-events**, never
-cross-tenant KPI rollups. Reference modules: `src/features/operations/workspace/OperationsWorkspace.tsx`,
-`src/components/ui/EventTimeline.tsx`.
+**Observe-only.** No durable selection, no edit. Filters are ephemeral URL params. Primary surfaces: event stream, KPI rollup (`MonitorPageShell` + blocks). Density **`rollup`**. Org-scoped inventory events only for analytics.
 
-> Rule of thumb: if the user **watches and never edits**, give them a stream and a filter, not a picker. The moment a row
-> grows a durable selection or an edit affordance, you've drifted into Workbench — split the region.
-> → Deep dive: [`display/monitor-and-canvas.md`](display/monitor-and-canvas.md).
+> Watches and never edits. Row gains durable selection or save → split into Workbench region.  
+→ [display/monitor-and-canvas.md](display/monitor-and-canvas.md).
 
 ### Canvas — `graph → zoom/lens → focus → inspect`
 
-**Spatial.** A React-Flow canvas (L0 department cards ⇄ L1 process nodes) with toggleable overlay **lenses** and a
-**focused-node inspector** as secondary detail; read-only at low zoom tiers, editable at higher; state in
-`?v=&focus=&z=&lens=`. Reference modules: `src/components/studio/StudioShell.tsx`,
-`src/components/studio/StudioCanvas.tsx`, `src/components/studio/StudioInspector.tsx`, `src/app/studio/page.tsx`.
+**Spatial** definition graph. Graph is the map; inspector is secondary. Lenses repaint overlays; never re-layout/crossfade the graph.
 
-> Rule of thumb: the **graph is the map, the inspector is the workspace** — pan/zoom/focus drives everything; the lens
-> repaints overlays, it never re-lays-out or crossfades the graph. → Deep dive:
-> [`display/monitor-and-canvas.md`](display/monitor-and-canvas.md).
+→ [display/monitor-and-canvas.md](display/monitor-and-canvas.md).
 
 ---
 
-## Update / lifecycle algorithm (per archetype)
+## Full procedure (new surface)
 
-### Station lifecycle — `scan → resolve → set-active → re-focus → act → clear`
+1. **Name the JOB and INPUT MODEL in one sentence** — ignore the route and feature area.
+2. **Run Q1→Q4** — first yes wins the **contract** for this region.
+3. **Split multi-job pages into regions** — one contract each; never blend.
+4. **Resolve data shape → primary surface + density** (Step B table).
+5. **Open the child doc** for the contract and instantiate **recipes** from named reference modules; compose rails/blocks, never fork them for the same job.
+6. **Apply Kinetic Ledger inside** (`ui-design-system.md`) — tokens, one-row anatomy, presentation kinds, `HoverTooltip`, paired icons.
+7. **Wire motion** from [display/motion-crossfade.md](display/motion-crossfade.md): crossfade only the singular **focus surface** (active card / detail region / overlay), through `useMotionTransition` / `useMotionPresence`.
+8. **Wire backend** from `backend-patterns.md`.
+9. **Re-check anti-mix rules.** If any fires, go back to step 2.
 
-1. **MOUNT:** scan bar auto-focuses (last-registered scan target wins the global F2 hotkey, `src/lib/scan-hotkey/store.ts`).
-   Active-card region is empty; goal/throughput HUD renders as ambient chrome.
-2. **SCAN:** the focus-locked input fills from the wedge/camera; Enter resolves. Classify the raw value
-   (`src/lib/station-scan-routing.ts`) → route to the domain handler.
-3. **RESOLVE → SET ACTIVE:** the active card **mounts** via `AnimatePresence mode="wait"` keyed on the entity id —
-   opacity + small-y only. The previous card **exits first**; never two cards on screen.
-4. **RE-FOCUS:** input auto-clears and re-focuses immediately; a focus-watchdog re-grabs on blur/visibilitychange
-   (modals/tab-away steal focus — the classic wedge failure mode).
-5. **ACT:** scan-to-confirm gating advances only on a matching scan. Render optimistically; thread a per-scan
-   `clientEventId` so a retry is an idempotent no-op (`backend-patterns.md`); reconcile on the server result. On
-   409/reject, revert with a big pass/fail state, not a small toast.
-6. **CLEAR:** entity is transient — resolved → acted → cleared. Selection is **ephemeral**, never URL-addressable.
-7. **STATION-DOWN (orthogonal, first-class):** `OfflineBanner` is a singleton near app root; offline OR queue-depth>0
-   shows it. **Degrade-not-block** — the bench keeps scanning into a durable queue; never gate a scan on infra.
+---
 
-### Workbench lifecycle — `mount → select → fetch → crossfade → edit → persist`
+## Update / lifecycle algorithms
 
-1. **MOUNT:** the picker (the stable map) renders from a search hook, composing `SidebarRailShell` — never forked. Mode
-   rail (`HorizontalButtonSlider`, `variant='nav'`) reads `?view=`/`?mode=`. Right pane shows a **teaching empty state**.
-2. **SELECT:** row click writes selection to the URL (`router.replace`, e.g. `?skuId=`) — durable + deep-linkable. **The
-   list does not animate.**
-3. **FETCH:** detail hook gates on a valid id (`enabled: id>0`). Each right-pane **sub-resource** fetches in its own
-   `try/catch` + boundary: a failing sub-resource renders empty, it **never 500s** the whole record (mirror
-   `get-title-by-sku`).
-4. **RENDER → CROSSFADE:** the **right pane** crossfades between empty/overview and the selected detail, keyed on the
-   selection id (`ReceivingRightPane` is the reference: table kept mounted, `display:none`, to preserve cache+scroll).
-5. **EDIT → PERSIST:** mutations follow the house CRUD route (`withAuth → validate → domain helper → map status →
-   recordAudit → after()`). Optimistic `onMutate→apply→onError(rollback)→onSettled(invalidate)`; thread `clientEventId`.
-   **Deletes are confirm-then-commit, never optimistic.**
-6. **STATE:** mode-scoped params clear on mode change; selection clears when the mode changes. Filters/sort/search
-   **should** live in the URL too (currently partial).
+### Station — `scan → resolve → set-active → re-focus → act → clear`
 
-**Monitor** and **Canvas** lifecycles (`filter→stream→read`, `graph→zoom/lens→focus→inspect`) live in
-[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md).
+1. **MOUNT:** scan bar auto-focuses (last-registered scan target wins F2, `src/lib/scan-hotkey/store.ts`). Active-card empty; HUD ambient.
+2. **SCAN:** wedge/camera → Enter → classify (`station-scan-routing.ts`) → domain handler.
+3. **RESOLVE → SET ACTIVE:** active card mounts via `AnimatePresence mode="wait"` keyed on entity id — opacity + small-y. Previous exits first.
+4. **RE-FOCUS:** clear + re-focus; watchdog on blur/visibilitychange.
+5. **ACT:** scan-to-confirm; optimistic UI; `clientEventId` idempotency; 409 → big pass/fail, not a quiet toast.
+6. **CLEAR:** ephemeral — never URL selection.
+7. **STATION-DOWN:** `OfflineBanner`; degrade-not-block.
+
+### Workbench — `mount → select → fetch → focus-crossfade → edit → persist`
+
+1. **MOUNT:** collection map (list / table / board / sidebar picker) renders. Teaching empty for no selection.
+2. **SELECT:** write durable selection to URL. **The collection map does not animate.**
+3. **FETCH:** detail gated on valid id; each sub-resource degrades alone — never 500 the whole record.
+4. **RENDER → CROSSFADE:** only the **focus detail region** (pane, drawer, or stack) crossfades on selection id — not the map.
+5. **EDIT → PERSIST:** house CRUD route; optimistic with rollback; deletes confirm-then-commit; `clientEventId`.
+6. **STATE:** mode-scoped params clear on mode change. Prefer URL for filters/sort/search (partial today).
+
+**Master–detail recipe notes:** compose `SidebarShell` / `SidebarRailShell`; mode rail in sidebar header; `ReceivingRightPane` is a reference for pane crossfade with cache-preserving `display:none`.
+
+**Monitor / Canvas** lifecycles: [display/monitor-and-canvas.md](display/monitor-and-canvas.md).
 
 ### Shared lifecycle rules
 
-- A page may host multiple archetypes, but **each region obeys exactly one** — never blend two in one region.
-- **Selection lives where the archetype says:** Station = ephemeral (never in URL); Workbench/Canvas = durable +
-  URL-addressable; Monitor = none (filters only).
-- **Crossfade target is archetype-specific and singular:** Station = active card; Workbench/Monitor-detail = right pane;
-  Canvas = overlay repaint. **Never crossfade the list/map/graph itself.**
-- **Backend half is shared** (`backend-patterns.md`): `transition()`/`applyTransition()` with `expectedFrom` (409 =
-  conflict-safe), `clientEventId → UNIQUE(client_event_id)` idempotency, `withTenantTransaction` org scoping,
-  `recordAudit`. The display archetype never reimplements these.
+- One contract per region.
+- Selection durability matches the contract (Station ephemeral; Workbench/Canvas URL; Monitor filters only).
+- Crossfade target is singular and is the **focus surface**, never the list/map/graph.
+- Backend half is shared (`backend-patterns.md`). Display never reimplements status machines.
 
 ---
 
 ## Choosing & not mixing
 
-- **Decide the archetype before the layout.** Run Q1→Q4 first.
-- **Don't put a browsing list in a Station** — it competes with the scan focus.
-- **Don't make a Station react to hover/click** — it must react to scans only.
-- **Don't invert a Workbench sidebar** to hold related/similar instead of the picker — it breaks cross-mode consistency.
-- **Don't crossfade a Workbench list, a Monitor stream, or a Canvas graph** — only the detail/right-pane/overlay
-  transitions; the map stays put.
-- **Don't bolt edit affordances onto a Monitor** read surface — the moment a row gains durable selection or a save
-  action, it's a Workbench region; split it.
-- **A page may host several archetypes** (a scan bench with a mini-workbench inspector; a Monitor page whose row opens a
-  detail), but **each region obeys exactly one** — split a multi-job page into regions and run the algorithm per region.
+- **Decide the contract before the layout.** Run Q1→Q4 first, then data shape.
+- **Don't put a browsing list in a Station** — competes with scan focus.
+- **Don't make a Station react to hover/click as the primary path** — scans win.
+- **Don't invert a sidebar picker** to hold related/similar instead of the map (when using master–detail recipe).
+- **Don't crossfade a collection map, Monitor stream, or Canvas graph** — only the focus surface.
+- **Don't bolt edit affordances onto a pure Monitor** — durable selection or save ⇒ Workbench region; split it.
+- **Don't force dual-pane** when data is a board, wide table, or single fact stack.
+- **A page may host several contracts** — each region obeys exactly one.
 
 ---
 
 ## Shared foundation
 
-All four archetypes inherit `ui-design-system.md` — **do not restate it here**, read it. The load-bearing inheritances:
+All contracts inherit `ui-design-system.md` — **do not restate it here**. Load-bearing:
 
-- **Color only** from `src/design-system/tokens/colors/semantic.ts`; **z-index only** from the named scale
-  `src/design-system/tokens/z-index.ts` (never `z-[NNN]`); status tones from the lifecycle/timeline tone registries.
-  No invented hex, no arbitrary shades.
-- **Linear vertical scaffold** (`space-y-*` / `divide-y`, `flex-1 overflow-y-auto`, `min-h-0`); **one-row anatomy**
-  (title → meta → chips; selection = `bg-blue-50 ring-1 ring-inset ring-blue-400` only, **never a size shift**); eyebrow
-  headers + 3-layer chips; contextual info via `HoverTooltip` (body portal, not `title=`); icons structural and paired.
-- **Compose rails/shells, never fork them** — `SidebarRailShell`/`src/components/layout/SidebarShell.tsx` own the infrastructure (fetch, selection,
-  grouping, keyboard nav); domain wrappers supply only renderers. Applies wherever a picker/list appears.
-- **Presentation-ready values:** format via the SoT resolvers (`conditionLabel` in `src/lib/conditions.ts`,
-  `get-title-by-sku`, `src/lib/source-platform.ts`, `TimelineRef` chips) server/lib-side; render dumb. **Never re-derive
-  a mapping in a view** (`source-of-truth.md`).
-- **Empty/error must teach and degrade** in every archetype that fetches: typed states (first-use vs no-results vs
-  loading vs retryable error) + sub-resource degrade-not-fail.
-- **Backend half** is `backend-patterns.md` (status via `transition()`/`applyTransition()`, `clientEventId` idempotency,
-  `withTenantTransaction`, `recordAudit`). Optimistic UI sits on top of these, never replaces them.
+- Kinetic Ledger tokens, density modes, presentation kinds (SoTs).
+- One-row anatomy; selection = ring + background only.
+- Compose rails/shells for picker infrastructure; grow SoT when wrong.
+- Empty/error teach and degrade.
+- Backend: `transition()` / `applyTransition`, `clientEventId`, tenant GUC, `recordAudit`.
 
 ### The motion law
 
 One engine: `src/design-system/foundations/motion-framer.ts`. **Opacity + transform only**, `mode="wait"`,
-`initial={false}` on first mount, **stable keys** (entity/`skuId`, never array index). **Never animate layout**
-(width/height/padding — for height use `grid-template-rows`). The crossfade **target** is archetype-specific (active card
-/ right pane / overlay), and is **singular**. Route every preset through `useMotionTransition`/`useMotionPresence`
-(`src/design-system/foundations/motion-framer-hooks.ts`) so `prefers-reduced-motion` collapses slides to pure opacity
-crossfades **automatically** (reduced = collapse x/y to 0 + ~0.01s, not "no motion"). Full recipe and the spring-vs-tween
-split: [`display/motion-crossfade.md`](display/motion-crossfade.md).
+`initial={false}` on first mount, **stable keys** (entity id, never array index). **Never animate layout**
+(width/height/padding — height via `grid-template-rows`). Crossfade **target** is the singular focus surface.
+Route every preset through `useMotionTransition`/`useMotionPresence` so reduced motion collapses to opacity.
+Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth steps: [display/auth-step-panel.md](display/auth-step-panel.md).
+
+- Library: **Motion** (`motion/react` v12 and legacy `framer-motion` v11 — one import path per file).
+- Prefer the `/motion` skill before inventing animation APIs.
+- Springs for gesture/physical; ease-out tween sub-300ms for discrete focus swaps.
+- `layoutId` only for genuine shared-element continuity — never list→detail *replace*.
 
 ---
 
 ## Index of child docs
 
-Read this file to **pick** the archetype; read the child doc to **build** it. All links are relative to `.claude/rules/`.
-
-- **[`display/station.md`](display/station.md)** — *Station display — scan → crossfade → display.* Scan-driven operator
-  bench: focus-locked scan bar + single active-entity card that replaces on scan; ephemeral selection, act-and-clear,
-  station-down first-class. Includes the mobile-scan variant.
-- **[`display/workbench.md`](display/workbench.md)** — *Workbench display — list → select → detail → update.*
-  Pointer-driven master-detail editor: stable sidebar picker + URL-addressable selection (`?skuId`) + crossfading
-  right-pane CRUD; teaching empty + degrade-not-fail sub-resources.
-- **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — *Monitor (observe) & Canvas (node-graph).* The
-  two read-mostly, URL-driven archetypes that are neither scan benches nor record editors: org-scoped observe/dashboard
-  + semantic-zoom node-graph studio.
-- **[`display/motion-crossfade.md`](display/motion-crossfade.md)** — *Motion / crossfade engine.* The cross-cutting
-  motion law: opacity+transform-only recipe, per-archetype crossfade target, spring-vs-tween split, and the
-  reduced-motion mandate — keyed to `motion-framer.ts` presets.
-- **[`display/reference-timeline.md`](display/reference-timeline.md)** — *Reference timeline.* The shared read-only
-  history→detail pattern (`EventTimeline` + adapters + tone registry + serial↔time toggle) that lives **inside** a
-  Workbench detail pane or a Monitor page; `AuditTimeline` is the one sanctioned fork.
-
----
-
-## How to add a new display surface (the recipe)
-
-1. **Write the JOB in one sentence** — who, doing what, with what input. Ignore the route and feature area.
-2. **Run `pickArchetype()`** (Q1→Q4): scanner → Station, observe-only → Monitor, node-graph → Canvas, else → Workbench.
-3. **Split multi-job pages into regions** and pick per region; never blend two archetypes in one region.
-4. **Open the child doc** for the chosen archetype and instantiate its scaffold from the named reference modules; compose
-   rails, never fork them.
-5. **Apply the shared house style inside** (`ui-design-system.md`) — semantic tokens, linear scaffold, one-row anatomy,
-   eyebrow+chips, `HoverTooltip`, paired icons.
-6. **Wire motion** from `display/motion-crossfade.md` — crossfade only the archetype's singular target, through the
-   reduced-motion hooks.
-7. **Wire the backend half** from `backend-patterns.md` (route skeleton, `transition()`/`applyTransition`,
-   `clientEventId`, `withTenantTransaction`, `recordAudit`).
-8. **Re-check the anti-mix rules.** If any fires, you picked wrong or didn't split regions — go back to step 2.
+- **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
+- **[`display/workbench.md`](display/workbench.md)** — Workbench contract; master–detail **and** table/board recipes.
+- **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — Monitor observe + Canvas graph.
+- **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).
+- **[`display/motion-crossfade.md`](display/motion-crossfade.md)** — Motion / singular focus crossfade.
+- **[`display/auth-step-panel.md`](display/auth-step-panel.md)** — Compact multi-step auth panels.
+- **[`display/reference-timeline.md`](display/reference-timeline.md)** — Event-stream primary or secondary surface.
 
 ---
 
 ## Open questions / known gaps
 
-- **Reduced-motion: residual raw consumers** — the workbench right panes (`ReceivingRightPane`, `TechRightPane`) now
-  route through `useMotionPresence`/`useMotionTransition` and the canonical `framerPresence.workbenchPane` preset, but
-  the station cards and `StationPacking` still consume presets raw. Bake the reduce-to-opacity collapse into the presets,
-  or make "always go through the hook bridge" a lint-enforced rule?
-- **cmd-K deep-link: FBA shipped-shipment fallback** — `?openShipmentId=` (FBA) and `?openReceivingId=` (Receiving) now
-  open the record straight from cmd+k. Residual caveat: the FBA board excludes `SHIPPED`, so a cmd+k hit on an
-  already-shipped shipment navigates to `/fba` but can't open its panel (there is no single-shipment fetch in the
-  `FbaBoardItem` shape). Add a shipped-shipment detail fetch if that becomes a real need.
-- **URL-as-state is only partial in Workbench** — selection (`?skuId`) and mode (`?view`) are in the URL, but
-  filters/sort/search are often in-memory. Adopt a type-safe search-params layer and push them into the URL?
-- **Studio publish gate** — should the "diagnostics gate publish" step machine-enforce archetype + house-style rules as a
-  validation schema (allowed archetypes, allowed slots, semantic-token-only color), turning these prose rules into a
-  publish-time check?
-- **Monitor↔Workbench boundary** — Operations "insights" (AI chat) and clickable Monitor rows both flirt with Workbench;
-  confirm no Monitor surface has grown durable selection or edit affordances.
-- **`AuditTimeline` deliberately does not use the `EventTimeline` primitive** (separate 3-source adjacency list for
-  bin/SKU). Still the right call, or should the timeline SoT absorb the `sku_stock_ledger` spine into one history
-  primitive?
-- **Block registry** — promote recurring compositions (`RowMetaColumns`, `CollapsibleGroupRow`, eyebrow+chips section,
-  dashed empty/error box) into a named BLOCK registry so the station-builder/Studio `composition=data` can select blocks
-  by id. In scope here or a separate design-system initiative?
+- **Reduced-motion residual raw consumers** — station cards / `StationPacking` still consume some presets raw; prefer hook bridge everywhere.
+- **cmd-K shipped FBA fallback** — shipped shipments may not open on FBA board shape.
+- **URL-as-state partial in Workbench** — filters/sort/search often in-memory.
+- **Studio publish gate** — should publish validate contracts + Kinetic Ledger token rules?
+- **Monitor↔Workbench boundary** — insights chat and clickable rows must not grow silent durable edit.
+- **`AuditTimeline` vs `EventTimeline`** — still a deliberate fork?
+- **Block registry** — Monitor Phase-1 done; promote Station/Workbench fact-stack / row blocks next.
+- **Presentation-kind registry** — SoTs exist; a single typed registry module is an emerging promote target (document first, code when 2+ consumers need it).

@@ -45,11 +45,13 @@ body {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* Hide scrollbar utility */
-.scrollbar-hide::-webkit-scrollbar {
+/* Hide scrollbar utility (also alias `no-scrollbar` used by tables/boards) */
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-.scrollbar-hide {
+.scrollbar-hide,
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }

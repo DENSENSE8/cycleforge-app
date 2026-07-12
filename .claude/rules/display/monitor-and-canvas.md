@@ -1,19 +1,19 @@
-# Monitor (observe) & Canvas (node-graph) — the two read/spatial archetypes
+# Monitor (observe) & Canvas (node-graph) — the two read/spatial contracts
 
-> Inherits: [../ui-design-system.md](../ui-design-system.md). This doc adds only the parts specific to Monitor and
-> Canvas — the shared scaffold, one-row anatomy, chips, color-from-semantic-tokens, and `HoverTooltip` rules live there.
+> Inherits: [../ui-design-system.md](../ui-design-system.md) (Kinetic Ledger, density, presentation kinds). This doc
+> adds only Monitor- and Canvas-specific contracts and recipes.
 
-Two newer archetypes that are **neither** scan benches (Station) **nor** record editors (Workbench). They are bundled
-because each is real but compact, and they share two traits that set them apart from Workbench: **read-mostly** and
-**URL-driven view state**. A Workbench edits *records*; a Monitor edits *nothing*; a Canvas edits a *definition*
-(draft → publish), not a record.
+**Contracts, not skins.** Neither is a scan bench (Station) nor a record CRUD workbench in the pick+edit sense.
+A Workbench edits *records*; a Monitor edits *nothing*; a Canvas edits a *definition* (draft → publish).
+Densities: Monitor → **`rollup`** (or stream observe); Canvas → **`studio`**.
 
 | | **Monitor (observe)** | **Canvas (node-graph)** |
 |---|---|---|
-| Driven by | filters over an incoming stream | pan / zoom / focus over a graph |
-| Primary surface | full-page right pane (timeline / rollup) | `@xyflow/react` canvas |
+| Driven by | filters over an incoming stream / rollup | pan / zoom / focus over a graph |
+| Primary surface (data-driven) | timeline / feed **or** KPI + SectionCards | `@xyflow/react` canvas |
+| Secondary | optional drill (still observe-only) | inspector |
 | Selection | **none** (filters only) | durable, URL-addressable (`?focus=`) |
-| What transitions | the cards/stream on first load only | the **inspector** detail, never the graph |
+| What transitions | first-load stagger; never stream crossfade on filter | **inspector** detail, never the graph |
 | Editing | none — read-only | a **definition** via draft → publish |
 | URL state | `?mode= ?q= ?station= ?range=` | `?v= &focus= &z= &lens=` |
 | Empty/error | teaching empty + retryable error | empty graph + per-node lint diagnostics |
@@ -28,9 +28,10 @@ are ephemeral URL params; data flows *in* (poll/query), the user does not edit.
 ### When to choose
 
 - **Choose Monitor when the job is "watch / review," not "edit."** The user reads an append-only event stream or a
-  KPI rollup and never mutates a record. If a row needs editing, it belongs in a Workbench detail pane — not here.
-- **No durable selection.** There is no `?skuId=`-style selected record; there is at most a *filter*. The whole pane is
-  the view, and the view is reconstructed from the filter params alone.
+  KPI rollup and never mutates a record. If a row needs durable selection or editing, split a **Workbench region** —
+  do not grow edit chrome onto a pure Monitor.
+- **No durable selection.** There is no `?skuId=`-style selected record; there is at most a *filter*. The view is
+  reconstructed from filter params alone.
 
 ### Anatomy
 
@@ -38,13 +39,18 @@ are ephemeral URL params; data flows *in* (poll/query), the user does not edit.
   reads `useOperationsMode()` and renders one of `live | analytics | insights | history`
   (`OperationsMode` SoT: `src/components/sidebar/operations/operations-sidebar-shared.ts`). `?mode=` is the single
   source of truth, owned by the sidebar's mode rail — **never** a local `useState`.
+- **Compose the Monitor block registry** — `MonitorPageShell`, `FilterBand`, `KpiStrip`/`KpiTile`, `SectionCard`,
+  `MonitorListBlock`, `DeltaChip` from `@/design-system/components/monitor`. Do **not** invent local card shells.
+  Full contract: [monitor-rollup-blocks.md](monitor-rollup-blocks.md).
 - **Ephemeral filter band, all in the URL.** `OperationsHistoryView` (`OperationsHistoryView.tsx`) reads `?q=`
   (serial / SKU / order / notes) and `?station=` from `useSearchParams` and filters **client-side**;
   `OperationsAnalyticsView` (`OperationsAnalyticsView.tsx`) reads `?range=` (`24h | 7d | 30d`) and `?section=`
   (scroll-to anchor). Filters are throwaway view state, never a saved record.
 - **Newest-first stream / rollup body.** History is a single `EventTimeline` (`src/components/ui/EventTimeline.tsx`)
-  fed by `inventoryEventsToTimeline(...)`; analytics is charts + gauges + a heatmap (`MultiSeriesLineChart`,
-  `GaugeDonut`, `DistributionTable`, `ActivityHeatmap`). One linear column, `flex-1 overflow-y-auto`.
+  fed by `inventoryEventsToTimeline(...)`; analytics composes charts + gauges + heatmap inside `SectionCard`s
+  (`MultiSeriesLineChart`, `GaugeDonut`, `DistributionTable`, `ActivityHeatmap`). Shell is
+  `flex-1 overflow-y-auto`; **named rollup zones** (KPI strip, tri-panel) may use responsive CSS grid.
+- **Reference composition:** `OperationsAnalyticsView.tsx` is the golden Monitor page after the block extract.
 
 ### Data
 
@@ -60,10 +66,10 @@ are ephemeral URL params; data flows *in* (poll/query), the user does not edit.
 
 - **No persistent selection — the filter *is* the state.** Nothing in a Monitor is URL-addressable beyond the
   `?mode=`/`?q=`/`?station=`/`?range=` filters. Re-running the same filter reproduces the same view.
-- **Stagger-reveal on first load; do not crossfade a list.** Analytics reveals sections with a parent/child stagger
-  (`container`/`item` variants, `staggerChildren: 0.05`, ease `[0.22, 1, 0.36, 1]` in `OperationsAnalyticsView.tsx`).
-  The stream/cards reveal **once**; subsequent filter changes re-render in place. **Never** crossfade the timeline rows
-  on every keystroke — that is a Workbench list anti-pattern (see [../contextual-display.md](../contextual-display.md)).
+- **Stagger-reveal on first load; do not crossfade a list.** Use `MonitorPageShell stagger` + child `stagger` props
+  (`framerVariants.monitorStaggerContainer` / `monitorStaggerItem`). The stream/cards reveal **once**; subsequent filter
+  changes re-render in place. **Never** crossfade the timeline rows on every keystroke — that is a Workbench list
+  anti-pattern (see [../contextual-display.md](../contextual-display.md)).
 - **Reduced motion is mandatory.** Route any presence through `useMotionPresence` /`useMotionTransition`
   (`src/design-system/foundations/motion-framer-hooks.ts`) so a stagger collapses to a pure opacity reveal under
   `prefers-reduced-motion`.

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildSupportWarrantyRedirectSearch,
   extractOrdersFromDashboardCacheEntry,
   findDashboardSelectedOrderInCache,
   getDashboardOrderViewFromSearch,
@@ -13,10 +14,23 @@ import {
 
 test('getDashboardOrderViewFromSearch prefers explicit view params', () => {
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('shipped=')), 'shipped');
+  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('packed=')), 'packed');
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('unshipped=')), 'unshipped');
-  // Legacy ?pending resolves to the merged 'unshipped' mode (Awaiting+Pending merge).
+  // Legacy ?pending resolves to the merged 'unshipped' mode (To Ship).
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('pending=')), 'unshipped');
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('fba=')), 'fba');
+});
+
+test('buildSupportWarrantyRedirectSearch preserves claim open + filters', () => {
+  const qs = buildSupportWarrantyRedirectSearch(
+    new URLSearchParams('warranty=&open=42&wstatus=SUBMITTED&wexp=1&search=ORD-1'),
+  );
+  const params = new URLSearchParams(qs);
+  assert.equal(params.get('mode'), 'warranty');
+  assert.equal(params.get('open'), '42');
+  assert.equal(params.get('wstatus'), 'SUBMITTED');
+  assert.equal(params.get('wexp'), '1');
+  assert.equal(params.get('search'), 'ORD-1');
 });
 
 test('getDashboardOrderViewFromSearch falls back to unshipped', () => {
@@ -24,15 +38,28 @@ test('getDashboardOrderViewFromSearch falls back to unshipped', () => {
 });
 
 test('normalizeDashboardOrderViewParams clears competing view params', () => {
-  const params = new URLSearchParams('pending=&search=abc&unshipped=');
+  const params = new URLSearchParams('pending=&search=abc&unshipped=&layout=board&ustatus=PENDING');
   const next = normalizeDashboardOrderViewParams(params, 'shipped');
 
   assert.equal(next, 'shipped');
   assert.equal(params.has('pending'), false);
   assert.equal(params.has('unshipped'), false);
+  assert.equal(params.has('packed'), false);
   assert.equal(params.has('fba'), false);
   assert.equal(params.has('shipped'), true);
+  assert.equal(params.has('layout'), false);
+  assert.equal(params.has('ustatus'), false);
   assert.equal(params.get('search'), 'abc');
+});
+
+test('normalizeDashboardOrderViewParams for packed clears ostatus and layout', () => {
+  const params = new URLSearchParams('shipped=&ostatus=IN_CUSTODY&layout=board');
+  const next = normalizeDashboardOrderViewParams(params, 'packed');
+  assert.equal(next, 'packed');
+  assert.equal(params.has('packed'), true);
+  assert.equal(params.has('shipped'), false);
+  assert.equal(params.has('ostatus'), false);
+  assert.equal(params.has('layout'), false);
 });
 
 test('parseDashboardOpenOrderId accepts only positive numeric ids', () => {

@@ -41,7 +41,7 @@ export const sidebarNavOverlayBandClass = cn(
 export const sidebarHeaderRowClass = `flex min-h-[44px] items-center ${SIDEBAR_GUTTER} py-1`;
 export const sidebarHeaderControlClass ='h-full min-h-[44px] w-full appearance-none bg-surface-card px-3 py-1 pr-8 text-left text-micro font-black uppercase tracking-wider text-text-muted outline-none transition-colors hover:bg-surface-hover';
 
-export const mainStickyHeaderClass = 'shrink-0 sticky top-0 z-10 border-b border-border-hairline bg-surface-card/95 backdrop-blur-sm';
+export const mainStickyHeaderClass = 'shrink-0 sticky top-0 z-header border-b border-border-hairline bg-surface-card/95 backdrop-blur-sm';
 export const mainStickyHeaderRowClass = 'flex min-h-[44px] items-center justify-between gap-4 px-4 py-1';
 export const mainStickyHeaderShellRowClass = 'flex h-[44px] items-center justify-between gap-4 px-4';
 /** 40px queue banner — matches sidebar identity bands (receivingIdentityBandClass). */

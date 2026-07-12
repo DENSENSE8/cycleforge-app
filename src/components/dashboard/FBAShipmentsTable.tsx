@@ -161,7 +161,7 @@ export default function FBAShipmentsTable() {
               description="Plan your first FBA shipment to track prep, labeling, and hand-off here."
               action={
                 <Link
-                  href="/fba"
+                  href="/outbound?mode=fba"
                   className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
                 >
                   <Package className="h-4 w-4" />

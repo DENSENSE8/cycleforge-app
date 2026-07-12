@@ -43,6 +43,8 @@ interface TableColumnConfigValue {
   isHidden: (key: string) => boolean;
   toggle: (key: string) => void;
   reset: () => void;
+  /** Replace the full hidden set (column presets). */
+  setHidden: (keys: readonly string[]) => void;
 }
 
 const TableColumnConfigContext = createContext<TableColumnConfigValue | null>(null);
@@ -125,12 +127,16 @@ export function TableColumnConfigProvider({
   );
 
   const reset = useCallback(() => void writeHidden([]), [writeHidden]);
+  const setHidden = useCallback(
+    (keys: readonly string[]) => void writeHidden([...keys]),
+    [writeHidden],
+  );
 
   const isHidden = useCallback((key: string) => hidden.has(key), [hidden]);
 
   const value = useMemo<TableColumnConfigValue>(
-    () => ({ tableId, columns, hidden, isHidden, toggle, reset }),
-    [tableId, columns, hidden, isHidden, toggle, reset],
+    () => ({ tableId, columns, hidden, isHidden, toggle, reset, setHidden }),
+    [tableId, columns, hidden, isHidden, toggle, reset, setHidden],
   );
 
   return (

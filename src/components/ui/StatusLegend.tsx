@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Loader2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
@@ -27,6 +28,10 @@ export interface StatusLegendItem<K extends string = string> {
  * `items` subset, so the two legends render identically while showing only the
  * states reachable in that mode. Mounting it adds no fetch; counts are computed
  * by the caller from the table's existing query.
+ *
+ * Industry pattern: optional leading **All** chip (clear status filter) matches
+ * Gmail/Shopify/Zendesk status filters; optional `endSlot` holds a More chevron
+ * that expands secondary refinements.
  */
 export function StatusLegend<K extends string>({
   items,
@@ -35,6 +40,11 @@ export function StatusLegend<K extends string>({
   isFetching = false,
   activeState = null,
   onSelectState,
+  onSelectAll,
+  allCount,
+  allLabel = 'All',
+  endSlot,
+  inline = false,
 }: {
   items: StatusLegendItem<K>[];
   meta: Record<K, StatusLegendMeta>;
@@ -44,10 +54,65 @@ export function StatusLegend<K extends string>({
   activeState?: K | null;
   /** Click a chip to filter the table to that state (click the lit one again to clear). */
   onSelectState?: (state: K) => void;
+  /**
+   * Leading "All" chip — industry standard for status filters. When set, lit when
+   * `activeState` is null; click clears the status filter (show every state).
+   */
+  onSelectAll?: () => void;
+  /** Optional total for the All chip (sum of state counts when omitted). */
+  allCount?: number;
+  allLabel?: string;
+  /** Trailing slot (e.g. More chevron that expands secondary filters). */
+  endSlot?: ReactNode;
+  /** Toolbar embedding: drop the boxed container + wrap; render a single flat row. */
+  inline?: boolean;
 }) {
   const interactive = Boolean(onSelectState);
+  const totalAll =
+    allCount ??
+    items.reduce((sum, { state, fold }) => sum + counts[state] + (fold ? counts[fold] : 0), 0);
+  const allActive = interactive && activeState == null && Boolean(onSelectAll);
+
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-canvas/70 px-3 py-2 ring-1 ring-inset ring-border-hairline">
+    <div
+      className={
+        inline
+          ? 'flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5'
+          : 'flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-canvas/70 px-3 py-2 ring-1 ring-inset ring-border-hairline'
+      }
+    >
+      {onSelectAll ? (
+        <HoverTooltip
+          label={allActive ? 'Showing all · click a status to filter' : 'Show all statuses'}
+          className="inline-flex shrink-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+        >
+          <button
+            type="button"
+            aria-pressed={allActive}
+            onClick={onSelectAll}
+            className={`ds-raw-button inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 transition-colors ${
+              allActive
+                ? 'bg-surface-card ring-1 ring-border-default shadow-sm'
+                : 'hover:bg-surface-sunken'
+            }`}
+          >
+            <span
+              className={`text-micro font-bold uppercase tracking-wide ${
+                allActive ? 'text-text-default' : 'text-text-soft'
+              }`}
+            >
+              {allLabel}
+            </span>
+            <span
+              className={`text-xs font-black tabular-nums ${
+                allActive ? 'text-text-default' : 'text-text-muted'
+              }`}
+            >
+              {totalAll}
+            </span>
+          </button>
+        </HoverTooltip>
+      ) : null}
       {items.map(({ state, short, fold }) => {
         const m = meta[state];
         const value = counts[state] + (fold ? counts[fold] : 0);
@@ -66,14 +131,14 @@ export function StatusLegend<K extends string>({
           <HoverTooltip
             key={state}
             label={`${m.label} — ${m.description}${interactive ? (active ? ' · click to clear' : ' · click to filter') : ''}`}
-            className="inline-flex rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+            className="inline-flex shrink-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
           >
             {interactive ? (
               <button
                 type="button"
                 aria-pressed={active}
                 onClick={() => onSelectState?.(state)}
-                className={`ds-raw-button -mx-0.5 inline-flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors ${
+                className={`ds-raw-button inline-flex shrink-0 items-center gap-1 rounded px-0.5 py-0.5 transition-colors ${
                   active ? 'bg-surface-card ring-1 ring-border-default shadow-sm' : 'hover:bg-surface-sunken'
                 }`}
               >
@@ -85,6 +150,7 @@ export function StatusLegend<K extends string>({
           </HoverTooltip>
         );
       })}
+      {endSlot}
       {isFetching ? <Loader2 className="ml-auto h-3 w-3 animate-spin text-blue-400" /> : null}
     </div>
   );

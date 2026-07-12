@@ -17,12 +17,17 @@
  * picker mounts (and self-fetches) only when the user opens station mode.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import {
+  framerPresence,
+  framerTransition,
+} from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { SignInAuthStepPanels } from '@/components/auth/SignInAuthStepPanels';
 import QRCode from 'react-qr-code';
 import { StaffPickerList, type StaffPickerRow } from '@/components/auth/StaffPickerList';
 import { StaffPinPad } from '@/components/auth/StaffPinPad';
@@ -145,13 +150,13 @@ export default function SignInPage() {
   // ── Account (email + password) ────────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Apple-style single-row flow: type email → Continue → the same row swipes to
-  // password. `authStep` drives which panel occupies the shared input row;
-  // `stepDir` (+1 forward / −1 back) seeds the horizontal slide direction.
+  // Apple-style flow: email step → password step. One animated panel swaps at a
+  // time (chip + password travel together); see SignInAuthStepPanels.
   const [authStep, setAuthStep] = useState<'email' | 'password'>('email');
-  const [stepDir, setStepDir] = useState(1);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const reduceMotion = useReducedMotion();
+  const alternatePresence = useMotionPresence(framerPresence.signInAlternateSection);
+  const alternateTransition = useMotionTransition(framerTransition.signInAlternateFade);
+  const messagePresence = useMotionPresence(framerPresence.statusMessage);
+  const messageTransition = useMotionTransition(framerTransition.dropdownOpen);
   // Default checked — personal devices are the common SMB case; station mode
   // (shared) has its own uncheck-on-shared affordance below.
   const [rememberMe, setRememberMe] = useState(true);
@@ -260,22 +265,13 @@ export default function SignInPage() {
     if (!email.trim()) { setError('Enter your email to continue.'); return; }
     setError(null);
     setNotice(null);
-    setStepDir(1);
     setAuthStep('password');
   }, [email]);
 
   const backToEmail = useCallback(() => {
     setError(null);
-    setStepDir(-1);
     setAuthStep('email');
   }, []);
-
-  // Land focus on the password field once it has swiped into the row.
-  useEffect(() => {
-    if (authStep !== 'password') return;
-    const t = window.setTimeout(() => passwordRef.current?.focus(), reduceMotion ? 0 : 180);
-    return () => window.clearTimeout(t);
-  }, [authStep, reduceMotion]);
 
   const submitMagicLink = useCallback(async () => {
     if (!email.trim()) { setError('Enter your email first.'); return; }
@@ -433,7 +429,7 @@ export default function SignInPage() {
   }, [picked, finish]);
 
   const workspaceName = useMemo(
-    () => (workspace?.resolved ? workspace.name : null),
+    () => (workspace?.resolved ? workspace.name ?? null : null),
     [workspace],
   );
 
@@ -464,7 +460,7 @@ export default function SignInPage() {
   if (staffChoices) {
     return (
       <Shell>
-        <div className="w-full max-w-sm space-y-5 rounded-2xl border border-border-soft bg-surface-card p-8 shadow-sm">
+        <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 p-8 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
           <div className="space-y-1 text-center">
             {staffChoiceOrg && (
               <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{staffChoiceOrg}</p>
@@ -530,7 +526,7 @@ export default function SignInPage() {
   if (orgChoices) {
     return (
       <Shell>
-        <div className="w-full max-w-sm space-y-5 rounded-2xl border border-border-soft bg-surface-card p-8 shadow-sm">
+        <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 p-8 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
           <div className="space-y-1">
             <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Choose a workspace</p>
             <h1 className="text-lg font-bold text-text-default">Where do you want to go?</h1>
@@ -571,131 +567,86 @@ export default function SignInPage() {
   // ── Primary: email + password ─────────────────────────────────────────────
   return (
     <Shell>
-      <div className="w-full max-w-sm space-y-5 rounded-2xl border border-border-soft bg-surface-card px-8 pb-8 pt-7 shadow-sm">
-        <div className="space-y-1 text-center">
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Cycle Forge</p>
-          {workspaceName ? (
-            <h1 className="text-lg font-bold text-text-default">
-              Sign in to <span className="text-blue-600">{workspaceName}</span>
-            </h1>
-          ) : (
-            <h1 className="text-lg font-bold text-text-default">Sign in</h1>
-          )}
-        </div>
-
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (busy) return;
-            if (authStep === 'email') { advanceToPassword(); return; }
-            if (email.trim() && password) void submitAccount();
-          }}
-        >
-          {/* Identity chip — only present on the password step, so the email step
-              carries no dead space above the input. It collapses the typed email
-              into a tappable back affordance (‹ you@company.com). */}
-          <AnimatePresence initial={false}>
-            {authStep === 'password' && (
-              <motion.button
-                key="identity"
-                type="button"
-                onClick={backToEmail}
-                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-                transition={{ duration: 0.18, ease: motionBezier.easeOut }}
-                className="group -mb-1 inline-flex max-w-full items-center gap-1.5 rounded-full bg-surface-canvas py-1 pl-1.5 pr-3 text-caption font-semibold text-text-muted transition hover:text-text-default"
-              >
-                <svg className="h-3.5 w-3.5 shrink-0 text-text-faint transition group-hover:-translate-x-0.5 group-hover:text-text-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M15 6l-6 6 6 6" />
-                </svg>
-                <span className="truncate">{email.trim()}</span>
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* The shared input row — email and password occupy the exact same box;
-              only one is mounted at a time (mode="wait") and slides horizontally
-              through it. Forward advance swipes left→right per `stepDir`. The
-              `-m-1 p-1` gives the focus ring room while still clipping the slide. */}
-          <div className="relative -m-1 overflow-hidden p-1">
-            <AnimatePresence mode="wait" initial={false} custom={stepDir}>
-              {authStep === 'email' ? (
-                <motion.div
-                  key="email-field"
-                  custom={stepDir}
-                  initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: stepDir > 0 ? 28 : -28 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: stepDir > 0 ? -28 : 28 }}
-                  transition={{ duration: 0.22, ease: motionBezier.easeOut }}
-                  className="space-y-1"
-                >
-                  <label htmlFor="email" className="text-micro font-black uppercase tracking-widest text-text-soft">Email</label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    autoFocus
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-lg border border-border-default px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                    placeholder="you@company.com"
-                  />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="password-field"
-                  custom={stepDir}
-                  initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: stepDir > 0 ? 28 : -28 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: stepDir > 0 ? -28 : 28 }}
-                  transition={{ duration: 0.22, ease: motionBezier.easeOut }}
-                  className="space-y-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-micro font-black uppercase tracking-widest text-text-soft">Password</label>
-                    <a href="/signin/reset" className="text-caption font-semibold text-blue-600 hover:text-blue-700">Forgot?</a>
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    ref={passwordRef}
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-lg border border-border-default px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                    placeholder="Your password"
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
+      <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 px-8 pb-8 pt-7 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
+        <div className="space-y-2">
+          <div className="space-y-1 text-center">
+            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Cycle Forge</p>
+            <SignInTitle workspaceName={workspaceName} />
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
-            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-3.5 w-3.5 rounded border-border-default" />
-            Remember this device
-          </label>
-
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full"
-            disabled={busy || (authStep === 'email' ? !email.trim() : !password)}
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (busy) return;
+              if (authStep === 'email') { advanceToPassword(); return; }
+              if (email.trim() && password) void submitAccount();
+            }}
           >
-            {authStep === 'email' ? 'Continue' : busy ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
+            <SignInAuthStepPanels
+              authStep={authStep}
+              email={email}
+              password={password}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onBackToEmail={backToEmail}
+            />
 
-        {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
-        {notice && <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">{notice}</div>}
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+              <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-3.5 w-3.5 rounded border-border-default" />
+              Remember this device
+            </label>
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              disabled={busy || (authStep === 'email' ? !email.trim() : !password)}
+            >
+              {authStep === 'email' ? 'Continue' : busy ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+        </div>
+
+        <AnimatePresence mode="popLayout" initial={false}>
+          {error && (
+            <motion.div
+              key="error"
+              initial={messagePresence.initial}
+              animate={messagePresence.animate}
+              exit={messagePresence.exit}
+              transition={messageTransition}
+              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"
+            >
+              {error}
+            </motion.div>
+          )}
+          {notice && (
+            <motion.div
+              key="notice"
+              initial={messagePresence.initial}
+              animate={messagePresence.animate}
+              exit={messagePresence.exit}
+              transition={messageTransition}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700"
+            >
+              {notice}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Alternate methods live on the identity (email) step; the password
             step stays a single, focused row. Tap the email chip to come back. */}
+        <AnimatePresence initial={false}>
         {authStep === 'email' && (
-        <>
+        <motion.div
+          key="alternate"
+          initial={alternatePresence.initial}
+          animate={alternatePresence.animate}
+          exit={alternatePresence.exit}
+          transition={alternateTransition}
+          className="space-y-5"
+        >
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-border-hairline" />
           <span className="text-micro font-semibold uppercase tracking-widest text-text-faint">or</span>
@@ -787,8 +738,9 @@ export default function SignInPage() {
           )}
         </div>
         )}
-        </>
+        </motion.div>
         )}
+        </AnimatePresence>
 
         <p className="text-center text-xs text-text-soft">
           New here? <a href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Create a workspace</a>
@@ -863,16 +815,81 @@ function RememberMeToggle({ checked, onChange }: RememberMeToggleProps) {
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
+  const titlePresence = useMotionPresence(framerPresence.signInTitle);
+  const titleTransition = useMotionTransition(framerTransition.signInTitle);
+
   return (
-    <div className="fixed inset-0 overflow-y-auto bg-gradient-to-b from-surface-canvas via-surface-card to-surface-canvas antialiased">
+    <h1 className="min-h-[1.75rem] text-lg font-bold text-text-default">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={workspaceName ?? '__generic__'}
+          className="block"
+          initial={titlePresence.initial}
+          animate={titlePresence.animate}
+          exit={titlePresence.exit}
+          transition={titleTransition}
+        >
+          {workspaceName ? (
+            <>Sign in to <span className="text-blue-600">{workspaceName}</span></>
+          ) : (
+            'Sign in'
+          )}
+        </motion.span>
+      </AnimatePresence>
+    </h1>
+  );
+}
+
+/** Soft color washes — radial gradients avoid `blur` + `overflow-hidden` clip. */
+const SIGNIN_ORB_GRADIENT = [
+  'radial-gradient(ellipse 46% 42% at 8% 14%, rgba(59, 130, 246, 0.42), transparent 72%)',
+  'radial-gradient(ellipse 52% 48% at 94% 22%, rgba(168, 85, 247, 0.34), transparent 74%)',
+  'radial-gradient(ellipse 44% 40% at 26% 92%, rgba(99, 102, 241, 0.38), transparent 70%)',
+].join(', ');
+
+function Shell({ children }: { children: React.ReactNode }) {
+  const cardPresence = useMotionPresence(framerPresence.signInCard);
+  const cardTransition = useMotionTransition(framerTransition.signInCardMount);
+
+  return (
+    <div className="fixed inset-0 z-modal overflow-y-auto text-text-default antialiased">
+      {/* Viewport-fixed washes — `absolute inset-0` only covered the scrollport, leaving a white strip below long cards */}
+      <div className="pointer-events-none fixed inset-0 z-base bg-gradient-to-br from-surface-canvas via-surface-card to-surface-canvas" aria-hidden />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-base"
+        style={{ background: SIGNIN_ORB_GRADIENT }}
+        animate={{ opacity: [0.88, 1, 0.88] }}
+        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-base"
+        style={{
+          background: 'radial-gradient(ellipse 38% 34% at 72% 78%, rgba(56, 189, 248, 0.22), transparent 68%)',
+        }}
+        animate={{ opacity: [0.5, 0.85, 0.5], scale: [1, 1.04, 1] }}
+        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+      />
+
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.025]"
-        style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #000 1px, transparent 0)', backgroundSize: '24px 24px' }}
+        className="pointer-events-none fixed inset-0 z-raised opacity-[0.06] dark:opacity-[0.08]"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
+          backgroundSize: '32px 32px',
+        }}
         aria-hidden
       />
-      <div className="relative flex min-h-full flex-col items-center justify-center px-6 py-16">
-        {children}
+      <div className="relative z-sticky flex min-h-dvh flex-col items-center justify-start px-6 pt-[12vh] pb-16">
+        <motion.div
+          initial={cardPresence.initial}
+          animate={cardPresence.animate}
+          transition={cardTransition}
+          className="flex w-full justify-center"
+        >
+          {children}
+        </motion.div>
       </div>
     </div>
   );

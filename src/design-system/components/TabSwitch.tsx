@@ -26,6 +26,11 @@ interface TabSwitchProps {
   variant?: 'default' | 'upNext';
   /** When `variant` is `upNext`, 1px outline on rail + sliding pill (e.g. `getTechStationLightChromeOutlineClass`). */
   stationChromeOutlineClassName?: string;
+  /**
+   * How tab counts render. `badge` (default) = mini pill bubble.
+   * `plain` = same size/weight as the label (no bubble) — preferred for dense ops headers.
+   */
+  countStyle?: 'badge' | 'plain';
 }
 
 const colorTextMap: Record<string, { active: string; shadow: string }> = {
@@ -71,6 +76,7 @@ export function TabSwitch({
   highContrast = false,
   variant = 'default',
   stationChromeOutlineClassName,
+  countStyle = 'badge',
 }: TabSwitchProps) {
   const upNext = variant === 'upNext';
   const upNextOutline = stationChromeOutlineClassName ?? 'border border-border-default';
@@ -151,7 +157,7 @@ export function TabSwitch({
       >
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute z-0 rounded-lg bg-surface-card ${
+          className={`pointer-events-none absolute z-0 rounded-full bg-surface-card ${
             upNext ? upNextOutline : ''
           }`}
           style={{
@@ -179,7 +185,7 @@ export function TabSwitch({
                 buttonRefs.current[tab.id] = node;
               }}
               onClick={() => onTabChange(tab.id)}
-              className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-lg font-black uppercase tracking-widest transition-colors duration-150 ${
+              className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-full font-black uppercase tracking-widest transition-colors duration-150 ${
                 upNext || highContrast ? 'px-3 py-2 text-caption' : 'px-3 py-1.5 text-micro'
               } ${
                 upNext
@@ -202,25 +208,34 @@ export function TabSwitch({
                 transition={{ duration: 0.18, ease: motionBezier.easeOut }}
               >
                 {tab.label}
-                {tab.count !== undefined && tab.count > 0 && (
-                  <motion.span
-                    key={tab.count}
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                    className={`inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-mini font-black tabular-nums leading-none ${
-                      upNext
-                        ? 'bg-current/[0.14] text-current'
-                        : isActive
-                          ? 'bg-current/[0.12] text-current'
-                          : highContrast
-                            ? 'bg-surface-inverse-soft/20 text-text-default'
-                            : 'bg-surface-strong/70 text-text-muted'
-                    }`}
-                  >
-                    {tab.count > 99 ? '99+' : tab.count}
-                  </motion.span>
-                )}
+                {tab.count !== undefined && tab.count > 0 ? (
+                  countStyle === 'plain' ? (
+                    <span
+                      key={tab.count}
+                      className={`tabular-nums ${isActive ? 'opacity-80' : 'opacity-55'}`}
+                    >
+                      {tab.count > 99 ? '99+' : tab.count}
+                    </span>
+                  ) : (
+                    <motion.span
+                      key={tab.count}
+                      initial={{ scale: 0.7, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                      className={`inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-mini font-black tabular-nums leading-none ${
+                        upNext
+                          ? 'bg-current/[0.14] text-current'
+                          : isActive
+                            ? 'bg-current/[0.12] text-current'
+                            : highContrast
+                              ? 'bg-surface-inverse-soft/20 text-text-default'
+                              : 'bg-surface-strong/70 text-text-muted'
+                      }`}
+                    >
+                      {tab.count > 99 ? '99+' : tab.count}
+                    </motion.span>
+                  )
+                ) : null}
               </motion.span>
             </button>
           );

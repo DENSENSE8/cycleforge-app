@@ -68,6 +68,14 @@
       "note": "WS-STUDIO · docs/portfolio/INDEX.md"
     },
     {
+      "id": "unbox",
+      "label": "unbox · unbox-work",
+      "path": "../cycleforge-unbox",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · unbox-work · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "warehouse",
       "label": "Warehouse",
       "path": "../cycleforge-warehouse",

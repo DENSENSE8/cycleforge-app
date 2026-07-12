@@ -1,26 +1,26 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import { Loader2 } from '@/components/Icons';
-import { PerformanceGoals } from './PerformanceGoals';
-import { OperationsMatrix } from './OperationsMatrix';
-import { StaffGoalsRail } from './StaffGoalsRail';
+import { useState } from 'react';
 import { LiveFeedCard } from './LiveFeedCard';
-import { InventoryHealthRow } from './InventoryHealthRow';
 import { ExceptionsRow } from './ExceptionsRow';
 import { PipelineRow } from './PipelineRow';
-import { VelocityAndDeadStock } from './VelocityAndDeadStock';
-import { SupportOverviewCard } from './SupportOverviewCard';
 import { SecondaryKPITiles } from './SecondaryKPITiles';
-import PendingOrdersTable from '@/components/PendingOrdersTable';
 import { KpiDetailsModal, type KpiKind } from './KpiDetailsModal';
 import { PrimaryKpiGrid } from './PrimaryKpiGrid';
 import { OperationsGoalHero } from './OperationsGoalHero';
-import { OperationsAgentsRow } from './OperationsAgentsRow';
 import { OperationsSectionHeader as SectionHeader } from './OperationsSectionHeader';
 import { useOperationsDashboardData } from './useOperationsDashboardData';
 import { selectKpiValue } from './operations-dashboard-logic';
 
+/**
+ * Operations Live — a **Monitor** (observe-only): goal → KPIs → exceptions →
+ * pipeline → feed, and every click leaves to a workbench. The demoted sections
+ * (Agents, StaffGoals, Inventory, Velocity, Matrix/PerformanceGoals, Support)
+ * and the `PendingOrdersTable` order ledger were unmounted from Live — a ledger
+ * is a Workbench (durable selection + edit), the wrong archetype on a Monitor.
+ * Those components still exist for the Analytics mode; Live stops consuming them.
+ * The out-of-stock KPI tile is the deep-link into the Orders workbench.
+ */
 export function OperationsDashboard() {
   const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
   const { data, isLoading } = useOperationsDashboardData();
@@ -32,12 +32,7 @@ export function OperationsDashboard() {
         {/* ── TOP: the current goal (P3-ADM-01 acceptance A — goal-first) ── */}
         <OperationsGoalHero staffProgress={data?.staffProgress} isLoading={isLoading} />
 
-        {/* ── Local agents paired to the workflow (acceptance C) ── */}
-        <section>
-          <OperationsAgentsRow />
-        </section>
-
-        {/* ── SCROLL: live operations, stats & research (acceptance B) ── */}
+        {/* ── KPIs: today's snapshot ── */}
         <section>
           <SectionHeader
             eyebrow="Today’s snapshot"
@@ -51,69 +46,23 @@ export function OperationsDashboard() {
           </div>
         </section>
 
-        <section>
-          <StaffGoalsRail staffProgress={data?.staffProgress} isLoading={isLoading} />
-        </section>
-
-        <section>
-          <InventoryHealthRow />
-        </section>
-
+        {/* ── Exceptions: what needs attention ── */}
         <section>
           <ExceptionsRow />
         </section>
 
+        {/* ── Pipeline: where work is stacked ── */}
         <section>
           <PipelineRow />
         </section>
 
-        <section>
-          <VelocityAndDeadStock />
-        </section>
-
-        <section>
-          <SectionHeader
-            eyebrow="Goals & recommendations"
-            title="What to focus on next"
-          />
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-8">
-              <OperationsMatrix />
-            </div>
-            <div className="lg:col-span-4">
-              <PerformanceGoals />
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <SupportOverviewCard />
-        </section>
-
+        {/* ── Feed: the live activity stream ── */}
         <section>
           <LiveFeedCard
             feed={data?.activityFeed}
             isLoading={isLoading}
             ablyStatus="connected"
           />
-        </section>
-
-        <section>
-          <SectionHeader
-            eyebrow="Operational ledger"
-            title="Outbound pending orders"
-          />
-          <div className="bg-surface-card rounded-xl border border-border-soft overflow-hidden">
-            <Suspense
-              fallback={
-                <div className="flex h-64 items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
-                </div>
-              }
-            >
-              <PendingOrdersTable />
-            </Suspense>
-          </div>
         </section>
       </main>
 

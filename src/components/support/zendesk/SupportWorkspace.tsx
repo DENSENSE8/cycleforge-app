@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +18,14 @@ import { CallLogView } from '@/components/support/voice/CallLogView';
 import { SupportTicketDetail } from './chat/SupportTicketDetail';
 import { SupportTicketQueue } from './queue/SupportTicketQueue';
 
+const WarrantyWorkspace = dynamic(
+  () => import('@/components/warranty/WarrantyWorkspace').then((m) => m.WarrantyWorkspace),
+  {
+    ssr: false,
+    loading: () => <div className="flex-1 bg-surface-canvas" aria-hidden />,
+  },
+);
+
 /**
  * /support page body. The contextual sidebar (SupportSidebarPanel) owns the
  * per-mode picker/filter; this body shows the selected detail / stream and
@@ -25,9 +34,10 @@ import { SupportTicketQueue } from './queue/SupportTicketQueue';
  * - tickets   → selected Zendesk conversation (`?ticket=`).
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
  * - calls     → the org call-log Monitor stream (read-only).
+ * - warranty  → Warranty Logger (coverage + claims table + claim detail).
  *
  * Below md the contextual sidebar isn't shown, so the mode's list falls back to
- * rendering here (full-screen list ⇄ detail swap).
+ * rendering here (full-screen list ⇄ detail swap) for tickets/voicemail.
  */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
@@ -37,15 +47,18 @@ export function SupportWorkspace() {
   const ticketId = Number(searchParams.get('ticket')) || null;
   const vmId = Number(searchParams.get('vm')) || null;
 
+  const canTickets = !isLoaded || has('integrations.zendesk');
+  const canWarranty = !isLoaded || has('warranty.view');
+
   const paneMotion = useMotionPresence(framerPresence.workbenchPane);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
 
-  if (isLoaded && !has('integrations.zendesk')) {
+  if (isLoaded && !canTickets && !canWarranty) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to Support"
-          description="You need the “Manage Zendesk tickets” permission to view the support console."
+          description="You need Zendesk ticket access or warranty permissions to use the support console."
         />
       </div>
     );
@@ -57,6 +70,25 @@ export function SupportWorkspace() {
     const qs = sp.toString();
     router.push(qs ? `/support?${qs}` : '/support');
   };
+
+  // ── Warranty — Workbench (coverage lookup + claims + detail) ───────────────
+  if (mode === 'warranty') {
+    if (isLoaded && !canWarranty) {
+      return (
+        <div className="flex h-full items-center justify-center p-6">
+          <EmptyState
+            title="No access to Warranty"
+            description="You need the “View warranty claims” permission to open the warranty logger."
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-full min-h-0 w-full bg-surface-canvas">
+        <WarrantyWorkspace />
+      </div>
+    );
+  }
 
   // ── Calls — Monitor (read-only stream; no durable selection) ───────────────
   if (mode === 'calls') {
@@ -109,6 +141,18 @@ export function SupportWorkspace() {
             )}
           </AnimatePresence>
         </div>
+      </div>
+    );
+  }
+
+  // Tickets require Zendesk — warranty-only users should not see the empty queue.
+  if (isLoaded && !canTickets) {
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <EmptyState
+          title="No access to tickets"
+          description="Switch to Warranty in the mode rail, or ask for Zendesk ticket permission."
+        />
       </div>
     );
   }

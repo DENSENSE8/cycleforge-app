@@ -1,37 +1,23 @@
 'use client';
 
 /**
- * Unshipped · Shelf Board — the fulfillment-queue instance of the reusable
- * {@link SwimlaneBoard}. This file is now a thin consumer: it supplies only the
- * Unshipped-specific bits — the PENDING / TESTED / BLOCKED lane model (derived
- * from FULFILLMENT_STATE_META, never assigned), the per-row lane bucket
- * (`deriveFulfillmentState`), the queue sort vocabulary, the date field the
- * per-lane picker filters on, and the lane body (the SAME `OrdersQueueTable`
- * rows the dense table uses, header suppressed, vertical-only). Everything
- * structural (bubbles, drag-reorder, drag-resize, 1/2-up toggle, 40px header
- * band, per-staff persistence under `unshippedBoard`) lives in `SwimlaneBoard`.
+ * Unshipped · Shelf Board — To Ship fulfillment queue as PENDING / TESTED /
+ * BLOCKED swimlanes (drag-reorder, drag-resize, 1/2-up). Same SwimlaneBoard
+ * system as before; toolbar portals into the unified outbound header.
  *
- * The board's own top toolbar (the header band) hosts Unshipped-specific controls:
- * {@link BoardStaffFilter} on the left (contextual scope), and on the right the
- * shared {@link ColumnConfigButton} plus (when the page arms it) {@link
- * BoardSelectToggle} beside the column-layout toggles.
- *
- * Archetype (intentional hybrid — don't "normalize" away): a pipeline-workbench.
- * The lanes are a Monitor-style read of *derived* state, but the surface obeys
- * Workbench rules — URL-addressable selection (`?openOrderId`) and a crossfading
- * right-pane detail. It is NOT a recent-activity rail: do not refactor it onto
- * `SidebarRailShell` (that shell is a single vertical-list engine; this is a
- * horizontal multi-lane board with its own virtualization). See
- * `.claude/rules/display/workbench.md`.
- *
- * Add a fulfillment lane → extend FULFILLMENT_BOARD_LANES (order-lifecycle.ts)
- * + FULFILLMENT_STATE_META; the bubble appears with no change here.
+ * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
+ * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
  */
 
-import { useCallback, useMemo, type RefObject } from 'react';
-import { AlertTriangle, Check, Clock } from '@/components/Icons';
+import { useCallback, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Clock, Layers, List } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import {
   SwimlaneBoard,
+  type SwimlaneLaneBodyContext,
   type SwimlaneLaneDef,
   type SwimlaneSortOption,
 } from '@/components/board/SwimlaneBoard';
@@ -43,39 +29,32 @@ import { TableColumnConfigProvider } from '@/components/ui/table-column-config/T
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
+import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
+import { UNSHIPPED_VIEW_PARAMS } from '@/components/unshipped/outbound-sidebar-shared';
 import {
   deriveFulfillmentState,
   FULFILLMENT_STATE_META,
   type FulfillmentState,
 } from '@/lib/unshipped-state';
 import { FULFILLMENT_BOARD_LANES, type FulfillmentLaneIconKey } from '@/lib/order-lifecycle';
+import {
+  parseOutboundSurface,
+  SURFACE_PARAM,
+  type OutboundSurface,
+} from '@/lib/dashboard/outbound-queue-prefs';
+import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { dispatchCloseShippedDetails } from '@/utils/events';
+import { useEventBridge } from '@/hooks';
 import type { ShippedOrder } from '@/types/orders';
 
-/**
- * Phase-0 virtualization canary — now OFF by default. The windowed lane bodies
- * (`@tanstack/react-virtual`) mis-measure on first mount, so a freshly-loaded
- * board renders BLANK lanes (rows only appear after a column toggle / resize
- * forces a re-measure). The unshipped queue is bounded (rowLimit 200, split
- * across the 3 lanes), so mounting all rows is cheap and always paints — the
- * board's shared scroll region owns the wheel. Opt back in with
- * `NEXT_PUBLIC_UNSHIPPED_VIRTUAL_LIST=1` once the first-mount measurement race
- * is fixed.
- */
 const VIRTUAL_LANES = process.env.NEXT_PUBLIC_UNSHIPPED_VIRTUAL_LIST === '1';
 
-/** Icon binding — maps the lib's lane icon key to a concrete glyph (React stays here). */
 const LANE_ICON: Record<FulfillmentLaneIconKey, React.ComponentType<{ className?: string }>> = {
   clock: Clock,
   check: Check,
   alert: AlertTriangle,
 };
 
-/**
- * Lane model handed to the board. Lane ORDER + icon binding come from the
- * canonical `FULFILLMENT_BOARD_LANES` descriptor (`order-lifecycle.ts`); the
- * label/dot/description come from the `FULFILLMENT_STATE_META` color SoT. Add a
- * lane in the descriptor, not here — the bubble then appears with no change.
- */
 const UNSHIPPED_LANES: SwimlaneLaneDef<FulfillmentState>[] = FULFILLMENT_BOARD_LANES.map((lane) => ({
   id: lane.id,
   label: FULFILLMENT_STATE_META[lane.id].label,
@@ -85,38 +64,22 @@ const UNSHIPPED_LANES: SwimlaneLaneDef<FulfillmentState>[] = FULFILLMENT_BOARD_L
   iconClass: lane.iconClass,
 }));
 
-/** Queue sort vocabulary, shared with the dense table. */
 const UNSHIPPED_SORT_OPTIONS: SwimlaneSortOption<OrdersQueueSort>[] = ORDERS_QUEUE_SORTS.map((s) => ({
   id: s,
   label: ORDERS_QUEUE_SORT_LABEL[s],
 }));
 
-/** Params that define an Unshipped saved view (filters only — never search text). */
-const UNSHIPPED_VIEW_PARAMS = ['stage', 'ustatus', 'staff'] as const;
-
-/** Runtime-only fields the queue rows carry but ShippedOrder doesn't type. */
 type FulfillmentRow = ShippedOrder & {
   has_tech_scan?: boolean | null;
   out_of_stock?: string | null;
 };
 
-/** A card's lane is COMPUTED, never assigned. */
 function rowState(row: ShippedOrder): FulfillmentState {
   const r = row as FulfillmentRow;
   return deriveFulfillmentState({
     hasTechScan: Boolean(r.has_tech_scan),
     outOfStock: r.out_of_stock,
   });
-}
-
-/**
- * Board-level staff filter — the shared {@link StaffFilterButton} pill that
- * writes the canonical `?staff=` param. The unshipped query already narrows its
- * rows to that staff, so picking one filters every lane at once; "All staff"
- * clears it. (Was a local popover; promoted to the shared control — P1-WORK-02.)
- */
-function BoardStaffFilter() {
-  return <StaffFilterButton align="start" />;
 }
 
 export interface UnshippedShelfBoardProps {
@@ -128,12 +91,10 @@ export interface UnshippedShelfBoardProps {
   searchEmptyTitle?: string;
   searchResultLabel?: string;
   clearSearchLabel?: string;
-  /** Pencil multi-select: lane rows render checkboxes; the page owns the bar. */
   selectMode?: boolean;
-  /** Flip select-mode. When set, the board toolbar shows a Select toggle. */
   onToggleSelectMode?: () => void;
-  /** Optional "Load more" footer (Phase 2), rendered below the grid. */
   footer?: React.ReactNode;
+  toolbarPortalTarget?: HTMLElement | null;
 }
 
 export function UnshippedShelfBoard({
@@ -143,14 +104,76 @@ export function UnshippedShelfBoard({
   onOpenRecord,
   onClearSearch,
   searchEmptyTitle = 'No orders found',
-  searchResultLabel = 'unshipped orders',
-  clearSearchLabel = 'Show All Unshipped Orders',
+  searchResultLabel = 'orders to ship',
+  clearSearchLabel = 'Show All To Ship Orders',
   selectMode = false,
   onToggleSelectMode,
   footer,
+  toolbarPortalTarget,
 }: UnshippedShelfBoardProps) {
-  // Each lane body is the real queue table — header suppressed, vertical-only,
-  // sized to content up to the lane's cap (preset class or drag-resized px).
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const focusLane = useMemo((): FulfillmentState | null => {
+    const raw = String(searchParams.get('ustatus') || '').trim().toUpperCase();
+    if (raw === 'PENDING' || raw === 'TESTED' || raw === 'BLOCKED') return raw;
+    return null;
+  }, [searchParams]);
+  const lateOnly = searchParams.get('late') === '1';
+  const surface: OutboundSurface = parseOutboundSurface(searchParams.get(SURFACE_PARAM));
+  const visibleLanes = useMemo(
+    () => (focusLane ? UNSHIPPED_LANES.filter((l) => l.id === focusLane) : UNSHIPPED_LANES),
+    [focusLane],
+  );
+
+  const replaceParam = useCallback(
+    (mutator: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      mutator(params);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname || '/dashboard'}?${qs}` : pathname || '/dashboard', {
+        scroll: false,
+      });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const toggleLateOnly = useCallback(() => {
+    replaceParam((params) => {
+      if (params.get('late') === '1') params.delete('late');
+      else params.set('late', '1');
+    });
+  }, [replaceParam]);
+
+  const setSurface = useCallback(
+    (next: OutboundSurface) => {
+      replaceParam((params) => {
+        if (next === 'lanes') params.delete(SURFACE_PARAM);
+        else params.set(SURFACE_PARAM, next);
+      });
+    },
+    [replaceParam],
+  );
+
+  useEventBridge({
+    'open-shipped-details': (e) => {
+      const detail = (e as CustomEvent).detail;
+      const id = Number(detail?.order?.id ?? detail?.id);
+      setSelectedId(Number.isFinite(id) && id > 0 ? id : null);
+    },
+    'close-shipped-details': () => setSelectedId(null),
+  });
+
+  useOutboundQueueKeyboard({
+    enabled: true,
+    orderedRecords: records,
+    selectedId,
+    context: 'queue',
+    openRecord: onOpenRecord,
+  });
+
   const renderLaneBody = useCallback(
     ({
       laneLabel,
@@ -160,84 +183,197 @@ export function UnshippedShelfBoard({
       maxBodyHeightPx,
       growToContent,
       scrollParentRef,
-    }: {
-      laneLabel: string;
-      rows: ShippedOrder[];
-      sort: OrdersQueueSort;
-      maxBodyHeightClass?: string;
-      maxBodyHeightPx?: number;
-      growToContent?: boolean;
-      scrollParentRef?: RefObject<HTMLElement | null>;
-    }) => (
-      <OrdersQueueTable
-        hideHeader
-        inheritColumnConfig
-        noHorizontalScroll
-        virtualized={VIRTUAL_LANES}
-        autoHeight
-        maxBodyHeightClass={maxBodyHeightClass}
-        maxBodyHeightPx={maxBodyHeightPx}
-        growToContent={growToContent}
-        scrollParentRef={scrollParentRef}
-        records={rows}
-        queueMode="fulfillment"
-        sort={sort}
-        selectMode={selectMode}
-        selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-        loading={loading}
-        isRefreshing={false}
-        searchValue={searchValue}
-        onClearSearch={onClearSearch}
-        emptyMessage={`No ${laneLabel.toLowerCase()} orders`}
-        searchEmptyTitle={searchEmptyTitle}
-        searchResultLabel={searchResultLabel}
-        clearSearchLabel={clearSearchLabel}
-        onOpenRecord={onOpenRecord}
-      />
-    ),
+      collapse,
+    }: SwimlaneLaneBodyContext<ShippedOrder, FulfillmentState, OrdersQueueSort>) => {
+      const dateHeaderEndSlot =
+        collapse && collapse.canToggle ? (
+          <HoverTooltip
+            label={
+              collapse.expanded
+                ? `Show less · ${collapse.displayCount}`
+                : `Show more · ${collapse.displayCount}`
+            }
+            asChild
+          >
+            <button
+              type="button"
+              onClick={collapse.onToggle}
+              aria-expanded={collapse.expanded}
+              aria-label={
+                collapse.expanded
+                  ? `Collapse ${collapse.laneLabel} lane to ${collapse.displayCount} rows`
+                  : `Expand ${collapse.laneLabel} lane to ${collapse.displayCount} rows`
+              }
+              className="ds-raw-button inline-flex h-7 min-w-7 items-center justify-center gap-0.5 rounded-full border border-border-soft bg-surface-card px-1.5 text-text-soft shadow-sm transition hover:bg-surface-sunken hover:text-text-default"
+            >
+              {collapse.expanded ? (
+                <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+              )}
+              <span className="text-[10px] font-black tabular-nums leading-none">
+                {collapse.displayCount}
+              </span>
+            </button>
+          </HoverTooltip>
+        ) : null;
+
+      return (
+        <OrdersQueueTable
+          hideHeader
+          inheritColumnConfig
+          noHorizontalScroll
+          virtualized={VIRTUAL_LANES}
+          autoHeight
+          maxBodyHeightClass={maxBodyHeightClass}
+          maxBodyHeightPx={maxBodyHeightPx}
+          growToContent={growToContent}
+          scrollParentRef={scrollParentRef}
+          records={rows}
+          queueMode="fulfillment"
+          sort={sort}
+          selectMode={selectMode}
+          selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          loading={loading}
+          isRefreshing={false}
+          searchValue={searchValue}
+          onClearSearch={onClearSearch}
+          emptyMessage={`No ${laneLabel.toLowerCase()} orders`}
+          searchEmptyTitle={searchEmptyTitle}
+          searchResultLabel={searchResultLabel}
+          clearSearchLabel={clearSearchLabel}
+          onOpenRecord={onOpenRecord}
+          dateHeaderEndSlot={dateHeaderEndSlot}
+        />
+      );
+    },
     [loading, searchValue, onClearSearch, searchEmptyTitle, searchResultLabel, clearSearchLabel, onOpenRecord, selectMode],
   );
 
-  // Filter the per-lane date picker on the order's created/deadline date.
   const getRowDate = useCallback((r: ShippedOrder) => r.created_at || r.deadline_at, []);
 
-  // Contextual staff scope sits on the LEFT — it narrows the whole board before
-  // layout/view controls. Column config + select stay on the right with the column
-  // toggles. Staff filter is board-wide (`?staff=`), so one instance filters every lane.
-  const headerStartSlot = useMemo(() => <BoardStaffFilter />, []);
+  const headerPersistentEndSlot = useMemo(() => <StaffFilterButton align="start" />, []);
 
   const headerEndSlot = useMemo(
     () => (
       <div className="flex items-center gap-2">
-        <ColumnConfigButton variant="toolbar" />
+        <HoverTooltip
+          label={surface === 'list' ? 'Lane stack (grouped by stage)' : 'Flat pick list (no lanes)'}
+          asChild
+        >
+          <ToolbarButton
+            iconOnly
+            active={surface === 'list'}
+            onClick={() => setSurface(surface === 'list' ? 'lanes' : 'list')}
+            aria-pressed={surface === 'list'}
+            aria-label={surface === 'list' ? 'Switch to lane stack' : 'Switch to flat list'}
+          >
+            {surface === 'list' ? <Layers className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
+          </ToolbarButton>
+        </HoverTooltip>
+        <HoverTooltip label="Show late orders only" asChild>
+          <ToolbarButton
+            iconOnly
+            active={lateOnly}
+            onClick={toggleLateOnly}
+            aria-pressed={lateOnly}
+            aria-label="Show late orders only"
+          >
+            <Clock className="h-3.5 w-3.5" />
+          </ToolbarButton>
+        </HoverTooltip>
+        <HoverTooltip label="Configure columns" asChild>
+          <span className="inline-flex">
+            <ColumnConfigButton variant="toolbar" />
+          </span>
+        </HoverTooltip>
         {onToggleSelectMode ? (
           <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
         ) : null}
-        <TableOptionsMenu
-          showDensity={false}
-          savedViews={{ storageKey: 'unshipped_saved_views', paramKeys: UNSHIPPED_VIEW_PARAMS }}
-        />
+        <HoverTooltip label="Table options" asChild>
+          <span className="inline-flex">
+            <TableOptionsMenu
+              showDensity
+              showColumnPresets
+              savedViews={{ storageKey: 'unshipped_saved_views', paramKeys: UNSHIPPED_VIEW_PARAMS }}
+            />
+          </span>
+        </HoverTooltip>
       </div>
     ),
-    [selectMode, onToggleSelectMode],
+    [selectMode, onToggleSelectMode, lateOnly, toggleLateOnly, surface, setSurface],
   );
 
   return (
     <TableColumnConfigProvider tableId="orders">
-      <SwimlaneBoard<ShippedOrder, FulfillmentState, OrdersQueueSort>
-        prefsKey="unshippedBoard"
-        lanes={UNSHIPPED_LANES}
-        bucket={rowState}
-        records={records}
-        maxColumns={2}
-        sortOptions={UNSHIPPED_SORT_OPTIONS}
-        defaultSort="priority"
-        headerStartSlot={headerStartSlot}
-        headerEndSlot={headerEndSlot}
-        getRowDate={getRowDate}
-        renderLaneBody={renderLaneBody}
-        footerSlot={footer}
-      />
+      <TableDensityProvider tableId="orders" urlSync={false}>
+        {surface === 'list' ? (
+          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+            {toolbarPortalTarget
+              ? createPortal(
+                  <div className="flex items-center gap-2">
+                    {headerPersistentEndSlot}
+                    {headerEndSlot}
+                  </div>,
+                  toolbarPortalTarget,
+                )
+              : (
+                <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-soft px-3 py-1.5">
+                  {headerPersistentEndSlot}
+                  {headerEndSlot}
+                </div>
+              )}
+            <OrdersQueueTable
+              records={records}
+              loading={loading}
+              isRefreshing={false}
+              searchValue={searchValue}
+              onClearSearch={onClearSearch}
+              emptyMessage="No orders to ship"
+              searchEmptyTitle={searchEmptyTitle}
+              searchResultLabel={searchResultLabel}
+              clearSearchLabel={clearSearchLabel}
+              queueMode="fulfillment"
+              sort="priority"
+              selectMode={selectMode}
+              selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+              onOpenRecord={(record) => {
+                setSelectedId(Number(record.id));
+                onOpenRecord(record);
+              }}
+              onCloseRecord={() => {
+                setSelectedId(null);
+                dispatchCloseShippedDetails();
+              }}
+              hideHeader
+              noHorizontalScroll
+              inheritColumnConfig
+            />
+            {footer}
+          </div>
+        ) : (
+          <SwimlaneBoard<ShippedOrder, FulfillmentState, OrdersQueueSort>
+            key={focusLane ?? 'all-lanes'}
+            prefsKey="unshippedBoard"
+            lanes={visibleLanes}
+            bucket={rowState}
+            records={records}
+            // Single-column vertical stack only — no multi-up toggle, grid, or FLIP.
+            maxColumns={1}
+            defaultColumns={1}
+            defaultExpanded={Boolean(focusLane)}
+            sortOptions={UNSHIPPED_SORT_OPTIONS}
+            defaultSort="priority"
+            headerPersistentEndSlot={headerPersistentEndSlot}
+            headerEndSlot={headerEndSlot}
+            collapsibleControls
+            getRowDate={getRowDate}
+            renderLaneBody={renderLaneBody}
+            footerSlot={footer}
+            toolbarPortalTarget={toolbarPortalTarget}
+          />
+        )}
+      </TableDensityProvider>
     </TableColumnConfigProvider>
   );
 }

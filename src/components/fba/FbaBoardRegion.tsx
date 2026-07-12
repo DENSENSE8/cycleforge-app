@@ -2,17 +2,14 @@
 
 /**
  * Center region of the FBA page: the board table (PLANNED in plan mode, the
- * PACKED queue in combine), the "Combine items" selection action bar that floats
- * over it, and the combine workspace that crossfades over the board after
- * "Combine items" is pressed. Also handles the error + shipped-mode states.
- * Pure presentational; state comes from the page's hooks. Extracted from
- * fba/page; behaviour is unchanged.
+ * PACKED queue in combine), FloatingButton for combine/clear (receiving pattern),
+ * and the combine workspace that crossfades over the board after combine.
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
-import { Package } from '@/components/Icons';
-import { StickyActionBar } from '@/design-system/components/StickyActionBar';
+import { Package, X } from '@/components/Icons';
+import { FloatingButton } from '@/design-system/primitives';
 import { stationThemeColors } from '@/utils/staff-colors';
 import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaBoardTable, type FbaBoardItem } from '@/components/fba/FbaBoardTable';
@@ -65,13 +62,11 @@ export function FbaBoardRegion({
   const { weekRange, weekOffset, setWeekOffset, filteredPendingItems, boardEmptyMessage } = weekFilter;
   const { boardSelection, selectedUnits, workspaceActive, showCombineBar, handleStartCombine } =
     combine;
+  const theme = stationThemeColors[stationTheme];
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-      {/* Board (PLANNED in plan mode, PACKED queue in combine). Stays mounted
-          under the combine workspace so the sidebar Packed rail can keep folding
-          items into the selection. */}
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden bg-surface-canvas">
+      <div className="relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col overflow-hidden">
         <FbaBoardTable
           items={filteredPendingItems}
           loading={loading && !hasBoardItems}
@@ -82,51 +77,33 @@ export function FbaBoardRegion({
           weekOffset={weekOffset}
           onPrevWeek={() => setWeekOffset((o) => o - 1)}
           onNextWeek={() => setWeekOffset((o) => Math.min(0, o + 1))}
+          // Reserve space so the last rows clear the floating combine pill.
+          contentClassName={showCombineBar ? 'pb-28' : undefined}
         />
       </div>
 
-      {/* Selection action bar: floats over the board once packed items are
-          selected. Pressing "Combine items" is what opens the workspace (not the
-          first selection) so multiple items can be picked first. */}
-      <AnimatePresence>
-        {showCombineBar && (
-          <motion.div
-            key="fba-combine-bar"
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            transition={{ duration: 0.18, ease: motionBezier.easeOut }}
-            className="absolute inset-x-0 bottom-0 z-20"
-          >
-            <StickyActionBar
-              maxWidth="max-w-none"
-              leading={
-                <span className="text-micro font-black uppercase tracking-widest tabular-nums text-text-soft">
-                  {boardSelection.length} item{boardSelection.length === 1 ? '' : 's'} · {selectedUnits} unit{selectedUnits === 1 ? '' : 's'} selected
-                </span>
-              }
-              secondary={{
-                label: 'Clear',
-                onClick: () =>
-                  window.dispatchEvent(new CustomEvent(FBA_BOARD_TOGGLE_ALL, { detail: 'none' })),
-              }}
-              primary={{
-                label: 'Combine items',
-                onClick: handleStartCombine,
-                icon: <Package className="h-4 w-4 shrink-0" />,
-                toneClasses: {
-                  bg: stationThemeColors[stationTheme].bg,
-                  hover: stationThemeColors[stationTheme].hover,
-                },
-              }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Same FloatingButton pattern as receiving (primary CTA + split Clear menu). */}
+      {showCombineBar ? (
+        <FloatingButton
+          label={`Combine ${boardSelection.length} item${boardSelection.length === 1 ? '' : 's'} · ${selectedUnits} unit${selectedUnits === 1 ? '' : 's'}`}
+          onClick={handleStartCombine}
+          icon={<Package className="h-4 w-4 shrink-0" />}
+          tone="violet"
+          toneClasses={{ bg: theme.bg, hover: theme.hover }}
+          maxWidth="max-w-[720px]"
+          menuLabel="Selection actions"
+          menuTitle="Clear or adjust selection"
+          menu={[
+            {
+              label: 'Clear selection',
+              icon: <X className="h-3.5 w-3.5 shrink-0" />,
+              onClick: () =>
+                window.dispatchEvent(new CustomEvent(FBA_BOARD_TOGGLE_ALL, { detail: 'none' })),
+            },
+          ]}
+        />
+      ) : null}
 
-      {/* Combine workspace (combine mode only): crossfades over the board after
-          "Combine items" is pressed. Always mounted (opacity-crossfaded) so
-          FbaActiveShipments keeps listening for open-editor. */}
       {activeMode === 'combine' && (
         <motion.div
           className="absolute inset-0 z-10 bg-surface-card"

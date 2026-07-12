@@ -51,6 +51,18 @@ export const framerDuration = {
   overlaySearchIn: 0.2,
   /** Copy-to-clipboard feedback flash */
   chipCopyFeedback: 0.15,
+  /** Auth card shell — first paint mount */
+  signInCardMount: 0.26,
+  /** Email ↔ password step slide (x) */
+  signInStepSlide: 0.26,
+  /** Email ↔ password step crossfade (opacity) */
+  signInStepOpacity: 0.18,
+  /** Workspace title text swap */
+  signInTitle: 0.18,
+  /** Identity chip appear on password step */
+  signInIdentityChip: 0.18,
+  /** Alternate auth methods fade (step change only) */
+  signInAlternateFade: 0.18,
 } as const;
 
 export const framerDurationTabPager = {
@@ -230,6 +242,40 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
+  /** Auth card shell mount — pair with `framerPresence.signInCard` */
+  signInCardMount: {
+    duration: framerDuration.signInCardMount,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Auth email ↔ password step crossfade — whole panel (chip + fields) swaps as
+   * one unit inside a fixed-height viewport. Pair with `signInStepVariants` and
+   * `AnimatePresence mode="wait" initial={false}`.
+   */
+  signInStepSlide: {
+    duration: framerDuration.signInStepSlide,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Workspace title swap — pair with `framerPresence.signInTitle` */
+  signInTitle: {
+    duration: framerDuration.signInTitle,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Identity chip on password step — pair with `framerPresence.signInIdentityChip` */
+  signInIdentityChip: {
+    duration: framerDuration.signInIdentityChip,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Alternate auth section fade — pair with `framerPresence.signInAlternateSection` */
+  signInAlternateFade: {
+    duration: framerDuration.signInAlternateFade,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
   /** Horizontal tab pager — x slide + opacity crossfade */
   tabPager: {
     x: { type: 'tween' as const, duration: framerDurationTabPager.x, ease: [0.32, 0.72, 0, 1] as const },
@@ -352,11 +398,13 @@ export const framerPresence = {
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: 4 },
   },
-  /** Table row — simple opacity fade */
+  /** Table row enter/exit — opacity + small y so expand/collapse (Show more)
+   *  reads as rows joining the list, not a hard pop. Pair with row `layout`
+   *  so siblings reflow with chip-column toggles (ChipColumns already layouts). */
   tableRow: {
-    initial: { opacity: 0 },
-    animate: { opacity: 1 },
-    exit: { opacity: 0 },
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -4 },
   },
   /** Dropdown panel — fade + slight slide from top */
   dropdownPanel: {
@@ -410,15 +458,16 @@ export const framerPresence = {
     exit: { opacity: 0, x: 20 },
   },
   /**
-   * Global detail-stack overlay — inset rounded card over the viewport.
-   * Scale + opacity only (GPU-composited); no edge slide. Exits ~75% of enter
-   * duration via `framerDuration.detailStackOverlayMount`. Pair with
-   * `framerTransition.detailStackOverlayMount` + `useMotionPresence`.
+   * Global detail-stack overlay — floating card near the top-right edge.
+   * Slides IN from the right (translating left into view) and OUT back to the
+   * right; opacity + x transform only (GPU-composited). Pair with
+   * `framerTransition.detailStackOverlayMount` + `useMotionPresence` (which
+   * collapses x→0 under reduced motion, leaving a pure fade).
    */
   detailStackOverlay: {
-    initial: { opacity: 0, scale: 0.96 },
-    animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.97 },
+    initial: { opacity: 0, x: 48 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 48 },
   },
   /**
    * Heavy right-pane WORKSPACE overlay crossfade (the receiving line workspace
@@ -432,6 +481,34 @@ export const framerPresence = {
    * consume via `useMotionPresence`. See `.claude/rules/display/motion-crossfade.md`.
    */
   workbenchPaneSettle: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  },
+  /**
+   * Auth card shell — subtle opacity + y mount (no scale/blur). B2B auth surfaces
+   * stay sub-300ms and transform-only; pair with `framerTransition.signInCardMount`
+   * via `useMotionPresence` / `useMotionTransition`.
+   */
+  signInCard: {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -6 },
+  },
+  /** Identity chip above password field — opacity only (positioned out of flow) */
+  signInIdentityChip: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  },
+  /** Alternate auth methods block — opacity only (never height on mount) */
+  signInAlternateSection: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  },
+  /** Workspace title text swap */
+  signInTitle: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
@@ -476,6 +553,24 @@ export const tabPagerVariants: Variants = {
     x: dir > 0 ? '-100%' : '100%',
     opacity: 0,
   }),
+};
+
+/**
+ * Auth step panel swap — email-only vs password+chip panels crossfade as one
+ * keyed block inside a fixed-height viewport (`AnimatePresence mode="wait"`).
+ * Mirrors `framerPresence.workbenchPane` — opacity + small y, no horizontal slide.
+ */
+export const signInStepVariants: Variants = {
+  enter: { opacity: 0, y: 8 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+};
+
+/** Reduced-motion fallback — opacity only */
+export const signInStepVariantsReduced: Variants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 // ─── Mobile-specific durations ───────────────────────────────────────────────
@@ -717,6 +812,30 @@ export const framerVariants: Record<string, Variants> = {
     animate: {
       transition: {
         staggerChildren: 0.05,
+      },
+    },
+  },
+  /**
+   * Monitor first-load stagger. Parent: `initial="hidden" animate="visible"`.
+   * Children (SectionCard / KpiStrip with `stagger`): use `monitorStaggerItem`.
+   * Do not remount the container on filter keystrokes — re-render in place.
+   */
+  monitorStaggerContainer: {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+  },
+  monitorStaggerItem: {
+    hidden: { opacity: 0, y: 10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: framerDuration.stationCardMount,
+        ease: motionBezier.easeOut,
       },
     },
   },

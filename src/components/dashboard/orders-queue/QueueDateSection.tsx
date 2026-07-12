@@ -1,7 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { QueueGroupRow } from './QueueGroupRow';
@@ -13,6 +16,11 @@ export interface QueueDateSectionProps {
   isMobile: boolean;
   /** Render a single queue row at the given zebra-stripe index. */
   renderRow: (record: ShippedOrder, stripeIndex: number) => ReactNode;
+  /**
+   * When false, skip AnimatePresence (virtualized remounts). Default true so
+   * Show more / Show less can exit-animate rows and let siblings layout-reflow.
+   */
+  animateRows?: boolean;
 }
 
 /**
@@ -21,29 +29,72 @@ export interface QueueDateSectionProps {
  * `stripeIndex` runs across the whole day (group children included) so zebra
  * striping stays consistent.
  */
-export function QueueDateSection({ date, groups, isMobile, renderRow }: QueueDateSectionProps) {
+export function QueueDateSection({
+  date,
+  groups,
+  isMobile,
+  renderRow,
+  animateRows = true,
+}: QueueDateSectionProps) {
   // groups preserve the per-day sort order (groupRowsBy), matching
   // displayedRecords so shift-range select lines up with the view. `stripeIndex`
   // runs across the whole day (group children included) via each group's base.
   let stripeIndex = 0;
   const dayTotal = groups.reduce((sum, g) => sum + g.rows.length, 0);
+  const rowPresence = useMotionPresence(framerPresence.tableRow);
+  const mountTransition = useMotionTransition(framerTransition.tableRowMount);
+  const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
+
+  const body = groups.map((group) => {
+    const baseStripeIndex = stripeIndex;
+    stripeIndex += group.rows.length;
+    const row = (
+      <QueueGroupRow
+        group={group}
+        baseStripeIndex={baseStripeIndex}
+        isMobile={isMobile}
+        renderRow={renderRow}
+      />
+    );
+    // AnimatePresence needs a motion child with a stable key so Show more/less
+    // can exit-animate rows; layout reflows siblings with the chip-column spring.
+    if (!animateRows) {
+      return (
+        <div key={`order-${group.key}`}>
+          {row}
+        </div>
+      );
+    }
+    return (
+      <motion.div
+        key={`order-${group.key}`}
+        // Presence only on the AnimatePresence child (enter/exit for Show more).
+        // Layout lives on OrdersQueueTableRow so title + chips reflow together.
+        {...rowPresence}
+        transition={{
+          opacity: mountTransition,
+          y: mountTransition,
+        }}
+      >
+        {row}
+      </motion.div>
+    );
+  });
 
   return (
-    <div className="flex flex-col">
-      <DateGroupHeader date={date} total={dayTotal} />
-      {groups.map((group) => {
-        const baseStripeIndex = stripeIndex;
-        stripeIndex += group.rows.length;
-        return (
-          <QueueGroupRow
-            key={`order-${group.key}`}
-            group={group}
-            baseStripeIndex={baseStripeIndex}
-            isMobile={isMobile}
-            renderRow={renderRow}
-          />
-        );
-      })}
-    </div>
+    <motion.div
+      layout={animateRows}
+      className="flex flex-col"
+      transition={animateRows ? { layout: layoutTransition } : undefined}
+    >
+      <DateGroupHeader date={date} total={dayTotal} animate={animateRows} />
+      {animateRows ? (
+        <AnimatePresence initial={false} mode="popLayout">
+          {body}
+        </AnimatePresence>
+      ) : (
+        body
+      )}
+    </motion.div>
   );
 }

@@ -1,16 +1,16 @@
 'use client';
 
 /**
- * Operations → Analytics mode. The deep-analytics dashboard, modelled on the
- * dark analytics reference: a throughput hero line chart, a stations gauge /
- * sources / inventory-velocity tri-panel, and a bottom activity map +
- * inventory-health strip. It renders clean on the light canvas and becomes the
- * dark reference automatically under `html[data-theme='dark']` (semantic classes
- * only — no hardcoded dark theme).
+ * Operations → Analytics mode. Deep-analytics Monitor composed from the
+ * design-system Monitor block registry (SectionCard, KpiStrip, MonitorPageShell).
  *
- * Data comes from existing org-scoped endpoints via `useOperationsAnalytics`
- * (kpi-table + reports), plus the cached `useOperationsDashboardData` for the
- * top KPI strip. No new backend, no polling.
+ * Renders clean on the light canvas and becomes the dark reference automatically
+ * under `html[data-theme='dark']` (semantic classes only — no hardcoded dark theme).
+ *
+ * Data: org-scoped endpoints via `useOperationsAnalytics` (kpi-table + reports),
+ * plus cached `useOperationsDashboardData` for the top KPI strip. No new backend.
+ *
+ * Archetype: Monitor — see `.claude/rules/display/monitor-rollup-blocks.md`.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -18,6 +18,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
+import {
+  DeltaChip,
+  FilterBand,
+  KpiStrip,
+  MonitorListRow,
+  MonitorPageShell,
+  SectionCard,
+} from '@/design-system/components/monitor';
+import { framerVariants } from '@/design-system/foundations/motion-framer';
 import { Activity, BarChart3, Boxes, Database, Download, Layers, Loader2, TrendingUp, Warehouse, Zap } from '@/components/Icons';
 import {
   ANALYTICS_RANGE_LABELS,
@@ -38,21 +47,17 @@ import { paletteTone, stationTone, VELOCITY_TIER_TONES } from './charts/chart-th
 
 const RANGES: AnalyticsRange[] = ['24h', '7d', '30d'];
 
-const KPI_STRIP: { key: DashboardCategory; label: string; tone: string; invert?: boolean }[] = [
-  { key: 'all', label: 'Daily velocity', tone: 'text-blue-600' },
-  { key: 'tested', label: 'Tested today', tone: 'text-emerald-600' },
-  { key: 'fba', label: 'FBA intake', tone: 'text-violet-600' },
-  { key: 'repair', label: 'Repair queue', tone: 'text-orange-600', invert: true },
+const KPI_STRIP: {
+  key: DashboardCategory;
+  label: string;
+  valueClassName: string;
+  invert?: boolean;
+}[] = [
+  { key: 'all', label: 'Daily velocity', valueClassName: 'text-text-info' },
+  { key: 'tested', label: 'Tested today', valueClassName: 'text-text-success' },
+  { key: 'fba', label: 'FBA intake', valueClassName: 'text-text-fulfillment' },
+  { key: 'repair', label: 'Repair queue', valueClassName: 'text-text-warning', invert: true },
 ];
-
-const container = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] as const } },
-};
 
 type Segment = 'volume' | 'cumulative';
 
@@ -197,226 +202,240 @@ export function OperationsAnalyticsView() {
 
   const loading = analytics.isLoading;
 
+  const kpiItems = useMemo(
+    () =>
+      KPI_STRIP.map((k) => {
+        const cell = dashboard?.summary?.[k.key];
+        return {
+          label: k.label,
+          value: cell ? cell.value.toLocaleString() : '0',
+          delta: cell?.delta ?? 0,
+          invertDelta: k.invert,
+          valueClassName: k.valueClassName,
+        };
+      }),
+    [dashboard?.summary],
+  );
+
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-surface-canvas text-text-default">
-      <motion.main
-        variants={container}
-        initial="hidden"
-        animate="visible"
-        className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-16 space-y-6"
-      >
-        {/* header */}
-        <motion.header variants={item} className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 text-blue-600">
-              <BarChart3 className="h-5 w-5" />
-            </span>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-text-default leading-none">Operations Analytics</h1>
-              <p className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-text-soft">
-                {ANALYTICS_RANGE_LABELS[range]} · live floor + inventory
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Segmented
-              value={segment}
-              onChange={(v) => setSegment(v)}
-              options={[
-                { id: 'volume', label: 'Volume' },
-                { id: 'cumulative', label: 'Cumulative' },
-              ]}
-            />
-            <Segmented value={range} onChange={setRange} options={RANGES.map((r) => ({ id: r, label: RANGE_SHORT[r] }))} />
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Download className="h-4 w-4" />}
-              onClick={exportReport}
-              disabled={!a}
-            >
-              Create report
-            </Button>
-          </div>
-        </motion.header>
-
-        {/* KPI strip */}
-        <motion.section variants={item} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {KPI_STRIP.map((k) => {
-            const cell = dashboard?.summary?.[k.key];
-            return (
-              <div key={k.key} className="rounded-2xl border border-border-soft bg-surface-card p-4">
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{k.label}</p>
-                <p className={cn('mt-1.5 text-3xl font-black tabular-nums leading-none', k.tone)}>
-                  {cell ? cell.value.toLocaleString() : '0'}
+    <MonitorPageShell stagger>
+      <motion.header variants={framerVariants.monitorStaggerItem}>
+        <FilterBand
+          leading={
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-accent text-text-accent">
+                <BarChart3 className="h-5 w-5" />
+              </span>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-text-default leading-none">
+                  Operations Analytics
+                </h1>
+                <p className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-text-soft">
+                  {ANALYTICS_RANGE_LABELS[range]} · live floor + inventory
                 </p>
-                <Delta delta={cell?.delta ?? 0} invert={k.invert} />
               </div>
-            );
-          })}
-        </motion.section>
-
-        <SectionCard
-          id="packing-kpi"
-          icon={Boxes}
-          eyebrow="Packing"
-          title="Packer productivity (weighted)"
-          headline={packing ? `${packing.totals.weighted_minutes.toLocaleString()} min` : loading ? '—' : '—'}
-          meta={
-            packing
-              ? `${packing.totals.remaining_minutes.toLocaleString()} min remaining · FBA fill ≈ ${packing.fba.fillable_units.toLocaleString()} units`
-              : 'Requires operations permission'
+            </div>
           }
         >
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Today</span>
-              {packing ? (
-                <span className="text-xs font-black text-text-muted">
-                  Capacity {packing.capacity.daily_capacity_minutes.toLocaleString()} min · {packing.capacity.packer_headcount} packers
-                </span>
-              ) : null}
-              <div className="ml-auto flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={<Download className="h-4 w-4" />}
-                  onClick={() => exportPackingReport()}
-                  disabled={!packing}
-                >
-                  Export all
-                </Button>
-              </div>
-            </div>
+          <Segmented
+            value={segment}
+            onChange={(v) => setSegment(v)}
+            options={[
+              { id: 'volume', label: 'Volume' },
+              { id: 'cumulative', label: 'Cumulative' },
+            ]}
+          />
+          <Segmented value={range} onChange={setRange} options={RANGES.map((r) => ({ id: r, label: RANGE_SHORT[r] }))} />
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Download className="h-4 w-4" />}
+            onClick={exportReport}
+            disabled={!a}
+          >
+            Create report
+          </Button>
+        </FilterBand>
+      </motion.header>
 
+      <KpiStrip items={kpiItems} stagger />
+
+      <SectionCard
+        stagger
+        htmlId="ops-analytics-packing-kpi"
+        icon={Boxes}
+        eyebrow="Packing"
+        title="Packer productivity (weighted)"
+        headline={packing ? `${packing.totals.weighted_minutes.toLocaleString()} min` : loading ? '—' : '—'}
+        meta={
+          packing
+            ? `${packing.totals.remaining_minutes.toLocaleString()} min remaining · FBA fill ≈ ${packing.fba.fillable_units.toLocaleString()} units`
+            : 'Requires operations permission'
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Today</span>
             {packing ? (
-              <div className="rounded-2xl border border-border-soft bg-surface-card divide-y divide-border-soft">
-                <div className="grid grid-cols-6 gap-2 px-4 py-2 text-eyebrow font-black uppercase tracking-widest text-text-soft">
-                  <div className="col-span-2">Packer</div>
-                  <div className="text-right">Small</div>
-                  <div className="text-right">Medium</div>
-                  <div className="text-right">Large</div>
-                  <div className="text-right">Minutes</div>
-                </div>
-                {packing.by_packer.map((r) => (
-                  <div key={r.staff_id} className="grid grid-cols-6 gap-2 px-4 py-2 items-center">
-                    <div className="col-span-2">
-                      <div className="text-sm font-black text-text-default">{r.staff_name || `#${r.staff_id}`}</div>
-                      <button
-                        type="button"
-                        className="mt-0.5 inline-flex items-center gap-1 text-xs font-black text-blue-700 hover:text-blue-800"
-                        onClick={() => exportPackingReport(r.staff_id)}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download
-                      </button>
-                    </div>
-                    <div className="text-right tabular-nums text-sm font-black text-text-default">{r.small_count}</div>
-                    <div className="text-right tabular-nums text-sm font-black text-text-default">{r.medium_count}</div>
-                    <div className="text-right tabular-nums text-sm font-black text-text-default">{r.large_count}</div>
-                    <div className="text-right tabular-nums text-sm font-black text-text-default">{r.weighted_minutes}</div>
+              <span className="text-xs font-black text-text-muted">
+                Capacity {packing.capacity.daily_capacity_minutes.toLocaleString()} min ·{' '}
+                {packing.capacity.packer_headcount} packers
+              </span>
+            ) : null}
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Download className="h-4 w-4" />}
+                onClick={() => exportPackingReport()}
+                disabled={!packing}
+              >
+                Export all
+              </Button>
+            </div>
+          </div>
+
+          {packing ? (
+            <div className="rounded-2xl border border-border-soft bg-surface-canvas divide-y divide-border-soft">
+              <div className="grid grid-cols-6 gap-2 px-4 py-2 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+                <div className="col-span-2">Packer</div>
+                <div className="text-right">Small</div>
+                <div className="text-right">Medium</div>
+                <div className="text-right">Large</div>
+                <div className="text-right">Minutes</div>
+              </div>
+              {packing.by_packer.map((r) => (
+                <div key={r.staff_id} className="grid grid-cols-6 gap-2 px-4 py-2 items-center">
+                  <div className="col-span-2">
+                    <div className="text-sm font-black text-text-default">{r.staff_name || `#${r.staff_id}`}</div>
+                    <button
+                      type="button"
+                      className="mt-0.5 inline-flex items-center gap-1 text-xs font-black text-text-accent hover:opacity-80"
+                      onClick={() => exportPackingReport(r.staff_id)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </button>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-border-soft bg-surface-card p-4 text-sm text-text-muted">
-                Packing KPI is unavailable (missing permission or no data).
-              </div>
-            )}
-          </div>
-        </SectionCard>
-
-        {/* Throughput & ROI — the first-week proof (lead with the big numbers) */}
-        <RoiSection />
-
-        {/* hero — throughput */}
-        <SectionCard
-          id="throughput"
-          icon={TrendingUp}
-          eyebrow="Throughput"
-          title="Total operations events"
-          headline={a ? a.totals.events.toLocaleString() : loading ? '—' : '0'}
-          meta={`${a?.totals.uniqueEntities.toLocaleString() ?? 0} unique units`}
-        >
-          <MultiSeriesLineChart series={series} xLabels={xLabels} height={280} area />
-        </SectionCard>
-
-        {/* tri-panel */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <SectionCard id="stations" icon={Warehouse} eyebrow="Distribution" title="By station">
-            <GaugeDonut
-              centerLabel="Events"
-              segments={(a?.byStation ?? []).map((d) => ({
-                key: d.label,
-                label: d.label,
-                value: d.count,
-                color: stationTone(d.label),
-              }))}
-            />
-            <div className="mt-4">
-              <DistributionTable columns={['Station', 'Events', '%']} rows={stationRows} emptyMessage="No station activity." />
+                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.small_count}</div>
+                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.medium_count}</div>
+                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.large_count}</div>
+                  <div className="text-right tabular-nums text-sm font-black text-text-default">{r.weighted_minutes}</div>
+                </div>
+              ))}
             </div>
-          </SectionCard>
-
-          <SectionCard id="sources" icon={Database} eyebrow="Distribution" title="By event type">
-            <DistributionTable columns={['Event type', 'Events', '%']} rows={typeRows} emptyMessage="No events in this range." />
-            <p className="mt-4 text-micro leading-5 text-text-soft">
-              Lifecycle events (received → tested → packed → shipped) from the org-scoped event log.
-            </p>
-          </SectionCard>
-
-          <SectionCard id="velocity" icon={Layers} eyebrow="Inventory" title="Velocity tiers">
-            {a?.velocityAvailable ? (
-              <>
-                <DistributionTable columns={['Tier', 'SKUs', '%']} rows={tierRows} showBar emptyMessage="No SKUs scored." />
-                <p className="mt-4 text-micro leading-5 text-text-soft">
-                  ABC analysis by 30-day outbound movement. Tier A = fastest movers.
-                </p>
-              </>
-            ) : (
-              <Locked label="Requires the “View reports” permission." />
-            )}
-          </SectionCard>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas p-4 text-sm text-text-muted">
+              Packing KPI is unavailable (missing permission or no data).
+            </div>
+          )}
         </div>
+      </SectionCard>
 
-        {/* you vs typical — seeded vertical benchmarks (plan §2.5, Phase 1) */}
-        <SectionCard id="benchmarks" icon={BarChart3} eyebrow="Benchmarks" title="You vs typical">
-          <BenchmarksSection rangeDays={range === '24h' ? 1 : range === '7d' ? 7 : 30} />
-        </SectionCard>
+      <RoiSection />
 
-        {/* activity map + inventory health */}
-        <SectionCard id="activity" icon={Activity} eyebrow="When work happens" title="Operations activity map">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
-            <div className="grid grid-cols-2 gap-3">
-              <HealthTile icon={Boxes} label="Dead-stock SKUs" value={a?.deadStockCount ?? null} tone="text-rose-600" />
-              <HealthTile
-                icon={Zap}
-                label="A-tier movers"
-                value={a?.velocityAvailable ? Math.round(a.velocityTiers[0]?.percent ?? 0) : null}
-                suffix="%"
-                tone="text-emerald-600"
-              />
-              <HealthTile icon={Activity} label="Total events" value={a?.totals.events ?? null} tone="text-blue-600" />
-              <HealthTile icon={TrendingUp} label="Exceptions" value={a?.totals.exceptions ?? null} tone="text-orange-600" />
-            </div>
-            <div className="min-w-0">
-              <ActivityHeatmap
-                rows={heatmap.rows}
-                cols={heatmap.cols}
-                cells={heatmap.cells}
-                rowLabels={heatmap.rowLabels}
-                colLabels={heatmap.colLabels}
-                color={paletteTone(0)}
-              />
-              <p className="mt-2 text-micro leading-5 text-text-soft">
-                Each dot is {analytics.granularity === 'daily' ? 'a day' : 'an hour'} of floor activity; brighter = busier.
-                {a?.truncated ? ` Showing the latest ${analytics.eventsLimit.toLocaleString()} events.` : ''}
-              </p>
-            </div>
+      <SectionCard
+        stagger
+        htmlId="ops-analytics-throughput"
+        icon={TrendingUp}
+        eyebrow="Throughput"
+        title="Total operations events"
+        headline={a ? a.totals.events.toLocaleString() : loading ? '—' : '0'}
+        meta={`${a?.totals.uniqueEntities.toLocaleString() ?? 0} unique units`}
+      >
+        <MultiSeriesLineChart series={series} xLabels={xLabels} height={280} area />
+      </SectionCard>
+
+      {/* Named rollup zone: tri-panel of SectionCards */}
+      <motion.div variants={framerVariants.monitorStaggerItem} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <SectionCard htmlId="ops-analytics-stations" icon={Warehouse} eyebrow="Distribution" title="By station">
+          <GaugeDonut
+            centerLabel="Events"
+            segments={(a?.byStation ?? []).map((d) => ({
+              key: d.label,
+              label: d.label,
+              value: d.count,
+              color: stationTone(d.label),
+            }))}
+          />
+          <div className="mt-4">
+            <DistributionTable columns={['Station', 'Events', '%']} rows={stationRows} emptyMessage="No station activity." />
           </div>
         </SectionCard>
-      </motion.main>
-    </div>
+
+        <SectionCard htmlId="ops-analytics-sources" icon={Database} eyebrow="Distribution" title="By event type">
+          <DistributionTable columns={['Event type', 'Events', '%']} rows={typeRows} emptyMessage="No events in this range." />
+          <p className="mt-4 text-micro leading-5 text-text-soft">
+            Lifecycle events (received → tested → packed → shipped) from the org-scoped event log.
+          </p>
+        </SectionCard>
+
+        <SectionCard htmlId="ops-analytics-velocity" icon={Layers} eyebrow="Inventory" title="Velocity tiers">
+          {a?.velocityAvailable ? (
+            <>
+              <DistributionTable columns={['Tier', 'SKUs', '%']} rows={tierRows} showBar emptyMessage="No SKUs scored." />
+              <p className="mt-4 text-micro leading-5 text-text-soft">
+                ABC analysis by 30-day outbound movement. Tier A = fastest movers.
+              </p>
+            </>
+          ) : (
+            <Locked label="Requires the “View reports” permission." />
+          )}
+        </SectionCard>
+      </motion.div>
+
+      <SectionCard
+        stagger
+        htmlId="ops-analytics-benchmarks"
+        icon={BarChart3}
+        eyebrow="Benchmarks"
+        title="You vs typical"
+      >
+        <BenchmarksSection rangeDays={range === '24h' ? 1 : range === '7d' ? 7 : 30} />
+      </SectionCard>
+
+      <SectionCard
+        stagger
+        htmlId="ops-analytics-activity"
+        icon={Activity}
+        eyebrow="When work happens"
+        title="Operations activity map"
+      >
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+          <div className="grid grid-cols-2 gap-3">
+            <HealthTile icon={Boxes} label="Dead-stock SKUs" value={a?.deadStockCount ?? null} valueClassName="text-text-danger" />
+            <HealthTile
+              icon={Zap}
+              label="A-tier movers"
+              value={a?.velocityAvailable ? Math.round(a.velocityTiers[0]?.percent ?? 0) : null}
+              suffix="%"
+              valueClassName="text-text-success"
+            />
+            <HealthTile icon={Activity} label="Total events" value={a?.totals.events ?? null} valueClassName="text-text-info" />
+            <HealthTile
+              icon={TrendingUp}
+              label="Exceptions"
+              value={a?.totals.exceptions ?? null}
+              valueClassName="text-text-warning"
+            />
+          </div>
+          <div className="min-w-0">
+            <ActivityHeatmap
+              rows={heatmap.rows}
+              cols={heatmap.cols}
+              cells={heatmap.cells}
+              rowLabels={heatmap.rowLabels}
+              colLabels={heatmap.colLabels}
+              color={paletteTone(0)}
+            />
+            <p className="mt-2 text-micro leading-5 text-text-soft">
+              Each dot is {analytics.granularity === 'daily' ? 'a day' : 'an hour'} of floor activity; brighter = busier.
+              {a?.truncated ? ` Showing the latest ${analytics.eventsLimit.toLocaleString()} events.` : ''}
+            </p>
+          </div>
+        </div>
+      </SectionCard>
+    </MonitorPageShell>
   );
 }
 
@@ -465,86 +484,26 @@ function Segmented<T extends string>({
   );
 }
 
-function SectionCard({
-  id,
-  icon: Icon,
-  eyebrow,
-  title,
-  headline,
-  meta,
-  children,
-}: {
-  id: string;
-  icon: (p: { className?: string }) => JSX.Element;
-  eyebrow: string;
-  title: string;
-  headline?: string;
-  meta?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <motion.section
-      variants={item}
-      id={`ops-analytics-${id}`}
-      className="scroll-mt-6 rounded-2xl border border-border-soft bg-surface-card p-5 sm:p-6"
-    >
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-text-faint" />
-          <div>
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{eyebrow}</p>
-            <h2 className="text-base font-black tracking-tight text-text-default leading-tight">{title}</h2>
-          </div>
-        </div>
-        {(headline || meta) && (
-          <div className="text-right">
-            {headline && <p className="text-2xl font-black tabular-nums leading-none text-text-default">{headline}</p>}
-            {meta && <p className="mt-1 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">{meta}</p>}
-          </div>
-        )}
-      </div>
-      {children}
-    </motion.section>
-  );
-}
-
-function Delta({ delta, invert = false }: { delta: number; invert?: boolean }) {
-  if (!delta) return <p className="mt-1.5 text-eyebrow font-semibold text-text-faint">No change vs. yesterday</p>;
-  const positive = invert ? delta < 0 : delta > 0;
-  return (
-    <p
-      className={cn(
-        'mt-1.5 inline-flex items-center gap-0.5 text-caption font-black tabular-nums',
-        positive ? 'text-emerald-600' : 'text-rose-600',
-      )}
-    >
-      <TrendingUp className={cn('h-3.5 w-3.5', delta < 0 && 'rotate-180')} />
-      {delta > 0 ? '+' : ''}
-      {delta}% vs. yesterday
-    </p>
-  );
-}
-
 function HealthTile({
   icon: Icon,
   label,
   value,
   suffix = '',
-  tone,
+  valueClassName,
 }: {
   icon: (p: { className?: string }) => JSX.Element;
   label: string;
   value: number | null;
   suffix?: string;
-  tone: string;
+  valueClassName: string;
 }) {
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-3">
+    <div className="rounded-xl border border-border-soft bg-surface-canvas p-3">
       <div className="flex items-center gap-1.5 text-text-faint">
         <Icon className="h-3.5 w-3.5" />
         <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
       </div>
-      <p className={cn('mt-1.5 text-2xl font-black tabular-nums leading-none', tone)}>
+      <p className={cn('mt-1.5 text-2xl font-black tabular-nums leading-none', valueClassName)}>
         {value === null ? '—' : `${value.toLocaleString()}${suffix}`}
       </p>
     </div>
@@ -568,50 +527,6 @@ function formatHours(h: number): string {
   return `${h % 1 === 0 ? h : h.toFixed(1)}h`;
 }
 
-function RoiDelta({ pct }: { pct: number }) {
-  if (!pct) {
-    return <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">No change vs. last week</span>;
-  }
-  const positive = pct > 0;
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-0.5 text-caption font-black tabular-nums',
-        positive ? 'text-emerald-600' : 'text-rose-600',
-      )}
-    >
-      <TrendingUp className={cn('h-3.5 w-3.5', pct < 0 && 'rotate-180')} />
-      {pct > 0 ? '+' : ''}
-      {pct}% vs. last week
-    </span>
-  );
-}
-
-function RoiTile({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  footer,
-}: {
-  icon: (p: { className?: string }) => JSX.Element;
-  label: string;
-  value: string;
-  tone: string;
-  footer: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-      <div className="flex items-center gap-1.5 text-text-faint">
-        <Icon className="h-3.5 w-3.5" />
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
-      </div>
-      <p className={cn('mt-1.5 text-3xl font-black tabular-nums leading-none', tone)}>{value}</p>
-      <div className="mt-1.5">{footer}</div>
-    </div>
-  );
-}
-
 function RoiSection() {
   const { data: roi, isLoading } = useOperationsRoi();
 
@@ -629,19 +544,13 @@ function RoiSection() {
   }, [roi]);
 
   return (
-    <motion.section
-      variants={item}
-      id="ops-analytics-roi"
-      className="scroll-mt-6 rounded-2xl border border-border-soft bg-surface-card p-5 sm:p-6"
+    <SectionCard
+      stagger
+      htmlId="ops-analytics-roi"
+      icon={Zap}
+      eyebrow="First-week proof"
+      title="Throughput & ROI"
     >
-      <div className="mb-4 flex items-center gap-2">
-        <Zap className="h-4 w-4 text-text-faint" />
-        <div>
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">First-week proof</p>
-          <h2 className="text-base font-black tracking-tight text-text-default leading-tight">Throughput &amp; ROI</h2>
-        </div>
-      </div>
-
       {isLoading ? (
         <div className="flex items-center gap-2 px-1 py-8 text-caption font-semibold text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading ROI…
@@ -657,35 +566,52 @@ function RoiSection() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <RoiTile
-              icon={TrendingUp}
-              label="Units this week"
-              value={roi.unitsThisWeek.toLocaleString()}
-              tone="text-blue-600"
-              footer={<RoiDelta pct={roi.pctChange} />}
-            />
-            <RoiTile
-              icon={Zap}
-              label="Units / labor-hour"
-              value={roi.unitsPerLaborHour.toLocaleString()}
-              tone="text-emerald-600"
-              footer={
-                <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                  {roi.unitsProcessed.toLocaleString()} units · {roi.laborHours.toLocaleString()}h clocked
-                </span>
-              }
-            />
-            <RoiTile
-              icon={Layers}
-              label="Units stuck"
-              value={roi.unitsStuck.toLocaleString()}
-              tone={roi.unitsStuck > 0 ? 'text-orange-600' : 'text-text-default'}
-              footer={
-                <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                  Blocked + error now
-                </span>
-              }
-            />
+            <div className="rounded-xl border border-border-soft bg-surface-canvas p-4">
+              <div className="flex items-center gap-1.5 text-text-faint">
+                <TrendingUp className="h-3.5 w-3.5" />
+                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Units this week</p>
+              </div>
+              <p className="mt-1.5 text-3xl font-black tabular-nums leading-none text-text-info">
+                {roi.unitsThisWeek.toLocaleString()}
+              </p>
+              <div className="mt-1.5">
+                <DeltaChip
+                  delta={roi.pctChange}
+                  vsLabel="vs. last week"
+                  emptyLabel="No change vs. last week"
+                  className={roi.pctChange ? undefined : 'mt-0'}
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-border-soft bg-surface-canvas p-4">
+              <div className="flex items-center gap-1.5 text-text-faint">
+                <Zap className="h-3.5 w-3.5" />
+                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Units / labor-hour</p>
+              </div>
+              <p className="mt-1.5 text-3xl font-black tabular-nums leading-none text-text-success">
+                {roi.unitsPerLaborHour.toLocaleString()}
+              </p>
+              <p className="mt-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                {roi.unitsProcessed.toLocaleString()} units · {roi.laborHours.toLocaleString()}h clocked
+              </p>
+            </div>
+            <div className="rounded-xl border border-border-soft bg-surface-canvas p-4">
+              <div className="flex items-center gap-1.5 text-text-faint">
+                <Layers className="h-3.5 w-3.5" />
+                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Units stuck</p>
+              </div>
+              <p
+                className={cn(
+                  'mt-1.5 text-3xl font-black tabular-nums leading-none',
+                  roi.unitsStuck > 0 ? 'text-text-warning' : 'text-text-default',
+                )}
+              >
+                {roi.unitsStuck.toLocaleString()}
+              </p>
+              <p className="mt-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                Blocked + error now
+              </p>
+            </div>
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -698,21 +624,18 @@ function RoiSection() {
                   No completed stage runs in the last 7 days.
                 </div>
               ) : (
-                <ul className="divide-y divide-border-hairline">
+                <ul className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-canvas">
                   {roi.avgCycleHoursByStage.map((s) => (
-                    <li key={s.stage} className="flex items-center justify-between py-2">
-                      <span className="min-w-0">
-                        <span className="block truncate text-caption font-semibold text-text-default">
-                          {prettyEventType(s.stage)}
+                    <MonitorListRow
+                      key={s.stage}
+                      title={prettyEventType(s.stage)}
+                      meta={`${s.samples.toLocaleString()} runs`}
+                      trailing={
+                        <span className="text-caption font-bold tabular-nums text-text-default">
+                          {formatHours(s.avgCycleHours)}
                         </span>
-                        <span className="block text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                          {s.samples.toLocaleString()} runs
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-caption font-bold tabular-nums text-text-default">
-                        {formatHours(s.avgCycleHours)}
-                      </span>
-                    </li>
+                      }
+                    />
                   ))}
                 </ul>
               )}
@@ -731,7 +654,7 @@ function RoiSection() {
           </div>
         </>
       )}
-    </motion.section>
+    </SectionCard>
   );
 }
 

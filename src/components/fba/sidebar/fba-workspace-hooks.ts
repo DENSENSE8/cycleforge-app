@@ -17,10 +17,15 @@ import {
   FBA_SEND_SHIPMENT_TO_PAIRED_REVIEW,
   FBA_SHIPMENT_EDITOR_ACTIVE,
 } from '@/lib/fba/events';
-import { resolveFbaMode, type FbaMode } from '@/lib/fba/fba-modes';
+import {
+  FBA_MODE_PARAM,
+  FBA_OUTBOUND_PATH,
+  resolveFbaModeFromSearchParams,
+  type FbaMode,
+} from '@/lib/fba/fba-modes';
 import type { PendingPlan } from '@/components/fba/sidebar/fba-sidebar-shared';
 
-/** Patch shape for the /fba workspace URL search params. */
+/** Patch shape for the FBA workspace URL search params (under /outbound?mode=fba). */
 export interface FbaParamPatch {
   q?: string;
   r?: string;
@@ -32,15 +37,15 @@ export interface FbaParamPatch {
 }
 
 /**
- * URL-driven workspace state: the active mode, the refresh token, and the
- * shipped-search box (hydrated from `?q`, debounced back to the URL). Returns
- * the typed `updateFbaParams` mutator the whole sidebar writes through.
+ * URL-driven workspace state: the active FBA sub-mode (`fbaMode`), the refresh
+ * token, and the shipped-search box. Writes always land on `/outbound?mode=fba`
+ * so FBA stays nested under Outbound (surface split).
  */
 export function useFbaWorkspaceUrlState() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const activeMode: FbaMode = resolveFbaMode(searchParams.get('mode'));
+  const activeMode: FbaMode = resolveFbaModeFromSearchParams(searchParams);
   const refreshToken = Number(searchParams.get('r') || 0);
 
   const [localSearch, setLocalSearch] = useState('');
@@ -49,13 +54,15 @@ export function useFbaWorkspaceUrlState() {
   const updateFbaParams = useCallback(
     (patch: FbaParamPatch) => {
       const params = new URLSearchParams(searchParams.toString());
+      // Always host under Outbound FBA mode (never write bare /fba).
+      params.set('mode', 'fba');
       if (patch.q !== undefined) {
         if (patch.q.trim()) params.set('q', patch.q.trim());
         else params.delete('q');
       }
       if (patch.mode !== undefined) {
-        if (patch.mode === 'combine') params.delete('mode');
-        else params.set('mode', patch.mode);
+        if (patch.mode === 'combine') params.delete(FBA_MODE_PARAM);
+        else params.set(FBA_MODE_PARAM, patch.mode);
       }
       if (patch.r !== undefined) params.set('r', patch.r);
       if (patch.draft !== undefined) {
@@ -80,7 +87,7 @@ export function useFbaWorkspaceUrlState() {
         else params.delete('details');
       }
       const q = params.toString();
-      router.replace(q ? `/fba?${q}` : '/fba');
+      router.replace(q ? `${FBA_OUTBOUND_PATH}?${q}` : `${FBA_OUTBOUND_PATH}?mode=fba`);
     },
     [router, searchParams],
   );

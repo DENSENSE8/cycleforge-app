@@ -1,11 +1,10 @@
 # Connections → MDX Forge + org-scoped `ops_plans`
 
-> **Status:** Phase 1 **SHIPPED** (2026-07-12) — 74 `CONN-*` tickets in `master-plan.mdx`; extractor
-> `scripts/extract-connections-mdx.mjs`; HTML deprecated mirror; unit/smoke tests green.  
-> Phase 2 (adoption templates) still gated.  
-> **Created:** 2026-07-11 · **Companion:** [`connections-mdx-forge-EXECUTION-PROMPT.md`](./connections-mdx-forge-EXECUTION-PROMPT.md)  
-> **Source docs:** [`docs/master-connections-and-refactor/`](../master-connections-and-refactor/)  
-> **Depends on (shipped):** agentic loop Phase 0–6 — [`agentic-loop-master-plan.md`](./agentic-loop-master-plan.md)
+> **Status:** Phase 1 **SHIPPED** (2026-07-12) + Phase 2 **SHIPPED** (2026-07-12)  
+> - P1: 74 `CONN-*` in `master-plan.mdx`; extractor; HTML deprecated; tests green.  
+> - P2: `connections_gap_adoption` template + `conn-adopt:*` helpers; `from-template` stamps session org;  
+>   deploy-time multi-org upsert still **optional later** (§5.2).  
+> **Created:** 2026-07-11 · **Companion:** [`connections-mdx-forge-EXECUTION-PROMPT.md`](./connections-mdx-forge-EXECUTION-PROMPT.md)
 
 ---
 
@@ -305,17 +304,20 @@ They get: **deployed product features** + **org-scoped plan tasks** (manual / co
 
 ### Phase 1
 
-- [ ] All HTML `data-check-id` values have a matching `CONN-{id}` in `master-plan.mdx`
-- [ ] Live `/forge` / Ops Plans shows chips; bridge tasks exist under USAV `organization_id`
-- [ ] Hub README points to live plan; HTML marked deprecated
-- [ ] `tsc` / existing master-plan unit tests still pass; no new invalid TicketStatus values
-- [ ] QA `#2` does not receive dogfood MDX seed
+- [x] All HTML `data-check-id` values have a matching `CONN-{id}` in `master-plan.mdx` (`pnpm connections:check`)
+- [ ] Live `/forge` / Ops Plans shows chips; bridge tasks exist under USAV `organization_id` (**human**: open usav-dev)
+- [x] Hub README points to live plan; HTML marked deprecated
+- [x] Master-plan unit/smoke tests pass; no new invalid TicketStatus values
+- [x] QA `#2` does not receive dogfood MDX seed (`isForgePlanOrg` unchanged)
 
 ### Phase 2
 
-- [ ] `connections_gap_adoption` in `PLAN_TEMPLATES` + `from-template` works for a non-forge org
-- [ ] Adoption tasks use that org’s `organization_id`; claim/complete works
-- [ ] Docs state clearly: product = Hermes once; other orgs = adoption plans only
+- [x] `connections_gap_adoption` in `PLAN_TEMPLATES` + `from-template` stamps session `organization_id`
+- [x] Adoption `client_event_id` uses `conn-adopt:*` only (never `master-plan:`)
+- [x] Unit tests: `src/lib/ops-plans/templates.test.ts` + template insert with client_event_id
+- [ ] Live seed on QA/customer via UI/API (**human**: `POST /api/ops-plans/from-template`)
+- [ ] Optional §5.2 multi-org upsert on CONN `deployed` (helper pure functions ready in `conn-adoption.ts`)
+- [x] Docs state: product = Hermes once; other orgs = adoption plans only
 
 ---
 

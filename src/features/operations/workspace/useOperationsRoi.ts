@@ -56,10 +56,11 @@ async function fetchRoi(): Promise<OperationsRoiData | null> {
   }
 }
 
-export function useOperationsRoi() {
+export function useOperationsRoi({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<OperationsRoiData | null>({
     queryKey: ['ops-roi'],
     staleTime: 5 * 60_000,
     queryFn: fetchRoi,
+    enabled,
   });
 }

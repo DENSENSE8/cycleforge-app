@@ -1,71 +1,86 @@
 # Project rules — Cycle Forge
 
-The product is **Cycle Forge** (multi-tenant reseller-ops SaaS); USAV is the dogfood tenant, and
-this repo (`cycleforge-app`) is the app. Vendor integrations (Zoho, Zendesk, …) are tenant
-connectors behind capability facades — never the product itself (see the Integrations section of
-the source-of-truth rules).
+@AGENTS.md
 
-Hard rules and source-of-truth invariants for this repo. These were promoted from auto-memory because
-they are durable, team-wide, and protect against repeatable high-cost mistakes. They override default behavior.
+Hard rules and source-of-truth invariants for this repo. Portable body lives in **`AGENTS.md`** (shared by Grok, Codex, Cursor, Claude). This file is the Claude-native entry: imports + Claude-only notes.
 
-## Workflow
-
-- **Work only on `main`.** Do all work on the main branch. Do not create or switch branches.
-- **The user commits via GitHub Desktop mid-session**, so `HEAD` can move on its own. **Never run `git stash`** here —
-  it can collide with their in-flight commits. Don't commit or push unless explicitly asked.
-
-## Safety
-
-- **Never commit `.env`.** The real `.env` is gitignored but holds ~113 live secrets (incl. `INTEGRATION_KMS_KEY`).
-  `.env.example` (blank values) is the committed template. CI secrets live in GitHub Actions.
-  If a tracked file is about to capture secrets, stop and surface it.
-
-## Source-of-truth invariants
-
-Correctness rules — each concern has a single source module; never inline or duplicate the mapping.
-The full rule list (always loaded via import) is the single source of truth:
+## Always-loaded deep rules
 
 @.claude/rules/source-of-truth.md
 
-- **Dates:** civil `YYYY-MM-DD` vs instant (ISO Z) vs warehouse zone (`America/Los_Angeles`) — only via
-  `src/utils/date.ts`. Never `new Date(\`${day}T00:00:00\`)` / host-local “today” for ops day buckets
-  (guard: `src/utils/date-civil.guard.test.ts`).
+@.claude/rules/build-gotchas.md
 
-## UI / design-system conventions
+## Pattern evolution (Claude summary)
 
-House style is **simple, linear, icon-based, contextual** (Notion-like). Detail: see `.claude/rules/ui-design-system.md`.
+Full law: **`AGENTS.md` → Pattern evolution** + **Compound design system**. Claude must follow both on every UI/lib polish:
+
+- **Compose first** from named SoTs / registries — do not invent *beside* them.
+- **Grow the SoT** when it is wrong, incomplete, or inconsistent with a stronger sibling — especially single-consumer primitives (zero/low blast radius).
+- **Never** freeze on a conservative reskin when unifying the registry primitive is the real fix.
+- **Always / Ask first / Never** tiers: hard safety (tenant, status machine, secrets, search waist) stays Never/Ask; composition taste has an upgrade path.
+- After a user correction: prefer a general rule in the right `.claude/rules/` file over more always-on prose; keep this file and `AGENTS.md` lean.
+
+### Scan → recommend → compound (always on UI work)
+
+User prompt = **floor**, not ceiling. On layout/styling/component/motion work:
+
+1. **Scan** siblings + `@/design-system/**` + golden pages for a stronger *house* pattern (not a foreign aesthetic).
+2. **Identify** the pattern in plain language and map it to a SoT path or promotion target.
+3. **Recommend** always — short `### Compound opportunities` with Do now / Promote next / Deferred.
+4. **Implement** when in scope or low blast radius (compose missing SoT, or grow single-consumer primitive).
+5. **Ask** before multi-page migrates or new public DS APIs with many consumers.
+6. Prefer changes that **raise reuse** so the next task is cheaper (exponential system benefit).
+
+Progressive disclosure: root = index + hard laws; depth = on-demand rules/skills; hooks/tests = real enforcement.
+
+## UI / design-system (Claude summary)
+
+House identity is **Kinetic Ledger** — data-first reseller ops: dense, state-colored, scan-aware.
+**Not** document-calm “Notion-like” chrome as the product shape. Full law: **`AGENTS.md` → Kinetic Ledger**.
+
+Detail: `.claude/rules/ui-design-system.md`, `src/design-system/DESIGN_SYSTEM.md`.  
 For scoped UX/UI audits and refactors, use the **`improve-ui`** skill — it chains critique, audit, normalize, and polish with an approval gate.
 
-- **Pick the display archetype first** — four archetypes, chosen by the region's job + input model: **station**
-  (`scan → crossfade → display`), **workbench** (`list → select → detail → update`), **monitor** (observe / read-only
-  dashboard), **canvas** (node-graph / semantic-zoom). They have different layout/motion/state rules; never blend two in
-  one region. Run the per-region decision algorithm in `.claude/rules/contextual-display.md` — the master index for the
-  `.claude/rules/display/*` archetype docs.
-- **Compose rails, don't rebuild them:** wrap `SidebarRailShell` / `RecentActivityRailBase`; supply only renderers.
-- **Linear scaffold, no grids:** `space-y-*` / `divide-y` sections, `flex-1 overflow-y-auto` body, `border-t` dividers.
+Reason in this order on every UI surface:
+
+1. **Region contract** — station / workbench / monitor / canvas (`pickArchetype` Q1→Q4). Contracts are I/O + persistence, **not layout skins**. Algorithm: `.claude/rules/contextual-display.md`.
+2. **Data shape → primary surface** — singleton / collection / stream / rollup / graph → card | list | table | board | timeline | KPI | canvas. Right pane / inspector / context rail is **optional secondary**.
+3. **Density** — `floor` | `ops` | `rollup` | `studio`.
+4. **Presentation kinds** — resolve labels/tones/chips/dates/capabilities/`SearchHit` via SoTs; views stay dumb.
+5. **Compose / grow** named shells (rails, Monitor blocks, station scan chrome) — never page-local twins.
+
+### Layout (density- and data-scoped, not house-wide bans)
+
+- **Ban** random card soup and nested cards-as-rows. **Allow** boards, KPI grids in named rollup zones, Studio canvas.
+- **Station (`floor`):** one focus surface (scan bar + active card); linear fact stacks inside the card.
+- **Workbench (`ops`):** pick+edit with durable URL selection; primary may be list, table, board, **or** sidebar+detail — data shape decides.
+- **Monitor (`rollup`):** scroll shell + named rollup zones may use responsive CSS grid. Compose `@/design-system/components/monitor` — **or grow that registry** — see `.claude/rules/display/monitor-rollup-blocks.md`.
+- **Canvas (`studio`):** spatial graph; inspector secondary.
+
+### Shared recipes (still hard)
+
+- **Compose rails, don't rebuild them** when the job is mode-scoped pick+edit: wrap `SidebarRailShell` / `RecentActivityRailBase`; supply only renderers. If a rail primitive is wrong, improve the shared shell, don’t fork.
 - **One row anatomy:** left-aligned title → meta eyebrow → chips; selection is `bg-blue-50 ring-1 ring-inset ring-blue-400` only (never a size shift).
 - **Contextual info via `HoverTooltip`** (body-portal), not `title=`. Status = small dot + tooltip.
 - **Icons structural & paired, never decorative;** import from `@/components/Icons`, size by context.
-- **Color only from `src/design-system/tokens/colors/semantic.ts`;** chips = `bg-x-50 text-x-700 ring-x-200`. No hardcoded hex.
+- **Color only from theme / semantic tokens;** typed chips via SoT. No hardcoded hex. Themes = `data-theme` + `src/design-system/themes/*`, never page-local dark hex.
 
-## Backend patterns
+## Backend patterns (Claude summary)
 
-Detail: see `.claude/rules/backend-patterns.md`.
+Detail: `.claude/rules/backend-patterns.md`.
 
-- **Status changes only via `transition()`** (`src/lib/inventory/state-machine.ts`) — never raw `UPDATE … current_status`.
-- **Route skeleton:** `withAuth(handler, { permission })` → validate → domain helper → map 404/409/200 → `recordAudit()` → `after()` side-effects. `orgId` from `ctx`, never the body.
-- **Audit only via `recordAudit()`** with `AUDIT_ACTION`/`AUDIT_ENTITY` constants; never `createAuditLog()` directly, never rename actions.
+- **Status changes only via `transition()`** — never raw `UPDATE … current_status`.
+- **Route skeleton:** `withAuth` → validate → domain helper → map 404/409/200 → `recordAudit()` → `after()` side-effects. `orgId` from `ctx`, never the body.
+- **Audit only via `recordAudit()`** with `AUDIT_ACTION`/`AUDIT_ENTITY` constants.
 - **Idempotency:** thread `clientEventId` → `UNIQUE(client_event_id)` on `inventory_events`.
-- **Tenant scope via `withTenantTransaction(orgId, …)`** (sets `app.current_org`; columns auto-stamp), not manual `WHERE org_id =`.
-- **Inject `Deps`** into domain fns (default real impls) so unit tests run DB-free.
+- **Tenant scope via `withTenantTransaction(orgId, …)`**.
+- **Inject `Deps`** into domain fns so unit tests run DB-free.
+- Incomplete domain helpers: **extend the helper** (Deps + tests), don’t re-derive logic in the route.
 
-## Build gotchas
+## Claude-only
 
-Silent-failure traps (always loaded via import — a miss is invisible in CI/prod):
-
-@.claude/rules/build-gotchas.md
-
----
-
-Broader project context (in-flight initiatives, feature history) lives in Claude Code's per-project auto-memory,
-not here. This file is intentionally limited to hard rules and SoT invariants.
+- Skills under `.claude/skills/` (e.g. `improve-ui`, `new-route`, `db-migrate`, `station-block`). Prefer skills over reinventing playbooks; when a skill recipe is outdated, update the skill so the next run evolves the pattern.
+- Hooks in `.claude/settings.json` block secret-path edits, SoT regressions, `db:push`, and force-push — do not bypass. Hooks are **laws**; prose rules are **recipes with evolution paths**.
+- Specialized reviewers: `.claude/agents/*` (api-route-reviewer, permission-registry-guard, neon-cost-reviewer, e2e-spec-writer).
+- Broader project context (in-flight initiatives) lives in Claude Code per-project auto-memory, not here. This file stays limited to hard rules, SoT pointers, and the pattern-evolution summary.
+- Self-improve: after a repeated miss, propose a short rule update in the relevant deep doc (or a single always-on bullet in `AGENTS.md`) — general principle, paired do+don’t — then continue. Do not bloat always-on context with session notes.

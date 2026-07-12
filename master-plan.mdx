@@ -352,6 +352,10 @@ ops_plans stay aligned.
 
 Statuses: `pending` | `in-progress` | `deployed`. Human review: portfolio review-protocol + INDEX log.
 
+**Org adoption (Phase 2):** non-forge orgs seed `connections_gap_adoption` via  
+`POST /api/ops-plans/from-template` `{ "templateKey": "connections_gap_adoption" }`  
+(session `organization_id` only). Adoption task keys use `conn-adopt:*` — never `master-plan:`.
+
 ## Start
 
 ### Stories

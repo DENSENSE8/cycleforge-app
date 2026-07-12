@@ -1,13 +1,14 @@
-# Motion / crossfade engine — the transition law for every archetype
+# Motion / crossfade engine — the transition law for every region contract
 
-The single cross-cutting motion law shared by all four display archetypes (Station, Workbench, Monitor, Canvas).
-Names the canonical crossfade recipe, the per-archetype crossfade *target*, the spring-vs-tween division, and the
-reduced-motion mandate — all keyed to the real presets in `src/design-system/foundations/motion-framer.ts` and the
-reduced-motion bridge in `src/design-system/foundations/motion-framer-hooks.ts`. The canonical workbench-pane preset is
-in place; one residual reduced-motion adoption gap is flagged inline.
+The single cross-cutting motion law shared by all four region contracts (Station, Workbench, Monitor, Canvas).
+Names the canonical crossfade recipe, the singular **focus-surface** crossfade *target*, the spring-vs-tween division,
+and the reduced-motion mandate — keyed to `src/design-system/foundations/motion-framer.ts` and
+`src/design-system/foundations/motion-framer-hooks.ts`.
 
-**Inherits:** `../ui-design-system.md` (scaffold, row anatomy, chips, color tokens). This doc is motion only — it does
-**not** restate the house scaffold.
+**Crossfade the focus surface only** — Station active card; Workbench detail region (pane / drawer / stack);
+Monitor drill when present; Canvas inspector/overlays. **Never** crossfade the collection map, stream, or graph.
+
+**Inherits:** `../ui-design-system.md` (Kinetic Ledger). This doc is motion only.
 
 ---
 
@@ -152,6 +153,9 @@ with no reduced-motion handling at all — so a reduced-motion user still gets t
 safe, or (b) make "always go through `useMotionPresence`/`useMotionTransition`" a lint-enforced rule. Until one lands,
 **new animated code must call the hook bridge** — never consume `framerPresence.*` / `framerTransition.*` raw on a
 user-facing surface.
+
+**Compact auth/wizard step forms** follow [`auth-step-panel.md`](auth-step-panel.md) — not this archetype split. Use
+`signInStepVariants` + fixed viewport + bundled back chip; do not apply workbench right-pane or field-level pager patterns.
 
 ---
 

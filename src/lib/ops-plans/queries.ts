@@ -15,7 +15,7 @@ import type {
   TaskRow,
 } from './types';
 import type { OpsPlanPhaseStatus, OpsPlanStatus, OpsPlanTaskStatus } from './constants';
-import { getPlanTemplate } from './templates';
+import { getPlanTemplate, normalizeTemplateTask } from './templates';
 
 function toIso(v: unknown): string | null {
   if (v == null) return null;
@@ -275,11 +275,12 @@ export async function createPlanFromTemplate(
       );
       const phaseId = String(phaseInsert.rows[0].id);
       let taskOrder = 100;
-      for (const taskTitle of phase.tasks) {
+      for (const rawTask of phase.tasks) {
+        const { title: taskTitle, clientEventId } = normalizeTemplateTask(rawTask);
         await client.query(
-          `INSERT INTO ops_plan_tasks (organization_id, phase_id, title, sort_order)
-           VALUES ($1::uuid, $2::uuid, $3, $4)`,
-          [orgId, phaseId, taskTitle, taskOrder],
+          `INSERT INTO ops_plan_tasks (organization_id, phase_id, title, sort_order, client_event_id)
+           VALUES ($1::uuid, $2::uuid, $3, $4, $5)`,
+          [orgId, phaseId, taskTitle, taskOrder, clientEventId],
         );
         taskOrder += 100;
       }

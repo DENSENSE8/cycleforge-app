@@ -85,6 +85,25 @@ export function countFulfillmentStates(
   return counts;
 }
 
+/**
+ * Map `/api/orders/queue-counts` raw combos → PENDING/TESTED/BLOCKED tallies.
+ * SQL only returns signal facts (`hasTechScan` × `blocked`); lane SoT stays
+ * {@link deriveFulfillmentState} (Decision 8) so the sidebar never re-implements it.
+ */
+export function fulfillmentCountsFromCombos(
+  combos: ReadonlyArray<{ hasTechScan: boolean; blocked: boolean; count: number }>,
+): FulfillmentCounts {
+  const counts: FulfillmentCounts = { ...ZERO_FULFILLMENT_COUNTS };
+  for (const c of combos) {
+    const state = deriveFulfillmentState({
+      hasTechScan: c.hasTechScan,
+      outOfStock: c.blocked ? '1' : null,
+    });
+    counts[state] += c.count;
+  }
+  return counts;
+}
+
 /** True when the deadline has passed. Overlay flag (the days‑late chip), not a dot. */
 export function isUnshippedLate(deadlineAt: string | null | undefined, now: Date): boolean {
   if (!deadlineAt) return false;

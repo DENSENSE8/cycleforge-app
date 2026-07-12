@@ -76,8 +76,8 @@ export function CopyableValueFieldBlock({
             className={`transition-all ${copied ? 'opacity-100' : isFlat ? 'opacity-100' : 'opacity-0 group-hover/field:opacity-100'} ${isFlat ? '' : 'rounded-lg p-1.5 hover:bg-surface-card hover:shadow-sm'}`}
             icon={copied ? (
               <div className="flex items-center gap-1">
-                <span className="text-micro font-black text-emerald-600 uppercase">Copied!</span>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-micro font-black text-text-success uppercase">Copied!</span>
+                <Check className="w-3.5 h-3.5 text-text-success" />
               </div>
             ) : (
               <Copy className="w-3.5 h-3.5 text-text-faint" />

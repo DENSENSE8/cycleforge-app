@@ -34,6 +34,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import * as Popover from '@radix-ui/react-popover';
@@ -44,6 +45,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { ArrowUpDown, Check, ChevronDown, ChevronUp, ColumnsOne, ColumnsThree, ColumnsTwo, GripVertical } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarSegmentGroup, type ToolbarSegmentItem } from '@/components/ui/ToolbarButton';
+import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -90,6 +92,19 @@ export interface SwimlaneLaneBodyContext<Row, LaneId extends string, SortId exte
    *  — scroll body), so a stacked lane stays windowed instead of mounting every
    *  row. Undefined in grid (2/3-up) mode, where each lane owns its own scroll. */
   scrollParentRef?: RefObject<HTMLElement | null>;
+  /**
+   * Collapse control for the sticky top-right chip + bottom Show more/less bar.
+   * `displayCount` is how many rows the *next* toggle will show (full total when
+   * expanding; preview size when collapsing).
+   */
+  collapse?: {
+    expanded: boolean;
+    canToggle: boolean;
+    onToggle: () => void;
+    laneLabel: string;
+    /** Rows that will be visible after the next click (total when collapsed → expand; preview when expanded → collapse). */
+    displayCount: number;
+  };
 }
 
 export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends string> {
@@ -104,6 +119,11 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
    *  `2` (or `1`) to drop wider layouts for boards with many tall lanes — the
    *  toggle only renders the allowed options and a saved over-cap pref is clamped. */
   maxColumns?: ColumnCount;
+  /** Initial column layout before staff prefs hydrate (default `1`). */
+  defaultColumns?: ColumnCount;
+  /** Initial expanded state for every lane before staff prefs hydrate.
+   *  `false` = collapsed preview so stacked boards show multiple lanes at once. */
+  defaultExpanded?: boolean;
   /** Sort vocabulary for the per-lane menu (+ the active label it displays).
    *  Omit to drop the per-lane sort menu entirely (e.g. a board whose embedded
    *  table has a single fixed order). */
@@ -119,6 +139,14 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
   headerStartSlot?: ReactNode;
   /** Header band end slot (e.g. week nav), left of the column toggle. */
   headerEndSlot?: ReactNode;
+  /** Always-visible right-side slot rendered LEFT of the layout controls (e.g. the
+   *  board staff filter). Unlike `headerEndSlot` it is never hidden by
+   *  `collapsibleControls` — it is the one primary filter that stays on the bar. */
+  headerPersistentEndSlot?: ReactNode;
+  /** When true, the layout cluster (column-count slider + `headerEndSlot`) is
+   *  tucked behind a `ToolbarControlsDisclosure` gear that slides them in/out —
+   *  so the resting toolbar is just start-slot + persistent filter + the gear. */
+  collapsibleControls?: boolean;
   /** Rendered in each lane header's control cluster (sort / date / staff), right-aligned. */
   laneHeaderSlot?: ReactNode;
   /** When set, each lane header shows a date-range picker filtering on this field.
@@ -129,6 +157,9 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
   /** Optional slot rendered once below the whole grid, inside the board's scroll
    *  region — e.g. a global "Load more" (Phase 2). Omit for no footer. */
   footerSlot?: ReactNode;
+  /** Portal the toolbar cluster into this element instead of the 40px header band
+   *  (dashboard outbound floating row). */
+  toolbarPortalTarget?: HTMLElement | null;
 }
 
 /** Board layout — bubbles stacked 1-up, or laid 2-up / 3-up side by side. */
@@ -302,6 +333,8 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
   const stacked = colCount === 1;
   const bodyRows = stacked && !expanded ? rows.slice(0, STACKED_COLLAPSED_PREVIEW_ROWS) : rows;
   const canToggleStacked = stacked && rows.length > STACKED_COLLAPSED_PREVIEW_ROWS;
+  // Next-toggle visible count: expand → full table; collapse → preview rows.
+  const stackedDisplayCount = expanded ? STACKED_COLLAPSED_PREVIEW_ROWS : rows.length;
 
   // Drag-to-resize the body from the bottom edge. `localHeight` drives the cap
   // live during a drag; it commits to staff prefs on pointer-up. Null → preset.
@@ -350,26 +383,29 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
   return (
     <motion.div
       ref={setNodeRef}
-      layout={layoutReady && !isDragging ? 'position' : false}
-      layoutScroll
-      layoutDependency={colCount}
+      // Multi-up boards FLIP lanes on column toggle; single-column boards skip
+      // layout animation so stacked lanes never “slide” into a 2-up grid.
+      layout={colCount > 1 && layoutReady && !isDragging ? 'position' : false}
+      layoutScroll={colCount > 1}
+      layoutDependency={colCount > 1 ? colCount : undefined}
       style={dragStyle}
-      transition={{ layout: laneLayoutTransition }}
+      transition={colCount > 1 ? { layout: laneLayoutTransition } : undefined}
       className="min-w-0 w-full"
     >
     <section
-      // Stacked lanes use `overflow-clip` (clips for rounded corners but is NOT a
-      // scroll container) so the body's sticky DateGroupHeader escapes up to the
-      // board scroll region and sticks at the top of the page. Grid lanes keep
-      // `overflow-hidden` (their body scrolls internally, sticking within the lane).
+      // Stacked: overflow-visible so sticky lane chrome can pin to the board
+      // scroll parent while scanning PENDING/TESTED/BLOCKED. Grid lanes keep
+      // overflow-hidden (body scrolls internally within the card).
       className={`flex w-full min-w-0 flex-col rounded-xl border border-border-soft bg-surface-card ${
-        stacked ? 'overflow-clip' : 'overflow-hidden'
+        stacked ? 'overflow-visible' : 'overflow-hidden'
       }`}
     >
-      {/* Header — ONE row: identity (drag handle + dot + icon + label + count)
-          on the left, this lane's controls (sort menu + date filter) pushed to
-          the right. The label truncates so the controls never wrap to a 2nd row. */}
-      <div className="flex items-center gap-2 border-b border-border-hairline px-2.5 py-1.5">
+      {/* Lane chrome — sticky to the board scroll region in 1-up stack mode. */}
+      <div
+        className={`flex items-center gap-2 border-b border-border-hairline bg-surface-card/95 px-2.5 py-1.5 backdrop-blur-sm ${
+          stacked ? 'sticky top-0 z-10' : ''
+        }`}
+      >
         {/* ds-raw-button: dnd-kit drag handle (spreads listeners; active:scale would fight drag) */}
         <button
           type="button"
@@ -414,47 +450,60 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
           // Stacked lanes window against the board's shared scroll region; grid
           // lanes each own their own scroll body, so no ancestor ref is handed down.
           scrollParentRef: stacked ? boardScrollRef : undefined,
+          // Sticky top-right chevron only when the stacked table is large enough
+          // to collapse (more rows than the preview). Small lanes get neither
+          // the sticky arrow nor a useless expand control.
+          collapse: canToggleStacked
+            ? {
+                expanded,
+                canToggle: true,
+                onToggle: onToggleExpanded,
+                laneLabel: lane.label,
+                displayCount: stackedDisplayCount,
+              }
+            : undefined,
         })}
       </div>
 
-      {rows.length > 0 ? (
-        <>
-          {/* Footer toggle — grid lanes snap the height preset; stacked lanes flip
-              the row preview (only shown when there are more rows to reveal). */}
-          {(!stacked || canToggleStacked) ? (
-            // ds-raw-button: full-width two-state expand/collapse disclosure toggle
-            <button
-              type="button"
-              onClick={onToggleExpanded}
-              className="flex w-full items-center justify-center gap-1 border-t border-border-hairline py-1 text-eyebrow font-black uppercase tracking-widest text-text-soft transition hover:bg-surface-hover"
-            >
-              {expanded ? (
-                <>
-                  <ChevronUp className="h-3.5 w-3.5" /> Show less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-3.5 w-3.5" /> Show more
-                </>
-              )}
-            </button>
-          ) : null}
-          {/* Drag handle — resize the capped body. Hidden for stacked lanes, which
-              grow to content (no internal height to resize). */}
-          {!stacked ? (
-          <div
-            role="separator"
-            aria-orientation="horizontal"
-            aria-label={`Drag to resize ${lane.label} lane`}
-            onPointerDown={onResizeDown}
-            onPointerMove={onResizeMove}
-            onPointerUp={onResizeUp}
-            className="group flex h-2.5 w-full shrink-0 cursor-ns-resize touch-none items-center justify-center border-t border-border-hairline bg-surface-canvas/60 transition hover:bg-surface-sunken"
-          >
-            <span className="h-1 w-8 rounded-full bg-surface-strong transition group-hover:bg-border-emphasis" />
-          </div>
-          ) : null}
-        </>
+      {/* Bottom Show more / Show less — stacked lanes that overflow the preview.
+          Count = how many rows the next click will display (full total / preview).
+          Small tables (≤ preview rows) skip this bar entirely. */}
+      {canToggleStacked ? (
+        // ds-raw-button: full-width two-state expand/collapse disclosure toggle
+        <button
+          type="button"
+          onClick={onToggleExpanded}
+          className="flex w-full items-center justify-center gap-1.5 border-t border-border-hairline py-1 text-eyebrow font-black uppercase tracking-widest text-text-soft transition hover:bg-surface-hover"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp className="h-3.5 w-3.5" />
+              Show less
+              <span className="tabular-nums text-text-faint">· {stackedDisplayCount}</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3.5 w-3.5" />
+              Show more
+              <span className="tabular-nums text-text-faint">· {stackedDisplayCount}</span>
+            </>
+          )}
+        </button>
+      ) : null}
+
+      {rows.length > 0 && !stacked ? (
+        /* Drag handle — resize the capped body (grid lanes only). */
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={`Drag to resize ${lane.label} lane`}
+          onPointerDown={onResizeDown}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeUp}
+          className="group flex h-2.5 w-full shrink-0 cursor-ns-resize touch-none items-center justify-center border-t border-border-hairline bg-surface-canvas/60 transition hover:bg-surface-sunken"
+        >
+          <span className="h-1 w-8 rounded-full bg-surface-strong transition group-hover:bg-border-emphasis" />
+        </div>
       ) : null}
     </section>
     </motion.div>
@@ -467,14 +516,19 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   bucket,
   records,
   maxColumns = 3,
+  defaultColumns = 1,
+  defaultExpanded = true,
   sortOptions,
   defaultSort,
   headerStartSlot,
   headerEndSlot,
+  headerPersistentEndSlot,
+  collapsibleControls = false,
   footerSlot,
   laneHeaderSlot,
   getRowDate,
   renderLaneBody,
+  toolbarPortalTarget,
 }: SwimlaneBoardProps<Row, LaneId, SortId>) {
   const { prefs, update } = useStaffPreferences();
 
@@ -500,11 +554,18 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   const validSorts = useMemo(() => new Set((sortOptions ?? []).map((o) => o.id)), [sortOptions]);
   const defaultLaneMap = useMemo(() => {
     const m = {} as Record<LaneId, LaneState<SortId>>;
-    for (const l of lanes) m[l.id] = { sort: effectiveDefaultSort, expanded: true, height: null, range: undefined };
+    for (const l of lanes) m[l.id] = { sort: effectiveDefaultSort, expanded: defaultExpanded, height: null, range: undefined };
     return m;
-  }, [lanes, effectiveDefaultSort]);
+  }, [lanes, effectiveDefaultSort, defaultExpanded]);
 
-  const [columns, setColumns] = useState<ColumnCount>(1);
+  // Single-column boards never offer a multi-up toggle and never hydrate a
+  // stale `columns: 2|3` from staff prefs (that left dashboard To Ship in a
+  // 2-up grid after the layout was retired).
+  const singleColumnOnly = maxColumns === 1;
+  const [columnsState, setColumns] = useState<ColumnCount>(() =>
+    singleColumnOnly ? 1 : (Math.min(defaultColumns, maxColumns) as ColumnCount),
+  );
+  const columns: ColumnCount = singleColumnOnly ? 1 : columnsState;
   const [laneMap, setLaneMap] = useState<Record<LaneId, LaneState<SortId>>>(defaultLaneMap);
   // Drag-reordered lane order (top → bottom). Defaults to the canonical order.
   const [order, setOrder] = useState<LaneId[]>(canonicalOrder);
@@ -527,7 +588,14 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
     hydrated.current = true;
     const b = prefs[prefsKey];
     if (!b) return;
-    if ((b.columns === 1 || b.columns === 2 || b.columns === 3) && b.columns <= maxColumns) setColumns(b.columns);
+    if (singleColumnOnly) {
+      // Drop any legacy multi-up preference so it never re-expands the grid.
+      if (b.columns != null && b.columns !== 1) {
+        persistBoard({ ...b, columns: 1 });
+      }
+    } else if ((b.columns === 1 || b.columns === 2 || b.columns === 3) && b.columns <= maxColumns) {
+      setColumns(b.columns);
+    }
     if (Array.isArray(b.order) && b.order.length > 0) {
       const valid = b.order.filter((s): s is LaneId => laneById.has(s as LaneId));
       if (valid.length > 0) setOrder(valid);
@@ -554,6 +622,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   }, [prefs]);
 
   const changeColumns = (next: ColumnCount) => {
+    if (singleColumnOnly) return;
     const clamped = Math.min(next, maxColumns) as ColumnCount;
     setColumns(clamped);
     persistBoard({ ...boardPrefs, columns: clamped });
@@ -608,19 +677,18 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
     return out;
   }, [records, laneMap, bucket, canonicalOrder, getRowDate]);
 
-  const isGrid = columns >= 2;
-  /** Always a full-width grid so lanes stretch to each column track and FLIP on toggle. */
-  const gridClass =
-    columns === 3
+  const isGrid = !singleColumnOnly && columns >= 2;
+  /** Full-width grid; single-column boards stay a vertical stack (no multi-up). */
+  const gridClass = isGrid
+    ? columns === 3
       ? 'grid w-full grid-cols-3 items-start gap-4'
-      : columns === 2
-        ? 'grid w-full grid-cols-2 items-start gap-4'
-        : 'grid w-full grid-cols-1 items-start gap-4';
+      : 'grid w-full grid-cols-2 items-start gap-4'
+    : 'flex w-full flex-col items-stretch gap-4';
 
-  /** Layout slider (1-up / 2-up / 3-up) + `headerEndSlot` (columns config, select pencil). */
+  /** Layout slider (only when multi-up is allowed) + `headerEndSlot`. */
   const headerControls = (
     <>
-      {columnItems.length > 1 ? (
+      {!singleColumnOnly && columnItems.length > 1 ? (
         <ToolbarSegmentGroup
           items={columnItems}
           value={String(columns)}
@@ -632,39 +700,60 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
     </>
   );
 
-  /** Mirror the lane grid in the 40px toolbar so contextual slots (e.g. the
-   *  dashboard staff filter on the left, select pencil on the right) share the
-   *  same column tracks as the bubble cards below. */
-  const headerGridClass =
-    columns === 3
+  /** The right cluster: the always-on persistent filter, then the layout controls —
+   *  optionally tucked behind the slide-in disclosure so the bar stays quiet. */
+  const headerEndCluster = (
+    <>
+      {headerPersistentEndSlot}
+      {collapsibleControls ? (
+        <ToolbarControlsDisclosure>{headerControls}</ToolbarControlsDisclosure>
+      ) : (
+        headerControls
+      )}
+    </>
+  );
+
+  /** Portaled toolbar — flat flex row for the dashboard's floating control slot. */
+  const portaledToolbar = toolbarPortalTarget ? (
+    <div className="flex items-center gap-2">{headerEndCluster}</div>
+  ) : null;
+
+  /** Multi-up only: mirror lane grid tracks in the 40px toolbar. */
+  const headerGridClass = isGrid
+    ? columns === 3
       ? 'grid w-full grid-cols-3 items-center gap-4'
-      : columns === 2
-        ? 'grid w-full grid-cols-2 items-center gap-4'
-        : null;
+      : 'grid w-full grid-cols-2 items-center gap-4'
+    : null;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-surface-canvas">
-      {/* Dedicated 40px board toolbar — matches the sidebar master-nav band
-          (h-[40px] + border + flush controls). Sits ABOVE the scroll region so
-          each bubble's sticky `DateGroupHeader` still docks correctly. Horizontal
-          px-4 matches the scroll region's padding so the pencil flush-aligns with
-          the top-right lane table corner. */}
-      <div className="flex h-[40px] shrink-0 items-center border-b border-border-default bg-surface-card/90 px-4 backdrop-blur-md">
-        {isGrid && headerGridClass ? (
-          <div className={headerGridClass}>
-            <div className="flex min-w-0 items-center gap-3">{headerStartSlot}</div>
-            {columns === 3 ? <div aria-hidden="true" /> : null}
-            <div className="flex min-w-0 items-center justify-end gap-2">{headerControls}</div>
-          </div>
-        ) : (
-          <>
-            {headerStartSlot}
-            <div className="ml-auto flex items-center gap-2">{headerControls}</div>
-          </>
-        )}
-      </div>
+      {toolbarPortalTarget && portaledToolbar
+        ? createPortal(portaledToolbar, toolbarPortalTarget)
+        : null}
+      {!toolbarPortalTarget ? (
+        <div className="flex h-[40px] shrink-0 items-center border-b border-border-default bg-surface-card/90 px-4 backdrop-blur-md">
+          {isGrid && headerGridClass ? (
+            <div className={headerGridClass}>
+              <div className="flex min-w-0 items-center gap-3">{headerStartSlot}</div>
+              {columns === 3 ? <div aria-hidden="true" /> : null}
+              <div className="flex min-w-0 items-center justify-end gap-2">{headerEndCluster}</div>
+            </div>
+          ) : (
+            <>
+              {headerStartSlot}
+              <div className="ml-auto flex items-center gap-2">{headerEndCluster}</div>
+            </>
+          )}
+        </div>
+      ) : null}
 
-      <div ref={boardScrollRef} data-testid="swimlane-board-scroll" className="flex-1 overflow-y-auto scrollbar-hide p-4">
+      <div
+        ref={boardScrollRef}
+        data-testid="swimlane-board-scroll"
+        // Portaled dashboard toolbar: parent column already owns the horizontal
+        // gutter (KPI + tabs + board share one edge) — only keep vertical air.
+        className={`flex-1 overflow-y-auto scrollbar-hide ${toolbarPortalTarget ? 'py-1' : 'p-4'}`}
+      >
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorderLanes}>
           <SortableContext items={effectiveOrder} strategy={isGrid ? rectSortingStrategy : verticalListSortingStrategy}>
             <LayoutGroup id={`swimlane-board-${prefsKey}`}>

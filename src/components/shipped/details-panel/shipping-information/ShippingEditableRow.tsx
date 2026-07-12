@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Clipboard, Copy, ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
@@ -24,7 +24,8 @@ export function ShippingEditableRow({
   onChange: (value: string) => void;
   onBlur: () => void;
   externalUrl?: string | null;
-  headerAccessory?: string;
+  /** String accessories get the default micro-eyebrow styling (+ `headerAccessoryClassName`); pass a node (e.g. `LedgerValue`) to render composed content verbatim. */
+  headerAccessory?: ReactNode;
   headerAccessoryClassName?: string;
   allowEdit?: boolean;
   className?: string;
@@ -75,11 +76,16 @@ export function ShippingEditableRow({
   return (
     <DetailsPanelRow
       label={label}
-      headerAccessory={headerAccessory ? (
-        <span className={headerAccessoryClassName || 'text-micro font-black uppercase tracking-wide text-text-soft'}>
-          {headerAccessory}
-        </span>
-      ) : null}
+      headerAccessory={
+        headerAccessory == null || headerAccessory === '' ? null
+          : typeof headerAccessory === 'string' ? (
+            <span className={headerAccessoryClassName || 'text-micro font-black uppercase tracking-wide text-text-soft'}>
+              {headerAccessory}
+            </span>
+          ) : (
+            headerAccessory
+          )
+      }
       actions={actions}
       className={className ? `${className} last:border-b-0` : 'last:border-b-0'}
       dividerClassName={dividerClassName}

@@ -132,6 +132,25 @@ export function RowTitle({
   );
 }
 
+/**
+ * Left meta subrow under a product title: fixed qty | condition tracks, then a
+ * fact-only `rest` flex of optional signals. Callers MUST omit empty facts —
+ * never render ghost "---" staff or empty icon boxes (Pending/Blocked have no
+ * tester yet; blank slots destroy column scan).
+ *
+ * Recommended `rest` order (queue / fulfillment tables):
+ *   1. price        — money (success tone), only if present
+ *   2. daysLate     — tabular urgency number, only if deadline past
+ *   3. staff        — StaffInitials cluster, only when at least one assignee
+ *   4. flags        — exception icons sharing one cluster:
+ *                      notes = muted FileText · OOS = red AlertTriangle
+ *                      (same slot family, different tone = different severity)
+ *   5. lifecycle    — e.g. LBL printed chip
+ *
+ * Notes vs OOS: both are "attention" icons, not people or quantities. Pair them
+ * in one `flags` group so the eye learns "icons = exceptions"; keep tones
+ * distinct so OOS still screams blocked stock and notes stay quiet context.
+ */
 export function RowMetaColumns({
   qty,
   condition,
@@ -143,7 +162,10 @@ export function RowMetaColumns({
 }: {
   qty: ReactNode;
   condition: ReactNode;
-  /** Trailing slot after condition: staff initials, days-late / out-of-stock, delivery-state icon… */
+  /**
+   * Trailing fact-only cluster after condition. Prefer the slot order in the
+   * docblock above; never pass placeholder staff ("---") or empty reserved cells.
+   */
   rest?: ReactNode;
   /** Left indent — pass the matching RowTitle `dotTrack` width so qty aligns under the title. */
   indent?: string;

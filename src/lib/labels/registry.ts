@@ -34,6 +34,28 @@ export const TONE_CLASSES: Record<LabelTone, { pill: string; dot: string }> = {
 };
 
 /**
+ * SVG-stroke twin of {@link TONE_CLASSES}'s `dot` shade — the raw hex a hand-built
+ * SVG chart (`GaugeDonut` etc.) needs, since SVG `stroke`/`fill` ignore Tailwind
+ * utility classes (see `charts/chart-theme.ts` for the same sanctioned exception).
+ * Each hex is the Tailwind default for that tone's dot shade, so a KPI donut arc
+ * and the matching status dot in the board render the *same* hue from the *same*
+ * seeded tone. Keep these in lock-step with the `dot:` shades above.
+ */
+export const TONE_SVG_HEX: Record<LabelTone, string> = {
+  slate: '#94a3b8',
+  yellow: '#eab308',
+  teal: '#14b8a6',
+  amber: '#fbbf24', // amber-400 (matches the dot's -400 shade, not -500)
+  red: '#ef4444',
+  blue: '#3b82f6',
+  indigo: '#6366f1',
+  emerald: '#10b981',
+  rose: '#f43f5e',
+  orange: '#f97316',
+  pink: '#ec4899',
+};
+
+/**
  * System‑default presentation per (kind, code). PACKED_STAGED appears in BOTH
  * kinds with different labels ('Packed · Staged' inbound seam vs 'In Staging'
  * outbound) — exactly why labels key on (kind, code), not code alone. The
