@@ -11,6 +11,19 @@ import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityLinkChip } from './IdentityLinkChip';
 
+/**
+ * Prefer the server's field-level `details` (e.g. a Zod issue string like
+ * "receivingId: Expected number, received string") over the generic `error`
+ * ("Validation failed") so the toast names exactly what the API rejected.
+ */
+function ticketApiError(json: unknown, fallback: string): string {
+  const j = (json ?? {}) as { error?: unknown; details?: unknown };
+  const details = typeof j.details === 'string' ? j.details.trim() : '';
+  const error = typeof j.error === 'string' ? j.error.trim() : '';
+  if (details && error && details !== error) return `${error}: ${details}`;
+  return details || error || fallback;
+}
+
 /** Numeric Zendesk id parsed out of a stored "#1234" / "1234" / ticket URL. */
 function parseTicketId(raw: string): number | null {
   const fromUrl = raw.match(/tickets\/(\d+)/);
@@ -128,7 +141,7 @@ function TicketThreadPanel({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Request failed (${res.status})`);
+        throw new Error(ticketApiError(json, `Request failed (${res.status})`));
       }
       return { removed: !!json.removed };
     },
@@ -155,7 +168,7 @@ function TicketThreadPanel({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.success) {
-        throw new Error(json?.error || `Request failed (${res.status})`);
+        throw new Error(ticketApiError(json, `Request failed (${res.status})`));
       }
       return { folderName: json.folderName, copied: json.copied, total: json.total };
     },
