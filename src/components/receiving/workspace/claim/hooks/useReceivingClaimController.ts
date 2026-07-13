@@ -25,6 +25,21 @@ import { useClaimTemplate } from './useClaimTemplate';
 import { useClaimSellerMessage } from './useClaimSellerMessage';
 import { useClaimTicketReply } from './useClaimTicketReply';
 
+/**
+ * Prefer the server's field-level `details` (e.g. a Zod issue string like
+ * "receivingId: Expected number, received string") over the generic `error`
+ * ("Validation failed"), so a rejected request says exactly WHAT is wrong
+ * instead of an opaque wall. Matches the house pattern used across admin/
+ * favorites API callers (`details || error || fallback`).
+ */
+function apiErrorText(data: unknown, fallback: string): string {
+  const d = (data ?? {}) as { error?: unknown; details?: unknown };
+  const details = typeof d.details === 'string' ? d.details.trim() : '';
+  const error = typeof d.error === 'string' ? d.error.trim() : '';
+  if (details && error && details !== error) return `${error}: ${details}`;
+  return details || error || fallback;
+}
+
 export interface ClaimModalProps {
   open: boolean;
   row: ReceivingLineRow;
@@ -368,7 +383,7 @@ export function useReceivingClaimController({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         setDraftBody(data?.draftBody ?? null);
-        toast.error(data?.error || 'Could not file the claim');
+        toast.error(apiErrorText(data, 'Could not file the claim'));
         return;
       }
       const ticketNumber = data.ticketNumber ? String(data.ticketNumber) : '';
@@ -457,7 +472,7 @@ export function useReceivingClaimController({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        toast.error(data?.error || 'Could not back up claim photos');
+        toast.error(apiErrorText(data, 'Could not back up claim photos'));
         return;
       }
       // Display the backup result on the seller step (folder + counts), and a
@@ -501,7 +516,7 @@ export function useReceivingClaimController({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        toast.error(data?.error || 'Test create failed');
+        toast.error(apiErrorText(data, 'Test create failed'));
         return;
       }
       setTestResult({
@@ -543,7 +558,7 @@ export function useReceivingClaimController({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        toast.error(data?.error || 'Test seller message failed');
+        toast.error(apiErrorText(data, 'Test seller message failed'));
         return;
       }
       setTestSellerPreview({
@@ -595,7 +610,7 @@ export function useReceivingClaimController({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        toast.error(data?.error || 'Dry run failed');
+        toast.error(apiErrorText(data, 'Dry run failed'));
         return;
       }
       const attachCount = Number(data.attachCount ?? photos.selectedPhotoIds.size);
@@ -667,7 +682,7 @@ export function useReceivingClaimController({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        toast.error(data?.error || 'Could not link the ticket');
+        toast.error(apiErrorText(data, 'Could not link the ticket'));
         return;
       }
       const url = typeof data.ticketUrl === 'string' ? data.ticketUrl : null;
@@ -701,7 +716,7 @@ export function useReceivingClaimController({
       const res = await fetch(`/api/receiving/zendesk-claim/link?${sp}`, { method: 'DELETE' });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
-        toast.error(data?.error || 'Could not unlink the ticket');
+        toast.error(apiErrorText(data, 'Could not unlink the ticket'));
         return;
       }
       await seller.clearPersistedSellerDraft();

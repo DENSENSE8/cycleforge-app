@@ -15,14 +15,49 @@ import { getNasStorageTarget } from '@/lib/tenancy/settings';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Derive the accepted claim types from the SoT (CLAIM_TYPE_LABEL) instead of a
+// hardcoded list — a new ClaimType (e.g. 'repair_service') must not silently
+// fail validation here just because this route wasn't hand-updated.
+const CLAIM_TYPE_VALUES = Object.keys(CLAIM_TYPE_LABEL) as [ClaimType, ...ClaimType[]];
+
+// A positive integer id that may arrive as a string (bigint JSON serialization),
+// number, null, "", or "null" — normalize ALL non-positive/absent shapes to
+// `undefined` up front so an empty `lineId` can never trip `.positive()`.
+// (`z.coerce.number()` turns "" and null into 0, which then fails `.positive()`
+// and produced the opaque "Validation failed" on carton-level archives.)
+const optionalPositiveId = z.preprocess((v) => {
+  if (v === null || v === undefined || v === '' || v === 'null') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : undefined;
+}, z.number().int().positive().optional());
+
+// The one truly-required id — accepts a string/number but must resolve to a
+// positive int; the field path in `details` names it if it doesn't.
+const requiredPositiveId = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() !== '' ? Number(v.trim()) : v),
+  z.number().int().positive(),
+);
+
+// Length caps are truncated, never rejected — this text only fills the archive
+// info file, so an over-long paste must not fail the whole backup.
+const cap = (max: number) =>
+  z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim().slice(0, max) : v),
+    z.string().optional(),
+  );
+
 const Body = z.object({
-  receivingId: z.number().int().positive(),
-  lineId: z.number().int().positive().nullable().optional(),
-  ticketNumber: z.string().trim().min(1).max(120),
-  claimType: z.enum(['damage', 'missing', 'wrong_item', 'vendor_defect', 'return', 'unfound']).optional(),
-  reason: z.string().trim().max(4000).optional(),
-  subject: z.string().trim().max(500).optional(),
-  description: z.string().trim().max(20000).optional(),
+  receivingId: requiredPositiveId,
+  lineId: optionalPositiveId,
+  // Accept a number or string id → a non-empty folder-name string.
+  ticketNumber: z.preprocess(
+    (v) => (v == null ? v : String(v).trim()),
+    z.string().min(1).max(120),
+  ),
+  claimType: z.enum(CLAIM_TYPE_VALUES).optional(),
+  reason: cap(4000),
+  subject: cap(500),
+  description: cap(20000),
 });
 
 function normalizeArchiveFolderName(input: string): string {
@@ -31,7 +66,22 @@ function normalizeArchiveFolderName(input: string): string {
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
-    const body = Body.parse(await req.json().catch(() => null));
+    // safeParse (not .parse) so we can LOG the exact payload that failed and
+    // return the field-level issue in `details` — a bare "Validation failed"
+    // toast hides which field the client actually sent wrong.
+    const raw = await req.json().catch(() => null);
+    const parsed = Body.safeParse(raw);
+    if (!parsed.success) {
+      const details = parsed.error.issues
+        .map((i) => `${i.path.join('.') || 'body'}: ${i.message}`)
+        .join('; ');
+      console.warn('[POST /api/receiving/zendesk-claim/archive-only] validation failed', {
+        details,
+        received: raw,
+      });
+      return NextResponse.json({ success: false, error: 'Validation failed', details }, { status: 400 });
+    }
+    const body = parsed.data;
     const folderName = normalizeArchiveFolderName(body.ticketNumber);
     if (!folderName) {
       return NextResponse.json({ success: false, error: 'Folder name is required' }, { status: 400 });
