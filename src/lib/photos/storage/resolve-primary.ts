@@ -1,4 +1,5 @@
 import pool from '@/lib/db';
+import { defaultGcsBucket } from './gcs-adapter';
 import type { PhotoStorageRow } from './types';
 
 interface DbRow {
@@ -87,6 +88,6 @@ export async function getDefaultStorageProvider(
   const envProvider = (process.env.PHOTOS_DEFAULT_PROVIDER || 'gcs') as PhotoStorageRow['provider'];
   return {
     provider: envProvider,
-    config: { bucket: process.env.PHOTOS_GCS_BUCKET || 'usav-photos-dev' },
+    config: { bucket: defaultGcsBucket() },
   };
 }

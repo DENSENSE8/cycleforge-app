@@ -36,7 +36,12 @@ export async function readPhotoBytesById(
         filename: guessFilename(primary.objectKey, primary.contentType),
         contentType: primary.contentType || 'image/jpeg',
       };
-    } catch {
+    } catch (err) {
+      console.error(
+        '[photos/read-bytes] GCS getObject failed',
+        { photoId, bucket: primary.bucket, objectKey: primary.objectKey },
+        err instanceof Error ? err.message : err,
+      );
       /* fall through */
     }
   }

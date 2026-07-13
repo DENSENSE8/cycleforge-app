@@ -1,18 +1,38 @@
 import { createHash } from 'node:crypto';
+import { normalizeEnvValue, normalizeMultilineEnvValue } from '@/lib/env-utils';
 import type { PhotoStorageAdapter, PutObjectInput, PutObjectResult, SignedUrlInput } from './types';
 
 let storageClient: import('@google-cloud/storage').Storage | null = null;
 
+function loadStorageCtor(): typeof import('@google-cloud/storage').Storage {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require('@google-cloud/storage') as typeof import('@google-cloud/storage')).Storage;
+}
+
+/**
+ * A service-account `private_key` pasted into the Vercel dashboard frequently
+ * arrives with literal `\n` sequences instead of real newlines, which makes the
+ * PEM invalid and causes v4 URL signing (and object reads) to throw — the exact
+ * failure this used to hit silently. Route every key through the house
+ * `normalizeMultilineEnvValue` helper (same fix `src/lib/google-auth.ts` applies
+ * to the Sheets JWT) so signing always gets a well-formed PEM.
+ */
+function normalizeCredentialKey<T extends { private_key?: unknown }>(credentials: T): T {
+  if (typeof credentials.private_key === 'string') {
+    credentials.private_key = normalizeMultilineEnvValue(credentials.private_key);
+  }
+  return credentials;
+}
+
 function getStorage(): import('@google-cloud/storage').Storage {
   if (storageClient) return storageClient;
-  const json = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim();
+  const projectId = normalizeEnvValue(process.env.PHOTOS_GCS_PROJECT_ID) || undefined;
+  const json = normalizeEnvValue(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
   if (json) {
     try {
-      const credentials = JSON.parse(json) as Record<string, unknown>;
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { Storage } = require('@google-cloud/storage') as typeof import('@google-cloud/storage');
-      storageClient = new Storage({
-        projectId: process.env.PHOTOS_GCS_PROJECT_ID || (credentials.project_id as string),
+      const credentials = normalizeCredentialKey(JSON.parse(json) as Record<string, unknown>);
+      storageClient = new (loadStorageCtor())({
+        projectId: projectId || (credentials.project_id as string) || undefined,
         credentials,
       });
       return storageClient;
@@ -23,13 +43,13 @@ function getStorage(): import('@google-cloud/storage').Storage {
       );
     }
   }
-  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL?.trim() || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.trim();
+  const clientEmail =
+    normalizeEnvValue(process.env.GOOGLE_CLIENT_EMAIL) ||
+    normalizeEnvValue(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+  const privateKey = normalizeMultilineEnvValue(process.env.GOOGLE_PRIVATE_KEY);
   if (clientEmail && privateKey) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Storage } = require('@google-cloud/storage') as typeof import('@google-cloud/storage');
-    storageClient = new Storage({
-      projectId: process.env.PHOTOS_GCS_PROJECT_ID,
+    storageClient = new (loadStorageCtor())({
+      projectId,
       credentials: {
         client_email: clientEmail,
         private_key: privateKey,
@@ -37,24 +57,43 @@ function getStorage(): import('@google-cloud/storage').Storage {
     });
     return storageClient;
   }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { Storage } = require('@google-cloud/storage') as typeof import('@google-cloud/storage');
-  storageClient = new Storage({
-    projectId: process.env.PHOTOS_GCS_PROJECT_ID,
-  });
+  storageClient = new (loadStorageCtor())({ projectId });
   return storageClient;
 }
 
-export function isGcsConfigured(): boolean {
-  return Boolean(
-    process.env.PHOTOS_GCS_BUCKET?.trim() ||
-      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON?.trim() ||
-      (process.env.GOOGLE_CLIENT_EMAIL?.trim() && process.env.GOOGLE_PRIVATE_KEY?.trim()),
-  );
+function hasGcsCredentials(): boolean {
+  if (normalizeEnvValue(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)) return true;
+  const clientEmail =
+    normalizeEnvValue(process.env.GOOGLE_CLIENT_EMAIL) ||
+    normalizeEnvValue(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+  const privateKey = normalizeMultilineEnvValue(process.env.GOOGLE_PRIVATE_KEY);
+  return Boolean(clientEmail && privateKey);
 }
 
+/** Platform default when PHOTOS_GCS_BUCKET is unset — prod bucket exists; dev bucket may not. */
+function gcsBucketEnvFallback(): string {
+  const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
+  const useProdBucket =
+    vercelEnv === 'production' ||
+    vercelEnv === 'preview' ||
+    process.env.NODE_ENV === 'production';
+  return useProdBucket ? 'usav-photos-prod' : 'usav-photos-dev';
+}
+
+export function isGcsConfigured(): boolean {
+  return hasGcsCredentials() && Boolean(defaultGcsBucket());
+}
+
+/** SoT bucket name — normalized env override, then prod/dev platform fallback. */
 export function defaultGcsBucket(): string {
-  return process.env.PHOTOS_GCS_BUCKET?.trim() || 'usav-photos-dev';
+  const fromEnv = normalizeEnvValue(process.env.PHOTOS_GCS_BUCKET);
+  return fromEnv || gcsBucketEnvFallback();
+}
+
+/** Per-org provider config.bucket with the same normalization + fallback chain. */
+export function resolveGcsBucket(configBucket?: string | null): string {
+  const fromConfig = normalizeEnvValue(configBucket ?? '');
+  return fromConfig || defaultGcsBucket();
 }
 
 export const gcsAdapter: PhotoStorageAdapter = {

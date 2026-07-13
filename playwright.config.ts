@@ -1,4 +1,10 @@
+import path from 'path';
+import dotenv from 'dotenv';
 import { defineConfig, devices } from '@playwright/test';
+
+// Load local secrets + photo/GCS config for E2E (same .env as `pnpm dev`).
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
 const BASE_URL = process.env.PW_BASE_URL || 'http://localhost:3000';
 
