@@ -41,7 +41,7 @@ export function TagInput({
       {tags.map((t) => (
         <span
           key={t}
-          className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-caption font-bold text-text-muted"
+          className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption font-bold text-text-muted"
         >
           <Tag className="h-3 w-3 text-text-faint" />
           {t}
@@ -62,7 +62,7 @@ export function TagInput({
         onKeyDown={onKey}
         onBlur={add}
         placeholder={tags.length ? '' : placeholder}
-        className="min-w-[80px] flex-1 bg-transparent text-label outline-none disabled:cursor-not-allowed"
+        className="min-w-[80px] flex-1 bg-transparent text-role-caption outline-none disabled:cursor-not-allowed"
       />
     </div>
   );

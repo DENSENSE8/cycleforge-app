@@ -442,3 +442,25 @@ export async function isOpsPlansUnifiedInbox(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'ops_plans_unified_inbox', 'OPS_PLANS_UNIFIED_INBOX');
 }
 
+/**
+ * Auto-link a failed unit's serial to the carton's primary support ticket.
+ * Optional auto-link in recordTestVerdict behind env flag CF_TESTING_AUTO_LINK_TICKET.
+ */
+export function isTestingAutoLinkTicket(): boolean {
+  return readBoolEnv('CF_TESTING_AUTO_LINK_TICKET', false);
+}
+
+/**
+ * Operations TV / wall-display board (HOME-OPS plan §7, §27, §28). Per-org,
+ * async, env-fallback. Gates the unattended "on-time floor board" kiosk surface
+ * (`/operations?tv=1` → OperationsTvBoard + `GET /api/operations/tv-board`).
+ * Default OFF — dogfood-first: enable per org
+ * (organization_feature_flags(flag='ops_tv_board')) or globally via
+ * OPS_TV_BOARD=true. USAV (DOGFOOD_ORG_ID) is seeded ON by
+ * 2026-07-12_seed_ops_tv_board_usav.sql. When off, the board API 404s and the
+ * kiosk surface shows a "not enabled" teaching empty, so nothing is exposed.
+ */
+export async function isOpsTvBoard(orgId: OrgId): Promise<boolean> {
+  return resolveForOrg(orgId, 'ops_tv_board', 'OPS_TV_BOARD');
+}
+

@@ -223,24 +223,30 @@ export function useTrackingScan({
 
       setBulkTracking('');
       const scanStartedAt = Date.now();
+      // Capture the surface at submit so the loader is tagged to the mode the
+      // scan launched in, even if the operator switches modes mid-lookup.
+      const scanSurface = intakeSurfaceRef.current;
       setTrackingLookupInFlight((n) => n + 1);
-      if (intakeSurfaceRef.current === 'triage') {
+      if (scanSurface === 'triage') {
         onTriageScanStart?.(trackingNumber);
       }
 
-      // The right-pane "Opening your PO" takeover loader is NO LONGER shown on
-      // every scan. It is reserved for the single slow phase — a live Zoho
-      // round-trip (Phase 2 below) — and dispatched on demand via this helper.
-      // Local resolves (Phase 0 recent-cache select, Phase 1 incoming/mirror
-      // adopt) open with no loader. `useReceivingWorkspacePane` listens for
-      // `receiving-scan-in-flight` and clears 500ms after `…-resolved`.
-      const showZohoLoader = () => {
+      // Both modes express their loading state as a per-mode right-pane skeleton
+      // (unbox → ReceivingWorkspaceSkeleton, triage → TriageWorkspaceSkeleton),
+      // never a scan-bar spinner and never the other mode's display. Arm the surface-tagged
+      // in-flight loader up-front on every scan; `useReceivingWorkspacePane`'s
+      // 300ms grace delay suppresses the skeleton for fast local resolves
+      // (Phase 0 cache select, Phase 1 incoming/mirror adopt) so only a scan that
+      // outlasts the grace window paints it, and the right pane renders the
+      // skeleton matching `surface`. Cleared 500ms after `receiving-scan-resolved`.
+      const armScanLoader = () => {
         window.dispatchEvent(
           new CustomEvent('receiving-scan-in-flight', {
-            detail: { tracking: trackingNumber, startedAt: scanStartedAt },
+            detail: { tracking: trackingNumber, startedAt: scanStartedAt, surface: scanSurface },
           }),
         );
       };
+      armScanLoader();
 
       // Fire the per-scan audio/haptic confirm alongside the caller's onResult:
       // a clean PO match chimes success; everything else (unmatched, not-found,
@@ -281,13 +287,18 @@ export function useTrackingScan({
             );
             if (internal) {
               if (internal.rows.length > 0) {
-                if (intakeSurfaceRef.current === 'unbox' && internal.pick && internal.receivingId != null) {
-                  upsertReceivingRailRows(queryClient, [
-                    {
-                      ...internal.pick,
-                      client_event_id: receivingRailCartonKey(internal.receivingId),
-                    },
-                  ]);
+                // Surface split FIRST so an unbox scan never writes triage feeds.
+                // Unbox → unbox feeds only; triage → triage feed + the sanctioned
+                // triage→Unbox-Queue mirror.
+                if (intakeSurfaceRef.current === 'unbox') {
+                  if (internal.pick && internal.receivingId != null) {
+                    upsertReceivingRailRows(queryClient, [
+                      {
+                        ...internal.pick,
+                        client_event_id: receivingRailCartonKey(internal.receivingId),
+                      },
+                    ]);
+                  }
                   deferInvalidateUnboxReceivingFeeds(queryClient);
                   dispatchReceivingUnboxRefresh();
                 } else {
@@ -441,14 +452,18 @@ export function useTrackingScan({
               po_ids: local.poIds,
               receiving_id: local.receivingId,
             });
-            // Feed refresh for triage; unbox upserts the rail cache in place.
-            if (intakeSurfaceRef.current === 'unbox' && local.pick) {
-              upsertReceivingRailRows(queryClient, [
-                {
-                  ...local.pick,
-                  client_event_id: receivingRailCartonKey(local.receivingId),
-                },
-              ]);
+            // Surface split FIRST (never let an unbox scan write triage feeds):
+            // unbox upserts the Received rail in place; triage prepends to the
+            // triage feed + mirrors into the Unbox Queue (sanctioned bridge).
+            if (intakeSurfaceRef.current === 'unbox') {
+              if (local.pick) {
+                upsertReceivingRailRows(queryClient, [
+                  {
+                    ...local.pick,
+                    client_event_id: receivingRailCartonKey(local.receivingId),
+                  },
+                ]);
+              }
               deferInvalidateUnboxReceivingFeeds(queryClient);
             } else {
               dispatchReceivingLinesPrepended({
@@ -539,7 +554,7 @@ export function useTrackingScan({
                 });
                 return r.json();
               },
-              showLoader: showZohoLoader,
+              showLoader: armScanLoader,
             },
           );
           const data = resolution.data;

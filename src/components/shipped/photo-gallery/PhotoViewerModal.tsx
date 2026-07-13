@@ -30,7 +30,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const reduceMotion = useReducedMotion();
   const heroTransition = useMotionTransition(framerTransition.photoHeroMorph);
   const scrimTransition = useMotionTransition(framerTransition.overlayScrim);
-  const panelLayoutTransition = useMotionTransition(framerTransition.photoContextPanelMount);
   const toolbarTransition = useMotionTransition(framerTransition.dropdownOpen);
   // Keep Tab inside the lightbox — without this the page behind the scrim
   // keeps receiving keyboard focus.
@@ -134,20 +133,15 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         ) : null}
       </AnimatePresence>
 
-      {/* Stage — image lane. flex-1 yields width to the details panel; toolbar
-          is scoped here so it never bleeds over the panel border. `layout` lets
-          the toolbar cluster ease back when the details column soft-closes. */}
-      <motion.div
-        layout
-        transition={panelLayoutTransition}
-        className="relative flex min-w-0 flex-1 flex-col overflow-hidden"
-      >
+      {/* Stage — image lane. flex-1 yields width to the details drawer; the
+          drawer animates its own width, so this lane reflows live via flexbox
+          (no `layout` projection needed) in both open and close. */}
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top bar — counter (left) + zoom/rotate pill + action buttons (right).
           Pinned to the image lane, not the full viewport, so controls stay left
           of the details column when it opens. */}
       <motion.div
-        layout
-        transition={{ layout: panelLayoutTransition, ...toolbarTransition }}
+        transition={toolbarTransition}
         initial={reduceMotion ? false : { opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between py-6 pl-6 pr-6"
@@ -208,9 +202,9 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             </HoverTooltip>
           </div>
 
-          {/* More actions → Download → Delete → Close (fixed order). Details,
-              upload, and other secondary actions live inside the ⋮ menu so the
-              inline toolbar is an identical, minimal row on every page. */}
+          {/* More actions (⋮) → Details → Download → Delete → Close (fixed
+              order). Upload and other secondary actions live inside the ⋮ menu
+              so the inline toolbar is an identical, minimal row on every page. */}
           <div ref={moreRef} className="relative">
             <HoverTooltip label="More actions" asChild>
               <IconButton
@@ -261,24 +255,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                     </button>
                   ) : null}
 
-                  <button
-                    type="button"
-                    role="menuitem"
-                    aria-pressed={g.panelOpen}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMoreOpen(false);
-                      if (g.panelOpen) g.closePanel();
-                      else g.togglePanel();
-                    }}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold transition-colors hover:bg-glass/15 ${
-                      g.panelOpen ? 'text-blue-200' : 'text-white'
-                    }`}
-                  >
-                    <Info className="h-4 w-4 shrink-0" />
-                    {g.panelOpen ? 'Hide details' : 'Show details'}
-                  </button>
-
                   {g.libraryHref ? (
                     <a
                       href={g.libraryHref}
@@ -316,6 +292,21 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
               ) : null}
             </AnimatePresence>
           </div>
+
+          {/* Details toggle — a persistent primary control (industry standard
+              for image viewers: Google/Apple Photos, Lightroom). A view-state
+              toggle like zoom, so it shows a filled active state and never
+              hides in the ⋮ menu. Always rendered, ungated, on every page.
+              Bound to the same `i` hotkey as the panel chevron. */}
+          <HoverTooltip label={g.panelOpen ? 'Hide details (i)' : 'Show details (i)'} asChild>
+            <IconButton
+              onClick={(e) => { e.stopPropagation(); g.togglePanel(); }}
+              aria-pressed={g.panelOpen}
+              className={`${TOOLBAR_ICON_BTN} ${g.panelOpen ? 'border-glass/40 bg-glass/25' : ''}`}
+              ariaLabel={g.panelOpen ? 'Hide photo details' : 'Show photo details'}
+              icon={<Info className="h-5 w-5 text-white" />}
+            />
+          </HoverTooltip>
 
           {/* Download — one photo downloads immediately; multi-photo opens a picker. */}
           <div ref={downloadRef} className="relative">
@@ -578,10 +569,13 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         </div>
       )}
       </div>
-      </motion.div>
-      {/* Info panel — flex sibling of the stage; mount/unmount animated. When
-          the viewer is closing with the panel open, wait for this exit before
-          tearing down the lightbox (see `deferViewerClose` in usePhotoGallery). */}
+      </div>
+      {/* Details drawer — flex sibling of the stage; animates its own width
+          (0 ⇄ 20rem), so open and close are one symmetric toggle and the image
+          lane reflows live in both directions. AnimatePresence still gates the
+          teardown: when the viewer closes with the drawer open, we wait for the
+          width-collapse exit before unmounting the lightbox (`deferViewerClose`
+          in usePhotoGallery). */}
       <AnimatePresence
         initial={false}
         onExitComplete={() => {

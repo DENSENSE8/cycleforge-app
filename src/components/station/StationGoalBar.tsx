@@ -32,11 +32,11 @@ export default function StationGoalBar({
   return (
     <div className="space-y-1.5 px-1">
       <div className="flex items-center justify-between">
-        <p className={`text-eyebrow font-black ${progressTextClass} tabular-nums`}>
+        <p className={`text-role-eyebrow ${progressTextClass} tabular-nums`}>
           <AnimatedStat value={count} speed="fast" className="inline" />/
           <AnimatedStat value={safeGoal} speed="fast" className="inline" /> {label}
         </p>
-        <p className="text-eyebrow font-black text-text-faint uppercase tracking-widest">
+        <p className="text-role-eyebrow text-text-faint uppercase tracking-widest">
           <AnimatedStat value={remaining} speed="fast" className="inline" /> {remainingLabel}
         </p>
       </div>

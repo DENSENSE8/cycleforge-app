@@ -73,7 +73,7 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
 
         <div className="mt-5 space-y-3">
           <label className="block">
-            <span className="block text-caption font-semibold uppercase tracking-wider text-text-soft">Name</span>
+            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Name</span>
             <input
               autoFocus
               value={name}
@@ -84,7 +84,7 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
             />
           </label>
           <label className="block">
-            <span className="block text-caption font-semibold uppercase tracking-wider text-text-soft">Role</span>
+            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Role</span>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as typeof ALL_ROLES[number])}
@@ -94,7 +94,7 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
             </select>
           </label>
           <label className="block">
-            <span className="block text-caption font-semibold uppercase tracking-wider text-text-soft">Employee code (optional)</span>
+            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Employee code (optional)</span>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}

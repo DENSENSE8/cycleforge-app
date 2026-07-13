@@ -116,12 +116,12 @@ export default function OnboardingTemplatePage() {
       <div className="mx-auto flex min-h-full max-w-2xl flex-col px-5 py-10">
         {/* Header */}
         <header className="space-y-1.5">
-          <span className="inline-flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-text-accent">
+          <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
             <Sparkles className="h-3.5 w-3.5" />
             Get started
           </span>
           <h1 className="text-xl font-bold text-text-default">Choose how you run ops</h1>
-          <p className="text-caption text-text-soft">
+          <p className="text-role-caption text-text-soft">
             Start from a proven workflow template for your kind of shop. You can edit it any
             time in the Studio — this just gives your operation a live starting point.
           </p>
@@ -131,11 +131,11 @@ export default function OnboardingTemplatePage() {
             never installs or activates (the CTA below is the sole install path). */}
         <section className="mt-5 space-y-2.5 rounded-xl border border-border-hairline bg-surface-card p-4">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-text-accent">
+            <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
               <Sparkles className="h-3.5 w-3.5" />
               Not sure which one?
             </span>
-            <p className="text-eyebrow leading-snug text-text-soft">
+            <p className="text-role-eyebrow leading-snug text-text-soft">
               AI suggestion — you choose what to activate.
             </p>
           </div>
@@ -145,15 +145,15 @@ export default function OnboardingTemplatePage() {
             rows={3}
             maxLength={4000}
             placeholder="Describe how your shop runs — what you sell, and your steps from intake to shipping…"
-            className="w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-caption text-text-default placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-400"
+            className="w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-400"
           />
           <div className="flex items-center justify-between gap-3">
             {recommend.isError ? (
-              <p className="text-eyebrow font-semibold text-rose-600">
+              <p className="text-role-eyebrow font-semibold text-rose-600">
                 Couldn&apos;t get suggestions. Try again.
               </p>
             ) : recommend.isSuccess && recBySlug.size === 0 ? (
-              <p className="text-eyebrow text-text-soft">No strong match — browse the list below.</p>
+              <p className="text-role-eyebrow text-text-soft">No strong match — browse the list below.</p>
             ) : (
               <span aria-hidden />
             )}
@@ -174,23 +174,23 @@ export default function OnboardingTemplatePage() {
         {/* List → select */}
         <section className="mt-6 flex-1">
           {isLoading ? (
-            <div className="flex items-center gap-2 px-1 py-8 text-caption text-text-soft">
+            <div className="flex items-center gap-2 px-1 py-8 text-role-caption text-text-soft">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading templates…
             </div>
           ) : isError ? (
             <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
               <AlertCircle className="mx-auto h-4 w-4 text-rose-500" />
-              <p className="mt-1 text-caption font-semibold text-rose-700">
+              <p className="mt-1 text-role-caption font-semibold text-rose-700">
                 Could not load the template library.
               </p>
-              <p className="mt-0.5 text-eyebrow uppercase tracking-widest text-rose-400">
+              <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-rose-400">
                 Reload the page to try again.
               </p>
             </div>
           ) : !templates || templates.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-6 text-center">
               <Boxes className="mx-auto h-4 w-4 text-text-faint" />
-              <p className="mt-1 text-caption font-semibold text-text-soft">
+              <p className="mt-1 text-role-caption font-semibold text-text-soft">
                 No workflow templates are available yet.
               </p>
             </div>
@@ -223,35 +223,35 @@ export default function OnboardingTemplatePage() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-caption font-bold text-text-default">
+                          <span className="truncate text-role-caption font-bold text-text-default">
                             {t.name}
                           </span>
                           {rec ? (
                             // AI reason takes precedence over the default badge.
                             <span className="inline-flex min-w-0 items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 ring-1 ring-inset ring-violet-200">
-                              <span className="text-eyebrow font-black uppercase tracking-widest text-violet-700">
+                              <span className="text-role-eyebrow uppercase tracking-widest text-violet-700">
                                 Recommended
                               </span>
                               {rec.reason && (
-                                <span className="truncate text-eyebrow font-semibold normal-case tracking-normal text-violet-600">
+                                <span className="truncate text-role-eyebrow font-semibold normal-case tracking-normal text-violet-600">
                                   · {rec.reason}
                                 </span>
                               )}
                             </span>
                           ) : (
                             t.isDefault && (
-                              <span className="rounded bg-violet-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
+                              <span className="rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200">
                                 Recommended
                               </span>
                             )
                           )}
                         </span>
                         {t.description && (
-                          <span className="mt-0.5 block text-eyebrow leading-snug text-text-soft">
+                          <span className="mt-0.5 block text-role-eyebrow leading-snug text-text-soft">
                             {t.description}
                           </span>
                         )}
-                        <span className="mt-1 block font-mono text-eyebrow uppercase tracking-widest text-text-faint">
+                        <span className="mt-1 block font-mono text-role-eyebrow uppercase tracking-widest text-text-faint">
                           {t.nodeCount} step{t.nodeCount === 1 ? '' : 's'} · {t.edgeCount} link
                           {t.edgeCount === 1 ? '' : 's'}
                           {t.category ? ` · ${t.category}` : ''}
@@ -265,7 +265,7 @@ export default function OnboardingTemplatePage() {
           )}
 
           {confirm.isError && (
-            <p className="mt-3 text-caption font-semibold text-rose-600">
+            <p className="mt-3 text-role-caption font-semibold text-rose-600">
               Couldn&apos;t install that template: {(confirm.error as Error)?.message ?? 'unknown error'}
             </p>
           )}

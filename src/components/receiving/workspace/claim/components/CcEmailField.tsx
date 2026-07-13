@@ -52,13 +52,13 @@ export function CcEmailField({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5">
-      <span className="inline-flex items-center gap-1 text-micro font-black uppercase tracking-widest text-text-faint">
+      <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
         <Mail className="h-3 w-3" /> {label}
       </span>
       {emails.map((email) => (
         <span
           key={email}
-          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
         >
           {email}
           <IconButton
@@ -85,7 +85,7 @@ export function CcEmailField({
         }}
         onBlur={() => addCc(input)}
         placeholder={emails.length ? 'Add another…' : (placeholder ?? 'Add email to CC…')}
-        className="min-w-[8rem] flex-1 bg-transparent px-1 text-label text-text-default outline-none placeholder:text-text-faint disabled:opacity-50"
+        className="min-w-[8rem] flex-1 bg-transparent px-1 text-role-caption text-text-default outline-none placeholder:text-text-faint disabled:opacity-50"
       />
       <datalist id={listId}>
         {available.map((email) => (

@@ -43,7 +43,7 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 const BAND = 'shrink-0 border-b border-border-hairline bg-surface-card px-4 py-3';
-const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-soft';
+const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
 /**
  * Permission gate. Rendering the data-owning inner component conditionally keeps
@@ -65,7 +65,7 @@ function ThroughputRoiCardInner({ variant }: { variant: ThroughputRoiVariant }) 
     return (
       <section className={shellClass(variant)} aria-busy="true">
         <RoiEyebrow />
-        <div className="mt-1.5 flex items-center gap-2 text-caption font-semibold text-text-faint">
+        <div className="mt-1.5 flex items-center gap-2 text-role-caption font-semibold text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading throughput…
         </div>
       </section>
@@ -106,7 +106,7 @@ function RoiHero({ data, variant }: { data: OperationsRoiData; variant: Throughp
               value={unitsThisWeek}
               className={`font-black leading-none text-text-default ${sidebar ? 'text-2xl' : 'text-3xl'}`}
             />
-            <span className="text-caption font-semibold uppercase tracking-wide text-text-faint">
+            <span className="text-role-caption font-semibold uppercase tracking-wide text-text-faint">
               units
             </span>
             <DeltaChip pct={pctChange} lastWeek={unitsLastWeek} />
@@ -163,7 +163,7 @@ function DeltaChip({ pct, lastWeek }: { pct: number; lastWeek: number }) {
   return (
     <HoverTooltip label={`vs last week (${lastWeek.toLocaleString()} units)`} focusable={false}>
       <span
-        className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset ${tone.chip}`}
+        className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ${tone.chip}`}
       >
         <Icon className="h-3 w-3" />
         {label}

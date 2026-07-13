@@ -74,10 +74,10 @@ export function TimelineSection({
   return (
     <section className={className}>
       <header className="mb-3 flex items-center justify-between">
-        <h3 className="text-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
+        <h3 className="text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
           {title}
         </h3>
-        {headerRight ? <div className="text-micro font-medium text-text-faint">{headerRight}</div> : null}
+        {headerRight ? <div className="text-role-micro font-medium text-text-faint">{headerRight}</div> : null}
       </header>
       {loading ? (
         <TimelineSkeleton />

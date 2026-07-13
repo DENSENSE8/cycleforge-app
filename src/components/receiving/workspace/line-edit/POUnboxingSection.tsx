@@ -106,7 +106,7 @@ export function POUnboxingSection({
           type="button"
           aria-pressed={view === 'units'}
           onClick={() => setView((v) => (v === 'units' ? 'po-items' : 'units'))}
-          className={`inline-flex shrink-0 items-center gap-1 text-eyebrow font-black uppercase tracking-widest transition-colors ${
+          className={`inline-flex shrink-0 items-center gap-1 text-role-eyebrow uppercase tracking-widest transition-colors ${
             view === 'units' ? 'text-blue-600' : 'text-text-muted hover:text-text-default'
           }`}
         >
@@ -118,7 +118,7 @@ export function POUnboxingSection({
     if (canCollapsePairing) {
       parts.push(
         <div key="pairing" className="flex shrink-0 items-center gap-1">
-          <span className="text-eyebrow font-black uppercase leading-none tracking-widest text-text-faint">
+          <span className="text-role-eyebrow uppercase leading-none tracking-widest text-text-faint">
             Edit PO
           </span>
           <HoverTooltip label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'} asChild>

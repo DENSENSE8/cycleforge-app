@@ -93,7 +93,7 @@ export function PhotoLibraryToolbar<T>({
         variant="ghost"
         size="sm"
         onClick={allSelected ? onClear : onSelectAll}
-        className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+        className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-role-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
       >
         {allSelected ? 'Clear' : `Select all ${total}`}
       </Button>
@@ -103,7 +103,7 @@ export function PhotoLibraryToolbar<T>({
             variant="ghost"
             size="sm"
             onClick={onSelectAllMatching}
-            className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+            className="h-7 shrink-0 rounded-md px-1.5 py-0.5 text-role-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50 hover:text-blue-700"
           >
             Select all matching
           </Button>

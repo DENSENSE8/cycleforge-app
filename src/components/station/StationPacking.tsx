@@ -291,7 +291,7 @@ export default function StationPacking({
               only. The embedded sidebar stays minimal: the active mode already shows
               in the master-nav mode rail, so we don't repeat it here. */}
           {!embedded && packMode !== 'standard' ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-caption font-semibold text-amber-800">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption font-semibold text-amber-800">
               {PACK_MODE_LABELS[packMode]}
             </div>
           ) : null}
@@ -319,7 +319,7 @@ export default function StationPacking({
           </motion.div>
 
           {!embedded && (
-            <p className="text-micro font-bold text-text-faint px-1">
+            <p className="text-role-micro font-bold text-text-faint px-1">
               Supports tracking, FNSKU/ASIN (10 chars: <code className="font-mono">X00</code> or <code className="font-mono">B0</code> prefix), FBA, and{' '}
               <code className="font-mono">SKU:VALUE</code> scans.
             </p>
@@ -354,33 +354,33 @@ export default function StationPacking({
               >
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
-                    <p className="text-micro font-black text-purple-500 uppercase tracking-widest">FBA Scan</p>
+                    <p className="text-role-micro text-purple-500 uppercase tracking-widest">FBA Scan</p>
                     {activeFba.isNew && (
-                      <span className="text-eyebrow font-black bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-1.5 py-0.5 uppercase tracking-wider">
+                      <span className="text-role-eyebrow bg-blue-100 text-blue-700 border border-blue-200 rounded-lg px-1.5 py-0.5 uppercase tracking-wider">
                         Added to Today
                       </span>
                     )}
                   </div>
                   {activeFba.shipmentRef && (
-                    <span className="text-micro font-mono font-black text-purple-700">{activeFba.shipmentRef}</span>
+                    <span className="text-role-micro font-mono text-purple-700">{activeFba.shipmentRef}</span>
                   )}
                 </div>
                 <h3 className="text-base font-black text-text-default leading-tight">{activeFba.productTitle}</h3>
                 <div className="mt-3 flex items-stretch justify-between gap-3 rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-2.5">
                   <HoverTooltip label={activeFba.fnsku} asChild>
                     <div className="min-w-0 flex-1">
-                      <p className="text-mini font-black text-purple-400 uppercase tracking-wider">FNSKU</p>
+                      <p className="text-role-micro text-purple-400 uppercase tracking-wider">FNSKU</p>
                       <p className="text-sm font-mono font-black text-text-default tabular-nums">{getLast4(activeFba.fnsku)}</p>
                     </div>
                   </HoverTooltip>
                   <div className="flex-1 text-center border-x border-purple-100/80 px-2">
-                    <p className="text-mini font-black text-text-faint uppercase tracking-wider">Planned</p>
+                    <p className="text-role-micro text-text-faint uppercase tracking-wider">Planned</p>
                     <p className="text-sm font-black text-text-default tabular-nums">
                       {activeFba.plannedQty > 0 ? activeFba.plannedQty : '—'}
                     </p>
                   </div>
                   <div className="min-w-0 flex-1 text-right">
-                    <p className="text-mini font-black text-text-faint uppercase tracking-wider">Scanned</p>
+                    <p className="text-role-micro text-text-faint uppercase tracking-wider">Scanned</p>
                     <p className="text-sm font-black text-text-default tabular-nums">
                       {activeFba.combinedPackScannedQty}
                     </p>
@@ -402,10 +402,10 @@ export default function StationPacking({
                 className="p-4 bg-surface-card rounded-2xl border border-border-soft shadow-sm"
               >
                 <div className="flex items-center justify-between gap-3 mb-2">
-                  <p className="text-micro font-black text-text-soft uppercase tracking-widest">
+                  <p className="text-role-micro text-text-soft uppercase tracking-widest">
                     {activeOrder.scanType === 'SKU' ? 'Active SKU' : 'Active Order'}
                   </p>
-                  <span className="text-micro font-mono font-black text-text-muted">
+                  <span className="text-role-micro font-mono text-text-muted">
                     {activeOrder.scanType === 'SKU'
                       ? (activeOrder.sku || activeOrder.tracking || 'N/A')
                       : (activeOrder.orderId || 'N/A')}
@@ -414,15 +414,15 @@ export default function StationPacking({
                 <h3 className="text-base font-black text-text-default leading-tight">{activeOrder.productTitle}</h3>
                 <div className="mt-3 grid grid-cols-3 gap-3">
                   <div className="bg-surface-canvas rounded-xl px-3 py-2 border border-border-hairline">
-                    <p className="text-eyebrow font-black text-text-faint uppercase tracking-wider mb-1">Qty</p>
+                    <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1">Qty</p>
                     <p className="text-xs font-bold text-text-default">{activeOrder.qty}</p>
                   </div>
                   <div className="bg-surface-canvas rounded-xl px-3 py-2 border border-border-hairline">
-                    <p className="text-eyebrow font-black text-text-faint uppercase tracking-wider mb-1">Condition</p>
+                    <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1">Condition</p>
                     <p className="text-xs font-bold text-text-default">{activeOrder.condition}</p>
                   </div>
                   <div className="bg-surface-canvas rounded-xl px-3 py-2 border border-border-hairline">
-                    <p className="text-eyebrow font-black text-text-faint uppercase tracking-wider mb-1">
+                    <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1">
                       {activeOrder.scanType === 'SKU' ? 'SKU' : 'TRK #'}
                     </p>
                     <p className="text-xs font-mono font-bold text-text-default">
@@ -437,11 +437,11 @@ export default function StationPacking({
                     (multi-line short-ship visibility at pack completion). */}
                 {packChecklist && packChecklist.orderRowIds.length > 0 && packChecklist.progress.total > 1 ? (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-border-hairline bg-surface-canvas px-3 py-2">
-                    <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+                    <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
                       Order rollup
                     </p>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset tabular-nums ${
+                      className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset tabular-nums ${
                         packChecklist.progress.packedLines >= packChecklist.progress.total
                           ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                           : 'bg-amber-50 text-amber-700 ring-amber-200'
@@ -453,7 +453,7 @@ export default function StationPacking({
                 ) : null}
 
                 {embedded ? (
-                  <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-caption font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                  <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-role-caption font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
                     Checklist open in the history pane — verify each line item before sealing.
                   </p>
                 ) : (

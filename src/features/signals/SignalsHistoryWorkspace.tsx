@@ -55,7 +55,7 @@ export function SignalsHistoryWorkspace() {
           loading={isLoading}
           emptyMessage={emptyMessage}
           richTime
-          headerRight={<span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">{items.length}</span>}
+          headerRight={<span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{items.length}</span>}
         />
       </div>
     </div>

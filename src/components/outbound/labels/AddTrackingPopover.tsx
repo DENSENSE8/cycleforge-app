@@ -170,7 +170,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             <span className={`${sectionLabel} text-violet-700`}>Add Tracking</span>
             <div className="flex items-center gap-1">
               {pos && pos.total > 0 ? (
-                <span className="text-eyebrow font-bold tabular-nums text-text-faint">{pos.index} / {pos.total}</span>
+                <span className="text-role-eyebrow font-bold tabular-nums text-text-faint">{pos.index} / {pos.total}</span>
               ) : null}
               <Popover.Close className="rounded p-0.5 text-text-faint hover:bg-surface-sunken hover:text-text-muted" aria-label="Close">
                 <X className="h-3.5 w-3.5" />
@@ -179,22 +179,22 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
           </div>
 
           <div className="mb-3 rounded-xl bg-surface-canvas px-3 py-2">
-            <p className="truncate text-caption font-bold text-text-default">{record.product_title || 'Unknown product'}</p>
-            <p className="mt-0.5 text-eyebrow font-semibold uppercase tracking-wide text-text-faint">
+            <p className="truncate text-role-caption font-bold text-text-default">{record.product_title || 'Unknown product'}</p>
+            <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
               {[platformLabel, record.order_id ? `#${record.order_id}` : null, `${record.condition || 'N/A'} · ×${qty}`]
                 .filter(Boolean)
                 .join('  ·  ')}
             </p>
           </div>
 
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">Tracking #</label>
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">Tracking #</label>
           <div className="mb-3 flex items-center gap-1.5">
             <input
               ref={trackingRef}
               value={tracking}
               onChange={(e) => setTracking(e.target.value)}
               placeholder="Paste or scan tracking…"
-              className="min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-caption text-text-default outline-none transition-all focus:border-violet-500"
+              className="min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500"
             />
             <HoverTooltip label="Paste from clipboard" asChild>
               <IconButton
@@ -206,15 +206,15 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             </HoverTooltip>
           </div>
 
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">SKU</label>
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">SKU</label>
           <input
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             placeholder="SKU"
-            className="mb-1 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-caption text-text-default outline-none transition-all focus:border-violet-500"
+            className="mb-1 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500"
           />
           {sku.trim() && sku.trim() !== initialSku ? (
-            <p className="mb-2 flex items-center gap-1 text-eyebrow font-semibold">
+            <p className="mb-2 flex items-center gap-1 text-role-eyebrow font-semibold">
               {resolving ? (
                 <span className="text-text-faint">Looking up…</span>
               ) : resolution?.skuCatalogId != null ? (
@@ -227,16 +227,16 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             </p>
           ) : null}
 
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">Item #</label>
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">Item #</label>
           <input
             value={itemNumber}
             onChange={(e) => setItemNumber(e.target.value)}
             placeholder="Item number"
-            className="mb-3 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-caption text-text-default outline-none transition-all focus:border-violet-500"
+            className="mb-3 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500"
           />
 
           {status === 'error' ? (
-            <p className="mb-2 text-eyebrow font-bold text-red-600">Save failed — try again.</p>
+            <p className="mb-2 text-role-eyebrow font-bold text-red-600">Save failed — try again.</p>
           ) : null}
 
           <div className="flex items-center gap-1.5">
@@ -271,10 +271,10 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
 
           {nav && nav.recentlyAdded.length > 0 ? (
             <div className="mt-3 border-t border-border-hairline pt-2">
-              <p className="mb-1 text-eyebrow font-black uppercase tracking-wider text-text-faint">Recently added</p>
+              <p className="mb-1 text-role-eyebrow uppercase tracking-wider text-text-faint">Recently added</p>
               <ul className="space-y-0.5">
                 {nav.recentlyAdded.slice(0, 5).map((e) => (
-                  <li key={e.orderId} className="flex items-center justify-between gap-2 text-eyebrow">
+                  <li key={e.orderId} className="flex items-center justify-between gap-2 text-role-eyebrow">
                     <span className="truncate text-text-muted">{e.title}</span>
                     <span className="shrink-0 font-mono font-semibold text-emerald-600">…{e.tracking.slice(-6)}</span>
                   </li>

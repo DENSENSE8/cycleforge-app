@@ -92,7 +92,7 @@ export function HeaderTopWorkOrderChip() {
           )}
         >
           <ClipboardList className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-          <span className="min-w-0 truncate text-caption font-bold tracking-tight text-indigo-900">
+          <span className="min-w-0 truncate text-role-caption font-bold tracking-tight text-indigo-900">
             {top.title}
           </span>
           <ChevronDown
@@ -112,25 +112,25 @@ export function HeaderTopWorkOrderChip() {
         className="w-[300px]"
       >
         <div className="border-b border-border-hairline px-3.5 py-3">
-          <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-indigo-500">
+          <p className="text-role-eyebrow uppercase tracking-[0.18em] text-indigo-500">
             Your next work order
           </p>
-          <p className="mt-1 text-[14px] font-bold leading-tight tracking-tight text-text-default">
+          <p className="mt-1 text-role-body font-bold leading-tight tracking-tight text-text-default">
             {top.title}
           </p>
           {top.subtitle ? (
-            <p className="mt-0.5 truncate text-caption text-text-soft">{top.subtitle}</p>
+            <p className="mt-0.5 truncate text-role-caption text-text-soft">{top.subtitle}</p>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-1.5 px-3.5 py-2.5">
-          <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-eyebrow font-black uppercase tracking-wider text-text-muted">
+          <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">
             {top.queueLabel}
           </span>
-          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-eyebrow font-black uppercase tracking-wider text-indigo-600">
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-indigo-600">
             {top.role}
           </span>
           {deadlineLabel ? (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-eyebrow font-bold uppercase tracking-wider text-amber-700">
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-amber-700">
               Due {deadlineLabel}
             </span>
           ) : null}
@@ -139,7 +139,7 @@ export function HeaderTopWorkOrderChip() {
           <Link
             href={top.sourcePath}
             onClick={() => setOpen(false)}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-label font-bold text-white transition-colors hover:bg-indigo-700"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-role-caption font-bold text-white transition-colors hover:bg-indigo-700"
           >
             Open {top.recordLabel}
           </Link>

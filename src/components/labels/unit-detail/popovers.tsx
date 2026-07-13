@@ -52,7 +52,7 @@ export function PopoverShell({
       >
         <div className="flex h-9 items-center gap-2 border-b border-border-hairline bg-surface-canvas/70 px-3">
           <span className="text-text-faint">{icon}</span>
-          <span className="text-eyebrow font-black uppercase tracking-[0.16em] text-text-soft">
+          <span className="text-role-eyebrow uppercase tracking-[0.16em] text-text-soft">
             {title}
           </span>
         </div>
@@ -64,13 +64,13 @@ export function PopoverShell({
 
 function PopoverEmpty({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-3 py-6 text-center text-caption font-medium text-text-faint">{children}</p>
+    <p className="px-3 py-6 text-center text-role-caption font-medium text-text-faint">{children}</p>
   );
 }
 
 function PopoverLoading() {
   return (
-    <p className="px-3 py-6 text-center text-caption font-semibold text-text-faint">Loading…</p>
+    <p className="px-3 py-6 text-center text-role-caption font-semibold text-text-faint">Loading…</p>
   );
 }
 
@@ -100,7 +100,7 @@ export function InventoryLinkagePopover({
       <div className="divide-y divide-border-hairline">
         {/* On-hand */}
         <div className="px-3 py-3">
-          <p className="text-eyebrow font-black uppercase tracking-[0.16em] text-text-faint">
+          <p className="text-role-eyebrow uppercase tracking-[0.16em] text-text-faint">
             On hand · {unit.sku ?? '—'}
           </p>
           <div className="mt-2 flex gap-2">
@@ -147,7 +147,7 @@ function StatTile({ label, value, icon }: { label: string; value: number; icon: 
       <span className="text-text-faint">{icon}</span>
       <div className="min-w-0">
         <p className="text-lg font-bold leading-none text-text-default tabular-nums">{value}</p>
-        <p className="mt-0.5 text-micro font-semibold uppercase tracking-wider text-text-faint">{label}</p>
+        <p className="mt-0.5 text-role-micro font-semibold uppercase tracking-wider text-text-faint">{label}</p>
       </div>
     </div>
   );
@@ -174,8 +174,8 @@ function Row({
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-label font-bold text-text-default">{title}</p>
-        <p className="truncate text-micro font-medium text-text-soft">{sub}</p>
+        <p className="truncate font-mono text-role-caption font-bold text-text-default">{title}</p>
+        <p className="truncate text-role-micro font-medium text-text-soft">{sub}</p>
       </div>
     </div>
   );
@@ -229,11 +229,11 @@ function EdgeSection({
 }) {
   return (
     <div className="py-1">
-      <p className="px-3 pb-1 pt-2 text-eyebrow font-black uppercase tracking-[0.16em] text-text-faint">
+      <p className="px-3 pb-1 pt-2 text-role-eyebrow uppercase tracking-[0.16em] text-text-faint">
         {label} · {rows.length}
       </p>
       {rows.length === 0 ? (
-        <p className="px-3 py-2 text-micro font-medium text-text-faint">{empty}</p>
+        <p className="px-3 py-2 text-role-micro font-medium text-text-faint">{empty}</p>
       ) : (
         <ul>
           {rows.map((r) => (
@@ -274,7 +274,7 @@ export function SimilarProductsPopover({
         <PopoverEmpty>No other products in “{data.category}”.</PopoverEmpty>
       ) : (
         <div className="py-1">
-          <p className="px-3 pb-1 pt-2 text-eyebrow font-black uppercase tracking-[0.16em] text-text-faint">
+          <p className="px-3 pb-1 pt-2 text-role-eyebrow uppercase tracking-[0.16em] text-text-faint">
             Category · {data.category}
           </p>
           <ul>
@@ -327,13 +327,13 @@ function ProductMiniRow({
         )}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="line-clamp-1 text-label font-semibold text-text-default">{title}</span>
-        <span className="truncate font-mono text-micro text-text-soft">
+        <span className="line-clamp-1 text-role-caption font-semibold text-text-default">{title}</span>
+        <span className="truncate font-mono text-role-micro text-text-soft">
           {sku} · {stock} on hand
         </span>
       </span>
       {trailing ? (
-        <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-micro font-bold text-text-muted">
+        <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-bold text-text-muted">
           {trailing}
         </span>
       ) : null}

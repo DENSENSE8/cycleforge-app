@@ -102,7 +102,7 @@ export function CollapsibleGroupRow({
         ) : null}
         <div className="min-w-0 flex-1">{summary}</div>
         {count != null ? (
-          <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-widest text-text-soft">
+          <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
             {count} {countLabel}
           </span>
         ) : null}

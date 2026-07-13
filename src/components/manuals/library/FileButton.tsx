@@ -83,7 +83,7 @@ export function FileButton({
         </div>
       )}
       <div className="pointer-events-none relative min-w-0 flex-1">
-        <p className={`truncate text-label font-black leading-tight ${isSelected ? 'text-blue-900' : 'text-text-default'}`}>
+        <p className={`truncate text-role-caption font-black leading-tight ${isSelected ? 'text-blue-900' : 'text-text-default'}`}>
           {highlight ? <HighlightedText text={highlight.label} indices={highlight.indices} /> : title}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">

@@ -63,7 +63,7 @@ export function ModalShell({
       <div className={`relative z-panelPopover w-full ${widthClass} overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/20`}>
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
-            <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">{eyebrow}</p>
+            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">{eyebrow}</p>
             <h2 className="mt-1 text-sm font-black text-text-default">{title}</h2>
           </div>
           <IconButton
@@ -86,7 +86,7 @@ export function ModalShell({
 
 export function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1 block text-micro font-black uppercase tracking-[0.14em] text-text-soft">
+    <span className="mb-1 block text-role-micro uppercase tracking-[0.14em] text-text-soft">
       {children}
     </span>
   );
@@ -131,7 +131,7 @@ export function SecondaryButton({ disabled, onClick, children }: { disabled?: bo
 export function ErrorBanner({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-caption font-semibold text-red-700">
+    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-role-caption font-semibold text-red-700">
       <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span>{message}</span>
     </div>

@@ -57,7 +57,7 @@ export function SectionCard({
             {(eyebrow || title) && (
               <div className="min-w-0">
                 {eyebrow ? (
-                  <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{eyebrow}</p>
+                  <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{eyebrow}</p>
                 ) : null}
                 {title ? (
                   <h2 className="text-base font-black tracking-tight text-text-default leading-tight">{title}</h2>
@@ -72,7 +72,7 @@ export function SectionCard({
                 <p className="text-2xl font-black tabular-nums leading-none text-text-default">{headline}</p>
               ) : null}
               {meta != null ? (
-                <p className="mt-1 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">{meta}</p>
+                <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">{meta}</p>
               ) : null}
             </div>
           )}

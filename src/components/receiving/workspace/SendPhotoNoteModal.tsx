@@ -127,7 +127,7 @@ export function SendPhotoNoteModal({
     >
       <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
         <div className="min-w-0">
-          <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Send photos to ticket
           </p>
           <p className="truncate text-xs font-semibold text-text-default">{poLabel}</p>
@@ -140,7 +140,7 @@ export function SendPhotoNoteModal({
         />
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-[13px]">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-role-data">
         <ClaimTicketPicker search={search} onSelect={search.setSelectedTicket} />
 
         <ClaimPhotoPicker photos={photos} receivingId={receivingId} />
@@ -149,7 +149,7 @@ export function SendPhotoNoteModal({
           <div className="flex items-center justify-between gap-3">
             <label
               htmlFor="photo-note-body"
-              className="text-micro font-black uppercase tracking-[0.14em] text-text-soft"
+              className="text-role-micro uppercase tracking-[0.14em] text-text-soft"
             >
               {isPublic ? 'Public reply' : 'Internal note'}
             </label>
@@ -180,7 +180,7 @@ export function SendPhotoNoteModal({
                 : 'Add an internal note for the team (private — not emailed to the customer)…'
             }
             className={cn(
-              'block w-full resize-y rounded-lg border bg-surface-card px-3 py-2 text-label font-medium text-text-default outline-none focus:ring-2',
+              'block w-full resize-y rounded-lg border bg-surface-card px-3 py-2 text-role-caption font-medium text-text-default outline-none focus:ring-2',
               isPublic
                 ? 'border-blue-200 focus:border-blue-500 focus:ring-blue-500/20'
                 : 'border-border-soft focus:border-border-emphasis focus:ring-text-soft/20',
@@ -190,7 +190,7 @@ export function SendPhotoNoteModal({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-border-soft px-4 py-3">
-        <p className="min-w-0 text-micro font-medium text-text-faint">
+        <p className="min-w-0 text-role-micro font-medium text-text-faint">
           {isPublic ? 'Emails the customer' : 'Posts as an internal note (private)'}.
           {selectedTicket ? ` → #${selectedTicket.id}` : ' Pick a ticket.'}
           {isPublic && ccs.length ? ` · ${ccs.length} cc` : ''}

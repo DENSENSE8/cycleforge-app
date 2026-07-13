@@ -133,7 +133,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
           {section} audit · daily report
         </p>
         <h2 className="mt-0.5 text-base font-bold text-text-default">
@@ -164,7 +164,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
                 </HoverTooltip>
               ))}
             </div>
-            <div className="mt-1 flex justify-between text-eyebrow tabular-nums text-text-faint">
+            <div className="mt-1 flex justify-between text-role-eyebrow tabular-nums text-text-faint">
               <span>0:00</span>
               <span>6:00</span>
               <span>12:00</span>
@@ -176,11 +176,11 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
           {/* Top actions */}
           <Card title="Top actions">
             {data.by_action.length === 0 ? (
-              <p className="text-caption text-text-faint">No events.</p>
+              <p className="text-role-caption text-text-faint">No events.</p>
             ) : (
               <ul className="space-y-1.5">
                 {data.by_action.slice(0, 8).map((a) => (
-                  <li key={a.action} className="flex items-center gap-2 text-caption">
+                  <li key={a.action} className="flex items-center gap-2 text-role-caption">
                     <span className="w-32 shrink-0 truncate font-semibold text-text-default">
                       {actionLabel(a.action)}
                     </span>
@@ -202,7 +202,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
           {/* Top staff */}
           <Card title="Top staff">
             {data.by_staff.length === 0 ? (
-              <p className="text-caption text-text-faint">No events.</p>
+              <p className="text-role-caption text-text-faint">No events.</p>
             ) : (
               <ul className="space-y-1.5">
                 {data.by_staff.map((s) => (
@@ -210,7 +210,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
                     <button
                       type="button"
                       onClick={() => setParam('staffId', String(s.staff_id))}
-                      className="ds-raw-button flex w-full items-center gap-2 text-left text-caption hover:opacity-80"
+                      className="ds-raw-button flex w-full items-center gap-2 text-left text-role-caption hover:opacity-80"
                     >
                       <span className="w-32 shrink-0 truncate font-semibold text-text-default">
                         {s.name ?? `#${s.staff_id}`}
@@ -234,7 +234,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
           {/* Top items */}
           <Card title={`Top ${section === 'staff' ? 'staff' : 'items'}`}>
             {data.by_item.length === 0 ? (
-              <p className="text-caption text-text-faint">No events.</p>
+              <p className="text-role-caption text-text-faint">No events.</p>
             ) : (
               <ul className="space-y-1.5">
                 {data.by_item.map((it) => {
@@ -248,7 +248,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
                               onClick: () => setParam(itemParam, it.key),
                             }
                           : {})}
-                        className={`flex w-full items-center gap-2 text-left text-caption ${
+                        className={`flex w-full items-center gap-2 text-left text-role-caption ${
                           itemParam ? 'hover:opacity-80' : ''
                         }`}
                       >
@@ -280,7 +280,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-      <p className="text-micro font-bold uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">{title}</p>
       <div className="mt-2">{children}</div>
     </div>
   );
@@ -302,9 +302,9 @@ function TotalsBadge({
   }[tone];
   return (
     <span
-      className={`inline-flex items-baseline gap-1.5 rounded-full px-2.5 py-1 text-caption font-semibold ring-1 ${toneClass}`}
+      className={`inline-flex items-baseline gap-1.5 rounded-full px-2.5 py-1 text-role-caption font-semibold ring-1 ${toneClass}`}
     >
-      <span className="text-eyebrow uppercase tracking-wider opacity-70">{label}</span>
+      <span className="text-role-eyebrow uppercase tracking-wider opacity-70">{label}</span>
       <span className="tabular-nums">{fmtNumber(value)}</span>
     </span>
   );
@@ -320,7 +320,7 @@ function CenterMessage({
   return (
     <div className="flex h-full items-center justify-center p-6">
       <p
-        className={`text-center text-label ${
+        className={`text-center text-role-caption ${
           tone === 'error' ? 'text-rose-600' : 'text-text-faint'
         }`}
       >

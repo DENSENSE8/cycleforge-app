@@ -104,7 +104,7 @@ export function LabelsModeBody() {
             activeState={null}
             onSelectState={() => undefined}
           />
-          <p className="text-eyebrow font-bold uppercase tracking-widest text-violet-600">
+          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-violet-600">
             {queueCount} order{queueCount === 1 ? '' : 's'} awaiting label
           </p>
         </div>

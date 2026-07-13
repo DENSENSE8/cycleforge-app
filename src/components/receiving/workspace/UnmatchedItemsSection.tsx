@@ -15,89 +15,27 @@
  * Kept deliberately small so LineEditPanel can drop it in without
  * branching on receiving_source for every prop.
  *
- * Thin composition shell: state + handlers live in {@link useUnmatchedItems};
- * the per-line row is {@link UnmatchedLineRow} under `./unmatched-items/`.
+ * Every receiving carton renders the unified one-row surface
+ * ({@link UnmatchedAccordionSurface} — PoLinesAccordion + active-row scanner,
+ * the same row anatomy a matched PO line uses; receiving-condition-serial-
+ * unification-plan.md). There is no feature flag: this is the only receiving
+ * path. The per-line list below ({@link UnmatchedItemsPerLineList}) survives
+ * only for the tech testing workspace, which injects per-line verdict pills via
+ * `renderLineActions` — a capability the single active-row editor doesn't cover.
  */
 
-import { motion } from 'framer-motion';
 import { Loader2, PackageOpen, Pencil, Unlink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
 import { WorkspaceCard, InlineNotice } from '@/design-system/components';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { LabelIdentifyButton } from '@/components/receiving/label-identify/LabelIdentifyButton';
-import { SerialCard } from '@/components/receiving/workspace/SerialCard';
-import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSerialControl';
-import {
-  INTAKE_CLASSIFICATION_OPTS,
-  type IntakeClassification,
-  type IntakeTone,
-} from '@/lib/receiving/intake-classification';
 import { useUnmatchedItems } from './unmatched-items/useUnmatchedItems';
 import { UnmatchedLineRow } from './unmatched-items/UnmatchedLineRow';
+import { UnmatchedAccordionSurface } from './unmatched-items/UnmatchedAccordionSurface';
+import { IntakeClassifyRow } from './unmatched-items/IntakeClassifyRow';
+import { ReturnScanCard } from './unmatched-items/ReturnScanCard';
 import type { UnmatchedItemsSectionProps } from './unmatched-items/unmatched-items-shared';
-
-// Door-classification pill tones — desktop mirror of the mobile /m/receive
-// "Receiving as" selector. Same semantic shades, paired active/inactive.
-const INTAKE_PILL_BASE =
-  'inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 text-eyebrow font-black uppercase tracking-widest transition-colors';
-const INTAKE_ACTIVE: Record<IntakeTone, string> = {
-  // ds-allow-raw-neutral: identity/tone hue — slate IS the IntakeTone key among colored siblings, not chrome
-  slate: 'border-slate-600 bg-slate-600 text-white',
-  blue: 'border-blue-600 bg-blue-600 text-white',
-  rose: 'border-rose-600 bg-rose-600 text-white',
-  amber: 'border-amber-500 bg-amber-500 text-white',
-  emerald: 'border-emerald-600 bg-emerald-600 text-white',
-};
-const INTAKE_INACTIVE: Record<IntakeTone, string> = {
-  slate: 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-hover',
-  blue: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100',
-  rose: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
-  amber: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
-  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
-};
-
-/**
- * "Receiving as" door-classification pill row — desktop triage parity with the
- * mobile selector. Flat, always-visible (no collapse), one tap re-classifies the
- * carton via the intake-classification SoT. `motion.button` (not raw `<button>`)
- * keeps it off the raw-button ratchet, matching {@link InlinePillPicker}.
- */
-function IntakeClassifyRow({
-  value,
-  onSelect,
-}: {
-  value: IntakeClassification;
-  onSelect: (next: IntakeClassification) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Receiving as</p>
-      <div
-        role="radiogroup"
-        aria-label="Receiving as"
-        className="flex flex-nowrap items-center gap-1.5 overflow-x-auto scrollbar-hide"
-      >
-        {INTAKE_CLASSIFICATION_OPTS.map((o) => {
-          const active = o.value === value;
-          return (
-            <motion.button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              title={o.label}
-              onClick={() => onSelect(o.value)}
-              className={`${INTAKE_PILL_BASE} ${active ? INTAKE_ACTIVE[o.tone] : INTAKE_INACTIVE[o.tone]}`}
-            >
-              {o.label}
-            </motion.button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export type {
   UnfoundLine,
@@ -106,13 +44,26 @@ export type {
 } from './unmatched-items/unmatched-items-shared';
 
 export function UnmatchedItemsSection(props: UnmatchedItemsSectionProps) {
+  // The tech testing workspace injects per-line verdict pills via
+  // `renderLineActions` — the unified accordion's single active-row editor can't
+  // host a custom control on every line, so that ONE caller keeps the per-line
+  // list. Every receiving carton uses the unified one-row surface.
+  if (props.renderLineActions) {
+    return <UnmatchedItemsPerLineList {...props} />;
+  }
+  return <UnmatchedAccordionSurface {...props} />;
+}
+
+/**
+ * Per-line list surface — retained solely for the tech testing workspace's
+ * `renderLineActions` (verdict pills per line). Not used by any receiving path.
+ */
+function UnmatchedItemsPerLineList(props: UnmatchedItemsSectionProps) {
   const {
     receivingId,
     staffId,
     receivingTypeHint = 'PO',
-    activeLineId,
     onFileReturnClaim,
-    onActiveConditionChange,
     serialAbsent,
     serialAbsentReason,
     requireSerialConfirmation,
@@ -190,7 +141,7 @@ export function UnmatchedItemsSection(props: UnmatchedItemsSectionProps) {
             }
           >
             <div className="space-y-2">
-              <p className="text-caption text-amber-900">
+              <p className="text-role-caption text-amber-900">
                 {c.linkError ? (
                   <>
                     {c.linkError}
@@ -234,52 +185,17 @@ export function UnmatchedItemsSection(props: UnmatchedItemsSectionProps) {
         ) : null}
         {/* Primary entry for an unfound carton: scan a serial. On a shipped-serial
             match we pull the product details and create + populate the line — no
-            manual Add-item step. Rendered as a regular unbox serial card (white
-            card chrome + condition pills), not a themed callout. */}
+            manual Add-item step. */}
         {showSerialScan ? (
-          <SerialCard
-            saved={[]}
-            expected={null}
+          <ReturnScanCard
             isSubmitting={c.returnScanBusy}
-            showSavedChips={false}
             condition={c.cartonScanCondition}
-            onConditionChange={(next) => {
-              c.setCartonScanCondition(next);
-              onActiveConditionChange?.(next);
-            }}
+            onConditionChange={(next) => c.handleCartonConditionChange(next)}
             onAdd={(sn) => c.handleReturnSerialScan(sn)}
-            noSerialActive={serialAbsent ?? false}
-            onMarkNoSerial={
-              onSerialAbsentChange
-                ? () =>
-                    onSerialAbsentChange(
-                      serialAbsent
-                        ? { absent: false, reason: null }
-                        : { absent: true, reason: serialAbsentReason ?? 'NOT_SERIALIZED' },
-                    )
-                : undefined
-            }
-            noSerialSlot={
-              onSerialAbsentChange ? (
-                <NoSerialControl
-                  absent
-                  reason={serialAbsentReason ?? null}
-                  required={requireSerialConfirmation ?? false}
-                  onChange={onSerialAbsentChange}
-                />
-              ) : undefined
-            }
-            resultSlot={
-              // Importing loader — the only feedback surface for the scan.
-              // On success the imported line row below (and the bound PO# /
-              // platform chips above) ARE the result; no match band.
-              c.returnScanBusy ? (
-                <div className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-caption font-bold uppercase tracking-wider text-text-muted">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-                  Matching serial — importing the sales order…
-                </div>
-              ) : undefined
-            }
+            serialAbsent={serialAbsent}
+            serialAbsentReason={serialAbsentReason}
+            requireSerialConfirmation={requireSerialConfirmation}
+            onSerialAbsentChange={onSerialAbsentChange}
           />
         ) : null}
         {/* Identify an item by photographing its printed label. The LAN vision box
@@ -307,6 +223,11 @@ export function UnmatchedItemsSection(props: UnmatchedItemsSectionProps) {
             onConditionChange={c.handleConditionChange}
             onRemove={c.handleRemoveLine}
             onFileReturnClaim={onFileReturnClaim}
+            onActiveConditionChange={props.onActiveConditionChange}
+            serialAbsent={serialAbsent}
+            serialAbsentReason={serialAbsentReason}
+            requireSerialConfirmation={requireSerialConfirmation}
+            onSerialAbsentChange={onSerialAbsentChange}
             renderActions={
               renderLineActions
                 ? (helpers) => renderLineActions(line, helpers)
@@ -329,7 +250,7 @@ export function UnmatchedItemsSection(props: UnmatchedItemsSectionProps) {
       <div className="space-y-2">
         {suppressHeader ? null : (
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+            <h3 className="text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
               PO items · {c.lines.length}
             </h3>
             <div className="flex items-center gap-1.5">

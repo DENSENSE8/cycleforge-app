@@ -33,13 +33,13 @@ export function RecentDetailStacksSection() {
   return (
     <div className="px-2 pb-2">
       <div className="flex items-center justify-between px-2 py-1">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Recently opened</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Recently opened</p>
         {hasOverflow ? (
           /* ds-raw-button: compact expand/collapse — not a DS Button variant */
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="-my-0.5 inline-flex items-center gap-0.5 px-1 py-0.5 text-mini font-semibold text-text-faint hover:text-text-muted"
+            className="-my-0.5 inline-flex items-center gap-0.5 px-1 py-0.5 text-role-micro font-semibold text-text-faint hover:text-text-muted"
           >
             {expanded ? (
               <>
@@ -54,7 +54,7 @@ export function RecentDetailStacksSection() {
         ) : null}
       </div>
       {recents.length === 0 ? (
-        <p className="px-2 py-1.5 text-mini text-text-faint">Detail panels you open will appear here.</p>
+        <p className="px-2 py-1.5 text-role-micro text-text-faint">Detail panels you open will appear here.</p>
       ) : (
         <ul className="space-y-0.5">
           {visible.map((e) => {
@@ -69,7 +69,7 @@ export function RecentDetailStacksSection() {
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-                    <span className="truncate text-caption font-semibold text-text-default">{e.label}</span>
+                    <span className="truncate text-role-caption font-semibold text-text-default">{e.label}</span>
                   </button>
                   <HoverTooltip label="Remove" focusable={false}>
                     {/* ds-raw-button: icon-only quiet remove affordance */}

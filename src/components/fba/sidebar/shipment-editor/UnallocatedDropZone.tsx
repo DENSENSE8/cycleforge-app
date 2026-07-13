@@ -57,11 +57,11 @@ export function UnallocatedDropZone({
             />
           ) : null}
         </div>
-        <p className="text-mini font-black uppercase tracking-wider text-amber-700">
+        <p className="text-role-micro uppercase tracking-wider text-amber-700">
           Unallocated
         </p>
         {items.length > 0 && (
-          <span className="shrink-0 text-mini font-black tabular-nums text-text-faint">
+          <span className="shrink-0 text-role-micro tabular-nums text-text-faint">
             {items.length} · {totalUnits}
           </span>
         )}
@@ -69,7 +69,7 @@ export function UnallocatedDropZone({
 
       {items.length === 0 ? (
         <div className="border-t border-border-hairline px-3 py-2">
-          <p className="text-center text-eyebrow font-bold text-text-faint">
+          <p className="text-center text-role-eyebrow font-bold text-text-faint">
             All items allocated to boxes
           </p>
         </div>
@@ -98,7 +98,7 @@ export function UnallocatedDropZone({
                           size="sm"
                           icon={<RotateCcw className="h-2.5 w-2.5" />}
                           onClick={() => onRestoreToBundle(item.item_id)}
-                          className="h-5 gap-0.5 rounded-md border border-amber-200 bg-amber-50 px-1.5 text-mini font-black uppercase tracking-wider text-amber-700 hover:border-amber-300 hover:bg-amber-100"
+                          className="h-5 gap-0.5 rounded-md border border-amber-200 bg-amber-50 px-1.5 text-role-micro uppercase tracking-wider text-amber-700 hover:border-amber-300 hover:bg-amber-100"
                           ariaLabel="Undo move — return to previous box"
                         >
                           Undo

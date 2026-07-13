@@ -44,8 +44,8 @@ export function HeaderGoalChip() {
       >
         <GoalRing percent={view.percent} color={tone.ring} />
         <span className="flex flex-col items-start leading-none">
-          <span className="text-caption font-bold tracking-tight text-text-default">{STATION_LABEL[g.active]}</span>
-          <span className="mt-0.5 text-eyebrow font-semibold tabular-nums text-text-soft">
+          <span className="text-role-caption font-bold tracking-tight text-text-default">{STATION_LABEL[g.active]}</span>
+          <span className="mt-0.5 text-role-eyebrow font-semibold tabular-nums text-text-soft">
             <AnimatedStat value={chipCount.value} speed="fast" className="inline" />
             /
             <AnimatedStat value={chipCount.total} speed="fast" className="inline" /> {chipCount.unit}

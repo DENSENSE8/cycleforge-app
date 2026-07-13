@@ -69,7 +69,7 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
   return (
     <div className="shrink-0 border-b border-border-soft bg-surface-canvas/60">
       <div className={`flex items-center justify-between ${SIDEBAR_GUTTER} py-1.5`}>
-        <span className="text-micro font-black uppercase tracking-wider text-text-soft">
+        <span className="text-role-micro uppercase tracking-wider text-text-soft">
           Not in the queue
         </span>
         {loading && <Loader2 className="h-3 w-3 animate-spin text-text-faint" />}
@@ -93,19 +93,19 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
                   onClick={() => onPairIdentifier(id)}
                   className={`ds-raw-button flex w-full items-center gap-2 ${SIDEBAR_GUTTER} py-2 text-left transition-colors hover:bg-blue-50`}
                 >
-                  <span className={`inline-flex shrink-0 items-center rounded border px-1.5 py-0 text-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
+                  <span className={`inline-flex shrink-0 items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
                     {style.label}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="truncate font-mono text-xs font-bold text-text-default">{value}</span>
                       {id.orderCount > 0 && (
-                        <span className="shrink-0 text-eyebrow font-bold uppercase tracking-wider text-amber-700">
+                        <span className="shrink-0 text-role-eyebrow font-bold uppercase tracking-wider text-amber-700">
                           {id.orderCount} ord
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-micro text-text-soft">
+                    <p className="truncate text-role-micro text-text-soft">
                       {id.suggestedTitle || 'No linked title — unmapped'}
                     </p>
                   </div>
@@ -129,8 +129,8 @@ export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: P
               <Plus className="h-3.5 w-3.5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-caption font-bold text-blue-700">Add inventory SKU to catalog</span>
-              <span className="block truncate font-mono text-micro text-blue-500">{term}</span>
+              <span className="block text-role-caption font-bold text-blue-700">Add inventory SKU to catalog</span>
+              <span className="block truncate font-mono text-role-micro text-blue-500">{term}</span>
             </span>
           </button>
         </div>

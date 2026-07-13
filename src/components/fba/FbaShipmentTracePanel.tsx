@@ -82,7 +82,7 @@ function FlagPill({ flag }: { flag: TraceFlag }) {
   return (
     <HoverTooltip label={flag.message} focusable={false} asChild>
       <span
-        className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wider ${tone}`}
+        className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${tone}`}
       >
         <AlertTriangle className="h-2.5 w-2.5" />
         {flag.code.replace(/_/g, ' ')}
@@ -104,7 +104,7 @@ function UnitRow({ unit }: { unit: TraceUnit }) {
           <Barcode className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
           <SerialChip value={unit.serial_number} />
           {unit.current_status ? (
-            <span className="shrink-0 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wider bg-surface-strong text-text-muted">
+            <span className="shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider bg-surface-strong text-text-muted">
               {unit.current_status}
             </span>
           ) : null}
@@ -121,7 +121,7 @@ function UnitRow({ unit }: { unit: TraceUnit }) {
 
       {open ? (
         <div className="border-t border-border-hairline px-2.5 pb-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-micro font-semibold text-text-soft">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-role-micro font-semibold text-text-soft">
             {unit.unit_uid ? <span>UID {unit.unit_uid}</span> : null}
             {unit.condition_grade ? <span>Grade {unit.condition_grade}</span> : null}
             {unit.current_location ? (
@@ -151,11 +151,11 @@ function ItemBlock({ item }: { item: TraceItem }) {
           <FnskuChip value={item.fnsku} />
           <FbaStatusBadge status={item.status} size="xs" />
         </div>
-        <span className="shrink-0 text-micro font-black tabular-nums text-text-soft">
+        <span className="shrink-0 text-role-micro tabular-nums text-text-soft">
           {item.actual_qty}/{item.expected_qty}
         </span>
       </div>
-      <p className="mb-2 truncate text-caption font-bold text-text-muted">
+      <p className="mb-2 truncate text-role-caption font-bold text-text-muted">
         {item.display_title || 'No title'}
       </p>
 
@@ -168,7 +168,7 @@ function ItemBlock({ item }: { item: TraceItem }) {
       ) : null}
 
       {item.units.length === 0 ? (
-        <p className="py-2 text-center text-caption font-bold text-text-faint">
+        <p className="py-2 text-center text-role-caption font-bold text-text-faint">
           No serialized units linked to this FNSKU
         </p>
       ) : (
@@ -222,7 +222,7 @@ export function FbaShipmentTracePanel({ shipmentId, className }: FbaShipmentTrac
 
   if (error) {
     return (
-      <div className={`rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-caption font-semibold text-red-700 ${className ?? ''}`}>
+      <div className={`rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700 ${className ?? ''}`}>
         {error}
       </div>
     );
@@ -239,7 +239,7 @@ export function FbaShipmentTracePanel({ shipmentId, className }: FbaShipmentTrac
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className={sectionLabel}>Shipment Trace</p>
         {summary ? (
-          <span className="flex items-center gap-2 text-micro font-bold text-text-soft">
+          <span className="flex items-center gap-2 text-role-micro font-bold text-text-soft">
             <span className="inline-flex items-center gap-1">
               <Boxes className="h-3 w-3" />
               {summary.traced_unit_count}/{summary.unit_count} traced

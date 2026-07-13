@@ -62,7 +62,7 @@ export function ReceivingClaimModal(props: ClaimModalProps) {
         onClose={c.onClose}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-[13px]">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-role-data">
         <ClaimWizardNav c={c} />
         <ClaimStepBody c={c} />
       </div>

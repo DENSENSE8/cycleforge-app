@@ -22,7 +22,7 @@ export function OperationsSectionHeader({ eyebrow, title, meta }: OperationsSect
         <h2 className={`${cardTitle} mt-0.5`}>{title}</h2>
       </div>
       {meta && (
-        <span className="hidden sm:inline-flex text-caption font-semibold text-text-faint">
+        <span className="hidden sm:inline-flex text-role-caption font-semibold text-text-faint">
           {meta}
         </span>
       )}

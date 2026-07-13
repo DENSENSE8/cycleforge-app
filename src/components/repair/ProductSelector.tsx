@@ -313,7 +313,7 @@ export function ProductSelector({
         >
           <div className="text-xs font-bold uppercase tracking-wide">Other -- Manual Entry</div>
           {selectedProduct?.type === 'Other' && (
-            <div className="mt-1 truncate text-micro font-semibold opacity-90">{selectedProduct.model}</div>
+            <div className="mt-1 truncate text-role-micro font-semibold opacity-90">{selectedProduct.model}</div>
           )}
         </button>
 
@@ -342,7 +342,7 @@ export function ProductSelector({
 
       {/* Breadcrumbs */}
       {(breadcrumbs.length > 0 || showAllProducts) && (
-        <div className="flex flex-wrap items-center gap-1 text-eyebrow font-black uppercase tracking-wide text-text-soft">
+        <div className="flex flex-wrap items-center gap-1 text-role-eyebrow uppercase tracking-wide text-text-soft">
           {/* ds-raw-button: inline breadcrumb text link (no chrome) — Button would add height/padding */}
           <button
             type="button"
@@ -394,7 +394,7 @@ export function ProductSelector({
           {/* Sub-categories */}
           {!showAllProducts && filteredCategories.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-eyebrow font-black uppercase tracking-[0.15em] text-text-faint">
+              <p className="text-role-eyebrow uppercase tracking-[0.15em] text-text-faint">
                 {isAtRoot ? 'Categories' : 'Sub-categories'}
               </p>
               <div className="space-y-1.5">
@@ -432,7 +432,7 @@ export function ProductSelector({
           {/* Products grid */}
           {(loadingProducts || filteredProducts.length > 0) && (
             <div className="space-y-2">
-              <p className="text-eyebrow font-black uppercase tracking-[0.15em] text-text-faint">
+              <p className="text-role-eyebrow uppercase tracking-[0.15em] text-text-faint">
                 {loadingProducts ? 'Loading products...' : 'Products'}
               </p>
               {!loadingProducts && (
@@ -465,7 +465,7 @@ export function ProductSelector({
                               decoding="async"
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-eyebrow font-black uppercase tracking-widest text-text-faint">
+                            <div className="flex h-full w-full items-center justify-center text-role-eyebrow uppercase tracking-widest text-text-faint">
                               No Image
                             </div>
                           )}
@@ -492,7 +492,7 @@ export function ProductSelector({
                               {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
                             </span>
                             {product.sku && (
-                              <span className={`max-w-[55%] truncate text-right text-eyebrow font-bold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
+                              <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-bold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
                                 {product.sku}
                               </span>
                             )}
@@ -534,12 +534,12 @@ export function ProductSelector({
             {selectedItems.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg bg-surface-card px-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-micro font-bold text-text-default">{item.name}</p>
-                  {item.sku && <p className="text-eyebrow font-semibold text-text-faint">{item.sku}</p>}
+                  <p className="truncate text-role-micro font-bold text-text-default">{item.name}</p>
+                  {item.sku && <p className="text-role-eyebrow font-semibold text-text-faint">{item.sku}</p>}
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">
                   {item.price !== null && (
-                    <span className="text-micro font-black text-emerald-600">${item.price.toFixed(2)}</span>
+                    <span className="text-role-micro text-emerald-600">${item.price.toFixed(2)}</span>
                   )}
                   <IconButton
                     type="button"

@@ -178,7 +178,6 @@ export function ReceivingSidebarPanel() {
     setBulkTracking,
     unboxScanMode,
     setUnboxScanMode,
-    trackingLookupInFlight,
     submitTrackingScan,
   } = useTrackingScan({
     staffId,
@@ -291,7 +290,11 @@ export function ReceivingSidebarPanel() {
                 }}
                 inputRef={scanInputRef}
                 inputBorderClassName={inputBorder}
-                isResolving={trackingLookupInFlight > 0}
+                // Triage no longer spins the scan bar either — its loading state
+                // is the right-pane TriageWorkspaceSkeleton (surface-tagged),
+                // matching Unbox. Each mode shows its own skeleton, never a
+                // bar spinner or the other mode's display.
+                isResolving={false}
               />
             ) : (
               <UnboxScanBand
@@ -305,7 +308,12 @@ export function ReceivingSidebarPanel() {
                   submitTrackingScan(undefined, { mode: m });
                 }}
                 inputRef={scanInputRef}
-                isResolving={trackingLookupInFlight > 0}
+                // Unbox no longer spins the scan bar on a tracking scan. The
+                // loading state is expressed as the right-pane skeleton takeover
+                // (ReceivingWorkspaceSkeleton), a clearer signal than a bar
+                // spinner — driven by the `receiving-scan-in-flight` event
+                // dispatched up-front in submitTrackingScan for the unbox surface.
+                isResolving={false}
                 staffId={staffId}
                 armedMode={unboxScanMode}
                 onToggleMode={(m) => setUnboxScanMode((prev) => (prev === m ? null : m))}

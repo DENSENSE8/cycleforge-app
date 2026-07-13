@@ -246,15 +246,15 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
             {manual.display_name || manual.file_name || `Manual #${manual.id}`}
           </p>
           {manual.product_title && (
-            <p className="mt-0.5 truncate text-caption font-medium text-text-soft">
+            <p className="mt-0.5 truncate text-role-caption font-medium text-text-soft">
               {manual.product_title}
             </p>
           )}
           {manual.folder_path && (
-            <p className="mt-1 truncate font-mono text-micro text-text-faint">{manual.folder_path}</p>
+            <p className="mt-1 truncate font-mono text-role-micro text-text-faint">{manual.folder_path}</p>
           )}
           {deleteError && (
-            <p className="mt-1 text-micro font-semibold text-red-600">{deleteError}</p>
+            <p className="mt-1 text-role-micro font-semibold text-red-600">{deleteError}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -306,7 +306,7 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-micro font-black uppercase tracking-wider text-white hover:bg-surface-inverse-hover"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-role-micro uppercase tracking-wider text-white hover:bg-surface-inverse-hover"
             >
               <ExternalLink className="h-3 w-3" />
               Open
@@ -344,7 +344,7 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-micro font-black uppercase tracking-wider text-white hover:bg-surface-inverse-hover"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-surface-inverse px-3 py-1.5 text-role-micro uppercase tracking-wider text-white hover:bg-surface-inverse-hover"
             >
               <ExternalLink className="h-3 w-3" /> Open in new tab
             </a>
@@ -367,7 +367,7 @@ function EmptyViewer() {
         <FileText className="h-6 w-6 text-text-faint" />
       </div>
       <p className="text-sm font-black text-text-default">Select a manual to preview</p>
-      <p className="mt-1 max-w-sm text-caption font-medium text-text-soft">
+      <p className="mt-1 max-w-sm text-role-caption font-medium text-text-soft">
         Use the sidebar to search by product title, folder, or file name. PDFs render inline.
       </p>
     </div>

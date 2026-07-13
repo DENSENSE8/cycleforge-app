@@ -84,3 +84,29 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
     printHtmlInIframe(html, { name: 'Receiving label' });
   })();
 }
+
+/**
+ * Record that a receiving label was printed for a line — the single choke point
+ * shared by the default unbox print and the custom label-editor print, so the
+ * two can never diverge.
+ *
+ * Three effects, in order of latency:
+ *   1. localStorage marker + `receiving-label-printed` DOM event → the Print
+ *      step / row chips flip *instantly* on this device (optimistic).
+ *   2. POST /api/receiving/lines/[id]/label-printed → the DURABLE stamp
+ *      (`receiving_line_testing.label_printed_at`) that survives refresh / other
+ *      devices and is auditable. Fire-and-forget; the server COALESCE keeps the
+ *      first print, so a reprint is a no-op on the recorded value.
+ */
+export function markReceivingLabelPrinted(lineId: number): void {
+  if (typeof window === 'undefined' || !(lineId > 0)) return;
+  try {
+    window.localStorage.setItem(`receiving-label-printed:${lineId}`, String(Date.now()));
+  } catch {
+    /* private-mode / quota — non-fatal */
+  }
+  window.dispatchEvent(
+    new CustomEvent('receiving-label-printed', { detail: { line_id: lineId } }),
+  );
+  void fetch(`/api/receiving/lines/${lineId}/label-printed`, { method: 'POST' }).catch(() => {});
+}

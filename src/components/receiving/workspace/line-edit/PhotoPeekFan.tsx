@@ -237,7 +237,7 @@ export function PhotoPeekFan({
                 <img src={card.imgUrl} alt={card.alt} loading="lazy" className="h-full w-full object-cover" />
                 {/* Count badge rides the FRONT card's visible corner. */}
                 {i === 0 && count > 1 ? (
-                  <span className="absolute left-1.5 top-1.5 rounded-full bg-scrim/60 px-1.5 py-0.5 text-micro font-black leading-none text-white tabular-nums backdrop-blur-sm">
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-scrim/60 px-1.5 py-0.5 text-role-micro leading-none text-white tabular-nums backdrop-blur-sm">
                     {count}
                   </span>
                 ) : null}

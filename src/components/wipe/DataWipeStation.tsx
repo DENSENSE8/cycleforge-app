@@ -49,7 +49,7 @@ interface DataWipeStationProps {
 }
 
 const META_CHIP_CLASS =
-  'inline-flex items-center rounded bg-surface-canvas px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft';
+  'inline-flex items-center rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft';
 
 /**
  * Data-Wipe Station — the Station-archetype surface for the secure-erase bench.
@@ -81,10 +81,10 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
               <ShieldCheck className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-caption font-black uppercase leading-none tracking-widest text-text-default">
+              <h1 className="text-role-caption font-black uppercase leading-none tracking-widest text-text-default">
                 Data Wipe Station
               </h1>
-              <p className="mt-1 truncate text-eyebrow font-semibold uppercase leading-none tracking-widest text-text-faint">
+              <p className="mt-1 truncate text-role-eyebrow font-semibold uppercase leading-none tracking-widest text-text-faint">
                 Secure erase · {userName}
               </p>
             </div>
@@ -102,7 +102,7 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
             isResolving={c.isResolving}
           />
 
-          <p className="px-1 text-micro font-bold text-text-faint">
+          <p className="px-1 text-role-micro font-bold text-text-faint">
             Scan a device serial or its printed unit label, pick the erasure method, then record{' '}
             <span className="text-emerald-600">Wiped</span> or{' '}
             <span className="text-amber-600">Wipe&nbsp;failed</span>.
@@ -171,7 +171,7 @@ function ActiveUnitCard({
   return (
     <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           Active Unit
         </p>
         {unit.currentStatus ? (
@@ -197,7 +197,7 @@ function ActiveUnitCard({
 
       {/* Erasure-method picker — segmented pills over the SoT method enum. */}
       <div className="space-y-1.5">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           Erasure Method
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -213,7 +213,7 @@ function ActiveUnitCard({
                   onClick={() => onSelectMethod(method)}
                   disabled={isSubmitting}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-eyebrow font-black uppercase tracking-widest transition-colors disabled:opacity-60',
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-role-eyebrow uppercase tracking-widest transition-colors disabled:opacity-60',
                     selected
                       ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
                       : 'bg-surface-canvas text-text-muted ring-1 ring-inset ring-border-soft hover:bg-surface-sunken',
@@ -229,7 +229,7 @@ function ActiveUnitCard({
       </div>
 
       {errorMessage ? (
-        <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-semibold text-rose-700">
+        <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-role-caption font-semibold text-rose-700">
           <AlertTriangle className="h-4 w-4 flex-shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -285,7 +285,7 @@ function OutcomeCard({ outcome }: { outcome: WipeOutcome }) {
         <div className="min-w-0">
           <p
             className={cn(
-              'text-eyebrow font-black uppercase tracking-widest',
+              'text-role-eyebrow uppercase tracking-widest',
               wiped ? 'text-emerald-600' : 'text-amber-600',
             )}
           >
@@ -301,13 +301,13 @@ function OutcomeCard({ outcome }: { outcome: WipeOutcome }) {
         <SerialChip value={outcome.unit.serialNumber} />
         <span className={META_CHIP_CLASS}>{WIPE_METHOD_META[outcome.method].label}</span>
         {outcome.idempotent ? (
-          <span className="inline-flex items-center rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
+          <span className="inline-flex items-center rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
             Already recorded
           </span>
         ) : null}
       </div>
 
-      <p className="mt-3 text-micro font-bold text-text-faint">Clearing for the next scan…</p>
+      <p className="mt-3 text-role-micro font-bold text-text-faint">Clearing for the next scan…</p>
     </div>
   );
 }
@@ -318,8 +318,8 @@ function EmptyState() {
   return (
     <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas px-4 py-10 text-center">
       <Cpu className="mx-auto h-6 w-6 text-text-faint" />
-      <p className="mt-3 text-caption font-bold text-text-muted">Scan a unit to begin a secure wipe</p>
-      <p className="mt-1 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+      <p className="mt-3 text-role-caption font-bold text-text-muted">Scan a unit to begin a secure wipe</p>
+      <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
         Device serial or printed unit label
       </p>
     </div>
@@ -330,13 +330,13 @@ function ResolveErrorState({ message, onRetry }: { message: string; onRetry: () 
   return (
     <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
       <AlertTriangle className="mx-auto h-6 w-6 text-rose-400" />
-      <p className="mt-3 text-caption font-bold text-rose-700">{message}</p>
+      <p className="mt-3 text-role-caption font-bold text-rose-700">{message}</p>
       <Button
         variant="secondary"
         size="sm"
         icon={<RotateCcw />}
         onClick={onRetry}
-        className="mt-3 bg-surface-card text-rose-700 ring-inset ring-rose-200 hover:bg-rose-50 hover:text-rose-700 text-eyebrow font-black uppercase tracking-widest"
+        className="mt-3 bg-surface-card text-rose-700 ring-inset ring-rose-200 hover:bg-rose-50 hover:text-rose-700 text-role-eyebrow uppercase tracking-widest"
       >
         Scan again
       </Button>

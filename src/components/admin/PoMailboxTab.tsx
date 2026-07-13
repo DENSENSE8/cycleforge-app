@@ -122,12 +122,12 @@ export function PoMailboxTab() {
                 detail={status.accountEmail ?? '(account email unavailable)'}
               />
               {status.connectedAt && (
-                <p className="text-label text-text-soft">
+                <p className="text-role-caption text-text-soft">
                   Connected {new Date(status.connectedAt).toLocaleString()}
                 </p>
               )}
               {status.needsReconnect && status.needsReconnectReason && (
-                <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-label text-amber-800">
+                <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-role-caption text-amber-800">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div>
                     <div className="font-medium">Refresh token rejected</div>
@@ -161,12 +161,12 @@ export function PoMailboxTab() {
                 </Button>
                 <Link
                   href="/settings/integrations#gmail"
-                  className="text-label font-medium text-blue-600 hover:underline"
+                  className="text-role-caption font-medium text-blue-600 hover:underline"
                 >
                   or connect from Settings → Integrations
                 </Link>
               </div>
-              <p className="text-label text-text-soft">
+              <p className="text-role-caption text-text-soft">
                 You&apos;ll be redirected to Google to sign in as the dedicated PO email account (Gmail) and
                 approve the <code className="rounded bg-surface-sunken px-1 py-0.5">gmail.modify</code> scope.
               </p>
@@ -209,7 +209,7 @@ function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: 
       </span>
       <div className="min-w-0">
         <div className="text-sm font-medium text-text-default">{label}</div>
-        <div className="truncate text-label text-text-soft">{detail}</div>
+        <div className="truncate text-role-caption text-text-soft">{detail}</div>
       </div>
     </div>
   );

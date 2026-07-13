@@ -185,7 +185,7 @@ export function ShippingInformationSection({
           onBlur={ef.onBlur}
           externalUrl={getOrderIdUrl(ef.orderNumber)}
           headerAccessory={accountSourceLabel || undefined}
-          headerAccessoryClassName="text-micro font-black tracking-wide text-text-info"
+          headerAccessoryClassName="text-role-micro tracking-wide text-text-info"
           allowEdit={false}
         />
 
@@ -250,10 +250,10 @@ export function ShippingInformationSection({
         {prepackedSku ? <PrepackedSkuRow sku={prepackedSku} /> : null}
 
         {ef.isSaving ? (
-          <p className="pt-2 text-micro font-bold uppercase tracking-wide text-text-info">Saving shipping updates...</p>
+          <p className="pt-2 text-role-micro font-bold uppercase tracking-wide text-text-info">Saving shipping updates...</p>
         ) : null}
         {ef.isSavingShipByDate ? (
-          <p className="pt-1 text-micro font-bold uppercase tracking-wide text-text-info">Saving ship by date...</p>
+          <p className="pt-1 text-role-micro font-bold uppercase tracking-wide text-text-info">Saving ship by date...</p>
         ) : null}
       </div>
     </section>

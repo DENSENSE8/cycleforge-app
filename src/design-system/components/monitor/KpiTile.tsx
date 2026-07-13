@@ -18,6 +18,12 @@ export type KpiTileProps = {
   footer?: ReactNode;
   deltaVsLabel?: string;
   className?: string;
+  /**
+   * Hero scale. `default` = desk/rollup density (text-3xl). `wall` bumps the
+   * hero + label for 3–5m unattended TV readability (HOME-OPS Phase C) — additive
+   * only, so every existing Monitor tile is byte-identical.
+   */
+  size?: 'default' | 'wall';
   /** Optional click → filter / open details (Monitor filters only — no durable selection). */
   onOpen?: () => void;
 };
@@ -35,13 +41,15 @@ export function KpiTile({
   footer,
   deltaVsLabel,
   className,
+  size = 'default',
   onOpen,
 }: KpiTileProps) {
   const clickable = Boolean(onOpen);
+  const wall = size === 'wall';
 
   return (
     <div
-      className={cn(MONITOR_KPI_TILE_CLASS, clickable && 'cursor-pointer hover:bg-surface-hover', className)}
+      className={cn(MONITOR_KPI_TILE_CLASS, wall && 'p-5', clickable && 'cursor-pointer hover:bg-surface-hover', className)}
       onClick={onOpen}
       onKeyDown={
         clickable
@@ -56,10 +64,18 @@ export function KpiTile({
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
     >
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
       <p
         className={cn(
-          'mt-1.5 text-3xl font-black tabular-nums leading-none text-text-default',
+          'font-black uppercase tracking-widest text-text-soft',
+          wall ? 'text-role-caption' : 'text-role-eyebrow',
+        )}
+      >
+        {label}
+      </p>
+      <p
+        className={cn(
+          'mt-1.5 font-black tabular-nums leading-none text-text-default',
+          wall ? 'text-5xl lg:text-6xl' : 'text-3xl',
           valueClassName,
         )}
       >

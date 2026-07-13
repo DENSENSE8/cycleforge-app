@@ -161,7 +161,7 @@ export function UnitHistoryFinder() {
           surface lookup errors here. */}
       {error && (
         <div className={`shrink-0 border-b border-border-hairline bg-amber-50 ${SIDEBAR_GUTTER} py-2`}>
-          <p className="text-micro font-semibold text-amber-700">{error}</p>
+          <p className="text-role-micro font-semibold text-amber-700">{error}</p>
         </div>
       )}
 
@@ -170,24 +170,24 @@ export function UnitHistoryFinder() {
         {!hasRecents ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
             <Clock className="mb-3 h-8 w-8 text-text-faint" />
-            <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+            <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
               No history yet
             </p>
-            <p className="mt-2 max-w-[240px] text-caption font-medium text-text-soft">
+            <p className="mt-2 max-w-[240px] text-role-caption font-medium text-text-soft">
               Scan a unit's DataMatrix above — its full timeline appears in the workspace.
             </p>
           </div>
         ) : (
           <>
             <div className={`flex items-center justify-between bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5`}>
-              <span className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-soft">
+              <span className="text-role-eyebrow uppercase tracking-[0.18em] text-text-soft">
                 {recentsLabel}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearRecents}
-                className="h-auto px-0 text-micro font-semibold text-text-faint hover:bg-transparent hover:text-text-muted"
+                className="h-auto px-0 text-role-micro font-semibold text-text-faint hover:bg-transparent hover:text-text-muted"
               >
                 Clear
               </Button>
@@ -205,10 +205,10 @@ export function UnitHistoryFinder() {
                   >
                     <Clock className="h-3.5 w-3.5 shrink-0 text-text-faint" />
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate font-mono text-caption font-semibold text-text-default">
+                      <span className="truncate font-mono text-role-caption font-semibold text-text-default">
                         {r.key}
                       </span>
-                      <span className="truncate text-micro text-text-faint">{r.raw}</span>
+                      <span className="truncate text-role-micro text-text-faint">{r.raw}</span>
                     </span>
                   </button>
                 </li>

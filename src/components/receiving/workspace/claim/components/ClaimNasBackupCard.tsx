@@ -31,7 +31,7 @@ export function ClaimNasBackupCard({
       <section className="space-y-1.5">
         <div className="flex items-center gap-1.5">
           <Folder className="h-3.5 w-3.5 text-text-faint" />
-          <p className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
             Local backup
           </p>
           <span className="h-1.5 w-1.5 rounded-full bg-gray-300" aria-hidden />
@@ -49,13 +49,13 @@ export function ClaimNasBackupCard({
               {c.archiveSubmitting ? 'Saving…' : 'Back up locally'}
             </Button>
           ) : (
-            <p className="flex items-center gap-1.5 text-caption font-medium text-text-muted">
+            <p className="flex items-center gap-1.5 text-role-caption font-medium text-text-muted">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
               Backing up…
             </p>
           )}
           {folder ? (
-            <span className="text-caption font-medium text-text-muted">→ /{folder}</span>
+            <span className="text-role-caption font-medium text-text-muted">→ /{folder}</span>
           ) : null}
         </div>
       </section>
@@ -73,12 +73,12 @@ export function ClaimNasBackupCard({
         ) : (
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
         )}
-        <p className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">
+        <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
           {backupOk ? 'Local backup' : 'Backup incomplete'}
         </p>
         <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} aria-hidden />
       </div>
-      <p className="text-caption font-medium text-text-default">
+      <p className="text-role-caption font-medium text-text-default">
         {a.copied}/{a.total} {a.total === 1 ? 'photo' : 'photos'}
         {folder ? (
           <>
@@ -94,7 +94,7 @@ export function ClaimNasBackupCard({
         ) : null}
       </p>
       {!backupOk ? (
-        <p className="text-caption font-medium text-amber-800">
+        <p className="text-role-caption font-medium text-amber-800">
           {a.warning || 'Some photos did not copy.'}
         </p>
       ) : null}

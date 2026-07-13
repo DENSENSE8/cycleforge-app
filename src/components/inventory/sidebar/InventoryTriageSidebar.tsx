@@ -167,7 +167,7 @@ export function InventoryTriageSidebar() {
                                 <div className="flex w-full items-center justify-between gap-2">
                                     <span
                                         className={cn(
-                                            'truncate font-mono text-label font-semibold',
+                                            'truncate font-mono text-role-caption font-semibold',
                                             active ? 'text-blue-900' : 'text-text-default',
                                         )}
                                     >
@@ -175,14 +175,14 @@ export function InventoryTriageSidebar() {
                                     </span>
                                     <span
                                         className={cn(
-                                            'shrink-0 rounded px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-wide ring-1 ring-inset',
+                                            'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide ring-1 ring-inset',
                                             triageStatusChipClass(row.status),
                                         )}
                                     >
                                         {row.status}
                                     </span>
                                 </div>
-                                <div className="flex w-full items-center justify-between gap-2 text-caption text-text-soft">
+                                <div className="flex w-full items-center justify-between gap-2 text-role-caption text-text-soft">
                                     <span className="truncate">
                                         {row.exception_reason || 'Exception'}
                                         {row.source_station ? ` · ${row.source_station}` : ''}

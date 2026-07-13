@@ -87,7 +87,7 @@ export function OutboundSavedViewChips({ mode }: { mode: Mode }) {
         );
       })}
       {overflow > 0 ? (
-        <span className="px-1 text-eyebrow font-bold tabular-nums text-text-faint">+{overflow}</span>
+        <span className="px-1 text-role-eyebrow font-bold tabular-nums text-text-faint">+{overflow}</span>
       ) : null}
 
       {naming ? (
@@ -106,7 +106,7 @@ export function OutboundSavedViewChips({ mode }: { mode: Mode }) {
               if (!draft.trim()) setNaming(false);
             }}
             placeholder="Name…"
-            className="w-24 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-caption text-text-default outline-none focus:border-blue-400"
+            className="w-24 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-role-caption text-text-default outline-none focus:border-blue-400"
           />
         </form>
       ) : (

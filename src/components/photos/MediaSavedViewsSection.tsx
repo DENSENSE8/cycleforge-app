@@ -66,14 +66,14 @@ export function MediaSavedViewsSection({
   return (
     <div className="mb-3 space-y-1 px-1">
       <div className="flex items-center justify-between">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Saved views</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Saved views</p>
         {savable && !saving ? (
           <HoverTooltip label="Save current filters as a view" focusable={false}>
             {/* ds-raw-button */}
             <button
               type="button"
               onClick={() => setSaving(true)}
-              className="-my-0.5 flex items-center gap-1 rounded px-1 py-0.5 text-mini font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50"
+              className="-my-0.5 flex items-center gap-1 rounded px-1 py-0.5 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50"
             >
               <Plus className="h-3.5 w-3.5" /> Save
             </button>
@@ -92,10 +92,10 @@ export function MediaSavedViewsSection({
               if (e.key === 'Escape') setSaving(false);
             }}
             placeholder="View name…"
-            className="w-full rounded border border-border-soft bg-surface-card px-2 py-1 text-caption text-text-default outline-none focus:border-blue-400"
+            className="w-full rounded border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400"
           />
           {canManage ? (
-            <label className="flex items-center gap-1.5 text-mini font-semibold uppercase tracking-widest text-text-soft">
+            <label className="flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
               <input
                 type="checkbox"
                 checked={shareWithOrg}
@@ -111,7 +111,7 @@ export function MediaSavedViewsSection({
               type="button"
               onClick={submit}
               disabled={!name.trim() || creating}
-              className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-mini font-black uppercase tracking-widest text-white disabled:opacity-50"
+              className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-role-micro uppercase tracking-widest text-white disabled:opacity-50"
             >
               {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               Save
@@ -120,7 +120,7 @@ export function MediaSavedViewsSection({
             <button
               type="button"
               onClick={() => setSaving(false)}
-              className="rounded px-2 py-1 text-mini font-black uppercase tracking-widest text-text-faint hover:text-text-muted"
+              className="rounded px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted"
             >
               Cancel
             </button>
@@ -129,7 +129,7 @@ export function MediaSavedViewsSection({
       ) : null}
 
       {isLoading ? (
-        <p className="flex items-center gap-1.5 py-1 text-caption text-text-faint">
+        <p className="flex items-center gap-1.5 py-1 text-role-caption text-text-faint">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
         </p>
       ) : (
@@ -140,13 +140,13 @@ export function MediaSavedViewsSection({
               <button
                 type="button"
                 onClick={() => onApply(readMediaViewPayload(view))}
-                className="min-w-0 flex-1 truncate text-left text-caption font-bold text-text-default hover:text-blue-700"
+                className="min-w-0 flex-1 truncate text-left text-role-caption font-bold text-text-default hover:text-blue-700"
                 title={view.name}
               >
                 {view.name}
               </button>
               {view.is_shared ? (
-                <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
                   Shared
                 </span>
               ) : null}

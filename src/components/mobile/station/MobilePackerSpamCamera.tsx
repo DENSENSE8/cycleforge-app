@@ -360,7 +360,7 @@ export function MobilePackerSpamCamera({
               type="button"
               variant="primary"
               onClick={attemptStart}
-              className="h-11 px-5 rounded-xl text-caption font-black uppercase tracking-wider"
+              className="h-11 px-5 rounded-xl text-role-caption font-black uppercase tracking-wider"
             >
               Try Again
             </Button>
@@ -370,7 +370,7 @@ export function MobilePackerSpamCamera({
                 type="button"
                 variant="primary"
                 onClick={handleUseTestPhoto}
-                className="mt-3 h-11 px-5 rounded-xl bg-amber-500 text-black text-caption font-black uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
+                className="mt-3 h-11 px-5 rounded-xl bg-amber-500 text-black text-role-caption font-black uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
               >
                 Use Test Photo · Dev
               </Button>
@@ -398,7 +398,7 @@ export function MobilePackerSpamCamera({
           <div className="flex-1 min-w-0">
             {header ?? (
               <>
-                <p className="text-micro font-black uppercase tracking-[0.22em] text-white/60">
+                <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
                   Add photos
                 </p>
                 <p className="text-sm font-black text-white">

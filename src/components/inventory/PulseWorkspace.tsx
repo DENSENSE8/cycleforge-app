@@ -101,7 +101,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                                 {currentStatus ? (
                                     <span
                                         className={cn(
-                                            'rounded px-1.5 py-0.5 text-micro font-bold uppercase tracking-wide',
+                                            'rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wide',
                                             inventoryStatusBadgeClass(currentStatus),
                                         )}
                                     >
@@ -113,7 +113,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                     </div>
                     {currentLocation ? (
                         <div className="flex flex-col items-end gap-1">
-                            <p className="text-micro font-black uppercase tracking-[0.2em] text-text-faint">
+                            <p className="text-role-micro uppercase tracking-[0.2em] text-text-faint">
                                 Last known location
                             </p>
                             <div className="flex items-center gap-2 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2">
@@ -127,7 +127,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                 </div>
 
                 {/* Chain of custody */}
-                <h2 className="mb-3 flex items-center gap-2 text-caption font-black uppercase tracking-[0.2em] text-text-faint">
+                <h2 className="mb-3 flex items-center gap-2 text-role-caption font-black uppercase tracking-[0.2em] text-text-faint">
                     <History className="h-4 w-4" /> Chain of custody
                     <span className="font-bold text-text-faint">· {events.length} events</span>
                 </h2>

@@ -124,7 +124,7 @@ export function SellerMessageChip({
           onClick={() => setOpen((o) => !o)}
           ariaLabel="Seller message draft"
           icon={<MessageSquare className="h-3.5 w-3.5 text-blue-600" />}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-full border border-blue-200 bg-blue-50 shadow-sm hover:border-blue-300 hover:bg-blue-100"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border border-blue-200 bg-blue-50 shadow-sm hover:border-blue-300 hover:bg-blue-100"
         />
       </HoverTooltip>
       <AnchoredLayer
@@ -302,8 +302,8 @@ function SellerMessagePanel({
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-blue-600" />
           <div className="min-w-0">
-            <div className="truncate text-[13px] font-semibold text-text-default">Seller message</div>
-            <div className="truncate text-micro text-text-faint">Plain text — no links (marketplace TOS)</div>
+            <div className="truncate text-role-data font-semibold text-text-default">Seller message</div>
+            <div className="truncate text-role-micro text-text-faint">Plain text — no links (marketplace TOS)</div>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -317,7 +317,7 @@ function SellerMessagePanel({
             <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
           </div>
         ) : isError ? (
-          <p className="rounded-md bg-rose-50 px-2 py-1.5 text-caption text-rose-600">
+          <p className="rounded-md bg-rose-50 px-2 py-1.5 text-role-caption text-rose-600">
             {error instanceof Error ? error.message : 'Could not load message'}
           </p>
         ) : !data && !draft.trim() ? (
@@ -340,7 +340,7 @@ function SellerMessagePanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={10}
-            className="block w-full resize-y rounded-lg border border-blue-100 bg-surface-card px-3 py-2 text-[13px] leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            className="block w-full resize-y rounded-lg border border-blue-100 bg-surface-card px-3 py-2 text-role-data leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             placeholder="Seller-facing message…"
           />
         )}

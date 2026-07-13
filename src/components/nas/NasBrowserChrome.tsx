@@ -63,7 +63,7 @@ export function NasBreadcrumb({
   const dark = tone === 'dark';
 
   const crumbBase =
-    'shrink-0 rounded-lg px-2 py-1 text-micro font-black uppercase tracking-wider transition-colors';
+    'shrink-0 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider transition-colors';
   const inactive = dark
     ? 'text-white/60 hover:bg-glass/10 hover:text-white'
     : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted';
@@ -130,7 +130,7 @@ export function NasFolderCard({
       >
         <FolderIcon className="h-4 w-4" />
       </span>
-      <span className={`min-w-0 flex-1 truncate text-label font-black ${dark ? 'text-white' : 'text-text-default'}`}>
+      <span className={`min-w-0 flex-1 truncate text-role-caption font-black ${dark ? 'text-white' : 'text-text-default'}`}>
         {name}
       </span>
       <ChevronRightTiny
@@ -146,7 +146,7 @@ export function NasFolderCard({
 export function NasSectionLabel({ children, tone = 'light' }: { children: React.ReactNode; tone?: Tone }) {
   const dark = tone === 'dark';
   return (
-    <p className={`px-1 text-eyebrow font-black uppercase tracking-wider ${dark ? 'text-white/40' : 'text-text-faint'}`}>
+    <p className={`px-1 text-role-eyebrow uppercase tracking-wider ${dark ? 'text-white/40' : 'text-text-faint'}`}>
       {children}
     </p>
   );

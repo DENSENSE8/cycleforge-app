@@ -41,6 +41,37 @@ export function unboxingPhotoMeta(fields: {
   };
 }
 
+/** A receiving/carton photo row (as returned by `/api/receiving-photos`). */
+export interface ReceivingPhotoRowLike {
+  id: number;
+  photoUrl: string;
+  caption?: string | null;
+  createdAt?: string | null;
+}
+
+/**
+ * The ONE place receiving/unbox photo meta is built. Every surface that shows
+ * carton photos (workspace peek + header pill, station details section) maps
+ * through here so none can silently drop the PO linkage again — `poRef` is a
+ * REQUIRED arg (pass `null` when genuinely unknown), not an optional field a
+ * call site can forget. See `photo-context-provenance.ts` for how `poRef`
+ * drives the viewer's "Linked to PO …" readout + deep link.
+ */
+export function receivingPhotoMeta(
+  row: Pick<ReceivingPhotoRowLike, 'caption' | 'createdAt'>,
+  ctx: { poRef: string | null },
+): PhotoMeta {
+  return unboxingPhotoMeta({ poRef: ctx.poRef, caption: row.caption, createdAt: row.createdAt });
+}
+
+/** Receiving photo row → `PhotoGallery` input `{id, url, meta}` (poRef required). */
+export function receivingPhotoToGalleryInput(
+  row: ReceivingPhotoRowLike,
+  ctx: { poRef: string | null },
+): { id: number; url: string; meta: PhotoMeta } {
+  return { id: row.id, url: row.photoUrl, meta: receivingPhotoMeta(row, ctx) };
+}
+
 /**
  * Photo input shapes accepted by the gallery. Pass `{id, url}` to enable the
  * delete affordance — the gallery hits `DELETE /api/photos/[id]` directly. Attach

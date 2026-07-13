@@ -57,9 +57,9 @@ export function ReceivingPOPicker({
             {error}
           </div>
         ) : loading ? (
-          <div className="p-4 text-center text-caption text-text-faint">Loading…</div>
+          <div className="p-4 text-center text-role-caption text-text-faint">Loading…</div>
         ) : list.length === 0 ? (
-          <div className="p-4 text-center text-caption text-text-faint">No POs found.</div>
+          <div className="p-4 text-center text-role-caption text-text-faint">No POs found.</div>
         ) : (
           <ul className="divide-y divide-border-hairline">
             {list.map((po) => {
@@ -83,14 +83,14 @@ export function ReceivingPOPicker({
                       <div className={`truncate text-xs font-semibold ${fieldLabel} text-text-default`}>
                         {po.po_number ?? po.po_id}
                       </div>
-                      <div className="shrink-0 text-micro text-text-faint">
+                      <div className="shrink-0 text-role-micro text-text-faint">
                         {relTime(po.latest_event_at)}
                       </div>
                     </div>
                     {po.vendor_name && (
-                      <div className="truncate text-caption text-text-soft">{po.vendor_name}</div>
+                      <div className="truncate text-role-caption text-text-soft">{po.vendor_name}</div>
                     )}
-                    <div className="mt-1 flex items-center gap-1.5 text-micro text-text-soft">
+                    <div className="mt-1 flex items-center gap-1.5 text-role-micro text-text-soft">
                       <span>{po.line_count}L</span>
                       <span>·</span>
                       <span>{po.carton_count}C</span>

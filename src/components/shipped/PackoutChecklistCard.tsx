@@ -31,21 +31,21 @@ function LineBlock({ line }: { line: PackChecklistLineDto }) {
   const hasItems = line.kitParts.length > 0 || line.qcFlags.length > 0;
   return (
     <div className="space-y-1.5">
-      <p className="truncate text-caption font-bold text-text-default">
+      <p className="truncate text-role-caption font-bold text-text-default">
         {line.productTitle}
         {line.quantity > 1 ? <span className="text-text-faint"> ×{line.quantity}</span> : null}
       </p>
       {line.kitParts.length > 0 ? (
         <ul className="space-y-1 pl-0.5">
           {line.kitParts.map((part) => (
-            <li key={`kit-${part.id}`} className="flex items-center gap-1.5 text-caption text-text-muted">
+            <li key={`kit-${part.id}`} className="flex items-center gap-1.5 text-role-caption text-text-muted">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-border-strong" />
               <span className="truncate">
                 {part.name}
                 {part.qty > 1 ? ` ×${part.qty}` : ''}
               </span>
               {part.critical ? (
-                <span className="shrink-0 rounded bg-surface-warning px-1 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-warning ring-1 ring-inset ring-border-warning">
+                <span className="shrink-0 rounded bg-surface-warning px-1 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-warning ring-1 ring-inset ring-border-warning">
                   Required
                 </span>
               ) : null}
@@ -56,7 +56,7 @@ function LineBlock({ line }: { line: PackChecklistLineDto }) {
       {line.qcFlags.length > 0 ? (
         <ul className="space-y-1 pl-0.5">
           {line.qcFlags.map((qc) => (
-            <li key={`qc-${qc.id}`} className="flex items-center gap-1.5 text-caption text-text-muted">
+            <li key={`qc-${qc.id}`} className="flex items-center gap-1.5 text-role-caption text-text-muted">
               <Check className="h-3 w-3 shrink-0 text-text-faint" />
               <span className="truncate">{qc.label}</span>
             </li>
@@ -64,7 +64,7 @@ function LineBlock({ line }: { line: PackChecklistLineDto }) {
         </ul>
       ) : null}
       {!hasItems ? (
-        <p className="text-caption font-medium text-text-faint">No checklist items for this line.</p>
+        <p className="text-role-caption font-medium text-text-faint">No checklist items for this line.</p>
       ) : null}
     </div>
   );
@@ -105,12 +105,12 @@ export function PackoutChecklistCard({
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint" />
         )}
         <ClipboardList className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-        <span className="text-eyebrow font-black uppercase tracking-widest text-text-muted">
+        <span className="text-role-eyebrow uppercase tracking-widest text-text-muted">
           Pack checklist
         </span>
         <span
           className={cn(
-            'ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset',
+            'ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset',
             allPacked
               ? 'bg-surface-success text-text-success ring-border-success'
               : 'bg-surface-sunken text-text-soft ring-border-soft',

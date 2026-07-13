@@ -98,7 +98,7 @@ export function ProcessNode({ data }: NodeProps) {
       {gaps.length > 0 && (
         <span
           className={[
-            'absolute -left-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-caption font-bold text-white shadow',
+            'absolute -left-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-role-caption font-bold text-white shadow',
             gapErrors.length > 0 ? 'bg-rose-600' : 'bg-amber-500',
           ].join(' ')}
           title={gaps.map((d) => d.message).join('\n')}
@@ -108,7 +108,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {live && live.total > 0 && (
         <span
-          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${heat ? HEAT_BADGE[heat.level] : 'bg-blue-600'} px-1.5 text-caption font-bold text-white shadow`}
+          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${heat ? HEAT_BADGE[heat.level] : 'bg-blue-600'} px-1.5 text-role-caption font-bold text-white shadow`}
           title={heat && heat.reasons.length > 0 ? heat.reasons.join(' · ') : `${live.total} in flight`}
         >
           {live.total}
@@ -116,7 +116,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {live && live.error > 0 && (
         <span
-          className="absolute -left-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-micro font-bold text-white shadow"
+          className="absolute -left-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-role-micro font-bold text-white shadow"
           title={`${live.error} item(s) parked in error — needs triage`}
         >
           !{live.error}
@@ -124,7 +124,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {flowHeat && (flow!.currentWip > 0 || flow!.runCount > 0) && (
         <span
-          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${HEAT_BADGE[flowHeat.level]} px-1.5 text-caption font-bold text-white shadow`}
+          className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${HEAT_BADGE[flowHeat.level]} px-1.5 text-role-caption font-bold text-white shadow`}
           title={flowHeat.reasons.length > 0 ? flowHeat.reasons.join(' · ') : `${flow!.runCount} runs`}
         >
           {flow!.currentWip}
@@ -134,7 +134,7 @@ export function ProcessNode({ data }: NodeProps) {
         <span
           className={`absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full ${
             people.coverage > 0 ? 'bg-violet-600' : 'bg-amber-500'
-          } px-1.5 text-caption font-bold text-white shadow`}
+          } px-1.5 text-role-caption font-bold text-white shadow`}
           title={
             people.coverage > 0
               ? `${people.coverage} staff scoped to ${people.station}`
@@ -152,17 +152,17 @@ export function ProcessNode({ data }: NodeProps) {
         <NodeIcon name={node.meta?.icon} className="h-4 w-4 shrink-0 text-text-soft" />
         <div className="min-w-0">
           <p className="truncate text-xs font-bold text-text-default">{node.meta?.label ?? node.type}</p>
-          <p className="truncate font-mono text-micro text-text-faint">{node.type}</p>
+          <p className="truncate font-mono text-role-micro text-text-faint">{node.type}</p>
         </div>
         {staticRole ? (
           <span
-            className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wide ${STATIC_ROLE[staticRole].pill}`}
+            className={`ml-auto shrink-0 rounded px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide ${STATIC_ROLE[staticRole].pill}`}
           >
             {STATIC_ROLE[staticRole].label}
           </span>
         ) : (
           slaHours != null && (
-            <span className="ml-auto shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-micro font-semibold text-amber-700">
+            <span className="ml-auto shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold text-amber-700">
               SLA {slaHours}h
             </span>
           )
@@ -175,7 +175,7 @@ export function ProcessNode({ data }: NodeProps) {
             return (
               <HoverTooltip key={key} label={stage.description} asChild>
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-micro font-semibold ${stage.badge}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro font-semibold ${stage.badge}`}
                 >
                   {circledNumber(stage.order)} {stage.label}
                 </span>
@@ -186,7 +186,7 @@ export function ProcessNode({ data }: NodeProps) {
       )}
       {station && (
         <div className="border-t border-border-hairline px-3 py-1.5">
-          <span className="text-micro font-semibold uppercase tracking-wide" style={{ color: station.color }}>
+          <span className="text-role-micro font-semibold uppercase tracking-wide" style={{ color: station.color }}>
             {station.label}
           </span>
         </div>
@@ -197,7 +197,7 @@ export function ProcessNode({ data }: NodeProps) {
             label={`Unwired output port(s): ${staticDangling.join(', ')} — data leaving here goes nowhere`}
             asChild
           >
-            <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-micro font-semibold text-amber-700">
+            <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold text-amber-700">
               ⚠ {staticDangling.length} unwired
             </span>
           </HoverTooltip>
@@ -212,14 +212,14 @@ export function ProcessNode({ data }: NodeProps) {
             />
           ))}
           {live.total > 8 && (
-            <span className={`text-micro font-semibold ${heat ? HEAT_ACCENT[heat.level] : 'text-blue-600'}`}>
+            <span className={`text-role-micro font-semibold ${heat ? HEAT_ACCENT[heat.level] : 'text-blue-600'}`}>
               +{live.total - 8}
             </span>
           )}
           <span className="ml-auto flex items-center gap-2">
             {live.blocked > 0 && (
               <HoverTooltip label="Parked, awaiting a human/event" asChild>
-                <span className="text-micro text-text-faint">{live.blocked} parked</span>
+                <span className="text-role-micro text-text-faint">{live.blocked} parked</span>
               </HoverTooltip>
             )}
             {ageHours != null && (
@@ -232,7 +232,7 @@ export function ProcessNode({ data }: NodeProps) {
                 asChild
               >
                 <span
-                  className={`text-micro font-semibold tabular-nums ${heat ? HEAT_ACCENT[heat.level] : 'text-text-faint'}`}
+                  className={`text-role-micro font-semibold tabular-nums ${heat ? HEAT_ACCENT[heat.level] : 'text-text-faint'}`}
                 >
                   ⏱ {formatAgeHours(ageHours)}
                 </span>
@@ -257,14 +257,14 @@ export function ProcessNode({ data }: NodeProps) {
             } · ${flow.runCount} runs`}
             asChild
           >
-            <span className="text-micro font-semibold tabular-nums">
+            <span className="text-role-micro font-semibold tabular-nums">
               {flow.currentWip} WIP
               {flow.dwellMedianS != null && ` · ${formatDuration(flow.dwellMedianS)}`}
             </span>
           </HoverTooltip>
           {flow.failRate != null && flow.failRate > 0 && (
             <HoverTooltip label={`${Math.round(flow.failRate * 100)}% of runs took a fail/error port`} asChild>
-              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-micro font-semibold text-rose-700">
+              <span className="rounded bg-rose-50 px-1.5 py-0.5 text-role-micro font-semibold text-rose-700">
                 {Math.round(flow.failRate * 100)}% fail
               </span>
             </HoverTooltip>
@@ -310,9 +310,9 @@ export function ProcessNode({ data }: NodeProps) {
                 </HoverTooltip>
               ))}
               {people.coverage > 5 && (
-                <span className="text-micro font-semibold text-violet-600">+{people.coverage - 5}</span>
+                <span className="text-role-micro font-semibold text-violet-600">+{people.coverage - 5}</span>
               )}
-              <span className="ml-auto text-micro font-semibold uppercase tracking-wide text-violet-600">
+              <span className="ml-auto text-role-micro font-semibold uppercase tracking-wide text-violet-600">
                 {people.station}
               </span>
             </>
@@ -325,7 +325,7 @@ export function ProcessNode({ data }: NodeProps) {
               }
               asChild
             >
-              <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-micro font-semibold text-amber-700">
+              <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-role-micro font-semibold text-amber-700">
                 ⚠ {people.station ? 'Uncovered' : 'No station'}
               </span>
             </HoverTooltip>
@@ -359,18 +359,18 @@ export function DepartmentNode({ data }: NodeProps) {
     <div className="relative w-52 cursor-zoom-in rounded-2xl border-2 bg-surface-card px-4 py-3 shadow-sm" style={{ borderColor: d.color }}>
       <Handle type="target" position={Position.Left} className="!bg-surface-strong" />
       {d.inFlight != null && d.inFlight > 0 && (
-        <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-1.5 text-caption font-bold text-white shadow">
+        <span className="absolute -right-2 -top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-1.5 text-role-caption font-bold text-white shadow">
           {d.inFlight}
         </span>
       )}
       <p className="text-sm font-bold" style={{ color: d.color }}>
         {d.label}
       </p>
-      <p className="mt-0.5 text-caption text-text-soft">
+      <p className="mt-0.5 text-role-caption text-text-soft">
         {d.stepCount} step{d.stepCount === 1 ? '' : 's'} · {d.stepLabels.join(' · ')}
         {d.inFlight != null && <> · {d.inFlight} in flight</>}
       </p>
-      <p className="mt-1 text-micro text-text-faint">double-click to expand</p>
+      <p className="mt-1 text-role-micro text-text-faint">double-click to expand</p>
       <Handle type="source" position={Position.Right} className="!bg-border-emphasis" />
     </div>
   );
@@ -404,7 +404,7 @@ export function AnnotationNode({ data }: NodeProps) {
       {editable ? (
         <textarea
           // nodrag so typing/selecting inside the note doesn't drag the node.
-          className="nodrag nopan w-full resize-none border-0 bg-transparent text-caption leading-snug text-amber-900 placeholder:text-amber-400 focus:outline-none"
+          className="nodrag nopan w-full resize-none border-0 bg-transparent text-role-caption leading-snug text-amber-900 placeholder:text-amber-400 focus:outline-none"
           rows={3}
           value={annotation.text}
           placeholder="Add a note…"
@@ -412,7 +412,7 @@ export function AnnotationNode({ data }: NodeProps) {
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <p className="whitespace-pre-wrap break-words text-caption leading-snug text-amber-900">
+        <p className="whitespace-pre-wrap break-words text-role-caption leading-snug text-amber-900">
           {annotation.text || <span className="italic text-amber-400">Empty note</span>}
         </p>
       )}

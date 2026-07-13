@@ -52,8 +52,8 @@ export function BlockPaletteOverlay({ open, slot, onClose, onPick }: BlockPalett
     <RightPaneOverlay open={open} onClose={onClose} align="right" width={340} aria-label="Block palette">
       <div className="flex h-full flex-col bg-surface-card">
         <div className="border-b border-border-soft px-3 py-2.5">
-          <h2 className="text-label font-black uppercase tracking-wider text-text-muted">Add a block</h2>
-          <p className="mt-0.5 text-mini font-semibold text-text-faint">
+          <h2 className="text-role-caption font-black uppercase tracking-wider text-text-muted">Add a block</h2>
+          <p className="mt-0.5 text-role-micro font-semibold text-text-faint">
             Into the <span className="font-mono">{slot}</span> slot — blocks are generic; the data source you bind next decides what they show.
           </p>
           <div className="relative mt-2">
@@ -62,18 +62,18 @@ export function BlockPaletteOverlay({ open, slot, onClose, onPick }: BlockPalett
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search blocks…"
-              className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-2 text-caption font-semibold text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-2 text-role-caption font-semibold text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-3 py-2">
           {groups.length === 0 ? (
-            <p className="py-4 text-caption font-semibold text-text-faint">No blocks fit this slot.</p>
+            <p className="py-4 text-role-caption font-semibold text-text-faint">No blocks fit this slot.</p>
           ) : (
             groups.map(([category, blocks]) => (
               <div key={category} className="mb-3">
-                <p className="mb-1.5 text-eyebrow font-black uppercase tracking-wider text-text-faint">
+                <p className="mb-1.5 text-role-eyebrow uppercase tracking-wider text-text-faint">
                   {CATEGORY_LABELS[category]}
                 </p>
                 <div className="space-y-1.5">
@@ -88,11 +88,11 @@ export function BlockPaletteOverlay({ open, slot, onClose, onPick }: BlockPalett
                         <StationIcon name={b.icon} className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-label font-bold text-text-default">{b.label}</span>
+                        <span className="block text-role-caption font-bold text-text-default">{b.label}</span>
                         {b.requiredPermissions.length > 0 ? (
                           <span className="mt-1 flex flex-wrap gap-1">
                             {b.requiredPermissions.map((p) => (
-                              <span key={p} className="rounded bg-amber-50 px-1 py-px font-mono text-mini font-bold text-amber-700 ring-1 ring-inset ring-amber-200">
+                              <span key={p} className="rounded bg-amber-50 px-1 py-px font-mono text-role-micro font-bold text-amber-700 ring-1 ring-inset ring-amber-200">
                                 {p}
                               </span>
                             ))}

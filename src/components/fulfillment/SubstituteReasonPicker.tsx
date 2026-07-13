@@ -49,7 +49,7 @@ export function SubstituteReasonPicker({
             onClick={() => onChange(r.code)}
             className={cn(
               'ds-raw-button',
-              'rounded-full px-2.5 py-1 text-micro font-black uppercase tracking-widest ring-1 ring-inset transition-colors',
+              'rounded-full px-2.5 py-1 text-role-micro uppercase tracking-widest ring-1 ring-inset transition-colors',
               tone.base,
               selected ? cn(tone.selected, 'ring-2') : 'opacity-80 hover:opacity-100',
             )}

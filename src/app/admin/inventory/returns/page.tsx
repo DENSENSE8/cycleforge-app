@@ -171,7 +171,7 @@ export default async function ReturnsIntakeAdminPage({
                 placeholder={'IPH13-128-BLU-2026-000142\n12345\nhttps://app.example/01/02000000001236/21/IPH13-128-BLU-2026-000142'}
                 className="mt-1 block w-full rounded-md border border-border-default px-3 py-2 font-mono text-xs"
               />
-              <p className="mt-1 text-caption text-text-soft">
+              <p className="mt-1 text-role-caption text-text-soft">
                 Numeric values are treated as <code>serial_units.id</code>. Everything else as a serial number
                 (GS1 Digital Link URLs are auto-extracted).
               </p>
@@ -209,7 +209,7 @@ export default async function ReturnsIntakeAdminPage({
               >
                 Record intake
               </Button>
-              <p className="text-caption text-text-soft">
+              <p className="text-role-caption text-text-soft">
                 After intake, run the triage flow to re-enter refurb if applicable.
               </p>
             </div>
@@ -259,7 +259,7 @@ export default async function ReturnsIntakeAdminPage({
                           ) : '—'}
                         </td>
                         <td className="px-4 py-2 text-xs text-text-muted">{r.prev_status ?? '—'}</td>
-                        <td className="px-4 py-2 font-mono text-caption text-text-muted">{r.scan_token ?? '—'}</td>
+                        <td className="px-4 py-2 font-mono text-role-caption text-text-muted">{r.scan_token ?? '—'}</td>
                         <td className="px-4 py-2 text-xs text-text-muted">
                           {r.notes ?? '—'}
                           {orderId ? <span className="ml-1 text-text-faint">· ord#{orderId}</span> : null}

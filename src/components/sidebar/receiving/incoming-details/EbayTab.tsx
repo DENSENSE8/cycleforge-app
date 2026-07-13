@@ -31,8 +31,8 @@ interface PoCandidate {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-micro font-black uppercase tracking-widest text-text-soft">{label}</p>
-      <div className="text-caption font-semibold text-text-default">{children}</div>
+      <p className="text-role-micro uppercase tracking-widest text-text-soft">{label}</p>
+      <div className="text-role-caption font-semibold text-text-default">{children}</div>
     </div>
   );
 }
@@ -60,7 +60,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
   const candidates = search?.candidates ?? [];
 
   if (!inbound) {
-    return <p className="py-6 text-center text-caption text-text-soft">No marketplace details.</p>;
+    return <p className="py-6 text-center text-role-caption text-text-soft">No marketplace details.</p>;
   }
 
   const merge = async (po: PoCandidate) => {
@@ -126,14 +126,14 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
 
       {/* Link to Zoho PO — the merge affordance. */}
       <div className="space-y-2 border-t border-border-soft pt-3">
-        <p className="text-micro font-black uppercase tracking-widest text-text-soft">Purchase order</p>
+        <p className="text-role-micro uppercase tracking-widest text-text-soft">Purchase order</p>
         {zohoLinked ? (
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
             {inbound.zoho_purchaseorder_id ? (
               <PoChip value={inbound.zoho_purchaseorder_id} display={getLast4(inbound.zoho_purchaseorder_id)} />
             ) : null}
-            <span className="text-caption font-semibold text-emerald-700">Linked</span>
+            <span className="text-role-caption font-semibold text-emerald-700">Linked</span>
           </div>
         ) : (
           <>
@@ -166,10 +166,10 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                     className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-3 py-2 hover:bg-surface-hover"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-caption font-bold text-text-default">
+                      <p className="truncate text-role-caption font-bold text-text-default">
                         {po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
                       </p>
-                      <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                      <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                         {po.vendor_name || 'Unknown vendor'}
                         {po.reference_number ? ` · ref ${po.reference_number}` : ''}
                       </p>

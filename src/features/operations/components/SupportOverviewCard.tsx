@@ -44,12 +44,12 @@ export function SupportOverviewCard() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Customer support</span>
-          <h2 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
             Who needs a reply
           </h2>
         </div>
         {hasAttention && (
-          <span className="text-micro font-black uppercase tracking-[0.14em] bg-amber-50 text-amber-700 rounded-full px-2 py-1">
+          <span className="text-role-micro uppercase tracking-[0.14em] bg-amber-50 text-amber-700 rounded-full px-2 py-1">
             {totals?.attentionItems} need attention
           </span>
         )}
@@ -67,21 +67,21 @@ export function SupportOverviewCard() {
             <Headset className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <p className="text-[13px] font-extrabold text-text-default tracking-tight">Zendesk tickets</p>
-            <p className="text-caption font-medium text-text-muted">Open support queue</p>
+            <p className="text-role-data font-extrabold text-text-default tracking-tight">Zendesk tickets</p>
+            <p className="text-role-caption font-medium text-text-muted">Open support queue</p>
           </div>
         </div>
 
         {data === null ? (
-          <p className="text-caption text-text-muted">Source unavailable.</p>
+          <p className="text-role-caption text-text-muted">Source unavailable.</p>
         ) : (
           <div className="grid grid-cols-1 gap-3">
             {tiles.map((t) => (
               <div key={t.label} className={`rounded-xl p-3 ${t.ring}`}>
-                <div className="text-[24px] font-extrabold text-text-default tabular-nums leading-none">
+                <div className="text-role-display font-extrabold text-text-default tabular-nums leading-none">
                   {isLoading ? '–' : t.value}
                 </div>
-                <p className={`text-micro font-black uppercase tracking-[0.14em] mt-1.5 ${t.tone}`}>
+                <p className={`text-role-micro uppercase tracking-[0.14em] mt-1.5 ${t.tone}`}>
                   {t.label}
                 </p>
               </div>

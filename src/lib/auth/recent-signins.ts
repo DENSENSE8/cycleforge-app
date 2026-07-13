@@ -25,3 +25,25 @@ export function writeRecentSignin(staffId: number): void {
     /* ignore quota / private mode */
   }
 }
+
+/** Last email used at the email+password sign-in — prefilled on next visit. */
+export const LAST_SIGNIN_EMAIL_KEY = 'cf.lastSigninEmail';
+
+export function readLastSigninEmail(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(LAST_SIGNIN_EMAIL_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function writeLastSigninEmail(email: string): void {
+  try {
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    window.localStorage.setItem(LAST_SIGNIN_EMAIL_KEY, trimmed);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}

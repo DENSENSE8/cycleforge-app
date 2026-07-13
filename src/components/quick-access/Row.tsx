@@ -43,14 +43,14 @@ export function Row({
       ) : null}
       <span className="min-w-0 flex-1">
         <span
-          className={`block truncate text-caption font-bold ${
+          className={`block truncate text-role-caption font-bold ${
             active ? 'text-blue-700' : 'text-text-default'
           }`}
         >
           {label}
         </span>
         {subLabel ? (
-          <span className="block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {subLabel}
           </span>
         ) : null}

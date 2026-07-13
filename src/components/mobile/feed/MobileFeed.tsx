@@ -36,7 +36,7 @@ const DefaultEmpty = (
 );
 
 const DefaultLoading = (
-  <div className="flex h-full items-center justify-center bg-surface-card text-caption font-black uppercase tracking-widest text-text-faint">
+  <div className="flex h-full items-center justify-center bg-surface-card text-role-caption font-black uppercase tracking-widest text-text-faint">
     Loading…
   </div>
 );

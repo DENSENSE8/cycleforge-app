@@ -122,7 +122,7 @@ export function RowInlineEditBubble({
       <div className="mb-1.5 flex items-center justify-between">
         <span
           className={cn(
-            'text-eyebrow font-black uppercase tracking-widest leading-none',
+            'text-role-eyebrow uppercase tracking-widest leading-none',
             isDanger ? 'text-red-500' : 'text-text-soft',
           )}
         >
@@ -153,9 +153,9 @@ export function RowInlineEditBubble({
           }
         }}
         placeholder={placeholder}
-        className="w-full resize-none bg-transparent text-caption text-text-default outline-none placeholder:text-text-faint"
+        className="w-full resize-none bg-transparent text-role-caption text-text-default outline-none placeholder:text-text-faint"
       />
-      <p className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+      <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
         Enter to save · Esc to cancel
       </p>
     </div>,

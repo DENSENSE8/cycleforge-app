@@ -60,7 +60,7 @@ export function SkuPairingModal({ open, onClose, skuCatalogId, headerTitle }: Pr
           <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-3 py-2">
             <p
               id="sku-pairing-title"
-              className="text-micro font-black uppercase tracking-[0.16em] text-text-soft"
+              className="text-role-micro uppercase tracking-[0.16em] text-text-soft"
             >
               Pair SKUs
             </p>

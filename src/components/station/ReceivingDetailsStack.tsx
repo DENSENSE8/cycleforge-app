@@ -214,7 +214,7 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
               loading={isOpeningEditor}
               icon={<Edit />}
               iconRight={<span aria-hidden className="text-white/70">→</span>}
-              className="text-caption font-black uppercase tracking-wider"
+              className="text-role-caption font-black uppercase tracking-wider"
             >
               {isOpeningEditor ? 'Working…' : primaryCta.label}
             </Button>
@@ -305,7 +305,7 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
       {/* Footer — destructive action pinned to panel bottom (unfound / shipped pattern). */}
       <div className="shrink-0 border-t border-border-hairline px-6 py-3">
         {form.saveState === 'error' && (
-          <p className="mb-2 text-center text-micro font-black uppercase tracking-wider text-red-500">
+          <p className="mb-2 text-center text-role-micro uppercase tracking-wider text-red-500">
             Save failed — check connection
           </p>
         )}
@@ -324,7 +324,7 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
           }}
           disabled={form.isDeleting || form.isSaving}
           icon={<Trash2 />}
-          className={`w-full text-micro font-black uppercase tracking-wider ${
+          className={`w-full text-role-micro uppercase tracking-wider ${
             confirmingDelete ? 'bg-rose-700 hover:bg-rose-800' : ''
           }`}
         >

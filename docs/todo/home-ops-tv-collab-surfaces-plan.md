@@ -590,11 +590,11 @@ Human review: `HOME-OPS-HR1` after tunnel dogfood of Home + TV.
 ## 20. Execution order (agent checklist)
 
 ```
-[ ] A1 Home shell + modes URL
-[ ] A2 /forge redirect
-[ ] A3 Ops plans redirect + un-park Home
-[ ] B1 Tasks mode + ops inbox
-[ ] C1 TV board API + Ops layout
+[x] A1 Home shell + modes URL
+[x] A2 /forge redirect
+[x] A3 Ops plans redirect + un-park Home
+[x] B1 Tasks mode + ops inbox
+[x] C1 TV board API + Ops layout (kiosk `?tv=1`, operations.tv.view, isOpsTvBoard) — 2026-07-12
 [ ] D1 collab migration + APIs
 [ ] D2 Collab UI + block notify
 [ ] E1 AI brief
@@ -739,6 +739,73 @@ Gate every un-park / new surface behind a per-org flag so USAV dogfoods before c
 | 8 | TV unattended auth: kiosk-staff-row or new `withAuth` branch? | **Kiosk staff row + persistent session + `operations.tv.view`** (§27) |
 | 9 | Index plan tasks / collab in global search? | **Defer to v2** (uuid-vs-bigint key mismatch); give `ops_shift_briefs` a BIGINT id now so it can be indexed later (§25) |
 | 10 | AI brief: agentic or read-only? | **Read-only, determinism-first, button-triggered v1**; agentic (acts on tickets) only behind the plan-agent pattern later (§26) |
+
+---
+
+## 32. Phase C — SHIPPED (2026-07-12)
+
+The Operations TV / wall board is live behind a per-org flag. Exit met: **a wall
+display is usable without Home.**
+
+### What shipped
+
+| Piece | Path |
+|-------|------|
+| Read-only board API | `src/app/api/operations/tv-board/route.ts` (`withAuth` + `operations.tv.view`, `isOpsTvBoard` gate → 404 when off) |
+| Pure aggregator (DB-free, unit-tested) | `src/lib/ops-plans/tv-board.ts` (+ `tv-board.test.ts`) — Due today · Overdue · By station · Plan progress |
+| Kiosk Monitor view + `?tv=1` chrome-strip | `src/features/operations/workspace/OperationsTvBoard.tsx`, wired in `OperationsWorkspace.tsx` (full-bleed `z-takeover` over sidebar/header) |
+| Realtime hook | `useOperationsTvBoard.ts` — invalidate on `ops_plan.updated` (mirrors PlansSidebar) + 5-min civil-day-rollover fallback |
+| Permission | `operations.tv.view` in `permission-registry.ts` + manifest regen + regression test |
+| Flag | `isOpsTvBoard(orgId)` (`ops_tv_board`, env `OPS_TV_BOARD`, default OFF); USAV seeded ON by `2026-07-12_seed_ops_tv_board_usav.sql` |
+| Roles | `viewer` grant + new least-privilege `kiosk` role (`seed-roles.mjs`) |
+| Plan-edit strip | removed the dead `mode==='plans'` → `PlansSidebar` branch from `OperationsSidebarPanel.tsx` |
+
+### Deliberate deviations from the literal plan
+
+- **Wall entry is `/operations?tv=1` (a chrome-stripped kiosk surface), not a
+  rip-out of the interactive `live` dashboard.** "Ops default mode = Live TV
+  layout" is honored *for the wall* via the kiosk URL (a kiosk staff row's
+  `default_home_path`); human operators keep the existing rich Operations
+  modes. One archetype per region (Monitor); non-destructive to the dogfood floor.
+- **`blocked` lane = Overdue for now.** No first-class block column exists until
+  collab (Phase D). Overdue is the honest stuck proxy and is labeled as such.
+- **ADMIN "by station" is labeled**, not excluded (§27 caveat): bridged
+  master-plan tickets count under ADMIN and the tile annotates the plan-ticket share.
+
+### Kiosk provisioning runbook (§27 — kiosk staff-row, no `allowAnonymous`)
+
+Reuses existing session/staff machinery — **no new auth surface**. Per wall:
+
+1. **Create a kiosk staff row** for the org (admin, `admin.manage_staff`) and give
+   it a read-only role that carries `operations.tv.view`:
+   - **`viewer`** — offered in the standard Add-Staff role dropdown (it's in
+     `ALL_ROLES`); now grants `operations.tv.view` alongside the other read perms.
+   - **`kiosk`** (least privilege — *only* `operations.tv.view`, so a wall token
+     can never reach an edit surface) — a DB role seeded by `seed-roles.mjs`, not
+     in `ALL_ROLES`, so it's assigned via the **Roles editor**
+     (`PUT /api/admin/staff/[id]/roles` `{ roleIds }`), not the initial dropdown.
+   Prefer `kiosk`. **Never assign `admin`.**
+2. **Set a PIN** — `POST /api/admin/staff/[id]/set-pin` (in-person).
+3. **Make the session persistent** — `PATCH /api/admin/staff/[id]`
+   `{ sessionPolicy: 'persistent', defaultHomePath: '/operations?tv=1' }`.
+   `persistent` = infinite-idle / 365-day sliding (`PERSISTENT_WINDOW`,
+   `src/lib/auth/session.ts`); a heartbeat keeps it alive, so the wall never
+   idles out and never needs `allowAnonymous`.
+4. **Sign in once on the wall device** — `POST /api/auth/signin` `{ staffId, pin }`.
+   The `cf_sid` cookie persists; the device lands on `/operations?tv=1` and
+   auto-reconnects. Revoke via the admin sessions UI if a device is lost.
+5. **Enable the surface for the org** — apply
+   `2026-07-12_seed_ops_tv_board_usav.sql` (USAV), or insert
+   `organization_feature_flags(flag='ops_tv_board', enabled=true)` for another
+   dogfood org, or set env `OPS_TV_BOARD=true` globally.
+
+### Deferred (not Phase C)
+
+- Real `blocked` lane (Phase D collab), presence/"who's viewing" (§24), PostHog
+  `tv_board_heartbeat` (§29), and a first-class kiosk *provisioning UI* (today it's
+  the admin-route runbook above). Global-search indexing of plan tasks stays a v2
+  decision (§25). A wall-scale `KpiTile size="wall"` variant was added to the
+  Monitor registry (additive; default unchanged) — promote to more walls as they land.
 
 ---
 

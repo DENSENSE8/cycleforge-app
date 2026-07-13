@@ -91,7 +91,7 @@ export function PhotoCard({
             )}
           >
             <FileText className="h-10 w-10 text-text-faint" />
-            <span className="text-center text-micro font-semibold text-text-muted">
+            <span className="text-center text-role-micro font-semibold text-text-muted">
               {documentTypeLabel(photo.documentType)}
             </span>
           </div>
@@ -113,8 +113,8 @@ export function PhotoCard({
           <div className="space-y-1 px-2.5 py-2">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-caption font-semibold text-text-default">{primaryLabel}</div>
-                <div className="truncate text-micro text-text-soft">{formatDateTimePST(photo.createdAt)}</div>
+                <div className="truncate text-role-caption font-semibold text-text-default">{primaryLabel}</div>
+                <div className="truncate text-role-micro text-text-soft">{formatDateTimePST(photo.createdAt)}</div>
               </div>
             </div>
             {!isDocument ? <PhotoLabelChips labels={photo.labels} max={3} /> : null}

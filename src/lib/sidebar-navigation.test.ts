@@ -206,7 +206,10 @@ test('resolveSidebarMode reads the operations mode', () => {
   assert.equal(resolveSidebarMode('operations', at('mode=insights')), 'insights');
   assert.equal(resolveSidebarMode('operations', at('mode=history')), 'history');
   assert.equal(resolveSidebarMode('operations', at('mode=signals')), 'signals');
-  assert.equal(resolveSidebarMode('operations', at('mode=plans')), 'plans');
+  // `plans` is no longer an Operations mode (forge/plans moved to Home, HOME-OPS
+  // §3.2) — a stale `?mode=plans` link resolves to the Live default here and is
+  // redirected to Home by OperationsWorkspace.
+  assert.equal(resolveSidebarMode('operations', at('mode=plans')), 'live');
   assert.equal(resolveSidebarMode('operations', at('mode=bogus')), 'live');
 });
 

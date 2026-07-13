@@ -393,7 +393,7 @@ function DispositionBacklogSection({ rows }: { rows: DispositionBacklogRow[] }) 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate font-mono text-sm font-bold text-text-default">{row.serialNumber}</span>
                   {row.conditionGrade && (
-                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted">
+                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted">
                       {conditionLabel(row.conditionGrade, 'compact')}
                     </span>
                   )}

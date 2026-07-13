@@ -89,25 +89,25 @@ export function LinkedTicketsPanel({
   if (hideWhenEmpty && (!data || !data.order)) return null;
 
   const headerCls = dense
-    ? 'text-eyebrow font-black uppercase tracking-widest text-text-soft'
-    : 'text-eyebrow font-black uppercase tracking-widest text-text-soft';
+    ? 'text-role-eyebrow uppercase tracking-widest text-text-soft'
+    : 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
   return (
     <section className={`space-y-2 ${className}`}>
       <p className={headerCls}>Linkage</p>
 
       {isLoading && (
-        <div className="text-caption text-text-faint">Resolving links…</div>
+        <div className="text-role-caption text-text-faint">Resolving links…</div>
       )}
 
       {isError && (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-caption text-rose-600">
+        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-role-caption text-rose-600">
           Could not resolve linkage.
         </div>
       )}
 
       {!isLoading && !isError && data && !data.order && (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-caption text-text-faint">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-role-caption text-text-faint">
           No linked order found.
         </div>
       )}
@@ -136,7 +136,7 @@ export function LinkedTicketsPanel({
 
           {/* Linked Zendesk tickets */}
           {data.tickets.length === 0 ? (
-            <div className="text-caption text-text-faint">No linked tickets.</div>
+            <div className="text-role-caption text-text-faint">No linked tickets.</div>
           ) : (
             <ul className="divide-y divide-border-hairline">
               {data.tickets.map((tk) => (
@@ -157,7 +157,7 @@ export function LinkedTicketsPanel({
                     <TicketChip value={tk.label} display={tk.label} />
                   )}
                   {tk.subject && (
-                    <span className="truncate text-caption text-text-muted">{tk.subject}</span>
+                    <span className="truncate text-role-caption text-text-muted">{tk.subject}</span>
                   )}
                 </li>
               ))}

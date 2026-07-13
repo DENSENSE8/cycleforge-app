@@ -80,7 +80,7 @@ export function WorkstationSection() {
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
-          <span className="mt-1 block text-caption text-text-soft">
+          <span className="mt-1 block text-role-caption text-text-soft">
             Determines which dashboard opens by default when the app launches.
           </span>
         </label>

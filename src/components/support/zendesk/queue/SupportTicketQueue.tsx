@@ -133,7 +133,7 @@ export function SupportTicketQueue({ modeToggle = null }: { modeToggle?: ReactNo
         {modeToggle}
         {showRecents ? (
           <div className="border-b border-border-hairline pb-1.5">
-            <p className="flex items-center gap-1 px-3 pb-1 pt-2 text-micro font-black uppercase tracking-widest text-text-faint">
+            <p className="flex items-center gap-1 px-3 pb-1 pt-2 text-role-micro uppercase tracking-widest text-text-faint">
               <History className="h-3 w-3" /> Recently opened
             </p>
             {recents.map((r) => (
@@ -148,10 +148,10 @@ export function SupportTicketQueue({ modeToggle = null }: { modeToggle?: ReactNo
                 )}
               >
                 <Clock className="h-3 w-3 shrink-0 text-text-faint" />
-                <span className="min-w-0 flex-1 truncate text-label font-semibold text-text-muted">
+                <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">
                   {r.subject || `Ticket #${r.id}`}
                 </span>
-                <span className="shrink-0 text-micro font-bold text-text-faint">#{r.id}</span>
+                <span className="shrink-0 text-role-micro font-bold text-text-faint">#{r.id}</span>
               </button>
             ))}
           </div>
@@ -172,7 +172,7 @@ export function SupportTicketQueue({ modeToggle = null }: { modeToggle?: ReactNo
                 isNotConfigured(error) ? (
                   <Link
                     href="/settings/integrations#zendesk"
-                    className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
+                    className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
                   >
                     <Link2 className="h-4 w-4" />
                     Connect a helpdesk
@@ -188,7 +188,7 @@ export function SupportTicketQueue({ modeToggle = null }: { modeToggle?: ReactNo
         ) : (
           <div className="divide-y divide-border-hairline">
             {showRecents ? (
-              <p className="px-3 pb-1 pt-2.5 text-micro font-black uppercase tracking-widest text-text-faint">
+              <p className="px-3 pb-1 pt-2.5 text-role-micro uppercase tracking-widest text-text-faint">
                 All tickets
               </p>
             ) : null}
@@ -221,7 +221,7 @@ export function SupportTicketQueue({ modeToggle = null }: { modeToggle?: ReactNo
         >
           Prev
         </Button>
-        <span className="text-micro font-semibold text-text-faint">
+        <span className="text-role-micro font-semibold text-text-faint">
           {data?.count != null ? `${data.count} total` : ''}
         </span>
         <Button

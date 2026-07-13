@@ -85,7 +85,7 @@ export function CartonAddInline({
               size="sm"
               icon={<Icon className="h-3.5 w-3.5" />}
               onClick={() => setTab(t)}
-              className="h-7 gap-1.5 px-2.5 text-mini font-bold uppercase tracking-wider"
+              className="h-7 gap-1.5 px-2.5 text-role-micro font-bold uppercase tracking-wider"
             >
               {label}
             </Button>
@@ -94,7 +94,7 @@ export function CartonAddInline({
       </div>
 
       {allowOffPo && tab !== 'box' ? (
-        <p className="rounded-lg bg-amber-50 px-3 py-1.5 text-mini font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+        <p className="rounded-lg bg-amber-50 px-3 py-1.5 text-role-micro font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
           Adds as an off-PO item — not on the Zoho PO. Reconcile it in Zoho separately.
         </p>
       ) : null}

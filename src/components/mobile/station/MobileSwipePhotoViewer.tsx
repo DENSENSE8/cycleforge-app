@@ -465,7 +465,7 @@ export function MobileSwipePhotoViewer({
                       className={`h-5 w-5 shrink-0 ${deleteArmed ? 'text-white' : 'text-red-500'}`}
                     />
                     {deleteArmed ? (
-                      <span className="text-caption font-black uppercase tracking-wider">
+                      <span className="text-role-caption font-black uppercase tracking-wider">
                         {deleting ? 'Deleting…' : 'Confirm'}
                       </span>
                     ) : null}

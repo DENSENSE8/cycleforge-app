@@ -40,7 +40,7 @@ export function InlineSaveIndicator({
   return (
     <span
       role="status"
-      className={`shrink-0 text-eyebrow font-black uppercase tracking-[0.10rem] leading-none ${toneClassName} ${className}`.trim()}
+      className={`shrink-0 text-role-eyebrow uppercase tracking-[0.10rem] leading-none ${toneClassName} ${className}`.trim()}
     >
       {label}
     </span>

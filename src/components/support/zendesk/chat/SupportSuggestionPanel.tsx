@@ -40,9 +40,9 @@ export function SupportSuggestionPanel({
   return (
     <div className="shrink-0 border-t border-border-hairline bg-surface-card px-4 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-micro font-black uppercase tracking-widest text-text-soft">
+        <span className="inline-flex items-center gap-1.5 text-role-micro uppercase tracking-widest text-text-soft">
           <Sparkles className="h-3.5 w-3.5 text-blue-500" /> AI suggested reply
-          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
+          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
             Local
           </span>
         </span>
@@ -61,19 +61,19 @@ export function SupportSuggestionPanel({
       </div>
 
       {!hasQuestion ? (
-        <p className="mt-1.5 text-caption text-text-faint">
+        <p className="mt-1.5 text-role-caption text-text-faint">
           No customer message yet to draft a reply from.
         </p>
       ) : null}
 
       {suggest.isPending ? (
-        <p className="mt-2 inline-flex items-center gap-1.5 text-label text-text-soft">
+        <p className="mt-2 inline-flex items-center gap-1.5 text-role-caption text-text-soft">
           <Loader2 className="h-4 w-4 animate-spin" /> Grounding in Bose docs &amp; drafting…
         </p>
       ) : null}
 
       {suggest.isError ? (
-        <div className="mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-label text-rose-700">
+        <div className="mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-role-caption text-rose-700">
           {(suggest.error as Error)?.message || 'Could not generate a suggestion.'}
           <div className="mt-2">
             <Button variant="secondary" size="sm" onClick={run} icon={<RefreshCw className="h-3.5 w-3.5" />}>
@@ -88,21 +88,21 @@ export function SupportSuggestionPanel({
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
             <span
               className={cn(
-                'rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset',
+                'rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset',
                 CONFIDENCE_CHIP[result.confidence],
               )}
             >
               {result.confidence} confidence
             </span>
             {!result.grounded ? (
-              <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
+              <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">
                 no doc match
               </span>
             ) : null}
             {result.sources.slice(0, 4).map((src) => (
               <span
                 key={src}
-                className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded bg-blue-50 px-1.5 py-0.5 text-eyebrow font-bold text-blue-700 ring-1 ring-inset ring-blue-200"
+                className="inline-flex max-w-[12rem] items-center gap-1 truncate rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow font-bold text-blue-700 ring-1 ring-inset ring-blue-200"
                 title={src}
               >
                 <FileText className="h-3 w-3 shrink-0" />
@@ -111,7 +111,7 @@ export function SupportSuggestionPanel({
             ))}
           </div>
 
-          <p className="whitespace-pre-wrap text-caption leading-relaxed text-text-default">{result.suggestion}</p>
+          <p className="whitespace-pre-wrap text-role-caption leading-relaxed text-text-default">{result.suggestion}</p>
 
           <div className="mt-2.5 flex items-center gap-1.5">
             <Button

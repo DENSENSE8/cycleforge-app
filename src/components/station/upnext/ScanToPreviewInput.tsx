@@ -93,18 +93,18 @@ export function ScanToPreviewInput({ orders }: { orders: any[] }) {
         aria-label="Scan tracking number to preview order"
         spellCheck={false}
         autoComplete="off"
-        className="min-w-0 flex-1 bg-transparent text-label font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint"
+        className="min-w-0 flex-1 bg-transparent text-role-caption font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint"
       />
       {feedback === 'missed' ? (
-        <span className="text-micro font-black uppercase tracking-widest text-red-500">
+        <span className="text-role-micro uppercase tracking-widest text-red-500">
           No match
         </span>
       ) : feedback === 'matched' ? (
-        <span className="text-micro font-black uppercase tracking-widest text-emerald-600">
+        <span className="text-role-micro uppercase tracking-widest text-emerald-600">
           Selected
         </span>
       ) : (
-        <kbd className="hidden rounded bg-surface-sunken px-1 py-px text-eyebrow font-bold text-text-soft sm:inline-flex">
+        <kbd className="hidden rounded bg-surface-sunken px-1 py-px text-role-eyebrow font-bold text-text-soft sm:inline-flex">
           ↵
         </kbd>
       )}

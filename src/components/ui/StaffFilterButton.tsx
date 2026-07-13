@@ -46,7 +46,7 @@ export function StaffFilterButton({
           setStaff(id);
           setOpen(false);
         }}
-        className={`ds-raw-button flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-caption font-semibold transition-colors ${
+        className={`ds-raw-button flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-role-caption font-semibold transition-colors ${
           isActive ? 'bg-surface-accent text-text-accent' : 'text-text-muted hover:bg-surface-hover'
         }`}
       >

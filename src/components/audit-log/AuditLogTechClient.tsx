@@ -91,27 +91,27 @@ export function AuditLogTechClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
           Tech audit
         </p>
         <h2 className="mt-0.5 break-all font-mono text-base font-bold text-text-default">
           {detail.tracking}
         </h2>
         {detail.sku_summary && (
-          <p className="mt-1 text-label text-text-soft">SKU: {detail.sku_summary}</p>
+          <p className="mt-1 text-role-caption text-text-soft">SKU: {detail.sku_summary}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {detail.serials.slice(0, 8).map((sn) => (
             <span
               key={sn.id}
-              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-micro font-semibold text-emerald-700 ring-1 ring-emerald-200"
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-role-micro font-semibold text-emerald-700 ring-1 ring-emerald-200"
             >
               <FileText className="h-3 w-3" />
               {sn.serial_number}
             </span>
           ))}
           {detail.serials.length > 8 && (
-            <span className="text-micro text-text-soft">
+            <span className="text-role-micro text-text-soft">
               +{detail.serials.length - 8} more
             </span>
           )}
@@ -127,7 +127,7 @@ export function AuditLogTechClient() {
               {/* Unified trail — same shared EventTimeline as the Shipped /
                   Incoming detail panels (label → tech verdict → pack → ship). */}
               <div className="rounded-xl border border-border-hairline bg-surface-card p-4">
-                <h3 className="mb-2 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+                <h3 className="mb-2 text-role-eyebrow uppercase tracking-wider text-text-soft">
                   Activity timeline
                 </h3>
                 <EventTimeline items={techEventsToTimeline(detail.events)} />

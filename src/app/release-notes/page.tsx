@@ -66,7 +66,7 @@ export default function ReleaseNotesPage() {
       <div className="flex-1 min-w-0 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
           <header className="mb-8">
-            <p className="text-eyebrow font-black uppercase tracking-[0.25em] text-blue-600">
+            <p className="text-role-eyebrow uppercase tracking-[0.25em] text-blue-600">
               What&apos;s new
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-text-default sm:text-4xl">
@@ -104,7 +104,7 @@ export default function ReleaseNotesPage() {
                         <li key={c.sha} className="px-4 py-4 sm:px-5">
                           <div className="flex items-start gap-3">
                             <span
-                              className={`mt-0.5 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${style.chip}`}
+                              className={`mt-0.5 inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${style.chip}`}
                             >
                               {style.label}
                             </span>
@@ -117,12 +117,12 @@ export default function ReleaseNotesPage() {
                                   {c.body}
                                 </p>
                               ) : null}
-                              <p className="mt-1.5 text-caption text-text-soft">
+                              <p className="mt-1.5 text-role-caption text-text-soft">
                                 <time dateTime={c.date}>{dayLabel(c.date)}</time>
                                 <span className="mx-1.5 text-text-faint">·</span>
                                 <span>{c.author}</span>
                                 <span className="mx-1.5 text-text-faint">·</span>
-                                <code className="rounded bg-surface-sunken px-1 py-0.5 font-mono text-micro text-text-muted">
+                                <code className="rounded bg-surface-sunken px-1 py-0.5 font-mono text-role-micro text-text-muted">
                                   {c.shortSha}
                                 </code>
                               </p>

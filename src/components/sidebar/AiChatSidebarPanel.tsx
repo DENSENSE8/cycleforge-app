@@ -34,7 +34,7 @@ export function AiChatSidebarPanel() {
 
   if (isLoaded && !has('dashboard.view')) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-center text-caption font-semibold text-text-soft">
+      <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
         Requires the “View dashboard” permission.
       </div>
     );
@@ -61,7 +61,7 @@ export function AiChatSidebarPanel() {
           </div>
           <p className="text-base font-semibold tracking-tight text-text-default">{PRODUCT_NAME_AI}</p>
         </div>
-        <p className="mt-2 text-caption leading-5 text-text-muted">
+        <p className="mt-2 text-role-caption leading-5 text-text-muted">
           Ask about the warehouse in plain English. The assistant streams its reply in the
           panel on the right and can query live data across orders, staff, FBA, inventory,
           repairs, and the Bose service manuals.
@@ -72,22 +72,22 @@ export function AiChatSidebarPanel() {
             <div key={c.title} className="rounded-xl border border-border-soft bg-surface-card p-3">
               <div className="flex items-center gap-2 text-text-default">
                 <c.icon className="h-4 w-4 text-blue-500" />
-                <p className="text-caption font-semibold tracking-tight">{c.title}</p>
+                <p className="text-role-caption font-semibold tracking-tight">{c.title}</p>
               </div>
-              <p className="mt-1 text-micro leading-5 text-text-muted">{c.detail}</p>
+              <p className="mt-1 text-role-micro leading-5 text-text-muted">{c.detail}</p>
             </div>
           ))}
         </div>
 
         <div className="mt-6">
-          <p className="text-micro font-black uppercase tracking-[0.2em] text-text-soft">Try asking</p>
+          <p className="text-role-micro uppercase tracking-[0.2em] text-text-soft">Try asking</p>
           <div className="mt-3 flex flex-col gap-2">
             {EXAMPLES.map((e) => (
               <button
                 key={e}
                 type="button"
                 onClick={() => emitAiChatPrompt(e)}
-                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
               >
                 {e}
               </button>

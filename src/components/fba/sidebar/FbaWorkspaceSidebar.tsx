@@ -188,7 +188,7 @@ export function FbaWorkspaceSidebar() {
         {/* Plans error banner */}
         {plansError && (
           <SidebarSection className="my-2">
-            <div className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-caption font-semibold text-red-700">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700">
               {plansError}
             </div>
           </SidebarSection>

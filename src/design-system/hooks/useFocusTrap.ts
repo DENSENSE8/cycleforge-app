@@ -44,17 +44,12 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
         (el) => el.getClientRects().length > 0,
       );
 
-    const focusFirst = () => {
-      const items = focusables();
-      if (items.length > 0) {
-        items[0].focus({ preventScroll: true });
-      } else {
-        container.focus({ preventScroll: true });
-      }
-    };
-
+    // Focus the dialog root (tabIndex={-1}), never the first control — opening a
+    // modal must not visibly highlight/tooltip a button (e.g. the toolbar's
+    // first enabled action). Screen readers announce the dialog, and the first
+    // Tab enters the trap via the `current === container` branch in onKeyDown.
     if (!container.contains(document.activeElement)) {
-      focusFirst();
+      container.focus({ preventScroll: true });
     }
 
     const onKeyDown = (e: KeyboardEvent) => {

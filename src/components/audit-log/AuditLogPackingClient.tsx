@@ -87,20 +87,20 @@ export function AuditLogPackingClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
           Packing audit
         </p>
         <h2 className="mt-0.5 break-all font-mono text-base font-bold text-text-default">
           {detail.tracking}
         </h2>
         {detail.sku_summary && (
-          <p className="mt-1 text-label text-text-soft">SKU: {detail.sku_summary}</p>
+          <p className="mt-1 text-role-caption text-text-soft">SKU: {detail.sku_summary}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {detail.packer_logs.map((pl) => (
             <span
               key={pl.id}
-              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-micro font-semibold text-emerald-700 ring-1 ring-emerald-200"
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-role-micro font-semibold text-emerald-700 ring-1 ring-emerald-200"
             >
               <Package className="h-3 w-3" />
               {pl.tracking_type ?? 'PACK'} · {fmtTime(pl.pack_date_time)}

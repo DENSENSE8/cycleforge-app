@@ -8,6 +8,8 @@ import {
 } from '@/components/receiving/workspace/TestingStatusPills';
 import { InlineSerialAdder } from '@/components/receiving/workspace/InlineSerialAdder';
 import { UnitSlotList, type UnitLike } from '@/components/receiving/workspace/UnitSlotList';
+import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
+import { ConditionBadge } from '@/components/receiving/workspace/ReceivingUnitRows';
 
 export interface UnitSlotSerial {
   id: number;
@@ -48,6 +50,8 @@ interface Props {
    * {@link onSetVerdict} when absent.
    */
   onSetUnitVerdict?: (serial: UnitSlotSerial, next: TestingVerdict) => void;
+  /** Update the condition of a single unit. */
+  onSetUnitCondition?: (serial: UnitSlotSerial, next: string) => void;
   onAddSerial: (serial: string) => void | Promise<void>;
   onDeleteSerial: (serial: UnitSlotSerial) => void;
   onReplaceSerial: (original: UnitSlotSerial, next: string) => void;
@@ -96,6 +100,7 @@ export function TestingLinePanel({
   onSelectIndex,
   onSetVerdict,
   onSetUnitVerdict,
+  onSetUnitCondition,
   onAddSerial,
   onDeleteSerial,
   onReplaceSerial,
@@ -120,6 +125,7 @@ export function TestingLinePanel({
         onSetUnitVerdict={(serial, next) =>
           (onSetUnitVerdict ?? (() => onSetVerdict(next)))(serial, next)
         }
+        onSetUnitCondition={onSetUnitCondition}
         onAddSerial={onAddSerial}
         onDeleteSerial={onDeleteSerial}
         onReplaceSerial={onReplaceSerial}
@@ -130,11 +136,24 @@ export function TestingLinePanel({
 
   return (
     <div className="space-y-3">
-      <TestingStatusPills
-        value={verdict}
-        onChange={onSetVerdict}
-        disabled={disabled || isMutating || saved.length === 0}
-      />
+      <div className="flex gap-4 items-start flex-wrap">
+        <TestingStatusPills
+          value={verdict}
+          onChange={onSetVerdict}
+          disabled={disabled || isMutating || saved.length === 0}
+        />
+        {saved[0]?.id != null && onSetUnitCondition != null ? (
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-px bg-surface-sunken" />
+            <StationConditionEditor
+              condition={saved[0].condition_grade}
+              onChange={(next) => onSetUnitCondition(saved[0], next)}
+              isLocked={disabled || isMutating}
+              collapsible
+            />
+          </div>
+        ) : null}
+      </div>
       <InlineSerialAdder
         key={`tech-adder-${lineId}`}
         lineId={lineId}
@@ -168,6 +187,7 @@ interface TestingUnitRowsProps {
   selectedIndex?: number;
   onSelectIndex?: (index: number) => void;
   onSetUnitVerdict: (serial: UnitSlotSerial, next: TestingVerdict) => void;
+  onSetUnitCondition?: (serial: UnitSlotSerial, next: string) => void;
   onAddSerial: (serial: string) => void | Promise<void>;
   onDeleteSerial: (serial: UnitSlotSerial) => void;
   onReplaceSerial: (original: UnitSlotSerial, next: string) => void;
@@ -193,6 +213,7 @@ function TestingUnitRows({
   selectedIndex,
   onSelectIndex,
   onSetUnitVerdict,
+  onSetUnitCondition,
   onAddSerial,
   onDeleteSerial,
   onReplaceSerial,
@@ -225,16 +246,32 @@ function TestingUnitRows({
       // focus to the next unit so a lot is scanned in one fast pass.
       singleRowExpanded
       renderExpandedMeta={(serial) => (
-        <TestingStatusPills
-          value={unitStatusToVerdict(serial?.current_status)}
-          onChange={(next) => {
-            if (serial) onSetUnitVerdict(serial as UnitSlotSerial, next);
-          }}
-          disabled={disabled || isMutating || serial == null}
-        />
+        <div className="flex min-w-0 items-center gap-2 pr-1">
+          <TestingStatusPills
+            value={unitStatusToVerdict(serial?.current_status)}
+            onChange={(next) => {
+              if (serial) onSetUnitVerdict(serial as UnitSlotSerial, next);
+            }}
+            disabled={disabled || isMutating || serial == null}
+          />
+          {serial?.id != null && onSetUnitCondition != null ? (
+            <>
+              <div className="h-8 w-px bg-surface-sunken shrink-0" />
+              <StationConditionEditor
+                condition={serial.condition_grade}
+                onChange={(next) => onSetUnitCondition(serial as UnitSlotSerial, next)}
+                isLocked={disabled || isMutating}
+                collapsible
+              />
+            </>
+          ) : null}
+        </div>
       )}
       renderCollapsedMeta={(serial) => (
-        <VerdictBadge verdict={unitStatusToVerdict(serial?.current_status)} />
+        <div className="flex items-center gap-2">
+          <ConditionBadge grade={serial?.condition_grade} />
+          <VerdictBadge verdict={unitStatusToVerdict(serial?.current_status)} />
+        </div>
       )}
       onAddSerial={(_index, sn) => onAddSerial(sn)}
       onDeleteSerial={(s) => onDeleteSerial(s as UnitSlotSerial)}
@@ -255,14 +292,14 @@ const VERDICT_BADGE: Record<TestingVerdict, { label: string; tone: string }> = {
 function VerdictBadge({ verdict }: { verdict: TestingVerdict | null }) {
   if (!verdict) {
     return (
-      <span className="text-micro font-bold uppercase tracking-widest text-text-faint">
+      <span className="text-role-micro font-bold uppercase tracking-widest text-text-faint">
         untested
       </span>
     );
   }
   const { label, tone } = VERDICT_BADGE[verdict];
   return (
-    <span className={`text-micro font-bold uppercase tracking-widest ${tone}`}>
+    <span className={`text-role-micro font-bold uppercase tracking-widest ${tone}`}>
       {label}
     </span>
   );

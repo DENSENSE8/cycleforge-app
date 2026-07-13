@@ -22,6 +22,17 @@ export const STAFF_THEMES = THEME_NAMES;
 export type StaffTheme = ThemeName;
 export const DEFAULT_THEME: StaffTheme = 'light';
 
+/**
+ * Clock display format for every timestamp the app renders. `12h` = h:mm AM/PM
+ * (the historical default — existing users are unaffected); `24h` = HH:mm.
+ * A personal display preference stored per-account (cross-device), mirrored to
+ * localStorage for flash-free reads; see src/lib/time-format/store.ts. Storage /
+ * API timestamp formats never change — this is display-only.
+ */
+export const TIME_FORMAT_VALUES = ['12h', '24h'] as const;
+export type TimeFormat = (typeof TIME_FORMAT_VALUES)[number];
+export const DEFAULT_TIME_FORMAT: TimeFormat = '12h';
+
 /** ISO day-range filter — `null` clears it. Shared by board + per-lane prefs. */
 const BOARD_RANGE = z
   .object({
@@ -73,6 +84,11 @@ export const StaffPreferencesPutBody = z
       .nullable()
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
+    /**
+     * Clock display format for all rendered timestamps. `null` resets to the
+     * default (`12h`). Display-only — never affects stored/API timestamps.
+     */
+    timeFormat: z.enum(TIME_FORMAT_VALUES).nullable().optional(),
     /**
      * "Skip for now" on the dashboard Getting-Started checklist. `true` hides
      * the card; `null` clears the dismissal (re-opens it). The underlying

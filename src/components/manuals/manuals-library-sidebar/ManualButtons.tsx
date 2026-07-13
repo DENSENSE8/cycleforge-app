@@ -25,10 +25,10 @@ export function FolderButton({
         <FolderIcon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-label font-black text-text-default">
+        <p className="truncate text-role-caption font-black text-text-default">
           {highlight ? <HighlightedText text={highlight.label} indices={highlight.indices} /> : node.name}
         </p>
-        <p className="mt-0.5 text-micro font-semibold text-text-soft">
+        <p className="mt-0.5 text-role-micro font-semibold text-text-soft">
           {subFolderCount > 0 && (
             <>
               {subFolderCount} {subFolderCount === 1 ? 'folder' : 'folders'}
@@ -76,7 +76,7 @@ export function FileButton({
         <FileText className="h-3.5 w-3.5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className={`truncate text-label font-black leading-tight ${isSelected ? 'text-blue-900' : 'text-text-default'}`}>
+        <p className={`truncate text-role-caption font-black leading-tight ${isSelected ? 'text-blue-900' : 'text-text-default'}`}>
           {highlight ? <HighlightedText text={highlight.label} indices={highlight.indices} /> : title}
         </p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">

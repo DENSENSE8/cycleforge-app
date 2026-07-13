@@ -31,7 +31,7 @@ export function DeltaChip({
 }: DeltaChipProps) {
   if (!delta) {
     return (
-      <p className={cn('mt-1.5 text-eyebrow font-semibold text-text-faint', className)}>
+      <p className={cn('mt-1.5 text-role-eyebrow font-semibold text-text-faint', className)}>
         {emptyLabel}
       </p>
     );
@@ -42,7 +42,7 @@ export function DeltaChip({
   return (
     <p
       className={cn(
-        'mt-1.5 inline-flex items-center gap-0.5 text-caption font-black tabular-nums',
+        'mt-1.5 inline-flex items-center gap-0.5 text-role-caption font-black tabular-nums',
         positive ? 'text-text-success' : 'text-text-danger',
         className,
       )}

@@ -313,7 +313,7 @@ export function UnshippedTable({
       <Button type="button" variant="secondary" onClick={() => setRowLimit((n) => n + 200)}>
         Load more
       </Button>
-      <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
         Showing {Math.min(rowLimit, stageTotal)} of {stageTotal}
       </p>
     </div>

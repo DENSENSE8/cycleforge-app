@@ -43,7 +43,7 @@ export function BulkMoveSheet({
       <div className="relative z-panelPopover w-full max-w-lg overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/20">
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
-            <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">Bulk Move</p>
+            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">Bulk Move</p>
             <h2 className="mt-1 text-sm font-black text-text-default">
               Move {count} {count === 1 ? 'manual' : 'manuals'}
             </h2>

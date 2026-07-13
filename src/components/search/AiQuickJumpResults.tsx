@@ -50,7 +50,7 @@ export function AiQuickJumpResults({
 
   return (
     <div className={className}>
-      <p className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+      <p className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-role-eyebrow uppercase text-text-faint">
         {searching ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : (

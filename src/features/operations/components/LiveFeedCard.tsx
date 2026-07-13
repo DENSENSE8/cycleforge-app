@@ -64,7 +64,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
           <span className={`${sectionLabel} !text-text-muted`}>
             Live feed
           </span>
-          <h2 className="text-[20px] sm:text-[22px] font-extrabold tracking-tight text-text-default mt-1">
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-default mt-1">
             What’s happening on the floor
           </h2>
         </div>
@@ -79,7 +79,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
               ablyStatus === 'connecting' ? 'bg-amber-500' : 'bg-rose-500'
             }`} />
           </span>
-          <span className="text-micro font-black uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-role-micro uppercase tracking-[0.16em] text-text-muted">
             {ablyStatus === 'connected' ? 'Live' : ablyStatus}
           </span>
         </div>
@@ -100,8 +100,8 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
           </ul>
         ) : rows.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-[13px] font-semibold text-text-muted">No activity yet today.</p>
-            <p className="text-caption text-text-muted mt-1">New scans, packs, and tests will appear here in real time.</p>
+            <p className="text-role-data font-semibold text-text-muted">No activity yet today.</p>
+            <p className="text-role-caption text-text-muted mt-1">New scans, packs, and tests will appear here in real time.</p>
           </div>
         ) : (
           <ul className="divide-y divide-border-soft">
@@ -123,20 +123,20 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-micro font-black uppercase tracking-[0.14em] text-text-muted">
+                        <span className="text-role-micro uppercase tracking-[0.14em] text-text-muted">
                           {label}
                         </span>
                         {row.source && (
-                          <span className="text-micro font-bold text-text-soft uppercase">
+                          <span className="text-role-micro font-bold text-text-soft uppercase">
                             · {row.source}
                           </span>
                         )}
                       </div>
-                      <p className="text-[13px] font-semibold text-text-default truncate leading-tight mt-0.5">
+                      <p className="text-role-data font-semibold text-text-default truncate leading-tight mt-0.5">
                         {row.summary}
                       </p>
                       {row.actor_name && (
-                        <p className="text-micro font-medium mt-0.5 truncate text-text-muted">
+                        <p className="text-role-micro font-medium mt-0.5 truncate text-text-muted">
                           by{' '}
                           <span
                             className="font-bold"
@@ -147,7 +147,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                         </p>
                       )}
                     </div>
-                    <span className="text-micro font-semibold text-text-muted tabular-nums shrink-0">
+                    <span className="text-role-micro font-semibold text-text-muted tabular-nums shrink-0">
                       {timeAgo(row.timestamp)}
                     </span>
                   </motion.li>

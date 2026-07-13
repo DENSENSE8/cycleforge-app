@@ -68,7 +68,7 @@ export function FnskuSearchModal({
             <div className="border-b border-border-soft px-4 py-3">
               <div className="mb-2 flex items-center justify-between">
                 <div>
-                  <p className="text-micro font-black uppercase tracking-[0.16em] text-purple-600">Add FNSKU</p>
+                  <p className="text-role-micro uppercase tracking-[0.16em] text-purple-600">Add FNSKU</p>
                   <h2 className="mt-0.5 text-sm font-black text-text-default">Search shipment catalog</h2>
                 </div>
                 <IconButton
@@ -109,7 +109,7 @@ export function FnskuSearchModal({
               ) : results.length === 0 ? (
                 <div className="py-16 text-center">
                   <p className="text-xs font-semibold text-text-faint">No matching FNSKUs found</p>
-                  <p className="mt-1 text-micro text-text-faint">Try a different search term</p>
+                  <p className="mt-1 text-role-micro text-text-faint">Try a different search term</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border-soft">

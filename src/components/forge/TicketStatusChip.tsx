@@ -81,7 +81,7 @@ export function TicketStatusChip({ ticketId, status, rawStatus, href, resolution
           )}
         </AnimatePresence>
         <span
-          className={`inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset ${tone}`}
+          className={`inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ${tone}`}
         >
           <span className={`h-2 w-2 rounded-full ${dot}`} />
           {ticketId}

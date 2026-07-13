@@ -25,7 +25,7 @@ interface WarrantyClaimDetailPanelProps {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-caption font-medium uppercase tracking-wide text-text-faint">{label}</dt>
+      <dt className="text-role-caption font-medium uppercase tracking-wide text-text-faint">{label}</dt>
       <dd className="mt-0.5 text-sm text-text-default">{value || <span className="text-text-faint">—</span>}</dd>
     </div>
   );
@@ -66,7 +66,7 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
           <div className="truncate text-sm font-semibold text-text-default">
             {claim?.productTitle || claim?.sku || claim?.serialNumber || 'Warranty claim'}
           </div>
-          <div className="font-mono text-caption text-text-faint">{claim?.claimNumber}</div>
+          <div className="font-mono text-role-caption text-text-faint">{claim?.claimNumber}</div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
           {claim && (claim.productTitle || claim.sku) && (
@@ -219,11 +219,11 @@ function DetailBody({ claim }: { claim: WarrantyClaimDetail }) {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-text-muted">Attempt #{a.attemptNo}</span>
                   {a.outcome && (
-                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-caption text-text-muted">{a.outcome}</span>
+                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-caption text-text-muted">{a.outcome}</span>
                   )}
                 </div>
                 {a.diagnosis && <p className="mt-1 text-sm text-text-muted">{a.diagnosis}</p>}
-                {a.notes && <p className="mt-1 text-label text-text-soft">{a.notes}</p>}
+                {a.notes && <p className="mt-1 text-role-caption text-text-soft">{a.notes}</p>}
               </li>
             ))}
           </ul>

@@ -64,7 +64,7 @@ export interface RepairFormData {
 
 const REPAIR_INTAKE_MAX_WIDTH = 'max-w-[720px]';
 const REPAIR_INTAKE_COLUMN_CLASS = `mx-auto w-full ${REPAIR_INTAKE_MAX_WIDTH}`;
-const SECTION_LABEL = 'text-micro font-black uppercase tracking-[0.16em] text-text-soft';
+const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
 export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId }: RepairIntakeFormProps) {
     const [currentStep, setCurrentStep] = useState<RepairIntakeStepKey>('product');
@@ -321,10 +321,10 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 <Check className="h-4 w-4" />
                             </span>
                             <div className="min-w-0">
-                                <p className="truncate text-eyebrow font-bold uppercase tracking-[0.18em] text-text-faint sm:text-micro">
+                                <p className="truncate text-role-eyebrow font-bold uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
                                     Repair submitted
                                 </p>
-                                <h1 className="truncate text-sm font-black tracking-tight text-text-default sm:text-[15px]">
+                                <h1 className="truncate text-sm font-black tracking-tight text-text-default sm:text-role-body">
                                     {chromeLabel}
                                 </h1>
                             </div>
@@ -353,7 +353,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 href={submitted.zendeskTicketUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="truncate text-micro font-black uppercase tracking-[0.14em] text-text-soft underline-offset-2 hover:text-text-default hover:underline"
+                                className="truncate text-role-micro uppercase tracking-[0.14em] text-text-soft underline-offset-2 hover:text-text-default hover:underline"
                             >
                                 {submitted.zendeskTicketNumber ? `Ticket ${submitted.zendeskTicketNumber}` : 'View ticket'}
                             </a>
@@ -404,12 +404,12 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 </div>
                             )}
                             <div className="min-w-0">
-                                <p className="truncate text-eyebrow font-bold uppercase tracking-[0.18em] text-text-faint sm:text-micro">
+                                <p className="truncate text-role-eyebrow font-bold uppercase tracking-[0.18em] text-text-faint sm:text-role-micro">
                                     Repair Intake
                                 </p>
                                 <h1
                                     id="repair-intake-step-title"
-                                    className="truncate text-sm font-black tracking-tight text-text-default sm:text-[15px]"
+                                    className="truncate text-sm font-black tracking-tight text-text-default sm:text-role-body"
                                 >
                                     {stepTitle}
                                 </h1>
@@ -587,7 +587,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                         tone="neutral"
                                     />
                                     <div className="overflow-hidden rounded-xl border border-border-soft">
-                                        <div className="grid grid-cols-[1fr_1fr_0.55fr] gap-2 border-b border-border-hairline bg-surface-canvas px-3 py-2 text-eyebrow font-black uppercase tracking-[0.12em] text-text-soft">
+                                        <div className="grid grid-cols-[1fr_1fr_0.55fr] gap-2 border-b border-border-hairline bg-surface-canvas px-3 py-2 text-role-eyebrow uppercase tracking-[0.12em] text-text-soft">
                                             <span>Name</span>
                                             <span>Phone</span>
                                             <span className="text-right">Action</span>
@@ -682,7 +682,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                             </div>
 
                             {signatureData && (
-                                <div className="mt-3 flex items-center gap-2 text-micro font-black uppercase tracking-[0.14em] text-text-muted">
+                                <div className="mt-3 flex items-center gap-2 text-role-micro uppercase tracking-[0.14em] text-text-muted">
                                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-surface-inverse">
                                         <Check className="h-2.5 w-2.5 text-white" />
                                     </span>

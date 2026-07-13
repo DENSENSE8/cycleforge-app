@@ -60,8 +60,8 @@ export function BarcodePreview({
         <div className={`transition-opacity duration-200 ${!isActive ? 'opacity-15 pointer-events-none' : ''}`}>
             {/* Step label */}
             <div className={`flex items-center gap-3 ${comfy ? 'px-7 pt-7 pb-3' : 'px-5 pt-5 pb-3'}`}>
-                <span className={`font-black tabular-nums text-text-soft tracking-widest ${comfy ? 'text-micro' : 'text-eyebrow'}`}>03</span>
-                <span className={`font-black uppercase text-text-muted ${comfy ? 'text-caption tracking-[0.16em]' : 'text-eyebrow tracking-[0.18em]'}`}>
+                <span className={`tabular-nums text-text-soft tracking-widest ${comfy ? 'text-role-micro' : 'text-role-eyebrow'}`}>03</span>
+                <span className={`uppercase text-text-muted ${comfy ? 'text-role-caption tracking-[0.16em]' : 'text-role-eyebrow tracking-[0.18em]'}`}>
                     {`Review & ${mode === 'print' ? 'Print' : mode === 'reprint' ? 'Reprint' : 'Log'}`}
                 </span>
             </div>
@@ -75,15 +75,15 @@ export function BarcodePreview({
                     // printProductLabel encodes (built via buildUnitPayload).
                     <div className={`flex items-center bg-surface-canvas ${comfy ? 'px-7 py-7 gap-5' : 'px-5 py-5 gap-4'}`}>
                         <div className="min-w-0 flex-1 space-y-1">
-                            <p className={`leading-snug text-text-muted ${comfy ? 'text-xs' : 'text-caption'}`}>{title}</p>
+                            <p className={`leading-snug text-text-muted ${comfy ? 'text-xs' : 'text-role-caption'}`}>{title}</p>
                             <p className={`font-mono font-black tracking-tight text-text-default break-all ${comfy ? 'text-base' : 'text-sm'}`}>{uniqueSku}</p>
                             {mode !== 'reprint' && serialNumbers.length > 0 && (
-                                <p className={`text-text-soft font-mono ${comfy ? 'text-caption' : 'text-micro'}`}>
+                                <p className={`text-text-soft font-mono ${comfy ? 'text-role-caption' : 'text-role-micro'}`}>
                                     SN · {getSerialLast6(serialNumbers)}
                                 </p>
                             )}
                             {location && (
-                                <p className={`text-text-soft font-mono ${comfy ? 'text-caption' : 'text-micro'}`}>LOC · {location}</p>
+                                <p className={`text-text-soft font-mono ${comfy ? 'text-role-caption' : 'text-role-micro'}`}>LOC · {location}</p>
                             )}
                         </div>
                         <div className={`shrink-0 bg-surface-card border border-border-soft flex items-center justify-center ${comfy ? 'h-32 w-32 p-2' : 'h-24 w-24 p-1.5'}`}>
@@ -100,11 +100,11 @@ export function BarcodePreview({
                     /* sn-to-sku log mode */
                     <div className="px-5 py-5 space-y-3">
                         <div>
-                            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft mb-1">SKU</p>
+                            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft mb-1">SKU</p>
                             <p className="text-sm font-black font-mono text-text-default">{sku}</p>
                         </div>
                         <div>
-                            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft mb-1">
+                            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft mb-1">
                                 Serial Numbers ({serialNumbers.length})
                             </p>
                             <p className="text-xs font-mono text-text-muted break-all leading-relaxed">
@@ -113,7 +113,7 @@ export function BarcodePreview({
                         </div>
                         {location && (
                             <div>
-                                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft mb-1">Location</p>
+                                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft mb-1">Location</p>
                                 <p className="text-xs font-mono text-text-muted">{location}</p>
                             </div>
                         )}
@@ -125,7 +125,7 @@ export function BarcodePreview({
             <div className="border-t border-border-soft">
                 <button
                     onClick={onToggleNotes}
-                    className="ds-raw-button w-full px-5 py-3 text-left text-eyebrow font-black uppercase tracking-widest text-text-soft hover:text-text-muted transition-colors flex items-center justify-between"
+                    className="ds-raw-button w-full px-5 py-3 text-left text-role-eyebrow uppercase tracking-widest text-text-soft hover:text-text-muted transition-colors flex items-center justify-between"
                 >
                     <span>Notes {notes ? '(1)' : ''}</span>
                     <span>{showNotes ? '−' : '+'}</span>
@@ -161,7 +161,7 @@ export function BarcodePreview({
                         <Check className={comfy ? 'h-5 w-5' : 'h-4 w-4'} />
                         {ctaLabel}
                         {comfy && (mode === 'print' || mode === 'reprint') && (
-                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-eyebrow font-mono font-bold tracking-tighter">⌘P</kbd>
+                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono font-bold tracking-tighter">⌘P</kbd>
                         )}
                     </span>
                 )}

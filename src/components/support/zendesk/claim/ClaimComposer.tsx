@@ -10,9 +10,9 @@ import { ClaimTicketPicker } from './ClaimTicketPicker';
 import { PRIORITY_OPTIONS } from './claim-types';
 import type { ZendeskClaimController } from './useZendeskClaimController';
 
-const labelCls = 'text-micro font-black uppercase tracking-widest text-text-soft';
+const labelCls = 'text-role-micro uppercase tracking-widest text-text-soft';
 const inputCls =
-  'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2.5 text-[13px] text-text-default outline-none transition placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
+  'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2.5 text-role-data text-text-default outline-none transition placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-100';
 
 /** The mode-specific form body + the shared attachments section. */
 export function ClaimComposer({ c }: { c: ZendeskClaimController }) {
@@ -61,8 +61,8 @@ export function ClaimComposer({ c }: { c: ZendeskClaimController }) {
           <div className="space-y-2.5 rounded-xl bg-surface-canvas/80 p-3.5 ring-1 ring-inset ring-border-hairline">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-label font-bold text-text-muted">First message</p>
-                <p className="text-caption text-text-soft">
+                <p className="text-role-caption font-bold text-text-muted">First message</p>
+                <p className="text-role-caption text-text-soft">
                   {c.createPublic ? 'Emails the requester below.' : 'Internal note — nobody is emailed.'}
                 </p>
               </div>

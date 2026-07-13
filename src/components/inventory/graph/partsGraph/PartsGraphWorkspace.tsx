@@ -29,7 +29,7 @@ export function PartsGraphWorkspace() {
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
       {/* Summary strip */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-soft bg-surface-card px-4 py-2.5 text-label">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border-soft bg-surface-card px-4 py-2.5 text-role-caption">
         <span className="font-semibold text-text-default">Parts (Zoho items · derived from “-P”)</span>
         {summary && (
           <span className="text-text-soft">
@@ -38,11 +38,11 @@ export function PartsGraphWorkspace() {
           </span>
         )}
         {summary && (
-          <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-caption font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
+          <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-role-caption font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
             {summary.reviewedCount}/{summary.logicalPartCount} reviewed
           </span>
         )}
-        <span className="ml-auto text-caption text-text-faint">
+        <span className="ml-auto text-role-caption text-text-faint">
           Parent pairing is a later manual phase — links here are not asserted.
         </span>
       </div>
@@ -51,14 +51,14 @@ export function PartsGraphWorkspace() {
         <div className="relative min-w-0 flex-1">
           {isError ? (
             <div className="flex h-full items-center justify-center p-6">
-              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-label text-rose-700">
+              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
                 Could not load the parts graph.
                 <div className="mt-1 text-rose-400">{(error as Error)?.message}</div>
               </div>
             </div>
           ) : !isLoading && elements.length === 0 ? (
             <div className="flex h-full items-center justify-center text-center">
-              <p className="max-w-xs text-[13px] text-text-faint">
+              <p className="max-w-xs text-role-data text-text-faint">
                 No “-P” part SKUs found in the Zoho items mirror for this org. Run an items sync,
                 or confirm parts use the <span className="font-mono">{'<base>-P-<n>'}</span> convention.
               </p>
@@ -73,7 +73,7 @@ export function PartsGraphWorkspace() {
                 onNodeRecenter={noop}
               />
               {isLoading && (
-                <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-surface-card/90 px-2 py-1 text-caption text-text-faint shadow-sm">
+                <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-surface-card/90 px-2 py-1 text-role-caption text-text-faint shadow-sm">
                   Loading…
                 </div>
               )}

@@ -88,7 +88,7 @@ export function TaskInbox() {
             <Inbox className="w-5 h-5 text-emerald-500" />
             Your Inbox
           </h2>
-          <span className="text-caption font-medium bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full">
+          <span className="text-role-caption font-medium bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full">
             {myTasks.length} Assigned
           </span>
         </div>
@@ -96,7 +96,7 @@ export function TaskInbox() {
         <div className="flex-1 overflow-y-auto no-scrollbar pb-8">
           {myTasks.length > 0 && (
             <div className="mb-6">
-              <div className="px-6 py-3 text-caption font-bold text-text-muted tracking-wider uppercase flex items-center gap-2 sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10">
+              <div className="px-6 py-3 text-role-caption font-bold text-text-muted tracking-wider uppercase flex items-center gap-2 sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10">
                 <CheckCircle className="w-4 h-4" /> My Tasks
               </div>
               <div className="flex flex-col">
@@ -112,11 +112,11 @@ export function TaskInbox() {
                       <span className="text-body font-medium text-text-default line-clamp-1 group-hover:text-emerald-600 transition-colors">
                         {task.title}
                       </span>
-                      <span className="text-caption text-text-muted whitespace-nowrap ml-2 bg-surface-canvas px-2 py-0.5 rounded">
+                      <span className="text-role-caption text-text-muted whitespace-nowrap ml-2 bg-surface-canvas px-2 py-0.5 rounded">
                         {task.domain}
                       </span>
                     </div>
-                    <span className="text-caption text-text-soft line-clamp-2">
+                    <span className="text-role-caption text-text-soft line-clamp-2">
                       {task.subtitle}
                     </span>
                   </button>
@@ -127,7 +127,7 @@ export function TaskInbox() {
 
           {availableTasks.length > 0 && (
             <div>
-              <div className="px-6 py-3 text-caption font-bold text-text-muted tracking-wider uppercase flex items-center gap-2 sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10">
+              <div className="px-6 py-3 text-role-caption font-bold text-text-muted tracking-wider uppercase flex items-center gap-2 sticky top-0 bg-surface-card/95 backdrop-blur-sm z-10">
                 <Zap className="w-4 h-4" /> Available for Claim
               </div>
               <div className="flex flex-col">
@@ -143,11 +143,11 @@ export function TaskInbox() {
                       <span className="text-body font-medium text-text-default line-clamp-1 group-hover:text-blue-600 transition-colors">
                         {task.title}
                       </span>
-                      <span className="text-caption text-text-muted whitespace-nowrap ml-2 bg-surface-canvas px-2 py-0.5 rounded">
+                      <span className="text-role-caption text-text-muted whitespace-nowrap ml-2 bg-surface-canvas px-2 py-0.5 rounded">
                         {task.domain}
                       </span>
                     </div>
-                    <span className="text-caption text-text-soft line-clamp-2">
+                    <span className="text-role-caption text-text-soft line-clamp-2">
                       {task.subtitle}
                     </span>
                   </button>
@@ -164,14 +164,14 @@ export function TaskInbox() {
           <div className="flex-1 overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="p-8 max-w-3xl mx-auto">
               <div className="flex items-center gap-3 mb-6">
-                <span className={`px-3 py-1 rounded-full text-caption font-bold ${
+                <span className={`px-3 py-1 rounded-full text-role-caption font-bold ${
                   selectedTask.status === 'assigned' 
                     ? 'bg-emerald-500/10 text-emerald-600' 
                     : 'bg-blue-500/10 text-blue-600'
                 }`}>
                   {selectedTask.status.toUpperCase()}
                 </span>
-                <span className="text-caption text-text-soft flex items-center gap-1">
+                <span className="text-role-caption text-text-soft flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
                   {new Date(selectedTask.createdAt).toLocaleString()}
                 </span>

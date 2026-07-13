@@ -21,7 +21,7 @@ export function ScanAgainBar({ className = '' }: { className?: string }) {
         size="sm"
         icon={<QrCode />}
         onClick={() => router.push('/m/scan')}
-        className="rounded-full px-3 text-micro font-black uppercase tracking-wider"
+        className="rounded-full px-3 text-role-micro uppercase tracking-wider"
       >
         Scan again
       </Button>

@@ -41,7 +41,7 @@ export function PairingQueueList({ query, sort, selectedSku, onSelect }: Pairing
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
       {/* Count bar */}
-      <div className={`flex items-center justify-between gap-2 border-b border-border-hairline ${SIDEBAR_GUTTER} py-1.5 text-micro font-black uppercase tracking-wider text-text-soft`}>
+      <div className={`flex items-center justify-between gap-2 border-b border-border-hairline ${SIDEBAR_GUTTER} py-1.5 text-role-micro uppercase tracking-wider text-text-soft`}>
         <span>
           {loading ? 'Loading…' : total === null ? '' : `${total} need review`}
         </span>
@@ -68,7 +68,7 @@ export function PairingQueueList({ query, sort, selectedSku, onSelect }: Pairing
             <p className="text-xs font-bold text-text-soft">
               {debouncedQuery ? 'No matches' : 'All caught up'}
             </p>
-            <p className="mt-1 text-micro text-text-faint">
+            <p className="mt-1 text-role-micro text-text-faint">
               {debouncedQuery
                 ? 'Try a different search term.'
                 : 'No pairing suggestions to review right now.'}
@@ -114,7 +114,7 @@ function PairingQueueRow({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-micro font-bold text-text-faint">{item.sku.slice(0, 3)}</span>
+            <span className="text-role-micro font-bold text-text-faint">{item.sku.slice(0, 3)}</span>
           )}
         </span>
         <div className="min-w-0 flex-1">
@@ -122,7 +122,7 @@ function PairingQueueRow({
             <span className="truncate font-mono text-xs font-bold text-text-default">{item.sku}</span>
             {item.isActive === false && (
               <HoverTooltip label="This canonical SKU is inactive in the catalog" asChild focusable={false}>
-                <span className="inline-flex shrink-0 items-center rounded bg-surface-sunken px-1 text-eyebrow font-bold uppercase tracking-wider text-text-soft ring-1 ring-border-soft">
+                <span className="inline-flex shrink-0 items-center rounded bg-surface-sunken px-1 text-role-eyebrow font-bold uppercase tracking-wider text-text-soft ring-1 ring-border-soft">
                   inactive
                 </span>
               </HoverTooltip>
@@ -134,20 +134,20 @@ function PairingQueueRow({
                 asChild
                 focusable={false}
               >
-                <span className="inline-flex items-center rounded bg-amber-50 px-1 text-eyebrow font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
+                <span className="inline-flex items-center rounded bg-amber-50 px-1 text-role-eyebrow font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200">
                   {formatVolume(item.orderCount)} ord
                 </span>
               </HoverTooltip>
             )}
-            <span className="text-micro font-semibold text-text-faint">
+            <span className="text-role-micro font-semibold text-text-faint">
               {item.suggestionCount} suggested
             </span>
           </div>
-          <p className="mt-0.5 line-clamp-2 text-caption leading-tight text-text-muted">
+          <p className="mt-0.5 line-clamp-2 text-role-caption leading-tight text-text-muted">
             {item.productTitle || '—'}
           </p>
           {item.matchedVia && (
-            <p className="mt-0.5 truncate text-eyebrow font-semibold uppercase tracking-wider text-blue-600">
+            <p className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-wider text-blue-600">
               matched {platformStyle(item.matchedVia.platform).label}:{' '}
               <span className="font-mono normal-case tracking-normal text-text-muted">
                 {item.matchedVia.platform === 'ecwid'
@@ -162,14 +162,14 @@ function PairingQueueRow({
               return (
                 <span
                   key={p}
-                  className={`inline-flex items-center rounded border px-1.5 py-0 text-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}
+                  className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}
                 >
                   {style.label}
                 </span>
               );
             })}
             {item.confirmedCount > 0 && (
-              <span className="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-eyebrow font-semibold uppercase tracking-wider text-emerald-700">
+              <span className="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider text-emerald-700">
                 ✓ {item.confirmedCount}
               </span>
             )}

@@ -227,7 +227,7 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
             {logs.map((log) => (
               <p
                 key={log.id}
-                className={`text-micro font-medium leading-tight ${
+                className={`text-role-micro font-medium leading-tight ${
                   log.type === 'success' ? 'text-text-success' : 'text-text-danger'
                 }`}
               >

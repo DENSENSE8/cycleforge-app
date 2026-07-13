@@ -16,9 +16,11 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
+import { useHydrateVisibleSerials } from './useHydrateVisibleSerials';
 import { useRailExclusions } from './useRailExclusions';
 import { railExclusionFeedKey } from '@/lib/receiving/rail/exclusion-feed-key';
 import {
@@ -121,6 +123,20 @@ export function ReceivingFeedRail({
 
   const qty = RAIL_QTY[feed.qty];
   const dot = RAIL_STATUS[feed.status];
+
+  // Tier A serial pre-seed: read-only observer of the rail cache the base owns
+  // (enabled:false → never fetches), so we can hand the visible rows to the
+  // batch-serial hydrator. It only fires for rows still lacking serials, so once
+  // Tier B2's projection is populated every row arrives with serials and this is
+  // a pure no-op.
+  const queryClient = useQueryClient();
+  const railRows = useQuery<ReceivingLineRow[]>({
+    queryKey,
+    queryFn: async () => [],
+    enabled: false,
+    notifyOnChangeProps: ['data'],
+  }).data;
+  useHydrateVisibleSerials(queryClient, railRows, queryKey);
 
   return (
     <RecentActivityRailBase

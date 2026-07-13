@@ -32,7 +32,7 @@ import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu'
 import { PhotoDateBreadcrumb } from './PhotoDateBreadcrumb';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
-import { PhotoGridDisplayControls } from './PhotoGridDisplayControls';
+import { PhotoDisplayControls } from './PhotoDisplayControls';
 import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
@@ -137,7 +137,7 @@ export function PhotoLibraryPage() {
   const selectionActive = selectMode || isActive;
 
   const shareLinks = usePhotoShareLinks();
-  const { title, subtitle } = describePhotoLibraryContext(displayFilters);
+  const { subtitle } = describePhotoLibraryContext(displayFilters);
 
   const { view } = display;
 
@@ -545,22 +545,9 @@ export function PhotoLibraryPage() {
   return (
     <RightPaneOverlayHost className="flex h-full min-h-0 flex-col">
     <div className="relative flex h-full min-h-0 flex-col bg-surface-card">
-      <PhotoLibraryHeader
-        title={title}
-        metaLine={metaLine}
-        folderBrowse={folderBrowse}
-        sort={filters.sort ?? 'recent'}
-        onSortChange={(sort) => patch({ sort })}
-        view={view}
-        onViewChange={handleViewChange}
-        folderIsLeaf={folderIsLeaf}
-        onToggleSelection={() => setSelectMode(true)}
-        showDisplayControls={showSecondHeaderControls}
-      />
-
-      {/* Top context bar — folder path by default, swapped for the bulk-action bar
-          while selecting. Both share the same height so toggling selection never
-          shifts the layout. */}
+      {/* Single consolidated header — the display toolbar by default, swapped
+          whole-cloth for the bulk-action bar while selecting. Both are one 40px
+          bordered row, so toggling selection never shifts the layout. */}
       {selectionActive ? (
         <PhotoLibraryToolbar
           rows={selectedPhotos}
@@ -574,8 +561,8 @@ export function PhotoLibraryPage() {
           onClear={exitSelectMode}
         />
       ) : (
-        <>
-          <div className="flex h-[40px] shrink-0 items-center border-b border-border-soft bg-surface-card px-4">
+        <PhotoLibraryHeader
+          breadcrumb={
             <PhotoDateBreadcrumb
               filters={displayFilters}
               today={today}
@@ -585,18 +572,26 @@ export function PhotoLibraryPage() {
                 patch({ dateFrom, dateTo, poRef: undefined, ticketId: undefined })
               }
             />
-          </div>
-          {showGridControls ? (
-            <div className="flex h-[40px] shrink-0 items-center justify-end gap-1 border-b border-border-soft bg-surface-card px-4">
-              <PhotoGridDisplayControls
-                density={gridDensity}
-                onDensityChange={setGridDensity}
-                onRefresh={() => void query.refetch()}
-                isRefreshing={query.isFetching && !query.isLoading}
-              />
-            </div>
-          ) : null}
-        </>
+          }
+          metaLine={metaLine}
+          sort={filters.sort ?? 'recent'}
+          onSortChange={(sort) => patch({ sort })}
+          controls={
+            <PhotoDisplayControls
+              view={view}
+              onViewChange={handleViewChange}
+              density={gridDensity}
+              onDensityChange={setGridDensity}
+              showToggle={showSecondHeaderControls}
+              showDensity={showGridControls}
+              showSelect={showSecondHeaderControls}
+              selectionActive={selectionActive}
+              onStartSelect={() => setSelectMode(true)}
+              onRefresh={() => void query.refetch()}
+              isRefreshing={query.isFetching && !query.isLoading}
+            />
+          }
+        />
       )}
 
       <div className="relative min-h-0 flex-1 overflow-y-auto p-4 pb-6 lg:p-6">
@@ -627,7 +622,7 @@ export function PhotoLibraryPage() {
         {query.hasNextPage ? (
           <div
             ref={sentinelRef}
-            className="flex items-center justify-center py-6 text-micro font-bold uppercase tracking-widest text-text-faint"
+            className="flex items-center justify-center py-6 text-role-micro font-bold uppercase tracking-widest text-text-faint"
           >
             {query.isFetchingNextPage ? (
               <>
@@ -636,7 +631,7 @@ export function PhotoLibraryPage() {
             ) : null}
           </div>
         ) : !query.isLoading && photos.length > 0 ? (
-          <p className="mt-6 text-center text-micro font-bold uppercase tracking-widest text-text-faint">
+          <p className="mt-6 text-center text-role-micro font-bold uppercase tracking-widest text-text-faint">
             {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
           </p>
         ) : null}

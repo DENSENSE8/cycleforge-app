@@ -110,7 +110,7 @@ function statusBadge(status: InventoryOrderResult['status'], delivered: boolean)
   };
   const { label, cls } = map[status];
   return (
-    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${cls}`}>
+    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${cls}`}>
       {label}
     </span>
   );
@@ -143,7 +143,7 @@ function ChainStep({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-md bg-surface-card px-1.5 py-1 ring-1 ring-border-soft">
       <span className="text-text-soft">{icon}</span>
-      <span className="text-micro font-medium text-text-muted">{label}</span>
+      <span className="text-role-micro font-medium text-text-muted">{label}</span>
     </span>
   );
 }
@@ -153,7 +153,7 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
     <div className="max-h-[42vh] overflow-y-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
-          <tr className="text-micro uppercase tracking-wide text-text-soft">
+          <tr className="text-role-micro uppercase tracking-wide text-text-soft">
             <th className="px-3 py-2 font-semibold">Date</th>
             <th className="px-3 py-2 font-semibold">Product</th>
             <th className="px-3 py-2 font-semibold">Packer</th>
@@ -175,11 +175,11 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
                 <td className="px-3 py-2 align-top text-text-muted">
                   {first?.productTitle || <span className="text-amber-700">Unknown product</span>}
                   {extra > 0 ? (
-                    <span className="ml-1 text-micro font-medium uppercase tracking-wide text-text-faint">
+                    <span className="ml-1 text-role-micro font-medium uppercase tracking-wide text-text-faint">
                       +{extra} more
                     </span>
                   ) : null}
-                  {r.error ? <div className="mt-0.5 text-micro text-red-500">{r.error}</div> : null}
+                  {r.error ? <div className="mt-0.5 text-role-micro text-red-500">{r.error}</div> : null}
                 </td>
                 <td className="px-3 py-2 align-top text-xs text-text-muted">
                   {r.packer?.name ? (
@@ -198,7 +198,7 @@ function DetailTable({ rows }: { rows: InventoryOrderResult[] }) {
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}
                   {r.channel ? (
-                    <div className="mt-0.5 pl-1.5 text-micro font-normal uppercase tracking-wide text-text-faint">
+                    <div className="mt-0.5 pl-1.5 text-role-micro font-normal uppercase tracking-wide text-text-faint">
                       {r.channel}
                     </div>
                   ) : null}
@@ -307,7 +307,7 @@ export function InventoryFulfillmentSyncDialog({
               key={Math.floor(elapsedMs / 100)}
               initial={{ opacity: 0.4 }}
               animate={{ opacity: 1 }}
-              className="text-caption font-mono font-semibold text-blue-600 tabular-nums"
+              className="text-role-caption font-mono font-semibold text-blue-600 tabular-nums"
             >
               {(elapsedMs / 1000).toFixed(1)}s
             </motion.span>
@@ -327,7 +327,7 @@ export function InventoryFulfillmentSyncDialog({
         </header>
 
         <div className="flex flex-wrap items-center gap-1.5 border-b border-border-hairline bg-surface-canvas/60 px-5 py-2">
-          <span className="text-micro font-medium uppercase tracking-wide text-text-faint">Each order →</span>
+          <span className="text-role-micro font-medium uppercase tracking-wide text-text-faint">Each order →</span>
           <ChainStep icon={<FileText className="h-3.5 w-3.5" />} label="Sales order" />
           <span className="text-text-faint">→</span>
           <ChainStep icon={<Package className="h-3.5 w-3.5" />} label="Package" />
@@ -346,12 +346,12 @@ export function InventoryFulfillmentSyncDialog({
             <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
               <Link2 className="h-6 w-6 text-text-faint" />
               <p className={fieldLabel}>No inventory integration is connected.</p>
-              <p className="max-w-sm text-caption text-text-soft">
+              <p className="max-w-sm text-role-caption text-text-soft">
                 Connect one in Settings → Integrations to sync shipped orders.
               </p>
               <Link
                 href="/settings/integrations#zoho"
-                className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-accent-bg px-3 py-1.5 text-eyebrow font-black uppercase tracking-widest text-text-inverse hover:bg-accent-bg/90"
+                className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-accent-bg px-3 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-inverse hover:bg-accent-bg/90"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 Open Integrations
@@ -383,7 +383,7 @@ export function InventoryFulfillmentSyncDialog({
                   </p>
                   <ul className="mt-1 space-y-0.5">
                     {report.errors.slice(0, 4).map((e, i) => (
-                      <li key={i} className="text-caption text-red-600">
+                      <li key={i} className="text-role-caption text-red-600">
                         {e}
                       </li>
                     ))}
@@ -413,7 +413,7 @@ export function InventoryFulfillmentSyncDialog({
         </div>
 
         <footer className="flex items-center justify-between gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
-          <p className="text-micro leading-snug text-text-faint">
+          <p className="text-role-micro leading-snug text-text-faint">
             {report?.dryRun !== false
               ? 'Preview is a dry run (no changes).'
               : 'Records created in inventory.'}

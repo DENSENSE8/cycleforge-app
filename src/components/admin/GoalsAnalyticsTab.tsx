@@ -130,7 +130,7 @@ export function GoalsAnalyticsTab() {
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border-soft bg-surface-card px-6 py-4">
         <div className="min-w-0">
-          <p className="text-micro font-bold uppercase tracking-widest text-text-soft">
+          <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">
             {staffSummary.role} · {staffSummary.station}
           </p>
           <h2 className="mt-0.5 truncate text-lg font-bold text-text-default">{staffSummary.name}</h2>
@@ -142,7 +142,7 @@ export function GoalsAnalyticsTab() {
               key={option.value}
               type="button"
               onClick={() => setRangeFilter(option.value)}
-              className={`rounded-md px-2.5 py-1 text-micro font-semibold uppercase tracking-wider transition ${
+              className={`rounded-md px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
                 rangeFilter === option.value
                   ? 'bg-blue-600 text-white'
                   : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
@@ -154,7 +154,7 @@ export function GoalsAnalyticsTab() {
           <select
             value={stationFilter}
             onChange={(e) => setStationFilter(e.target.value as StationFilter)}
-            className="ml-2 rounded-md border border-border-default px-2 py-1 text-caption"
+            className="ml-2 rounded-md border border-border-default px-2 py-1 text-role-caption"
           >
             <option value="ALL">All stations</option>
             <option value="TECH">Tech</option>
@@ -189,7 +189,7 @@ export function GoalsAnalyticsTab() {
           </div>
 
           <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-            <p className="text-micro font-bold uppercase tracking-widest text-text-soft">Trend</p>
+            <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">Trend</p>
             <div className="mt-3 flex items-end gap-2">
               {[...staffSummary.recent].reverse().map((entry) => {
                 const metrics = getProgress(entry.actual, entry.goal);
@@ -205,7 +205,7 @@ export function GoalsAnalyticsTab() {
                         />
                       </HoverTooltip>
                     </div>
-                    <span className="text-eyebrow font-medium text-text-faint">
+                    <span className="text-role-eyebrow font-medium text-text-faint">
                       {formatShortDate(entry.logged_date).split(' ')[1]}
                     </span>
                   </div>
@@ -215,7 +215,7 @@ export function GoalsAnalyticsTab() {
           </div>
 
           <div className="rounded-xl border border-border-soft bg-surface-card">
-            <div className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-soft px-4 py-2.5 text-micro font-bold uppercase tracking-widest text-text-soft">
+            <div className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-soft px-4 py-2.5 text-role-micro font-bold uppercase tracking-widest text-text-soft">
               <p>Date</p>
               <p className="text-right">Actual</p>
               <p className="text-right">Goal</p>
@@ -227,7 +227,7 @@ export function GoalsAnalyticsTab() {
               return (
                 <div
                   key={entry.logged_date}
-                  className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-hairline px-4 py-2.5 text-label last:border-b-0"
+                  className="grid grid-cols-[1fr_80px_80px_100px] gap-x-3 border-b border-border-hairline px-4 py-2.5 text-role-caption last:border-b-0"
                 >
                   <p className="text-text-muted">{formatShortDate(entry.logged_date)}</p>
                   <p className="text-right tabular-nums text-text-default">{entry.actual}</p>
@@ -256,9 +256,9 @@ function DetailCard({
 }) {
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-3">
-      <p className="text-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
       <div className="mt-1 text-base font-bold text-text-default">{value}</div>
-      {hint ? <p className="mt-0.5 text-micro text-text-soft">{hint}</p> : null}
+      {hint ? <p className="mt-0.5 text-role-micro text-text-soft">{hint}</p> : null}
     </div>
   );
 }

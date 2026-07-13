@@ -41,7 +41,7 @@ export function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-micro font-bold uppercase tracking-wide ${unitStatusBadgeClass(v)}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-bold uppercase tracking-wide ${unitStatusBadgeClass(v)}`}
     >
       {v}
     </span>
@@ -52,7 +52,7 @@ export function ConditionPill({ grade }: { grade: string | null }) {
   if (!grade) return null;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wide ${conditionBadgeTone(grade)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${conditionBadgeTone(grade)}`}
     >
       {prettyLabel(grade)}
     </span>
@@ -62,8 +62,8 @@ export function ConditionPill({ grade }: { grade: string | null }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-eyebrow font-black uppercase tracking-[0.14em] text-text-faint">{label}</dt>
-      <dd className="mt-0.5 truncate text-caption font-semibold text-text-default">{children}</dd>
+      <dt className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">{label}</dt>
+      <dd className="mt-0.5 truncate text-role-caption font-semibold text-text-default">{children}</dd>
     </div>
   );
 }
@@ -74,7 +74,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-12 shrink-0 text-eyebrow font-black uppercase tracking-[0.14em] text-text-faint">
+      <span className="w-12 shrink-0 text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
         {label}
       </span>
       {children}
@@ -153,7 +153,7 @@ export function LocationCard({
 
   return (
     <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
-      <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">Location</p>
+      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Location</p>
       <div className="mt-2 flex items-center gap-3">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -166,7 +166,7 @@ export function LocationCard({
           <p className="truncate font-mono text-base font-bold text-text-default">
             {stocked ? location : 'Not stocked'}
           </p>
-          <p className="truncate text-micro font-medium text-text-soft">{sub}</p>
+          <p className="truncate text-role-micro font-medium text-text-soft">{sub}</p>
         </div>
       </div>
     </section>
@@ -176,7 +176,7 @@ export function LocationCard({
 export function OrderCard({ allocation }: { allocation: Allocation | null }) {
   return (
     <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
-      <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">Order</p>
+      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Order</p>
       <div className="mt-2 flex items-center gap-3">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -189,7 +189,7 @@ export function OrderCard({ allocation }: { allocation: Allocation | null }) {
           <p className="truncate font-mono text-base font-bold text-text-default">
             {allocation?.order_id ?? 'Unallocated'}
           </p>
-          <p className="truncate text-micro font-medium text-text-soft">
+          <p className="truncate text-role-micro font-medium text-text-soft">
             {allocation
               ? `${allocation.state} · ${timeAgo(allocation.allocated_at)}`
               : 'No open allocation'}
@@ -233,15 +233,15 @@ export function TimelineCard({
   return (
     <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="flex items-center justify-between px-5 py-4">
-        <h3 className="text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Timeline
         </h3>
-        <span className="text-micro font-semibold text-text-faint">
+        <span className="text-role-micro font-semibold text-text-faint">
           {sorted.length} {sorted.length === 1 ? 'event' : 'events'}
         </span>
       </header>
       {sorted.length === 0 ? (
-        <div className="border-t border-border-hairline px-5 py-8 text-center text-caption font-medium text-text-faint">
+        <div className="border-t border-border-hairline px-5 py-8 text-center text-role-caption font-medium text-text-faint">
           No events recorded yet.
         </div>
       ) : (
@@ -286,15 +286,15 @@ function TimelineRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-label font-bold text-text-default">{prettyLabel(event.event_type)}</span>
-          <span className="text-micro text-text-faint">{timeAgo(event.occurred_at)}</span>
+          <span className="text-role-caption font-bold text-text-default">{prettyLabel(event.event_type)}</span>
+          <span className="text-role-micro text-text-faint">{timeAgo(event.occurred_at)}</span>
           {event.station ? (
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-bold uppercase tracking-wider text-text-soft">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
               {event.station}
             </span>
           ) : null}
         </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-micro text-text-soft">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-role-micro text-text-soft">
           {event.actor_name ? <span>{event.actor_name}</span> : null}
           {statusChanged ? (
             <span className="flex items-center gap-1 font-mono">
@@ -305,7 +305,7 @@ function TimelineRow({
           ) : null}
           {event.bin_name ? <span className="font-mono">@ {event.bin_name}</span> : null}
         </div>
-        {event.notes ? <p className="mt-1 text-caption text-text-muted">{event.notes}</p> : null}
+        {event.notes ? <p className="mt-1 text-role-caption text-text-muted">{event.notes}</p> : null}
         {eventPhotos.length > 0 ? (
           <div className="mt-2">
             <PhotoGallery
@@ -324,7 +324,7 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
   return (
     <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
-        <h3 className="text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Order allocations
         </h3>
       </header>
@@ -332,9 +332,9 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
         {rows.map((a) => (
           <li key={a.id} className="px-5 py-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="font-mono text-label font-bold text-text-default">{a.order_id}</span>
+              <span className="font-mono text-role-caption font-bold text-text-default">{a.order_id}</span>
               <span
-                className={`rounded px-1.5 py-0.5 text-micro font-bold uppercase tracking-wider ${
+                className={`rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider ${
                   a.state === 'RELEASED'
                     ? 'bg-surface-sunken text-text-soft'
                     : 'bg-emerald-100 text-emerald-700'
@@ -343,7 +343,7 @@ export function AllocationsCard({ rows }: { rows: Allocation[] }) {
                 {a.state}
               </span>
             </div>
-            <div className="mt-0.5 text-micro text-text-soft">
+            <div className="mt-0.5 text-role-micro text-text-soft">
               Allocated {timeAgo(a.allocated_at)}{a.allocated_by_name ? ` by ${a.allocated_by_name}` : ''}
               {a.released_at ? ` · released ${timeAgo(a.released_at)}` : ''}
               {a.released_reason ? ` (${a.released_reason})` : ''}
@@ -359,23 +359,23 @@ export function ConditionsCard({ rows }: { rows: ConditionRow[] }) {
   return (
     <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
-        <h3 className="text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Condition history
         </h3>
       </header>
       <ul className="border-t border-border-hairline divide-y divide-border-hairline">
         {rows.map((c) => (
           <li key={c.id} className="px-5 py-3">
-            <div className="flex items-center gap-2 font-mono text-label font-bold text-text-default">
+            <div className="flex items-center gap-2 font-mono text-role-caption font-bold text-text-default">
               {c.prev_grade ?? '—'}
               <ChevronRight className="h-3 w-3 text-text-faint" />
               {c.new_grade}
             </div>
-            <div className="mt-0.5 text-micro text-text-soft">
+            <div className="mt-0.5 text-role-micro text-text-soft">
               {timeAgo(c.assessed_at)}{c.assessed_by_name ? ` · ${c.assessed_by_name}` : ''}
             </div>
             {(c.cosmetic_notes || c.functional_notes) && (
-              <p className="mt-1 text-caption text-text-muted">
+              <p className="mt-1 text-role-caption text-text-muted">
                 {[c.cosmetic_notes, c.functional_notes].filter(Boolean).join(' · ')}
               </p>
             )}
@@ -390,7 +390,7 @@ export function TsnLinksCard({ rows }: { rows: TsnLink[] }) {
   return (
     <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="px-5 py-4">
-        <h3 className="text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft">
+        <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
           Tech / station scans
         </h3>
       </header>
@@ -398,13 +398,13 @@ export function TsnLinksCard({ rows }: { rows: TsnLink[] }) {
         {rows.map((t) => (
           <li key={t.id} className="px-5 py-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-label font-bold text-text-default">
+              <span className="text-role-caption font-bold text-text-default">
                 {t.station_source || '—'}
                 {t.serial_type ? ` · ${t.serial_type}` : ''}
               </span>
-              <span className="text-micro text-text-faint">{timeAgo(t.created_at)}</span>
+              <span className="text-role-micro text-text-faint">{timeAgo(t.created_at)}</span>
             </div>
-            <div className="mt-0.5 text-micro text-text-soft">
+            <div className="mt-0.5 text-role-micro text-text-soft">
               {t.tested_by_name ?? 'Unknown actor'}
               {t.shipment_id ? ` · shipment ${t.shipment_id}` : ''}
               {t.fnsku ? ` · FNSKU ${t.fnsku}` : ''}
@@ -423,7 +423,7 @@ export function DetailEmptyState({ fromRecent = false }: { fromRecent?: boolean 
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
       <Icon className="mb-3 h-10 w-10 text-text-faint" />
-      <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
         {fromRecent ? 'Recently printed' : 'Unit history'}
       </p>
       <p className="mt-3 max-w-[420px] text-sm font-medium text-text-soft">
@@ -438,7 +438,7 @@ export function DetailEmptyState({ fromRecent = false }: { fromRecent?: boolean 
 export function DetailLoadingState() {
   return (
     <div className="flex h-full items-center justify-center px-6 py-12">
-      <p className="text-caption font-semibold text-text-faint">Loading unit…</p>
+      <p className="text-role-caption font-semibold text-text-faint">Loading unit…</p>
     </div>
   );
 }
@@ -447,7 +447,7 @@ export function DetailErrorState({ message }: { message: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
       <AlertTriangle className="mb-3 h-10 w-10 text-amber-400" />
-      <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-amber-600">
+      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-amber-600">
         Couldn't load unit
       </p>
       <p className="mt-3 max-w-[420px] text-sm font-medium text-text-soft">{message}</p>

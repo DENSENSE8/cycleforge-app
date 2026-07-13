@@ -88,7 +88,7 @@ export function ActiveShipmentCard({
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex min-w-0 items-baseline gap-1.5">
               <span className="inline-flex min-w-0 max-w-full items-center gap-0.5 leading-none">
-                <span className="truncate font-mono text-label font-black leading-none text-text-default">
+                <span className="truncate font-mono text-role-caption font-black leading-none text-text-default">
                   {shipment.amazon_shipment_id || shipment.shipment_ref}
                 </span>
                 {editable && (
@@ -106,7 +106,7 @@ export function ActiveShipmentCard({
                   </HoverTooltip>
                 )}
               </span>
-              <span className="shrink-0 text-micro font-bold text-text-faint">
+              <span className="shrink-0 text-role-micro font-bold text-text-faint">
                 {shipment.items.length} SKU · {totalQty} units
               </span>
               <FbaStatusBadge
@@ -118,13 +118,13 @@ export function ActiveShipmentCard({
               />
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
-              <p className="truncate font-mono text-micro font-bold text-text-faint">
+              <p className="truncate font-mono text-role-micro font-bold text-text-faint">
                 {shipment.tracking_numbers.length > 1
                   ? `${shipment.tracking_numbers.length} trackings`
                   : `${carrier ? `${carrier} · ` : ''}${primaryTracking}`}
               </p>
               {isShipped && shippedDateLabel ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-eyebrow font-black text-emerald-700">
+                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-role-eyebrow text-emerald-700">
                   {shippedDateLabel}
                 </span>
               ) : null}
@@ -165,7 +165,7 @@ export function ActiveShipmentCard({
                     {unallocatedItems.length > 0 && (
                       <div className="divide-y divide-border-hairline">
                         {hasBundles && (
-                          <p className="px-2.5 py-1.5 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+                          <p className="px-2.5 py-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
                             Unallocated
                           </p>
                         )}

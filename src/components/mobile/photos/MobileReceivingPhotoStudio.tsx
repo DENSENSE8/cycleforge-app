@@ -147,7 +147,7 @@ export function MobileReceivingPhotoStudio({
       onDeletePrior={handleDeletePrior}
       header={
         <div className="min-w-0">
-          <p className="text-micro font-black uppercase tracking-[0.22em] text-white/60">
+          <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
             Add unboxing photos
           </p>
           <p className="truncate text-sm font-black text-white">{headerLabel}</p>

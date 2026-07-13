@@ -96,13 +96,13 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
       >
         <header className="flex items-start gap-3 border-b border-border-soft px-4 py-3">
           <div className="min-w-0 flex-1">
-            <div className="text-micro font-bold uppercase tracking-wider text-text-soft">
+            <div className="text-role-micro font-bold uppercase tracking-wider text-text-soft">
               Bin
             </div>
             <div className="truncate font-mono text-lg font-semibold text-text-default">
               {row.barcode ?? row.name}
             </div>
-            <div className="mt-0.5 text-caption text-text-soft">
+            <div className="mt-0.5 text-role-caption text-text-soft">
               {row.room ?? '—'}{row.zone_letter ? ` [${row.zone_letter}]` : ''} · Row {row.row_label ?? '—'} · Col {row.col_label ?? '—'}
             </div>
           </div>
@@ -149,7 +149,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 
             {/* Contents */}
             <section>
-              <h3 className="mb-2 text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+              <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
                 Contents
               </h3>
               {loading && (
@@ -178,12 +178,12 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
                         </span>
                       </div>
                       {c.productTitle && (
-                        <div className="mt-0.5 line-clamp-1 text-caption text-text-soft">
+                        <div className="mt-0.5 line-clamp-1 text-role-caption text-text-soft">
                           {c.productTitle}
                         </div>
                       )}
                       {(c.minQty != null || c.maxQty != null) && (
-                        <div className="mt-0.5 text-micro text-text-faint">
+                        <div className="mt-0.5 text-role-micro text-text-faint">
                           min {c.minQty ?? '—'} · max {c.maxQty ?? '—'}
                         </div>
                       )}
@@ -195,7 +195,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 
             {/* History */}
             <section>
-              <h3 className="mb-2 text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+              <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
                 Recent history
               </h3>
               <AuditTimeline binId={row.id} limit={20} compact noHeader />
@@ -207,7 +207,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
         {row.barcode ? (
           <div className="shrink-0 border-t border-border-soft bg-surface-card px-4 py-3">
             {deleteError ? (
-              <p className="mb-2 text-caption font-semibold text-rose-600">{deleteError}</p>
+              <p className="mb-2 text-role-caption font-semibold text-rose-600">{deleteError}</p>
             ) : null}
             <DeleteButton
               onConfirm={handleDelete}
@@ -217,7 +217,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
               }}
               label="Delete bin"
               armedLabel="Click again to delete bin"
-              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-caption font-bold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-role-caption font-bold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
         ) : null}
@@ -229,7 +229,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-eyebrow font-semibold uppercase tracking-wider text-text-soft">
+      <div className="text-role-eyebrow font-semibold uppercase tracking-wider text-text-soft">
         {label}
       </div>
       <div className="mt-0.5 text-lg font-semibold tabular-nums text-text-default">

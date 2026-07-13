@@ -23,7 +23,7 @@ function ToggleRow({ label, description, checked, onChange }: ToggleRowProps) {
     <label className="flex cursor-pointer items-start justify-between gap-4 py-3">
       <span className="min-w-0">
         <span className="block text-sm font-semibold text-text-default">{label}</span>
-        {description && <span className="mt-0.5 block text-caption text-text-soft">{description}</span>}
+        {description && <span className="mt-0.5 block text-role-caption text-text-soft">{description}</span>}
       </span>
       <button
         type="button"
@@ -116,7 +116,7 @@ export function QuickAccessSection() {
 
       <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-2 text-sm font-semibold text-text-default">Optional actions</h3>
-        <p className="mb-2 text-caption text-text-soft">Shown at the bottom of the account menu when enabled.</p>
+        <p className="mb-2 text-role-caption text-text-soft">Shown at the bottom of the account menu when enabled.</p>
         <div className="divide-y divide-border-hairline">
           <ToggleRow
             label="Phone history"
@@ -134,7 +134,7 @@ export function QuickAccessSection() {
 
         <div className="rounded-2xl border border-border-soft bg-surface-card">
           <div className="border-b border-border-hairline px-4 pb-1 pt-3">
-            <h3 className="text-caption font-bold uppercase tracking-wider text-text-soft">FAB appearance</h3>
+            <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-soft">FAB appearance</h3>
           </div>
           <div className="px-4">
             <ToggleRow
@@ -150,7 +150,7 @@ export function QuickAccessSection() {
       <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
         <div className="mb-3 flex items-baseline justify-between">
           <h3 className="text-sm font-semibold text-text-default">Pinned pages</h3>
-          <span className="text-caption font-medium text-text-soft">
+          <span className="text-role-caption font-medium text-text-soft">
             {settings.pinned.length} / {MAX_PINS}
           </span>
         </div>
@@ -195,7 +195,7 @@ export function QuickAccessSection() {
                       </Button>
                     </HoverTooltip>
                   )}
-                  <p className="truncate font-mono text-caption text-text-soft">{p.href}</p>
+                  <p className="truncate font-mono text-role-caption text-text-soft">{p.href}</p>
                 </div>
                 <Button
                   variant="secondary"
@@ -211,7 +211,7 @@ export function QuickAccessSection() {
         )}
 
         <div className="mt-4 space-y-2 border-t border-border-hairline pt-4">
-          <p className="text-caption font-semibold uppercase tracking-widest text-text-faint">Add manually</p>
+          <p className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">Add manually</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
             <input
               type="text"
@@ -235,7 +235,7 @@ export function QuickAccessSection() {
               Add
             </Button>
           </div>
-          {addError && <p className="text-caption text-red-600">{addError}</p>}
+          {addError && <p className="text-role-caption text-red-600">{addError}</p>}
         </div>
       </div>
 
@@ -243,7 +243,7 @@ export function QuickAccessSection() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-text-default">Recent pages</h3>
-            <p className="text-caption text-text-soft">{recents.length} stored on this device</p>
+            <p className="text-role-caption text-text-soft">{recents.length} stored on this device</p>
           </div>
           <Button
             variant="secondary"

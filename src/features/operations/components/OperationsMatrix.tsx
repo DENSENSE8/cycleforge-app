@@ -167,7 +167,7 @@ export const OperationsMatrix: React.FC = () => {
 
                       {link.badge ? (
                         <span
-                          className={`text-micro uppercase tracking-widest font-bold px-2 py-1 rounded-full ${domain.tone.badgeClass}`}
+                          className={`text-role-micro uppercase tracking-widest font-bold px-2 py-1 rounded-full ${domain.tone.badgeClass}`}
                         >
                           {link.badge}
                         </span>

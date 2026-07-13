@@ -168,7 +168,7 @@ export function InventoryResultCard({
                             </span>
                         ) : null}
                     </div>
-                    <p className="text-eyebrow text-text-soft font-semibold truncate">{body.subtitle}</p>
+                    <p className="text-role-eyebrow text-text-soft font-semibold truncate">{body.subtitle}</p>
                     <p className={`${microBadge} font-mono text-text-soft truncate`}>{body.meta}</p>
                 </div>
             </button>

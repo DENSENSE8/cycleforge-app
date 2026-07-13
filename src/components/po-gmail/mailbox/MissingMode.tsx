@@ -27,7 +27,7 @@ export function MissingMode({
       {/* Scan controls — run a fresh reconcile to populate the worklist */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
         <label className="flex-1 min-w-[220px]">
-          <span className="block text-caption font-medium text-text-muted">Mailbox query</span>
+          <span className="block text-role-caption font-medium text-text-muted">Mailbox query</span>
           <input
             type="text"
             value={scanQuery}
@@ -37,7 +37,7 @@ export function MissingMode({
           />
         </label>
         <label>
-          <span className="block text-caption font-medium text-text-muted">Limit</span>
+          <span className="block text-role-caption font-medium text-text-muted">Limit</span>
           <input
             type="number"
             min={1}
@@ -68,7 +68,7 @@ export function MissingMode({
       </div>
 
       {/* Status filter pills */}
-      <div className="flex flex-wrap items-center gap-2 text-label">
+      <div className="flex flex-wrap items-center gap-2 text-role-caption">
         {MISSING_STATUS_TABS.map((t) => {
           const n = missing?.counts[t.id] ?? 0;
           const active = statusFilter === t.id;
@@ -110,7 +110,7 @@ export function MissingMode({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                       <span className="truncate text-sm font-medium text-text-default">{row.email_subject || '(no subject)'}</span>
-                      <span className="truncate text-label text-text-soft">{row.email_from}</span>
+                      <span className="truncate text-role-caption text-text-soft">{row.email_from}</span>
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-soft">
                       <span>{new Date(row.scanned_at).toLocaleString()}</span>

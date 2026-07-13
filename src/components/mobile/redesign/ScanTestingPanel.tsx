@@ -217,7 +217,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
 
   return (
     <div className="px-3 pb-32">
-      <p className="px-1 pb-2 pt-1 text-caption font-black uppercase tracking-[0.2em] text-blue-400">
+      <p className="px-1 pb-2 pt-1 text-role-caption font-black uppercase tracking-[0.2em] text-blue-400">
         PO Items · {lines.length}
       </p>
       <div className="flex flex-col gap-3">
@@ -234,7 +234,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
             <div key={line.id} className="rounded-2xl border border-blue-100 bg-surface-card p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
               <p className="text-base font-black leading-snug tracking-tight text-blue-950">{title}</p>
               <div className="mt-2 flex items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-caption font-black uppercase tracking-widest text-text-soft">
+                <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-role-caption font-black uppercase tracking-widest text-text-soft">
                   <span className="text-text-default">{qty}</span>
                   <span className="text-text-faint">·</span>
                   <span>{cond}</span>

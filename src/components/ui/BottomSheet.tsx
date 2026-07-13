@@ -327,7 +327,7 @@ export function PromptSheet({
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
       {message && (
-        <p className="mb-3 text-center text-label text-text-soft">{message}</p>
+        <p className="mb-3 text-center text-role-caption text-text-soft">{message}</p>
       )}
       <input
         ref={inputRef}

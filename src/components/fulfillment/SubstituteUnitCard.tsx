@@ -33,7 +33,7 @@ export interface SubstituteUnitCardProps {
 }
 
 const ALLOC_CHIP =
-  'rounded-full px-2.5 py-1 text-micro font-black uppercase tracking-widest ring-1 ring-inset transition-colors';
+  'rounded-full px-2.5 py-1 text-role-micro uppercase tracking-widest ring-1 ring-inset transition-colors';
 
 export function SubstituteUnitCard({
   orderId,
@@ -55,7 +55,7 @@ export function SubstituteUnitCard({
   return (
     <div className={cn('space-y-4', className)}>
       {pickTasks.isLoading ? (
-        <p className="flex items-center gap-2 text-caption text-text-soft">
+        <p className="flex items-center gap-2 text-role-caption text-text-soft">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading allocations…
         </p>
       ) : active ? (
@@ -109,7 +109,7 @@ export function SubstituteUnitCard({
           />
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-soft">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
           No open allocations to substitute on this order.
         </div>
       )}

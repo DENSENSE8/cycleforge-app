@@ -43,24 +43,24 @@ export function UnitPrintHistory({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1.5 py-1 text-eyebrow font-semibold text-text-muted">
+      <div className="flex items-center gap-1.5 py-1 text-role-eyebrow font-semibold text-text-muted">
         <Loader2 className="h-3 w-3 animate-spin" /> Loading print history…
       </div>
     );
   }
   if (isError) {
-    return <div className="py-1 text-eyebrow font-semibold text-rose-600">Couldn't load print history.</div>;
+    return <div className="py-1 text-role-eyebrow font-semibold text-rose-600">Couldn't load print history.</div>;
   }
   const jobs = data?.jobs ?? [];
   if (jobs.length === 0) {
-    return <div className="py-1 text-eyebrow font-semibold text-text-muted">No prints recorded yet.</div>;
+    return <div className="py-1 text-role-eyebrow font-semibold text-text-muted">No prints recorded yet.</div>;
   }
   return (
     <ul className="space-y-1 py-1">
       {jobs.map((j) => (
-        <li key={j.id} className="flex items-center gap-2 text-eyebrow font-semibold text-text-soft">
+        <li key={j.id} className="flex items-center gap-2 text-role-eyebrow font-semibold text-text-soft">
           <span
-            className={`shrink-0 rounded px-1 py-0.5 text-mini font-black uppercase tracking-widest ring-1 ring-inset ${
+            className={`shrink-0 rounded px-1 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ${
               j.is_reprint
                 ? 'bg-amber-50 text-amber-700 ring-amber-200'
                 : 'bg-emerald-50 text-emerald-700 ring-emerald-200'

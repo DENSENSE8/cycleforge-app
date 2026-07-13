@@ -269,18 +269,18 @@ function DispositionStationInner() {
                     <div className="min-w-0">
                       <p className="truncate font-mono text-lg font-black text-text-default">{unit.serial_number}</p>
                       {unit.product_title && (
-                        <p className="truncate text-caption text-text-soft">{unit.product_title}</p>
+                        <p className="truncate text-role-caption text-text-soft">{unit.product_title}</p>
                       )}
-                      {unit.sku && <p className="truncate font-mono text-eyebrow text-text-faint">{unit.sku}</p>}
+                      {unit.sku && <p className="truncate font-mono text-role-eyebrow text-text-faint">{unit.sku}</p>}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {unit.condition_grade && (
-                        <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                        <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
                           {conditionLabel(unit.condition_grade, 'compact')}
                         </span>
                       )}
                       <span
-                        className={`rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest ${unitStatusBadgeTone(unit.current_status)}`}
+                        className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(unit.current_status)}`}
                       >
                         {unit.current_status}
                       </span>
@@ -298,7 +298,7 @@ function DispositionStationInner() {
                     onChange={(e) => setNotes(e.target.value)}
                     rows={2}
                     placeholder="Notes (optional)"
-                    className="mt-3 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-caption text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="mt-3 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
 
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -316,7 +316,7 @@ function DispositionStationInner() {
                           ) : (
                             <d.icon className="h-4 w-4" />
                           )}
-                          <span className="text-micro font-black uppercase tracking-wide">{d.label}</span>
+                          <span className="text-role-micro uppercase tracking-wide">{d.label}</span>
                         </button>
                       </HoverTooltip>
                     ))}

@@ -63,7 +63,7 @@ export function ManualsSection({
       ) : null}
 
       {manuals.length === 0 ? (
-        <p className="text-caption text-text-faint">No manuals paired to this SKU yet.</p>
+        <p className="text-role-caption text-text-faint">No manuals paired to this SKU yet.</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {manuals.map((m) => {
@@ -79,9 +79,9 @@ export function ManualsSection({
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-semibold text-text-default">{name}</span>
+                  <span className="block truncate text-role-caption font-semibold text-text-default">{name}</span>
                   {m.type ? (
-                    <span className="block text-micro font-medium uppercase tracking-wide text-text-faint">{m.type}</span>
+                    <span className="block text-role-micro font-medium uppercase tracking-wide text-text-faint">{m.type}</span>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">

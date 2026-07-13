@@ -370,15 +370,15 @@ function QcSidebarPicker({ query }: { query: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-text-faint">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
           Loading products…
         </div>
       ) : isError ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-red-500">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-red-500">
           Couldn't load products.
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-text-faint">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
           {trimmedQuery ? 'No matches with a QC checklist.' : 'No products have a QC checklist yet.'}
         </div>
       ) : (
@@ -413,13 +413,13 @@ function QcSidebarPicker({ query }: { query: string }) {
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span
-                      className={`text-label font-semibold leading-snug break-words ${
+                      className={`text-role-caption font-semibold leading-snug break-words ${
                         isSelected ? 'text-blue-700' : 'text-text-default'
                       }`}
                     >
                       {item.product_title || item.sku}
                     </span>
-                    <span className="truncate font-mono text-micro text-text-soft">{item.sku}</span>
+                    <span className="truncate font-mono text-role-micro text-text-soft">{item.sku}</span>
                   </span>
                   {isSelected && <Check className="h-4 w-4 shrink-0 text-blue-600" />}
                 </button>
@@ -467,15 +467,15 @@ function KitPartsPicker({ query }: { query: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-text-faint">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
           Loading products…
         </div>
       ) : isError ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-red-500">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-red-500">
           Couldn&apos;t load products.
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-text-faint">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
           {trimmedQuery ? 'No matches.' : 'No products available.'}
         </div>
       ) : (
@@ -510,13 +510,13 @@ function KitPartsPicker({ query }: { query: string }) {
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span
-                      className={`text-label font-semibold leading-snug break-words ${
+                      className={`text-role-caption font-semibold leading-snug break-words ${
                         isSelected ? 'text-blue-700' : 'text-text-default'
                       }`}
                     >
                       {item.product_title || item.sku}
                     </span>
-                    <span className="truncate font-mono text-micro text-text-soft">{item.sku}</span>
+                    <span className="truncate font-mono text-role-micro text-text-soft">{item.sku}</span>
                   </span>
                   {isSelected && <Check className="h-4 w-4 shrink-0 text-blue-600" />}
                 </button>
@@ -571,21 +571,21 @@ function ProductPickerList({ query, recents, onPick }: ProductPickerListProps) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-text-faint">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
           Loading products…
         </div>
       ) : isError ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-red-500">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-red-500">
           Couldn't load products.
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-caption font-semibold text-text-faint">
+        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
           {trimmedQuery ? 'No matches.' : 'No products available.'}
         </div>
       ) : (
         <ul className="divide-y divide-border-hairline">
           {recentItems.length > 0 && (
-            <li className={`bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5 text-eyebrow font-black uppercase tracking-[0.18em] text-text-soft`}>
+            <li className={`bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-soft`}>
               Recent
             </li>
           )}
@@ -593,7 +593,7 @@ function ProductPickerList({ query, recents, onPick }: ProductPickerListProps) {
             <ProductRow key={`recent-${item.id}`} item={item} onPick={onPick} />
           ))}
           {recentItems.length > 0 && restItems.length > 0 && (
-            <li className={`bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5 text-eyebrow font-black uppercase tracking-[0.18em] text-text-soft`}>
+            <li className={`bg-surface-canvas ${SIDEBAR_GUTTER} py-1.5 text-role-eyebrow uppercase tracking-[0.18em] text-text-soft`}>
               All
             </li>
           )}
@@ -636,10 +636,10 @@ function ProductRow({ item, onPick }: ProductRowProps) {
           )}
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-label font-semibold leading-snug text-text-default break-words">
+          <span className="text-role-caption font-semibold leading-snug text-text-default break-words">
             {item.product_title || item.sku}
           </span>
-          <span className="truncate font-mono text-micro text-text-soft">{item.sku}</span>
+          <span className="truncate font-mono text-role-micro text-text-soft">{item.sku}</span>
         </span>
       </button>
     </li>

@@ -152,7 +152,7 @@ export function MobileReceivingRow({
             >
               <ImageIcon className="h-5 w-5" />
               {photoCount > 0 ? (
-                <span className="text-micro font-black leading-none tabular-nums">x{photoCount}</span>
+                <span className="text-role-micro leading-none tabular-nums">x{photoCount}</span>
               ) : null}
             </button>
           ) : (
@@ -168,7 +168,7 @@ export function MobileReceivingRow({
             >
               <ImageIcon className="h-5 w-5" />
               {photoCount > 0 ? (
-                <span className="text-micro font-black leading-none tabular-nums">x{photoCount}</span>
+                <span className="text-role-micro leading-none tabular-nums">x{photoCount}</span>
               ) : null}
             </Link>
           )}

@@ -38,7 +38,7 @@ export function MobileTopBar({ title, subtitle, backHref, right }: MobileTopBarP
       />
       <div className="min-w-0 flex-1">
         {subtitle ? (
-          <p className="truncate text-micro font-black uppercase tracking-[0.18em] text-text-soft">
+          <p className="truncate text-role-micro uppercase tracking-[0.18em] text-text-soft">
             {subtitle}
           </p>
         ) : null}

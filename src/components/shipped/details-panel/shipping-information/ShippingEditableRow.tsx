@@ -79,7 +79,7 @@ export function ShippingEditableRow({
       headerAccessory={
         headerAccessory == null || headerAccessory === '' ? null
           : typeof headerAccessory === 'string' ? (
-            <span className={headerAccessoryClassName || 'text-micro font-black uppercase tracking-wide text-text-soft'}>
+            <span className={headerAccessoryClassName || 'text-role-micro uppercase tracking-wide text-text-soft'}>
               {headerAccessory}
             </span>
           ) : (

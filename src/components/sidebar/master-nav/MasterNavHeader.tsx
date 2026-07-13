@@ -39,7 +39,7 @@ export function MasterNavHeader({
       )}
     >
       <Icon className="h-5 w-5 shrink-0 text-blue-600" />
-      <span className="min-w-0 flex-1 truncate text-[15px] font-bold tracking-tight text-text-default">
+      <span className="min-w-0 flex-1 truncate text-role-body font-bold tracking-tight text-text-default">
         {label}
       </span>
       <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring} className="shrink-0 text-text-muted">

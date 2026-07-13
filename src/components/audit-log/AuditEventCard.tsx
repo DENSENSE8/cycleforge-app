@@ -96,18 +96,18 @@ export function AuditEventCard({ event }: { event: AuditTimelineEvent }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wider ring-1 ${tone}`}
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${tone}`}
             >
               {kindLabel(event.kind)}
             </span>
-            {event.station && <span className="text-micro text-text-soft">{event.station}</span>}
+            {event.station && <span className="text-role-micro text-text-soft">{event.station}</span>}
           </div>
-          <div className="mt-1 flex items-center gap-1 text-caption text-text-soft">
+          <div className="mt-1 flex items-center gap-1 text-role-caption text-text-soft">
             <UserIcon className="h-3 w-3" />
             {event.actor_name ?? (event.actor_staff_id ? `#${event.actor_staff_id}` : 'System')}
           </div>
           {(serial || sku) && (
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-micro text-text-soft">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-role-micro text-text-soft">
               {serial && (
                 <span className="inline-flex items-center gap-1 font-mono font-semibold text-text-muted">
                   <FileText className="h-3 w-3" />
@@ -118,11 +118,11 @@ export function AuditEventCard({ event }: { event: AuditTimelineEvent }) {
             </div>
           )}
         </div>
-        <div className="shrink-0 text-micro text-text-faint">{fmtTime(event.occurred_at)}</div>
+        <div className="shrink-0 text-role-micro text-text-faint">{fmtTime(event.occurred_at)}</div>
       </div>
 
       {event.notes && (
-        <p className="mt-2 whitespace-pre-wrap break-words text-label text-text-muted">
+        <p className="mt-2 whitespace-pre-wrap break-words text-role-caption text-text-muted">
           {event.notes}
         </p>
       )}
@@ -134,7 +134,7 @@ export function AuditEventCard({ event }: { event: AuditTimelineEvent }) {
             href={photoUrl}
             target="_blank"
             rel="noreferrer"
-            className="break-all text-caption font-semibold text-violet-700 hover:underline"
+            className="break-all text-role-caption font-semibold text-violet-700 hover:underline"
           >
             View photo
           </a>
@@ -142,7 +142,7 @@ export function AuditEventCard({ event }: { event: AuditTimelineEvent }) {
       )}
 
       {(event.before || event.after) && (
-        <pre className="mt-2 overflow-x-auto rounded-md bg-surface-canvas p-2 text-micro text-text-muted">
+        <pre className="mt-2 overflow-x-auto rounded-md bg-surface-canvas p-2 text-role-micro text-text-muted">
           {JSON.stringify({ before: event.before, after: event.after }, null, 2)}
         </pre>
       )}
@@ -159,7 +159,7 @@ export function AuditCenterMessage({
 }) {
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <p className={`text-center text-label ${tone === 'error' ? 'text-rose-600' : 'text-text-faint'}`}>
+      <p className={`text-center text-role-caption ${tone === 'error' ? 'text-rose-600' : 'text-text-faint'}`}>
         {label}
       </p>
     </div>

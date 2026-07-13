@@ -63,7 +63,7 @@ function randomId(): string {
 function StatusPill({ status }: { status: string | null }) {
   const v = status || 'EXPECTED';
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wide ${workflowStageBadge(v)}`}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${workflowStageBadge(v)}`}>
       {workflowStatusTableLabel(v)}
     </span>
   );
@@ -297,12 +297,12 @@ function LinePageInner() {
         <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
           <StatusPill status={line?.workflow_status ?? null} />
           {line?.condition_grade && (
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
               {conditionGradeTableLabel(line.condition_grade)}
             </span>
           )}
           <span
-            className={`text-caption font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}
+            className={`text-role-caption font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}
           >
             {received}/{expected ?? '?'}
           </span>
@@ -346,7 +346,7 @@ function LinePageInner() {
 
         {/* Test actions */}
         <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-          <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Test status
           </p>
           <div className="grid grid-cols-3 gap-2">
@@ -382,7 +382,7 @@ function LinePageInner() {
 
         {/* Serial scan */}
         <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-          <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Scan serial
           </p>
           <div className="flex gap-2">
@@ -416,7 +416,7 @@ function LinePageInner() {
                 <span
                   key={s.id}
                   title={s.serial_number}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-micro font-bold ${unitStatusBadgeTone(s.current_status)}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro font-bold ${unitStatusBadgeTone(s.current_status)}`}
                 >
                   …{getLast4(s.serial_number)}
                   <span className="opacity-50">·</span>
@@ -429,7 +429,7 @@ function LinePageInner() {
 
         {/* Putaway */}
         <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-          <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Stash in bin
           </p>
           <div className="flex gap-2">
@@ -459,7 +459,7 @@ function LinePageInner() {
 
         {/* Note (optional, applied to next action) */}
         <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-          <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Note (optional, attached to next action)
           </p>
           <textarea
@@ -473,15 +473,15 @@ function LinePageInner() {
 
         {/* Timeline */}
         <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-          <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Recent activity
           </p>
           {events.length === 0 ? (
-            <p className="text-caption text-text-soft">No activity yet.</p>
+            <p className="text-role-caption text-text-soft">No activity yet.</p>
           ) : (
             <ul className="space-y-2">
               {events.map((ev) => (
-                <li key={ev.id} className="flex items-start gap-2 text-caption">
+                <li key={ev.id} className="flex items-start gap-2 text-role-caption">
                   <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-border-emphasis shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-text-default">

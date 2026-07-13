@@ -132,7 +132,7 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
             variant="ghost"
             size="sm"
             onClick={() => clearClipboardHistory()}
-            className="text-caption font-semibold text-text-soft hover:text-text-default"
+            className="text-role-caption font-semibold text-text-soft hover:text-text-default"
           >
             Clear
           </Button>
@@ -140,7 +140,7 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
       }
     >
       {entries.length === 0 ? (
-        <p className="mx-3 my-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-soft">
+        <p className="mx-3 my-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
           Copy a tracking #, serial, SKU, or order # and it lands here — then send it to a teammate&apos;s inbox.
         </p>
       ) : (
@@ -162,11 +162,11 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
                   >
                     <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', dot)} aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block break-all text-caption font-bold text-text-default">
+                      <span className="block break-all text-role-caption font-bold text-text-default">
                         {value}
                       </span>
                       {meta.tags.length > 0 || meta.time ? (
-                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-widest">
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest">
                           <span className="shrink-0 text-text-faint">{meta.time}</span>
                           {meta.tags.map((tag) => (
                             <span key={tag} className="text-text-soft">
@@ -213,7 +213,7 @@ export function ClipboardHistoryPopover({ onClose }: ClipboardHistoryPopoverProp
                 {isSending ? (
                   <div className="mx-1 mb-1 mt-0.5 rounded-lg border border-border-hairline bg-surface-canvas/60 p-1.5">
                     {staff === null ? (
-                      <div className="flex items-center justify-center gap-2 py-3 text-caption text-text-soft">
+                      <div className="flex items-center justify-center gap-2 py-3 text-role-caption text-text-soft">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading staff…
                       </div>

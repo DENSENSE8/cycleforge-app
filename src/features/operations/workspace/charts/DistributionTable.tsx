@@ -42,7 +42,7 @@ export function DistributionTable({
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-faint">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
           {emptyMessage}
         </div>
       ) : (
@@ -69,19 +69,19 @@ export function DistributionTable({
                   />
                 )}
                 <span className="min-w-0">
-                  <span className="block truncate text-caption font-semibold text-text-default">{row.label}</span>
+                  <span className="block truncate text-role-caption font-semibold text-text-default">{row.label}</span>
                   {row.sublabel && (
-                    <span className="block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                    <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                       {row.sublabel}
                     </span>
                   )}
                 </span>
               </span>
               <span className="relative flex items-center gap-4">
-                <span className="w-12 text-right text-caption font-bold tabular-nums text-text-default">
+                <span className="w-12 text-right text-role-caption font-bold tabular-nums text-text-default">
                   {row.count.toLocaleString()}
                 </span>
-                <span className="w-10 text-right text-caption font-semibold tabular-nums text-text-soft">
+                <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-text-soft">
                   {row.percent.toFixed(1)}%
                 </span>
               </span>

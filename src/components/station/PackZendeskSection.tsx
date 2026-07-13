@@ -45,7 +45,7 @@ export function PackZendeskSection({ orderId, className }: PackZendeskSectionPro
         className="ds-raw-button flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-surface-hover"
       >
         <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" />
-        <span className="flex-1 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <span className="flex-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
           Support ticket
         </span>
         <ChevronDown
@@ -94,21 +94,21 @@ function PackZendeskBody({ orderId }: { orderId?: string | null }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Search tickets — order #, buyer email…"
-          className="w-full bg-transparent text-caption font-semibold text-text-default outline-none placeholder:text-text-faint"
+          className="w-full bg-transparent text-role-caption font-semibold text-text-default outline-none placeholder:text-text-faint"
         />
         {tickets.isFetching ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-text-faint" /> : null}
       </div>
 
       {notConfigured ? (
-        <p className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-caption font-semibold text-text-faint">
+        <p className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-role-caption font-semibold text-text-faint">
           Helpdesk isn&apos;t connected for this workspace.
         </p>
       ) : tickets.error ? (
-        <p className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-caption font-semibold text-rose-700">
+        <p className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-center text-role-caption font-semibold text-rose-700">
           Could not load tickets.
         </p>
       ) : rows.length === 0 && !tickets.isLoading ? (
-        <p className="px-1 text-caption font-semibold text-text-faint">No matching tickets.</p>
+        <p className="px-1 text-role-caption font-semibold text-text-faint">No matching tickets.</p>
       ) : (
         <ul className="space-y-1">
           {rows.map((t) => {
@@ -125,13 +125,13 @@ function PackZendeskBody({ orderId }: { orderId?: string | null }) {
                       : 'hover:bg-surface-hover'
                   }`}
                 >
-                  <span className="shrink-0 font-mono text-eyebrow font-black tabular-nums text-text-soft">
+                  <span className="shrink-0 font-mono text-role-eyebrow tabular-nums text-text-soft">
                     #{t.id}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-caption font-bold text-text-default">
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
                     {t.subject || 'Untitled ticket'}
                   </span>
-                  <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+                  <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
                     {t.status}
                   </span>
                 </button>
@@ -148,14 +148,14 @@ function PackZendeskBody({ orderId }: { orderId?: string | null }) {
             onChange={(e) => setComment(e.target.value)}
             rows={2}
             placeholder={`Comment on #${selected.id}…`}
-            className="w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-2 py-1.5 text-caption font-semibold text-text-default outline-none placeholder:text-text-faint focus:border-blue-300"
+            className="w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-2 py-1.5 text-role-caption font-semibold text-text-default outline-none placeholder:text-text-faint focus:border-blue-300"
           />
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setIsPublic((p) => !p)}
               aria-pressed={isPublic}
-              className={`ds-raw-button rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${
+              className={`ds-raw-button rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${
                 isPublic
                   ? 'bg-blue-50 text-blue-700 ring-blue-200'
                   : 'bg-amber-50 text-amber-700 ring-amber-200'

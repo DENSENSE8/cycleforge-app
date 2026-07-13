@@ -25,7 +25,7 @@ export function PoMailboxPreviewPanel({
       {!embedded && (title || description) && (
         <div>
           {title && <h2 className="text-base font-semibold text-text-default">{title}</h2>}
-          {description && <p className="mt-0.5 text-label text-text-soft">{description}</p>}
+          {description && <p className="mt-0.5 text-role-caption text-text-soft">{description}</p>}
         </div>
       )}
 

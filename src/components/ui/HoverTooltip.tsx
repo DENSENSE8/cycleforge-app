@@ -129,7 +129,7 @@ export function HoverTooltip({
               left: pos?.left ?? -9999,
               visibility: pos ? 'visible' : 'hidden',
             }}
-            className="pointer-events-none fixed z-tooltip max-w-[15rem] rounded-md bg-surface-inverse px-2 py-1 text-caption font-semibold leading-snug text-white shadow-lg"
+            className="pointer-events-none fixed z-tooltip max-w-[15rem] rounded-md bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg"
           >
             {label}
           </span>,

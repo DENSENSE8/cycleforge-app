@@ -118,7 +118,7 @@ export function OrderCard({
         {card.hasOutOfStock && (
           <div className="mt-1.5 flex items-center gap-1.5 rounded-md border border-red-100 bg-red-50/60 px-2 py-1">
             <AlertCircle className="h-3 w-3 flex-shrink-0 text-red-500" />
-            <span className="min-w-0 flex-1 truncate text-caption font-semibold text-red-700">
+            <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-red-700">
               {order.out_of_stock}
             </span>
           </div>

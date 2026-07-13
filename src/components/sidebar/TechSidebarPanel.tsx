@@ -165,7 +165,7 @@ export function TechSidebarPanel({ techId, onBackToAppNav, contextNavTitle = 'Te
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
             <History className="h-6 w-6 text-text-faint" />
             <p className="text-sm font-semibold text-text-soft">Browsing your tested lines</p>
-            <p className="text-caption text-text-faint">
+            <p className="text-role-caption text-text-faint">
               Use <span className="font-bold text-text-muted">Select</span> in the top bar to pick lines and act on them.
             </p>
           </div>

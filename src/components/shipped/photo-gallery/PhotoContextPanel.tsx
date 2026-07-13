@@ -9,8 +9,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { useZendeskTicketSubject } from '@/hooks/useZendeskTicketSubject';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
   describePhotoWorkflow,
   resolveLinkedEntityDisplay,
@@ -35,14 +35,14 @@ const WORKFLOW_ICONS = {
 
 function ProvenanceLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-micro font-black uppercase tracking-widest text-text-faint">{children}</p>
+    <p className="text-role-micro uppercase tracking-widest text-text-faint">{children}</p>
   );
 }
 
 function Field({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="flex items-center gap-1.5 text-micro font-black uppercase tracking-widest text-text-faint">
+      <p className="flex items-center gap-1.5 text-role-micro uppercase tracking-widest text-text-faint">
         <span className="text-text-soft">{icon}</span>
         {label}
       </p>
@@ -59,9 +59,10 @@ export function PhotoContextPanel({
   onCollapse: () => void;
 }) {
   const meta = photo?.meta;
-  const panelPresence = useMotionPresence(framerPresence.photoContextPanel);
-  const panelMountTransition = useMotionTransition(framerTransition.photoContextPanelMount);
-  const panelUnmountTransition = useMotionTransition(framerTransition.photoContextPanelUnmount);
+  // One transition for BOTH directions — the drawer is a single reversible
+  // toggle (close == open reversed). Under reduced motion this collapses to
+  // duration 0, so the width snaps open/closed instantly.
+  const panelTransition = useMotionTransition(framerTransition.photoContextPanelMount);
   // Hook must run unconditionally; it self-disables for null/invalid ids.
   const ticketSubject = useZendeskTicketSubject(meta?.ticketId ?? null);
 
@@ -81,17 +82,22 @@ export function PhotoContextPanel({
   return (
     <motion.aside
       data-testid="photo-context-panel"
-      {...panelPresence}
-      transition={{
-        ...panelMountTransition,
-        exit: panelUnmountTransition,
-      }}
+      // Animate the drawer's OWN WIDTH (flex sibling) so the image lane + toolbar
+      // reflow live and concurrently in BOTH directions — no transform, no
+      // popLayout, no `layout` projection (those caused the janky, asymmetric
+      // close). The inner column is fixed-width + left-anchored, so this outer
+      // `overflow-hidden` clips it into a clean slide-from-right / slide-out-right.
+      initial={{ width: 0 }}
+      animate={{ width: '20rem' }}
+      exit={{ width: 0 }}
+      transition={panelTransition}
       aria-label="Photo details"
-      className="relative z-20 flex h-full w-80 max-w-[85vw] shrink-0 flex-col gap-5 overflow-y-auto border-l border-glass/10 bg-scrim/60 px-5 pb-5 pt-6 backdrop-blur-xl"
+      className="relative z-20 h-full max-w-[85vw] shrink-0 overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
+      <div className="flex h-full w-80 max-w-[85vw] flex-col gap-5 overflow-y-auto border-l border-glass/10 bg-scrim/60 px-5 pb-5 pt-6 backdrop-blur-xl">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-micro font-black uppercase tracking-widest text-text-faint">Details</p>
+        <p className="text-role-micro uppercase tracking-widest text-text-faint">Details</p>
         <HoverTooltip label="Hide details (i)" asChild>
           <IconButton
             onClick={(e) => {
@@ -189,6 +195,7 @@ export function PhotoContextPanel({
             <p className="whitespace-pre-wrap text-sm leading-snug text-stage-soft">{meta.caption}</p>
           </Field>
         ) : null}
+      </div>
       </div>
     </motion.aside>
   );

@@ -16,7 +16,7 @@ export type NoteComposerInsertAction = {
   loading?: boolean;
 };
 
-const INSERT_TRIGGER_BTN = `${NOTE_OVERLAY_ICON_BTN} h-[22px] w-auto min-w-[22px] gap-0.5 px-1.5 text-micro font-semibold text-text-muted transition hover:bg-surface-sunken/80 hover:text-text-default hover:shadow-sm hover:ring-1 hover:ring-border-soft/80`;
+const INSERT_TRIGGER_BTN = `${NOTE_OVERLAY_ICON_BTN} h-[22px] w-auto min-w-[22px] gap-0.5 px-1.5 text-role-micro font-semibold text-text-muted transition hover:bg-surface-sunken/80 hover:text-text-default hover:shadow-sm hover:ring-1 hover:ring-border-soft/80`;
 
 const RAIL_CHROME =
   'rounded-md bg-surface-card/90 px-0.5 py-0.5 shadow-sm ring-1 ring-border-soft/50 backdrop-blur-[2px]';
@@ -68,7 +68,7 @@ export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInser
                 action.onClick();
                 setMenuOpen(false);
               }}
-              className="ds-raw-button flex w-full items-center gap-2 px-3 py-2 text-left text-caption font-medium text-text-default transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-50"
+              className="ds-raw-button flex w-full items-center gap-2 px-3 py-2 text-left text-role-caption font-medium text-text-default transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center text-text-muted">
                 {action.loading ? (

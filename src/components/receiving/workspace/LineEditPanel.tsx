@@ -14,11 +14,20 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
   staggerRevealContainer,
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
+import { useReceivingTicketView } from './line-edit/hooks/useReceivingTicketView';
+import { isReceivingInlineTicketEditorEnabled } from '@/lib/receiving/inline-ticket-editor-flag';
+import { toast } from '@/lib/toast';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
@@ -33,10 +42,8 @@ import { LineEditModals } from './line-edit/LineEditModals';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
-import {
-  activeReceivingStepKey,
-  hasConditionBeenSet,
-} from './ReceivingProgressStepper';
+import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
+import { activeReceivingStepKey } from './ReceivingProgressStepper';
 
 const LABEL_PRINTED_KEY = (lineId: number) => `receiving-label-printed:${lineId}`;
 
@@ -65,34 +72,33 @@ export function LineEditPanel({
   // composition. See useUnboxLineController / useReceivingLineCore.
   const c = useUnboxLineController(row, staffId, { itemTotal });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
-  const [labelPrinted, setLabelPrinted] = useState(() => readLabelPrinted(row.id));
-  const [conditionSet, setConditionSet] = useState(
-    () => !!row.condition_set_at || hasConditionBeenSet(row.id),
+  // Print step reads the durable `label_printed_at` stamp (receiving_line_testing)
+  // OR the localStorage optimistic hint — so the step survives a refresh / other
+  // device, while still flipping instantly on print before the refetch lands.
+  const [labelPrinted, setLabelPrinted] = useState(
+    () => !!row.label_printed_at || readLabelPrinted(row.id),
   );
 
   useEffect(() => {
-    setLabelPrinted(readLabelPrinted(row.id));
-    setConditionSet(!!row.condition_set_at || hasConditionBeenSet(row.id));
-  }, [row.id, row.condition_set_at]);
+    setLabelPrinted(!!row.label_printed_at || readLabelPrinted(row.id));
+  }, [row.id, row.label_printed_at]);
 
   useEffect(() => {
     const onLabel = (e: Event) => {
       const detail = (e as CustomEvent<{ line_id?: number }>).detail;
       if (detail?.line_id === row.id) setLabelPrinted(true);
     };
-    const onCond = (e: Event) => {
-      const detail = (e as CustomEvent<{ line_id: number }>).detail;
-      if (detail?.line_id === row.id) setConditionSet(true);
-    };
     window.addEventListener('receiving-label-printed', onLabel);
-    window.addEventListener('receiving-condition-set', onCond);
-    return () => {
-      window.removeEventListener('receiving-label-printed', onLabel);
-      window.removeEventListener('receiving-condition-set', onCond);
-    };
+    return () => window.removeEventListener('receiving-label-printed', onLabel);
   }, [row.id]);
 
-  const photoCount = Math.max(0, Number(row.photo_count ?? 0));
+  // Live per-carton photo count (shared cache with the camera ×N badge), so the
+  // active-step logic agrees with the stepper and doesn't regress to Photos when
+  // a Condition update clobbers the denormalized `row.photo_count` snapshot.
+  const photoCount = useReceivingPhotoCount(
+    row.receiving_id,
+    Math.max(0, Number(row.photo_count ?? 0)),
+  );
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
   // Resolve the returned unit's OUTBOUND order (closed-loop linkage) from the
@@ -104,14 +110,12 @@ export function LineEditPanel({
   const activeStep = useMemo(
     () =>
       activeReceivingStepKey({
-        scanDriven: true,
         photoCount,
         serialCount,
         quantityExpected: row.quantity_expected ?? 0,
-        conditionSet,
         labelPrinted,
       }),
-    [photoCount, serialCount, row.quantity_expected, conditionSet, labelPrinted],
+    [photoCount, serialCount, row.quantity_expected, labelPrinted],
   );
 
   useEffect(() => {
@@ -144,6 +148,38 @@ export function LineEditPanel({
     ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
     : { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.2 } } };
 
+  // Inline support-ticket editor (docs/todo/receiving-inline-ticket-editor-plan.md).
+  // Flag-gated + opt-in; the body crossfades between the line-edit cards and the
+  // reused SupportTicketDetail, keeping only the identity row. The rail (map)
+  // never animates — only this focus-surface body swaps.
+  const inlineTicketEditorEnabled = isReceivingInlineTicketEditorEnabled();
+  const { ticketView, setTicketView } = useReceivingTicketView(row.id);
+  const ticketId = c.providerTicketId;
+  const showTicketEditor = inlineTicketEditorEnabled && ticketView && ticketId != null;
+  const toggleTicketView = inlineTicketEditorEnabled
+    ? () => setTicketView(!ticketView)
+    : undefined;
+
+  // Guardrail: the param is set but the linked ticket vanished (unlinked while
+  // open, or a deep-link into a ticketless carton) → fall back to the normal
+  // body and clear the URL so a stale ?ticketView=1 can't strand the pane.
+  // Wait for the ticket lookup to SETTLE first (c.supportTicketLoading) so a
+  // deep-link (?openReceivingId=&ticketView=1) doesn't self-close mid-fetch.
+  useEffect(() => {
+    if (
+      ticketView &&
+      inlineTicketEditorEnabled &&
+      !c.supportTicketLoading &&
+      ticketId == null
+    ) {
+      setTicketView(false);
+      toast('No linked ticket to edit on this carton.');
+    }
+  }, [ticketView, inlineTicketEditorEnabled, c.supportTicketLoading, ticketId, setTicketView]);
+
+  const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
+  const ticketPanePresence = useMotionPresence(framerPresence.workbenchPane);
+
   return (
     <>
       <div className="relative isolate flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -157,21 +193,69 @@ export function LineEditPanel({
           <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
           <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
         </div>
-        <LineEditToolbar
-          mode="unbox"
-          receivingId={row.receiving_id ?? null}
-          zohoSyncing={c.zohoSyncing}
-          busy={c.saving || c.platformSaving}
-          copyingAll={c.copyingAll}
-          handlers={{
-            refresh: () => void c.syncWithZoho(),
-            share: () => void c.handleShare(),
-            audit: () => c.setAuditOpen(true),
-            copy: () => void c.handleCopyAll(),
-            photoNote: () => c.setPhotoNoteOpen(true),
-          }}
-        />
+        {/* Toolbar is hidden in ticket view — SupportTicketDetail brings its
+            own header (SupportChatHeader), so the "identity row only" editor
+            stays focused. */}
+        {!showTicketEditor ? (
+          <LineEditToolbar
+            mode="unbox"
+            receivingId={row.receiving_id ?? null}
+            zohoSyncing={c.zohoSyncing}
+            busy={c.saving || c.platformSaving}
+            copyingAll={c.copyingAll}
+            handlers={{
+              refresh: () => void c.syncWithZoho(),
+              share: () => void c.handleShare(),
+              audit: () => c.setAuditOpen(true),
+              copy: () => void c.handleCopyAll(),
+              photoNote: () => c.setPhotoNoteOpen(true),
+            }}
+          />
+        ) : null}
 
+        {/* Focus-surface swap: the line-edit body ⇄ the reused SupportTicketDetail,
+            keyed on ticketView. The rail (collection map) never animates — only
+            this body crossfades (Workbench focus-surface rule). */}
+        <AnimatePresence mode="wait" initial={false}>
+          {showTicketEditor ? (
+            <motion.div
+              key="ticket-editor"
+              initial={ticketPanePresence.initial}
+              animate={ticketPanePresence.animate}
+              exit={ticketPanePresence.exit}
+              transition={paneTransition}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {/* Identity row stays — its reply-toggle (now active) is how the
+                  operator swaps back. */}
+              <div className="shrink-0 px-4 pt-5 sm:px-6">
+                <div className={RECEIVING_WORKSPACE_COLUMN}>
+                  <LineCartonContextSection
+                    row={row}
+                    staffId={staffId}
+                    c={c}
+                    linkedOrderNumber={linkedOrder?.orderId ?? null}
+                    onToggleTicketView={toggleTicketView}
+                    ticketViewActive
+                  />
+                </div>
+              </div>
+              {/* Reused support console — owns its own overlay host, scroll body,
+                  and sticky composer. */}
+              <div className="min-h-0 flex-1">
+                {/* showTicketEditor guarantees ticketId != null. */}
+                <SupportTicketDetail ticketId={ticketId!} onBack={() => setTicketView(false)} />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="line-body"
+              initial={ticketPanePresence.initial}
+              animate={ticketPanePresence.animate}
+              exit={ticketPanePresence.exit}
+              transition={paneTransition}
+              className="flex min-h-0 flex-1 flex-col"
+            >
         {/* Scroll surface — owns the centered hero column. The receive-feedback,
             label-preview, and action bars now DOCK in flow below this region
             (shrink-0 bands), so the scroll body no longer reserves clearance for
@@ -189,6 +273,8 @@ export function LineEditPanel({
                 staffId={staffId}
                 c={c}
                 linkedOrderNumber={linkedOrder?.orderId ?? null}
+                onToggleTicketView={toggleTicketView}
+                ticketViewActive={false}
               />
             </motion.div>
 
@@ -293,11 +379,14 @@ export function LineEditPanel({
           onReceive={() => void c.handleReceive('zoho_receive')}
           onLocalReceive={() => void c.handleReceive('local_receive')}
         />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Live photo peek — right-edge fanned preview of the carton's captures
             that updates in real time over Ably; needs a linked shipment for the
-            photo query. */}
-        {row.receiving_id != null ? (
+            photo query. Hidden in ticket view (the editor owns the full body). */}
+        {!showTicketEditor && row.receiving_id != null ? (
           <ReceivingPhotoPeek
             receivingId={row.receiving_id}
             staffId={Number(staffId) || 0}

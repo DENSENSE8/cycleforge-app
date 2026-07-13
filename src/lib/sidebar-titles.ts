@@ -7,6 +7,7 @@ import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
 export const SIDEBAR_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   order: 'Order lookup',
+  search: 'Search',
   operations: 'Operations',
   'ops-photos': 'Media library',
   studio: 'Operations Studio',

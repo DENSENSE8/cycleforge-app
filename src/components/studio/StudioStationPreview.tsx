@@ -60,13 +60,13 @@ export function StudioStationPreview({
           <p className="truncate text-sm font-bold text-text-default">
             {station?.label ?? `${nodeLabel} · station`}
           </p>
-          <p className="truncate text-caption text-text-faint">
+          <p className="truncate text-role-caption text-text-faint">
             {station
               ? `${station.pageKey} · ${station.modeKey} · v${station.version}`
               : `bound to “${nodeLabel}”`}
           </p>
         </div>
-        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-bold uppercase tracking-wide text-text-soft">
+        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-text-soft">
           Read-only
         </span>
       </div>
@@ -102,7 +102,7 @@ export function StudioStationPreview({
           <div className="mx-auto max-w-2xl space-y-4">
             {station.slots.map((slot) => (
               <section key={slot.slot}>
-                <h3 className="mb-1.5 text-micro font-bold uppercase tracking-wider text-text-faint">
+                <h3 className="mb-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
                   {SLOT_LABELS[slot.slot] ?? slot.slot}
                 </h3>
                 <div className="space-y-2">
@@ -111,10 +111,10 @@ export function StudioStationPreview({
                       <div className="flex items-center gap-2">
                         <Icon name={b.blockIcon} className="h-4 w-4 shrink-0 text-text-soft" />
                         <span className="text-sm font-bold text-text-default">{b.blockLabel}</span>
-                        <span className="font-mono text-micro text-text-faint">{b.block}</span>
+                        <span className="font-mono text-role-micro text-text-faint">{b.block}</span>
                         {b.doneWhen && (
                           <HoverTooltip label={`A row checks off when “${b.doneWhen}” succeeds`} asChild>
-                            <span className="ml-auto rounded bg-emerald-50 px-1.5 py-0.5 text-micro font-semibold text-emerald-700">
+                            <span className="ml-auto rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold text-emerald-700">
                               done: {b.doneWhen}
                             </span>
                           </HoverTooltip>
@@ -123,23 +123,23 @@ export function StudioStationPreview({
 
                       {/* Data source — where this block's rows flow IN from */}
                       {b.source ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border-hairline pt-2 text-caption">
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border-hairline pt-2 text-role-caption">
                           <span className="font-semibold text-text-faint">source</span>
                           <span className="font-semibold text-text-muted">{b.source.label}</span>
-                          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-medium text-text-soft">
+                          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-medium text-text-soft">
                             {b.source.integration}
                           </span>
-                          <span className="font-mono text-micro text-text-faint">{b.source.endpoint}</span>
+                          <span className="font-mono text-role-micro text-text-faint">{b.source.endpoint}</span>
                           {b.source.realtimeChannel && (
                             <HoverTooltip label={`Live updates over ${b.source.realtimeChannel}`} asChild>
-                              <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-micro font-semibold text-blue-700">
+                              <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-semibold text-blue-700">
                                 <icons.Radio className="h-3 w-3" /> {b.source.realtimeChannel}
                               </span>
                             </HoverTooltip>
                           )}
                         </div>
                       ) : (
-                        <p className="mt-2 border-t border-border-hairline pt-2 text-caption text-text-faint">
+                        <p className="mt-2 border-t border-border-hairline pt-2 text-role-caption text-text-faint">
                           no data source bound
                         </p>
                       )}
@@ -150,7 +150,7 @@ export function StudioStationPreview({
                           {Object.entries(b.fields).map(([role, field]) => (
                             <span
                               key={role}
-                              className="rounded bg-surface-canvas px-1.5 py-0.5 text-micro text-text-soft"
+                              className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-micro text-text-soft"
                             >
                               {role} → <span className="font-mono text-text-muted">{field}</span>
                             </span>
@@ -161,11 +161,11 @@ export function StudioStationPreview({
                       {/* Actions — what this block can fire OUT */}
                       {b.actions.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <span className="text-caption font-semibold text-text-faint">actions</span>
+                          <span className="text-role-caption font-semibold text-text-faint">actions</span>
                           {b.actions.map((a) => (
                             <span
                               key={a.id}
-                              className="inline-flex items-center gap-1 rounded-full border border-border-soft px-2 py-0.5 text-micro font-semibold text-text-muted"
+                              className="inline-flex items-center gap-1 rounded-full border border-border-soft px-2 py-0.5 text-role-micro font-semibold text-text-muted"
                             >
                               <Icon name={a.icon} className="h-3 w-3" /> {a.label}
                             </span>

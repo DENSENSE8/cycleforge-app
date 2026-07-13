@@ -253,7 +253,7 @@ export function MobilePackerFlow() {
                     highlightOrderRowId={highlightRowId}
                   />
                   {lastScannedSku && highlightRowId == null && machine.name === 'what_to_pack' ? (
-                    <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-caption font-semibold text-amber-700">
+                    <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
                       SKU not on this order — double-check the label.
                     </p>
                   ) : null}
@@ -307,7 +307,7 @@ function StepPill({
 }) {
   return (
     <span
-      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-micro font-black uppercase tracking-[0.12em] transition-colors ${
+      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-role-micro uppercase tracking-[0.12em] transition-colors ${
         active
           ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
           : 'bg-blue-50 text-blue-300'
@@ -343,7 +343,7 @@ function OrderDetailsCard({
           {state === 'empty' ? 'No order found for that scan' : 'Order lookup failed'}
         </p>
         {orderRef && (
-          <p className="mt-1 font-mono text-caption text-rose-300">{orderRef}</p>
+          <p className="mt-1 font-mono text-role-caption text-rose-300">{orderRef}</p>
         )}
       </div>
     );
@@ -362,7 +362,7 @@ function OrderDetailsCard({
             <OrderIdChip value={order.orderId} display={getLast4(order.orderId)} />
             {tracking && <TrackingChip value={tracking} display={getLast4(tracking)} />}
             {order.status && (
-              <span className="rounded-lg border border-blue-100 bg-blue-50 px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest text-blue-600">
+              <span className="rounded-lg border border-blue-100 bg-blue-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-600">
                 {order.status}
               </span>
             )}
@@ -399,7 +399,7 @@ function PackPhotosCta({
 }) {
   if (packerLogId == null) {
     return (
-      <p className="rounded-2xl bg-blue-50/70 px-4 py-3 text-center text-caption font-semibold text-blue-400">
+      <p className="rounded-2xl bg-blue-50/70 px-4 py-3 text-center text-role-caption font-semibold text-blue-400">
         Complete the pack (scan tracking) to add photos.
       </p>
     );
@@ -432,7 +432,7 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <dt className="text-eyebrow font-black uppercase tracking-[0.15em] text-blue-300">{label}</dt>
+      <dt className="text-role-eyebrow uppercase tracking-[0.15em] text-blue-300">{label}</dt>
       <dd
         className={`mt-0.5 flex items-center gap-1 text-sm font-bold text-blue-950 ${
           mono ? 'font-mono text-xs' : ''

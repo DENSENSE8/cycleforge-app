@@ -175,7 +175,7 @@ export function ReceivingAuditModal({ open, onClose, receivingId }: Props) {
         <div className="min-w-0">
           <p
             id="receiving-audit-title"
-            className="text-micro font-black uppercase tracking-[0.16em] text-text-soft"
+            className="text-role-micro uppercase tracking-[0.16em] text-text-soft"
           >
             Audit log
           </p>
@@ -190,11 +190,11 @@ export function ReceivingAuditModal({ open, onClose, receivingId }: Props) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
         {loading ? (
-          <p className="py-6 text-center text-caption text-text-soft">Loading activity…</p>
+          <p className="py-6 text-center text-role-caption text-text-soft">Loading activity…</p>
         ) : error ? (
-          <p className="py-6 text-center text-caption font-medium text-rose-600">{error}</p>
+          <p className="py-6 text-center text-role-caption font-medium text-rose-600">{error}</p>
         ) : events.length === 0 ? (
-          <p className="py-6 text-center text-caption text-text-soft">No activity recorded yet.</p>
+          <p className="py-6 text-center text-role-caption text-text-soft">No activity recorded yet.</p>
         ) : (
           <ul className="space-y-2">
             {groups.map((g) =>
@@ -213,7 +213,7 @@ export function ReceivingAuditModal({ open, onClose, receivingId }: Props) {
 
 function EventRow({ ev }: { ev: ReceivingAuditEvent }) {
   return (
-    <li className="flex items-start gap-2 text-caption">
+    <li className="flex items-start gap-2 text-role-caption">
       <span className="mt-[3px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-border-emphasis" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="font-bold text-text-default">
@@ -235,7 +235,7 @@ function EventRow({ ev }: { ev: ReceivingAuditEvent }) {
           {ev.station ? ` · ${ev.station}` : ''}
           {ev.receiving_line_id != null ? ` · line ${ev.receiving_line_id}` : ''}
         </p>
-        <p className="text-micro tabular-nums text-text-faint">
+        <p className="text-role-micro tabular-nums text-text-faint">
           {formatDateTimePST(ev.occurred_at)}
         </p>
         {ev.notes ? (
@@ -256,7 +256,7 @@ function SerialBatchRow({
   const allSerialed = events.every((e) => !!e.serial_number);
   const label = `Received ${events.length} ${allSerialed ? 'serials' : 'units'}`;
   return (
-    <li className="flex items-start gap-2 text-caption">
+    <li className="flex items-start gap-2 text-role-caption">
       <span className="mt-[3px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-border-emphasis" aria-hidden />
       <div className="min-w-0 flex-1">
         <button
@@ -266,7 +266,7 @@ function SerialBatchRow({
           aria-expanded={expanded}
         >
           <span>{label}</span>
-          <span className="text-micro font-normal text-text-faint">
+          <span className="text-role-micro font-normal text-text-faint">
             {expanded ? '▾ hide' : '▸ show'}
           </span>
         </button>
@@ -275,13 +275,13 @@ function SerialBatchRow({
           {latest.station ? ` · ${latest.station}` : ''}
           {latest.receiving_line_id != null ? ` · line ${latest.receiving_line_id}` : ''}
         </p>
-        <p className="text-micro tabular-nums text-text-faint">
+        <p className="text-role-micro tabular-nums text-text-faint">
           {formatDateTimePST(latest.occurred_at)}
         </p>
         {expanded ? (
           <ul className="mt-1 space-y-0.5 border-l border-border-soft pl-2">
             {events.map((ev) => (
-              <li key={ev.id} className="font-mono text-micro text-text-muted">
+              <li key={ev.id} className="font-mono text-role-micro text-text-muted">
                 {ev.serial_number ?? 'unit (no serial)'}
                 <span className="ml-1 tabular-nums text-text-faint">
                   {formatTimelineAgo(ev.occurred_at)} ago

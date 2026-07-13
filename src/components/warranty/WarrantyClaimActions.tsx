@@ -67,7 +67,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
 
       {mode === 'deny' ? (
         <div className="space-y-2">
-          <label className="block text-caption font-medium uppercase tracking-wide text-text-faint">Denial reason</label>
+          <label className="block text-role-caption font-medium uppercase tracking-wide text-text-faint">Denial reason</label>
           <select
             value={reasonCode}
             onChange={(e) => setReasonCode(e.target.value)}
@@ -109,7 +109,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
         </div>
       ) : mode === 'repair' ? (
         <div className="space-y-2">
-          <label className="block text-caption font-medium uppercase tracking-wide text-text-faint">Repair attempt</label>
+          <label className="block text-role-caption font-medium uppercase tracking-wide text-text-faint">Repair attempt</label>
           <textarea
             value={diagnosis}
             onChange={(e) => setDiagnosis(e.target.value)}
@@ -163,7 +163,7 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
         </div>
       ) : mode === 'quote' ? (
         <div className="space-y-2">
-          <label className="block text-caption font-medium uppercase tracking-wide text-text-faint">Paid-repair quote</label>
+          <label className="block text-role-caption font-medium uppercase tracking-wide text-text-faint">Paid-repair quote</label>
           <input
             value={quoteLabel}
             onChange={(e) => setQuoteLabel(e.target.value)}
@@ -203,21 +203,21 @@ export function WarrantyClaimActions({ claim }: { claim: WarrantyClaimDetail }) 
       ) : mode === 'ebay' ? (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-caption font-medium uppercase tracking-wide text-text-faint">eBay refurb draft</label>
+            <label className="text-role-caption font-medium uppercase tracking-wide text-text-faint">eBay refurb draft</label>
             <Button variant="secondary" size="sm" type="button" onClick={reset}>Close</Button>
           </div>
           {ebayDraft.isPending ? (
             <p className="text-sm text-text-faint">Generating…</p>
           ) : draft ? (
             <div className="space-y-1">
-              {draft.warning && <p className="text-caption text-text-warning">{draft.warning}</p>}
+              {draft.warning && <p className="text-role-caption text-text-warning">{draft.warning}</p>}
               <p className="text-sm font-medium text-text-default">{draft.title}</p>
-              <p className="text-caption text-text-soft">Condition {draft.conditionId} · {draft.photoAttachmentIds.length} photo(s)</p>
+              <p className="text-role-caption text-text-soft">Condition {draft.conditionId} · {draft.photoAttachmentIds.length} photo(s)</p>
               <textarea
                 readOnly
                 value={draft.description}
                 rows={5}
-                className="w-full rounded-md border border-border-soft bg-surface-canvas px-2 py-1.5 text-label"
+                className="w-full rounded-md border border-border-soft bg-surface-canvas px-2 py-1.5 text-role-caption"
               />
             </div>
           ) : (

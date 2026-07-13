@@ -331,7 +331,7 @@ const TAG_STYLE: Record<EmailTriageTag, { chip: string; label: string }> = {
 };
 
 const CHIP_CLASS =
-  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase leading-none tracking-widest ring-1 ring-inset';
+  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase leading-none tracking-widest ring-1 ring-inset';
 
 const ROW_ACTION_CLASS =
   'flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50';
@@ -403,14 +403,14 @@ function EmailTriageItem({
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
-              'truncate text-caption font-black',
+              'truncate text-role-caption font-black',
               email.done ? 'text-text-faint line-through' : 'text-text-default',
             )}
           >
             {orders}
           </span>
           {age ? (
-            <span className="shrink-0 tabular-nums text-mini font-semibold text-text-faint">{age}</span>
+            <span className="shrink-0 tabular-nums text-role-micro font-semibold text-text-faint">{age}</span>
           ) : null}
           <span className={cn(CHIP_CLASS, 'ml-auto shrink-0', tag.chip)}>{tag.label}</span>
         </div>
@@ -418,11 +418,11 @@ function EmailTriageItem({
         {/* Description: truncated subject */}
         {email.subject ? (
           // ds-allow-title: truncation-only title on a non-interactive clipped element
-          <p className="mt-0.5 truncate text-mini text-text-soft" title={email.subject}>
+          <p className="mt-0.5 truncate text-role-micro text-text-soft" title={email.subject}>
             {email.subject}
           </p>
         ) : (
-          <p className="mt-0.5 truncate text-mini italic text-text-faint">No subject</p>
+          <p className="mt-0.5 truncate text-role-micro italic text-text-faint">No subject</p>
         )}
 
         {/* Quick actions — reveal on hover/focus to keep the row calm. */}
@@ -596,11 +596,11 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
       <div className="shrink-0 space-y-2 border-b border-border-soft px-3 pb-2 pt-2.5">
         <div className="flex items-center gap-2">
           <Mail className="h-3.5 w-3.5 text-amber-500" />
-          <h2 className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Email triage</h2>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-mini font-black tabular-nums text-amber-700">
+          <h2 className="text-role-eyebrow uppercase tracking-widest text-text-soft">Email triage</h2>
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-role-micro tabular-nums text-amber-700">
             {openCount}
           </span>
-          <span className="ml-auto text-mini font-semibold text-text-faint">
+          <span className="ml-auto text-role-micro font-semibold text-text-faint">
             {selected.size > 0 ? `${selected.size} selected` : 'Unmatched shipping emails'}
           </span>
         </div>
@@ -617,12 +617,12 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col">
         {isLoading ? (
-          <p className="flex items-center gap-1.5 px-3 py-3 text-caption text-text-faint">
+          <p className="flex items-center gap-1.5 px-3 py-3 text-role-caption text-text-faint">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
           </p>
         ) : isError ? (
           <div className="px-3 py-4">
-            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-600">
+            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-600">
               Could not load the email triage list.
             </div>
           </div>
@@ -661,7 +661,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
                   />
                 ))}
                 {!isControlled && live.truncatedBy > 0 ? (
-                  <li className="px-1 py-1 text-mini font-semibold text-text-faint">
+                  <li className="px-1 py-1 text-role-micro font-semibold text-text-faint">
                     +{live.truncatedBy} more — refine the search to narrow.
                   </li>
                 ) : null}
@@ -670,7 +670,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
               {/* Recently archived */}
               {doneEmails.length > 0 ? (
                 <div className="space-y-1">
-                  <p className="px-1 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+                  <p className="px-1 text-role-eyebrow uppercase tracking-widest text-text-faint">
                     Recently archived
                   </p>
                   <ul className="space-y-1">
@@ -696,7 +696,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
         {/* Bulk action bar — appears only with a selection (live mode). */}
         {selected.size > 0 && !isControlled ? (
           <div className="flex shrink-0 items-center gap-2 border-t border-border-soft bg-surface-card px-3 py-2">
-            <span className="text-caption font-bold text-text-muted">{selected.size} selected</span>
+            <span className="text-role-caption font-bold text-text-muted">{selected.size} selected</span>
             <Button
               type="button"
               variant="ghost"

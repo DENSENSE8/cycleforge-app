@@ -71,10 +71,10 @@ export function SearchesPane() {
         <ul className="space-y-2">
           {rows.map((s) => (
             <li key={s.id} className={`flex items-center gap-3 rounded-xl border border-border-soft bg-surface-card p-3 ${s.is_active ? '' : 'opacity-60'}`}>
-              <span className={`rounded-full px-2 py-0.5 text-micro font-semibold ${cadenceTone[s.cadence] ?? cadenceTone.off}`}>{CADENCE_LABEL[s.cadence] ?? s.cadence}</span>
+              <span className={`rounded-full px-2 py-0.5 text-role-micro font-semibold ${cadenceTone[s.cadence] ?? cadenceTone.off}`}>{CADENCE_LABEL[s.cadence] ?? s.cadence}</span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-text-default">{s.label || s.query}</p>
-                <p className="truncate text-caption text-text-soft">
+                <p className="truncate text-role-caption text-text-soft">
                   {s.product_title ?? s.sku ?? s.query}
                   {s.last_run_at ? ` · last run ${new Date(s.last_run_at).toLocaleDateString()}${s.last_hit_count != null ? ` · ${s.last_hit_count} hit${s.last_hit_count === 1 ? '' : 's'}` : ''}` : ' · never run'}
                 </p>

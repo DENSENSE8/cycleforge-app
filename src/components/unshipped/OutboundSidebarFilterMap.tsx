@@ -22,7 +22,7 @@ import {
 } from '@/components/unshipped/useOutboundSidebarScope';
 import { OutboundSavedViewsList } from '@/components/unshipped/OutboundSavedViewsList';
 
-const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-soft';
+const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
 const ROW =
   'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors';
@@ -116,11 +116,11 @@ function UnshippedSegments() {
               )}
             >
               <Icon className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-blue-600' : 'text-text-faint')} />
-              <span className="min-w-0 flex-1 truncate text-caption font-bold">{row.label}</span>
+              <span className="min-w-0 flex-1 truncate text-role-caption font-bold">{row.label}</span>
               {row.count != null ? (
                 <span
                   className={cn(
-                    'tabular-nums text-caption font-semibold',
+                    'tabular-nums text-role-caption font-semibold',
                     isActive ? 'text-blue-700' : 'text-text-faint',
                   )}
                 >
@@ -168,7 +168,7 @@ function ShippedSegments() {
                 exceptionsOnly ? 'text-blue-600' : 'text-amber-500',
               )}
             />
-            <span className="min-w-0 flex-1 truncate text-caption font-bold">Needs attention</span>
+            <span className="min-w-0 flex-1 truncate text-role-caption font-bold">Needs attention</span>
           </button>
         </li>
         <li>
@@ -183,7 +183,7 @@ function ShippedSegments() {
             )}
           >
             <User className={cn('h-3.5 w-3.5 shrink-0', mineActive ? 'text-blue-600' : 'text-text-faint')} />
-            <span className="min-w-0 flex-1 truncate text-caption font-bold">My queue</span>
+            <span className="min-w-0 flex-1 truncate text-role-caption font-bold">My queue</span>
           </button>
         </li>
       </ul>
@@ -211,7 +211,7 @@ function PackedSegments() {
             )}
           >
             <User className={cn('h-3.5 w-3.5 shrink-0', mineActive ? 'text-blue-600' : 'text-text-faint')} />
-            <span className="min-w-0 flex-1 truncate text-caption font-bold">My queue</span>
+            <span className="min-w-0 flex-1 truncate text-role-caption font-bold">My queue</span>
           </button>
         </li>
       </ul>

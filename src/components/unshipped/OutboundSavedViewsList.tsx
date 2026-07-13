@@ -19,7 +19,7 @@ import {
   UNSHIPPED_VIEW_PARAMS,
 } from '@/components/unshipped/outbound-sidebar-shared';
 
-const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-soft';
+const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
 export function OutboundSavedViewsList({
   mode,
@@ -61,7 +61,7 @@ export function OutboundSavedViewsList({
       </div>
 
       {views.length === 0 ? (
-        <p className="px-0.5 py-1 text-caption italic text-text-faint">
+        <p className="px-0.5 py-1 text-role-caption italic text-text-faint">
           No saved views yet. Set a filter, then save it here.
         </p>
       ) : (
@@ -74,7 +74,7 @@ export function OutboundSavedViewsList({
                   type="button"
                   onClick={() => applyView(view)}
                   className={cn(
-                    'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-caption transition-colors',
+                    'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-role-caption transition-colors',
                     isActive
                       ? 'bg-blue-50 font-semibold text-text-default ring-1 ring-inset ring-blue-400'
                       : 'text-text-muted hover:bg-surface-hover',
@@ -116,12 +116,12 @@ export function OutboundSavedViewsList({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Name this view…"
-              className="min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-caption text-text-default outline-none focus:border-blue-400"
+              className="min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default outline-none focus:border-blue-400"
             />
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="ds-raw-button shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-caption font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
+              className="ds-raw-button shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-role-caption font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
             >
               Save
             </button>
@@ -138,7 +138,7 @@ export function OutboundSavedViewsList({
                   ? 'These filters are already saved'
                   : 'Save the current filters as a view'
             }
-            className="ds-raw-button flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-caption font-medium text-text-muted transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="ds-raw-button flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-role-caption font-medium text-text-muted transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             Save current view

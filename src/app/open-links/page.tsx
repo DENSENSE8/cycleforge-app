@@ -44,7 +44,7 @@ export default function OpenLinksPage() {
             <div className="text-sm font-black uppercase tracking-widest text-text-default">
               Listing links
             </div>
-            <div className="mt-1 text-caption text-text-muted">
+            <div className="mt-1 text-role-caption text-text-muted">
               Open links from here to avoid popup blockers on “Open all”.
             </div>
           </div>
@@ -56,7 +56,7 @@ export default function OpenLinksPage() {
         </div>
 
         {!links.length ? (
-          <div className="rounded-md border border-border-hairline bg-surface-card/70 px-3 py-2 text-caption text-text-muted">
+          <div className="rounded-md border border-border-hairline bg-surface-card/70 px-3 py-2 text-role-caption text-text-muted">
             No links provided.
           </div>
         ) : (
@@ -66,7 +66,7 @@ export default function OpenLinksPage() {
                 key={`${href}-${i}`}
                 type="button"
                 onClick={() => window.open(href, '_blank', 'noopener,noreferrer')}
-                className="flex w-full items-center justify-between gap-2 rounded-md border border-border-hairline bg-surface-card/70 px-3 py-2 text-left text-caption font-semibold text-text-muted transition hover:bg-surface-hover"
+                className="flex w-full items-center justify-between gap-2 rounded-md border border-border-hairline bg-surface-card/70 px-3 py-2 text-left text-role-caption font-semibold text-text-muted transition hover:bg-surface-hover"
               >
                 <span className="min-w-0 flex-1 truncate">{href}</span>
                 <ExternalLink className="h-4 w-4 shrink-0 text-text-faint" aria-hidden />

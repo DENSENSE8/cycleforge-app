@@ -53,11 +53,11 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
               <span className="font-mono text-sm font-bold text-text-faint">—</span>
             )}
             {data?.po?.vendor_name ? (
-              <span className="truncate text-caption font-semibold text-text-soft">
+              <span className="truncate text-role-caption font-semibold text-text-soft">
                 · {data.po.vendor_name}
               </span>
             ) : data?.inbound?.seller_name ? (
-              <span className="truncate text-caption font-semibold text-text-soft">
+              <span className="truncate text-role-caption font-semibold text-text-soft">
                 · {data.inbound.seller_name}
               </span>
             ) : null}
@@ -81,7 +81,7 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
                 disabled={syncing}
                 ariaLabel={isInboundOnly ? 'Resync this marketplace order' : 'Sync this PO'}
                 icon={<RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />}
-                className="h-7 gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-eyebrow font-black uppercase tracking-wider text-emerald-700 hover:bg-emerald-100"
+                className="h-7 gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-role-eyebrow uppercase tracking-wider text-emerald-700 hover:bg-emerald-100"
               >
                 {syncing ? 'Syncing' : isInboundOnly ? 'Resync' : 'Sync'}
               </Button>
@@ -109,11 +109,11 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {isLoading ? (
-          <div className="flex h-full items-center justify-center text-caption font-semibold text-text-faint">
+          <div className="flex h-full items-center justify-center text-role-caption font-semibold text-text-faint">
             Loading details…
           </div>
         ) : isError || !data?.success ? (
-          <div className="flex h-full items-center justify-center text-caption font-semibold text-rose-600">
+          <div className="flex h-full items-center justify-center text-role-caption font-semibold text-rose-600">
             Could not load PO details.
           </div>
         ) : (
@@ -144,7 +144,7 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
           icon={<Trash2 className="w-3.5 h-3.5" />}
           label="Delete"
           armedLabel="Click Again To Confirm"
-          className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-micro font-black uppercase tracking-wider disabled:opacity-50"
+          className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-role-micro uppercase tracking-wider disabled:opacity-50"
         />
       </div>
       </div>

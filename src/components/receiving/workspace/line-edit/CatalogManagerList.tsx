@@ -36,7 +36,7 @@ const API_BASE: Record<CatalogKind, string> = {
 };
 
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-label text-text-default outline-none transition-colors focus:border-blue-500';
+  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
 
 interface Entry {
   id: number;
@@ -144,14 +144,14 @@ export function CatalogManagerList({
     <div>
       {!editable ? (
         <>
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-micro font-semibold text-amber-800">
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-role-micro font-semibold text-amber-800">
             Showing built-in defaults. Apply migration <code>2026-06-13g</code> to add or edit your own.
           </div>
           <ul className="space-y-1.5">
             {fallbackLabels.map((label) => (
               <li
                 key={label}
-                className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-label font-semibold text-text-faint"
+                className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-semibold text-text-faint"
               >
                 {label}
               </li>
@@ -198,10 +198,10 @@ export function CatalogManagerList({
                     className={`${TEXT_INPUT} flex-1`}
                   />
                 ) : (
-                  <span className="flex flex-1 items-center gap-2 truncate text-label font-semibold text-text-default">
+                  <span className="flex flex-1 items-center gap-2 truncate text-role-caption font-semibold text-text-default">
                     {e.label}
                     {e.isSystem ? (
-                      <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+                      <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
                         Default
                       </span>
                     ) : null}
@@ -276,14 +276,14 @@ export function CatalogManagerList({
 
       {hidden.length > 0 ? (
         <div className="mt-4">
-          <p className="mb-1.5 text-eyebrow font-black uppercase tracking-widest text-text-faint">Hidden</p>
+          <p className="mb-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">Hidden</p>
           <ul className="space-y-1.5">
             {hidden.map((e) => (
               <li
                 key={e.id}
                 className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas px-2.5 py-1.5"
               >
-                <span className="flex-1 truncate text-label font-semibold text-text-faint line-through">{e.label}</span>
+                <span className="flex-1 truncate text-role-caption font-semibold text-text-faint line-through">{e.label}</span>
                 {busyId === e.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
                 ) : (
@@ -292,7 +292,7 @@ export function CatalogManagerList({
                     variant="ghost"
                     size="sm"
                     onClick={() => void setActive(e, true)}
-                    className="h-auto rounded px-2 py-0.5 text-mini font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+                    className="h-auto rounded px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
                   >
                     Restore
                   </Button>
@@ -323,7 +323,7 @@ export function CatalogManagerList({
           disabled={!editable || !adding.trim() || busyId != null}
           loading={busyId === 'new'}
           icon={<Plus className="h-3.5 w-3.5" />}
-          className="text-mini font-bold uppercase tracking-wider"
+          className="text-role-micro font-bold uppercase tracking-wider"
         >
           Add
         </Button>

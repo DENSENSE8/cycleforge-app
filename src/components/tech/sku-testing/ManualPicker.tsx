@@ -20,7 +20,7 @@ export function ManualPicker({
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
           placeholder="Search manuals library…"
-          className="w-full bg-transparent text-caption font-medium text-text-default placeholder:text-text-faint focus:outline-none"
+          className="w-full bg-transparent text-role-caption font-medium text-text-default placeholder:text-text-faint focus:outline-none"
         />
         {searching ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-faint" /> : null}
       </div>
@@ -37,7 +37,7 @@ export function ManualPicker({
                   className="ds-raw-button flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-card"
                 >
                   <FileText className="h-4 w-4 shrink-0 text-text-faint" />
-                  <span className="min-w-0 flex-1 truncate text-caption font-medium text-text-default">{name}</span>
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{name}</span>
                   {pairingId === m.id ? (
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-faint" />
                   ) : (
@@ -49,7 +49,7 @@ export function ManualPicker({
           })}
         </ul>
       ) : query.trim() && !searching ? (
-        <p className="mt-2 px-2 text-caption text-text-faint">No matches.</p>
+        <p className="mt-2 px-2 text-role-caption text-text-faint">No matches.</p>
       ) : null}
     </div>
   );

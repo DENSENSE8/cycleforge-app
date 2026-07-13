@@ -61,6 +61,13 @@ export interface StaffPreferences {
    */
   theme?: string | null;
   /**
+   * Clock display format for every rendered timestamp: `'12h'` (h:mm AM/PM,
+   * the default) or `'24h'` (HH:mm). Absent/`null` = `12h`. Display-only — the
+   * store (src/lib/time-format/store.ts) mirrors it to localStorage for
+   * flash-free reads; storage/API timestamp formats are unaffected.
+   */
+  timeFormat?: string | null;
+  /**
    * "Skip for now" on the dashboard Getting-Started checklist. `true` hides the
    * card; absent/`null` shows it while activation steps remain incomplete.
    */

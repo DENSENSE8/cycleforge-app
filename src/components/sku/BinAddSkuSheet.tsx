@@ -216,7 +216,7 @@ export function BinAddSkuSheet({
           className="h-10 w-10 rounded-md border border-border-default bg-surface-card text-sm font-bold text-text-muted active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Add to bin
           </p>
           <p className="truncate font-mono text-sm font-black text-text-default">
@@ -256,7 +256,7 @@ export function BinAddSkuSheet({
               </p>
             )}
             {!debounced.trim() && (
-              <p className="px-2 py-8 text-center text-caption font-bold uppercase tracking-widest text-text-faint">
+              <p className="px-2 py-8 text-center text-role-caption font-bold uppercase tracking-widest text-text-faint">
                 Type a few characters to search
               </p>
             )}
@@ -281,18 +281,18 @@ export function BinAddSkuSheet({
                           {sku}
                         </p>
                         {row.product_title && (
-                          <p className="mt-1 line-clamp-2 text-caption leading-snug text-text-soft">
+                          <p className="mt-1 line-clamp-2 text-role-caption leading-snug text-text-soft">
                             {row.product_title}
                           </p>
                         )}
                       </div>
                       {row.source === 'stock' ? (
-                        <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-bold text-text-muted">
+                        <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold text-text-muted">
                           {row.stock ?? 0} on hand
                         </span>
                       ) : (
                         <HoverTooltip label="Not yet in stock — will create the entry on first put" asChild>
-                          <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-micro font-bold text-blue-700">
+                          <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-role-micro font-bold text-blue-700">
                             Storefront only
                           </span>
                         </HoverTooltip>
@@ -311,17 +311,17 @@ export function BinAddSkuSheet({
               {selected.sku}
             </p>
             {selected.product_title && (
-              <p className="mt-1 text-caption leading-snug text-text-soft">
+              <p className="mt-1 text-role-caption leading-snug text-text-soft">
                 {selected.product_title}
               </p>
             )}
-            <p className="mt-2 text-micro font-bold uppercase tracking-widest text-text-faint">
+            <p className="mt-2 text-role-micro font-bold uppercase tracking-widest text-text-faint">
               Currently {selected.stock ?? 0} total on hand
             </p>
           </div>
 
           <label className="mt-6 block">
-            <span className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+            <span className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
               Add to this bin
             </span>
             <input

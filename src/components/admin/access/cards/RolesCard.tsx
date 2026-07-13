@@ -19,12 +19,12 @@ export function RolesCard({ roles, availableRoles, borderClass, busyRoles, onSet
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Roles</h2>
-          <p className="mt-0.5 text-caption text-text-soft">
+          <p className="mt-0.5 text-role-caption text-text-soft">
             Staff can hold many roles. Effective permissions = UNION of every role&apos;s set,
             then layered with the per-page overrides below.
           </p>
         </div>
-        <div className="text-caption text-text-soft">
+        <div className="text-role-caption text-text-soft">
           {roles.length} role{roles.length === 1 ? '' : 's'}
         </div>
       </header>
@@ -32,7 +32,7 @@ export function RolesCard({ roles, availableRoles, borderClass, busyRoles, onSet
         {roles.map((r, idx) => (
           <span
             key={r.id}
-            className="group inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-caption font-semibold ring-1 ring-inset"
+            className="group inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-caption font-semibold ring-1 ring-inset"
             style={{ backgroundColor: `${r.color}1A`, color: r.color, borderColor: `${r.color}33` }}
           >
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: r.color }} aria-hidden />
@@ -40,7 +40,7 @@ export function RolesCard({ roles, availableRoles, borderClass, busyRoles, onSet
             {idx === 0 && roles.length > 1 && (
               <HoverTooltip label="Primary role (highest position). Shown in the Identity card." asChild>
                 <span
-                  className="ml-0.5 rounded-sm px-1 py-px text-eyebrow font-bold uppercase tracking-wider opacity-70"
+                  className="ml-0.5 rounded-sm px-1 py-px text-role-eyebrow font-bold uppercase tracking-wider opacity-70"
                   style={{ backgroundColor: `${r.color}26` }}
                 >
                   primary
@@ -60,7 +60,7 @@ export function RolesCard({ roles, availableRoles, borderClass, busyRoles, onSet
           </span>
         ))}
         {roles.length === 0 && (
-          <span className="text-caption italic text-text-faint">No roles assigned — staff has no role-granted permissions.</span>
+          <span className="text-role-caption italic text-text-faint">No roles assigned — staff has no role-granted permissions.</span>
         )}
         <AddRolePopover
           roles={availableRoles.filter((r) => !roles.some((x) => x.id === r.id))}
@@ -68,7 +68,7 @@ export function RolesCard({ roles, availableRoles, borderClass, busyRoles, onSet
           disabled={busyRoles}
         />
       </div>
-      <div className="border-t border-border-hairline bg-surface-canvas/60 px-5 py-2 text-micro text-text-muted">
+      <div className="border-t border-border-hairline bg-surface-canvas/60 px-5 py-2 text-role-micro text-text-muted">
         Primary role: <b>{roles[0]?.label ?? '—'}</b>
         {roles.length > 1 && ` · ${roles.length - 1} additional`}
         {' · '}

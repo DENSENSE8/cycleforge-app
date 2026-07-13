@@ -99,7 +99,7 @@ function filterFeed(kind: KpiKind, feed: ActivityRow[] | undefined): ActivityRow
 function ActivityList({ rows, emptyHint }: { rows: ActivityRow[]; emptyHint: string }) {
   if (rows.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center px-6 text-center text-label font-medium text-text-muted">
+      <div className="flex h-full items-center justify-center px-6 text-center text-role-caption font-medium text-text-muted">
         {emptyHint}
       </div>
     );
@@ -115,15 +115,15 @@ function ActivityList({ rows, emptyHint }: { rows: ActivityRow[]; emptyHint: str
             <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-caption font-bold uppercase tracking-wide text-text-default">{label}</span>
+                <span className="text-role-caption font-bold uppercase tracking-wide text-text-default">{label}</span>
                 {row.source ? (
-                  <span className="rounded-full bg-surface-card px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-wider text-text-muted">
+                  <span className="rounded-full bg-surface-card px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-text-muted">
                     {row.source}
                   </span>
                 ) : null}
               </div>
-              <p className="mt-0.5 truncate text-label font-medium text-text-default">{row.summary || '—'}</p>
-              <div className="mt-0.5 flex items-center gap-2 text-micro font-semibold text-text-muted">
+              <p className="mt-0.5 truncate text-role-caption font-medium text-text-default">{row.summary || '—'}</p>
+              <div className="mt-0.5 flex items-center gap-2 text-role-micro font-semibold text-text-muted">
                 {row.actor_name ? <span>{row.actor_name}</span> : null}
                 {row.actor_name ? <span>·</span> : null}
                 <span className="tabular-nums">{relativeTime(row.timestamp)}</span>
@@ -149,7 +149,7 @@ function RepairList({ emptyHint }: { emptyHint: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-label font-semibold text-text-muted">
+      <div className="flex h-full items-center justify-center text-role-caption font-semibold text-text-muted">
         Loading repair queue…
       </div>
     );
@@ -157,7 +157,7 @@ function RepairList({ emptyHint }: { emptyHint: string }) {
 
   if (sorted.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center px-6 text-center text-label font-medium text-text-muted">
+      <div className="flex h-full items-center justify-center px-6 text-center text-role-caption font-medium text-text-muted">
         {emptyHint}
       </div>
     );
@@ -173,17 +173,17 @@ function RepairList({ emptyHint }: { emptyHint: string }) {
           <li key={r.id} className="flex items-start gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="rounded-md bg-surface-card px-2 py-0.5 font-mono text-micro font-bold text-text-default">
+                <span className="rounded-md bg-surface-card px-2 py-0.5 font-mono text-role-micro font-bold text-text-default">
                   #{r.ticket_number}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 text-eyebrow font-bold uppercase tracking-wider ${statusTone}`}>
+                <span className={`rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider ${statusTone}`}>
                   {r.status}
                 </span>
               </div>
-              <p className="mt-1 truncate text-label font-semibold text-text-default">{customer}</p>
-              <p className="mt-0.5 truncate text-caption font-medium text-text-muted">{r.product_title || r.issue || '—'}</p>
+              <p className="mt-1 truncate text-role-caption font-semibold text-text-default">{customer}</p>
+              <p className="mt-0.5 truncate text-role-caption font-medium text-text-muted">{r.product_title || r.issue || '—'}</p>
             </div>
-            <span className="shrink-0 whitespace-nowrap pt-1 text-micro font-semibold tabular-nums text-text-muted">
+            <span className="shrink-0 whitespace-nowrap pt-1 text-role-micro font-semibold tabular-nums text-text-muted">
               {age}
             </span>
           </li>
@@ -232,12 +232,12 @@ export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetai
           >
             <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
               <div className="min-w-0">
-                <p className="text-[18px] font-extrabold leading-tight text-text-default">{meta.title}</p>
-                <p className="mt-0.5 text-label font-medium leading-snug text-text-muted">{meta.subtitle}</p>
+                <p className="text-role-title font-extrabold leading-tight text-text-default">{meta.title}</p>
+                <p className="mt-0.5 text-role-caption font-medium leading-snug text-text-muted">{meta.subtitle}</p>
               </div>
               <div className="flex items-center gap-2">
                 {typeof value === 'number' ? (
-                  <span className={`rounded-full px-2.5 py-1 text-label font-extrabold tabular-nums ${TONE_RING[meta.tone]}`}>
+                  <span className={`rounded-full px-2.5 py-1 text-role-caption font-extrabold tabular-nums ${TONE_RING[meta.tone]}`}>
                     {value.toLocaleString()}
                   </span>
                 ) : null}
@@ -260,7 +260,7 @@ export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetai
               )}
             </div>
 
-            <div className="border-t border-border-soft px-5 py-2.5 text-center text-micro font-semibold uppercase tracking-wider text-text-muted">
+            <div className="border-t border-border-soft px-5 py-2.5 text-center text-role-micro font-semibold uppercase tracking-wider text-text-muted">
               {kind === 'repair'
                 ? 'Live queue · updates as tickets close'
                 : 'Most recent activity · refreshes every minute'}

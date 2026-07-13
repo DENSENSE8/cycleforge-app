@@ -75,7 +75,7 @@ export function SessionsSection() {
 
       <div className="rounded-xl border border-border-soft bg-surface-card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-surface-canvas text-left text-caption uppercase tracking-wider text-text-soft">
+          <thead className="bg-surface-canvas text-left text-role-caption uppercase tracking-wider text-text-soft">
             <tr>
               <th className="px-3 py-2">Staff</th>
               <th className="px-3 py-2">Device</th>

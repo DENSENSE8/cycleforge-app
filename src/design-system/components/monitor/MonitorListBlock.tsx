@@ -36,9 +36,9 @@ export function MonitorListRow({ title, meta, trailing, className, onClick }: Mo
   const inner = (
     <>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-caption font-bold text-text-default">{title}</span>
+        <span className="block truncate text-role-caption font-bold text-text-default">{title}</span>
         {meta != null ? (
-          <span className="block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {meta}
           </span>
         ) : null}

@@ -206,6 +206,44 @@ export function useTestingLineController(
     [row.id, row.serials, row.receiving_id, notes, patchSiblingUnitStatus],
   );
 
+  const handleSlotCondition = useCallback(
+    async (lineId: number, serial: UnitSlotSerial, nextGrade: string) => {
+      if (serial.id == null) return;
+      const priorGrade = serial.condition_grade;
+
+      const applyGrade = (grade: string | null | undefined) => {
+        if (lineId === row.id) {
+          const nextSerials = (row.serials ?? []).map((s) =>
+            s.id === serial.id ? { ...s, condition_grade: grade } : s,
+          );
+          dispatchTestingLineUpdated({ id: lineId, serials: nextSerials });
+        }
+      };
+
+      applyGrade(nextGrade);
+      try {
+        const res = await fetch(`/api/serial-units/${serial.id}/grade`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            new_grade: nextGrade,
+            client_event_id: `testing-grade-${serial.id}-${nextGrade}-${Date.now()}`,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.ok) {
+          toast.error(data?.error || `Condition update failed (${res.status})`);
+          applyGrade(priorGrade);
+          return;
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Condition request failed');
+        applyGrade(priorGrade);
+      }
+    },
+    [row.id, row.serials],
+  );
+
   const deriveLineVerdict = useCallback(
     (serials: ReadonlyArray<UnitSlotSerial>): TestingVerdict | null => {
       const verdicts = serials.map((s) => unitStatusToVerdict(s.current_status));
@@ -599,7 +637,7 @@ export function useTestingLineController(
     serialSubmitting, headerSerialEdit, setHeaderSerialEdit, isMutating,
     activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial, activeAllocation,
     previewPayload, isPrinting,
-    handleSlotVerdict, applyLineVerdict, deriveLineVerdict,
+    handleSlotVerdict, handleSlotCondition, applyLineVerdict, deriveLineVerdict,
     enqueueSerial, deleteSerial, replaceSerial,
     handlePrimary, handleApplyAndPrint,
     // Editable carton label — preview payload + editor draft/build/apply (the

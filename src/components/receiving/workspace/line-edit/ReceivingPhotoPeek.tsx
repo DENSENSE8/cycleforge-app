@@ -19,7 +19,7 @@ import { PhotoPeekFan, type PeekCard } from './PhotoPeekFan';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
-import { unboxingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { receivingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 
 interface PhotoRow {
   id: number;
@@ -102,7 +102,7 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
           id: String(p.id),
           imgUrl: p.photoUrl,
           alt: p.caption || `Carton photo ${p.id}`,
-          meta: unboxingPhotoMeta({ poRef, caption: p.caption, createdAt: p.createdAt }),
+          meta: receivingPhotoMeta(p, { poRef: poRef ?? null }),
         })),
     [data, poRef],
   );

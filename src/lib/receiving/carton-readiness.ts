@@ -68,8 +68,13 @@ export function deriveCartonReadiness(
   matchLines?: ReadonlyArray<ReceivingMatchLine> | null,
 ): CartonReadiness {
   const scanned = hasStamp(log.tracking_scanned_at);
-  const unboxed = hasStamp(log.unboxed_at);
   const received = hasStamp(log.received_at);
+  // A received carton has, by definition, been unboxed — even when the distinct
+  // unbox step was folded into a one-motion receive (no manual condition/serial,
+  // sometimes no serial at all), so `unboxed_at` was never stamped on its own.
+  // Treat received as implying unboxed so the stage never reports "awaiting_unbox"
+  // for something already received.
+  const unboxed = hasStamp(log.unboxed_at) || received;
 
   const { lineCount, linesComplete } = summarizeReceivingMatchLines(matchLines);
   const hasLines = lineCount > 0;
@@ -102,7 +107,7 @@ export function deriveCartonReadiness(
     return {
       stage: 'awaiting_unbox',
       headline: 'Awaiting unbox',
-      nextStep: 'Ready to unbox — open the workspace and start the line flow.',
+      nextStep: 'Ready to unbox.',
       cta: hasLines ? 'continue_unbox' : 'match_po',
       pillTone: 'blue',
       pipelineStates,

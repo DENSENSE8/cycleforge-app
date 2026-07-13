@@ -26,18 +26,18 @@ export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, gln }
     <div className="flex items-center gap-5 rounded-xl bg-surface-canvas p-5 ring-1 ring-border-soft/50">
       <div className="min-w-0 flex-1 space-y-2">
         <div>
-          <p className="text-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Rack code</p>
+          <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Rack code</p>
           <p className="mt-0.5 whitespace-nowrap font-mono text-2xl font-black tracking-tight text-text-default">{code}</p>
         </div>
         {roomName && (
           <div>
-            <p className="text-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Room</p>
+            <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Room</p>
             <p className="mt-0.5 truncate text-sm font-semibold text-text-default">{roomName}</p>
           </div>
         )}
         <div>
-          <p className="text-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Breakdown</p>
-          <p className="mt-0.5 text-label leading-snug text-text-muted">
+          <p className="text-role-micro font-semibold uppercase tracking-[0.14em] text-text-soft">Breakdown</p>
+          <p className="mt-0.5 text-role-caption leading-snug text-text-muted">
             {humanReadable({ zone: zoneLetter, aisle, bay, level })}
           </p>
         </div>
@@ -52,7 +52,7 @@ export function LivePreviewBody({ zoneLetter, roomName, aisle, bay, level, gln }
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
             <Printer className="h-5 w-5 text-text-faint" />
-            <p className="px-2 text-micro font-semibold text-text-faint">
+            <p className="px-2 text-role-micro font-semibold text-text-faint">
               Barcode appears when all steps are picked
             </p>
           </div>

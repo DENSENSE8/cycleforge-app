@@ -36,18 +36,18 @@ function sourceLabel(source: string): string {
 function ProviderCard({ title, config, note }: { title: string; config: OrgAiConfig | null; note?: string }) {
   return (
     <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
-      <p className="text-micro font-black uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="text-role-micro uppercase tracking-widest text-text-soft">{title}</p>
       {config ? (
         <>
           <p className="text-sm font-semibold text-text-default">{sourceLabel(config.source)}</p>
-          <p className="truncate text-caption font-medium text-text-soft">
+          <p className="truncate text-role-caption font-medium text-text-soft">
             {config.model} · via {new URL(config.baseURL).host}
           </p>
         </>
       ) : (
         <>
           <p className="text-sm font-semibold text-text-default">Not connected</p>
-          <p className="text-caption font-medium text-text-soft">
+          <p className="text-role-caption font-medium text-text-soft">
             {note ?? 'Search falls back to keyword matching until a provider is connected.'}
           </p>
         </>
@@ -83,12 +83,12 @@ export default async function AiSettingsPage() {
         {/* Active providers */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Active providers
             </p>
             <Link
               href="/settings/integrations"
-              className="text-caption font-semibold text-blue-600 hover:underline"
+              className="text-role-caption font-semibold text-blue-600 hover:underline"
             >
               Connect / manage providers →
             </Link>
@@ -105,7 +105,7 @@ export default async function AiSettingsPage() {
               note="The Ask AI action falls back to the classic chat page until connected."
             />
           </div>
-          <p className="text-caption font-medium text-text-soft">
+          <p className="text-role-caption font-medium text-text-soft">
             Connect your own key under Integrations → Realtime &amp; AI (Vercel AI Gateway, OpenAI,
             Anthropic, or a self-hosted endpoint). Your key is encrypted at rest and used only for
             your organization. Without a key, your searches use the platform default and appear
@@ -115,40 +115,40 @@ export default async function AiSettingsPage() {
 
         {/* Price breakdown */}
         <section className="space-y-3">
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Usage &amp; pricing · last {days} days
           </p>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
-              <p className="text-micro font-black uppercase tracking-widest text-text-soft">AI calls</p>
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">AI calls</p>
               <p className="text-xl font-black text-text-default">{totalCalls.toLocaleString()}</p>
             </div>
             <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
-              <p className="text-micro font-black uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">
                 Estimated provider cost
               </p>
               <p className="text-xl font-black text-text-default">{microcentsToUsd(estimated)}</p>
             </div>
             <div className="space-y-1 rounded-xl border border-border-soft bg-surface-card p-4">
-              <p className="text-micro font-black uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">
                 Billed{marginPercent > 0 ? ` (cost + ${marginPercent}%)` : ''}
               </p>
               <p className="text-xl font-black text-text-default">{microcentsToUsd(billed)}</p>
-              <p className="text-caption font-medium text-text-soft">
+              <p className="text-role-caption font-medium text-text-soft">
                 Margin applies to platform-metered usage only — your own keys bill at your provider.
               </p>
             </div>
           </div>
 
           {summary.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption font-medium text-text-soft">
+            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption font-medium text-text-soft">
               No AI usage recorded in this window yet — usage appears here as staff search.
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-border-soft bg-surface-card">
-              <table className="w-full text-left text-caption">
+              <table className="w-full text-left text-role-caption">
                 <thead>
-                  <tr className="border-b border-border-hairline text-micro font-black uppercase tracking-widest text-text-soft">
+                  <tr className="border-b border-border-hairline text-role-micro uppercase tracking-widest text-text-soft">
                     <th className="px-4 py-2">Use</th>
                     <th className="px-4 py-2">Provider</th>
                     <th className="px-4 py-2">Model</th>
@@ -168,7 +168,7 @@ export default async function AiSettingsPage() {
                             : 'Index embedding'}
                       </td>
                       <td className="px-4 py-2">{sourceLabel(row.provider)}</td>
-                      <td className="px-4 py-2 font-mono text-micro">{row.model}</td>
+                      <td className="px-4 py-2 font-mono text-role-micro">{row.model}</td>
                       <td className="px-4 py-2 text-right">{row.calls.toLocaleString()}</td>
                       <td className="px-4 py-2 text-right">
                         {row.inputTokens.toLocaleString()} / {row.outputTokens.toLocaleString()}
@@ -184,7 +184,7 @@ export default async function AiSettingsPage() {
             </div>
           )}
           {unknownRateCalls > 0 && (
-            <p className="text-caption font-medium text-text-soft">
+            <p className="text-role-caption font-medium text-text-soft">
               * {unknownRateCalls.toLocaleString()} call(s) used a model without a published rate —
               tokens are counted, cost shown excludes them.
             </p>

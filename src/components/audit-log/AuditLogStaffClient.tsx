@@ -93,14 +93,14 @@ export function AuditLogStaffClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-micro font-bold uppercase tracking-widest text-emerald-700">
+        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
           Staff audit
         </p>
         <h2 className="mt-0.5 text-base font-bold text-text-default">
           {detail.staff.name ?? `#${detail.staff.id}`}
         </h2>
         {detail.staff.role && (
-          <p className="mt-1 text-label text-text-soft">{detail.staff.role}</p>
+          <p className="mt-1 text-role-caption text-text-soft">{detail.staff.role}</p>
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {(['receiving', 'packing', 'tech'] as const).map((s) => {
@@ -110,7 +110,7 @@ export function AuditLogStaffClient() {
             return (
               <span
                 key={s}
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-semibold ring-1 ${meta.tone}`}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-semibold ring-1 ${meta.tone}`}
               >
                 <meta.Icon className="h-3 w-3" />
                 {meta.label}: {n}
@@ -141,31 +141,31 @@ function EventRow({ event }: { event: StaffEvent }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wider ring-1 ${meta.tone}`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${meta.tone}`}
             >
               <meta.Icon className="h-3 w-3" />
               {meta.label}
             </span>
-            <span className="text-caption font-semibold text-text-default">
+            <span className="text-role-caption font-semibold text-text-default">
               {kindLabel(event.kind)}
             </span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption text-text-soft">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-role-caption text-text-soft">
             {event.tracking && (
-              <span className="font-mono text-micro">{event.tracking}</span>
+              <span className="font-mono text-role-micro">{event.tracking}</span>
             )}
             {event.sku && <span>SKU: {event.sku}</span>}
             {event.serial_number && (
-              <span className="font-mono text-micro text-emerald-700">
+              <span className="font-mono text-role-micro text-emerald-700">
                 {event.serial_number}
               </span>
             )}
           </div>
         </div>
-        <div className="shrink-0 text-micro text-text-faint">{fmtTime(event.occurred_at)}</div>
+        <div className="shrink-0 text-role-micro text-text-faint">{fmtTime(event.occurred_at)}</div>
       </div>
       {event.notes && (
-        <p className="mt-2 whitespace-pre-wrap break-words text-label text-text-muted">
+        <p className="mt-2 whitespace-pre-wrap break-words text-role-caption text-text-muted">
           {event.notes}
         </p>
       )}
@@ -183,7 +183,7 @@ function CenterMessage({
   return (
     <div className="flex h-full items-center justify-center p-6">
       <p
-        className={`text-center text-label ${
+        className={`text-center text-role-caption ${
           tone === 'error' ? 'text-rose-600' : 'text-text-faint'
         }`}
       >

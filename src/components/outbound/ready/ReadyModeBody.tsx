@@ -23,16 +23,16 @@ export function ReadyModeBody() {
         />
       </div>
       <div className={`min-h-0 flex-1 space-y-3 overflow-y-auto ${SIDEBAR_GUTTER} py-3`}>
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           Post-test allocation
         </p>
-        <p className="text-caption leading-relaxed text-text-soft">
+        <p className="text-role-caption leading-relaxed text-text-soft">
           Units that passed testing sort here: send to FBA when an open plan needs fill (or Amazon is
           OOS and the SKU is hot), otherwise pre-box and stock for merchant fulfillment.
         </p>
         <Link
           href={fbaOutboundHref()}
-          className="inline-flex text-[11px] font-black uppercase tracking-widest text-violet-700 hover:underline"
+          className="inline-flex text-role-caption font-black uppercase tracking-widest text-violet-700 hover:underline"
         >
           Open FBA prep →
         </Link>

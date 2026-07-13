@@ -71,11 +71,11 @@ export function PlanEntryCard({
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <Calendar className="h-3 w-3 shrink-0 text-purple-500" />
-            <span className="text-label font-black text-text-default">
+            <span className="text-role-caption font-black text-text-default">
               {entry.shipment_ref || formatPlanDate(entry.due_date)}
             </span>
           </div>
-          <div className="flex items-center gap-3 pl-5 text-caption">
+          <div className="flex items-center gap-3 pl-5 text-role-caption">
             <span className="flex items-center gap-1 font-bold text-text-soft">
               <ClipboardList className="h-3 w-3 text-purple-400" />
               <span className="tabular-nums">{entry.expected_qty}</span>
@@ -84,7 +84,7 @@ export function PlanEntryCard({
               <Check className="h-3 w-3 text-emerald-500" />
               <span className="tabular-nums">{entry.actual_qty}</span>
             </span>
-            <span className="text-micro font-bold text-text-faint">
+            <span className="text-role-micro font-bold text-text-faint">
               {formatCreatedAt(entry.plan_created_at)}
             </span>
           </div>
@@ -124,7 +124,7 @@ export function PlanEntryCard({
             </div>
           </div>
 
-          <dl className="space-y-1 text-caption">
+          <dl className="space-y-1 text-role-caption">
             {entry.destination_fc && (
               <div className="flex justify-between gap-3">
                 <dt className="font-semibold text-text-soft">Destination FC</dt>
@@ -156,7 +156,7 @@ export function PlanEntryCard({
               <p className={`mb-1.5 ${sectionLabel}`}>Tracking</p>
               <div className="space-y-0.5">
                 {entry.tracking_numbers.map((t, i) => (
-                  <p key={i} className="font-mono text-micro font-bold text-text-muted">
+                  <p key={i} className="font-mono text-role-micro font-bold text-text-muted">
                     {t.carrier && <span className="text-text-faint">{t.carrier} </span>}
                     {t.tracking_number}
                   </p>
@@ -171,23 +171,23 @@ export function PlanEntryCard({
               size="sm"
               icon={<Trash2 className="h-3 w-3" />}
               onClick={() => setConfirmDelete(true)}
-              className="h-auto gap-1.5 px-0 text-micro font-bold text-red-500 hover:bg-transparent hover:text-red-700"
+              className="h-auto gap-1.5 px-0 text-role-micro font-bold text-red-500 hover:bg-transparent hover:text-red-700"
             >
               Remove entry
             </Button>
           ) : (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-caption font-bold text-red-800">
+              <p className="text-role-caption font-bold text-red-800">
                 Remove this entry from {entry.shipment_ref || 'plan'}?
               </p>
               {deleteError && (
-                <p className="mt-1 text-micro font-semibold text-red-600">{deleteError}</p>
+                <p className="mt-1 text-role-micro font-semibold text-red-600">{deleteError}</p>
               )}
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <Button
                   variant="secondary"
                   onClick={() => { setConfirmDelete(false); setDeleteError(null); }}
-                  className="h-7 w-full rounded-md text-eyebrow font-black uppercase tracking-wider text-text-muted"
+                  className="h-7 w-full rounded-md text-role-eyebrow uppercase tracking-wider text-text-muted"
                 >
                   Cancel
                 </Button>
@@ -196,7 +196,7 @@ export function PlanEntryCard({
                   icon={<Trash2 className="h-2.5 w-2.5" />}
                   loading={deleting}
                   onClick={() => void handleDelete()}
-                  className="h-7 w-full gap-1 rounded-md bg-red-600 text-eyebrow font-black uppercase tracking-wider hover:bg-red-700"
+                  className="h-7 w-full gap-1 rounded-md bg-red-600 text-role-eyebrow uppercase tracking-wider hover:bg-red-700"
                 >
                   {deleting ? 'Removing...' : 'Remove'}
                 </Button>

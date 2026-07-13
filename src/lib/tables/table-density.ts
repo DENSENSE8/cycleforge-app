@@ -47,5 +47,5 @@ export interface TableDensityClasses {
 
 export const TABLE_DENSITY_CLASSES: Record<TableDensity, TableDensityClasses> = {
   comfortable: { rowPadding: 'py-1.5', metaText: '', chipGap: '' },
-  compact: { rowPadding: 'py-1', metaText: 'text-micro', chipGap: 'gap-0.5' },
+  compact: { rowPadding: 'py-1', metaText: 'text-role-micro', chipGap: 'gap-0.5' },
 };

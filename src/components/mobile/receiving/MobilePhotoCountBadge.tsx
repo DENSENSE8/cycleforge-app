@@ -28,7 +28,7 @@ export function MobilePhotoCountBadge({
   const safeCount = Math.max(0, count);
   const hasPhotos = safeCount > 0;
   const iconSize = size === 'md' ? 'h-4 w-4' : 'h-3 w-3';
-  const textSize = size === 'md' ? 'text-sm' : 'text-caption';
+  const textSize = size === 'md' ? 'text-sm' : 'text-role-caption';
 
   const inner = (
     <span

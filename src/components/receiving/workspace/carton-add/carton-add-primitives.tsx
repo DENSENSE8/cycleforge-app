@@ -4,7 +4,7 @@ import { Loader2, Package, Plus } from '@/components/Icons';
 
 export function HintBanner({ text }: { text: string }) {
   return (
-    <div className="border-b border-amber-100 bg-amber-50 px-3 py-1.5 text-micro font-semibold text-amber-800">
+    <div className="border-b border-amber-100 bg-amber-50 px-3 py-1.5 text-role-micro font-semibold text-amber-800">
       {text}
     </div>
   );
@@ -16,7 +16,7 @@ export function DisabledNote({ reason }: { reason: string }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
       <Package className="h-6 w-6 text-text-faint" />
-      <p className="max-w-xs text-label text-text-soft">{reason}</p>
+      <p className="max-w-xs text-role-caption text-text-soft">{reason}</p>
     </div>
   );
 }
@@ -54,8 +54,8 @@ export function ResultRow({
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-label font-semibold text-text-default">{title}</p>
-        {subtitle ? <p className="truncate text-micro text-text-soft">{subtitle}</p> : null}
+        <p className="truncate text-role-caption font-semibold text-text-default">{title}</p>
+        {subtitle ? <p className="truncate text-role-micro text-text-soft">{subtitle}</p> : null}
       </div>
       {busy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-text-faint" /> : <Plus className="h-3.5 w-3.5 shrink-0 text-text-faint" />}
     </button>

@@ -62,10 +62,10 @@ function TaskListRow({
     >
       <div className="flex items-center gap-2">
         <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.dot)} title={dot.label} />
-        <span className="truncate text-caption font-bold text-gray-900">{item.title}</span>
+        <span className="truncate text-role-caption font-bold text-gray-900">{item.title}</span>
       </div>
       {meta ? (
-        <span className="truncate pl-4 text-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+        <span className="truncate pl-4 text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
           {meta}
         </span>
       ) : null}
@@ -107,7 +107,7 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
             ['Assignee', item.assigneeName ?? 'Unassigned'],
           ].map(([label, value]) => (
             <div key={label} className="space-y-1">
-              <dt className="text-[10px] font-black uppercase tracking-widest text-text-soft">{label}</dt>
+              <dt className="text-role-micro uppercase tracking-widest text-text-soft">{label}</dt>
               <dd className="truncate text-sm font-semibold text-text-strong">{value}</dd>
             </div>
           ))}
@@ -204,18 +204,18 @@ export function HomeTasksMode() {
 
         <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-border-hairline">
           {isLoading ? (
-            <div className="flex items-center justify-center gap-2 px-4 py-10 text-caption text-text-muted">
+            <div className="flex items-center justify-center gap-2 px-4 py-10 text-role-caption text-text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading tasks…
             </div>
           ) : isError ? (
             <div className="px-4 py-6">
-              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption font-bold text-rose-700">
+              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-bold text-rose-700">
                 Could not load tasks. Try refreshing.
               </div>
             </div>
           ) : items.length === 0 ? (
             <div className="px-4 py-6">
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-caption text-text-muted">
+              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-role-caption text-text-muted">
                 {scope === 'mine' ? 'No open tasks assigned to you.' : 'No open tasks right now.'}
               </div>
             </div>
@@ -240,7 +240,7 @@ export function HomeTasksMode() {
           <div className="flex h-full items-center justify-center px-6">
             <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center">
               <ClipboardList className="mx-auto h-6 w-6 text-text-soft" />
-              <p className="mt-2 text-caption font-semibold text-text-muted">
+              <p className="mt-2 text-role-caption font-semibold text-text-muted">
                 Select a task to view details and claim or complete it.
               </p>
             </div>

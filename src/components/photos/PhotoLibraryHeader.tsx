@@ -1,85 +1,56 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import {
   mainStickyHeaderClass,
   mainStickyHeaderCompactRowClass,
   receivingHeaderHairlineClass,
 } from '@/components/layout/header-shell';
 import { microBadge } from '@/design-system/tokens/typography/presets';
-import type { PhotoLibrarySortMode, PhotoLibraryViewMode } from '@/lib/photos/library-filter-state';
+import type { PhotoLibrarySortMode } from '@/lib/photos/library-filter-state';
 import { cn } from '@/utils/_cn';
-import { Folder } from '@/components/Icons';
 import { PhotoSortMenu } from './PhotoSortMenu';
-import { PhotoLibraryViewToggle } from './PhotoLibraryViewToggle';
-import type { FolderBrowseHeaderContext } from './photo-library-grid/date-folder-tree';
 
 interface PhotoLibraryHeaderProps {
-  title: string;
+  /** The date/folder breadcrumb — the surface's identity + navigation path. It
+   *  scrolls internally on narrow widths, so it doubles as the title. */
+  breadcrumb: ReactNode;
+  /** Compact count line (e.g. "6 photos") shown as muted meta on wider screens. */
   metaLine: string;
-  /** Folders view: level eyebrow + count, or leaf title + photo count. */
-  folderBrowse?: FolderBrowseHeaderContext | null;
+  /** Display controls (toggle + density + refresh + select), rendered before the
+   *  sort anchor — see {@link PhotoDisplayControls}. */
+  controls?: ReactNode;
   sort: PhotoLibrarySortMode;
   onSortChange: (sort: PhotoLibrarySortMode) => void;
-  view: PhotoLibraryViewMode;
-  onViewChange: (view: PhotoLibraryViewMode) => void;
-  folderIsLeaf: boolean;
-  onToggleSelection: () => void;
-  /** Folders/List toggle — hidden while browsing year/month/week/day tiles. */
-  showDisplayControls?: boolean;
 }
 
-/** Primary sticky header — context, sort, and Folders/List display toggle. */
+/**
+ * Single consolidated media-library toolbar: breadcrumb (identity + path) on the
+ * left, the display controls + sort anchor on the right. Sort stays pinned to the
+ * far right regardless of which display controls are shown. During selection the
+ * whole header is swapped for the bulk-action bar (see PhotoLibraryPage).
+ */
 export function PhotoLibraryHeader({
-  title,
+  breadcrumb,
   metaLine,
-  folderBrowse,
+  controls,
   sort,
   onSortChange,
-  view,
-  onViewChange,
-  folderIsLeaf,
-  onToggleSelection,
-  showDisplayControls = true,
 }: PhotoLibraryHeaderProps) {
   return (
     <div className={cn(mainStickyHeaderClass, receivingHeaderHairlineClass)}>
       <div className={mainStickyHeaderCompactRowClass}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {folderBrowse ? (
-            <>
-              <Folder className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-              <span
-                data-testid="folder-level"
-                className="truncate text-eyebrow font-black uppercase tracking-widest text-text-soft"
-              >
-                {folderBrowse.title}
-              </span>
-              <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-micro font-bold tabular-nums text-text-soft">
-                {folderBrowse.count}
-              </span>
-              {folderBrowse.isLeaf && metaLine ? (
-                <span className={`${microBadge} hidden truncate text-text-soft sm:inline`}>{metaLine}</span>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <span className="truncate text-sm font-semibold text-text-default">{title}</span>
-              <span className={`${microBadge} hidden truncate text-text-soft sm:inline`}>{metaLine}</span>
-            </>
-          )}
+          <div className="min-w-0 flex-1">{breadcrumb}</div>
+          <span className={`${microBadge} hidden shrink-0 truncate text-text-soft md:inline`}>
+            {metaLine}
+          </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
+          {controls}
+          {/* Sort stays pinned to the far right as the stable anchor. */}
           <PhotoSortMenu sort={sort} onSortChange={onSortChange} />
-          {showDisplayControls ? (
-            <PhotoLibraryViewToggle
-              view={view}
-              onViewChange={onViewChange}
-              folderIsLeaf={folderIsLeaf}
-              selectionActive={false}
-              onToggleSelection={onToggleSelection}
-            />
-          ) : null}
         </div>
       </div>
     </div>

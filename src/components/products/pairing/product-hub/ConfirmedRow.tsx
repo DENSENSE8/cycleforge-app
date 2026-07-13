@@ -47,12 +47,12 @@ export function ConfirmedRow({
             </>
           ) : null}
           {confirmed.accountName && (
-            <span className="shrink-0 truncate text-micro font-medium uppercase tracking-wider text-text-soft">
+            <span className="shrink-0 truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
               {confirmed.accountName}
             </span>
           )}
         </div>
-        {rowTitle && <p className="truncate text-micro text-text-soft">{rowTitle}</p>}
+        {rowTitle && <p className="truncate text-role-micro text-text-soft">{rowTitle}</p>}
       </div>
       {confirmed.listingUrl && (
         <HoverTooltip label={isPreviewing ? 'Showing in preview pane' : 'Preview listing below'} asChild>

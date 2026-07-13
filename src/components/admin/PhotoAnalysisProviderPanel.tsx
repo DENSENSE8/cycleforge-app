@@ -130,11 +130,11 @@ export function PhotoAnalysisProviderPanel() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-text-default">AI analysis engine</p>
-          <p className="text-caption text-text-soft">
+          <p className="text-role-caption text-text-soft">
             Which model reads your photos when they&apos;re enriched for search and claims.
           </p>
         </div>
-        <label className="flex shrink-0 items-center gap-2 text-caption font-semibold text-text-muted">
+        <label className="flex shrink-0 items-center gap-2 text-role-caption font-semibold text-text-muted">
           <input
             type="checkbox"
             checked={enabled}
@@ -167,16 +167,16 @@ export function PhotoAnalysisProviderPanel() {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
-                    <span className="text-caption font-bold text-text-default">{opt.label}</span>
+                    <span className="text-role-caption font-bold text-text-default">{opt.label}</span>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${
+                      className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${
                         PRIVACY_CHIP[opt.privacy]
                       }`}
                     >
                       {PRIVACY_LABEL[opt.privacy]}
                     </span>
                   </span>
-                  <span className="mt-0.5 block text-caption text-text-soft">{opt.blurb}</span>
+                  <span className="mt-0.5 block text-role-caption text-text-soft">{opt.blurb}</span>
                 </span>
               </button>
             </li>
@@ -186,7 +186,7 @@ export function PhotoAnalysisProviderPanel() {
 
       {provider === 'local-vision' ? (
         <div className="mt-3 space-y-1">
-          <label className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <label className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Vision box URL (server-reachable)
           </label>
           <input
@@ -194,9 +194,9 @@ export function PhotoAnalysisProviderPanel() {
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="https://vision.yourdomain.com"
-            className="w-full rounded-lg border border-border-default px-3 py-2 text-caption text-text-default focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-full rounded-lg border border-border-default px-3 py-2 text-role-caption text-text-default focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
-          <p className="text-caption text-text-soft">
+          <p className="text-role-caption text-text-soft">
             The Cloudflare-tunnel hostname of your box. The analysis cron runs in the cloud and
             can&apos;t reach the office LAN — this must be publicly reachable (the box checks
             the <code className="rounded bg-surface-sunken px-1">x-vision-token</code> secret). Leave

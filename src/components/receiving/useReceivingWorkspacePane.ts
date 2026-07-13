@@ -18,6 +18,7 @@ import { useSearchParams } from 'next/navigation';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 
 export interface WorkspaceState {
   row: ReceivingLineRow;
@@ -37,7 +38,7 @@ export interface ReceivingWorkspacePane {
   setWorkspace: React.Dispatch<React.SetStateAction<WorkspaceState | null>>;
   nav: NavState | null;
   setNav: React.Dispatch<React.SetStateAction<NavState | null>>;
-  scanInFlight: { tracking: string; startedAt: number } | null;
+  scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
 }
 
 export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
@@ -45,7 +46,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const [workspace, setWorkspace] = useState<WorkspaceState | null>(null);
   const [nav, setNav] = useState<NavState | null>(null);
   const [scanInFlight, setScanInFlight] = useState<
-    { tracking: string; startedAt: number } | null
+    { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null
   >(null);
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     // resolved when the response lands. We hold the loader briefly after resolve
     // so the workspace open animation (~180ms) covers the swap.
     let clearTimer: ReturnType<typeof setTimeout> | null = null;
-    // Grace delay before the full "Opening your PO" takeover mounts. A scan that
+    // Grace delay before the full skeleton takeover mounts. A scan that
     // resolves locally (already in incoming/mirror state, a deduped re-scan, or
     // an adopted PO with no Zoho round-trip) comes back under this threshold, so
     // the row flips inline and the loader never flashes. Only a genuine cold Zoho
@@ -80,15 +81,19 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     const SCAN_LOADER_GRACE_MS = 300;
     let showTimer: ReturnType<typeof setTimeout> | null = null;
     const handleInFlight = (e: Event) => {
-      const detail = (e as CustomEvent<{ tracking: string; startedAt: number }>).detail;
+      const detail = (e as CustomEvent<{ tracking: string; startedAt: number; surface?: ScanIntakeSurface }>).detail;
       if (!detail?.tracking) return;
+      // Surface tags the scan to its mode so the right pane renders the matching
+      // per-mode skeleton (unbox vs triage) — the two never share a display.
+      // Legacy dispatches without a surface default to 'unbox'.
+      const surface: ScanIntakeSurface = detail.surface === 'triage' ? 'triage' : 'unbox';
       if (clearTimer) {
         clearTimeout(clearTimer);
         clearTimer = null;
       }
       if (showTimer) clearTimeout(showTimer);
       showTimer = setTimeout(() => {
-        setScanInFlight({ tracking: detail.tracking, startedAt: detail.startedAt });
+        setScanInFlight({ tracking: detail.tracking, startedAt: detail.startedAt, surface });
         showTimer = null;
       }, SCAN_LOADER_GRACE_MS);
     };

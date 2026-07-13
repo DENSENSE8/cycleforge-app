@@ -69,7 +69,7 @@ export function ActivityHeatmap({
                   y={12}
                   textAnchor="middle"
                   fill="currentColor"
-                  className="text-mini font-semibold"
+                  className="text-role-micro font-semibold"
                 >
                   {label}
                 </text>
@@ -88,7 +88,7 @@ export function ActivityHeatmap({
                 y={TOP_PAD + r * ROW_H + ROW_H / 2 + 3}
                 textAnchor="end"
                 fill="currentColor"
-                className="text-mini font-semibold uppercase tracking-wider"
+                className="text-role-micro font-semibold uppercase tracking-wider"
               >
                 {label}
               </text>

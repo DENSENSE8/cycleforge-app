@@ -50,14 +50,14 @@ function RadialRing({ percentage, label, countLabel, color, ringBgColor }: Radia
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-label font-black text-text-default tracking-tighter tabular-nums">
+          <span className="text-role-caption font-black text-text-default tracking-tighter tabular-nums">
             {percentage}%
           </span>
         </div>
       </div>
       <div className="text-left space-y-0.5">
         <p className={`${sectionLabel} !text-text-muted`}>{label}</p>
-        <h4 className="text-[13px] font-black text-text-default leading-tight pr-1">
+        <h4 className="text-role-data font-black text-text-default leading-tight pr-1">
           {countLabel}
         </h4>
       </div>
@@ -110,12 +110,12 @@ export function PerformanceGoals() {
 
         <div className="bg-surface-card border border-border-soft p-5 rounded-2xl space-y-4">
           <div className="flex justify-between items-baseline">
-            <span className="text-micro font-black text-text-muted uppercase tracking-wider">
+            <span className="text-role-micro text-text-muted uppercase tracking-wider">
               Weekly Target
             </span>
-            <span className="text-[14px] font-black text-text-default tabular-nums">
+            <span className="text-role-body font-black text-text-default tabular-nums">
               1,480{' '}
-              <span className="text-caption text-text-muted font-medium">/ 1,800 units</span>
+              <span className="text-role-caption text-text-muted font-medium">/ 1,800 units</span>
             </span>
           </div>
 
@@ -129,13 +129,13 @@ export function PerformanceGoals() {
                 className="h-full bg-amber-500 rounded-full"
               />
             </div>
-            <div className="flex justify-between text-eyebrow font-black text-text-muted uppercase tracking-wider mt-1.5">
+            <div className="flex justify-between text-role-eyebrow text-text-muted uppercase tracking-wider mt-1.5">
               <span>Current pace</span>
               <span>82% complete</span>
             </div>
           </div>
 
-          <p className="text-label text-text-muted font-medium leading-relaxed">
+          <p className="text-role-caption text-text-muted font-medium leading-relaxed">
             You&apos;re on track to exceed last week by{' '}
             <span className="font-extrabold text-text-default">8.4%</span> 🚀
           </p>
@@ -163,10 +163,10 @@ export function PerformanceGoals() {
               <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
             </div>
             <div className="text-left space-y-0.5">
-              <p className="text-label font-bold text-text-default leading-snug">
+              <p className="text-role-caption font-bold text-text-default leading-snug">
                 Replenish FBA inventory soon
               </p>
-              <p className="text-micro text-text-muted font-semibold leading-normal mt-0.5">
+              <p className="text-role-micro text-text-muted font-semibold leading-normal mt-0.5">
                 SKU USAV-CBL-04 inventory low (9 days remaining). Click to create shipment.
               </p>
             </div>
@@ -181,10 +181,10 @@ export function PerformanceGoals() {
               <AlertCircle className="w-3.5 h-3.5 text-[#E07A5F]" />
             </div>
             <div className="text-left space-y-0.5">
-              <p className="text-label font-bold text-text-default leading-snug">
+              <p className="text-role-caption font-bold text-text-default leading-snug">
                 Critical Ticket Backlog
               </p>
-              <p className="text-micro text-text-muted font-semibold leading-normal mt-0.5">
+              <p className="text-role-micro text-text-muted font-semibold leading-normal mt-0.5">
                 4 repairs waiting more than 48h. Tap to assign urgent technician dispatch.
               </p>
             </div>

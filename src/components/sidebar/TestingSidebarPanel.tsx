@@ -238,15 +238,15 @@ export function TestingSidebarPanel({
             const meta = viaAckMeta(lastAck.via);
             return (
               <div className="mt-2 flex items-center gap-1.5">
-                <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${meta.chip}`}>
+                <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${meta.chip}`}>
                   <meta.Icon className="h-3 w-3 shrink-0" />
                   {meta.label}
                 </span>
-                <span className="min-w-0 shrink-0 truncate font-mono text-micro font-bold text-text-muted" title={lastAck.value}>
+                <span className="min-w-0 shrink-0 truncate font-mono text-role-micro font-bold text-text-muted" title={lastAck.value}>
                   {lastAck.value}
                 </span>
                 {lastAck.line ? (
-                  <span className="min-w-0 truncate text-micro font-semibold text-text-soft">
+                  <span className="min-w-0 truncate text-role-micro font-semibold text-text-soft">
                     · {lastAck.line.title}
                     {typeof lastAck.line.received === 'number'
                       ? ` · ${lastAck.line.received}/${lastAck.line.expected ?? '?'}`
@@ -261,7 +261,7 @@ export function TestingSidebarPanel({
 
       {picker ? (
         <div data-testing-picker className={`border-b border-amber-200 bg-amber-50 ${SIDEBAR_GUTTER} py-2`}>
-          <p className="mb-1 text-eyebrow font-black uppercase tracking-widest text-amber-700">
+          <p className="mb-1 text-role-eyebrow uppercase tracking-widest text-amber-700">
             {picker.via === 'serial'
               ? `Pick a unit — ${picker.rows.length} serial matches`
               : picker.via === 'sku'
@@ -286,10 +286,10 @@ export function TestingSidebarPanel({
                     setPicker(null);
                     setScanValue('');
                   }}
-                  className="ds-raw-button w-full rounded-md bg-surface-card px-2 py-1.5 text-left text-caption font-bold text-text-default ring-1 ring-amber-200 transition-colors hover:bg-amber-100"
+                  className="ds-raw-button w-full rounded-md bg-surface-card px-2 py-1.5 text-left text-role-caption font-bold text-text-default ring-1 ring-amber-200 transition-colors hover:bg-amber-100"
                 >
                   <span className="block truncate">{row.item_name || row.sku || `Line #${row.id}`}</span>
-                  <span className="block text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {row.quantity_received}/{row.quantity_expected ?? '?'} · {row.workflow_status || 'EXPECTED'}
                     {row.tracking_number ? ` · TRK …${serialLast4(String(row.tracking_number))}` : ''}
                   </span>
@@ -307,7 +307,7 @@ export function TestingSidebarPanel({
             variant="ghost"
             size="sm"
             onClick={() => setPicker(null)}
-            className="mt-1.5 h-auto px-0 text-eyebrow font-black uppercase tracking-widest text-amber-600 hover:bg-transparent hover:text-amber-800"
+            className="mt-1.5 h-auto px-0 text-role-eyebrow uppercase tracking-widest text-amber-600 hover:bg-transparent hover:text-amber-800"
           >
             Cancel
           </Button>

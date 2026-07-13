@@ -61,7 +61,7 @@ export function MediaLibraryPickerModal({
             <ImageIcon className="h-4 w-4 shrink-0 text-text-soft" />
             <h2 className="text-sm font-bold text-text-default">{title}</h2>
           </div>
-          {subtitle ? <p className="mt-0.5 text-caption text-text-soft">{subtitle}</p> : null}
+          {subtitle ? <p className="mt-0.5 text-role-caption text-text-soft">{subtitle}</p> : null}
         </div>
         <IconButton
           type="button"
@@ -84,12 +84,12 @@ export function MediaLibraryPickerModal({
           href={href}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-caption font-semibold text-blue-600 hover:text-blue-800"
+          className="inline-flex items-center gap-1 text-role-caption font-semibold text-blue-600 hover:text-blue-800"
         >
           Open full library <ExternalLink className="h-3 w-3" />
         </a>
         <div className="flex items-center gap-2">
-          <span className="text-caption text-text-soft">{selected.length} selected</span>
+          <span className="text-role-caption text-text-soft">{selected.length} selected</span>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>

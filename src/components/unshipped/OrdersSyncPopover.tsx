@@ -47,7 +47,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
               <RefreshCw className="h-4 w-4" />
             )}
             {/* Explicit white — the button is a fixed blue fill in every theme. */}
-            <span className="text-micro font-black uppercase tracking-[0.2em] text-white">
+            <span className="text-role-micro uppercase tracking-[0.2em] text-white">
               {sync.isTransferring ? 'Syncing…' : 'Sync Orders'}
             </span>
           </button>
@@ -68,7 +68,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
                   key={t}
                   type="button"
                   onClick={() => setTab(t)}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-eyebrow font-black uppercase tracking-wider transition-colors ${
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-role-eyebrow uppercase tracking-wider transition-colors ${
                     tab === t ? 'bg-surface-card text-text-accent shadow-sm' : 'text-text-soft hover:text-text-muted'
                   }`}
                 >
@@ -86,7 +86,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
                       value={sync.manualSheetName}
                       onChange={(e) => sync.setManualSheetName(e.target.value)}
                       placeholder="e.g., Sheet_01_14_2026"
-                      className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-caption text-text-default outline-none transition-all focus:border-border-accent"
+                      className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent"
                       disabled={sync.isTransferring}
                     />
                     {sync.isTransferring ? (
@@ -95,7 +95,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
                         size="lg"
                         onClick={sync.handleCancelTransfer}
                         icon={<X className="h-3.5 w-3.5" />}
-                        className="w-full text-micro font-black uppercase tracking-[0.2em]"
+                        className="w-full text-role-micro uppercase tracking-[0.2em]"
                       >
                         Cancel Import
                       </Button>
@@ -105,7 +105,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
                         size="lg"
                         onClick={sync.handleTransfer}
                         icon={<Database className="h-3.5 w-3.5" />}
-                        className="w-full text-micro font-black uppercase tracking-[0.2em]"
+                        className="w-full text-role-micro uppercase tracking-[0.2em]"
                       >
                         Import Latest Orders
                       </Button>
@@ -127,9 +127,9 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
                           <span className={`${sectionLabel} text-text-accent`}>
                             {sync.isTransferring ? 'Importing…' : 'Import complete'}
                           </span>
-                          <span className="text-eyebrow text-text-accent">View details</span>
+                          <span className="text-role-eyebrow text-text-accent">View details</span>
                         </div>
-                        <span className="text-caption font-mono font-bold tabular-nums text-text-accent">
+                        <span className="text-role-caption font-mono font-bold tabular-nums text-text-accent">
                           {(sync.elapsedMs / 1000).toFixed(1)}s
                         </span>
                       </button>
@@ -143,12 +143,12 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
                             : 'border-red-200 bg-red-50 text-red-700'
                         }`}
                       >
-                        <p className="text-eyebrow font-bold leading-relaxed">{sync.status.message}</p>
+                        <p className="text-role-eyebrow font-bold leading-relaxed">{sync.status.message}</p>
                       </div>
                     ) : null}
                   </>
                 ) : (
-                  <p className="px-1 py-6 text-center text-caption text-text-faint">
+                  <p className="px-1 py-6 text-center text-role-caption text-text-faint">
                     You don&apos;t have permission to import orders.
                   </p>
                 )}

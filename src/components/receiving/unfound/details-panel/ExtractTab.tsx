@@ -125,7 +125,7 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
       </Section>
 
       <Section title="Inventory compare">
-        <dl className="space-y-1 text-label">
+        <dl className="space-y-1 text-role-caption">
           <Row
             label="PO# already in inventory?"
             value={existingPo ? `Yes — ${existingPo.zoho_purchaseorder_number}` : 'No'}
@@ -150,7 +150,7 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
           onChange={(e) => setZohoUploaded(e.target.value)}
           onBlur={onZohoBlur}
           placeholder="e.g. PO-44821"
-          className="w-full rounded-md border border-border-soft bg-surface-card px-2.5 py-1.5 text-label outline-none focus:border-blue-500"
+          className="w-full rounded-md border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption outline-none focus:border-blue-500"
         />
       </Section>
 
@@ -161,7 +161,7 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
           onChange={(e) => setNotes(e.target.value)}
           onBlur={onNotesBlur}
           placeholder="Anything the next reviewer needs to know…"
-          className="w-full resize-none rounded-md border border-border-soft bg-surface-card px-2.5 py-1.5 text-label outline-none focus:border-blue-500"
+          className="w-full resize-none rounded-md border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption outline-none focus:border-blue-500"
         />
       </Section>
     </div>

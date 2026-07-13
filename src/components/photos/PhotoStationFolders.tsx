@@ -111,7 +111,7 @@ export function PhotoStationFolders({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Media type</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Media type</p>
         <HoverTooltip label="Add media type" asChild>
           <IconButton
             icon={adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
@@ -153,7 +153,7 @@ export function PhotoStationFolders({
         })}
 
         {isLoading && custom.length === 0 ? (
-          <li className="flex items-center gap-2 px-3 py-2 text-caption text-text-faint">
+          <li className="flex items-center gap-2 px-3 py-2 text-role-caption text-text-faint">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </li>
         ) : null}
@@ -189,7 +189,7 @@ function TypeRow({
         onClick={onClick}
         aria-pressed={active}
         className={cn(
-          'ds-raw-button flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-semibold transition',
+          'ds-raw-button flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-role-body font-semibold transition',
           active
             ? 'bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-400'
             : 'text-text-muted hover:bg-surface-hover',

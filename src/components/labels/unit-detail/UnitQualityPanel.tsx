@@ -66,7 +66,7 @@ interface FailureMode {
 }
 
 const CARD = 'rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60';
-const HEAD = 'text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft';
+const HEAD = 'text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
 
 function prettyReason(r: string): string {
   return r.replace(/_/g, ' ');
@@ -99,7 +99,7 @@ export function UnitQualityPanel({ serialUnitId }: { serialUnitId: number }) {
   if (isLoading) {
     return (
       <section className={CARD}>
-        <div className="flex items-center gap-2 px-5 py-4 text-caption text-text-faint">
+        <div className="flex items-center gap-2 px-5 py-4 text-role-caption text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading quality…
         </div>
       </section>
@@ -138,14 +138,14 @@ function QualityCard({ quality, grade }: { quality: QualityScore | null; grade: 
     <section className={`${CARD} p-5`}>
       <div className="mb-3 flex items-center justify-between">
         <h3 className={HEAD}>Quality</h3>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wider ring-1 ${tone}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ring-1 ${tone}`}>
           <ShieldCheck className="h-3 w-3" /> {quality.risk_level} risk
         </span>
       </div>
       <div className="flex items-end gap-3">
         <span className="text-4xl font-black tabular-nums text-text-default">{quality.quality_score}</span>
-        <span className="pb-1 text-caption font-semibold text-text-faint">/ 100</span>
-        <div className="ml-auto text-right text-micro text-text-faint">
+        <span className="pb-1 text-role-caption font-semibold text-text-faint">/ 100</span>
+        <div className="ml-auto text-right text-role-micro text-text-faint">
           {grade ? <div className="font-bold text-text-muted">{grade}</div> : null}
           {quality.ebay_condition_id ? <div>eBay cond {quality.ebay_condition_id}</div> : null}
         </div>
@@ -156,13 +156,13 @@ function QualityCard({ quality, grade }: { quality: QualityScore | null; grade: 
       {quality.risk_reasons.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {quality.risk_reasons.map((r) => (
-            <span key={r} className="rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-medium text-text-muted">
+            <span key={r} className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium text-text-muted">
               {prettyReason(r)}
             </span>
           ))}
         </div>
       )}
-      <p className="mt-2 text-micro text-text-faint">Updated {timeAgo(quality.computed_at)}</p>
+      <p className="mt-2 text-role-micro text-text-faint">Updated {timeAgo(quality.computed_at)}</p>
     </section>
   );
 }
@@ -246,7 +246,7 @@ function FailureTagsCard({
             <select
               value={modeId}
               onChange={(e) => setModeId(e.target.value)}
-              className="min-w-[12rem] flex-1 rounded-md border border-border-soft bg-surface-canvas px-2 py-1.5 text-caption font-medium text-text-default"
+              className="min-w-[12rem] flex-1 rounded-md border border-border-soft bg-surface-canvas px-2 py-1.5 text-role-caption font-medium text-text-default"
             >
               <option value="">{modes.isLoading ? 'Loading…' : 'Select failure mode…'}</option>
               {(modes.data ?? []).map((m) => (
@@ -257,7 +257,7 @@ function FailureTagsCard({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Note (optional)"
-              className="min-w-[8rem] flex-1 rounded-md border border-border-soft bg-surface-canvas px-2 py-1.5 text-caption font-medium text-text-default placeholder:text-text-faint"
+              className="min-w-[8rem] flex-1 rounded-md border border-border-soft bg-surface-canvas px-2 py-1.5 text-role-caption font-medium text-text-default placeholder:text-text-faint"
             />
             <Button
               variant="brand"
@@ -273,7 +273,7 @@ function FailureTagsCard({
       )}
 
       {tags.length === 0 ? (
-        <p className="border-t border-border-hairline px-5 py-3 text-caption text-text-faint">No failures tagged.</p>
+        <p className="border-t border-border-hairline px-5 py-3 text-role-caption text-text-faint">No failures tagged.</p>
       ) : (
         <ul className="border-t border-border-hairline divide-y divide-border-hairline">
           {[...open, ...resolved].map((t) => {
@@ -283,22 +283,22 @@ function FailureTagsCard({
                 <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${isOpen ? 'text-rose-500' : 'text-text-faint'}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className={`text-label font-bold ${isOpen ? 'text-text-default' : 'text-text-faint line-through'}`}>
+                    <span className={`text-role-caption font-bold ${isOpen ? 'text-text-default' : 'text-text-faint line-through'}`}>
                       {t.label ?? t.code ?? `Mode #${t.failure_mode_id}`}
                     </span>
                     {t.severity && (
-                      <span className={`rounded-full border px-1.5 py-0.5 text-micro font-bold uppercase ${qualitySeverityToneClass(t.severity)}`}>
+                      <span className={`rounded-full border px-1.5 py-0.5 text-role-micro font-bold uppercase ${qualitySeverityToneClass(t.severity)}`}>
                         {t.severity}
                       </span>
                     )}
                     {!isOpen && (
-                      <span className="text-micro font-bold uppercase tracking-wider text-emerald-600">{t.resolution_status}</span>
+                      <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">{t.resolution_status}</span>
                     )}
                   </div>
-                  <div className="mt-0.5 text-micro text-text-soft">
+                  <div className="mt-0.5 text-role-micro text-text-soft">
                     {timeAgo(t.detected_at)} · {t.source}{t.detected_by_name ? ` · ${t.detected_by_name}` : ''}
                   </div>
-                  {t.notes && <p className="mt-0.5 text-caption text-text-muted">{t.notes}</p>}
+                  {t.notes && <p className="mt-0.5 text-role-caption text-text-muted">{t.notes}</p>}
                 </div>
                 {isOpen && (
                   <Button
@@ -387,7 +387,7 @@ function RepairsCard({
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             placeholder="What's being repaired?"
-            className="w-full rounded-md border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-medium text-text-default placeholder:text-text-faint"
+            className="w-full rounded-md border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-medium text-text-default placeholder:text-text-faint"
           />
           {openFailureModes.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -403,7 +403,7 @@ function RepairsCard({
                       if (n.has(m.id)) n.delete(m.id); else n.add(m.id);
                       return n;
                     })}
-                    className={`rounded-full border px-2 py-0.5 text-micro font-medium transition-colors ${
+                    className={`rounded-full border px-2 py-0.5 text-role-micro font-medium transition-colors ${
                       on ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-border-soft text-text-soft hover:bg-surface-hover'
                     }`}
                   >
@@ -427,7 +427,7 @@ function RepairsCard({
       )}
 
       {repairs.length === 0 ? (
-        <p className="border-t border-border-hairline px-5 py-3 text-caption text-text-faint">No repairs logged.</p>
+        <p className="border-t border-border-hairline px-5 py-3 text-role-caption text-text-faint">No repairs logged.</p>
       ) : (
         <ul className="border-t border-border-hairline divide-y divide-border-hairline">
           {repairs.map((r) => (
@@ -453,13 +453,13 @@ function RepairRowItem({
   return (
     <li className="px-5 py-3">
       <div className="flex items-center gap-2">
-        <span className={`rounded-md px-1.5 py-0.5 text-micro font-bold uppercase tracking-wider ${repairOutcomeToneClass(repair.status)}`}>
+        <span className={`rounded-md px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider ${repairOutcomeToneClass(repair.status)}`}>
           {repair.status.replace(/_/g, ' ')}
         </span>
-        <span className="min-w-0 flex-1 truncate text-label font-bold text-text-default">{repair.summary}</span>
-        {repair.cost_cents != null && <span className="text-micro font-semibold text-text-soft">{dollars(repair.cost_cents)}</span>}
+        <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">{repair.summary}</span>
+        {repair.cost_cents != null && <span className="text-role-micro font-semibold text-text-soft">{dollars(repair.cost_cents)}</span>}
       </div>
-      <div className="mt-0.5 text-micro text-text-soft">
+      <div className="mt-0.5 text-role-micro text-text-soft">
         {timeAgo(repair.created_at)}
         {repair.started_by_name ? ` · ${repair.started_by_name}` : ''}
         {repair.completed_at ? ` · done ${timeAgo(repair.completed_at)}` : ''}
@@ -467,7 +467,7 @@ function RepairRowItem({
       {repair.failure_modes && repair.failure_modes.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {repair.failure_modes.map((m) => (
-            <span key={m.id} className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-micro font-medium text-text-muted">{m.label}</span>
+            <span key={m.id} className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-medium text-text-muted">{m.label}</span>
           ))}
         </div>
       )}
@@ -478,7 +478,7 @@ function RepairRowItem({
             onChange={(e) => setCost(e.target.value)}
             inputMode="decimal"
             placeholder="Cost $ (opt)"
-            className="w-28 rounded-md border border-border-soft bg-surface-canvas px-2 py-1 text-caption font-medium text-text-default placeholder:text-text-faint"
+            className="w-28 rounded-md border border-border-soft bg-surface-canvas px-2 py-1 text-role-caption font-medium text-text-default placeholder:text-text-faint"
           />
           <Button
             variant="ghost"

@@ -93,7 +93,7 @@ export function MarkAsShippedForm({
         {isMarkingShipped ? 'Saving...' : 'Confirm Mark As Shipped'}
       </Button>
 
-      {error && <p className="text-eyebrow font-bold text-text-danger">{error}</p>}
+      {error && <p className="text-role-eyebrow font-bold text-text-danger">{error}</p>}
     </div>
   );
 }

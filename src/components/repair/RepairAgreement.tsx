@@ -33,24 +33,24 @@ export function RepairAgreement({ formData, signatureData, onSignatureChange }: 
       {/* Company Header — right-aligned */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-mini font-black uppercase tracking-[0.2em] text-orange-600 mb-0.5">Agreement</p>
+          <p className="text-role-micro uppercase tracking-[0.2em] text-orange-600 mb-0.5">Agreement</p>
           <h3 className="text-sm font-black text-text-default uppercase tracking-tight">
             Repair Service Agreement
           </h3>
-          <p className="text-eyebrow font-bold text-text-soft uppercase tracking-wide mt-0.5">
+          <p className="text-role-eyebrow font-bold text-text-soft uppercase tracking-wide mt-0.5">
             Drop-Off Authorization
           </p>
         </div>
         <div className="text-right">
-          <p className="text-micro font-black text-text-default uppercase tracking-tight">{letterhead.name}</p>
+          <p className="text-role-micro text-text-default uppercase tracking-tight">{letterhead.name}</p>
           {letterhead.addressLine1 ? (
-            <p className="text-eyebrow text-text-faint">{letterhead.addressLine1}</p>
+            <p className="text-role-eyebrow text-text-faint">{letterhead.addressLine1}</p>
           ) : null}
           {letterhead.addressLine2 ? (
-            <p className="text-eyebrow text-text-faint">{letterhead.addressLine2}</p>
+            <p className="text-role-eyebrow text-text-faint">{letterhead.addressLine2}</p>
           ) : null}
           {letterhead.phone ? (
-            <p className="text-eyebrow text-text-faint">{letterhead.phone}</p>
+            <p className="text-role-eyebrow text-text-faint">{letterhead.phone}</p>
           ) : null}
         </div>
       </div>
@@ -82,18 +82,18 @@ export function RepairAgreement({ formData, signatureData, onSignatureChange }: 
       </div>
 
       {/* Terms */}
-      <div className="space-y-2 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-caption leading-relaxed text-text-muted">
+      <div className="space-y-2 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3 text-role-caption leading-relaxed text-text-muted">
         <p>
           Your Bose product has been received into our repair center. Under normal circumstances it will
           be repaired within the next <span className="font-black text-text-default">3–10 working days</span> and returned to you.
         </p>
-        <p className="text-micro font-black uppercase tracking-wide text-text-default">
+        <p className="text-role-micro uppercase tracking-wide text-text-default">
           30-Day Warranty on all repair services.
         </p>
       </div>
 
       {/* ESIGN/UETA Consent */}
-      <p className="text-micro text-text-soft italic leading-relaxed bg-surface-canvas p-3 border border-border-soft">
+      <p className="text-role-micro text-text-soft italic leading-relaxed bg-surface-canvas p-3 border border-border-soft">
         By signing below, I consent to conduct this transaction electronically
         and agree to the listed repair price, terms, and any unexpected delays in the repair process.
       </p>
@@ -107,7 +107,7 @@ export function RepairAgreement({ formData, signatureData, onSignatureChange }: 
 function DetailRow({ label, value, highlight, isLast }: { label: string; value: string; highlight?: boolean; isLast?: boolean }) {
   return (
     <div className={`flex items-stretch ${!isLast ? 'border-b border-border-soft' : ''}`}>
-      <span className="text-eyebrow font-black uppercase tracking-wide text-text-soft bg-surface-canvas px-3 py-2.5 w-20 shrink-0 flex items-center border-r border-border-soft">
+      <span className="text-role-eyebrow uppercase tracking-wide text-text-soft bg-surface-canvas px-3 py-2.5 w-20 shrink-0 flex items-center border-r border-border-soft">
         {label}
       </span>
       <span className={`flex-1 text-xs font-bold px-3 py-2.5 flex items-center ${highlight ? 'text-orange-700 bg-orange-50' : 'text-text-default bg-surface-card'}`}>

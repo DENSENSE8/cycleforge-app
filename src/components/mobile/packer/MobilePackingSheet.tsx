@@ -75,7 +75,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
           </div>
 
           <div className="flex items-center gap-2 pl-4">
-            <span className="shrink-0 text-caption font-black uppercase tracking-widest">
+            <span className="shrink-0 text-role-caption font-black uppercase tracking-widest">
               <span className={quantity > 1 ? 'text-yellow-600' : 'text-text-muted'}>
                 {quantity}
               </span>
@@ -103,7 +103,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
             <PhotoGallery photos={photos} orderId={orderId} compact launcherTitle={`${photos.length} pack photo${photos.length === 1 ? '' : 's'}`} />
           </div>
         ) : (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-caption font-semibold text-amber-700">
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
             No pack photos yet — tap below to capture.
           </p>
         )}
@@ -119,7 +119,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
             <Camera className="h-6 w-6" />
           </Link>
         ) : (
-          <p className="rounded-2xl bg-rose-50 px-4 py-3 text-center text-caption font-semibold text-rose-700">
+          <p className="rounded-2xl bg-rose-50 px-4 py-3 text-center text-role-caption font-semibold text-rose-700">
             Missing packer log id — cannot attach photos.
           </p>
         )}

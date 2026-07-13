@@ -69,7 +69,7 @@ export function SupportSidebarPanel() {
 
   if (isLoaded && !canTickets && !canWarranty) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-center text-caption font-semibold text-text-soft">
+      <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
         Requires support tickets or warranty access.
       </div>
     );
@@ -97,7 +97,7 @@ export function SupportSidebarPanel() {
             onSearchChange={setWarrantySearch}
           />
         ) : (
-          <div className="flex h-full items-center justify-center p-6 text-center text-caption font-semibold text-text-soft">
+          <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
             Requires the “View warranty claims” permission.
           </div>
         )

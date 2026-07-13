@@ -188,7 +188,7 @@ export function TrackingExceptionsTable() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search tracking…"
-          className="ml-auto w-64 rounded-md border border-border-soft bg-surface-card px-3 py-1.5 text-label font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+          className="ml-auto w-64 rounded-md border border-border-soft bg-surface-card px-3 py-1.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
         />
         <Button
           type="button"
@@ -200,13 +200,13 @@ export function TrackingExceptionsTable() {
         >
           {loading ? 'Loading…' : 'Reload'}
         </Button>
-        <span className="text-micro font-bold uppercase tracking-widest text-text-soft">
+        <span className="text-role-micro font-bold uppercase tracking-widest text-text-soft">
           {total} {total === 1 ? 'row' : 'rows'}
         </span>
       </div>
 
       {error && (
-        <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-label font-bold text-red-700">
+        <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-bold text-red-700">
           {error}
         </div>
       )}
@@ -216,14 +216,14 @@ export function TrackingExceptionsTable() {
         {!loading && !hasRows && (
           <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
             <p className="text-sm font-bold text-text-muted">No exceptions in this view.</p>
-            <p className="mt-1 text-caption font-semibold text-text-soft">
+            <p className="mt-1 text-role-caption font-semibold text-text-soft">
               Unmatched receiving scans are logged here automatically.
             </p>
           </div>
         )}
 
-        <table className="w-full border-collapse text-left text-label">
-          <thead className="sticky top-0 bg-surface-canvas text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <table className="w-full border-collapse text-left text-role-caption">
+          <thead className="sticky top-0 bg-surface-canvas text-role-eyebrow uppercase tracking-widest text-text-soft">
             <tr>
               <th className="px-4 py-2">Tracking</th>
               <th className="px-4 py-2">Carrier</th>
@@ -259,7 +259,7 @@ export function TrackingExceptionsTable() {
                   </td>
                   <td className="px-4 py-2">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest ${STATUS_PILL[row.status]}`}
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${STATUS_PILL[row.status]}`}
                     >
                       {row.status}
                     </span>
@@ -381,7 +381,7 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
     <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/40 p-4">
       <div className="w-full max-w-lg rounded-xl bg-surface-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border-soft px-5 py-3">
-          <h2 className="text-label font-black uppercase tracking-widest text-text-default">
+          <h2 className="text-role-caption font-black uppercase tracking-widest text-text-default">
             Edit exception #{row.id}
           </h2>
           <IconButton
@@ -395,35 +395,35 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
 
         <div className="space-y-3 px-5 py-4">
           <label className="block">
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Tracking number
             </span>
             <input
               type="text"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-label font-mono text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-mono text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
             />
           </label>
           <label className="block">
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Reason
             </span>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-label font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
             />
           </label>
           <label className="block">
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Status
             </span>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as TrackingExceptionRow['status'])}
-              className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-label font-bold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-bold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
             >
               <option value="open">Open</option>
               <option value="resolved">Resolved</option>
@@ -431,19 +431,19 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
             </select>
           </label>
           <label className="block">
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Notes
             </span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-label font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className="mt-1 w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
             />
           </label>
 
           {err && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-caption font-bold text-red-700">{err}</p>
+            <p className="rounded-md bg-red-50 px-3 py-2 text-role-caption font-bold text-red-700">{err}</p>
           )}
         </div>
 
@@ -454,13 +454,13 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
               type="button"
               onClick={() => setConfirmingDelete(true)}
               disabled={saving}
-              className="rounded-md px-2.5 py-1.5 text-micro font-black uppercase tracking-widest text-red-600 hover:bg-red-50 disabled:opacity-50"
+              className="rounded-md px-2.5 py-1.5 text-role-micro uppercase tracking-widest text-red-600 hover:bg-red-50 disabled:opacity-50"
             >
               Delete
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="text-micro font-bold uppercase tracking-widest text-red-700">
+              <span className="text-role-micro font-bold uppercase tracking-widest text-red-700">
                 Confirm delete?
               </span>
               <Button

@@ -171,11 +171,11 @@ function UnitRow({ row }: { row: UnitListRow }) {
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span className="font-mono text-xs text-text-soft">#{row.id}</span>
                     <span className="font-mono text-xs text-text-default">{row.serial_number}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide ${statusTone}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide ${statusTone}`}>
                         {row.current_status}
                     </span>
                     {row.condition_grade ? (
-                        <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide text-text-muted">
+                        <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-muted">
                             {row.condition_grade.replace('_', ' ')}
                         </span>
                     ) : null}
@@ -185,7 +185,7 @@ function UnitRow({ row }: { row: UnitListRow }) {
                 </div>
             </Link>
 
-            <div className="flex shrink-0 flex-col items-end gap-0.5 text-caption text-text-soft">
+            <div className="flex shrink-0 flex-col items-end gap-0.5 text-role-caption text-text-soft">
                 {skuHref ? (
                     <Link
                         href={skuHref}

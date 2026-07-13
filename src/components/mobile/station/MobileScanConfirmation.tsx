@@ -129,7 +129,7 @@ export function MobileScanConfirmation({
             Detected As
           </p>
           <div className="flex items-center gap-3">
-            <span className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-caption font-black uppercase tracking-wide ${config.badge}`}>
+            <span className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-role-caption font-black uppercase tracking-wide ${config.badge}`}>
               <ActiveIcon className="h-4 w-4" />
               {config.label}
             </span>

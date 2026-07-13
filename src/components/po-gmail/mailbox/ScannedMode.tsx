@@ -45,7 +45,7 @@ export function ScannedMode({
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                           <span className="truncate text-sm font-medium text-text-default">{item.subject || '(no subject)'}</span>
-                          <span className="truncate text-label text-text-soft">{item.from}</span>
+                          <span className="truncate text-role-caption text-text-soft">{item.from}</span>
                         </div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-text-soft">
                           <span>{item.date || new Date(Number(item.internalDate)).toLocaleString()}</span>

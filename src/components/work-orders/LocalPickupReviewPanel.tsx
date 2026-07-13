@@ -120,7 +120,7 @@ function FinalizeReview({ onClose }: { onClose: () => void }) {
       {/* Name + notes (locked once finalized) */}
       <div className="space-y-2">
         <div>
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
             Pickup name
           </label>
           <input
@@ -128,14 +128,14 @@ function FinalizeReview({ onClose }: { onClose: () => void }) {
             onChange={(e) => setName(e.target.value)}
             disabled={!!done || isSubmitting}
             placeholder="e.g. Ken"
-            className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-caption font-bold text-text-default outline-none focus:border-emerald-500 disabled:bg-surface-canvas"
+            className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-role-caption font-bold text-text-default outline-none focus:border-emerald-500 disabled:bg-surface-canvas"
           />
-          <p className="mt-1 font-mono text-micro font-black uppercase tracking-wide text-emerald-600">
+          <p className="mt-1 font-mono text-role-micro uppercase tracking-wide text-emerald-600">
             {poNumber}
           </p>
         </div>
         <div>
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
             Notes
           </label>
           <textarea
@@ -144,14 +144,14 @@ function FinalizeReview({ onClose }: { onClose: () => void }) {
             disabled={!!done || isSubmitting}
             rows={2}
             placeholder="Printed in the middle of the label…"
-            className="w-full resize-none rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-caption text-text-default outline-none focus:border-emerald-500 disabled:bg-surface-canvas"
+            className="w-full resize-none rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default outline-none focus:border-emerald-500 disabled:bg-surface-canvas"
           />
         </div>
       </div>
 
       {/* Cart is cleared once finalized, so only show the live list pre-finalize. */}
       {done ? (
-        <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-caption font-semibold text-emerald-700">
+        <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-role-caption font-semibold text-emerald-700">
           Pushed to Zoho as <span className="font-mono font-black">{done.poNumber}</span>. Print the label below.
         </p>
       ) : (
@@ -167,7 +167,7 @@ function FinalizeReview({ onClose }: { onClose: () => void }) {
       />
 
       {submitError ? (
-        <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-caption font-semibold text-red-700">
+        <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-role-caption font-semibold text-red-700">
           {submitError}
         </p>
       ) : null}
@@ -322,7 +322,7 @@ function ReprintReview({ orderId, onClose }: { orderId?: number; onClose: () => 
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : error ? (
-        <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-caption font-semibold text-red-700">
+        <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-role-caption font-semibold text-red-700">
           {error}
         </p>
       ) : order ? (
@@ -331,11 +331,11 @@ function ReprintReview({ orderId, onClose }: { orderId?: number; onClose: () => 
             <p className="text-base font-black tracking-tight text-text-default">
               {order.customer_name || 'Local pickup'}
             </p>
-            <p className="mt-0.5 font-mono text-micro font-black uppercase tracking-wide text-emerald-600">
+            <p className="mt-0.5 font-mono text-role-micro uppercase tracking-wide text-emerald-600">
               {poNumber}
             </p>
             {order.notes ? (
-              <p className="mt-1 text-caption text-text-muted">{order.notes}</p>
+              <p className="mt-1 text-role-caption text-text-muted">{order.notes}</p>
             ) : null}
           </div>
 
@@ -415,7 +415,7 @@ function ReviewShell({
               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                 <ShoppingCart className="h-4 w-4" />
               </span>
-              <span className="text-label font-black uppercase tracking-tight text-text-default">
+              <span className="text-role-caption font-black uppercase tracking-tight text-text-default">
                 {title}
               </span>
             </div>
@@ -440,10 +440,10 @@ function ItemList({ items }: { items: ReviewItem[] }) {
   return (
     <div className="rounded-xl border border-border-soft">
       <div className="flex items-center justify-between border-b border-border-hairline px-3 py-2">
-        <span className="text-eyebrow font-black uppercase tracking-wider text-text-soft">
+        <span className="text-role-eyebrow uppercase tracking-wider text-text-soft">
           {unitCount} item{unitCount === 1 ? '' : 's'}
         </span>
-        <span className="text-caption font-black text-emerald-600">{formatMoney(subtotal)}</span>
+        <span className="text-role-caption font-black text-emerald-600">{formatMoney(subtotal)}</span>
       </div>
       <div className="max-h-52 divide-y divide-border-hairline overflow-y-auto">
         {items.map((i) => (
@@ -452,14 +452,14 @@ function ItemList({ items }: { items: ReviewItem[] }) {
               <Package className="h-4 w-4 text-text-faint" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-caption font-bold text-text-default">{i.title}</p>
-              <p className="text-mini font-bold uppercase tracking-wide text-text-faint">
+              <p className="truncate text-role-caption font-bold text-text-default">{i.title}</p>
+              <p className="text-role-micro font-bold uppercase tracking-wide text-text-faint">
                 {i.sku || 'No SKU'} · x{i.quantity}
                 {i.conditionGrade ? ` · ${conditionLabel(i.conditionGrade)}` : ''}
                 {i.partsStatus === 'MISSING_PARTS' ? ' · Missing' : ''}
               </p>
             </div>
-            <span className="shrink-0 text-caption font-black text-emerald-700">
+            <span className="shrink-0 text-role-caption font-black text-emerald-700">
               {formatMoney(i.total)}
             </span>
           </div>
@@ -484,7 +484,7 @@ function LabelPreviewBlock({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+      <p className="mb-1.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
         Label preview
       </p>
       <ReceivingPoLabelPreview

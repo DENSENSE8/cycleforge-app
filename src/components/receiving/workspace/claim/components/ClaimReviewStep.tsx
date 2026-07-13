@@ -19,8 +19,8 @@ function ReviewBlock({
     <section className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         <span className="text-text-faint">{icon}</span>
-        <p className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">{label}</p>
-        {hint ? <span className="text-micro font-semibold text-text-faint">· {hint}</span> : null}
+        <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">{label}</p>
+        {hint ? <span className="text-role-micro font-semibold text-text-faint">· {hint}</span> : null}
       </div>
       {children}
     </section>
@@ -44,7 +44,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
   return (
     <div className="divide-y divide-border-hairline space-y-0 [&>section]:py-3 [&>section:first-child]:pt-0 [&>div]:py-3">
       <ReviewBlock icon={<Tag className="h-3.5 w-3.5" />} label="Claim type">
-        <span className="text-caption font-bold uppercase tracking-wide text-rose-700">
+        <span className="text-role-caption font-bold uppercase tracking-wide text-rose-700">
           {claimLabel}
         </span>
       </ReviewBlock>
@@ -73,7 +73,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
             ))}
           </div>
         ) : (
-          <p className="text-caption font-medium text-text-faint">No photos selected to attach.</p>
+          <p className="text-role-caption font-medium text-text-faint">No photos selected to attach.</p>
         )}
       </ReviewBlock>
 
@@ -83,10 +83,10 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
         hint={template.previewLoading ? 'updating…' : undefined}
       >
         <div className="overflow-hidden rounded-lg border border-border-soft">
-          <p className="border-b border-border-soft px-3 py-2 text-label font-bold text-text-default">
+          <p className="border-b border-border-soft px-3 py-2 text-role-caption font-bold text-text-default">
             {subject || <span className="font-medium text-rose-500">No subject yet</span>}
           </p>
-          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap px-3 py-2 text-caption font-medium leading-5 text-text-muted">
+          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap px-3 py-2 text-role-caption font-medium leading-5 text-text-muted">
             {body || <span className="text-rose-500">No body yet</span>}
           </p>
         </div>
@@ -103,33 +103,33 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
               {c.ccEmails.map((email) => (
                 <span
                   key={email}
-                  className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+                  className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
                 >
                   {email}
                 </span>
               ))}
             </div>
           ) : (
-            <p className="text-caption font-medium text-text-muted">
+            <p className="text-role-caption font-medium text-text-muted">
               Public reply — emails the requester (no CC added).
             </p>
           )
         ) : (
-          <p className="text-caption font-medium text-text-muted">
+          <p className="text-role-caption font-medium text-text-muted">
             Internal note — not emailed to anyone.
           </p>
         )}
       </ReviewBlock>
 
       <ReviewBlock icon={<Archive className="h-3.5 w-3.5" />} label="Local backup">
-        <p className="text-caption font-medium text-text-muted">
+        <p className="text-role-caption font-medium text-text-muted">
           {photos.photos.length || 0} {photos.photos.length === 1 ? 'photo' : 'photos'} → folder
           after case # <span className="font-bold text-text-default">{folderFallback}</span>
         </p>
       </ReviewBlock>
 
       {c.submitting || c.archiveSubmitting ? (
-        <div className="flex items-center gap-2 text-caption font-semibold text-text-muted">
+        <div className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
           <Loader2 className="h-4 w-4 animate-spin" />
           {c.submitting ? 'Filing ticket…' : 'Saving photos…'}
         </div>

@@ -137,9 +137,9 @@ export function PackChecklist({
     >
       {/* Header — title + live progress */}
       <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border-hairline bg-surface-canvas">
-        <p className="text-micro font-black text-text-soft uppercase tracking-widest">Pack checklist</p>
+        <p className="text-role-micro text-text-soft uppercase tracking-widest">Pack checklist</p>
         <span
-          className={`text-eyebrow font-black tabular-nums ${
+          className={`text-role-eyebrow tabular-nums ${
             doneCount === totalItems ? 'text-emerald-600' : 'text-text-soft'
           }`}
         >
@@ -188,7 +188,7 @@ export function PackChecklist({
           parts ⇒ requiredTotal 0 ⇒ no footer. */}
       {readiness.requiredTotal > 0 && (
         <div
-          className={`flex items-center gap-1.5 px-3 py-2 text-eyebrow font-bold border-t ${
+          className={`flex items-center gap-1.5 px-3 py-2 text-role-eyebrow font-bold border-t ${
             readiness.allRequiredIn
               ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
               : readiness.blocked
@@ -223,7 +223,7 @@ export function PackChecklist({
 function ChecklistGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-3 py-2">
-      <p className="text-eyebrow font-black text-text-faint uppercase tracking-wider mb-1.5">{label}</p>
+      <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1.5">{label}</p>
       <ul className="space-y-1">{children}</ul>
     </div>
   );
@@ -278,15 +278,15 @@ function ChecklistRow({
           {label}
         </span>
         {qty ? (
-          <span className="text-eyebrow font-black tabular-nums text-text-soft">×{qty}</span>
+          <span className="text-role-eyebrow tabular-nums text-text-soft">×{qty}</span>
         ) : null}
         {tag ? (
-          <span className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-wide text-text-soft">
+          <span className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide text-text-soft">
             {tag}
           </span>
         ) : null}
         {critical && !checked ? (
-          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wide text-amber-700">
+          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide text-amber-700">
             Required
           </span>
         ) : null}

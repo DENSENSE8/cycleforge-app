@@ -37,12 +37,12 @@ export function ClaimTicketPicker({
       <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-caption font-black text-blue-700">#{ticket.id}</span>
-            <span className={cn('rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest', sb.className)}>
+            <span className="text-role-caption font-black text-blue-700">#{ticket.id}</span>
+            <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
               {sb.label}
             </span>
           </div>
-          <p className="mt-0.5 truncate text-[13px] font-semibold text-text-default">
+          <p className="mt-0.5 truncate text-role-data font-semibold text-text-default">
             {ticket.subject || 'Untitled ticket'}
           </p>
         </div>
@@ -50,7 +50,7 @@ export function ClaimTicketPicker({
           variant="ghost"
           size="sm"
           onClick={() => onPick(null)}
-          className="h-auto shrink-0 rounded-lg px-2 py-1 text-caption font-bold text-text-soft hover:bg-surface-card hover:text-text-default"
+          className="h-auto shrink-0 rounded-lg px-2 py-1 text-role-caption font-bold text-text-soft hover:bg-surface-card hover:text-text-default"
         >
           Change
         </Button>
@@ -66,7 +66,7 @@ export function ClaimTicketPicker({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Search tickets by subject or #id…"
-          className="w-full rounded-xl border border-border-default bg-surface-card py-2.5 pl-9 pr-9 text-[13px] outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-xl border border-border-default bg-surface-card py-2.5 pl-9 pr-9 text-role-data outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
         {isLoading ? (
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-text-faint" />
@@ -74,7 +74,7 @@ export function ClaimTicketPicker({
       </div>
       <div className="max-h-56 divide-y divide-border-hairline overflow-y-auto rounded-xl border border-border-soft">
         {tickets.length === 0 && !isLoading ? (
-          <p className="px-3.5 py-6 text-center text-label text-text-faint">
+          <p className="px-3.5 py-6 text-center text-role-caption text-text-faint">
             {debounced ? 'No matching tickets' : 'No open tickets'}
           </p>
         ) : (
@@ -95,16 +95,16 @@ export function ClaimTicketPicker({
                 }
                 className="ds-raw-button flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-surface-hover"
               >
-                <span className="text-caption font-black text-text-faint">#{t.id}</span>
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-text-default">
+                <span className="text-role-caption font-black text-text-faint">#{t.id}</span>
+                <span className="min-w-0 flex-1 truncate text-role-data font-medium text-text-default">
                   {t.subject || 'Untitled ticket'}
                 </span>
                 {pb ? (
-                  <span className={cn('rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest', pb.className)}>
+                  <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', pb.className)}>
                     {pb.label}
                   </span>
                 ) : null}
-                <span className={cn('rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest', sb.className)}>
+                <span className={cn('rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
                   {sb.label}
                 </span>
               </button>

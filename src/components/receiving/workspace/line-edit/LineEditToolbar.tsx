@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Copy, History, Info, Link2, MoreVertical, RefreshCw, ZendeskMark } from '@/components/Icons';
+import { Copy, History, Info, Link2, MoreVertical, RefreshCw, Ticket } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -97,7 +97,7 @@ export function LineEditToolbar({
     },
     photoNote: {
       label: 'Ticket',
-      icon: <ZendeskMark className="h-4 w-4" />,
+      icon: <Ticket className="h-4 w-4" />,
       disabled,
       title: "Send this PO's photos to a support ticket",
       ariaLabel: 'Send photos to a support ticket',
@@ -172,7 +172,7 @@ export function LineEditToolbar({
                     onClick?.();
                     setOverflowOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-role-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {m.icon}
                   {m.label}

@@ -150,9 +150,10 @@ export type PhotoLibrarySortMode = 'recent' | 'oldest';
 export type PhotoLibraryViewMode = 'grid-sm' | 'grid-lg' | 'grid-ticket' | 'folders' | 'list';
 
 /**
- * Canonical left→right view order. Single source for both the header toggle
- * order (PhotoLibraryViewToggle) and the `1` keyboard shortcut for List.
- * (useMediaLibraryShortcuts) so the digit always matches the on-screen position.
+ * Canonical left→right view order. Single source for the `1` keyboard shortcut
+ * for List (useMediaLibraryShortcuts) so the digit matches the on-screen order.
+ * The header display toggle itself is the two-mode Icons/List segmented slider
+ * in PhotoDisplayControls.
  */
 export const PHOTO_LIBRARY_VIEW_ORDER: readonly PhotoLibraryViewMode[] = [
   'grid-sm',

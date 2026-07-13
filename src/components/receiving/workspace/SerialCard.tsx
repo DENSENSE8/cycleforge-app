@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { X, Pencil } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SerialChip } from '@/components/ui/CopyChip';
@@ -415,7 +423,7 @@ export function SerialCard({
             type="button"
             onClick={() => void submit()}
             disabled={!scan.trim() || isSubmitting || disabled}
-            className={`inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-label font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong ${
+            className={`inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-role-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong ${
               editing || (showSavingLabel && isSubmitting) ? 'px-4' : 'w-14'
             }`}
           >
@@ -437,7 +445,7 @@ export function SerialCard({
       {inlineNotice ? (
         <p
           role="status"
-          className={`mt-2 text-caption font-semibold ${
+          className={`mt-2 text-role-caption font-semibold ${
             inlineNotice.tone === 'rose' ? 'text-rose-600' : 'text-amber-700'
           }`}
         >
@@ -479,7 +487,7 @@ export function SerialCard({
         <div className="mt-3 border-t border-border-hairline pt-3">
           <label
             htmlFor={notesId}
-            className="block text-micro font-bold uppercase tracking-[0.14em] text-text-soft"
+            className="block text-role-micro font-bold uppercase tracking-[0.14em] text-text-soft"
           >
             Notes
           </label>
@@ -490,7 +498,7 @@ export function SerialCard({
             onBlur={onNotesBlur}
             rows={2}
             placeholder="PO-line notes (saved on off click)"
-            className="mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-label font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
       ) : null}
@@ -525,49 +533,108 @@ export function SerialChipWithMenu({
   const sn = serial.serial_number;
   const pending = serial._optimistic;
   const hasActions = !pending && !!(onEdit || onDelete || onSetCondition);
-  const [menuHover, setMenuHover] = useState(false);
 
-  return (
-    <div
-      className={`group relative inline-flex rounded-md transition-opacity ${
-        pending === 'removing'
-          ? 'bg-surface-sunken opacity-50 ring-1 ring-inset ring-border-soft'
-          : pending === 'adding'
-            ? 'opacity-70'
-            : ''
-      }`}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-      onMouseEnter={() => {
-        if (hasActions) setMenuHover(true);
-      }}
-      onMouseLeave={() => setMenuHover(false)}
-    >
-      <div
-        className={`inline-flex items-center gap-1 rounded-md transition-colors ${
-          isEditing ? 'ring-2 ring-emerald-400 ring-offset-1' : ''
-        }`}
-      >
-        <SerialChip value={sn} width="w-fit max-w-full" pending={pending} dense={dense} />
-      </div>
-      {hasActions ? (
-        <div
-          // Hover-only menu within the card's local stacking context.
-          // eslint-disable-next-line no-restricted-syntax
-          className={`absolute left-1/2 top-full z-panel -translate-x-1/2 pt-1 transition-opacity duration-100 ${
-            menuHover
-              ? 'visible pointer-events-auto opacity-100'
-              : 'invisible pointer-events-none opacity-0'
-          }`}
-        >
+  // The menu renders in a BODY PORTAL (not an `absolute` child) so it is never
+  // clipped by an `overflow:hidden` ancestor — the PO-line meta grid's `truncate`
+  // serial cell and the accordion row's `overflow-hidden` were swallowing the old
+  // in-flow dropdown, which is why Edit/Delete "didn't work". Same rationale as
+  // HoverTooltip's portal. Positioned from the chip's rect and viewport-clamped.
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const open = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r && r.width >= 2 && r.height >= 2) {
+      setAnchor(r);
+      setPos(null);
+    }
+  }, []);
+  const closeNow = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setAnchor(null);
+    setPos(null);
+  }, []);
+  // Delay close so the pointer can travel from the chip to the detached menu
+  // without the hover gap dismissing it.
+  const scheduleClose = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setAnchor(null);
+      setPos(null);
+    }, 140);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+
+  // Measure the menu once mounted, then clamp into the viewport (prefer below the
+  // chip, flip above when there isn't room). Hidden until positioned so it never
+  // flashes at the off-screen origin.
+  useLayoutEffect(() => {
+    if (!anchor || !menuRef.current) return;
+    const b = menuRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const MARGIN = 6;
+    const roomBelow = vh - anchor.bottom - MARGIN;
+    const rawTop =
+      roomBelow >= b.height ? anchor.bottom + 4 : anchor.top - b.height - 4;
+    const top = Math.min(
+      Math.max(rawTop, MARGIN),
+      Math.max(MARGIN, vh - b.height - MARGIN),
+    );
+    const rawLeft = anchor.left + anchor.width / 2 - b.width / 2;
+    const left = Math.min(
+      Math.max(rawLeft, MARGIN),
+      Math.max(MARGIN, vw - b.width - MARGIN),
+    );
+    setPos({ top, left });
+  }, [anchor]);
+
+  // Dismiss on scroll — a fixed portal would otherwise "leak" over the page as
+  // the workspace scrolls under it.
+  useEffect(() => {
+    if (!anchor) return;
+    const onScroll = () => closeNow();
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, [anchor, closeNow]);
+
+  const menu =
+    anchor && typeof document !== 'undefined'
+      ? createPortal(
           <div
+            ref={menuRef}
             role="menu"
             aria-label="Serial actions"
-            className={`overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg ${onSetCondition ? 'min-w-[200px]' : 'min-w-[112px]'}`}
+            onMouseEnter={open}
+            onMouseLeave={scheduleClose}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              top: pos?.top ?? -9999,
+              left: pos?.left ?? -9999,
+              visibility: pos ? 'visible' : 'hidden',
+            }}
+            // eslint-disable-next-line no-restricted-syntax
+            className={`fixed z-panelPopover overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg ${onSetCondition ? 'min-w-[200px]' : 'min-w-[112px]'}`}
           >
             {onSetCondition ? (
               <div className="border-b border-border-hairline px-2 py-1.5">
-                <p className="mb-1 text-micro font-bold uppercase tracking-widest text-text-faint">
+                <p className="mb-1 text-role-micro font-bold uppercase tracking-widest text-text-faint">
                   Condition
                 </p>
                 <ConditionPills
@@ -581,8 +648,11 @@ export function SerialChipWithMenu({
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => onEdit(serial)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-caption font-bold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+                onClick={() => {
+                  onEdit(serial);
+                  closeNow();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-bold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                 Edit
@@ -593,16 +663,48 @@ export function SerialChipWithMenu({
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => onDelete(serial)}
-                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-caption font-bold uppercase tracking-widest text-rose-600 hover:bg-rose-50"
+                onClick={() => {
+                  onDelete(serial);
+                  closeNow();
+                }}
+                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-bold uppercase tracking-widest text-rose-600 hover:bg-rose-50"
               >
                 <X className="h-3.5 w-3.5 shrink-0" />
                 Delete
               </button>
             ) : null}
-          </div>
-        </div>
-      ) : null}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <div
+      ref={triggerRef}
+      className={`group relative inline-flex rounded-md transition-opacity ${
+        pending === 'removing'
+          ? 'bg-surface-sunken opacity-50 ring-1 ring-inset ring-border-soft'
+          : pending === 'adding'
+            ? 'opacity-70'
+            : ''
+      }`}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onMouseEnter={() => {
+        if (hasActions) open();
+      }}
+      onMouseLeave={() => {
+        if (hasActions) scheduleClose();
+      }}
+    >
+      <div
+        className={`inline-flex items-center gap-1 rounded-md transition-colors ${
+          isEditing ? 'ring-2 ring-emerald-400 ring-offset-1' : ''
+        }`}
+      >
+        <SerialChip value={sn} width="w-fit max-w-full" pending={pending} dense={dense} />
+      </div>
+      {hasActions ? menu : null}
     </div>
   );
 }

@@ -98,7 +98,7 @@ export function RoleColorPicker({ value, onChange, disabled }: RoleColorPickerPr
         </button>
       </HoverTooltip>
 
-      <code className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-micro font-mono text-text-muted">{value}</code>
+      <code className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro font-mono text-text-muted">{value}</code>
     </div>
   );
 }

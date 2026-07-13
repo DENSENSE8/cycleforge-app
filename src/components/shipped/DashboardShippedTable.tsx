@@ -137,7 +137,7 @@ export function DashboardShippedTable({
 
   const loadMoreFooter = pagination.isTruncated ? (
     <div className="flex shrink-0 items-center justify-center gap-3 border-t border-border-soft bg-surface-card px-3 py-2">
-      <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+      <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
         Showing the most recent entries · older rows in this range are truncated
       </span>
       <Button

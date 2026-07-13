@@ -112,14 +112,14 @@ function QueueAlertRow({
   return (
     <li className="rounded-xl border border-border-soft bg-surface-card p-3">
       <div className="flex items-center gap-3">
-        <span className={`rounded-full px-2 py-0.5 text-micro font-bold uppercase ring-1 ${severityTone[alert.severity] ?? severityTone.info}`}>{alert.severity}</span>
-        <span className={`rounded-full px-2 py-0.5 text-micro font-semibold ${demandSourceTone[alert.demand_source] ?? demandSourceTone.scan}`}>{DEMAND_SOURCE_LABEL[alert.demand_source] ?? alert.demand_source}</span>
+        <span className={`rounded-full px-2 py-0.5 text-role-micro font-bold uppercase ring-1 ${severityTone[alert.severity] ?? severityTone.info}`}>{alert.severity}</span>
+        <span className={`rounded-full px-2 py-0.5 text-role-micro font-semibold ${demandSourceTone[alert.demand_source] ?? demandSourceTone.scan}`}>{DEMAND_SOURCE_LABEL[alert.demand_source] ?? alert.demand_source}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-text-default">
             {alert.product_title ?? alert.sku ?? alert.search_query ?? (alert.sku_id ? `SKU #${alert.sku_id}` : 'Untitled demand')}
-            {alert.target_qty && alert.target_qty > 1 ? <span className="ml-1 text-caption font-normal text-text-faint">× {alert.target_qty}</span> : null}
+            {alert.target_qty && alert.target_qty > 1 ? <span className="ml-1 text-role-caption font-normal text-text-faint">× {alert.target_qty}</span> : null}
           </p>
-          <p className="truncate text-caption text-text-soft">
+          <p className="truncate text-role-caption text-text-soft">
             {ALERT_TYPE_LABEL[alert.alert_type] ?? alert.alert_type}{alert.model_name ? ` · ${alert.model_name}` : ''}{alert.reason ? ` · ${alert.reason}` : ''}
           </p>
         </div>
@@ -129,7 +129,7 @@ function QueueAlertRow({
               variant="secondary"
               size="sm"
               onClick={() => setTarget(alert)}
-              className="rounded-full bg-indigo-50 text-micro font-semibold text-indigo-700 hover:bg-indigo-100"
+              className="rounded-full bg-indigo-50 text-role-micro font-semibold text-indigo-700 hover:bg-indigo-100"
             >
               {alert.replenish_target_cents != null ? `Target ${formatCents(alert.replenish_target_cents)}` : 'Set target'}
             </Button>
@@ -140,15 +140,15 @@ function QueueAlertRow({
         </Button>
         {alert.status === 'open' ? (
           <Button variant="secondary" size="sm" onClick={() => patchStatus('sourcing')}>Start sourcing</Button>
-        ) : <span className="rounded-full bg-blue-50 px-2 py-0.5 text-micro font-semibold text-blue-700">{alert.status}</span>}
-        <button type="button" onClick={() => close(alert.id, 'resolved')} className="ds-raw-button rounded-md px-2 py-1 text-caption font-semibold text-emerald-700 hover:bg-emerald-50">Resolve</button>
-        <Button variant="ghost" size="sm" onClick={() => close(alert.id, 'dismissed')} className="text-caption font-semibold text-text-soft">Dismiss</Button>
+        ) : <span className="rounded-full bg-blue-50 px-2 py-0.5 text-role-micro font-semibold text-blue-700">{alert.status}</span>}
+        <button type="button" onClick={() => close(alert.id, 'resolved')} className="ds-raw-button rounded-md px-2 py-1 text-role-caption font-semibold text-emerald-700 hover:bg-emerald-50">Resolve</button>
+        <Button variant="ghost" size="sm" onClick={() => close(alert.id, 'dismissed')} className="text-role-caption font-semibold text-text-soft">Dismiss</Button>
       </div>
 
       {researchResult ? (
         <ResearchPanel research={researchResult.research} candidates={researchResult.results} onSave={(candidate) => save.mutate(candidate)} saving={save.isPending} />
       ) : null}
-      {research.isError ? <p className="mt-2 text-caption text-red-600">{(research.error as Error).message}</p> : null}
+      {research.isError ? <p className="mt-2 text-role-caption text-red-600">{(research.error as Error).message}</p> : null}
     </li>
   );
 }

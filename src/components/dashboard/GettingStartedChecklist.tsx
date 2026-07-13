@@ -33,7 +33,7 @@ import {
   type OnboardingStats,
 } from '@/lib/onboarding/steps';
 
-const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-accent';
+const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-accent';
 
 /**
  * Permission gate. The data-owning inner component mounts only behind
@@ -102,7 +102,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
             <span className={EYEBROW}>Getting started</span>
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="text-eyebrow font-black uppercase tracking-widest leading-none text-text-soft tabular-nums">
+            <span className="text-role-eyebrow uppercase tracking-widest leading-none text-text-soft tabular-nums">
               {completed}/{steps.length}
             </span>
             <HoverTooltip label="Skip for now" focusable={false}>
@@ -133,7 +133,7 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
               return (
                 <div key={step.id} className="flex items-center gap-2 py-1.5">
                   <Check className="h-3.5 w-3.5 shrink-0 text-text-success" />
-                  <span className="truncate text-caption font-bold text-text-faint">
+                  <span className="truncate text-role-caption font-bold text-text-faint">
                     {step.label}
                   </span>
                 </div>
@@ -150,10 +150,10 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
                   className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-inset ring-border-soft"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-bold text-text-default">
+                  <span className="block truncate text-role-caption font-bold text-text-default">
                     {step.label}
                   </span>
-                  <span className="block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {step.description}
                   </span>
                 </span>

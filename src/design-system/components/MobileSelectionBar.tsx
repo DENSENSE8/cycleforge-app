@@ -57,7 +57,7 @@ function SelectAll({ count, allSelected, onToggleAll }: { count: number; allSele
           <AnimatedStat
             value={count}
             speed="fast"
-            className="flex h-4 items-center justify-center text-micro font-black"
+            className="flex h-4 items-center justify-center text-role-micro "
           />
         )}
       </span>
@@ -156,7 +156,7 @@ export function MobileSelectionBar({
           <div className={cn('relative flex items-center overflow-hidden rounded-full p-1.5 shadow-xl shadow-gray-900/10', SURFACE_LIGHT)}>
             <div className="relative z-10 flex flex-1 items-center gap-2">
               <SelectAll count={count} allSelected={allSelected} onToggleAll={onToggleAll} />
-              <span className="text-eyebrow font-bold uppercase tracking-wider text-text-soft">
+              <span className="text-role-eyebrow font-bold uppercase tracking-wider text-text-soft">
                 selected
               </span>
               <GlassActions actions={actions} onClear={onClear} onDismiss={onDismiss} />

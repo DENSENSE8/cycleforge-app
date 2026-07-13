@@ -464,10 +464,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Operations ────────────────────────────────────────────────────────────
-  // `?mode=analytics|insights|history|signals|plans`; bare /operations = the Live
-  // floor dashboard (default). The L2 rail mirrors the six right-pane modes
-  // (OperationsWorkspace) — SoT `OPERATIONS_MODE_ITEMS`. Every switch clears the mode-scoped params (search,
-  // selection, range, section…) so each mode opens clean — matches Inventory.
+  // `?mode=analytics|insights|history|signals`; bare /operations = the Live
+  // floor dashboard (default). The L2 rail mirrors the five right-pane modes
+  // (OperationsWorkspace) — SoT `OPERATIONS_MODE_ITEMS`. `plans` is no longer an
+  // Operations mode (forge/plans moved to Home, HOME-OPS §3.2) — `?mode=plans`
+  // bookmarks still redirect to Home via OperationsWorkspace. Every switch clears
+  // the mode-scoped params (search, selection, range, section…) so each mode
+  // opens clean — matches Inventory.
   {
     id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', requires: 'operations.view',
     modes: [
@@ -476,7 +479,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights',  signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
       { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history',   signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
       { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals',   signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
-      { id: 'plans',     label: 'Plans',     icon: ClipboardList, to: () => ({ pathname: OPERATIONS, params: { mode: 'plans',      signalsView: null, signalId: null, window: null, signalKind: null, q: null, open: null, section: null, range: null, segment: null, staffId: null, station: null } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -484,7 +486,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'insights') return 'insights';
       if (m === 'history') return 'history';
       if (m === 'signals') return 'signals';
-      if (m === 'plans') return 'plans';
       return 'live';
     },
   },

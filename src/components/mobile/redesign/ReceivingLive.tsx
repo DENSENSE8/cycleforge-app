@@ -30,7 +30,7 @@ function ModeStarter({
         <Icon className="h-7 w-7" />
       </div>
       <p className="text-sm font-black uppercase tracking-[0.18em] text-text-default">{title}</p>
-      <p className="max-w-[280px] text-caption font-semibold text-text-soft">{blurb}</p>
+      <p className="max-w-[280px] text-role-caption font-semibold text-text-soft">{blurb}</p>
     </div>
   );
 }

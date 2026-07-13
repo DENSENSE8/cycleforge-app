@@ -157,14 +157,14 @@ export function StickyActionBar({
   const primaryHeight = isCompact ? 'h-9' : 'h-12';
   const primaryPadding = isCompact ? 'px-3' : 'px-6';
   const primaryText = isCompact
-    ? 'text-caption font-black uppercase tracking-wider'
+    ? 'text-role-caption font-black uppercase tracking-wider'
     : 'text-sm font-bold';
   const primaryMinWidth = isCompact ? '' : 'sm:flex-initial sm:min-w-[220px]';
   const primaryRadius = isCompact ? 'rounded-md' : 'rounded-xl';
 
   const secondaryHeight = isCompact ? 'h-9' : 'h-12';
   const secondaryPadding = isCompact ? 'px-3' : 'px-4';
-  const secondaryText = isCompact ? 'text-caption font-bold' : 'text-sm font-semibold';
+  const secondaryText = isCompact ? 'text-role-caption font-bold' : 'text-sm font-semibold';
   const secondaryRadius = isCompact ? 'rounded-md' : 'rounded-xl';
 
   /** Full-bleed bar; horizontal padding matches typical pane bodies (e.g. `LineEditPanel` `px-4 sm:px-6`). */
@@ -245,7 +245,7 @@ export function StickyActionBar({
                         e.stopPropagation();
                         item.onClick();
                       }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-role-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
                     >
                       {item.icon}
                       {item.label}
@@ -311,7 +311,7 @@ export function StickyActionBar({
           className={`pointer-events-auto mx-auto flex w-full ${maxWidth} flex-col gap-2 ${innerGutter}`}
         >
           {error ? (
-            <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-caption font-semibold text-red-700">
+            <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-role-caption font-semibold text-red-700">
               <AlertCircle className="h-3.5 w-3.5" />
               {error}
             </div>
@@ -330,7 +330,7 @@ export function StickyActionBar({
     >
       <div className={`mx-auto flex w-full ${maxWidth} flex-col gap-2 ${innerGutter}`}>
         {error ? (
-          <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-caption font-semibold text-red-700">
+          <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-role-caption font-semibold text-red-700">
             <AlertCircle className="h-3.5 w-3.5" />
             {error}
           </div>
@@ -364,7 +364,7 @@ export function StickyActionBar({
                       key={`${h.key}-${h.label}`}
                       className="inline-flex items-center gap-1.5"
                     >
-                      <kbd className="rounded-md border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-micro font-bold text-text-muted">
+                      <kbd className="rounded-md border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-role-micro font-bold text-text-muted">
                         {h.key}
                       </kbd>
                       <span className="font-semibold uppercase tracking-[0.14em]">

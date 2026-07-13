@@ -100,7 +100,7 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
       <div className="relative z-modal flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/15">
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
-            <p className={`text-micro font-black uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>
+            <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>
               New plan
             </p>
             <h2 className="mt-1 text-sm font-black text-text-default">Create FBA shipment plan</h2>

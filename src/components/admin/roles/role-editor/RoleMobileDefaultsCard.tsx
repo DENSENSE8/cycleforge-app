@@ -78,7 +78,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Mobile defaults</h2>
-          <p className="mt-0.5 text-caption text-text-soft">
+          <p className="mt-0.5 text-role-caption text-text-soft">
             Every staff with the <b style={{ color: roleColor }}>{roleLabel}</b> role inherits these — unless overridden in <a href="/settings/access" className="text-blue-600 hover:underline">Access</a>.
           </p>
         </div>
@@ -102,7 +102,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
         <label className="flex items-center justify-between gap-4">
           <div>
             <div className="text-sm font-semibold text-text-default">Bottom navigation bar</div>
-            <p className="mt-0.5 text-caption text-text-soft">
+            <p className="mt-0.5 text-role-caption text-text-soft">
               When off, staff in this role are locked to a single page on their phone.
             </p>
           </div>
@@ -127,7 +127,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
 
         <div>
           <div className="text-sm font-semibold text-text-default">Tabs</div>
-          <p className="mb-2 mt-0.5 text-caption text-text-soft">
+          <p className="mb-2 mt-0.5 text-role-caption text-text-soft">
             Tap to toggle. Scan stays centre and raised when included.
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -140,7 +140,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
                   type="button"
                   onClick={() => toggleTab(id)}
                   disabled={busy || !draftEnabled}
-                  className={`rounded-full px-2.5 py-1 text-caption font-semibold ring-1 ring-inset transition ${
+                  className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ring-1 ring-inset transition ${
                     on
                       ? 'bg-blue-100 text-blue-800 ring-blue-300'
                       : 'bg-surface-canvas text-text-soft ring-border-soft hover:bg-surface-sunken'
@@ -154,7 +154,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-border-hairline pt-3">
-          <div className="text-micro text-text-soft">
+          <div className="text-role-micro text-text-soft">
             {hasDefaults ? 'Role defaults active.' : 'No defaults set — using system default.'}
           </div>
           <Button

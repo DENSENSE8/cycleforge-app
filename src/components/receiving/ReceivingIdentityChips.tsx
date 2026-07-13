@@ -19,7 +19,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /** Matches {@link InlinePillPicker} collapsed shell — read-only status pills in the carton bar. */
 const RAIL_PILL_BASE =
-  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-micro font-black uppercase tracking-wide';
+  'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-role-micro uppercase tracking-wide';
 const RAIL_PICKUP_TONE = 'border-emerald-600 bg-emerald-600 text-white';
 
 export type FulfillmentPickupPillVariant = 'chip' | 'rail';
@@ -61,7 +61,7 @@ export function FulfillmentPickupPill({
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50 ${
-        dense ? 'px-1 py-px text-[8.5px]' : 'px-1.5 py-0.5 text-eyebrow'
+        dense ? 'px-1 py-px text-[8.5px]' : 'px-1.5 py-0.5 text-role-eyebrow'
       }`}
     >
       Pickup

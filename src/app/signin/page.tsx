@@ -36,7 +36,12 @@ import { SetPinPad } from '@/components/auth/SetPinPad';
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
 import { Button, IconButton } from '@/design-system/primitives';
-import { readRecentSignins, writeRecentSignin } from '@/lib/auth/recent-signins';
+import {
+  readLastSigninEmail,
+  readRecentSignins,
+  writeLastSigninEmail,
+  writeRecentSignin,
+} from '@/lib/auth/recent-signins';
 
 const ROLE_HOME: Record<string, string> = {
   admin: '/',
@@ -168,6 +173,9 @@ export default function SignInPage() {
   // DOGFOOD / QA: staff roster returned after an owner login to a testing org.
   const [staffChoices, setStaffChoices] = useState<StaffChoiceRow[] | null>(null);
   const [staffChoiceOrg, setStaffChoiceOrg] = useState<string | null>(null);
+  // Shared-computer UX: the same few people keep tapping the same names, so the
+  // last-3 they used float to the top; the rest collapse behind a "More" button.
+  const [showAllStaff, setShowAllStaff] = useState(false);
 
   // Surface the redirect error codes from SSO / magic-link / verify flows.
   useEffect(() => {
@@ -190,6 +198,12 @@ export default function SignInPage() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => { setRecent(readRecentSignins()); setRecentReady(true); }, []);
+
+  // Prefill the last email used on this device (only when the field is untouched).
+  useEffect(() => {
+    const last = readLastSigninEmail();
+    if (last) setEmail((cur) => (cur ? cur : last));
+  }, []);
 
   const finish = useCallback((
     staffId: number | null,
@@ -240,6 +254,8 @@ export default function SignInPage() {
         setError(humanError(data.error));
         return;
       }
+      // Credentials accepted — remember the email for next time on this device.
+      writeLastSigninEmail(email);
       if (data.needsOrgChoice && data.memberships) {
         setOrgChoices(data.memberships);
         setChosenOrg(data.memberships[0]?.organizationId ?? null);
@@ -433,6 +449,19 @@ export default function SignInPage() {
     [workspace],
   );
 
+  // Split the staff roster into recent (last-3 used on this device, in that
+  // order) and everyone else. Recent surfaces first for one-tap re-entry.
+  const { recentStaff, otherStaff } = useMemo(() => {
+    const rows = staffChoices ?? [];
+    const byId = new Map(rows.map((s) => [s.id, s] as const));
+    const recents: StaffChoiceRow[] = [];
+    for (const id of recent) {
+      const hit = byId.get(id);
+      if (hit) { recents.push(hit); byId.delete(id); }
+    }
+    return { recentStaff: recents, otherStaff: Array.from(byId.values()) };
+  }, [staffChoices, recent]);
+
   if (signingIn) return <BootSplash />;
 
   // ── Station mode (picked → PIN pad) ───────────────────────────────────────
@@ -463,7 +492,7 @@ export default function SignInPage() {
         <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 p-8 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
           <div className="space-y-1 text-center">
             {staffChoiceOrg && (
-              <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{staffChoiceOrg}</p>
+              <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{staffChoiceOrg}</p>
             )}
             <h1 className="text-lg font-bold text-text-default">Sign in as a staff member</h1>
             <p className="text-xs text-text-soft">Tap your name to start.</p>
@@ -474,37 +503,45 @@ export default function SignInPage() {
               No staff members yet. Add your team in Settings, then come back to pick a name.
             </div>
           ) : (
-            <div className="-mr-1 max-h-[22rem] space-y-1.5 overflow-y-auto pr-1">
-              {staffChoices.map((s) => (
-                // ds-raw-button: staff-picker row — custom avatar + meta layout, not a DS Button
+            <div className="-mr-1 max-h-[22rem] space-y-4 overflow-y-auto pr-1">
+              {recentStaff.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="px-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">Recent</p>
+                  {recentStaff.map((s) => (
+                    <StaffChoiceRowButton key={s.id} staff={s} disabled={busy} onPick={actAsStaff} isRecent />
+                  ))}
+                </div>
+              )}
+
+              {(recentStaff.length === 0 || showAllStaff) && otherStaff.length > 0 && (
+                <div className="space-y-1.5">
+                  {recentStaff.length > 0 && (
+                    <p className="px-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">All staff</p>
+                  )}
+                  {otherStaff.map((s) => (
+                    <StaffChoiceRowButton key={s.id} staff={s} disabled={busy} onPick={actAsStaff} />
+                  ))}
+                </div>
+              )}
+
+              {recentStaff.length > 0 && !showAllStaff && otherStaff.length > 0 && (
+                // ds-raw-button: inline disclosure to reveal the rest of the roster
                 <button
-                  key={s.id}
                   type="button"
-                  disabled={busy}
-                  onClick={() => void actAsStaff(s)}
-                  className="group flex w-full items-center gap-3 rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-50"
+                  onClick={() => setShowAllStaff(true)}
+                  className="group flex w-full items-center justify-center gap-1.5 rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-soft transition hover:border-blue-300 hover:text-text-default"
                 >
-                  <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-black uppercase tracking-wide text-text-inverse ${s.color_hex ? '' : 'bg-surface-inverse'}`}
-                    style={s.color_hex ? { backgroundColor: s.color_hex } : undefined}
-                    aria-hidden
-                  >
-                    {initials(s.name)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-text-default">{s.name}</span>
-                    {s.role && (
-                      <span className="block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">{s.role}</span>
-                    )}
-                  </span>
+                  More
+                  <span className="text-text-faint">·</span>
+                  <span className="font-medium text-text-faint">{otherStaff.length} more staff</span>
                   <svg
-                    className="h-4 w-4 shrink-0 text-text-faint transition group-hover:translate-x-0.5 group-hover:text-blue-500"
+                    className="h-3.5 w-3.5 text-text-faint transition group-hover:translate-y-0.5"
                     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden
                   >
-                    <path d="M9 6l6 6-6 6" />
+                    <path d="M6 9l6 6 6-6" />
                   </svg>
                 </button>
-              ))}
+              )}
             </div>
           )}
 
@@ -512,7 +549,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => { setStaffChoices(null); setError(null); }}
-            className="w-full text-center text-caption font-semibold text-text-soft hover:text-text-default"
+            className="w-full text-center text-role-caption font-semibold text-text-soft hover:text-text-default"
           >
             Use a different login
           </button>
@@ -528,7 +565,7 @@ export default function SignInPage() {
       <Shell>
         <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 p-8 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
           <div className="space-y-1">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Choose a workspace</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Choose a workspace</p>
             <h1 className="text-lg font-bold text-text-default">Where do you want to go?</h1>
           </div>
           <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft">
@@ -570,7 +607,7 @@ export default function SignInPage() {
       <div className="relative w-full max-w-sm space-y-5 rounded-3xl border border-border-soft/50 bg-surface-card/80 px-8 pb-8 pt-7 shadow-xl shadow-navy-900/5 backdrop-blur-xl">
         <div className="space-y-2">
           <div className="space-y-1 text-center">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Cycle Forge</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Cycle Forge</p>
             <SignInTitle workspaceName={workspaceName} />
           </div>
 
@@ -649,7 +686,7 @@ export default function SignInPage() {
         >
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-border-hairline" />
-          <span className="text-micro font-semibold uppercase tracking-widest text-text-faint">or</span>
+          <span className="text-role-micro font-semibold uppercase tracking-widest text-text-faint">or</span>
           <div className="h-px flex-1 bg-border-hairline" />
         </div>
 
@@ -690,7 +727,7 @@ export default function SignInPage() {
           <button
             type="button"
             onClick={() => setShowPhoneQr(true)}
-            className="w-full text-center text-caption font-semibold text-text-soft hover:text-text-default"
+            className="w-full text-center text-role-caption font-semibold text-text-soft hover:text-text-default"
           >
             Use your phone to sign in
           </button>
@@ -704,9 +741,9 @@ export default function SignInPage() {
             workspace?.resolved ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-micro font-black uppercase tracking-widest text-text-soft">Shared station — pick your name</p>
+                  <p className="text-role-micro uppercase tracking-widest text-text-soft">Shared station — pick your name</p>
                   {/* ds-raw-button: inline text cancel control in station sub-panel */}
-                  <button type="button" onClick={() => { setStationOpen(false); setPicked(null); }} className="text-caption font-semibold text-text-soft hover:text-text-default">Cancel</button>
+                  <button type="button" onClick={() => { setStationOpen(false); setPicked(null); }} className="text-role-caption font-semibold text-text-soft hover:text-text-default">Cancel</button>
                 </div>
                 <StaffPickerList
                   recent={recent}
@@ -723,7 +760,7 @@ export default function SignInPage() {
               <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
                 Station sign-in happens on your workspace URL. Open <span className="font-semibold text-text-default">yourteam.app.cycleforge.ai</span> to pick your name and enter a PIN.
                 {/* ds-raw-button: inline text back link inside dashed teaching box */}
-                <button type="button" onClick={() => setStationOpen(false)} className="mt-2 block w-full text-caption font-semibold text-blue-600 hover:text-blue-700">Back</button>
+                <button type="button" onClick={() => setStationOpen(false)} className="mt-2 block w-full text-role-caption font-semibold text-blue-600 hover:text-blue-700">Back</button>
               </div>
             )
           ) : (
@@ -748,6 +785,53 @@ export default function SignInPage() {
       </div>
       {showPhoneQr && <PhoneSigninQrPopover onClose={() => setShowPhoneQr(false)} />}
     </Shell>
+  );
+}
+
+interface StaffChoiceRowButtonProps {
+  staff: StaffChoiceRow;
+  disabled: boolean;
+  onPick: (s: StaffChoiceRow) => void;
+  isRecent?: boolean;
+}
+
+function StaffChoiceRowButton({ staff: s, disabled, onPick, isRecent }: StaffChoiceRowButtonProps) {
+  return (
+    // ds-raw-button: staff-picker row — custom avatar + meta layout, not a DS Button
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => void onPick(s)}
+      aria-label={`Sign in as ${s.name}${s.role ? `, ${s.role}` : ''}`}
+      className={`group flex w-full items-center gap-3 rounded-xl border bg-surface-card px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/50 disabled:opacity-50 ${
+        isRecent ? 'border-blue-200 ring-1 ring-inset ring-blue-100' : 'border-border-soft'
+      }`}
+    >
+      <span className="relative shrink-0">
+        <span
+          className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-black uppercase tracking-wide text-text-inverse ${s.color_hex ? '' : 'bg-surface-inverse'}`}
+          style={s.color_hex ? { backgroundColor: s.color_hex } : undefined}
+          aria-hidden
+        >
+          {initials(s.name)}
+        </span>
+        {isRecent && (
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-surface-card" aria-hidden />
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-text-default">{s.name}</span>
+        {s.role && (
+          <span className="block truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{s.role}</span>
+        )}
+      </span>
+      <svg
+        className="h-4 w-4 shrink-0 text-text-faint transition group-hover:translate-x-0.5 group-hover:text-blue-500"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+      >
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </button>
   );
 }
 
@@ -782,14 +866,14 @@ function PhoneSigninQrPopover({ onClose }: { onClose: () => void }) {
         />
         <div className="text-center">
           <h2 className="text-lg font-semibold tracking-tight text-text-default">Scan to sign in on your phone</h2>
-          <p className="mt-1.5 text-label leading-relaxed text-text-soft">Point your phone camera at the code.</p>
+          <p className="mt-1.5 text-role-caption leading-relaxed text-text-soft">Point your phone camera at the code.</p>
         </div>
         <div className="mt-5 flex justify-center">
           <div className="rounded-2xl border border-border-soft bg-surface-card p-3 shadow-inner shadow-navy-900/[0.03]">
             {url ? <QRCode value={url} size={196} level="M" /> : <div className="h-[196px] w-[196px] animate-pulse rounded-lg bg-surface-sunken" />}
           </div>
         </div>
-        <div className="mt-5 break-all rounded-lg bg-surface-canvas px-3 py-2 text-center text-micro font-mono text-text-soft">{url || ' '}</div>
+        <div className="mt-5 break-all rounded-lg bg-surface-canvas px-3 py-2 text-center text-role-micro font-mono text-text-soft">{url || ' '}</div>
       </div>
     </div>
   );
@@ -802,13 +886,13 @@ interface RememberMeToggleProps {
 
 function RememberMeToggle({ checked, onChange }: RememberMeToggleProps) {
   return (
-    <label className="group inline-flex cursor-pointer items-center gap-3 rounded-full border border-border-soft bg-surface-card/80 px-4 py-2 text-label font-medium text-text-muted shadow-sm shadow-navy-900/[0.03] backdrop-blur transition-all hover:border-border-default hover:text-text-default">
+    <label className="group inline-flex cursor-pointer items-center gap-3 rounded-full border border-border-soft bg-surface-card/80 px-4 py-2 text-role-caption font-medium text-text-muted shadow-sm shadow-navy-900/[0.03] backdrop-blur transition-all hover:border-border-default hover:text-text-default">
       <span className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${checked ? 'bg-surface-inverse' : 'bg-surface-strong'}`} aria-hidden>
         <span className={`inline-block h-4 w-4 rounded-full bg-surface-card shadow-sm transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
       </span>
       <span className="flex flex-col leading-tight">
         <span>Keep me signed in</span>
-        <span className="text-micro text-text-faint group-hover:text-text-soft">30 days on this device — uncheck on shared computers</span>
+        <span className="text-role-micro text-text-faint group-hover:text-text-soft">30 days on this device — uncheck on shared computers</span>
       </span>
       <input type="checkbox" className="sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
     </label>

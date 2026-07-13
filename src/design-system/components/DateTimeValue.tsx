@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDateTimePST } from '@/utils/date';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 
 interface DateTimeValueProps {
   /** Raw timestamp (ISO / slash / Date). Formatted to PST `MM/DD/YYYY h:mm:ss AM/PM`. */
@@ -22,12 +23,14 @@ interface DateTimeValueProps {
  * right with their AM/PM edges flush). Tabular figures keep digits equal width.
  */
 export function DateTimeValue({ value, fallback = 'N/A', className = '' }: DateTimeValueProps) {
+  // Subscribe so a 12h↔24h toggle re-renders the ledger instantly.
+  useTimeFormat();
   const formatted = formatDateTimePST(value ?? null);
 
   if (formatted === 'N/A') {
     return (
       <span
-        className={`block w-56 shrink-0 whitespace-nowrap text-left text-sm font-bold tabular-nums text-text-faint ${className}`}
+        className={`block w-56 shrink-0 whitespace-nowrap text-left text-role-data font-semibold tabular-nums text-text-faint ${className}`}
       >
         {fallback}
       </span>
@@ -41,7 +44,7 @@ export function DateTimeValue({ value, fallback = 'N/A', className = '' }: DateT
 
   return (
     <span
-      className={`flex w-56 shrink-0 items-baseline gap-2 whitespace-nowrap text-sm font-bold tabular-nums text-text-default ${className}`}
+      className={`flex w-56 shrink-0 items-baseline gap-2 whitespace-nowrap text-role-data font-semibold tabular-nums text-text-default ${className}`}
     >
       <span>{date}</span>
       {time ? <span className="flex-1 text-right">{time}</span> : null}

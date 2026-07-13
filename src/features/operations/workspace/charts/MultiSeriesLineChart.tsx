@@ -85,7 +85,7 @@ export function MultiSeriesLineChart({
               y={model.yFor(t) + 3}
               textAnchor="end"
               fill="currentColor"
-              className="text-eyebrow font-semibold tabular-nums"
+              className="text-role-eyebrow font-semibold tabular-nums"
             >
               {Math.round(t).toLocaleString()}
             </text>
@@ -102,7 +102,7 @@ export function MultiSeriesLineChart({
                 y={height - 7}
                 textAnchor="middle"
                 fill="currentColor"
-                className="text-eyebrow font-semibold"
+                className="text-role-eyebrow font-semibold"
               >
                 {label}
               </text>
@@ -155,7 +155,7 @@ export function MultiSeriesLineChart({
 
         {!hasData && (
           <g className="text-text-faint">
-            <text x={width / 2} y={height / 2} textAnchor="middle" fill="currentColor" className="text-caption font-semibold">
+            <text x={width / 2} y={height / 2} textAnchor="middle" fill="currentColor" className="text-role-caption font-semibold">
               No activity in this range
             </text>
           </g>
@@ -167,7 +167,7 @@ export function MultiSeriesLineChart({
         {series.map((s) => (
           <div key={s.key} className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />
-            <span className="text-eyebrow font-bold uppercase tracking-widest text-text-soft">{s.label}</span>
+            <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">{s.label}</span>
           </div>
         ))}
       </div>

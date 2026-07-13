@@ -102,7 +102,7 @@ function RelatedSignalsStrip({
   return (
     <Link
       href={operationsSignalsBrowseHref({ entityType, entityId })}
-      className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200 transition hover:bg-amber-100"
+      className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200 transition hover:bg-amber-100"
     >
       {count === 20 ? '20+' : count} signal{count === 1 ? '' : 's'} →
     </Link>
@@ -198,13 +198,13 @@ export function OperationsHistoryView() {
                       icon={<X />}
                       onClick={() => url.setEntity('')}
                       ariaLabel="Clear record"
-                      className="text-eyebrow font-bold uppercase tracking-widest text-text-faint hover:text-text-muted"
+                      className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint hover:text-text-muted"
                     >
                       Clear
                     </Button>
                   </>
                 ) : (
-                  <p className="text-eyebrow font-bold uppercase tracking-widest text-text-soft">
+                  <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
                     {region === 'browse'
                       ? 'Recent operations — filter in the sidebar or open a record'
                       : unifiedOn
@@ -237,7 +237,7 @@ export function OperationsHistoryView() {
               <section className="rounded-2xl border border-border-soft bg-surface-card p-5 sm:p-6">
                 {browse.isError ? (
                   <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-10 text-center">
-                    <p className="text-caption font-semibold text-rose-600">
+                    <p className="text-role-caption font-semibold text-rose-600">
                       Could not load the operations feed.
                     </p>
                     <Button
@@ -306,12 +306,12 @@ export function OperationsHistoryView() {
                 {!focused ? (
                   <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
                     <History className="mx-auto h-7 w-7 text-text-faint" />
-                    <p className="mt-3 text-caption font-semibold text-text-muted">
+                    <p className="mt-3 text-role-caption font-semibold text-text-muted">
                       {unifiedOn
                         ? 'Search shipped orders, serials, or tracking above'
                         : 'Paste a record number to see its complete timeline'}
                     </p>
-                    <p className="mt-1 text-micro leading-5 text-text-faint">
+                    <p className="mt-1 text-role-micro leading-5 text-text-faint">
                       {unifiedOn
                         ? 'Type in the header search — matching records appear here; open one for its full journey across every station.'
                         : 'Search an order, serial, or tracking number in the sidebar — its full journey across every station appears here.'}
@@ -319,7 +319,7 @@ export function OperationsHistoryView() {
                   </div>
                 ) : journey.isError ? (
                   <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-10 text-center">
-                    <p className="text-caption font-semibold text-rose-600">
+                    <p className="text-role-caption font-semibold text-rose-600">
                       No record found for this {url.dim} number.
                     </p>
                     <Button

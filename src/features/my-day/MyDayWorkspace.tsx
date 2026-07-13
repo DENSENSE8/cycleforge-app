@@ -41,12 +41,12 @@ function MyDayRow({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-caption font-bold text-gray-900">{title}</span>
+        <span className="truncate text-role-caption font-bold text-gray-900">{title}</span>
         <span className="shrink-0 rounded bg-gray-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-gray-700 ring-1 ring-inset ring-gray-200">
           {meta}
         </span>
       </div>
-      <span className="truncate text-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+      <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
         {subtitle}
       </span>
     </button>
@@ -64,12 +64,12 @@ function SectionHeader({
 }) {
   return (
     <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border-hairline bg-surface-card/95 px-4 py-2 backdrop-blur-sm">
-      <span className="inline-flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-gray-500">
+      <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-gray-500">
         {icon}
         {label}
       </span>
       {count != null && count > 0 ? (
-        <span className="text-eyebrow font-black uppercase tracking-widest text-gray-400 tabular-nums">
+        <span className="text-role-eyebrow uppercase tracking-widest text-gray-400 tabular-nums">
           {count}
         </span>
       ) : null}
@@ -91,7 +91,7 @@ export function MyDayWorkspace() {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
-        <span className="ml-2 text-caption font-medium text-text-muted">Loading My Day…</span>
+        <span className="ml-2 text-role-caption font-medium text-text-muted">Loading My Day…</span>
       </div>
     );
   }
@@ -100,7 +100,7 @@ export function MyDayWorkspace() {
     return (
       <div className="flex h-full items-center justify-center px-6">
         <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-          <p className="text-caption font-bold text-rose-700">Could not load My Day. Try refreshing.</p>
+          <p className="text-role-caption font-bold text-rose-700">Could not load My Day. Try refreshing.</p>
         </div>
       </div>
     );
@@ -137,7 +137,7 @@ export function MyDayWorkspace() {
               <div className="border-t border-border-hairline px-4 py-2">
                 <Link
                   href={workOrderHref(data.doNext)}
-                  className="text-caption font-bold text-emerald-700 hover:underline"
+                  className="text-role-caption font-bold text-emerald-700 hover:underline"
                 >
                   Start now →
                 </Link>
@@ -199,7 +199,7 @@ export function MyDayWorkspace() {
                     href={card.href}
                     className="flex items-center justify-between px-4 py-2 hover:bg-gray-50"
                   >
-                    <span className="text-caption font-bold text-gray-900">{card.label}</span>
+                    <span className="text-role-caption font-bold text-gray-900">{card.label}</span>
                     <span className="rounded bg-gray-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-gray-700 ring-1 ring-inset ring-gray-200 tabular-nums">
                       {card.count}
                     </span>
@@ -212,8 +212,8 @@ export function MyDayWorkspace() {
           {!hasListContent && !onboardingVisible ? (
             <div className="px-4 py-8">
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center">
-                <p className="text-caption font-bold text-gray-600">Nothing assigned right now.</p>
-                <p className="mt-1 text-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+                <p className="text-role-caption font-bold text-gray-600">Nothing assigned right now.</p>
+                <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
                   Open a queue or station when work arrives.
                 </p>
               </div>

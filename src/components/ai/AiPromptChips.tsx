@@ -14,7 +14,7 @@ export default function AiPromptChips({
           key={prompt}
           type="button"
           onClick={() => onSelect(prompt)}
-          className="ds-raw-button border border-border-soft px-3 py-2 text-left text-caption leading-5 text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
+          className="ds-raw-button border border-border-soft px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
         >
           {prompt}
         </button>

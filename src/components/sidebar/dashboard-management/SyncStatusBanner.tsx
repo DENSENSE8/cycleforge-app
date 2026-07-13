@@ -27,7 +27,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
             </motion.div>
             <div className="min-w-0 flex-1">
               <p className={sectionLabel}>{status.type === 'success' ? 'Sync Complete' : 'Sync Failed'}</p>
-              <p className="text-eyebrow font-medium leading-relaxed opacity-80">{status.message}</p>
+              <p className="text-role-eyebrow font-medium leading-relaxed opacity-80">{status.message}</p>
             </div>
             <IconButton
               type="button"

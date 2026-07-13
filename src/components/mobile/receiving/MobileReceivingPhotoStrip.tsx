@@ -94,7 +94,7 @@ export const MobileReceivingPhotoStrip = memo(function MobileReceivingPhotoStrip
 
   if (error) {
     return (
-      <p className="text-center text-micro font-bold uppercase tracking-widest text-rose-500">
+      <p className="text-center text-role-micro font-bold uppercase tracking-widest text-rose-500">
         Couldn&apos;t load photos
       </p>
     );
@@ -105,7 +105,7 @@ export const MobileReceivingPhotoStrip = memo(function MobileReceivingPhotoStrip
       <div className="flex items-stretch gap-2 rounded-xl bg-surface-canvas p-2 ring-1 ring-inset ring-border-soft">
         <div className="flex min-w-0 flex-1 items-stretch gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {photos.length === 0 ? (
-            <div className="flex h-24 w-full items-center justify-center rounded-lg bg-surface-sunken/80 text-caption font-semibold text-text-faint">
+            <div className="flex h-24 w-full items-center justify-center rounded-lg bg-surface-sunken/80 text-role-caption font-semibold text-text-faint">
               No photos yet
             </div>
           ) : (

@@ -211,7 +211,7 @@ export function UnshippedShelfBoard({
               ) : (
                 <ChevronDown className="h-3.5 w-3.5 shrink-0" />
               )}
-              <span className="text-[10px] font-black tabular-nums leading-none">
+              <span className="text-role-micro tabular-nums leading-none">
                 {collapse.displayCount}
               </span>
             </button>

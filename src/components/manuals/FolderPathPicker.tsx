@@ -220,7 +220,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search all folders…"
-          className="w-full rounded-md border border-border-soft bg-surface-canvas py-1.5 pl-8 pr-7 text-caption text-text-default placeholder:text-text-faint focus:border-blue-300 focus:bg-surface-card focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-md border border-border-soft bg-surface-canvas py-1.5 pl-8 pr-7 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-300 focus:bg-surface-card focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
         {search && (
           <IconButton
@@ -281,13 +281,13 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-500 ring-1 ring-inset ring-indigo-100">
                       <FolderGlyph className="h-3 w-3" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-caption font-black text-text-default">
+                    <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
                       {node.name}
-                      <span className="ml-1 font-mono text-micro font-semibold text-text-faint">
+                      <span className="ml-1 font-mono text-role-micro font-semibold text-text-faint">
                         {fullPath}
                       </span>
                     </span>
-                    <span className="text-micro font-semibold text-text-faint">
+                    <span className="text-role-micro font-semibold text-text-faint">
                       {node.totalCount}
                     </span>
                   </button>
@@ -295,12 +295,12 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
               ))}
             </ul>
           ) : (
-            <p className="px-3 py-6 text-center text-micro font-semibold text-text-faint">
+            <p className="px-3 py-6 text-center text-role-micro font-semibold text-text-faint">
               No folders match “{search}”. Type a name below to create a new one.
             </p>
           )
         ) : subfolders.length === 0 ? (
-          <p className="px-3 py-3 text-micro font-semibold text-text-faint">
+          <p className="px-3 py-3 text-role-micro font-semibold text-text-faint">
             {pendingSegments.length > 0
               ? 'New folder — will be created on save.'
               : 'No sub-folders here. Add one below to nest deeper.'}
@@ -318,10 +318,10 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-500 ring-1 ring-inset ring-indigo-100">
                     <FolderGlyph className="h-3 w-3" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-caption font-black text-text-default">
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
                     {node.name}
                   </span>
-                  <span className="text-micro font-semibold text-text-faint">
+                  <span className="text-role-micro font-semibold text-text-faint">
                     {node.totalCount}
                   </span>
                   <ChevronRight className="h-3 w-3 text-text-faint" />
@@ -349,7 +349,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
               }
             }}
             placeholder="New folder at this level"
-            className="min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1 text-caption text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
           <Button
             type="button"
@@ -358,7 +358,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
             onClick={handleCreate}
             disabled={!newSeg.trim()}
             icon={<Check className="h-3 w-3" />}
-            className="h-7 gap-1 rounded-md px-2 text-micro font-black uppercase tracking-wider"
+            className="h-7 gap-1 rounded-md px-2 text-role-micro uppercase tracking-wider"
           >
             Add
           </Button>
@@ -386,7 +386,7 @@ function CrumbPill({
     <button
       type="button"
       onClick={onClick}
-      className={`ds-raw-button inline-flex items-center rounded-full border px-2 py-0.5 text-micro font-black uppercase tracking-wider transition-colors ${tone}`}
+      className={`ds-raw-button inline-flex items-center rounded-full border px-2 py-0.5 text-role-micro uppercase tracking-wider transition-colors ${tone}`}
     >
       {label}
     </button>

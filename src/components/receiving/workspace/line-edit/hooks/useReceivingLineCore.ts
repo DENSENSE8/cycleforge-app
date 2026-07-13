@@ -495,6 +495,10 @@ export function useReceivingLineCore(
     poNumber, listingOpenHref, listingLinks, poOpenHref,
     zendeskTrimmed, zendeskHref, zendeskChipDisplay,
     supportTicket, providerTicketId,
+    // True only while the linked-ticket lookup is in flight — lets the inline
+    // ticket editor's guardrail wait for a settled "no ticket" before clearing
+    // ?ticketView=1, so a deep-link doesn't self-close mid-fetch.
+    supportTicketLoading: supportTicketQuery.isLoading,
     invalidateSupportTicket: () => void supportTicketQuery.refetch(),
     primaryTrackingTrimmed, filledExtraTrackingsCount, trackingOpenHref,
   };

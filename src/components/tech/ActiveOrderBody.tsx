@@ -15,6 +15,8 @@ interface ActiveOrderBodyProps {
   activeOrder: ActiveStationOrder;
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
   revealItem?: Variants;
+  onChangeCondition?: (next: string) => void | Promise<void>;
+  isMutatingCondition?: boolean;
 }
 
 function RevealSection({
@@ -59,7 +61,7 @@ function activeOrderToOrderShape(activeOrder: ActiveStationOrder): Order {
  * so the surface looks identical to the sidebar-click preview, and appends
  * a serial list below that slides each scan in as it arrives.
  */
-export function ActiveOrderBody({ activeOrder, onRemoveSerial, revealItem }: ActiveOrderBodyProps) {
+export function ActiveOrderBody({ activeOrder, onRemoveSerial, revealItem, onChangeCondition, isMutatingCondition }: ActiveOrderBodyProps) {
   const previewOrder = useMemo(() => activeOrderToOrderShape(activeOrder), [activeOrder]);
   const quantity = Math.max(1, Number(activeOrder.quantity) || 1);
 
@@ -105,7 +107,12 @@ export function ActiveOrderBody({ activeOrder, onRemoveSerial, revealItem }: Act
 
   return (
     <div className="space-y-4">
-      <OrderPreviewPanel order={previewOrder} revealItem={revealItem} />
+      <OrderPreviewPanel
+        order={previewOrder}
+        revealItem={revealItem}
+        onChangeCondition={onChangeCondition}
+        isMutatingCondition={isMutatingCondition}
+      />
 
       <AnimatePresence initial={false}>
         {activeOrder.serialNumbers.length > 0 ? (
@@ -120,7 +127,7 @@ export function ActiveOrderBody({ activeOrder, onRemoveSerial, revealItem }: Act
             >
               <WorkspaceCard label="Scanned serials" tone="emerald" bodyClassName="p-3">
                 <div className="space-y-2">
-                  <p className="text-eyebrow font-black uppercase tracking-wider text-emerald-700">
+                  <p className="text-role-eyebrow uppercase tracking-wider text-emerald-700">
                     {activeOrder.serialNumbers.length}
                     {quantity > 1 ? ` / ${quantity}` : ''} captured
                   </p>
@@ -150,7 +157,7 @@ export function ActiveOrderBody({ activeOrder, onRemoveSerial, revealItem }: Act
                                 animate={framerPresence.stationAddedBadge.animate}
                                 exit={framerPresence.stationAddedBadge.exit}
                                 transition={framerTransition.stationAddedBadge}
-                                className="text-eyebrow font-black uppercase tracking-wider text-emerald-600"
+                                className="text-role-eyebrow uppercase tracking-wider text-emerald-600"
                               >
                                 ✓ Added
                               </motion.span>
@@ -174,7 +181,7 @@ export function ActiveOrderBody({ activeOrder, onRemoveSerial, revealItem }: Act
                 </AnimatePresence>
               </div>
                   {serialError ? (
-                    <p className="text-micro font-bold text-red-600">{serialError}</p>
+                    <p className="text-role-micro font-bold text-red-600">{serialError}</p>
                   ) : null}
                 </div>
               </WorkspaceCard>

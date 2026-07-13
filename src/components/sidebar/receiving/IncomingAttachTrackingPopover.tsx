@@ -315,7 +315,7 @@ export function IncomingAttachTrackingPopover({
             >
               {/* Header */}
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-eyebrow font-black uppercase tracking-wider text-text-soft">
+                <span className="text-role-eyebrow uppercase tracking-wider text-text-soft">
                   {selected ? 'Attach tracking' : 'Find a PO'}
                 </span>
                 <IconButton
@@ -340,15 +340,15 @@ export function IncomingAttachTrackingPopover({
                   />
                   <div className="mt-2 max-h-64 overflow-y-auto">
                     {query.trim().length < 2 ? (
-                      <p className="px-1 py-2 text-caption text-text-faint">
+                      <p className="px-1 py-2 text-role-caption text-text-faint">
                         Type at least 2 characters to search incoming POs.
                       </p>
                     ) : isFetching ? (
-                      <p className="flex items-center gap-1.5 px-1 py-2 text-caption text-text-faint">
+                      <p className="flex items-center gap-1.5 px-1 py-2 text-role-caption text-text-faint">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
                       </p>
                     ) : !hits || hits.length === 0 ? (
-                      <p className="px-1 py-2 text-caption text-text-faint">No matching POs.</p>
+                      <p className="px-1 py-2 text-role-caption text-text-faint">No matching POs.</p>
                     ) : (
                       <ul className="space-y-1">
                         {hits.map((po) => (
@@ -359,10 +359,10 @@ export function IncomingAttachTrackingPopover({
                               /* ds-raw-button: text-left PO search result row (title + item count) — not a Button shape */
                               className="ds-raw-button flex w-full items-center justify-between gap-2 rounded-lg border border-border-soft px-2.5 py-2 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50"
                             >
-                              <span className="min-w-0 flex-1 truncate text-caption font-bold text-text-default">
+                              <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
                                 {po.po_number || po.po_id}
                               </span>
-                              <span className="shrink-0 tabular-nums text-mini font-semibold text-text-faint">
+                              <span className="shrink-0 tabular-nums text-role-micro font-semibold text-text-faint">
                                 {po.item_count} item{po.item_count === 1 ? '' : 's'}
                               </span>
                             </button>
@@ -376,7 +376,7 @@ export function IncomingAttachTrackingPopover({
                 <>
                   {/* Selected PO header + change */}
                   <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface-canvas px-2.5 py-1.5">
-                    <span className="min-w-0 flex-1 truncate text-caption font-black text-text-default">
+                    <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
                       {selected.po_number || selected.po_id}
                     </span>
                     {/* Row-anchored mode locks the PO — no "Change" back to search. */}
@@ -385,7 +385,7 @@ export function IncomingAttachTrackingPopover({
                         type="button"
                         onClick={reset}
                         /* ds-raw-button: compact inline text link (text-mini) inside a chip row — Button height/padding would bloat it */
-                        className="ds-raw-button shrink-0 text-mini font-bold uppercase tracking-wide text-indigo-600 hover:text-indigo-800"
+                        className="ds-raw-button shrink-0 text-role-micro font-bold uppercase tracking-wide text-indigo-600 hover:text-indigo-800"
                       >
                         Change
                       </button>
@@ -410,11 +410,11 @@ export function IncomingAttachTrackingPopover({
                   <div className="mt-2 max-h-56 overflow-y-auto">
                     {shownBoxes.length === 0 ? (
                       loadingBoxes ? (
-                        <p className="flex items-center gap-1.5 px-1 py-2 text-caption text-text-faint">
+                        <p className="flex items-center gap-1.5 px-1 py-2 text-role-caption text-text-faint">
                           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading attached boxes…
                         </p>
                       ) : (
-                        <p className="px-1 py-2 text-caption text-text-faint">
+                        <p className="px-1 py-2 text-role-caption text-text-faint">
                           Scan each carton’s tracking # — they’ll attach to this PO as boxes.
                         </p>
                       )
@@ -425,15 +425,15 @@ export function IncomingAttachTrackingPopover({
                             key={b.id}
                             className="flex items-center gap-2 rounded-lg border border-border-hairline px-2.5 py-1.5"
                           >
-                            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-mini font-black tabular-nums text-text-muted">
+                            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-muted">
                               Box {b.box_seq}
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-caption font-semibold text-text-muted">
+                            <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">
                               {b.tracking_number ? `…${getLast4(b.tracking_number)}` : '—'}
                               {b.carrier ? <span className="ml-1 text-text-faint">{b.carrier}</span> : null}
                             </span>
                             <span
-                              className={`shrink-0 text-mini font-bold uppercase tracking-wide ${
+                              className={`shrink-0 text-role-micro font-bold uppercase tracking-wide ${
                                 b.is_delivered ? 'text-emerald-600' : 'text-text-faint'
                               }`}
                             >
@@ -445,7 +445,7 @@ export function IncomingAttachTrackingPopover({
                     )}
                   </div>
 
-                  <p className="mt-2 px-1 text-mini text-text-faint">
+                  <p className="mt-2 px-1 text-role-micro text-text-faint">
                     The PO stays in Incoming and leaves “Awaiting tracking #” once carrier sync runs.
                   </p>
                 </>

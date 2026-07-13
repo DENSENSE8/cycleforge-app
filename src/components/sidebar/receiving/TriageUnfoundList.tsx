@@ -92,7 +92,7 @@ export function TriageUnfoundList({
                   <HoverTooltip label={exceptionTooltipLabel(ctx)} asChild>
                     <span className="inline-flex items-center gap-1.5">
                       <span className={`h-2 w-2 shrink-0 rounded-full ${exceptionDotClass(ctx)}`} />
-                      <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+                      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
                         PO sync pending · {ctx.retryCount}×
                       </span>
                     </span>
@@ -113,7 +113,7 @@ export function TriageUnfoundList({
                   loading={retryingId === row.receiving_id}
                   disabled={retryingId != null && retryingId !== row.receiving_id}
                   onClick={() => void retryPair(row.receiving_id!)}
-                  className="h-auto gap-1 rounded-md px-2 py-1 text-micro font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50"
+                  className="h-auto gap-1 rounded-md px-2 py-1 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Retry pair
@@ -129,7 +129,7 @@ export function TriageUnfoundList({
                   openClaim(row);
                   dismiss();
                 }}
-                className="h-auto gap-1 rounded-md px-2 py-1 text-micro font-black uppercase tracking-widest text-orange-600 hover:bg-orange-50"
+                className="h-auto gap-1 rounded-md px-2 py-1 text-role-micro uppercase tracking-widest text-orange-600 hover:bg-orange-50"
               >
                 <Flag className="h-3.5 w-3.5" />
                 Claim

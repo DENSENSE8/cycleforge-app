@@ -51,6 +51,7 @@ export function TestingLineSlot({
       onSelectIndex={(i) => c.setActiveSlotByLine((m) => ({ ...m, [lineId]: i }))}
       onSetVerdict={(next) => void c.applyLineVerdict(lineId, serials, next)}
       onSetUnitVerdict={(serial, next) => void c.handleSlotVerdict(lineId, serial, next)}
+      onSetUnitCondition={(serial, next) => void c.handleSlotCondition(lineId, serial, next)}
       onAddSerial={(sn) => c.enqueueSerial(lineId, sn)}
       onDeleteSerial={(s) => {
         if (s.id == null) return;

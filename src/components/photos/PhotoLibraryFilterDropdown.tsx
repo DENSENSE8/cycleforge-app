@@ -5,8 +5,8 @@ import { Button } from '@/design-system/primitives';
 import type { PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
 
 const fieldClass =
-  'h-10 w-full rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-caption font-bold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10';
-const labelClass = 'mb-1.5 block text-caption font-black uppercase tracking-[0.2em] text-text-faint';
+  'h-10 w-full rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-bold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10';
+const labelClass = 'mb-1.5 block text-role-caption font-black uppercase tracking-[0.2em] text-text-faint';
 
 interface PhotoLibraryFilterDropdownProps {
   filters: PhotoLibraryFilterState;
@@ -26,7 +26,7 @@ export function PhotoLibraryFilterDropdown({
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <span className={labelClass}>Staff</span>
-          <span className="truncate text-caption font-semibold text-text-soft">
+          <span className="truncate text-role-caption font-semibold text-text-soft">
             {filters.staffId
               ? staffOptions.find((opt) => String(opt.id) === filters.staffId)?.name ??
                 `Staff #${filters.staffId}`
@@ -48,7 +48,7 @@ export function PhotoLibraryFilterDropdown({
               variant="ghost"
               size="sm"
               onClick={() => onPatch({ staffId: undefined })}
-              className="mt-2 h-auto w-full rounded-lg border border-dashed border-border-soft px-3 py-2 text-caption font-bold uppercase tracking-wider text-text-soft hover:bg-surface-card hover:text-text-default"
+              className="mt-2 h-auto w-full rounded-lg border border-dashed border-border-soft px-3 py-2 text-role-caption font-bold uppercase tracking-wider text-text-soft hover:bg-surface-card hover:text-text-default"
             >
               Clear staff
             </Button>

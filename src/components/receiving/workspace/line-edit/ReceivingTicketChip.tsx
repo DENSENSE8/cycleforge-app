@@ -20,46 +20,7 @@ function parseTicketId(raw: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-interface ThreadComment {
-  id: number;
-  body: string;
-  public: boolean;
-  createdAt: string;
-  authorId: number;
-}
-
-interface ThreadResult {
-  ticket: {
-    id: number;
-    subject: string | null;
-    status: string;
-    priority: string | null;
-    url: string | null;
-  };
-  comments: ThreadComment[];
-}
-
-const threadKey = (ticketId: number) => ['receiving', 'ticket-thread', ticketId] as const;
-
-function useTicketThread(ticketId: number | null, open: boolean) {
-  return useQuery<ThreadResult, Error>({
-    queryKey: threadKey(ticketId ?? 0),
-    queryFn: async () => {
-      const res = await fetch(`/api/receiving/zendesk-claim/thread?ticketId=${ticketId}`, {
-        cache: 'no-store',
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || `Request failed (${res.status})`);
-      }
-      return { ticket: data.ticket, comments: data.comments } as ThreadResult;
-    },
-    // Only fetch once the popover is open — the chip alone never hits Zendesk.
-    enabled: open && !!ticketId,
-    staleTime: 30_000,
-    retry: false,
-  });
-}
+import { useTicketThread, threadKey } from '@/components/support/TicketThreadCard';
 
 /**
  * Filed-ticket chip for the carton identity row. Renders the same
@@ -212,17 +173,17 @@ function TicketThreadPanel({
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <TicketHelp className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
           <div className="min-w-0">
-            <div className="break-words text-[13px] font-semibold leading-snug text-text-default">
+            <div className="break-words text-role-data font-semibold leading-snug text-text-default">
               {displayTicketId ? `Ticket ${displayTicketId.startsWith('#') ? displayTicketId : `#${displayTicketId}`}` : 'Ticket'}
             </div>
             {data?.ticket.subject ? (
-              <div className="break-words text-micro leading-snug text-text-faint">{data.ticket.subject}</div>
+              <div className="break-words text-role-micro leading-snug text-text-faint">{data.ticket.subject}</div>
             ) : null}
           </div>
         </div>
         <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
           {data?.ticket.status ? (
-            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-medium uppercase tracking-wide text-text-soft">
+            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
               {data.ticket.status}
             </span>
           ) : null}
@@ -250,7 +211,7 @@ function TicketThreadPanel({
             <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
           </div>
         ) : isError ? (
-          <p className="rounded-md bg-rose-50 px-2 py-1.5 text-caption text-rose-600">
+          <p className="rounded-md bg-rose-50 px-2 py-1.5 text-role-caption text-rose-600">
             History unavailable: {error instanceof Error ? error.message : 'request failed'}
           </p>
         ) : !data || data.comments.length === 0 ? (
@@ -265,7 +226,7 @@ function TicketThreadPanel({
                   c.public ? 'border-blue-100 bg-blue-50/60' : 'border-amber-100 bg-amber-50/60',
                 )}
               >
-                <div className="mb-1 flex items-center justify-between gap-2 text-micro uppercase tracking-wide">
+                <div className="mb-1 flex items-center justify-between gap-2 text-role-micro uppercase tracking-wide">
                   <span className={c.public ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
                     {c.public ? 'Public reply' : 'Internal note'}
                   </span>
@@ -274,7 +235,7 @@ function TicketThreadPanel({
                     {formatDateTimePST(c.createdAt)}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-[13px] leading-snug text-text-default">{c.body}</p>
+                <p className="whitespace-pre-wrap break-words text-role-data leading-snug text-text-default">{c.body}</p>
               </li>
             ))}
           </ul>
@@ -282,7 +243,7 @@ function TicketThreadPanel({
       </div>
 
       <footer className="flex flex-wrap items-center gap-2 border-t border-border-hairline bg-surface-canvas/60 px-3 py-2.5">
-        <span className="min-w-0 flex-1 text-caption leading-snug text-text-faint">
+        <span className="min-w-0 flex-1 text-role-caption leading-snug text-text-faint">
           Unlinking only removes our reference — the ticket stays in Zendesk.
         </span>
         <HoverTooltip label="Archive this carton's photos to the ticket's NAS folder" asChild>

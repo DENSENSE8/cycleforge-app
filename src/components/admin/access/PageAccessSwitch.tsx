@@ -39,8 +39,8 @@ export function PageAccessSwitch({ label, permission, enabled, source, theme, di
       <div className="min-w-0 flex-1">
         <div className={`truncate text-sm font-semibold ${enabled ? 'text-text-default' : 'text-text-soft'}`}>{label}</div>
         <div className="mt-0.5 flex items-center gap-1.5">
-          <code className="truncate text-micro font-mono text-text-soft">{permission}</code>
-          <span className={`rounded-full px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-wider ring-1 ring-inset ${pill.className}`}>
+          <code className="truncate text-role-micro font-mono text-text-soft">{permission}</code>
+          <span className={`rounded-full px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider ring-1 ring-inset ${pill.className}`}>
             {pill.text}
           </span>
         </div>

@@ -106,7 +106,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
           </div>
 
           <div className="flex items-center gap-2 pl-4">
-            <span className="flex shrink-0 items-center gap-1 text-caption font-black uppercase tracking-widest">
+            <span className="flex shrink-0 items-center gap-1 text-role-caption font-black uppercase tracking-widest">
               <span
                 className={
                   qtyExpected > 1 && qtyReceived < qtyExpected
@@ -148,7 +148,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
             onNavigate={onClose}
           />
         ) : receivingId ? null : (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-caption font-semibold text-amber-700">
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
             No package id yet — scan tracking from desktop first.
           </p>
         )}

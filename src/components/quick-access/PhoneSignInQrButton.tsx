@@ -73,7 +73,7 @@ export function PhoneSignInQrButton({
                 icon={<X className="h-4 w-4" />}
                 className="absolute right-3 top-3 text-text-faint hover:text-text-muted"
               />
-              <p className="text-micro font-black uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">
                 Scan to open on your phone
               </p>
               <p className="mt-1 text-center text-sm font-black text-text-default">
@@ -86,7 +86,7 @@ export function PhoneSignInQrButton({
                   <div className="h-[220px] w-[220px] animate-pulse rounded-lg bg-surface-sunken" />
                 )}
               </div>
-              <p className="mt-4 w-full break-all rounded-lg bg-surface-canvas px-3 py-2 text-center text-micro font-mono text-text-soft">
+              <p className="mt-4 w-full break-all rounded-lg bg-surface-canvas px-3 py-2 text-center text-role-micro font-mono text-text-soft">
                 {url || ' '}
               </p>
             </div>

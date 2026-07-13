@@ -7,25 +7,22 @@ import {
 } from './derive-receiving-step-states';
 
 const base = {
-  scanDriven: true,
   photoCount: 0,
   serialCount: 0,
   quantityExpected: 1,
-  conditionSet: false,
   labelPrinted: false,
 };
 
-test('fresh line: scan done, photos active', () => {
+test('fresh line: photos active, rest pending', () => {
   const states = deriveReceivingStepStates(base);
-  assert.equal(states.scan, 'done');
   assert.equal(states.photos, 'active');
-  assert.equal(states.condition, 'pending');
+  assert.equal(states.serial, 'pending');
   assert.equal(states.print, 'pending');
 });
 
-test('conditionSet alone does not mark print done (no isComplete shortcut)', () => {
-  const flags = deriveReceivingStepFlags({ ...base, conditionSet: true });
-  assert.equal(flags.condition, true);
+test('serialCount alone does not mark print done (no isComplete shortcut)', () => {
+  const flags = deriveReceivingStepFlags({ ...base, serialCount: 1 });
+  assert.equal(flags.serial, true);
   assert.equal(flags.print, false);
 });
 
@@ -33,61 +30,34 @@ test('steps with passing gates show done even while an earlier step is active', 
   const states = deriveReceivingStepStates({
     ...base,
     serialCount: 1,
-    conditionSet: true,
     labelPrinted: true,
   });
   assert.equal(states.photos, 'active');
-  assert.equal(states.condition, 'done');
   assert.equal(states.serial, 'done');
   assert.equal(states.print, 'done');
 });
 
 test('active is the FIRST failing gate; done steps after it keep their check', () => {
-  const states = deriveReceivingStepStates({
-    ...base,
-    photoCount: 2,
-    serialCount: 1,
-    conditionSet: false,
-    labelPrinted: false,
-  });
+  const input = { ...base, photoCount: 2, serialCount: 0, labelPrinted: true };
+  const states = deriveReceivingStepStates(input);
   assert.equal(states.photos, 'done');
-  assert.equal(states.condition, 'active');
-  assert.equal(states.serial, 'done');
-  assert.equal(states.print, 'pending');
-  assert.equal(
-    activeReceivingStepKey({
-      ...base,
-      photoCount: 2,
-      serialCount: 1,
-      conditionSet: false,
-      labelPrinted: false,
-    }),
-    'condition',
-  );
+  assert.equal(states.serial, 'active');
+  assert.equal(states.print, 'done');
+  assert.equal(activeReceivingStepKey(input), 'serial');
 });
 
 test('all gates pass: every step done', () => {
-  const states = deriveReceivingStepStates({
-    ...base,
-    photoCount: 2,
-    serialCount: 1,
-    conditionSet: true,
-    labelPrinted: true,
-  });
-  for (const key of ['scan', 'photos', 'condition', 'serial', 'print'] as const) {
+  const input = { ...base, photoCount: 2, serialCount: 1, labelPrinted: true };
+  const states = deriveReceivingStepStates(input);
+  for (const key of ['photos', 'serial', 'print'] as const) {
     assert.equal(states[key], 'done');
   }
-  assert.equal(activeReceivingStepKey({
-    ...base,
-    photoCount: 2,
-    serialCount: 1,
-    conditionSet: true,
-    labelPrinted: true,
-  }), null);
+  assert.equal(activeReceivingStepKey(input), null);
 });
 
-test('rail-opened carton: scan step stays active first', () => {
-  const states = deriveReceivingStepStates({ ...base, scanDriven: false });
-  assert.equal(states.scan, 'active');
-  assert.equal(states.photos, 'pending');
+test('no scan/condition steps: the stepper is exactly Photos → Serial → Print', () => {
+  const states = deriveReceivingStepStates(base);
+  assert.deepEqual(Object.keys(states).sort(), ['photos', 'print', 'serial']);
+  assert.equal('scan' in states, false);
+  assert.equal('condition' in states, false);
 });

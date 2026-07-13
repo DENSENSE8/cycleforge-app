@@ -88,9 +88,9 @@ export function SignalsBrowseWorkspace() {
       <div className={cn('flex w-full flex-col border-r border-border-hairline md:w-80 md:shrink-0', signalId != null && 'hidden md:flex')}>
         <div className="min-h-0 flex-1 divide-y divide-border-hairline overflow-y-auto">
           {listLoading ? (
-            <p className="p-3 text-caption text-text-faint">Loading…</p>
+            <p className="p-3 text-role-caption text-text-faint">Loading…</p>
           ) : list.length === 0 ? (
-            <p className="p-3 text-caption text-text-faint">{q ? 'No signals match.' : 'No signals yet.'}</p>
+            <p className="p-3 text-role-caption text-text-faint">{q ? 'No signals match.' : 'No signals yet.'}</p>
           ) : (
             list.map((s) => (
               // ds-raw-button: master-list navigation row (sets ?signalId=), not a DS content button
@@ -103,13 +103,13 @@ export function SignalsBrowseWorkspace() {
                   signalId === s.id ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover',
                 )}
               >
-                <span className="truncate text-caption font-bold text-text-default">{kindLabel(s.signal_kind)}</span>
-                <span className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                <span className="truncate text-role-caption font-bold text-text-default">{kindLabel(s.signal_kind)}</span>
+                <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                   {entityLabel(s.entity_type)} #{s.entity_id}
                   {shortTime(s.occurred_at) ? ` · ${shortTime(s.occurred_at)}` : ''}
                 </span>
                 {s.reason_code ? (
-                  <span className="rounded bg-surface-canvas px-1.5 text-mini font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                  <span className="rounded bg-surface-canvas px-1.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
                     {s.reason_code}
                   </span>
                 ) : null}
@@ -132,7 +132,7 @@ export function SignalsBrowseWorkspace() {
           >
             {signalId == null ? (
               <div className="flex h-full items-center justify-center p-6 text-center">
-                <p className="text-caption text-text-faint">Select a signal to see its detail.</p>
+                <p className="text-role-caption text-text-faint">Select a signal to see its detail.</p>
               </div>
             ) : (
               <div className="space-y-4 p-4">
@@ -142,21 +142,21 @@ export function SignalsBrowseWorkspace() {
                 <button
                   type="button"
                   onClick={() => select(null)}
-                  className="text-eyebrow font-black uppercase tracking-widest text-blue-600 md:hidden"
+                  className="text-role-eyebrow uppercase tracking-widest text-blue-600 md:hidden"
                 >
                   ← Back
                 </button>
                 {detailLoading ? (
-                  <p className="text-caption text-text-faint">Loading…</p>
+                  <p className="text-role-caption text-text-faint">Loading…</p>
                 ) : !detail ? (
-                  <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-faint">
+                  <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
                     Signal not found.
                   </div>
                 ) : (
                   <>
                 <div className="space-y-1">
                   <p className="text-lg font-black tracking-tight text-text-default">{kindLabel(detail.signal_kind)}</p>
-                  <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {entityLabel(detail.entity_type)} #{detail.entity_id}
                   </p>
                 </div>
@@ -168,8 +168,8 @@ export function SignalsBrowseWorkspace() {
                 {detail.source_ref ? <Field label="Source ref">{detail.source_ref}</Field> : null}
                 {detail.meta && Object.keys(detail.meta).length > 0 ? (
                   <div className="space-y-1">
-                    <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Meta</p>
-                    <pre className="overflow-x-auto rounded-md bg-surface-canvas p-2 text-mini text-text-muted ring-1 ring-inset ring-border-soft">
+                    <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Meta</p>
+                    <pre className="overflow-x-auto rounded-md bg-surface-canvas p-2 text-role-micro text-text-muted ring-1 ring-inset ring-border-soft">
                       {JSON.stringify(detail.meta, null, 2)}
                     </pre>
                   </div>
@@ -181,7 +181,7 @@ export function SignalsBrowseWorkspace() {
                         dim: detail.entity_dim,
                         value: detail.entity_ref,
                       })}
-                      className="inline-flex items-center gap-1 text-eyebrow font-black uppercase tracking-widest text-blue-600 transition hover:text-blue-700"
+                      className="inline-flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-blue-600 transition hover:text-blue-700"
                     >
                       Full event trace →
                     </Link>
@@ -201,8 +201,8 @@ export function SignalsBrowseWorkspace() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
-      <p className="text-caption text-text-default">{children}</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-caption text-text-default">{children}</p>
     </div>
   );
 }

@@ -106,28 +106,28 @@ export function WarrantyLogClaimDialog({ open, onClose, onCreated, initial }: Wa
             </p>
           )}
           <div>
-            <label className="mb-1 block text-caption font-medium uppercase tracking-wide text-text-faint">Serial number</label>
+            <label className="mb-1 block text-role-caption font-medium uppercase tracking-wide text-text-faint">Serial number</label>
             <input className={input} value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="e.g. SN-12345" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-caption font-medium uppercase tracking-wide text-text-faint">Order # (internal id)</label>
+              <label className="mb-1 block text-role-caption font-medium uppercase tracking-wide text-text-faint">Order # (internal id)</label>
               <input className={input} value={orderId} onChange={(e) => setOrderId(e.target.value)} inputMode="numeric" placeholder="e.g. 8421" />
             </div>
             <div>
-              <label className="mb-1 block text-caption font-medium uppercase tracking-wide text-text-faint">SKU</label>
+              <label className="mb-1 block text-role-caption font-medium uppercase tracking-wide text-text-faint">SKU</label>
               <input className={input} value={sku} onChange={(e) => setSku(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-caption font-medium uppercase tracking-wide text-text-faint">Product title</label>
+            <label className="mb-1 block text-role-caption font-medium uppercase tracking-wide text-text-faint">Product title</label>
             <input className={input} value={productTitle} onChange={(e) => setProductTitle(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-caption font-medium uppercase tracking-wide text-text-faint">Notes</label>
+            <label className="mb-1 block text-role-caption font-medium uppercase tracking-wide text-text-faint">Notes</label>
             <textarea className={input} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
-          <p className="text-caption text-text-faint">
+          <p className="text-role-caption text-text-faint">
             Provide a serial, order #, or SKU. The warranty clock + customer are resolved from the order when available.
           </p>
         </div>

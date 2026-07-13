@@ -42,7 +42,7 @@ export interface SubstitutePanelProps {
   className?: string;
 }
 
-const FIELD_LABEL = 'text-micro font-black uppercase tracking-widest text-text-soft';
+const FIELD_LABEL = 'text-role-micro uppercase tracking-widest text-text-soft';
 
 export function SubstitutePanel({
   orderLabel,
@@ -81,10 +81,10 @@ export function SubstitutePanel({
     >
       {/* Eyebrow header */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
           <RefreshCw className="h-3.5 w-3.5" /> Substitute unit
         </span>
-        <span className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">{orderLabel}</span>
+        <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">{orderLabel}</span>
       </div>
 
       {/* Ordered → Substitute */}
@@ -94,11 +94,11 @@ export function SubstitutePanel({
           {original.sku ? (
             <SkuScanRefChip value={original.sku} display={original.sku} dense />
           ) : (
-            <span className="text-caption text-text-faint">No SKU</span>
+            <span className="text-role-caption text-text-faint">No SKU</span>
           )}
           {original.serial ? <SerialChip value={original.serial} /> : null}
           {original.condition ? (
-            <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
               {original.condition}
             </span>
           ) : null}
@@ -126,7 +126,7 @@ export function SubstitutePanel({
         <p className={FIELD_LABEL}>Reason</p>
         <SubstituteReasonPicker value={reasonCode} onChange={setReasonCode} reasons={reasons} />
         {selectedReason?.hint ? (
-          <p className="text-caption text-text-faint">{selectedReason.hint}</p>
+          <p className="text-role-caption text-text-faint">{selectedReason.hint}</p>
         ) : null}
       </div>
 
@@ -144,7 +144,7 @@ export function SubstitutePanel({
       </div>
 
       {enforcement === 'block_until_approved' ? (
-        <p className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+        <p className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-role-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
           <AlertTriangle className="h-3.5 w-3.5" /> Needs supervisor approval before this order can ship.
         </p>
       ) : null}
@@ -152,7 +152,7 @@ export function SubstitutePanel({
       {error ? (
         <div
           data-testid="substitute-error"
-          className="flex items-center gap-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-caption text-rose-700"
+          className="flex items-center gap-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-2 text-role-caption text-rose-700"
         >
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {error}
         </div>

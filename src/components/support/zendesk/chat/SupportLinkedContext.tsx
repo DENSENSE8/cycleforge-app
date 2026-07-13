@@ -36,34 +36,34 @@ export function SupportLinkedContext({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <Link2 className="h-3.5 w-3.5 text-text-faint" />
-          <p className="text-micro font-black uppercase tracking-widest text-text-soft">Linked context</p>
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">Linked context</p>
         </div>
         <a
           href={libraryHref}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-caption font-semibold text-blue-600 hover:text-blue-800"
+          className="inline-flex items-center gap-1 text-role-caption font-semibold text-blue-600 hover:text-blue-800"
         >
           Media library <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 
       {!entity?.type && photos.length === 0 ? (
-        <p className="mt-2 text-caption text-text-faint">
+        <p className="mt-2 text-role-caption text-text-faint">
           No internal record linked — use Library in the composer to attach media from the library.
         </p>
       ) : null}
 
       {entity?.type ? (
         <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5">
-          <span className="text-label font-bold text-text-muted">{ENTITY_LABELS[entity.type] ?? entity.type}</span>
-          {entity.id ? <span className="text-caption font-semibold text-text-faint">#{entity.id}</span> : null}
+          <span className="text-role-caption font-bold text-text-muted">{ENTITY_LABELS[entity.type] ?? entity.type}</span>
+          {entity.id ? <span className="text-role-caption font-semibold text-text-faint">#{entity.id}</span> : null}
         </div>
       ) : null}
 
       {photos.length ? (
         <div className="mt-3">
-          <p className="mb-1.5 flex items-center gap-1 text-caption font-semibold text-text-faint">
+          <p className="mb-1.5 flex items-center gap-1 text-role-caption font-semibold text-text-faint">
             <ImageIcon className="h-3 w-3" /> {photos.length} linked photo{photos.length === 1 ? '' : 's'}
           </p>
           <div className="flex flex-wrap gap-2">

@@ -146,8 +146,8 @@ export function HorizontalButtonSlider({
 
   const sizeCls =
     size === 'lg'
-      ? 'min-h-10 px-3.5 py-2 text-micro tracking-wide'
-      : 'h-8 px-3 text-eyebrow tracking-wide';
+      ? 'min-h-10 px-3.5 py-2 text-role-micro tracking-wide'
+      : 'h-8 px-3 text-role-eyebrow tracking-wide';
 
   // The `nav` variant uses scale-up + shadow on the active pill. Setting
   // overflow-x-auto forces overflow-y to compute as auto too (CSS spec), so
@@ -187,7 +187,7 @@ export function HorizontalButtonSlider({
   return (
     <div className={cn(useScroller && 'min-w-0', className)}>
       {legend ? (
-        <span className="mb-1.5 block text-mini font-black uppercase tracking-widest text-text-faint">
+        <span className="mb-1.5 block text-role-micro uppercase tracking-widest text-text-faint">
           {legend}
         </span>
       ) : null}
@@ -266,7 +266,7 @@ export function HorizontalButtonSlider({
               const navSizeCls = navIconOnly
                 ? 'h-8 w-8 min-w-8 shrink-0 justify-center p-0'
                 : dense
-                  ? 'h-8 shrink-0 px-3 text-eyebrow tracking-wide'
+                  ? 'h-8 shrink-0 px-3 text-role-eyebrow tracking-wide'
                   : sizeCls;
               const labelClass = Icon ? 'ml-1.5 max-w-[160px]' : 'max-w-[160px]';
               const stateClass = isDisabled

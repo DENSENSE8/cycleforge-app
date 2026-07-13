@@ -39,7 +39,7 @@ export function FbaBoardDetailPanel({
       <div className="shrink-0 overflow-hidden bg-surface-card">
         {/* Row 1: label */}
         <div className="px-6 pt-4 pb-0">
-          <p className="text-eyebrow font-black uppercase tracking-[0.3em] text-purple-700">
+          <p className="text-role-eyebrow uppercase tracking-[0.3em] text-purple-700">
             FBA Item
           </p>
         </div>
@@ -65,7 +65,7 @@ export function FbaBoardDetailPanel({
 
         {/* Row 4: FNSKU + totals */}
         <div className="flex items-center justify-between px-6 pt-2 pb-2">
-          <div className="flex items-center gap-4 text-caption">
+          <div className="flex items-center gap-4 text-role-caption">
             <span className="flex items-center gap-1 font-bold text-text-muted">
               <ClipboardList className="h-3 w-3 text-purple-500" />
               <span className="tabular-nums">{totalExpected}</span>
@@ -98,7 +98,7 @@ export function FbaBoardDetailPanel({
           {/* Static details */}
           <section className="py-4">
             <p className={`mb-2 ${sectionLabel}`}>Details</p>
-            <dl className="space-y-1 text-label">
+            <dl className="space-y-1 text-role-caption">
               <div className="flex items-center justify-between gap-4">
                 <dt className="font-semibold text-text-soft">Plans</dt>
                 <dd className="font-black text-text-default">{entries.length}</dd>
@@ -119,7 +119,7 @@ export function FbaBoardDetailPanel({
                 <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
               </div>
             ) : entries.length === 0 ? (
-              <p className="py-4 text-center text-caption font-bold text-text-faint">
+              <p className="py-4 text-center text-role-caption font-bold text-text-faint">
                 No active plan entries
               </p>
             ) : (
@@ -145,7 +145,7 @@ export function FbaBoardDetailPanel({
                 <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
               </div>
             ) : scanLogs.length === 0 ? (
-              <p className="py-2 text-center text-caption font-bold text-text-faint">No scans yet</p>
+              <p className="py-2 text-center text-role-caption font-bold text-text-faint">No scans yet</p>
             ) : (
               <div className="space-y-1.5">
                 {scanLogs.map((log) => (
@@ -154,14 +154,14 @@ export function FbaBoardDetailPanel({
                     className="flex items-center justify-between gap-3 rounded-lg border border-border-hairline bg-surface-canvas/60 px-2.5 py-1.5"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wider bg-purple-100 text-purple-700">
+                      <span className="shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider bg-purple-100 text-purple-700">
                         {scanActionLabel(log.source_stage, log.event_type)}
                       </span>
-                      <span className="truncate text-caption font-bold text-text-muted">
+                      <span className="truncate text-role-caption font-bold text-text-muted">
                         {log.staff_name || 'Unknown'}
                       </span>
                     </div>
-                    <span className="shrink-0 text-micro font-semibold tabular-nums text-text-faint">
+                    <span className="shrink-0 text-role-micro font-semibold tabular-nums text-text-faint">
                       {formatCreatedAt(log.created_at)}
                     </span>
                   </div>
@@ -184,7 +184,7 @@ export function FbaBoardDetailPanel({
                         .map((t) => [t.tracking_number, t]),
                     ).values(),
                   ).map((t, i) => (
-                    <p key={i} className="font-mono text-caption font-bold text-text-muted">
+                    <p key={i} className="font-mono text-role-caption font-bold text-text-muted">
                       {t.carrier && <span className="text-text-soft">{t.carrier} </span>}
                       {t.tracking_number}
                     </p>

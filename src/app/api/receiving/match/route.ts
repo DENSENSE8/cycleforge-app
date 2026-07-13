@@ -445,6 +445,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                 rlt.disposition_final                        AS disposition_final,
                 COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
                 rlt.condition_set_at                         AS condition_set_at,
+                rlt.label_printed_at                         AS label_printed_at,
                 rz.zoho_item_id                              AS zoho_item_id,
                 rz.zoho_line_item_id                         AS zoho_line_item_id,
                 rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,

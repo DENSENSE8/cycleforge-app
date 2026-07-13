@@ -208,7 +208,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
                   key={p}
                   type="button"
                   onClick={() => submit(p)}
-                  className="rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                  className="rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
                 >
                   {p}
                 </button>
@@ -248,7 +248,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
                 return (
                   <div key={msg.id} className="max-w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-red-700">
                     <div className={`${sectionLabel} text-red-500`}>Error</div>
-                    <p className="mt-1 whitespace-pre-wrap text-label leading-6">{msg.content}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-role-caption leading-6">{msg.content}</p>
                     {isLastMessage && (
                       <div className="mt-1.5 -ml-1.5">
                         <HoverTooltip label="Re-send the last question" asChild>
@@ -299,7 +299,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
                               <div className="space-y-2">
                                 <AiOrderList orderIds={refs} />
                                 <details className="text-sm leading-7 text-text-muted">
-                                  <summary className="cursor-pointer text-caption font-semibold text-text-soft hover:text-text-muted">Show full text answer</summary>
+                                  <summary className="cursor-pointer text-role-caption font-semibold text-text-soft hover:text-text-muted">Show full text answer</summary>
                                   <div className="mt-1"><MarkdownRenderer content={linkifyOrderRefs(msg.content)} /></div>
                                 </details>
                               </div>
@@ -324,7 +324,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
                         return (
                           <a
                             href={dest.href}
-                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-caption font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-role-caption font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
                           >
                             {dest.label}
                             <ArrowRightGlyph className="h-3.5 w-3.5" />
@@ -375,7 +375,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
       <div className="shrink-0 border-t border-border-soft bg-surface-card px-3 py-3">
         <div className={colWidth}>
           {editingId ? (
-            <div className="mb-1.5 flex items-center justify-between rounded-md bg-amber-50 px-2.5 py-1 text-micro font-semibold text-amber-700">
+            <div className="mb-1.5 flex items-center justify-between rounded-md bg-amber-50 px-2.5 py-1 text-role-micro font-semibold text-amber-700">
               <span>Editing your message — the reply will be regenerated.</span>
               <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-amber-700 hover:bg-amber-100" ariaLabel="Cancel edit">Cancel · Esc</Button>
             </div>
@@ -412,7 +412,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
               </HoverTooltip>
             )}
           </div>
-          <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5 text-micro text-text-faint">
+          <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5 text-role-micro text-text-faint">
             <span>Enter to send · Shift+Enter newline{status === 'streaming' ? ' · Esc to stop' : ' · ⌘K to focus'}</span>
             {status === 'streaming' ? <span className="text-blue-500">{step ?? 'Working'}{elapsed > 0 ? ` · ${elapsed}s` : ''}</span> : null}
           </div>

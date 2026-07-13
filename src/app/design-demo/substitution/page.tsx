@@ -50,14 +50,14 @@ export default function SubstitutionDemoPage() {
 
   return (
     <div className="min-h-screen bg-surface-canvas p-10" data-testid="substitution-demo">
-      <h1 className="mb-6 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+      <h1 className="mb-6 text-role-eyebrow uppercase tracking-widest text-text-soft">
         Fulfillment substitution — panel + amendments timeline
       </h1>
 
       <div className="grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Advisory panel (live, mock submit) */}
         <div className="space-y-2">
-          <p className="text-eyebrow font-bold uppercase tracking-widest text-text-faint">Advisory · interactive</p>
+          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Advisory · interactive</p>
           <SubstitutePanel
             orderLabel="#A-10472"
             original={{ sku: 'SKU-BLK-200', condition: 'USED_A', serial: 'SN-ORD-100' }}
@@ -67,7 +67,7 @@ export default function SubstitutionDemoPage() {
           <pre
             data-testid="last-payload"
             // ds-allow-raw-neutral: terminal-style payload block — fixed dark console chrome (emerald-on-black), not themed UI
-            className="overflow-x-auto rounded-lg bg-gray-900 p-3 text-caption leading-relaxed text-emerald-300"
+            className="overflow-x-auto rounded-lg bg-gray-900 p-3 text-role-caption leading-relaxed text-emerald-300"
           >
             {lastPayload ? JSON.stringify(lastPayload, null, 2) : '// submit to see the payload'}
           </pre>
@@ -76,7 +76,7 @@ export default function SubstitutionDemoPage() {
         {/* Block-until-approved + error states + timeline */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <p className="text-eyebrow font-bold uppercase tracking-widest text-text-faint">Block-until-approved · error</p>
+            <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Block-until-approved · error</p>
             <SubstitutePanel
               orderLabel="#A-10488"
               original={{ sku: 'SKU-9', condition: 'USED_A', serial: 'SN-ORD-200' }}
@@ -91,7 +91,7 @@ export default function SubstitutionDemoPage() {
           </div>
 
           <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-            <p className="mb-2 text-eyebrow font-bold uppercase tracking-widest text-text-faint">Empty state</p>
+            <p className="mb-2 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Empty state</p>
             <OrderAmendmentsSection rows={[]} />
           </div>
         </div>

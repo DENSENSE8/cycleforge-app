@@ -15,25 +15,35 @@ export interface EntitySupportTicket {
   status: string | null;
 }
 
-export function entitySupportTicketQueryKey(lineId: number | null, receivingId: number | null) {
-  return ['support-ticket', 'by-entity', lineId, receivingId] as const;
+export function entitySupportTicketQueryKey(
+  lineId: number | null,
+  receivingId: number | null,
+  serialUnitId?: number | null,
+) {
+  return ['support-ticket', 'by-entity', lineId, receivingId, serialUnitId] as const;
 }
 
 export function useEntitySupportTicket(args: {
-  lineId: number | null;
-  receivingId: number | null;
+  lineId?: number | null;
+  receivingId?: number | null;
+  serialUnitId?: number | null;
   enabled?: boolean;
 }) {
-  const { lineId, receivingId } = normalizeReceivingTicketEntityRefs(args);
+  const { lineId, receivingId } = normalizeReceivingTicketEntityRefs({
+    lineId: args.lineId ?? null,
+    receivingId: args.receivingId ?? null,
+  });
+  const serialUnitId = args.serialUnitId ?? null;
   const enabled =
-    (args.enabled ?? true) && (lineId != null || receivingId != null);
+    (args.enabled ?? true) && (lineId != null || receivingId != null || serialUnitId != null);
 
   return useQuery<EntitySupportTicket | null, Error>({
-    queryKey: entitySupportTicketQueryKey(lineId, receivingId),
+    queryKey: entitySupportTicketQueryKey(lineId, receivingId, serialUnitId),
     queryFn: async () => {
       const sp = new URLSearchParams();
       if (lineId != null) sp.set('lineId', String(lineId));
       if (receivingId != null) sp.set('receivingId', String(receivingId));
+      if (serialUnitId != null) sp.set('serialUnitId', String(serialUnitId));
       const res = await fetch(`/api/support/tickets/by-entity?${sp.toString()}`, {
         cache: 'no-store',
       });

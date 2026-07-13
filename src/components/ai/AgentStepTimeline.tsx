@@ -99,7 +99,7 @@ export default function AgentStepTimeline({ steps, streaming, startedAt, doneAt,
             >
               <ul className="mt-1 space-y-1 border-l border-border-soft pl-3">
                 {visibleSteps.map((s, i) => (
-                  <li key={`${s.at}-${i}`} className="flex items-center gap-1.5 text-caption text-text-muted">
+                  <li key={`${s.at}-${i}`} className="flex items-center gap-1.5 text-role-caption text-text-muted">
                     <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
                     <span className="truncate">{s.label}</span>
                   </li>
@@ -128,7 +128,7 @@ export default function AgentStepTimeline({ steps, streaming, startedAt, doneAt,
               initial={rowPresence.initial}
               animate={rowPresence.animate}
               transition={rowTransition}
-              className="flex items-center gap-1.5 text-caption text-text-muted"
+              className="flex items-center gap-1.5 text-role-caption text-text-muted"
             >
               {i === lastIdx ? (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-text-faint" />

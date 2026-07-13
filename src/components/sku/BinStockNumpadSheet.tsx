@@ -272,7 +272,7 @@ export function BinStockNumpadSheet({
           className="h-11 w-11 rounded-md border border-border-default bg-surface-card active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-micro font-black uppercase tracking-[0.18em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
             Edit stock
           </p>
           <p className="truncate font-mono text-sm font-black text-text-default">
@@ -291,7 +291,7 @@ export function BinStockNumpadSheet({
       {/* ── Body ── */}
       <main className="flex-1 overflow-auto px-4 py-5 space-y-5">
         {title && (
-          <p className="text-center text-label leading-snug font-bold text-text-muted">
+          <p className="text-center text-role-caption leading-snug font-bold text-text-muted">
             {title}
           </p>
         )}
@@ -329,7 +329,7 @@ export function BinStockNumpadSheet({
         {/* Current vs projected */}
         <div className="mx-auto grid w-full max-w-sm grid-cols-3 items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-4 py-4 shadow-sm">
           <div className="text-center">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               On hand
             </p>
             <p className="mt-1 font-mono text-3xl font-black text-text-default">
@@ -337,7 +337,7 @@ export function BinStockNumpadSheet({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Change
             </p>
             <p
@@ -350,7 +350,7 @@ export function BinStockNumpadSheet({
             </p>
           </div>
           <div className="text-center">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               After
             </p>
             <p className="mt-1 font-mono text-3xl font-black text-text-default">
@@ -374,7 +374,7 @@ export function BinStockNumpadSheet({
               placeholder="Reason note (required)"
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
-              className="w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-label font-bold text-text-default placeholder:font-medium placeholder:text-amber-700/70 focus:border-amber-500 focus:outline-none"
+              className="w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-role-caption font-bold text-text-default placeholder:font-medium placeholder:text-amber-700/70 focus:border-amber-500 focus:outline-none"
             />
           )}
           {reason?.requires_photo && (
@@ -383,7 +383,7 @@ export function BinStockNumpadSheet({
                 type="button"
                 variant="ghost"
                 onClick={() => setCameraOpen(true)}
-                className={`h-auto flex-1 justify-center rounded-md px-2 py-2 text-caption font-black uppercase tracking-widest ${
+                className={`h-auto flex-1 justify-center rounded-md px-2 py-2 text-role-caption font-black uppercase tracking-widest ${
                   pendingShots.length > 0
                     ? 'bg-emerald-600 text-white'
                     : 'border border-amber-400 bg-amber-100 text-amber-800'
@@ -408,7 +408,7 @@ export function BinStockNumpadSheet({
                     setPendingShots([]);
                   }}
                   ariaLabel="Discard photos"
-                  className="h-auto justify-center rounded-md border border-border-default bg-surface-card px-2 py-2 text-caption font-bold text-text-muted"
+                  className="h-auto justify-center rounded-md border border-border-default bg-surface-card px-2 py-2 text-role-caption font-bold text-text-muted"
                 >
                   Clear
                 </Button>
@@ -488,7 +488,7 @@ export function BinStockNumpadSheet({
           maxPhotos={3}
           header={
             <div className="min-w-0">
-              <p className="text-eyebrow font-black uppercase tracking-[0.2em] text-white/60">
+              <p className="text-role-eyebrow uppercase tracking-[0.2em] text-white/60">
                 Evidence
               </p>
               <p className="truncate text-sm font-black text-white">{row.sku}</p>

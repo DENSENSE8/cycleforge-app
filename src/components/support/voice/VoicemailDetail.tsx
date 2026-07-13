@@ -48,7 +48,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
   if (isLoading) {
     return (
       <CenteredPane>
-        <span className="inline-flex items-center gap-2 text-caption font-semibold text-text-soft">
+        <span className="inline-flex items-center gap-2 text-role-caption font-semibold text-text-soft">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading voicemail…
         </span>
       </CenteredPane>
@@ -71,12 +71,12 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
     return (
       <CenteredPane>
         <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-          <p className="text-caption font-semibold text-rose-700">Couldn’t load this voicemail.</p>
+          <p className="text-role-caption font-semibold text-rose-700">Couldn’t load this voicemail.</p>
           <Button
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="mt-2 h-auto px-0 text-eyebrow font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
+            className="mt-2 h-auto px-0 text-role-eyebrow font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
           >
             Back to the list
           </Button>
@@ -102,12 +102,12 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="truncate text-lg font-black tracking-tight text-text-default">{name}</h1>
-            <span className={cn('inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
+            <span className={cn('inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset', tone.chip)}>
               <span className={cn('h-1.5 w-1.5 rounded-full', tone.dot)} aria-hidden />
               {VOICEMAIL_STATUS_LABEL[data.followupStatus]}
             </span>
           </div>
-          <p className="mt-0.5 flex items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <p className="mt-0.5 flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {number ? formatPhoneNumber(number) : 'Unknown number'}
             <span className="text-text-faint">·</span>
             {timeAgo(data.leftAt, nowMs)}
@@ -126,9 +126,9 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
               <track kind="captions" />
             </audio>
           ) : (
-            <p className="text-caption text-text-faint">No recording available.</p>
+            <p className="text-role-caption text-text-faint">No recording available.</p>
           )}
-          <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+          <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
             {formatDuration(data.durationSeconds)} long
           </p>
         </section>
@@ -137,7 +137,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
         {data.transcript ? (
           <section className="space-y-2">
             <p className={sectionLabel}>Transcript</p>
-            <p className="whitespace-pre-line text-caption leading-6 text-text-muted">{data.transcript}</p>
+            <p className="whitespace-pre-line text-role-caption leading-6 text-text-muted">{data.transcript}</p>
           </section>
         ) : null}
 
@@ -150,13 +150,13 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
                 <User className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-caption font-bold text-text-default">{data.matchedCustomerName}</p>
-                {number ? <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">{formatPhoneNumber(number)}</p> : null}
+                <p className="truncate text-role-caption font-bold text-text-default">{data.matchedCustomerName}</p>
+                {number ? <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{formatPhoneNumber(number)}</p> : null}
               </div>
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-3">
-              <p className="text-caption text-text-soft">No matched customer. Search by number when creating a ticket.</p>
+              <p className="text-role-caption text-text-soft">No matched customer. Search by number when creating a ticket.</p>
             </div>
           )}
         </section>
@@ -169,20 +169,20 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
               href={`/support?ticket=${data.linkedTicketId}`}
               className="flex items-center justify-between gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 transition-colors hover:bg-violet-100"
             >
-              <span className="inline-flex items-center gap-1.5 text-caption font-bold text-violet-800">
+              <span className="inline-flex items-center gap-1.5 text-role-caption font-bold text-violet-800">
                 <Link2 className="h-3.5 w-3.5" /> Zendesk ticket #{data.linkedTicketId}
               </span>
               <ExternalLink className="h-3.5 w-3.5 text-violet-500" />
             </a>
           ) : (
-            <p className="text-caption text-text-faint">Not linked to a ticket yet.</p>
+            <p className="text-role-caption text-text-faint">Not linked to a ticket yet.</p>
           )}
         </section>
 
         {data.note ? (
           <section className="space-y-2">
             <p className={sectionLabel}>Note</p>
-            <p className="text-caption leading-6 text-text-muted">{data.note}</p>
+            <p className="text-role-caption leading-6 text-text-muted">{data.note}</p>
           </section>
         ) : null}
       </div>
@@ -190,7 +190,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
       {/* Action row */}
       <footer className="shrink-0 border-t border-border-hairline px-5 py-3">
         {followup.isError && !isNotConfigured(followup.error) ? (
-          <p className="mb-2 text-eyebrow font-semibold text-rose-600">Couldn’t update — try again.</p>
+          <p className="mb-2 text-role-eyebrow font-semibold text-rose-600">Couldn’t update — try again.</p>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -224,7 +224,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
           </Button>
           <a
             href={`/support?mode=tickets&compose=vm-${voicemailId}`}
-            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-label font-semibold text-blue-600 transition-colors hover:bg-blue-50"
+            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-role-caption font-semibold text-blue-600 transition-colors hover:bg-blue-50"
           >
             <Link2 className="h-4 w-4" /> Create ticket
           </a>

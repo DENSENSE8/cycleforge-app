@@ -157,7 +157,7 @@ export default function SignUpPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-label text-text-soft">
+        <p className="mt-6 text-center text-role-caption text-text-soft">
           Already have an account?{' '}
           <a href="/signin" className="font-medium text-text-default hover:underline">Sign in</a>
         </p>
@@ -180,7 +180,7 @@ interface FieldProps {
 function Field({ label, value, onChange, placeholder, type = 'text', inputMode, autoComplete, autoFocus }: FieldProps) {
   return (
     <label className="block">
-      <span className="mb-1 block text-caption font-medium uppercase tracking-[0.12em] text-text-soft">{label}</span>
+      <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">{label}</span>
       <input
         className="block w-full rounded-xl border border-border-soft bg-surface-card px-3.5 py-2.5 text-sm text-text-default shadow-sm shadow-gray-900/[0.02] transition-colors focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
         value={value}

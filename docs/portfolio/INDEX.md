@@ -86,7 +86,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WS-ENGINE | Ops events / engine | [todo/ops-events…](../todo/ops-events-station-workflow-unification-plan.md) | `main` | P2-build | — | — |
 | WS-FBA | FBA prep | FBA diagrams + `/fba` | **`fba`** | P1-branch | `WS-FBA` | — |
 | WS-GLASS | Glass DS | [todo/GLASS…](../todo/GLASS-DESIGN-SYSTEM.md) | **`glass`** | P2-build | `WS-GLASS` | needed |
-| WS-HOME | Home triage/collab · Ops TV | [todo/home-ops-tv-collab…](../todo/home-ops-tv-collab-surfaces-plan.md) · my-day | **`home`** + `main` | P0-catalog | `HOME-OPS-*` | — | Plan 2026-07-12 |
+| WS-HOME | Home triage/collab · Ops TV | [todo/home-ops-tv-collab…](../todo/home-ops-tv-collab-surfaces-plan.md) · my-day | **`home`** + `main` | P2-build | `HOME-OPS-*` | — | A–C shipped on main 2026-07-12 (TV board `?tv=1` + `operations.tv.view`); D–F next |
 | WS-INT | Integrations | [integrations/](../integrations/) + todo oauth | `main` | P2-build | — | — |
 | WS-INV | Inventory | inventory UI | **`inventory`** | P1-branch | `WS-INV` | — |
 | WS-LOGIN | Org login | [todo/org-login-gate…](../todo/org-login-gate-EXECUTION-PROMPT.md) | `main` | P4-human-review | — | needed |

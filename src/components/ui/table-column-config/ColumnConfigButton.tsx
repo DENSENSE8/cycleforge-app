@@ -103,7 +103,7 @@ export function ColumnConfigButton({
           onClick={() => setOpen((v) => !v)}
           icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
           className={cn(
-            'h-auto gap-1 rounded text-eyebrow font-black uppercase tracking-widest -my-0.5',
+            'h-auto gap-1 rounded text-role-eyebrow uppercase tracking-widest -my-0.5',
             iconOnly ? 'relative px-1 py-1' : 'px-1.5 py-0.5',
             'text-text-soft hover:bg-surface-hover hover:text-text-muted',
             open && 'bg-surface-canvas text-text-muted',
@@ -154,7 +154,7 @@ export function ColumnConfigButton({
               className="w-56 rounded-lg border border-border-soft bg-surface-card p-1 shadow-xl"
             >
               <div className="flex items-center justify-between px-2 py-1.5">
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
                   Show columns
                 </p>
                 {hiddenCount > 0 ? (
@@ -162,7 +162,7 @@ export function ColumnConfigButton({
                     variant="ghost"
                     size="sm"
                     onClick={() => cfg.reset()}
-                    className="h-auto rounded px-0 py-0 text-eyebrow font-bold uppercase tracking-widest text-blue-600 hover:bg-transparent hover:text-blue-700 -my-0.5"
+                    className="h-auto rounded px-0 py-0 text-role-eyebrow font-bold uppercase tracking-widest text-blue-600 hover:bg-transparent hover:text-blue-700 -my-0.5"
                   >
                     Reset
                   </Button>
@@ -179,7 +179,7 @@ export function ColumnConfigButton({
                       aria-checked={shown}
                       data-testid={`column-toggle-${col.key}`}
                       onClick={() => cfg.toggle(col.key)}
-                      className="ds-raw-button flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-caption font-semibold text-text-muted hover:bg-surface-hover"
+                      className="ds-raw-button flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-role-caption font-semibold text-text-muted hover:bg-surface-hover"
                     >
                       <span
                         className={cn(

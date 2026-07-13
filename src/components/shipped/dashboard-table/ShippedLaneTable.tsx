@@ -83,7 +83,7 @@ export function ShippedLaneTable({
   if (daySections.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center">
-        <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">{emptyMessage}</div>
+        <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">{emptyMessage}</div>
       </div>
     );
   }

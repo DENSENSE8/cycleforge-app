@@ -5,6 +5,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { enrichSerialUnitCatalog } from '@/lib/neon/serial-units-queries';
 import { attachSerialToLine, detachSerialFromLine } from '@/lib/receiving/serial-attach';
+import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 import {
   linkReturnedSerial,
   type ReturnedSerialMatchedOrder,
@@ -285,6 +286,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         orgId: ctx.organizationId,
       });
 
+      // Refresh the denormalized serial projection for the line this serial
+      // landed on (Tier B2) so the next open paints it on the first frame — BEFORE
+      // the publish below nudges listeners to refetch. Post-commit + best-effort:
+      // the ?include=serials reconcile self-heals any drift, so a refresh failure
+      // never affects the scan.
+      await refreshLineSerialProjectionSafe(ctx.organizationId, tapReceivingLineId);
+
       try {
         await invalidateCacheTags([
           'receiving-lines',
@@ -416,6 +424,10 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
     // Background: same cache + realtime fanout the POST path uses so the
     // sidebar/accordion refetch and the UI reflects the change.
     after(async () => {
+      // Recompute the line's serial projection now that a serial was removed, so
+      // the next open reflects the removal on the first frame (Tier B2).
+      await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
+
       try {
         await invalidateCacheTags([
           'receiving-lines',

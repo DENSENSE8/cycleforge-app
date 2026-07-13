@@ -43,7 +43,7 @@ export function InventoryHealthRow() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Inventory health</span>
-          <h2 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
             Where the warehouse needs attention
           </h2>
         </div>
@@ -68,15 +68,15 @@ export function InventoryHealthRow() {
                   <c.Icon className="w-4 h-4" />
                 </div>
                 {isAlert && (
-                  <span className="text-eyebrow font-black uppercase tracking-[0.14em] bg-rose-50 text-rose-700 rounded-full px-1.5 py-0.5">
+                  <span className="text-role-eyebrow uppercase tracking-[0.14em] bg-rose-50 text-rose-700 rounded-full px-1.5 py-0.5">
                     Alert
                   </span>
                 )}
               </div>
-              <div className="text-[28px] font-extrabold text-text-default leading-none tabular-nums">
+              <div className="text-3xl font-extrabold text-text-default leading-none tabular-nums">
                 {isLoading ? '–' : (value ?? 0)}
               </div>
-              <p className="text-caption font-medium text-text-muted mt-1.5 leading-tight">{c.label}</p>
+              <p className="text-role-caption font-medium text-text-muted mt-1.5 leading-tight">{c.label}</p>
             </motion.a>
           );
         })}

@@ -20,7 +20,7 @@ export function ReceivingLinePicker({ rows, onPick, onCancel }: Props) {
   return (
     <div className="border-b border-blue-200 bg-blue-50/60 px-3 py-2">
       <div className="mb-1 flex items-center justify-between">
-        <p className="text-eyebrow font-black uppercase tracking-wider text-blue-700">
+        <p className="text-role-eyebrow uppercase tracking-wider text-blue-700">
           Pick a line
         </p>
         <IconButton
@@ -40,7 +40,7 @@ export function ReceivingLinePicker({ rows, onPick, onCancel }: Props) {
               key={line.id}
               type="button"
               onClick={() => onPick(line)}
-              className={`ds-raw-button rounded border px-2 py-1 text-left text-micro font-bold transition-colors ${
+              className={`ds-raw-button rounded border px-2 py-1 text-left text-role-micro font-bold transition-colors ${
                 open
                   ? 'border-blue-200 bg-surface-card text-blue-900 hover:bg-blue-100'
                   : 'border-border-soft bg-surface-canvas text-text-soft hover:bg-surface-sunken'

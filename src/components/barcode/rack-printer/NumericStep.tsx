@@ -56,7 +56,7 @@ export function NumericStep({
       >
         <div className={`flex items-baseline justify-between ${hint ? 'mb-1' : 'mb-3'}`}>
           <h3 className="text-base font-semibold tracking-tight text-text-default">{title}</h3>
-          <span className="text-micro font-medium tabular-nums text-text-faint">up to {count}</span>
+          <span className="text-role-micro font-medium tabular-nums text-text-faint">up to {count}</span>
         </div>
 
         {hint && <p className="mb-3 text-[11.5px] leading-snug text-text-soft">{hint}</p>}
@@ -103,7 +103,7 @@ export function NumericStep({
               }}
               placeholder={customPlaceholder}
               aria-label={customLabel}
-              className="h-full w-full min-w-0 bg-transparent pr-1 text-center font-mono text-lg font-semibold tabular-nums tracking-tight text-text-default outline-none placeholder:text-label placeholder:font-medium placeholder:tracking-wide placeholder:text-text-faint [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="h-full w-full min-w-0 bg-transparent pr-1 text-center font-mono text-lg font-semibold tabular-nums tracking-tight text-text-default outline-none placeholder:text-role-caption placeholder:font-medium placeholder:tracking-wide placeholder:text-text-faint [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <div className="ml-1 flex h-12 shrink-0 flex-col justify-center gap-0.5">

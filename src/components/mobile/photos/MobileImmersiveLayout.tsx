@@ -8,7 +8,7 @@ function ImmersivePageError(error: Error, reset: () => void) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 bg-stage px-6 text-center text-white">
       <div>
-        <p className="text-micro font-black uppercase tracking-[0.22em] text-rose-400">
+        <p className="text-role-micro uppercase tracking-[0.22em] text-rose-400">
           Camera error
         </p>
         <p className="mt-2 text-sm font-bold text-white/80">

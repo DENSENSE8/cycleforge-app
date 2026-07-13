@@ -43,7 +43,7 @@ function Avatar({ name, photo, ours }: { name: string; photo: string | null; our
   return (
     <span
       className={cn(
-        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-micro font-black',
+        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-role-micro ',
         ours ? 'bg-blue-100 text-blue-700' : 'bg-surface-strong text-text-muted',
       )}
     >
@@ -163,13 +163,13 @@ export function SupportChatThread({
           <div key={c.id} className="flex items-end gap-2.5">
             <Avatar name={a.name} photo={a.photo} ours={a.isOurs} />
             <div className="min-w-0 max-w-[78%] items-start">
-              <div className="mb-1 flex items-center gap-2 text-caption justify-start">
+              <div className="mb-1 flex items-center gap-2 text-role-caption justify-start">
                 {internal ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-amber-700">
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700">
                     <Lock className="h-2.5 w-2.5" /> Internal
                   </span>
                 ) : a.isOurs ? (
-                  <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-blue-700">
+                  <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700">
                     <Globe className="h-2.5 w-2.5" /> Public
                   </span>
                 ) : null}
@@ -183,7 +183,7 @@ export function SupportChatThread({
               </div>
               <div
                 className={cn(
-                  'rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed shadow-sm',
+                  'rounded-2xl px-3.5 py-2.5 text-role-data leading-relaxed shadow-sm',
                   a.isOurs
                     ? internal
                       ? 'rounded-bl-md border border-amber-200 bg-amber-50 text-amber-900'

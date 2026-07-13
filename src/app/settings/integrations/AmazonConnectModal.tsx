@@ -58,18 +58,18 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
       {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
       <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-scrim/40 backdrop-blur-sm" />
       <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 shadow-2xl">
-        <h2 className="text-[16px] font-semibold text-text-default">Connect Amazon</h2>
-        <p className="mt-1 text-label text-text-soft">
+        <h2 className="text-base font-semibold text-text-default">Connect Amazon</h2>
+        <p className="mt-1 text-role-caption text-text-soft">
           Choose the seller region, then authorize. Multi-tenant OAuth requires a published Selling-Partner app;
           until then, paste a self-authorized refresh token.
         </p>
 
         <label className="mt-4 block">
-          <span className="text-caption font-semibold uppercase tracking-wide text-text-soft">Region</span>
+          <span className="text-role-caption font-semibold uppercase tracking-wide text-text-soft">Region</span>
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value as 'NA' | 'EU' | 'FE')}
-            className="mt-1 block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-[13px] text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className="mt-1 block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-data text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
           >
             {REGIONS.map((r) => (
               <option key={r.value} value={r.value}>{r.label}</option>
@@ -83,7 +83,7 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
 
-        <div className="my-4 flex items-center gap-3 text-caption font-medium uppercase tracking-wide text-text-faint">
+        <div className="my-4 flex items-center gap-3 text-role-caption font-medium uppercase tracking-wide text-text-faint">
           <span className="h-px flex-1 bg-surface-strong" /> or paste a refresh token <span className="h-px flex-1 bg-surface-strong" />
         </div>
 
@@ -92,18 +92,18 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
             value={refreshToken}
             onChange={(e) => setRefreshToken(e.target.value)}
             placeholder="LWA refresh token (Atzr|…)"
-            className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-label text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
             spellCheck={false}
           />
           <input
             value={sellerId}
             onChange={(e) => setSellerId(e.target.value)}
             placeholder="Seller ID (optional)"
-            className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-label text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
           />
         </div>
 
-        {error && <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-caption font-medium text-red-700">{error}</div>}
+        {error && <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{error}</div>}
 
         <div className="mt-4 flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>

@@ -84,7 +84,7 @@ export function StatCard({
       <div className={`absolute top-0 left-0 right-0 h-[3px] ${styles.accent} opacity-10 group-hover:opacity-100 transition-opacity duration-300`} />
       
       <div className="flex items-center justify-between">
-        <span className="text-micro font-black uppercase tracking-[0.15em] text-text-faint group-hover:text-text-muted transition-colors truncate pr-2">
+        <span className="text-role-micro uppercase tracking-[0.15em] text-text-faint group-hover:text-text-muted transition-colors truncate pr-2">
           {label}
         </span>
         <div className="text-text-faint group-hover:text-text-soft transition-colors shrink-0">
@@ -114,9 +114,9 @@ export function StatCard({
           <motion.span 
             initial={{ opacity: 0, x: -5 }}
             animate={{ opacity: 1, x: 0 }}
-            className={`text-caption font-black tabular-nums flex items-center gap-0.5 ${delta >= 0 ? 'text-text-success' : 'text-text-danger'}`}
+            className={`text-role-caption font-black tabular-nums flex items-center gap-0.5 ${delta >= 0 ? 'text-text-success' : 'text-text-danger'}`}
           >
-            <span className="text-mini font-normal">{delta > 0 ? '▲' : '▼'}</span>
+            <span className="text-role-micro font-normal">{delta > 0 ? '▲' : '▼'}</span>
             {Math.abs(delta)}%
           </motion.span>
         )}

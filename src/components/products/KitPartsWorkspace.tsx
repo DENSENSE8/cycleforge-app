@@ -38,10 +38,10 @@ export function KitPartsWorkspace() {
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-500">
           <PackageOpen className="h-7 w-7" />
         </span>
-        <p className="mt-4 text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+        <p className="mt-4 text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
           Kit Parts
         </p>
-        <p className="mt-2 max-w-[280px] text-caption font-medium text-text-soft">
+        <p className="mt-2 max-w-[280px] text-role-caption font-medium text-text-soft">
           Select a product from the sidebar to define what&apos;s in its box.
         </p>
       </div>
@@ -52,14 +52,14 @@ export function KitPartsWorkspace() {
     return (
       <div className="flex flex-1 items-center justify-center text-text-faint">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="ml-2 text-caption font-semibold">Loading kit parts…</span>
+        <span className="ml-2 text-role-caption font-semibold">Loading kit parts…</span>
       </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6 text-center text-caption font-semibold text-red-500">
+      <div className="flex flex-1 items-center justify-center px-6 text-center text-role-caption font-semibold text-red-500">
         Couldn&apos;t load this product&apos;s kit parts.
       </div>
     );
@@ -91,9 +91,9 @@ export function KitPartsWorkspace() {
             {catalog.product_title || catalog.sku}
           </h1>
           <div className="mt-1 flex items-center gap-2">
-            <span className="font-mono text-caption text-text-soft">{catalog.sku}</span>
+            <span className="font-mono text-role-caption text-text-soft">{catalog.sku}</span>
             {catalog.category && (
-              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-bold uppercase tracking-wider text-text-soft">
+              <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
                 {catalog.category}
               </span>
             )}
@@ -108,12 +108,12 @@ export function KitPartsWorkspace() {
             iconRight={<ChevronRight />}
             onClick={() => router.replace(`/products?view=qc&skuId=${catalog.id}`)}
             ariaLabel="View this product's QC checklist"
-            className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-micro font-bold uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
+            className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-role-micro font-bold uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
           >
             {qc?.checks.length ?? 0} QC
           </Button>
         </HoverTooltip>
-        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-micro font-black uppercase tracking-wider text-blue-600">
+        <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-role-micro uppercase tracking-wider text-blue-600">
           {parts.length} {parts.length === 1 ? 'item' : 'items'}
         </span>
       </div>

@@ -102,7 +102,7 @@ export function TrackingNumberRow({
     <DetailsPanelRow
       label={label}
       headerAccessory={headerAccessory ? (
-        <span className={headerAccessoryClassName || 'text-micro font-black uppercase tracking-wide text-text-soft'}>
+        <span className={headerAccessoryClassName || 'text-role-micro uppercase tracking-wide text-text-soft'}>
           {headerAccessory}
         </span>
       ) : null}

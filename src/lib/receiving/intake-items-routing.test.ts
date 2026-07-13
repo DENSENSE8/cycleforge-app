@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  classifyLineSource,
   hasRealZohoPoId,
   isSalesOrderLinkage,
   shouldUseLocalReceiveOnly,
@@ -60,6 +61,37 @@ test('isSalesOrderLinkage: zoho_po without real id', () => {
     isSalesOrderLinkage(row({ receiving_source: 'zoho_po', zoho_purchaseorder_id: '99' })),
     false,
   );
+});
+
+test('classifyLineSource: unmatched lane for unmatched / return / sales-order link, else po', () => {
+  assert.equal(classifyLineSource(row({ receiving_source: 'unmatched' })), 'unmatched');
+  assert.equal(
+    classifyLineSource(row({ carton_intake_type: 'RETURN', receiving_source: 'zoho_po' })),
+    'unmatched',
+  );
+  assert.equal(
+    classifyLineSource(
+      row({ receiving_source: 'zoho_po', zoho_purchaseorder_number: '112-1', zoho_purchaseorder_id: null }),
+    ),
+    'unmatched',
+  );
+  assert.equal(
+    classifyLineSource(row({ receiving_source: 'zoho_po', zoho_purchaseorder_id: '5623' })),
+    'po',
+  );
+});
+
+test('shouldUse* aliases stay consistent with classifyLineSource', () => {
+  const cases = [
+    row({ receiving_source: 'unmatched' }),
+    row({ carton_intake_type: 'RETURN', receiving_source: 'zoho_po' }),
+    row({ receiving_source: 'zoho_po', zoho_purchaseorder_id: '5623' }),
+  ];
+  for (const r of cases) {
+    const isUnmatched = classifyLineSource(r) === 'unmatched';
+    assert.equal(shouldUseUnmatchedItemsSurface(r), isUnmatched);
+    assert.equal(shouldUsePoAccordion(r), !isUnmatched, 'po accordion lane is the complement (materialized carton)');
+  }
 });
 
 test('shouldUseUnmatchedItemsSurface: unmatched + return + sales-order link', () => {

@@ -1,7 +1,7 @@
 /** Shared with `ShippedIntakeForm` and FBA create shipment — keep in sync. */
 
 export const SIDEBAR_INTAKE_LABEL_CLASS =
-  'block text-micro font-black uppercase tracking-widest text-text-muted';
+  'block text-role-micro uppercase tracking-widest text-text-muted';
 
 const SIDEBAR_INTAKE_INPUT_BASE_CLASS =
   'w-full px-4 py-3 bg-surface-canvas border border-border-soft rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:border-transparent transition-all';
@@ -43,13 +43,13 @@ export const SIDEBAR_INTAKE_SUBTITLE_ACCENT: Record<
   'green' | 'violet' | 'blue' | 'purple' | 'yellow' | 'black' | 'red' | 'lightblue' | 'pink',
   string
 > = {
-  green: 'text-mini font-bold text-green-600 uppercase tracking-widest',
-  violet: 'text-mini font-bold text-violet-600 uppercase tracking-widest',
-  blue: 'text-mini font-bold text-blue-600 uppercase tracking-widest',
-  purple: 'text-mini font-bold text-purple-600 uppercase tracking-widest',
-  yellow: 'text-mini font-bold text-amber-600 uppercase tracking-widest',
-  black: 'text-mini font-bold text-text-muted uppercase tracking-widest',
-  red: 'text-mini font-bold text-red-600 uppercase tracking-widest',
-  lightblue: 'text-mini font-bold text-sky-600 uppercase tracking-widest',
-  pink: 'text-mini font-bold text-pink-600 uppercase tracking-widest',
+  green: 'text-role-micro font-bold text-green-600 uppercase tracking-widest',
+  violet: 'text-role-micro font-bold text-violet-600 uppercase tracking-widest',
+  blue: 'text-role-micro font-bold text-blue-600 uppercase tracking-widest',
+  purple: 'text-role-micro font-bold text-purple-600 uppercase tracking-widest',
+  yellow: 'text-role-micro font-bold text-amber-600 uppercase tracking-widest',
+  black: 'text-role-micro font-bold text-text-muted uppercase tracking-widest',
+  red: 'text-role-micro font-bold text-red-600 uppercase tracking-widest',
+  lightblue: 'text-role-micro font-bold text-sky-600 uppercase tracking-widest',
+  pink: 'text-role-micro font-bold text-pink-600 uppercase tracking-widest',
 };

@@ -43,7 +43,7 @@ export function ListingPhotoGallery({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{title}</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
         <Button
           type="button"
           variant="ghost"
@@ -57,11 +57,11 @@ export function ListingPhotoGallery({
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 px-3 py-4 text-caption text-text-faint">
+        <div className="flex items-center gap-2 px-3 py-4 text-role-caption text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading gallery…
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-soft">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
           No listing photos yet. Add photos to build the marketplace gallery.
         </div>
       ) : (
@@ -71,15 +71,15 @@ export function ListingPhotoGallery({
               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-border-soft">
                 <PhotoThumb src={it.thumbUrl} alt="" ratio="square" />
                 {it.isCover ? (
-                  <span className="absolute left-0 top-0 inline-flex items-center gap-0.5 rounded-br-lg bg-amber-500 px-1 py-0.5 text-mini font-black uppercase tracking-widest text-white">
+                  <span className="absolute left-0 top-0 inline-flex items-center gap-0.5 rounded-br-lg bg-amber-500 px-1 py-0.5 text-role-micro uppercase tracking-widest text-white">
                     <Star className="h-2.5 w-2.5" /> Cover
                   </span>
                 ) : null}
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="text-caption font-semibold text-text-default">Photo #{it.photoId}</div>
-                <div className="text-micro text-text-soft">Position {index + 1}</div>
+                <div className="text-role-caption font-semibold text-text-default">Photo #{it.photoId}</div>
+                <div className="text-role-micro text-text-soft">Position {index + 1}</div>
               </div>
 
               <div className="flex items-center gap-0.5">
@@ -235,15 +235,15 @@ function ListingPhotoPicker({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {error ? (
-            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-600">
+            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-600">
               {error}
             </div>
           ) : photos === null ? (
-            <div className="flex items-center gap-2 py-6 text-caption text-text-faint">
+            <div className="flex items-center gap-2 py-6 text-role-caption text-text-faint">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading photos…
             </div>
           ) : photos.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-soft">
+            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
               No more photos available to add.
             </div>
           ) : (
@@ -276,7 +276,7 @@ function ListingPhotoPicker({
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
-          <span className="text-caption text-text-soft">{picked.size} selected</span>
+          <span className="text-role-caption text-text-soft">{picked.size} selected</span>
           <div className="flex items-center gap-2">
             <Button
               type="button"

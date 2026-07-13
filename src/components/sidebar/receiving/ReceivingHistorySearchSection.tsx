@@ -235,7 +235,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
           <div className="space-y-3">
             {/* Sort by — lifecycle axis for day headers + server ORDER BY. */}
             <div>
-              <span className="mb-1.5 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+              <span className="mb-1.5 block text-role-eyebrow uppercase tracking-wider text-text-soft">
                 Sort by
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -248,7 +248,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
                       type="button"
                       onClick={() => setSort(option.id)}
                       aria-pressed={active}
-                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         active
                           ? 'bg-blue-600 text-white ring-blue-600'
                           : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
@@ -264,7 +264,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
 
             {/* Carton source — All vs unfound (unmatched) cartons only. */}
             <div>
-              <span className="mb-1.5 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+              <span className="mb-1.5 block text-role-eyebrow uppercase tracking-wider text-text-soft">
                 Carton source
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -277,7 +277,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
                       type="button"
                       onClick={() => setScope(item.id)}
                       aria-pressed={active}
-                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         active
                           ? 'bg-blue-600 text-white ring-blue-600'
                           : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
@@ -293,7 +293,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
 
             {/* Search field — was the field slider (All / PO # / … / Serial #). */}
             <div>
-              <span className="mb-1.5 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+              <span className="mb-1.5 block text-role-eyebrow uppercase tracking-wider text-text-soft">
                 Search field
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -306,7 +306,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
                       type="button"
                       onClick={() => setField(field.id)}
                       aria-pressed={active}
-                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         active
                           ? 'bg-blue-600 text-white ring-blue-600'
                           : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'

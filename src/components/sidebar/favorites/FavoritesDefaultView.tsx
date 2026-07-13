@@ -30,9 +30,9 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
             <div className="min-w-0">
               <h3 className={`${inlineRows ? 'text-base' : 'text-sm'} font-black tracking-tight text-text-default`}>
                 {title}
-                {f.favorites.length > 0 && <span className="ml-1.5 text-micro font-semibold tabular-nums text-text-soft">{f.favorites.length}</span>}
+                {f.favorites.length > 0 && <span className="ml-1.5 text-role-micro font-semibold tabular-nums text-text-soft">{f.favorites.length}</span>}
               </h3>
-              {description && f.isListOpen ? <p className="mt-0.5 text-caption font-semibold leading-relaxed text-text-soft">{description}</p> : null}
+              {description && f.isListOpen ? <p className="mt-0.5 text-role-caption font-semibold leading-relaxed text-text-soft">{description}</p> : null}
             </div>
           </button>
         )}
@@ -107,17 +107,17 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
                     return (
                       <div key={`${favorite.workspaceKey}-${favorite.id}`}>
                         <div className={inlineRows ? 'py-1.5' : 'rounded-2xl border border-border-soft bg-surface-canvas px-3 py-3'}>
-                          <p className={`${inlineRows ? 'text-micro leading-tight' : 'text-label leading-snug'} font-black tracking-tight text-black`}>{favorite.label}</p>
+                          <p className={`${inlineRows ? 'text-role-micro leading-tight' : 'text-role-caption leading-snug'} tracking-tight text-black`}>{favorite.label}</p>
                           <div className={`${inlineRows ? 'mt-0.5 gap-1' : 'mt-1 gap-2'} flex items-start`}>
                             <div className="min-w-0 flex-1">
-                              <div className={`flex w-full min-w-0 items-center justify-start gap-2 font-bold ${inlineRows ? 'text-mini tracking-[0.12em]' : 'text-micro tracking-[0.16em]'}`}>
+                              <div className={`flex w-full min-w-0 items-center justify-start gap-2 font-bold ${inlineRows ? 'text-role-micro tracking-[0.12em]' : 'text-role-micro tracking-[0.16em]'}`}>
                                 <span className="shrink-0 tabular-nums text-emerald-600">{favorite.defaultPrice ? `$${favorite.defaultPrice}` : ''}</span>
                                 <span className="min-w-0 truncate uppercase text-text-soft">{favorite.sku || 'No SKU'}</span>
                               </div>
                               {favorite.issueTemplate ? (
-                                <p className={`${inlineRows ? 'mt-0 text-mini' : 'mt-0.5 text-micro'} font-semibold uppercase tracking-[0.14em] text-text-soft`}>{favorite.issueTemplate}</p>
+                                <p className={`${inlineRows ? 'mt-0 text-role-micro' : 'mt-0.5 text-role-micro'} font-semibold uppercase tracking-[0.14em] text-text-soft`}>{favorite.issueTemplate}</p>
                               ) : null}
-                              {!inlineRows && favorite.productTitle && <p className="mt-1 text-caption font-semibold text-text-soft">{favorite.productTitle}</p>}
+                              {!inlineRows && favorite.productTitle && <p className="mt-1 text-role-caption font-semibold text-text-soft">{favorite.productTitle}</p>}
                             </div>
                             <div className={`${inlineRows ? 'flex items-center gap-1 pt-0.5' : 'flex items-center gap-2'}`}>
                               <HoverTooltip label="Edit favorite" asChild>

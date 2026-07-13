@@ -23,9 +23,9 @@ export function ResearchPanel({
       <div className="mb-2 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-text-default">{research.summary || 'Hermes ranked the current listings.'}</p>
-          <p className="truncate text-caption text-text-soft">Query: {research.recommendedQuery}</p>
+          <p className="truncate text-role-caption text-text-soft">Query: {research.recommendedQuery}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-semibold text-text-soft">{research.model}</span>
+        <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-soft">{research.model}</span>
       </div>
 
       {research.rankedCandidates.length > 0 ? (
@@ -36,13 +36,13 @@ export function ResearchPanel({
               <li key={`${ranked.externalId ?? ranked.title}-${index}`} className="grid grid-cols-[1fr_auto] gap-3 rounded-lg bg-surface-canvas px-3 py-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-micro font-bold uppercase ${ranked.nextAction === 'save' ? 'bg-emerald-50 text-emerald-700' : ranked.nextAction === 'skip' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-role-micro font-bold uppercase ${ranked.nextAction === 'save' ? 'bg-emerald-50 text-emerald-700' : ranked.nextAction === 'skip' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
                       {ranked.nextAction}
                     </span>
                     <p className="truncate text-sm font-semibold text-text-default">{ranked.title}</p>
                   </div>
-                  <p className="mt-0.5 text-caption text-text-muted">{ranked.rationale}</p>
-                  {ranked.riskFlags.length > 0 ? <p className="mt-1 truncate text-caption font-medium text-amber-700">{ranked.riskFlags.join(' · ')}</p> : null}
+                  <p className="mt-0.5 text-role-caption text-text-muted">{ranked.rationale}</p>
+                  {ranked.riskFlags.length > 0 ? <p className="mt-1 truncate text-role-caption font-medium text-amber-700">{ranked.riskFlags.join(' · ')}</p> : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Score label="fit" value={ranked.fitScore} />
@@ -65,10 +65,10 @@ export function ResearchPanel({
           })}
         </ul>
       ) : (
-        <p className="text-caption text-text-faint">No ranked candidates returned.</p>
+        <p className="text-role-caption text-text-faint">No ranked candidates returned.</p>
       )}
 
-      {research.cautions.length > 0 ? <p className="mt-2 text-caption text-amber-700">{research.cautions.join(' · ')}</p> : null}
+      {research.cautions.length > 0 ? <p className="mt-2 text-role-caption text-amber-700">{research.cautions.join(' · ')}</p> : null}
     </div>
   );
 }
@@ -77,7 +77,7 @@ function Score({ label, value }: { label: string; value: number }) {
   return (
     <div className="w-11 text-right">
       <p className="text-xs font-bold text-text-default">{value}</p>
-      <p className="text-eyebrow font-semibold uppercase text-text-faint">{label}</p>
+      <p className="text-role-eyebrow font-semibold uppercase text-text-faint">{label}</p>
     </div>
   );
 }

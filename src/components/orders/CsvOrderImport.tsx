@@ -176,29 +176,29 @@ export function CsvOrderImport() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-emerald-600" />
-          <h3 className="text-caption font-bold text-text-default">Import complete</h3>
+          <h3 className="text-role-caption font-bold text-text-default">Import complete</h3>
         </div>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">Inserted</span>
-            <span className="text-caption font-bold text-emerald-700">{result.inserted}</span>
+            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Inserted</span>
+            <span className="text-role-caption font-bold text-emerald-700">{result.inserted}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">Skipped (duplicates)</span>
-            <span className="text-caption font-bold text-text-muted">{result.skipped}</span>
+            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Skipped (duplicates)</span>
+            <span className="text-role-caption font-bold text-text-muted">{result.skipped}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">Errors</span>
-            <span className="text-caption font-bold text-rose-700">{result.errors.length}</span>
+            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Errors</span>
+            <span className="text-role-caption font-bold text-rose-700">{result.errors.length}</span>
           </div>
         </div>
 
         {result.errors.length > 0 && (
           <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3">
-            <div className="mb-1.5 flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-rose-700">
+            <div className="mb-1.5 flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-rose-700">
               <AlertTriangle className="h-3.5 w-3.5" /> Row errors
             </div>
-            <ul className="max-h-40 space-y-0.5 overflow-y-auto text-mini text-rose-700">
+            <ul className="max-h-40 space-y-0.5 overflow-y-auto text-role-micro text-rose-700">
               {result.errors.slice(0, 50).map((e) => (
                 <li key={e.row}>Row {e.row + 1}: {e.reason}</li>
               ))}
@@ -223,7 +223,7 @@ export function CsvOrderImport() {
           description="Upload a CSV export from any channel. You'll map its columns to order fields on the next step."
           action={
             <label className="inline-flex cursor-pointer">
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-label font-bold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500">
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-bold text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500">
                 <Upload className="h-4 w-4" /> Choose CSV file
               </span>
               <input
@@ -240,7 +240,7 @@ export function CsvOrderImport() {
           }
         />
         {parseError && (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-mini font-semibold text-rose-700">
+          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-role-micro font-semibold text-rose-700">
             {parseError}
           </div>
         )}
@@ -254,8 +254,8 @@ export function CsvOrderImport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <FileText className="h-4 w-4 shrink-0 text-text-soft" />
-          <span className="truncate text-caption font-bold text-text-default">{fileName}</span>
-          <span className="shrink-0 text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="truncate text-role-caption font-bold text-text-default">{fileName}</span>
+          <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {rows.length} rows
           </span>
         </div>
@@ -263,7 +263,7 @@ export function CsvOrderImport() {
       </div>
 
       <div className="space-y-3">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Map columns</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Map columns</p>
         <div className="divide-y divide-border-hairline rounded-xl border border-border-soft">
           {CANONICAL_FIELDS.map((field) => {
             const selected = mapping[field.key] ?? '';
@@ -271,11 +271,11 @@ export function CsvOrderImport() {
             return (
               <div key={field.key} className="flex items-center justify-between gap-3 px-4 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-caption font-bold text-text-default">
+                  <p className="truncate text-role-caption font-bold text-text-default">
                     {field.label}
                     {field.required && <span className="ml-1 text-rose-600">*</span>}
                   </p>
-                  <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">{field.key}</p>
+                  <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">{field.key}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {selected && !missingRequired && <Check className="h-3.5 w-3.5 text-emerald-600" />}
@@ -289,7 +289,7 @@ export function CsvOrderImport() {
                         return next;
                       });
                     }}
-                    className={`h-8 rounded-lg border bg-surface-card px-2 text-label font-semibold text-text-default focus:outline-none focus:ring-1 ${
+                    className={`h-8 rounded-lg border bg-surface-card px-2 text-role-caption font-semibold text-text-default focus:outline-none focus:ring-1 ${
                       missingRequired
                         ? 'border-rose-300 ring-rose-200'
                         : 'border-border-soft focus:border-blue-400 focus:ring-blue-400'
@@ -308,14 +308,14 @@ export function CsvOrderImport() {
       </div>
 
       {submitError && (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-mini font-semibold text-rose-700">
+        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-role-micro font-semibold text-rose-700">
           {submitError}
         </div>
       )}
 
       <div className="flex items-center justify-end gap-2 border-t border-border-hairline pt-3">
         {!mapping.order_number && (
-          <span className="text-mini font-semibold text-text-soft">Map an order number column to continue</span>
+          <span className="text-role-micro font-semibold text-text-soft">Map an order number column to continue</span>
         )}
         <Button
           variant="primary"

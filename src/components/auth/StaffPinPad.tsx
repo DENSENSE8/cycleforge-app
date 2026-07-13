@@ -107,7 +107,7 @@ export function StaffPinPad({ staff, onSubmit, onPasskey, submitLabel, onBack, i
         </div>
       </div>
       <div className="mt-5 text-2xl font-semibold tracking-tight text-text-default">{staff.name}</div>
-      <div className={`mt-0.5 text-caption font-medium uppercase tracking-[0.18em] ${t.accentText}`}>
+      <div className={`mt-0.5 text-role-caption font-medium uppercase tracking-[0.18em] ${t.accentText}`}>
         {staff.role.replace(/_/g, ' ')}
       </div>
       <div className="mt-4 text-sm text-text-soft">Enter your PIN</div>

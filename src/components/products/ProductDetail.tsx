@@ -140,14 +140,14 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     <DetailRow label="Warehouse qty" value={String(stock.warehouse_qty)} />
                     {stock.units_by_status.length > 0 ? (
                         <div className="border-t border-border-hairline pt-2">
-                            <div className="mb-1 text-micro font-medium uppercase tracking-wide text-text-soft">
+                            <div className="mb-1 text-role-micro font-medium uppercase tracking-wide text-text-soft">
                                 Serial units by status
                             </div>
                             <div className="flex flex-wrap gap-1">
                                 {stock.units_by_status.map((s) => (
                                     <span
                                         key={s.status}
-                                        className="rounded bg-surface-sunken px-1.5 py-0.5 text-caption text-text-muted"
+                                        className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption text-text-muted"
                                     >
                                         {s.status.toLowerCase()}: {s.count}
                                     </span>
@@ -173,7 +173,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                                     className="flex flex-wrap items-baseline justify-between gap-2 py-2"
                                 >
                                     <div className="flex flex-wrap items-baseline gap-2">
-                                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide text-blue-700">
+                                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide text-blue-700">
                                             {p.platform}
                                         </span>
                                         {p.account_name ? (

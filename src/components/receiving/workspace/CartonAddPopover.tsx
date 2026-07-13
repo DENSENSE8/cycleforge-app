@@ -100,7 +100,7 @@ export function CartonAddPopover({
                       key={t}
                       type="button"
                       onClick={() => setTab(t)}
-                      className={`ds-raw-button flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-mini font-bold uppercase tracking-wider transition-colors ${
+                      className={`ds-raw-button flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-role-micro font-bold uppercase tracking-wider transition-colors ${
                         active
                           ? 'bg-surface-inverse text-white'
                           : 'text-text-soft hover:bg-surface-sunken hover:text-text-default'

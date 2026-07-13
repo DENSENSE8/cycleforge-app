@@ -42,17 +42,17 @@ function LineCard({ line: l, events }: { line: Line; events: AuditEvent[] }) {
       <button onClick={() => setOpen((v) => !v)} className="ds-raw-button flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-surface-canvas/60">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-caption uppercase tracking-wider text-text-faint">Line #{l.id}</span>
-            {l.sku && <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-caption font-mono text-text-muted">{l.sku}</code>}
+            <span className="text-role-caption uppercase tracking-wider text-text-faint">Line #{l.id}</span>
+            {l.sku && <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption font-mono text-text-muted">{l.sku}</code>}
             <span className="text-sm font-medium text-text-default truncate">{l.item_name ?? '—'}</span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-soft">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-role-caption text-text-soft">
             <span className={complete ? 'font-medium text-emerald-700' : ''}>{received} / {expected}</span>
             <span>·</span>
             <WorkflowBadge status={l.workflow_status} />
             <QABadge status={l.qa_status} />
             <DispositionBadge code={l.disposition_code} />
-            {l.condition_grade && <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-micro font-medium text-text-muted">{l.condition_grade}</span>}
+            {l.condition_grade && <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-medium text-text-muted">{l.condition_grade}</span>}
             {l.assigned_tech_name && (
               <span className="inline-flex items-center gap-1">
                 <User className="h-3 w-3" />
@@ -79,14 +79,14 @@ function LineCard({ line: l, events }: { line: Line; events: AuditEvent[] }) {
 
           {l.serials.length > 0 && (
             <div className="mt-3">
-              <div className="text-caption uppercase tracking-wider text-text-faint">Serials ({l.serials.length})</div>
+              <div className="text-role-caption uppercase tracking-wider text-text-faint">Serials ({l.serials.length})</div>
               <ul className="mt-1 divide-y divide-border-hairline rounded-md border border-border-hairline bg-surface-canvas/40">
                 {l.serials.map((s) => (
                   <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs">
                     <code className="font-mono text-text-default">{s.serial_number}</code>
                     <div className="flex flex-wrap items-center gap-2 text-text-soft">
-                      {s.current_status && <span className="rounded-full bg-surface-card px-1.5 py-0.5 text-micro ring-1 ring-border-soft">{s.current_status}</span>}
-                      {s.current_location && <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-micro text-violet-800 ring-1 ring-violet-100">{s.current_location}</span>}
+                      {s.current_status && <span className="rounded-full bg-surface-card px-1.5 py-0.5 text-role-micro ring-1 ring-border-soft">{s.current_status}</span>}
+                      {s.current_location && <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-role-micro text-violet-800 ring-1 ring-violet-100">{s.current_location}</span>}
                       {s.received_at && (
                         <HoverTooltip label={s.received_at} asChild>
                           <span>
@@ -103,7 +103,7 @@ function LineCard({ line: l, events }: { line: Line; events: AuditEvent[] }) {
           )}
 
           <div className="mt-3">
-            <div className="text-caption uppercase tracking-wider text-text-faint">Events ({events.length})</div>
+            <div className="text-role-caption uppercase tracking-wider text-text-faint">Events ({events.length})</div>
             <div className="mt-1 space-y-2">
               {events.length === 0 ? (
                 <div className="rounded-md bg-surface-canvas px-3 py-2 text-xs text-text-soft">No line-level events recorded yet.</div>

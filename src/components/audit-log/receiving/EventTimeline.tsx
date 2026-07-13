@@ -31,8 +31,8 @@ export function EventCard({ event: ev }: { event: AuditEvent }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span className="text-sm font-medium text-text-default">{meta.label}</span>
-              {ev.sku && <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-caption font-mono text-text-muted">{ev.sku}</code>}
-              {ev.station && <span className="text-caption uppercase tracking-wide text-text-faint">{ev.station}</span>}
+              {ev.sku && <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption font-mono text-text-muted">{ev.sku}</code>}
+              {ev.station && <span className="text-role-caption uppercase tracking-wide text-text-faint">{ev.station}</span>}
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-text-soft">
               <HoverTooltip label={ev.occurred_at} asChild>
@@ -100,10 +100,10 @@ function RawDetail({ detail }: { detail: Record<string, unknown> }) {
   const [open, setOpen] = useState(false);
   return (
     <details className="mt-2" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-      <summary className="cursor-pointer select-none text-caption text-text-faint hover:text-text-muted">
+      <summary className="cursor-pointer select-none text-role-caption text-text-faint hover:text-text-muted">
         {open ? 'hide raw payload' : 'show raw payload'}
       </summary>
-      <pre className="mt-1 overflow-x-auto rounded bg-surface-canvas px-2 py-1.5 text-caption leading-snug text-text-muted">
+      <pre className="mt-1 overflow-x-auto rounded bg-surface-canvas px-2 py-1.5 text-role-caption leading-snug text-text-muted">
         {JSON.stringify(detail, null, 2)}
       </pre>
     </details>

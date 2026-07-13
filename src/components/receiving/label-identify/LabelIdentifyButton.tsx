@@ -93,7 +93,7 @@ export function LabelIdentifyButton({
           ))}
           {rawText && (
             <HoverTooltip label="Raw OCR text" asChild>
-              <div className="px-1 pt-1 text-caption text-text-faint">
+              <div className="px-1 pt-1 text-role-caption text-text-faint">
                 read: “{rawText.slice(0, 80)}”
               </div>
             </HoverTooltip>

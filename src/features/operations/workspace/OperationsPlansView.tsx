@@ -55,14 +55,14 @@ function TaskRowItem({ task }: { task: TaskRow }) {
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            'truncate text-caption font-bold',
+            'truncate text-role-caption font-bold',
             canceled ? 'text-text-faint line-through' : done ? 'text-text-muted' : 'text-text-default',
           )}
         >
           {task.title}
         </p>
         {(task.notes || task.assigneeName || task.completedAt) && (
-          <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+          <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
             {[
               task.assigneeName,
               task.completedAt ? `done ${new Date(task.completedAt).toLocaleDateString()}` : null,
@@ -82,19 +82,19 @@ function PhaseSection({ phase }: { phase: PhaseWithTasks }) {
   return (
     <section className="space-y-2">
       <div className="flex items-center gap-2 border-t border-border-hairline pt-3">
-        <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">{phase.title}</p>
-        <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+        <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">{phase.title}</p>
+        <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
           {phase.station}
         </span>
         <ProgressBar percent={pct} className="w-24" />
-        <span className="text-mini font-bold tabular-nums text-text-soft">{Math.round(pct)}%</span>
+        <span className="text-role-micro font-bold tabular-nums text-text-soft">{Math.round(pct)}%</span>
       </div>
       <ul className="divide-y divide-border-hairline">
         {phase.tasks.map((t) => (
           <TaskRowItem key={t.id} task={t} />
         ))}
         {phase.tasks.length === 0 && (
-          <li className="py-3 text-caption text-text-faint">No tasks in this phase yet.</li>
+          <li className="py-3 text-role-caption text-text-faint">No tasks in this phase yet.</li>
         )}
       </ul>
     </section>
@@ -115,7 +115,7 @@ function ViewToggle({
         type="button"
         onClick={() => onChange(false)}
         className={cn(
-          'rounded px-2 py-1 text-micro font-black uppercase tracking-widest transition-colors',
+          'rounded px-2 py-1 text-role-micro uppercase tracking-widest transition-colors',
           !isLive ? 'bg-surface-card text-text-default shadow-sm' : 'text-text-muted hover:text-text-default',
         )}
       >
@@ -126,7 +126,7 @@ function ViewToggle({
         type="button"
         onClick={() => onChange(true)}
         className={cn(
-          'rounded px-2 py-1 text-micro font-black uppercase tracking-widest transition-colors',
+          'rounded px-2 py-1 text-role-micro uppercase tracking-widest transition-colors',
           isLive ? 'bg-surface-card text-text-default shadow-sm' : 'text-text-muted hover:text-text-default',
         )}
       >
@@ -193,21 +193,21 @@ export function OperationsPlansView() {
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken">
                 <ClipboardList className="h-6 w-6 text-text-faint" />
               </span>
-              <p className="mt-4 text-caption font-bold text-text-default">Select a plan from the sidebar</p>
-              <p className="mx-auto mt-1 max-w-sm text-caption text-text-muted">
+              <p className="mt-4 text-role-caption font-bold text-text-default">Select a plan from the sidebar</p>
+              <p className="mx-auto mt-1 max-w-sm text-role-caption text-text-muted">
                 Plans track phased work across stations. The agentic-loop master plan syncs here automatically —
                 open it and switch to Live for the shared MDX and plan agent.
               </p>
             </motion.div>
           ) : isLoading ? (
             <motion.div key={`loading-${planId}`} {...presence} transition={transition}>
-              <p className="flex items-center gap-2 pt-16 text-caption text-text-muted">
+              <p className="flex items-center gap-2 pt-16 text-role-caption text-text-muted">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading plan…
               </p>
             </motion.div>
           ) : isError || !data ? (
             <motion.div key={`error-${planId}`} {...presence} transition={transition}>
-              <div className="mt-16 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-700">
+              <div className="mt-16 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
                 {error instanceof Error ? error.message : 'Could not load this plan.'}
               </div>
             </motion.div>
@@ -226,12 +226,12 @@ export function OperationsPlansView() {
                   <div className="min-w-0">
                     <h2 className="truncate text-base font-semibold text-text-default">{data.plan.title}</h2>
                     {data.plan.description && !showLive && (
-                      <p className="mt-1 text-caption leading-relaxed text-text-muted">{data.plan.description}</p>
+                      <p className="mt-1 text-role-caption leading-relaxed text-text-muted">{data.plan.description}</p>
                     )}
                   </div>
                   <span
                     className={cn(
-                      'shrink-0 rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset',
+                      'shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
                       PLAN_STATUS_TONE[data.plan.status] ?? PLAN_STATUS_TONE.draft,
                     )}
                   >
@@ -242,7 +242,7 @@ export function OperationsPlansView() {
                 {!showLive && (
                   <div className="flex items-center gap-3">
                     <ProgressBar percent={data.plan.progress?.percentComplete ?? 0} className="flex-1" />
-                    <span className="text-caption font-bold tabular-nums text-text-muted">
+                    <span className="text-role-caption font-bold tabular-nums text-text-muted">
                       {data.plan.progress ? `${data.plan.progress.doneTasks}/${data.plan.progress.totalTasks}` : '—'}
                     </span>
                   </div>
@@ -251,7 +251,7 @@ export function OperationsPlansView() {
                 {isMasterPlan && (
                   <div className="flex flex-wrap items-center gap-3">
                     <ViewToggle isLive={isLiveView} onChange={setLiveView} />
-                    <p className="text-mini text-text-faint">
+                    <p className="text-role-micro text-text-faint">
                       {isLiveView
                         ? 'Live MDX + plan agent (Monitor). Progress table stays on the other tab.'
                         : 'Neon progress table. Switch to Live for the shared master plan.'}
@@ -270,7 +270,7 @@ export function OperationsPlansView() {
                     <PhaseSection key={phase.id} phase={phase} />
                   ))}
                   {data.phases.length === 0 && (
-                    <p className="border-t border-border-hairline pt-4 text-caption text-text-faint">
+                    <p className="border-t border-border-hairline pt-4 text-role-caption text-text-faint">
                       No phases yet — this plan is an empty shell.
                       {isMasterPlan
                         ? ' Open Live (or save tickets in master-plan.mdx) to sync phases from the agentic loop.'

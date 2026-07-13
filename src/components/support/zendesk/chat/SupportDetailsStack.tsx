@@ -17,8 +17,8 @@ type Tab = 'details' | 'tags';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">{label}</p>
-      <div className="text-label text-text-muted">{children}</div>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</p>
+      <div className="text-role-caption text-text-muted">{children}</div>
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function SupportDetailsStack({ ticket }: { ticket: ZendeskTicket }) {
         >
           <Layers className="h-3.5 w-3.5" />
           {tagCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-surface-inverse-raised px-1 text-mini font-black text-white">
+            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-surface-inverse-raised px-1 text-role-micro text-white">
               {tagCount}
             </span>
           ) : null}
@@ -76,7 +76,7 @@ export function SupportDetailsStack({ ticket }: { ticket: ZendeskTicket }) {
                 type="button"
                 onClick={() => setTab(t)}
                 className={cn(
-                  'ds-raw-button flex-1 px-3 py-2 text-micro font-black uppercase tracking-widest transition',
+                  'ds-raw-button flex-1 px-3 py-2 text-role-micro uppercase tracking-widest transition',
                   tab === t
                     ? 'border-b-2 border-blue-500 text-blue-700'
                     : 'text-text-faint hover:text-text-muted',
@@ -97,13 +97,13 @@ export function SupportDetailsStack({ ticket }: { ticket: ZendeskTicket }) {
                 <Field label="Ticket">#{ticket.id}</Field>
                 <div className="flex gap-6">
                   <Field label="Status">
-                    <span className={cn('inline-block rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest', sb.className)}>
+                    <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
                       {sb.label}
                     </span>
                   </Field>
                   <Field label="Priority">
                     {pb ? (
-                      <span className={cn('inline-block rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest', pb.className)}>
+                      <span className={cn('inline-block rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', pb.className)}>
                         {pb.label}
                       </span>
                     ) : (
@@ -122,7 +122,7 @@ export function SupportDetailsStack({ ticket }: { ticket: ZendeskTicket }) {
                   placeholder="Add a tag…"
                   onChange={(tags) => update.mutate({ id: ticket.id, patch: { tags } })}
                 />
-                <p className="text-micro text-text-faint">Tags sync to Zendesk.</p>
+                <p className="text-role-micro text-text-faint">Tags sync to Zendesk.</p>
               </div>
             )}
           </div>

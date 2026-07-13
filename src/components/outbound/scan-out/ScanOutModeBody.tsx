@@ -62,7 +62,7 @@ export function ScanOutModeBody() {
       headerBelow={
         <div className={`${SIDEBAR_GUTTER} space-y-2 pb-1`}>
           <OutboundDockStatusLegend />
-          <p className="text-eyebrow font-bold uppercase tracking-widest text-emerald-600">
+          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-emerald-600">
             {queueCount} package{queueCount === 1 ? '' : 's'} ready to scan out
           </p>
         </div>

@@ -26,7 +26,7 @@ export function RecentSection({ onNavigate }: RecentSectionProps) {
 
   return (
     <div className="px-2 pb-2 pt-1">
-      <p className="px-2 pb-0.5 text-eyebrow font-black uppercase tracking-widest text-text-faint">Recent</p>
+      <p className="px-2 pb-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">Recent</p>
       <div className="space-y-0.5">
         {visible.map((r) => {
           const label = resolveQuickAccessLabel(r.href);

@@ -168,7 +168,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-6 text-caption text-text-faint">
+      <div className="flex items-center justify-center gap-2 py-6 text-role-caption text-text-faint">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading checklist…
       </div>
     );
@@ -176,7 +176,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
 
   if (isError) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption font-medium text-rose-600">
+      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-medium text-rose-600">
         Couldn&apos;t load the checklist.
       </div>
     );
@@ -185,13 +185,13 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-1">
-        <p className="text-micro font-black uppercase tracking-widest text-text-soft">
+        <p className="text-role-micro uppercase tracking-widest text-text-soft">
           Receiving checklist
         </p>
         <div className="flex items-center gap-2">
           {items.length > 0 ? (
             <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-micro font-black uppercase tracking-wider tabular-nums ${
+              className={`shrink-0 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wider tabular-nums ${
                 allDone ? 'bg-emerald-50 text-emerald-700' : 'bg-surface-sunken text-text-soft'
               }`}
             >
@@ -215,7 +215,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
 
       {items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
-          <p className="text-caption text-text-soft">No checklist steps yet.</p>
+          <p className="text-role-caption text-text-soft">No checklist steps yet.</p>
           <Button
             variant="primary"
             size="sm"
@@ -256,11 +256,11 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
                   >
                     <Check className="h-3.5 w-3.5" />
                   </span>
-                  <span className="shrink-0 w-4 text-center text-micro font-black text-text-faint tabular-nums">
+                  <span className="shrink-0 w-4 text-center text-role-micro text-text-faint tabular-nums">
                     {idx + 1}
                   </span>
                   <span
-                    className={`flex-1 min-w-0 text-caption font-bold ${
+                    className={`flex-1 min-w-0 text-role-caption font-bold ${
                       isDone ? 'text-emerald-800 line-through decoration-emerald-300' : 'text-text-default'
                     }`}
                   >
@@ -277,7 +277,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
                       if (e.key === 'Enter') void renameStep(it.id, editLabel);
                       if (e.key === 'Escape') setEditingId(null);
                     }}
-                    className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-caption font-bold text-text-default"
+                    className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption font-bold text-text-default"
                   />
                   <Button
                     variant="brand"
@@ -297,10 +297,10 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
                 </div>
               ) : (
                 <>
-                  <span className="shrink-0 w-4 text-center text-micro font-black text-text-faint tabular-nums">
+                  <span className="shrink-0 w-4 text-center text-role-micro text-text-faint tabular-nums">
                     {idx + 1}
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-caption font-bold text-text-default">
+                  <span className="flex-1 min-w-0 truncate text-role-caption font-bold text-text-default">
                     {it.step_label}
                   </span>
                   <HoverTooltip label="Rename step" asChild>
@@ -340,7 +340,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
               if (e.key === 'Enter') void addStep(newLabel);
             }}
             placeholder="Add a checklist step…"
-            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-caption font-bold text-text-default placeholder:text-text-faint"
+            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
           />
           <Button
             variant="primary"
@@ -357,7 +357,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
       ) : null}
 
       {items.length > 0 ? (
-        <p className="px-1 pt-1 text-micro font-semibold text-text-faint">
+        <p className="px-1 pt-1 text-role-micro font-semibold text-text-faint">
           Global checklist — per-SKU checklists coming soon.
         </p>
       ) : null}

@@ -35,7 +35,7 @@ export function TaskList({
   return (
     <>
       {items.length === 0 && !adding && (
-        <p className="px-2 py-3 text-center text-caption text-text-faint">{emptyHint}</p>
+        <p className="px-2 py-3 text-center text-role-caption text-text-faint">{emptyHint}</p>
       )}
       {items.map((t) => (
         <div key={t.id} className="group flex items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-surface-hover">
@@ -61,7 +61,7 @@ export function TaskList({
           <button
             type="button"
             onClick={() => onToggle(t.id)}
-            className={cn('flex-1 text-left text-label font-semibold transition-colors', t.done ? 'text-text-faint line-through' : 'text-text-default')}
+            className={cn('flex-1 text-left text-role-caption font-semibold transition-colors', t.done ? 'text-text-faint line-through' : 'text-text-default')}
           >
             {t.text}
           </button>
@@ -85,9 +85,9 @@ export function TaskList({
               if (e.key === 'Escape') onCancelAdd();
             }}
             placeholder={placeholder}
-            className="w-full rounded-lg border border-border-soft px-2.5 py-1.5 text-label text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+            className="w-full rounded-lg border border-border-soft px-2.5 py-1.5 text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
           />
-          <Button variant="primary" size="sm" onClick={onAdd} className="shrink-0 text-caption font-bold">
+          <Button variant="primary" size="sm" onClick={onAdd} className="shrink-0 text-role-caption font-bold">
             Add
           </Button>
           <IconButton
@@ -102,7 +102,7 @@ export function TaskList({
           variant="ghost"
           icon={<Plus className="h-3.5 w-3.5" />}
           onClick={onStartAdd}
-          className="mt-0.5 w-full justify-start gap-2 rounded-xl px-2 py-2 text-caption font-bold text-blue-600 hover:bg-surface-hover"
+          className="mt-0.5 w-full justify-start gap-2 rounded-xl px-2 py-2 text-role-caption font-bold text-blue-600 hover:bg-surface-hover"
         >
           {addLabel}
         </Button>

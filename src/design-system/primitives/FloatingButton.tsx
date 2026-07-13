@@ -187,7 +187,7 @@ export function FloatingButton({
                           e.stopPropagation();
                           item.onClick();
                         }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-role-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         {item.icon}
                         {item.label}

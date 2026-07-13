@@ -30,7 +30,7 @@ const VIEWER_SHORTCUTS: ShortcutRow[] = [
 
 function KeyCap({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-border-default bg-surface-canvas px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-text-muted">
+    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-border-default bg-surface-canvas px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted">
       {children}
     </kbd>
   );
@@ -39,11 +39,11 @@ function KeyCap({ children }: { children: string }) {
 function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
   return (
     <div className="space-y-1">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
       <ul className="divide-y divide-border-hairline">
         {rows.map((row) => (
           <li key={`${title}-${row.label}`} className="flex items-center justify-between gap-4 py-1.5">
-            <span className="truncate text-caption text-text-muted">{row.label}</span>
+            <span className="truncate text-role-caption text-text-muted">{row.label}</span>
             <span className="flex shrink-0 items-center gap-1">
               {row.keys.map((k, i) => (
                 <KeyCap key={i}>{k}</KeyCap>
@@ -85,7 +85,7 @@ export function MediaLibraryShortcutsModal({ open, onClose }: { open: boolean; o
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-caption font-bold text-text-default">Keyboard shortcuts</h2>
+          <h2 className="text-role-caption font-bold text-text-default">Keyboard shortcuts</h2>
           <IconButton
             onClick={onClose}
             ariaLabel="Close shortcuts"

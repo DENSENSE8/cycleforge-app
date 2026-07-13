@@ -216,12 +216,12 @@ export function AvailabilityRulesSection({
                       variant="ghost"
                       disabled={!member.active}
                       onClick={() => openAvailabilityEditorForDay(member.id, day.dayOfWeek)}
-                      className={`${tableHeader} mt-1 h-auto rounded-none px-0 text-micro hover:bg-transparent ${member.active ? 'text-text-muted hover:text-text-default' : 'text-text-faint'}`}
+                      className={`${tableHeader} mt-1 h-auto rounded-none px-0 text-role-micro hover:bg-transparent ${member.active ? 'text-text-muted hover:text-text-default' : 'text-text-faint'}`}
                     >
                       Edit
                     </Button>
                     {bucket.extraRulesCount > 0 && (
-                      <div className="mt-1 text-micro font-bold text-amber-700">
+                      <div className="mt-1 text-role-micro font-bold text-amber-700">
                         +{bucket.extraRulesCount} window
                       </div>
                     )}

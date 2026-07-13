@@ -137,14 +137,14 @@ export function TriageWorkspace({ selectedId }: TriageWorkspaceProps) {
                 <div className="flex items-center gap-3">
                     <span
                         className={cn(
-                            'rounded-full px-3 py-1 text-caption font-bold uppercase tracking-wider',
+                            'rounded-full px-3 py-1 text-role-caption font-bold uppercase tracking-wider',
                             triageStatusBadgeClass(data.status),
                         )}
                     >
                         {data.status}
                     </span>
                     <div className="mx-1 h-4 w-px bg-surface-strong" />
-                    <div className="flex items-center gap-2 text-caption font-bold text-text-soft">
+                    <div className="flex items-center gap-2 text-role-caption font-bold text-text-soft">
                         <Clock className="h-3.5 w-3.5 text-text-faint" />
                         Opened {formatWhen(data.created_at)}
                     </div>
@@ -266,7 +266,7 @@ function Field({
 }) {
     return (
         <div className="space-y-1">
-            <p className="text-micro font-black uppercase tracking-widest text-text-faint">{label}</p>
+            <p className="text-role-micro uppercase tracking-widest text-text-faint">{label}</p>
             <div className="flex items-center gap-2">
                 {icon}
                 <span className="text-sm font-black text-text-default">{children}</span>

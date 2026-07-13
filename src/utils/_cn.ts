@@ -13,8 +13,23 @@ import { extendTailwindMerge } from 'tailwind-merge';
  * the names in the `font-size` group fixes the conflict resolution so the
  * tokens are safe to use anywhere `cn()` runs (which is why they can replace
  * the hand-rolled `text-[10px]` arbitrary values — see the typography guard).
+ *
+ * `role-*` are the CF Type role-bundled scale (search-and-dense-ui-refactor
+ * plan §2.3): `text-role-body`/`-data`/`-eyebrow`/… bundle size + line-height +
+ * tracking + weight. They are font-size utilities too, so they MUST be listed
+ * here or twMerge misgroups `text-role-body` as a color and drops it.
  */
-const CUSTOM_FONT_SIZES = ['mini', 'eyebrow', 'micro', 'caption', 'label'] as const;
+const CUSTOM_FONT_SIZES = [
+  // Legacy px tokens (mini/eyebrow/micro/caption/label) retired 2026-07-13 (T4)
+  // — migrated onto the CF Type roles below.
+  'role-display',
+  'role-title',
+  'role-body',
+  'role-data',
+  'role-caption',
+  'role-eyebrow',
+  'role-micro',
+] as const;
 
 const twMerge = extendTailwindMerge({
   extend: {

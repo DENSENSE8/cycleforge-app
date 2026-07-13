@@ -54,7 +54,7 @@ export function ResultRow({ item, showOrderMeta, isSubmitting, disabled, onSelec
               loading="lazy"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-micro text-text-faint">
+            <div className="flex h-full w-full items-center justify-center text-role-micro text-text-faint">
               —
             </div>
           )}
@@ -66,11 +66,11 @@ export function ResultRow({ item, showOrderMeta, isSubmitting, disabled, onSelec
             {item.product_title}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-1">
-            <span className="font-mono text-micro tracking-wide text-text-soft">
+            <span className="font-mono text-role-micro tracking-wide text-text-soft">
               {displaySku}
             </span>
             {showOrderMeta && item.order_id ? (
-              <span className="text-micro font-semibold normal-case text-sky-600">
+              <span className="text-role-micro font-semibold normal-case text-sky-600">
                 Order #{item.order_id}
               </span>
             ) : null}
@@ -87,7 +87,7 @@ export function ResultRow({ item, showOrderMeta, isSubmitting, disabled, onSelec
         </div>
 
         {isSubmitting && (
-          <span className="text-micro font-bold uppercase tracking-wider text-blue-600">
+          <span className="text-role-micro font-bold uppercase tracking-wider text-blue-600">
             Adding…
           </span>
         )}

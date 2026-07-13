@@ -219,11 +219,11 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
             Support ticket {previewLoading ? '(updating…)' : '(editable)'}
           </p>
           {filedTicket ? (
-            <p className="mt-0.5 text-micro font-semibold text-emerald-600">Filed {filedTicket.number}</p>
+            <p className="mt-0.5 text-role-micro font-semibold text-emerald-600">Filed {filedTicket.number}</p>
           ) : null}
         </div>
         {edited ? (
@@ -240,7 +240,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
 
       <label
         htmlFor="claim-subject"
-        className="mb-1 block text-eyebrow font-black uppercase tracking-[0.14em] text-text-faint"
+        className="mb-1 block text-role-eyebrow uppercase tracking-[0.14em] text-text-faint"
       >
         Subject
       </label>
@@ -250,13 +250,13 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
         value={subject}
         onChange={(e) => onSubjectChange(e.target.value)}
         placeholder={previewLoading ? 'Generating…' : 'Subject'}
-        className="mb-3 block h-10 w-full rounded-lg border border-border-default bg-surface-card px-3 text-label font-medium text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
+        className="mb-3 block h-10 w-full rounded-lg border border-border-default bg-surface-card px-3 text-role-caption font-medium text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
       />
 
       <div>
         <label
           htmlFor="claim-body"
-          className="mb-1 block text-eyebrow font-black uppercase tracking-[0.14em] text-text-faint"
+          className="mb-1 block text-role-eyebrow uppercase tracking-[0.14em] text-text-faint"
         >
           Body
         </label>
@@ -269,7 +269,7 @@ export function ClaimTemplateEditor({ template, filedTicket, row }: Props) {
             onChange={(e) => onDescriptionChange(e.target.value)}
             rows={8}
             placeholder={previewLoading ? 'Generating…' : 'Ticket body'}
-            className={`block min-h-[14rem] w-full resize-y rounded-lg border border-border-default bg-surface-card px-4 text-label font-medium leading-5 tracking-[0.01em] text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20 ${NOTE_COMPOSER_OVERLAY_PAD} ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS}`}
+            className={`block min-h-[14rem] w-full resize-y rounded-lg border border-border-default bg-surface-card px-4 text-role-caption font-medium leading-5 tracking-[0.01em] text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20 ${NOTE_COMPOSER_OVERLAY_PAD} ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS}`}
           />
 
           <NoteComposerInsertRail actions={insertActions} />

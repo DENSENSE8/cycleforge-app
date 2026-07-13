@@ -23,7 +23,7 @@ function MobilePageError(error: Error, reset: () => void) {
         <p className="text-sm font-black uppercase tracking-[0.18em] text-rose-700">
           This screen hit an error
         </p>
-        <p className="mt-2 break-words text-caption font-semibold text-rose-600">
+        <p className="mt-2 break-words text-role-caption font-semibold text-rose-600">
           {error.message || 'Something went wrong rendering this page.'}
         </p>
         <Button variant="danger" size="lg" onClick={reset} className="mt-4">

@@ -266,12 +266,12 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
     <div id={def.key} className="flex h-full scroll-mt-6 flex-col rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[14px] font-black ${def.badge}`}>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-role-body font-black ${def.badge}`}>
           {monogram(def.label)}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-[14px] font-semibold text-text-default">{def.label}</span>
+            <span className="truncate text-role-body font-semibold text-text-default">{def.label}</span>
             {def.docsUrl && (
               <HoverTooltip label="Provider docs" asChild>
                 <a href={def.docsUrl} target="_blank" rel="noreferrer" aria-label="Provider docs" className="text-text-faint hover:text-text-soft">
@@ -280,7 +280,7 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
               </HoverTooltip>
             )}
           </div>
-          <p className="mt-0.5 text-label leading-snug text-text-soft">{def.description}</p>
+          <p className="mt-0.5 text-role-caption leading-snug text-text-soft">{def.description}</p>
         </div>
         <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ${pill.bg} px-2 py-1 text-[10.5px] font-medium ${pill.text}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${pill.dot}`} />
@@ -294,11 +294,11 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
           {state.accounts.map((acct, i) => (
             <div key={acct.id ?? `${acct.label}-${i}`} className="flex items-center gap-2">
               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${ACCOUNT_DOT[acct.status]}`} />
-              <span className="min-w-0 flex-1 truncate text-label font-medium text-text-default">{acct.label}</span>
+              <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
               {def.connect === 'ebay' && acct.role === 'buyer' && (
                 <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
               )}
-              {acct.detail && <span className="shrink-0 text-caption text-text-faint">{acct.detail}</span>}
+              {acct.detail && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
               {canManage && def.connect === 'amazon' && acct.id != null && (
                 <HoverTooltip label="Disconnect account" asChild>
                   <IconButton
@@ -339,13 +339,13 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
       )}
 
       {state.displayLabel && state.accounts.length === 0 && (
-        <div className="mt-2 text-label text-text-muted">{state.displayLabel}</div>
+        <div className="mt-2 text-role-caption text-text-muted">{state.displayLabel}</div>
       )}
       {state.lastError && (
-        <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-caption text-red-700">{state.lastError}</div>
+        <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-role-caption text-red-700">{state.lastError}</div>
       )}
       {state.lastUsedAt && (
-        <div className="mt-2 text-caption text-text-faint">
+        <div className="mt-2 text-role-caption text-text-faint">
           Last used {formatDistanceToNow(new Date(state.lastUsedAt), { addSuffix: true })}
         </div>
       )}
@@ -413,15 +413,15 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
           {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
           <button type="button" aria-label="Close" onClick={() => setVaultOpen(false)} className="absolute inset-0 bg-scrim/40 backdrop-blur-sm" />
           <div className="relative w-full max-w-lg rounded-2xl border border-border-soft bg-surface-card p-5 shadow-2xl">
-            <h2 className="text-[16px] font-semibold text-text-default">{def.label} credentials</h2>
-            <p className="mt-1 text-label text-text-soft">Paste the provider payload JSON. Stored encrypted in the workspace vault.</p>
+            <h2 className="text-base font-semibold text-text-default">{def.label} credentials</h2>
+            <p className="mt-1 text-role-caption text-text-soft">Paste the provider payload JSON. Stored encrypted in the workspace vault.</p>
             <textarea
-              className="mt-3 block h-48 w-full rounded-xl border border-border-soft bg-surface-card p-3 font-mono text-label text-text-default shadow-inner focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+              className="mt-3 block h-48 w-full rounded-xl border border-border-soft bg-surface-card p-3 font-mono text-role-caption text-text-default shadow-inner focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
               value={payload}
               onChange={(e) => setPayload(e.target.value)}
               spellCheck={false}
             />
-            {formError && <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-caption font-medium text-red-700">{formError}</div>}
+            {formError && <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{formError}</div>}
             <div className="mt-4 flex items-center justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => setVaultOpen(false)}>Cancel</Button>
               <Button variant="primary" size="sm" loading={busy} onClick={vaultSave}>Save</Button>

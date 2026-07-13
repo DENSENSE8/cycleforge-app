@@ -76,7 +76,7 @@ export function BootSplash({ label = 'Loading your workspace' }: { label?: strin
           />
         </div>
 
-        <p className="text-caption font-bold uppercase tracking-widest text-text-faint">
+        <p className="text-role-caption font-bold uppercase tracking-widest text-text-faint">
           {label}…
         </p>
       </motion.div>

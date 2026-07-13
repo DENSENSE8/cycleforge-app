@@ -26,7 +26,7 @@ function RefChip({ value, kind }: { value: unknown; kind: FieldKind | undefined 
           ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
           : 'bg-surface-canvas text-text-muted ring-border-soft';
   return (
-    <span className={`inline-flex max-w-[9rem] items-center truncate rounded px-1 py-px font-mono text-mini font-bold ring-1 ring-inset ${tone}`}>
+    <span className={`inline-flex max-w-[9rem] items-center truncate rounded px-1 py-px font-mono text-role-micro font-bold ring-1 ring-inset ${tone}`}>
       {String(value)}
     </span>
   );
@@ -64,20 +64,20 @@ export function RailFeedBlock({ rows, isLoading, mapping, fieldKinds, display }:
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-4 text-caption font-semibold text-text-faint">
+      <div className="flex items-center justify-center gap-2 py-4 text-role-caption font-semibold text-text-faint">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
       </div>
     );
   }
 
   if (sorted.length === 0) {
-    return <p className="px-2.5 py-3 text-caption font-semibold text-text-faint">{emptyText}</p>;
+    return <p className="px-2.5 py-3 text-role-caption font-semibold text-text-faint">{emptyText}</p>;
   }
 
   return (
     <div>
       {showCount ? (
-        <p className="px-2.5 pb-1 pt-2 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+        <p className="px-2.5 pb-1 pt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
           {sorted.length} in queue
         </p>
       ) : null}
@@ -96,16 +96,16 @@ export function RailFeedBlock({ rows, isLoading, mapping, fieldKinds, display }:
                 }`}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-label font-bold text-text-default">
+                  <p className="truncate text-role-caption font-bold text-text-default">
                     {String((titleKey && row[titleKey]) ?? '—')}
                   </p>
                   <div className="mt-0.5 flex items-center gap-1.5">
                     {refKey ? <RefChip value={row[refKey]} kind={refKey ? fieldKinds[refKey] : undefined} /> : null}
                     {metaKey && typeof row[metaKey] === 'string' && fieldKinds[metaKey] !== 'timestamp' ? (
-                      <span className="truncate text-mini font-semibold text-text-faint">{String(row[metaKey])}</span>
+                      <span className="truncate text-role-micro font-semibold text-text-faint">{String(row[metaKey])}</span>
                     ) : null}
                     {date ? (
-                      <span className="ml-auto shrink-0 text-mini font-semibold tabular-nums text-text-faint">{date}</span>
+                      <span className="ml-auto shrink-0 text-role-micro font-semibold tabular-nums text-text-faint">{date}</span>
                     ) : null}
                   </div>
                 </div>

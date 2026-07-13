@@ -33,10 +33,12 @@ export type LedgerValueTone =
   | 'success'
   | 'accent';
 
+// CF Type roles (plan §2.4 — ledger values use the `data` role, tabular). Weight
+// capped at 600 (semibold); the `number`/`id` variants add tabular-nums below.
 const TIER_CLASS: Record<LedgerValueTier, string> = {
-  primary: 'text-base font-semibold',
-  default: 'text-sm font-bold',
-  meta: 'text-caption font-medium',
+  primary: 'text-role-body font-semibold',
+  default: 'text-role-data font-semibold',
+  meta: 'text-role-caption',
 };
 
 const VARIANT_CLASS: Record<LedgerValueVariant, string> = {

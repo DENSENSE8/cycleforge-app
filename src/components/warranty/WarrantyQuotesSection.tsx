@@ -23,8 +23,8 @@ export function WarrantyQuotesSection({ claimId, quotes }: { claimId: number; qu
       {quotes.map((q) => (
         <li key={q.id} className="rounded-lg border border-border-hairline p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-label text-text-muted">{q.quoteNumber}</span>
-            <span className={cn('rounded-full px-2 py-0.5 text-caption font-medium', warrantyQuoteToneClass(q.status))}>
+            <span className="font-mono text-role-caption text-text-muted">{q.quoteNumber}</span>
+            <span className={cn('rounded-full px-2 py-0.5 text-role-caption font-medium', warrantyQuoteToneClass(q.status))}>
               {q.status}
             </span>
           </div>
@@ -32,7 +32,7 @@ export function WarrantyQuotesSection({ claimId, quotes }: { claimId: number; qu
           {q.lineItems.length > 0 && (
             <ul className="mt-1 space-y-0.5">
               {q.lineItems.map((li, i) => (
-                <li key={i} className="flex justify-between text-caption text-text-soft">
+                <li key={i} className="flex justify-between text-role-caption text-text-soft">
                   <span className="truncate">{li.label} × {li.qty}</span>
                   <span className="tabular-nums">${(Number(li.unitPrice) || 0).toFixed(2)}</span>
                 </li>
@@ -60,7 +60,7 @@ export function WarrantyQuotesSection({ claimId, quotes }: { claimId: number; qu
         </li>
       ))}
       {quoteStatus.error && (
-        <li className="text-caption text-text-danger">
+        <li className="text-role-caption text-text-danger">
           {quoteStatus.error instanceof Error ? quoteStatus.error.message : 'Quote update failed.'}
         </li>
       )}

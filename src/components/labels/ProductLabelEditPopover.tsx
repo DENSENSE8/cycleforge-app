@@ -23,7 +23,7 @@ export interface ProductLabelDraft {
 
 const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-label text-text-default outline-none transition-colors focus:border-blue-500';
+  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
 
 /**
  * Custom-print editor for the product/unit (testing + products page) label.
@@ -128,7 +128,7 @@ export function ProductLabelEditPopover({
           variant="ghost"
           size="sm"
           onClick={onClose}
-          className="text-mini font-bold uppercase tracking-wider"
+          className="text-role-micro font-bold uppercase tracking-wider"
         >
           Cancel
         </Button>
@@ -140,7 +140,7 @@ export function ProductLabelEditPopover({
             onApplyAndPrint(draft);
             onClose();
           }}
-          className="text-mini font-bold uppercase tracking-wider"
+          className="text-role-micro font-bold uppercase tracking-wider"
         >
           Save &amp; print
         </Button>

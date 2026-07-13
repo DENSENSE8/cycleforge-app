@@ -48,15 +48,15 @@ export default async function BillingPage() {
     <Shell>
       <PageHeader title="Billing" maxWidth="5xl" />
       <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
-        <p className="text-caption text-text-soft">Workspace: <span className="font-medium text-text-muted">{org.name}</span></p>
+        <p className="text-role-caption text-text-soft">Workspace: <span className="font-medium text-text-muted">{org.name}</span></p>
 
         <Card>
           <div className="flex items-start justify-between gap-6">
             <div>
-              <div className="text-caption font-medium uppercase tracking-[0.12em] text-text-soft">Current plan</div>
-              <div className="mt-1 text-[22px] font-semibold text-text-default">{PLAN_LABELS[org.plan].label}</div>
+              <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Current plan</div>
+              <div className="mt-1 text-2xl font-semibold text-text-default">{PLAN_LABELS[org.plan].label}</div>
               <p className="mt-1 text-[12.5px] text-text-soft">{PLAN_LABELS[org.plan].tagline}</p>
-              <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-1.5 text-label">
+              <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-1.5 text-role-caption">
                 <dt className="text-text-soft">Status</dt>
                 <dd className="font-medium text-text-default">{sub?.status ?? org.status}</dd>
                 <dt className="text-text-soft">Trial ends</dt>
@@ -76,7 +76,7 @@ export default async function BillingPage() {
         </Card>
 
         <Card>
-          <div className="text-caption font-medium uppercase tracking-[0.12em] text-text-soft">Entitlements</div>
+          <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Entitlements</div>
           <ul className="mt-3 grid grid-cols-2 gap-y-1.5 text-[12.5px] text-text-muted sm:grid-cols-3">
             {Object.entries(ent.features).map(([key, on]) => (
               <li key={key} className="flex items-center gap-2">
@@ -85,14 +85,14 @@ export default async function BillingPage() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 text-label text-text-soft">
+          <div className="mt-4 text-role-caption text-text-soft">
             Caps: {ent.maxStaff || '∞'} staff · {ent.maxMonthlyOrders || '∞'} orders/mo ·{' '}
             {ent.maxWarehouses || '∞'} warehouses · {ent.maxIntegrations || '∞'} integrations
           </div>
         </Card>
 
         <Card>
-          <div className="text-caption font-medium uppercase tracking-[0.12em] text-text-soft">Change plan</div>
+          <div className="text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">Change plan</div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {UPGRADABLE.map((plan) => {
               const labels = PLAN_LABELS[plan];
@@ -104,18 +104,18 @@ export default async function BillingPage() {
                   key={plan}
                   className={`rounded-2xl border p-4 ${current ? 'border-border-strong bg-surface-canvas' : 'border-border-soft bg-surface-card'}`}
                 >
-                  <div className="text-[14px] font-semibold text-text-default">{labels.label}</div>
-                  <p className="mt-0.5 text-label text-text-soft">{labels.tagline}</p>
+                  <div className="text-role-body font-semibold text-text-default">{labels.label}</div>
+                  <p className="mt-0.5 text-role-caption text-text-soft">{labels.tagline}</p>
                   <div className="mt-3">
                     {current ? (
-                      <span className="inline-flex items-center rounded-full bg-surface-inverse px-3 py-1 text-caption font-medium text-white">Current</span>
+                      <span className="inline-flex items-center rounded-full bg-surface-inverse px-3 py-1 text-role-caption font-medium text-white">Current</span>
                     ) : configured ? (
                       // No wrapping <form>: UpgradeButton POSTs JSON via fetch.
                       // A native form-POST would send urlencoded and 400 the
                       // JSON-only /api/billing/checkout route.
                       <UpgradeButton plan={plan} />
                     ) : (
-                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-caption font-medium text-amber-700">Not configured</span>
+                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-role-caption font-medium text-amber-700">Not configured</span>
                     )}
                   </div>
                 </div>

@@ -54,18 +54,18 @@ export function EventRow({ event }: EventRowProps) {
     return (
         <li className="flex items-start gap-3 border-b border-border-hairline px-4 py-2.5 hover:bg-blue-50/40 sm:px-6">
             <HoverTooltip label={absoluteTime} asChild>
-                <div className="w-16 shrink-0 text-right text-caption text-text-faint">
+                <div className="w-16 shrink-0 text-right text-role-caption text-text-faint">
                     {relativeTime(event.occurred_at)}
                 </div>
             </HoverTooltip>
 
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-micro uppercase tracking-wide text-text-muted">
+                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro uppercase tracking-wide text-text-muted">
                         {event.event_type}
                     </span>
                     {event.prev_status || event.next_status ? (
-                        <span className="flex items-center gap-1 text-caption text-text-soft">
+                        <span className="flex items-center gap-1 text-role-caption text-text-soft">
                             {event.prev_status ? (
                                 <span className={`rounded px-1.5 py-0.5 ${statusBadgeClass(event.prev_status)}`}>
                                     {event.prev_status}
@@ -115,7 +115,7 @@ export function EventRow({ event }: EventRowProps) {
                 ) : null}
             </div>
 
-            <div className="hidden shrink-0 text-right text-caption text-text-faint sm:block">
+            <div className="hidden shrink-0 text-right text-role-caption text-text-faint sm:block">
                 {event.actor_name || (event.station ? `[${event.station}]` : '')}
             </div>
         </li>

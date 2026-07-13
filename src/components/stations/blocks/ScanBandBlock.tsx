@@ -80,7 +80,7 @@ export function ScanBandBlock({ display }: BlockProps) {
         aria-label="Station scan input"
         autoComplete="off"
         spellCheck={false}
-        className="min-w-0 flex-1 bg-transparent text-label font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint focus:outline-none"
       />
     </form>
   );

@@ -36,13 +36,13 @@ function HomeModePlaceholder({
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">{eyebrow}</p>
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">{eyebrow}</p>
           <h2 className="mt-1 text-lg font-bold text-text-strong">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-text-muted">{blurb}</p>
 
           {wires && wires.length > 0 ? (
             <div className="mt-5">
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro uppercase tracking-widest text-text-soft">
                 Wires up next
               </p>
               <ul className="mt-2 space-y-1.5">

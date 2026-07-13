@@ -139,13 +139,13 @@ export function EmailPoLinkTab({
               key={em.id}
               className="rounded-lg border border-border-soft bg-surface-card px-3 py-2"
             >
-              <div className="flex items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+              <div className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 <Mail className="h-3 w-3 shrink-0 text-text-faint" />
                 <span className="truncate">{em.email_from || 'Unknown sender'}</span>
               </div>
               {em.email_subject ? (
                 // ds-allow-title: truncation-only native title on a clipped, non-interactive <p>
-                <p className="mt-0.5 truncate text-caption font-bold text-text-default" title={em.email_subject}>
+                <p className="mt-0.5 truncate text-role-caption font-bold text-text-default" title={em.email_subject}>
                   {em.email_subject}
                 </p>
               ) : null}
@@ -160,7 +160,7 @@ export function EmailPoLinkTab({
                     const isLinking = linkingKey === key;
                     return (
                       <div key={key} className="flex items-center justify-between gap-2">
-                        <span className="truncate font-mono text-caption font-bold text-text-default">
+                        <span className="truncate font-mono text-role-caption font-bold text-text-default">
                           {po}
                         </span>
                         <PairingLinkButton

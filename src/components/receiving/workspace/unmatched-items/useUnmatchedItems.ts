@@ -542,12 +542,35 @@ export function useUnmatchedItems({
     [refreshLines],
   );
 
+  // Lineless carton ("PO ITEMS · 0"): grading the carton's scan condition is a
+  // genuine operator acknowledgement that the box was opened, but there is no
+  // receiving_line to hang the "Unboxed" stamp on. Set the local grade (still
+  // carried into the eventual serial scan) AND set-once stamp the carton's
+  // Unboxed milestone so the details stepper reflects it. Best-effort: a failed
+  // ack must not block re-grading. Set-once server-side, so repeat clicks are
+  // cheap no-ops.
+  const handleCartonConditionChange = useCallback(
+    (next: string) => {
+      setCartonScanCondition(next);
+      onActiveConditionChange?.(next);
+      if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+      void fetch(`/api/receiving/${receivingId}/acknowledge-unbox`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(() => {
+        /* opportunistic milestone stamp — never block grading */
+      });
+    },
+    [receivingId, onActiveConditionChange],
+  );
+
   return {
     lines,
     addOpen, setAddOpen,
     assignedBox, setAssignedBox,
     returnScanBusy,
     cartonScanCondition, setCartonScanCondition,
+    handleCartonConditionChange,
     classification, saveClassification,
     refreshLines,
     cartonUnitIds,

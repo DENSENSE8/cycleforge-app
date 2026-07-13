@@ -204,18 +204,18 @@ function SortableRoleRow({ role, selected, onPick }: SortableRoleRowProps) {
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-text-default">{role.label}</span>
             {role.is_system && (
-              <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-mini font-bold uppercase tracking-wider text-text-soft">
+              <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
                 System
               </span>
             )}
           </div>
-          <div className="truncate text-micro font-medium uppercase tracking-wider text-text-soft">
+          <div className="truncate text-role-micro font-medium uppercase tracking-wider text-text-soft">
             {role.key}
           </div>
         </button>
 
         <HoverTooltip label={`${role.member_count} member${role.member_count === 1 ? '' : 's'}`} asChild>
-          <span className="flex-shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-micro font-semibold tabular-nums text-text-muted">
+          <span className="flex-shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-text-muted">
             {role.member_count}
           </span>
         </HoverTooltip>

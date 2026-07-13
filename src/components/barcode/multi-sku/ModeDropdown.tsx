@@ -44,8 +44,8 @@ export function ModeDropdown({ mode, onChange }: ModeDropdownProps) {
           <CurrentIcon className="h-4 w-4" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="text-caption font-black uppercase tracking-[0.14em] text-text-default">{current.label}</span>
-          <span className="truncate text-micro font-medium text-text-soft">{current.description}</span>
+          <span className="text-role-caption font-black uppercase tracking-[0.14em] text-text-default">{current.label}</span>
+          <span className="truncate text-role-micro font-medium text-text-soft">{current.description}</span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-text-faint transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -71,8 +71,8 @@ export function ModeDropdown({ mode, onChange }: ModeDropdownProps) {
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-caption font-black uppercase tracking-[0.14em] text-text-default">{label}</span>
-                  <span className="truncate text-micro font-medium text-text-soft">{description}</span>
+                  <span className="text-role-caption font-black uppercase tracking-[0.14em] text-text-default">{label}</span>
+                  <span className="truncate text-role-micro font-medium text-text-soft">{description}</span>
                 </span>
               </button>
             </li>

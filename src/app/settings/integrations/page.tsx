@@ -163,16 +163,16 @@ export default async function IntegrationsPage({
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[13px] text-text-soft">
+          <p className="text-role-data text-text-soft">
             Connect this workspace to the marketplaces and services it runs on. Credentials are encrypted at rest in the workspace vault.
           </p>
           <div className="flex items-center gap-2">
             {!limit.unlimited && (
-              <span className={`rounded-full px-2.5 py-1 text-caption font-semibold ${limit.atLimit ? 'bg-amber-100 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
+              <span className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ${limit.atLimit ? 'bg-amber-100 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
                 {limit.used} / {limit.max} integrations{limit.atLimit ? ' · upgrade to add more' : ''}
               </span>
             )}
-            <span className="rounded-full bg-surface-sunken px-2.5 py-1 text-caption font-semibold text-text-muted">
+            <span className="rounded-full bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted">
               {connectedCount} / {PROVIDER_CATALOG.length} connected
             </span>
           </div>
@@ -185,7 +185,7 @@ export default async function IntegrationsPage({
           if (providers.length === 0) return null;
           return (
             <section key={category} className="space-y-3">
-              <h2 className="text-caption font-black uppercase tracking-[0.18em] text-text-faint">{category}</h2>
+              <h2 className="text-role-caption font-black uppercase tracking-[0.18em] text-text-faint">{category}</h2>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {providers.map((def) => {
                   const state = buildState(def);
@@ -205,7 +205,7 @@ export default async function IntegrationsPage({
         })}
 
         <section className="space-y-3">
-          <h2 className="text-caption font-black uppercase tracking-[0.18em] text-text-faint">Import</h2>
+          <h2 className="text-role-caption font-black uppercase tracking-[0.18em] text-text-faint">Import</h2>
           <div className="rounded-xl border border-border-soft bg-surface-card p-4">
             <CsvOrderImport />
           </div>

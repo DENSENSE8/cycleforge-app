@@ -14,7 +14,7 @@
  * background+ring, never a size shift.
  */
 
-import { ExternalLink, ZendeskMark } from '@/components/Icons';
+import { ExternalLink, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   PairingLinkButton,
@@ -47,16 +47,16 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
     >
       <div className="flex items-start gap-2.5">
         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-text-soft">
-          <ZendeskMark className="h-4 w-4" />
+          <Ticket className="h-4 w-4" />
         </span>
 
         <div className="min-w-0 flex-1">
           {/* Eyebrow: source + ticket id */}
           <div className="flex items-center gap-1.5">
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
               Helpdesk
             </span>
-            <span className="font-mono text-caption font-bold text-text-muted">#{candidate.id}</span>
+            <span className="font-mono text-role-caption font-bold text-text-muted">#{candidate.id}</span>
             {candidate.url ? (
               <HoverTooltip label="Open ticket in Zendesk" focusable={false}>
                 <a
@@ -74,19 +74,19 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
           </div>
 
           {/* Title: ticket subject */}
-          <p className="mt-0.5 truncate text-caption font-bold text-text-default">
+          <p className="mt-0.5 truncate text-role-caption font-bold text-text-default">
             {candidate.subject || 'Untitled ticket'}
           </p>
 
           {/* Meta row: status + age */}
           <div className="mt-1 flex items-center gap-2">
             <span
-              className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${tone.bg} ${tone.text} ${tone.ring}`}
+              className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${tone.bg} ${tone.text} ${tone.ring}`}
             >
               {tone.label}
             </span>
             {age ? (
-              <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+              <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                 {age}
               </span>
             ) : null}

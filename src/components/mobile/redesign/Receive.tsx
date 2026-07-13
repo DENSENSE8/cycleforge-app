@@ -284,7 +284,7 @@ export default function RedesignedMobileReceive({
         <div className="flex flex-col gap-4">
           {surface === 'triage' ? (
           <div>
-            <p className="mb-1.5 px-1 text-micro font-black uppercase tracking-widest text-blue-300">
+            <p className="mb-1.5 px-1 text-role-micro uppercase tracking-widest text-blue-300">
               Receiving as
             </p>
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
@@ -294,7 +294,7 @@ export default function RedesignedMobileReceive({
                   <button
                     key={o.value}
                     onClick={() => selectIntake(o.value)}
-                    className={`ds-raw-button shrink-0 rounded-full border px-3 py-1.5 text-caption font-black uppercase tracking-wider transition-all active:scale-95 ${intakeToneClass(o.tone, active)}`}
+                    className={`ds-raw-button shrink-0 rounded-full border px-3 py-1.5 text-role-caption font-black uppercase tracking-wider transition-all active:scale-95 ${intakeToneClass(o.tone, active)}`}
                   >
                     {o.label}
                   </button>
@@ -393,7 +393,7 @@ export default function RedesignedMobileReceive({
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`ds-raw-button flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-caption font-black uppercase tracking-wider transition-all active:scale-95 ${tone}`}
+                className={`ds-raw-button flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-role-caption font-black uppercase tracking-wider transition-all active:scale-95 ${tone}`}
               >
                 {label}
                 <span className={`tabular-nums ${active ? 'opacity-90' : 'opacity-50'}`}>{count}</span>

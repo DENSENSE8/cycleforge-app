@@ -92,7 +92,7 @@ export function SuppliersSidebarPanel() {
                 onPick={() => setParam((p) => p.set('supplier', String(row.id)))}
                 title={row.name}
                 subtitle={row.supplier_type.replace('_', ' ')}
-                trailing={row.ebay_seller_id ? <span className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-micro font-semibold text-yellow-700">eBay</span> : null}
+                trailing={row.ebay_seller_id ? <span className="rounded-full bg-yellow-100 px-1.5 py-0.5 text-role-micro font-semibold text-yellow-700">eBay</span> : null}
               />
             </li>
           ))}

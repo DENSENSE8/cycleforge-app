@@ -26,7 +26,7 @@ export function WarrantyStatusBadge({ status, className }: { status: WarrantyCla
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-caption font-medium ring-1 ring-inset',
+        'inline-flex items-center rounded-full px-2 py-0.5 text-role-caption font-medium ring-1 ring-inset',
         TONE_CLASSES[tone] ?? TONE_CLASSES.slate,
         className,
       )}
@@ -71,7 +71,7 @@ export function WarrantyClockChip({
     <span className={cn('inline-flex items-center gap-1', className)}>
       <span
         className={cn(
-          'inline-flex items-center rounded-full px-2 py-0.5 text-caption font-semibold ring-1 ring-inset tabular-nums',
+          'inline-flex items-center rounded-full px-2 py-0.5 text-role-caption font-semibold ring-1 ring-inset tabular-nums',
           TONE_CLASSES[tone],
         )}
       >
@@ -88,7 +88,7 @@ export function WarrantyClockChip({
         >
           <span
             className={cn(
-              'inline-flex items-center rounded px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide',
+              'inline-flex items-center rounded px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide',
               provisional
                 ? 'border border-dashed border-border-warning text-text-warning'
                 : 'bg-surface-success text-text-success',

@@ -75,7 +75,7 @@ export function MobileToolbar({
             {title}
           </h1>
           {subtitle && (
-            <p className="text-eyebrow font-bold uppercase tracking-[0.2em] text-text-soft truncate">
+            <p className="text-role-eyebrow font-bold uppercase tracking-[0.2em] text-text-soft truncate">
               {subtitle}
             </p>
           )}

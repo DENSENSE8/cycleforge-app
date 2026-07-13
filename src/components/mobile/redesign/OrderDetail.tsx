@@ -192,7 +192,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
         />
         <div className="flex items-center gap-2">
           {order.status && (
-            <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-eyebrow font-black uppercase tracking-[0.1em] border border-blue-100 shadow-sm">
+            <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-role-eyebrow uppercase tracking-[0.1em] border border-blue-100 shadow-sm">
               {order.status}
             </div>
           )}
@@ -234,15 +234,15 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
           <p className="text-base font-black text-blue-950 leading-snug tracking-tight">{order.product}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {order.sku && (
-              <span className="text-micro font-black uppercase tracking-wider bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100 font-mono">
+              <span className="text-role-micro uppercase tracking-wider bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100 font-mono">
                 {order.sku}
               </span>
             )}
-            <span className="text-micro font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg border border-emerald-100">
+            <span className="text-role-micro uppercase tracking-wider bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg border border-emerald-100">
               {order.quantity} Unit{order.quantity === 1 ? '' : 's'}
             </span>
             {order.serials.length > 0 && (
-              <span className="text-micro font-black uppercase tracking-wider bg-surface-canvas text-text-muted px-2.5 py-1 rounded-lg border border-border-soft">
+              <span className="text-role-micro uppercase tracking-wider bg-surface-canvas text-text-muted px-2.5 py-1 rounded-lg border border-border-soft">
                 {order.serials.length} Serial{order.serials.length === 1 ? '' : 's'}
               </span>
             )}
@@ -254,7 +254,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
           <SectionHeader title="Activity Timeline" />
           <MobileCard className="py-5">
             {order.activity.length === 0 ? (
-              <p className="py-2 text-center text-caption font-bold uppercase tracking-widest text-blue-200">
+              <p className="py-2 text-center text-role-caption font-bold uppercase tracking-widest text-blue-200">
                 No recorded activity yet
               </p>
             ) : (
@@ -272,7 +272,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
                       <p className="text-xs font-black text-blue-950 uppercase tracking-tight">
                         {[ev.work_type, ev.status].filter(Boolean).join(' · ') || 'Update'}
                       </p>
-                      <p className="text-micro font-bold text-blue-300 uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                      <p className="text-role-micro font-bold text-blue-300 uppercase tracking-widest mt-1 flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
                         {fmtDateTime(ev.event_at)}
                         {ev.actor_name ? ` • ${ev.actor_name}` : ''}

@@ -11,7 +11,7 @@ export function ClaimPhotosStep({ c }: { c: ReceivingClaimController }) {
   return (
     <>
       <div>
-        <p className="mb-1 text-micro font-black uppercase tracking-[0.14em] text-text-soft">
+        <p className="mb-1 text-role-micro uppercase tracking-[0.14em] text-text-soft">
           Claim type
         </p>
         <HorizontalButtonSlider

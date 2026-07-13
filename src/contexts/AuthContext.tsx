@@ -198,7 +198,7 @@ function RedirectingSplash() {
     <div className="fixed inset-0 z-splash flex items-center justify-center bg-surface-card">
       <div className="flex flex-col items-center gap-3 text-text-soft">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-soft border-t-text-muted" />
-        <p className="text-caption font-bold uppercase tracking-widest">Redirecting to sign-in…</p>
+        <p className="text-role-caption font-bold uppercase tracking-widest">Redirecting to sign-in…</p>
       </div>
     </div>
   );

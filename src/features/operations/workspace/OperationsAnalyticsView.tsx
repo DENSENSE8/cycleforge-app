@@ -230,7 +230,7 @@ export function OperationsAnalyticsView() {
                 <h1 className="text-2xl font-black tracking-tight text-text-default leading-none">
                   Operations Analytics
                 </h1>
-                <p className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-text-soft">
+                <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
                   {ANALYTICS_RANGE_LABELS[range]} · live floor + inventory
                 </p>
               </div>
@@ -275,7 +275,7 @@ export function OperationsAnalyticsView() {
       >
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Today</span>
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Today</span>
             {packing ? (
               <span className="text-xs font-black text-text-muted">
                 Capacity {packing.capacity.daily_capacity_minutes.toLocaleString()} min ·{' '}
@@ -297,7 +297,7 @@ export function OperationsAnalyticsView() {
 
           {packing ? (
             <div className="rounded-2xl border border-border-soft bg-surface-canvas divide-y divide-border-soft">
-              <div className="grid grid-cols-6 gap-2 px-4 py-2 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+              <div className="grid grid-cols-6 gap-2 px-4 py-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
                 <div className="col-span-2">Packer</div>
                 <div className="text-right">Small</div>
                 <div className="text-right">Medium</div>
@@ -365,7 +365,7 @@ export function OperationsAnalyticsView() {
 
         <SectionCard htmlId="ops-analytics-sources" icon={Database} eyebrow="Distribution" title="By event type">
           <DistributionTable columns={['Event type', 'Events', '%']} rows={typeRows} emptyMessage="No events in this range." />
-          <p className="mt-4 text-micro leading-5 text-text-soft">
+          <p className="mt-4 text-role-micro leading-5 text-text-soft">
             Lifecycle events (received → tested → packed → shipped) from the org-scoped event log.
           </p>
         </SectionCard>
@@ -374,7 +374,7 @@ export function OperationsAnalyticsView() {
           {a?.velocityAvailable ? (
             <>
               <DistributionTable columns={['Tier', 'SKUs', '%']} rows={tierRows} showBar emptyMessage="No SKUs scored." />
-              <p className="mt-4 text-micro leading-5 text-text-soft">
+              <p className="mt-4 text-role-micro leading-5 text-text-soft">
                 ABC analysis by 30-day outbound movement. Tier A = fastest movers.
               </p>
             </>
@@ -428,7 +428,7 @@ export function OperationsAnalyticsView() {
               colLabels={heatmap.colLabels}
               color={paletteTone(0)}
             />
-            <p className="mt-2 text-micro leading-5 text-text-soft">
+            <p className="mt-2 text-role-micro leading-5 text-text-soft">
               Each dot is {analytics.granularity === 'daily' ? 'a day' : 'an hour'} of floor activity; brighter = busier.
               {a?.truncated ? ` Showing the latest ${analytics.eventsLimit.toLocaleString()} events.` : ''}
             </p>
@@ -473,7 +473,7 @@ function Segmented<T extends string>({
           type="button"
           onClick={() => onChange(o.id)}
           className={cn(
-            'ds-raw-button rounded-md px-2.5 py-1 text-eyebrow font-black uppercase tracking-widest transition-colors',
+            'ds-raw-button rounded-md px-2.5 py-1 text-role-eyebrow uppercase tracking-widest transition-colors',
             value === o.id ? 'bg-surface-card text-text-default shadow-sm' : 'text-text-soft hover:text-text-default',
           )}
         >
@@ -501,7 +501,7 @@ function HealthTile({
     <div className="rounded-xl border border-border-soft bg-surface-canvas p-3">
       <div className="flex items-center gap-1.5 text-text-faint">
         <Icon className="h-3.5 w-3.5" />
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
       </div>
       <p className={cn('mt-1.5 text-2xl font-black tabular-nums leading-none', valueClassName)}>
         {value === null ? '—' : `${value.toLocaleString()}${suffix}`}
@@ -512,7 +512,7 @@ function HealthTile({
 
 function Locked({ label }: { label: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-caption font-semibold text-text-faint">
+    <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-role-caption font-semibold text-text-faint">
       {label}
     </div>
   );
@@ -552,13 +552,13 @@ function RoiSection() {
       title="Throughput & ROI"
     >
       {isLoading ? (
-        <div className="flex items-center gap-2 px-1 py-8 text-caption font-semibold text-text-faint">
+        <div className="flex items-center gap-2 px-1 py-8 text-role-caption font-semibold text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading ROI…
         </div>
       ) : !roi || !roi.hasData ? (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-10 text-center">
-          <p className="text-caption font-bold text-text-muted">No throughput captured yet</p>
-          <p className="mx-auto mt-1 max-w-md text-micro leading-5 text-text-soft">
+          <p className="text-role-caption font-bold text-text-muted">No throughput captured yet</p>
+          <p className="mx-auto mt-1 max-w-md text-role-micro leading-5 text-text-soft">
             As units move through your stations and staff clock in, this fills with units per labor-hour and
             week-over-week lift — the proof your floor is getting faster.
           </p>
@@ -569,7 +569,7 @@ function RoiSection() {
             <div className="rounded-xl border border-border-soft bg-surface-canvas p-4">
               <div className="flex items-center gap-1.5 text-text-faint">
                 <TrendingUp className="h-3.5 w-3.5" />
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Units this week</p>
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Units this week</p>
               </div>
               <p className="mt-1.5 text-3xl font-black tabular-nums leading-none text-text-info">
                 {roi.unitsThisWeek.toLocaleString()}
@@ -586,19 +586,19 @@ function RoiSection() {
             <div className="rounded-xl border border-border-soft bg-surface-canvas p-4">
               <div className="flex items-center gap-1.5 text-text-faint">
                 <Zap className="h-3.5 w-3.5" />
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Units / labor-hour</p>
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Units / labor-hour</p>
               </div>
               <p className="mt-1.5 text-3xl font-black tabular-nums leading-none text-text-success">
                 {roi.unitsPerLaborHour.toLocaleString()}
               </p>
-              <p className="mt-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+              <p className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                 {roi.unitsProcessed.toLocaleString()} units · {roi.laborHours.toLocaleString()}h clocked
               </p>
             </div>
             <div className="rounded-xl border border-border-soft bg-surface-canvas p-4">
               <div className="flex items-center gap-1.5 text-text-faint">
                 <Layers className="h-3.5 w-3.5" />
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Units stuck</p>
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Units stuck</p>
               </div>
               <p
                 className={cn(
@@ -608,7 +608,7 @@ function RoiSection() {
               >
                 {roi.unitsStuck.toLocaleString()}
               </p>
-              <p className="mt-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+              <p className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                 Blocked + error now
               </p>
             </div>
@@ -616,11 +616,11 @@ function RoiSection() {
 
           <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
-              <p className="mb-2 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+              <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
                 Avg cycle time by stage
               </p>
               {roi.avgCycleHoursByStage.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-faint">
+                <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
                   No completed stage runs in the last 7 days.
                 </div>
               ) : (
@@ -631,7 +631,7 @@ function RoiSection() {
                       title={prettyEventType(s.stage)}
                       meta={`${s.samples.toLocaleString()} runs`}
                       trailing={
-                        <span className="text-caption font-bold tabular-nums text-text-default">
+                        <span className="text-role-caption font-bold tabular-nums text-text-default">
                           {formatHours(s.avgCycleHours)}
                         </span>
                       }
@@ -641,7 +641,7 @@ function RoiSection() {
               )}
             </div>
             <div>
-              <p className="mb-2 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+              <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
                 Units / hour by staff
               </p>
               <DistributionTable

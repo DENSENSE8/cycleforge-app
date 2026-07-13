@@ -99,13 +99,13 @@ export function InventoryGraphSidebar() {
                             >
                                 <span
                                     className={cn(
-                                        'text-[13px] font-semibold',
+                                        'text-role-data font-semibold',
                                         active ? 'text-blue-900' : 'text-text-default',
                                     )}
                                 >
                                     {item.sku}
                                 </span>
-                                <span className="line-clamp-1 text-caption text-text-soft">
+                                <span className="line-clamp-1 text-role-caption text-text-soft">
                                     {item.product_title}
                                 </span>
                             </button>

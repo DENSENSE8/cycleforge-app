@@ -202,7 +202,7 @@ export function InventorySidebarFilters({
                     <SlidersHorizontal className="h-4 w-4" />
                     Filters
                     {activeBucketCount > 0 ? (
-                        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-eyebrow font-bold text-white">
+                        <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-role-eyebrow font-bold text-white">
                             {activeBucketCount}
                         </span>
                     ) : null}

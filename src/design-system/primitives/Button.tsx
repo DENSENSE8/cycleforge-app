@@ -48,14 +48,14 @@ const variantClasses: Record<ButtonVariant, string> = {
 // ─── Size classes ────────────────────────────────────────────────────────────
 
 const desktopSize: Record<ButtonSize, string> = {
-  sm: 'h-8 gap-1.5 rounded-lg px-3 text-label',
-  md: 'h-9 gap-1.5 rounded-xl px-3.5 text-[13px]',
+  sm: 'h-8 gap-1.5 rounded-lg px-3 text-role-caption',
+  md: 'h-9 gap-1.5 rounded-xl px-3.5 text-role-data',
   lg: 'h-10 gap-2 rounded-xl px-5 text-sm',
 };
 
 // Mobile — every size meets the 44px minimum touch target.
 const mobileSize: Record<ButtonSize, string> = {
-  sm: 'h-11 gap-2 rounded-xl px-4 text-[13px]',
+  sm: 'h-11 gap-2 rounded-xl px-4 text-role-data',
   md: 'h-12 gap-2 rounded-2xl px-5 text-sm',
   lg: 'h-14 gap-2.5 rounded-2xl px-6 text-base',
 };

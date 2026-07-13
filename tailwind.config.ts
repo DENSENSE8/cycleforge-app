@@ -49,6 +49,18 @@ const config: Config = {
         // are never generated and render invisible.
         "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
     ],
+    // CF Type roles ship available for adoption even before every call site
+    // uses them (search-and-dense-ui-refactor plan §2.5). Additive: no visual
+    // change until a component opts in.
+    safelist: [
+        'text-role-display',
+        'text-role-title',
+        'text-role-body',
+        'text-role-data',
+        'text-role-caption',
+        'text-role-eyebrow',
+        'text-role-micro',
+    ],
     theme: {
         extend: {
             colors: {
@@ -159,14 +171,25 @@ const config: Config = {
                 mono: ['var(--ds-font-mono)', 'SFMono-Regular', 'SF Mono', 'Consolas', 'monospace'],
             },
             fontSize: {
-                // Sub-12px scale used pervasively in station/sidebar UI.
-                // `mini` and `eyebrow` are the uppercase-tracker patterns
-                // (font-black uppercase tracking-widest) — not general body text.
-                mini: ['8px', { lineHeight: '1.2' }],
-                eyebrow: ['9px', { lineHeight: '1.2' }],
-                micro: ['10px', { lineHeight: '1.2' }],
-                caption: ['11px', { lineHeight: '1.3' }],
-                label: ['12px', { lineHeight: '1.4' }],
+                // Legacy px scale (mini/eyebrow/micro/caption/label) RETIRED
+                // 2026-07-13 (T4) — all ~4100 usages migrated onto CF Type roles
+                // below via scripts/codemods/text-legacy-to-role.mjs.
+                // ── CF Type — role-bundled scale (search-and-dense-ui-refactor
+                //    plan §2.3). Each role bundles size + line-height + tracking
+                //    + weight in ONE utility; consumers pick a ROLE, never a px.
+                //    `rem`-based (respects user font-size / 200% zoom, WCAG) and
+                //    density-aware: size = base × var(--cf-density) (default 1;
+                //    `[data-density="compact"]` → 0.92). Weight + tracking do NOT
+                //    scale with density (Carbon principle). Register every new
+                //    name in CUSTOM_FONT_SIZES (src/utils/_cn.ts) or twMerge drops
+                //    it. Numeric cells still add `tabular-nums` explicitly.
+                'role-display': ['calc(1.5rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '600' }],
+                'role-title': ['calc(1.125rem * var(--cf-density, 1))', { lineHeight: '1.3', letterSpacing: '-0.01em', fontWeight: '600' }],
+                'role-body': ['calc(0.875rem * var(--cf-density, 1))', { lineHeight: '1.45', letterSpacing: '0', fontWeight: '400' }],
+                'role-data': ['calc(0.8125rem * var(--cf-density, 1))', { lineHeight: '1.4', letterSpacing: '0.01em', fontWeight: '500' }],
+                'role-caption': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.35', letterSpacing: '0.01em', fontWeight: '500' }],
+                'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.08em', fontWeight: '600' }],
+                'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.04em', fontWeight: '600' }],
             },
             borderRadius: {
                 station: '8px',

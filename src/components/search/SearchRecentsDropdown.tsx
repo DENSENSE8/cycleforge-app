@@ -48,7 +48,7 @@ export function SearchRecentsDropdown({
   return (
     <div className={className}>
       <div className="flex items-center justify-between px-3 pb-1 pt-2">
-        <p className="flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+        <p className="flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
           <Clock className="h-3 w-3" />
           Recent searches
         </p>
@@ -56,7 +56,7 @@ export function SearchRecentsDropdown({
           <button
             type="button"
             onClick={onClearAll}
-            className="-my-0.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint hover:text-text-muted"
+            className="-my-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint hover:text-text-muted"
           >
             Clear
           </button>
@@ -83,10 +83,10 @@ export function SearchRecentsDropdown({
                   <Search className="h-4 w-4 text-text-faint" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-bold text-text-default">
+                  <span className="block truncate text-role-caption font-bold text-text-default">
                     {entry.query}
                   </span>
-                  <span className="flex items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <span className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     <span className="truncate">{label}</span>
                     <span className="text-text-faint">·</span>
                     <span className="shrink-0 text-text-faint">{formatRelativeTime(entry.timestamp)}</span>

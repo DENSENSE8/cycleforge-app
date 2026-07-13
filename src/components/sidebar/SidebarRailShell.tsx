@@ -84,7 +84,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   return (
     <section className="min-w-0 border-t border-border-hairline bg-surface-card">
       <div className={`flex items-center justify-between ${SIDEBAR_GUTTER} py-1`}>
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           {eyebrowTitle} · {topCount}
         </p>
         <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 w-full animate-pulse rounded-md bg-surface-sunken" />)}
         </div>
       ) : rows.length === 0 ? (
-        <p className={`${SIDEBAR_GUTTER} py-3 text-micro font-semibold text-text-faint`}>{emptyText}</p>
+        <p className={`${SIDEBAR_GUTTER} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
       ) : (
         <motion.ul
           ref={listRef}

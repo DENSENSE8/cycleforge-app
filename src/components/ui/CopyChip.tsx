@@ -13,7 +13,7 @@
  */
 import React, { MouseEvent } from 'react';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
-import { Barcode, DollarSign, ExternalLink, MapPin, Package, Pencil, Tags } from '../Icons';
+import { Barcode, DollarSign, ExternalLink, MapPin, Package, Pencil, Tags, Ticket } from '../Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { monoValue } from '@/design-system/tokens/typography/presets';
@@ -111,7 +111,9 @@ export const CHIP_TONES = {
     dot: 'bg-purple-500',
   },
   ticket: {
-    icon: <HashIcon />,
+    // Ticket-number chips render the flat ticket glyph as their primary mark
+    // (not the `#` hash — that stays the id/PO chip's icon). One house ticket SoT.
+    icon: <Ticket className="h-4 w-4 shrink-0" />,
     underline: 'border-orange-500',
     iconClass: 'text-orange-500',
     dot: 'bg-orange-500',
@@ -271,7 +273,7 @@ export function CopyChip({
       >
         {resolvedIcon ? <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${resolvedIconClass ?? ''}`}>{resolvedIcon}</span> : null}
         <span
-          className={`${dense ? 'text-caption font-bold font-mono text-text-default' : monoValue} tracking-tight leading-none border-b-2 pb-0.5 text-left ${displayOverflowClass} ${resolvedUnderline} ${
+          className={`${dense ? 'text-role-caption font-bold font-mono text-text-default' : monoValue} tracking-tight leading-none border-b-2 pb-0.5 text-left ${displayOverflowClass} ${resolvedUnderline} ${
             fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           }`}
         >
@@ -565,6 +567,47 @@ export const SerialChip = ({
 );
 
 /**
+ * Loading placeholder for a {@link SerialChip}. Emerald Barcode glyph + a pulsing
+ * bar in the mono-value slot, carrying the same emerald underline and default
+ * ~84px footprint so the PO-line meta row does not reflow when the real serial
+ * streams in from the per-carton serials query. Reads as "serial loading", not
+ * "no serial" — the empty state a bare gap would imply.
+ *
+ * Presentational + `aria-hidden`: the real {@link SerialChip} replaces it on
+ * resolve, and one skeleton per line would otherwise spam a status announcement.
+ * Mirrors {@link SerialChip}'s wrapper/icon/underline classes and its
+ * `fitDisplayWidth` shrink-wrap so the swap is pixel-stable; tone comes from the
+ * shared {@link CHIP_TONES} `serial` entry (one hue SoT, no parallel color).
+ */
+export const SerialChipSkeleton = ({
+  width = 'w-[84px] shrink-0',
+  dense,
+}: {
+  /** Match the sibling {@link SerialChip} width so the swap doesn't reflow. */
+  width?: string;
+  dense?: boolean;
+}) => {
+  const tone = CHIP_TONES.serial;
+  return (
+    <div
+      className={`relative inline-flex items-center justify-start px-1.5 ${width}`}
+      aria-hidden
+    >
+      <span className="inline-flex w-auto max-w-full items-center justify-start gap-0.5">
+        <span className={`shrink-0 ${tone.iconClass} ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''}`}>
+          {tone.icon}
+        </span>
+        <span className={`inline-flex items-end border-b-2 pb-0.5 ${tone.underline}`}>
+          <span
+            className={`${dense ? 'h-2.5' : 'h-3'} w-9 max-w-full animate-pulse rounded bg-surface-strong`}
+          />
+        </span>
+      </span>
+    </div>
+  );
+};
+
+/**
  * Serial sourced from the `sku` table (pack SKU rows or tech SKU_PULL). Yellow / pencil icon.
  * DESIGN SYSTEM RULE: Use only when the row is SKU-driven — not for carrier or FNSKU serials.
  */
@@ -606,7 +649,7 @@ function GroupCountChip({ count, tone, dense }: { count: number; tone: ChipTone;
             icon lands at the same x and the underline matches the sibling chips'
             width. Value sits right within that footprint; underline color matches
             the column's real chip. */}
-        <span className={`${dense ? 'text-caption' : 'text-sm'} w-[4ch] border-b-2 ${toneDef.underline} pb-0.5 text-right font-mono font-bold leading-none tracking-tight text-yellow-600`}>
+        <span className={`${dense ? 'text-role-caption' : 'text-sm'} w-[4ch] border-b-2 ${toneDef.underline} pb-0.5 text-right font-mono font-bold leading-none tracking-tight text-yellow-600`}>
           ×{count}
         </span>
       </span>
@@ -694,7 +737,7 @@ export function AddValueChipFace({
    */
   size?: 'mini' | 'chip';
 }) {
-  const labelSize = size === 'chip' ? 'text-micro' : dense ? 'text-caption' : 'text-mini';
+  const labelSize = size === 'chip' ? 'text-role-micro' : dense ? 'text-role-caption' : 'text-role-micro';
   return (
     <span className={`inline-flex items-center gap-0.5 ${colorClass}`}>
       <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''}`}>{icon}</span>

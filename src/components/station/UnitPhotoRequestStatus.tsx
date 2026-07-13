@@ -28,11 +28,11 @@ export function UnitPhotoRequestStatus({
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border-hairline bg-surface-card px-2.5 py-1.5">
       <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-      <p className="min-w-0 flex-1 truncate text-caption font-semibold text-text-muted">
+      <p className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">
         Photo request sent → phone
         {unitKey ? <span className="text-text-faint"> · {unitKey}</span> : null}
       </p>
-      <span className="shrink-0 text-micro font-bold tabular-nums text-text-faint">
+      <span className="shrink-0 text-role-micro font-bold tabular-nums text-text-faint">
         {count} captured
       </span>
     </div>

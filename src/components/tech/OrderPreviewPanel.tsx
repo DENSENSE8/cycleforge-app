@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { motion, type Variants } from 'framer-motion';
-import { AlertCircle, Calendar, Check, Clock, Copy, ExternalLink, Flag, Layers, Package, Star } from '@/components/Icons';
+import { AlertCircle, Calendar, Check, Clock, Copy, ExternalLink, Flag, Layers, Package } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
 import { IconButton } from '@/design-system/primitives';
@@ -12,6 +12,7 @@ import {
   getDisplayShipByDate,
   stripConditionPrefix,
 } from '@/utils/upnext-helpers';
+import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { formatMonthDay } from '@/utils/date';
 import { getTrackingUrl } from '@/utils/order-links';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
@@ -20,11 +21,16 @@ import {
   getPlatformLabelByItemNumber,
 } from '@/utils/external-item-url';
 import type { Order } from '@/components/station/upnext/upnext-types';
+import { conditionGradeTone } from '@/lib/condition-tone';
 
 interface OrderPreviewPanelProps {
   order: Order;
   /** When set, each card section participates in a parent stagger-reveal. */
   revealItem?: Variants;
+  /** Callback to update condition inline. */
+  onChangeCondition?: (next: string) => void | Promise<void>;
+  /** Condition mutation state. */
+  isMutatingCondition?: boolean;
 }
 
 function RevealSection({
@@ -72,20 +78,6 @@ function getStatusTone(order: Order, daysLate: number | null): { tone: StatusTon
 type CopyKey = 'tracking';
 
 /**
- * Condition badge classes — mirrors the sidebar `OrderCard` colorway (New →
- * yellow, Parts → amber, else → neutral) but as the canonical 3-layer house
- * chip (`bg-x-50 text-x-700 ring-x-200`) so every pill on the strip reads with
- * the same weight instead of the old flat 2-layer fills.
- */
-function getConditionBadgeClasses(condition: string | null | undefined): string | null {
-  const c = (condition || '').toLowerCase().trim();
-  if (!c) return null;
-  if (c.includes('new')) return 'bg-yellow-50 text-yellow-700 ring-yellow-200';
-  if (c.includes('part')) return 'bg-amber-50 text-amber-700 ring-amber-200';
-  return 'bg-surface-sunken text-text-muted ring-border-soft';
-}
-
-/**
  * Quantity badge classes — ×1 reads as neutral (gray); ×2+ grabs the eye (amber)
  * since multi-unit orders need extra care. 3-layer house chip.
  */
@@ -109,7 +101,7 @@ function getQtyBadgeClasses(quantity: number): string {
  * gating, so the affordances are discoverable. A full-width listing CTA
  * below the order title opens the marketplace page in a new tab.
  */
-export function OrderPreviewPanel({ order, revealItem }: OrderPreviewPanelProps) {
+export function OrderPreviewPanel({ order, revealItem, onChangeCondition, isMutatingCondition }: OrderPreviewPanelProps) {
   const [copiedKey, setCopiedKey] = useState<CopyKey | null>(null);
 
   const quantity = Math.max(1, parseInt(String(order.quantity || '1'), 10) || 1);
@@ -134,7 +126,7 @@ export function OrderPreviewPanel({ order, revealItem }: OrderPreviewPanelProps)
 
   const hasOutOfStock = Boolean(String(order.out_of_stock || '').trim());
   const title = stripConditionPrefix(order.product_title, order.condition);
-  const conditionBadgeClasses = getConditionBadgeClasses(order.condition);
+  const conditionBadgeClasses = order.condition ? conditionGradeTone(order.condition).badge : null;
   const qtyBadgeClasses = getQtyBadgeClasses(quantity);
 
   const handleCopy = async (key: CopyKey, value: string) => {
@@ -146,18 +138,30 @@ export function OrderPreviewPanel({ order, revealItem }: OrderPreviewPanelProps)
     } catch { /* noop */ }
   };
 
+  const isShipped = order.status === 'SHIPPED' || order.status === 'SHIPPED_EXT';
+  const showConditionEditor = onChangeCondition != null;
+
   return (
     <div className="space-y-4">
       <RevealSection revealItem={revealItem}>
         <WorkspaceCard label="Order" bodyClassName="px-5 pb-5 pt-3">
-          <h2 className="text-xl font-bold leading-tight tracking-tight text-text-default">
-            {title || 'Untitled order'}
-          </h2>
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="text-xl font-bold leading-tight tracking-tight text-text-default">
+              {title || 'Untitled order'}
+            </h2>
+            {!showConditionEditor && order.condition && conditionBadgeClasses ? (
+              <span
+                className={`inline-flex shrink-0 items-center rounded-md px-2 py-1 text-role-caption font-black uppercase tracking-wide ring-1 ring-inset ${conditionBadgeClasses}`}
+              >
+                {order.condition}
+              </span>
+            ) : null}
+          </div>
           {listingUrl ? (
             <button
               type="button"
               onClick={() => window.open(listingUrl, '_blank', 'noopener,noreferrer')}
-              className="ds-raw-button mt-4 inline-flex h-12 w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 text-white text-label font-black uppercase tracking-[0.18em] shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
+              className="ds-raw-button mt-4 inline-flex h-12 w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-blue-600 text-white text-role-caption font-black uppercase tracking-[0.18em] shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
             >
               <ExternalLink className="h-5 w-5 shrink-0" />
               {listingPlatformLabel && listingPlatformLabel !== 'Unknown'
@@ -207,20 +211,9 @@ export function OrderPreviewPanel({ order, revealItem }: OrderPreviewPanelProps)
                 <span className="text-sm font-bold text-text-faint">—</span>
               )}
             </StatCell>
-            <StatCell icon={Star} iconLabel="Condition">
-              {order.condition && conditionBadgeClasses ? (
-                <span
-                  className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-caption font-black uppercase tracking-wide ring-1 ring-inset ${conditionBadgeClasses}`}
-                >
-                  {order.condition}
-                </span>
-              ) : (
-                <span className="text-sm font-bold text-text-soft">—</span>
-              )}
-            </StatCell>
             <StatCell icon={Layers} iconLabel="Qty">
               <span
-                className={`inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-label font-bold ring-1 ring-inset ${qtyBadgeClasses}`}
+                className={`inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-role-caption font-bold ring-1 ring-inset ${qtyBadgeClasses}`}
               >
                 ×{quantity}
               </span>
@@ -228,6 +221,19 @@ export function OrderPreviewPanel({ order, revealItem }: OrderPreviewPanelProps)
           </div>
         </WorkspaceCard>
       </RevealSection>
+
+      {showConditionEditor ? (
+        <RevealSection revealItem={revealItem}>
+          <WorkspaceCard label="Condition" bodyClassName="px-5 py-4">
+            <StationConditionEditor
+              condition={order.condition}
+              onChange={(next) => void onChangeCondition(next)}
+              isLocked={isShipped || isMutatingCondition}
+              collapsible={false}
+            />
+          </WorkspaceCard>
+        </RevealSection>
+      ) : null}
 
       {hasOutOfStock ? (
         <RevealSection revealItem={revealItem}>
@@ -296,7 +302,7 @@ function StatusPill({ tone, children }: StatusPillProps) {
   };
   return (
     <span
-      className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-caption font-bold ring-1 ring-inset ${tones[tone]}`}
+      className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-role-caption font-bold ring-1 ring-inset ${tones[tone]}`}
     >
       {children}
     </span>

@@ -19,8 +19,8 @@ export function ClaimAttachments({ c }: { c: ZendeskClaimController }) {
   return (
     <section className="space-y-2.5">
       <div className="flex items-center justify-between">
-        <p className="text-micro font-black uppercase tracking-widest text-text-soft">Attachments</p>
-        <span className="text-caption font-semibold text-text-faint">{c.totalAttach} selected</span>
+        <p className="text-role-micro uppercase tracking-widest text-text-soft">Attachments</p>
+        <span className="text-role-caption font-semibold text-text-faint">{c.totalAttach} selected</span>
       </div>
 
       {hasLibrary ? (
@@ -94,7 +94,7 @@ export function ClaimAttachments({ c }: { c: ZendeskClaimController }) {
           className="ds-raw-button flex w-full flex-col items-center justify-center gap-1.5 py-1.5 text-center"
         >
           <Upload className="h-5 w-5 text-text-faint" />
-          <span className="text-label font-semibold text-text-muted">
+          <span className="text-role-caption font-semibold text-text-muted">
             Drag photos here or <span className="text-blue-600">browse</span>
           </span>
         </button>

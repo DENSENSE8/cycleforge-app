@@ -71,14 +71,14 @@ export function MediaLibraryPickerFolders({
     if (leafVisible.length === 0) {
       return (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
-          <p className="text-caption font-semibold text-text-muted">No photos here</p>
-          <p className="mt-1 text-micro text-text-faint">Try another folder or widen the date range.</p>
+          <p className="text-role-caption font-semibold text-text-muted">No photos here</p>
+          <p className="mt-1 text-role-micro text-text-faint">Try another folder or widen the date range.</p>
         </div>
       );
     }
     return (
       <div className="space-y-3">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           {header.title}
           <span className="ml-2 font-semibold text-text-faint">{leafVisible.length}</span>
         </p>
@@ -114,15 +114,15 @@ export function MediaLibraryPickerFolders({
   if (tiles.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
-        <p className="text-caption font-semibold text-text-muted">No folders here</p>
-        <p className="mt-1 text-micro text-text-faint">Widen the date range or pick another media type.</p>
+        <p className="text-role-caption font-semibold text-text-muted">No folders here</p>
+        <p className="mt-1 text-role-micro text-text-faint">Widen the date range or pick another media type.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
         {header.title}
         <span className="ml-2 font-semibold text-text-faint">{header.count}</span>
       </p>
@@ -146,7 +146,7 @@ function PickerFolderTile({ tile, onOpen }: { tile: FolderTileData; onOpen: () =
         <div className="absolute left-3 right-2 top-0.5 h-3 rounded-t-md bg-surface-strong" aria-hidden="true" />
         <div className="relative h-full w-full overflow-hidden rounded-md border border-border-soft">
           <FolderTileCover photo={tile.previewPhoto} />
-          <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-micro font-bold tabular-nums text-white">
+          <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-white">
             {tile.count}
           </span>
         </div>
@@ -154,10 +154,10 @@ function PickerFolderTile({ tile, onOpen }: { tile: FolderTileData; onOpen: () =
       <div className="flex flex-col gap-0.5 px-2.5 py-2">
         <div className="flex items-center gap-1.5">
           <Folder className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-          <span className="truncate text-caption font-semibold text-text-default">{tile.label}</span>
+          <span className="truncate text-role-caption font-semibold text-text-default">{tile.label}</span>
         </div>
         {tile.latestAt ? (
-          <span className="truncate pl-5 text-micro tabular-nums text-text-faint">
+          <span className="truncate pl-5 text-role-micro tabular-nums text-text-faint">
             {formatDateTimePST(tile.latestAt)}
           </span>
         ) : null}

@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { resolveCurrentReceivingLineIds, type SerialUnitRow } from '@/lib/neon/serial-units-queries';
+import {
+  fetchSerialsForLines,
+  refreshLineSerialProjectionSafe,
+  type LineSerial,
+} from '@/lib/receiving/serial-projection';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { withAuth } from '@/lib/auth/withAuth';
 import { sortSerialUnitToParts } from '@/lib/inventory/parts-sort';
@@ -33,83 +37,12 @@ import {
   type TestingFactsInput,
   type ZohoFactsInput,
 } from '@/lib/receiving/facts/narrow';
+import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
 
-type LineSerial = {
-  id: number;
-  serial_number: string;
-  current_status: string;
-  sku_catalog_id: number | null;
-  condition_grade: string | null;
-  created_at: string;
-  /** Handling-unit (H-#### tote) this unit currently sits in, if any. */
-  handling_unit_id: number | null;
-  /** Minted unit identity; presence = this unit has been labeled at least once. */
-  unit_uid: string | null;
-};
-
-async function fetchSerialsForLines(lineIds: number[], orgId: OrgId): Promise<Map<number, LineSerial[]>> {
-  const grouped = new Map<number, LineSerial[]>();
-  if (lineIds.length === 0) return grouped;
-
-  // Candidate serials: anything EVER touched by one of these lines — either
-  // its frozen origin, or a later inventory_events attach (a return re-
-  // received under a different PO moves a serial onto a NEW line without
-  // ever updating origin_receiving_line_id). serial_units is org-owned;
-  // org-scope so a cross-tenant line id can never surface another tenant's
-  // serials.
-  const result = await tenantQuery<
-    SerialUnitRow & { origin_receiving_line_id: number | null; handling_unit_id: number | null }
-  >(
-    orgId,
-    // Phase 3: frozen-origin candidate set via provenance; origin value via view.
-    `SELECT DISTINCT su.id, su.serial_number, su.current_status, su.sku_catalog_id,
-            su.condition_grade, su.handling_unit_id, su.unit_uid,
-            vo.origin_receiving_line_id, su.created_at
-       FROM serial_units su
-       JOIN v_serial_unit_origins vo ON vo.serial_unit_id = su.id
-      WHERE su.organization_id = $2
-        AND (su.id IN (SELECT p.serial_unit_id FROM serial_unit_provenance p
-                        WHERE p.origin_type = 'RECEIVING_LINE' AND p.origin_id = ANY($1::int[])
-                          AND p.organization_id = $2)
-             OR EXISTS (
-               SELECT 1 FROM inventory_events ie
-                WHERE ie.serial_unit_id = su.id
-                  AND ie.receiving_line_id = ANY($1::int[])
-                  AND ie.organization_id = $2
-             ))
-      ORDER BY su.created_at ASC, su.id ASC`,
-    [lineIds, orgId],
-  );
-  if (result.rows.length === 0) return grouped;
-
-  // Resolve each candidate's CURRENT line (most recent inventory_events touch,
-  // falling back to the frozen origin) — never group by origin_receiving_line_id
-  // directly, or a re-received serial keeps showing on its first-ever line.
-  const currentLines = await resolveCurrentReceivingLineIds(
-    result.rows.map((row) => Number(row.id)),
-    orgId,
-  );
-
-  for (const row of result.rows) {
-    const lineId = currentLines.get(Number(row.id)) ?? row.origin_receiving_line_id;
-    if (lineId == null || !lineIds.includes(lineId)) continue;
-    const slim: LineSerial = {
-      id: Number(row.id),
-      serial_number: row.serial_number,
-      current_status: row.current_status,
-      sku_catalog_id: row.sku_catalog_id,
-      condition_grade: row.condition_grade,
-      created_at: row.created_at,
-      handling_unit_id: row.handling_unit_id ?? null,
-      unit_uid: row.unit_uid ?? null,
-    };
-    const bucket = grouped.get(lineId);
-    if (bucket) bucket.push(slim);
-    else grouped.set(lineId, [slim]);
-  }
-
-  return grouped;
-}
+// `fetchSerialsForLines` + the `LineSerial` shape are the authoritative
+// current-serials-per-line SoT, shared with the projection writer and the batch
+// endpoint — they live in src/lib/receiving/serial-projection.ts (imported above)
+// so the read path, reconcile, and denorm writer can never drift.
 
 // QA/disposition body-validation vocab shared with the GET filter builder now
 // lives in src/lib/receiving/lines/query.ts (QA_STATUSES / DISPOSITIONS,
@@ -184,6 +117,38 @@ export async function handleReceivingLinesGet(
     const applyScannedZohoExclusion = !isReceivingPhysicalStateFirst() || hideZohoReceived;
 
     const orgId = ctx.organizationId as OrgId;
+
+    // Batch serial hydration (Tier A of the immediate-serial-display plan):
+    // `?receiving_ids=1,2,3` resolves the CURRENT serials for every line of those
+    // cartons in ONE call (reusing fetchSerialsForLines' batched lineIds[]), so a
+    // feed can warm the `['receiving-siblings', id]` caches / patch its visible
+    // rows with serials BEFORE the operator clicks — a row-click then opens from a
+    // warm cache = instant, identical to the scan path. Org-scoped + capped like
+    // every other branch; short-circuits before the single/paginated branches.
+    const receivingIdsRaw = searchParams.get('receiving_ids');
+    if (receivingIdsRaw != null && receivingIdsRaw.trim() !== '') {
+      const receivingIds = Array.from(
+        new Set(
+          receivingIdsRaw
+            .split(',')
+            .map((s) => Number(s.trim()))
+            .filter((n) => Number.isFinite(n) && n > 0),
+        ),
+      ).slice(0, 50); // cap the batch — a feed page is far smaller than this
+      const serialsByLine: Record<number, LineSerial[]> = {};
+      if (receivingIds.length > 0) {
+        const lineRows = await tenantQuery<{ id: number }>(
+          orgId,
+          `SELECT id FROM receiving_line
+            WHERE receiving_id = ANY($1::int[]) AND organization_id = $2`,
+          [receivingIds, orgId],
+        );
+        const lineIds = lineRows.rows.map((r) => Number(r.id));
+        const grouped = await fetchSerialsForLines(lineIds, orgId);
+        for (const [lineId, serials] of grouped) serialsByLine[lineId] = serials;
+      }
+      return NextResponse.json({ success: true, serialsByLine });
+    }
 
     // Universal Incoming (flag-gated, plan §6): when ON, view=incoming also shows
     // eBay-buyer lines and the ?inbound facet filters by primary source. OFF (the
@@ -707,6 +672,13 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
           query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
         };
         if (hasTestingPatch) await upsertReceivingLineTesting(orgId, id, testingPatch, txDeps);
+        // Operator edited the condition grade — a genuine acknowledgement that
+        // the unit was physically opened. Set-once stamp the carton's "Unboxed"
+        // milestone (no-op if a serial/receive already stamped it). Same tenant
+        // tx / client, so it commits atomically with the condition write.
+        if (testingPatch.conditionGrade !== undefined) {
+          await acknowledgeUnbox(client, orgId, row.receiving_id, ctx.staffId ?? null);
+        }
         if (hasZohoPatch) {
           await upsertReceivingLineZoho(orgId, id, zohoPatch, txDeps);
           // The spine kept zoho_purchaseorder_number_norm as a GENERATED column;
@@ -758,6 +730,9 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       } catch (sortErr) {
         console.warn('[receiving-lines PATCH] parts auto-sort failed (non-fatal)', sortErr);
       }
+      // The line's serials moved to the parts bin — refresh its projection so the
+      // next open reflects it on the first frame (Tier B2). Post-response.
+      after(() => refreshLineSerialProjectionSafe(orgId, id));
     }
 
     // Canonical tracking path: a manual tracking submission registers the
@@ -810,6 +785,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
               rlt.disposition_final                        AS disposition_final,
               COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
               rlt.condition_set_at                         AS condition_set_at,
+              rlt.label_printed_at                         AS label_printed_at,
               rz.zoho_item_id                              AS zoho_item_id,
               rz.zoho_line_item_id                         AS zoho_line_item_id,
               rz.zoho_purchase_receive_id                  AS zoho_purchase_receive_id,
@@ -1308,6 +1284,17 @@ function normalizeRow(row: Record<string, unknown>) {
     disposition_code:         (row.disposition_code as string) ?? 'HOLD',
     condition_grade:          (row.condition_grade as string) ?? 'USED_A',
     condition_set_at:         (row.condition_set_at as string | null) ?? null,
+    label_printed_at:         (row.label_printed_at as string | null) ?? null,
+    // Denormalized serial projection (rlt.serial_projection) surfaced by the list
+    // builders as `serials` — the FAST DEFAULT for first-frame chip display, so a
+    // row-click / deep-link / arrow-nav open paints serials without waiting on the
+    // heavy ?include=serials resolution. The authoritative include=serials path
+    // OVERWRITES this after normalize (see the includeSerials branches). undefined
+    // when the SELECT omits the column (e.g. the PATCH re-fetch or placeholder
+    // stubs) so consumers fall back cleanly.
+    serials:                  Array.isArray(row.serials)
+                              ? (row.serials as Array<{ id: number; serial_number: string; condition_grade: string | null }>)
+                              : undefined,
     disposition_audit:        (row.disposition_audit as unknown[]) ?? [],
     needs_test:               !!row.needs_test,
     is_priority:              !!row.is_priority,

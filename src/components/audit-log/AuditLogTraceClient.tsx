@@ -67,7 +67,7 @@ function IdentifierToggle({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.value)}
-            className={`ds-raw-button rounded px-2 py-0.5 text-eyebrow font-bold uppercase tracking-[0.1em] transition-colors ${
+            className={`ds-raw-button rounded px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-[0.1em] transition-colors ${
               active ? 'bg-surface-card text-text-muted shadow-sm' : 'text-text-faint hover:text-text-muted'
             }`}
           >
@@ -92,14 +92,14 @@ function FactCard({
 }) {
   return (
     <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
-      <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">{label}</p>
+      <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">{label}</p>
       <div className="mt-2 flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
           {icon}
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-base font-bold text-text-default">{value}</div>
-          {sub ? <p className="truncate text-micro font-medium text-text-soft">{sub}</p> : null}
+          {sub ? <p className="truncate text-role-micro font-medium text-text-soft">{sub}</p> : null}
         </div>
       </div>
     </section>
@@ -162,7 +162,7 @@ export function AuditLogTraceClient() {
     return (
       <div className="flex h-full flex-col items-center justify-center px-6 py-12 text-center">
         <Search className="mb-3 h-10 w-10 text-text-faint" />
-        <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+        <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
           First Trace
         </p>
         <p className="mt-3 max-w-[420px] text-sm font-medium text-text-soft">
@@ -185,7 +185,7 @@ export function AuditLogTraceClient() {
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
       <div className="border-b border-border-soft bg-surface-card px-6 py-4">
-        <p className="text-micro font-bold uppercase tracking-widest text-emerald-700">First Trace</p>
+        <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">First Trace</p>
         <h2 className="mt-0.5 break-words text-base font-bold text-text-default">
           {unit.product_title || unit.sku || unit.serial_number}
         </h2>
@@ -193,12 +193,12 @@ export function AuditLogTraceClient() {
           <SerialChip value={unit.serial_number} width="w-fit" />
           {unit.sku ? <SkuSerialChip value={unit.sku} display={unit.sku} width="w-fit" /> : null}
           {unit.current_status ? (
-            <span className="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-bold uppercase tracking-wide text-text-muted">
+            <span className="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-text-muted">
               {unit.current_status}
             </span>
           ) : null}
           {unit.condition_grade ? (
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-micro font-bold uppercase tracking-wide text-blue-700">
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide text-blue-700">
               {unit.condition_grade}
             </span>
           ) : null}
@@ -230,7 +230,7 @@ export function AuditLogTraceClient() {
 
           {order ? (
             <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
-              <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+              <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
                 Shipped on order
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -251,7 +251,7 @@ export function AuditLogTraceClient() {
                       fitDisplayWidth
                     />
                   ) : null}
-                  <span className="text-micro font-medium text-text-soft">
+                  <span className="text-role-micro font-medium text-text-soft">
                     {order.allocation_state}
                     {order.allocated_at ? ` · ${timeAgo(order.allocated_at)}` : ''}
                   </span>
@@ -262,10 +262,10 @@ export function AuditLogTraceClient() {
 
           <section className="rounded-xl border border-border-hairline bg-surface-card p-4">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-eyebrow font-black uppercase tracking-wider text-text-soft">
+              <h3 className="text-role-eyebrow uppercase tracking-wider text-text-soft">
                 Lifecycle trail
               </h3>
-              <div className="flex items-center gap-3 text-micro font-medium text-text-faint">
+              <div className="flex items-center gap-3 text-role-micro font-medium text-text-faint">
                 {items.some((it) => it.ref) ? (
                   <IdentifierToggle mode={groupMode} onChange={setGroupMode} />
                 ) : null}

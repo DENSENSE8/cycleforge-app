@@ -115,13 +115,13 @@ export function PackedOrdersTable({
   const idleEmpty =
     !query.isLoading && records.length === 0 && !searchQuery ? (
       <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
-        <p className="text-caption font-bold text-text-default">Nothing staged</p>
-        <p className="max-w-sm text-caption text-text-soft">
+        <p className="text-role-caption font-bold text-text-default">Nothing staged</p>
+        <p className="max-w-sm text-role-caption text-text-soft">
           Packed orders waiting for dock scan-out land here. Open Scan-out to stage the next package.
         </p>
         <a
           href="/outbound?mode=scan-out"
-          className="ds-raw-button rounded-lg bg-blue-600 px-3 py-1.5 text-caption font-bold text-white hover:bg-blue-700"
+          className="ds-raw-button rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-bold text-white hover:bg-blue-700"
         >
           Open Scan-out
         </a>

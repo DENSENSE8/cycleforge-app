@@ -25,9 +25,9 @@ import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColu
  *     the same x on every row whether qty is "1" or "100/100" — so the columns
  *     never drift the way a content-width flow does.
  *
- * Typography matches the /design-demo "good example":
- *     title → text-[13px] font-bold text-text-default   (text-[12px] when `small`)
- *     meta  → text-[9px] font-bold uppercase tracking-widest text-text-soft
+ * Typography — CF Type roles (search-and-dense-ui plan §2.4):
+ *     title → text-role-data font-semibold text-text-default (role-caption when `small`)
+ *     meta  → text-role-eyebrow uppercase text-text-soft (role bakes 600 + tracking)
  *
  * INVARIANTS:
  *   • RowMetaColumns `indent` MUST equal the RowTitle `dotTrack` width
@@ -85,7 +85,7 @@ export function RowTitle({
   dotTooltip,
   title,
   dotTrack = META_COL.dotTrack,
-  /** Smaller title (text-[12px]) instead of the default text-[13px]. */
+  /** Smaller title (text-role-caption) instead of the default text-role-data. */
   small,
   /** Optional leading slot rendered before the dot (e.g. a select-mode checkbox). */
   leading,
@@ -121,8 +121,8 @@ export function RowTitle({
       </span>
       <div
         className={cn(
-          'truncate font-bold text-text-default',
-          small ? 'text-label' : 'text-[13px]',
+          'truncate font-semibold text-text-default',
+          small ? 'text-role-caption' : 'text-role-data',
           titleClassName,
         )}
       >
@@ -193,7 +193,7 @@ export function RowMetaColumns({
   return (
     <div
       className={cn(
-        'mt-0.5 grid min-w-0 items-center gap-x-1 text-eyebrow font-bold uppercase tracking-widest text-text-soft',
+        'mt-0.5 grid min-w-0 items-center gap-x-1 text-role-eyebrow uppercase text-text-soft',
         className,
       )}
       style={{ paddingLeft: indent, gridTemplateColumns: tracks.join(' ') }}

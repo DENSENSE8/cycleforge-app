@@ -28,7 +28,7 @@ export function NoCatalogNotice({
 
   return (
     <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
-      <span className="text-caption font-medium text-amber-800">
+      <span className="text-role-caption font-medium text-amber-800">
         No catalog entry for {sku || 'this SKU'} yet.
       </span>
       <Button

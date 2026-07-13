@@ -26,7 +26,7 @@ const EXPIRY_SORT_ITEMS: HorizontalSliderItem[] = [
   { id: 'soon', label: `${WARRANTY_EXPIRING_SOON_DAYS} days out` },
 ];
 
-const statusChip = 'rounded-full px-2.5 py-1 text-caption font-medium ring-1 ring-inset transition';
+const statusChip = 'rounded-full px-2.5 py-1 text-role-caption font-medium ring-1 ring-inset transition';
 const statusChipActive = 'bg-accent-bg text-accent-text ring-accent-bg';
 const statusChipIdle = 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover';
 
@@ -66,7 +66,7 @@ export function WarrantyLoggerSidebar({
   const renderFilters = (onClose: () => void) => (
     <div className="space-y-3">
       <div>
-        <p className="mb-1.5 text-caption font-semibold uppercase tracking-wide text-text-faint">Expiry</p>
+        <p className="mb-1.5 text-role-caption font-semibold uppercase tracking-wide text-text-faint">Expiry</p>
         <HorizontalButtonSlider
           items={EXPIRY_SORT_ITEMS}
           value={expiringSoon ? 'soon' : 'all'}
@@ -78,7 +78,7 @@ export function WarrantyLoggerSidebar({
         />
       </div>
       <div>
-        <p className="mb-1.5 text-caption font-semibold uppercase tracking-wide text-text-faint">Status</p>
+        <p className="mb-1.5 text-role-caption font-semibold uppercase tracking-wide text-text-faint">Status</p>
         <div className="flex flex-wrap gap-1.5">
           {/* ds-raw-button: segmented status-filter chip (conditional active ring/fill), not a single DS variant */}
           <button
@@ -196,14 +196,14 @@ export function WarrantyLoggerSidebar({
                     <WarrantyStatusBadge status={claim.status} />
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-2">
-                    <span className="truncate font-mono text-caption text-text-faint">
+                    <span className="truncate font-mono text-role-caption text-text-faint">
                       {claim.claimNumber}
                       {claim.serialNumber ? ` · ${claim.serialNumber}` : ''}
                     </span>
                     <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />
                   </div>
                   {claim.customerName && (
-                    <div className="mt-0.5 truncate text-caption text-text-faint">{claim.customerName}</div>
+                    <div className="mt-0.5 truncate text-role-caption text-text-faint">{claim.customerName}</div>
                   )}
                 </button>
               </li>

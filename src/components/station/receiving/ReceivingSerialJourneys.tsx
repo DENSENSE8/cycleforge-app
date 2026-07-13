@@ -48,14 +48,14 @@ export function ReceivingSerialJourneys({ receivingId }: { receivingId: number |
 
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 px-1 py-6 text-caption font-medium text-text-faint">
+      <div className="flex items-center gap-2 px-1 py-6 text-role-caption font-medium text-text-faint">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading serials…
       </div>
     );
   }
   if (query.isError) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption font-semibold text-rose-600">
+      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-semibold text-rose-600">
         Could not load this carton&rsquo;s serials.
         <Button
           variant="ghost"
@@ -69,7 +69,7 @@ export function ReceivingSerialJourneys({ receivingId }: { receivingId: number |
   }
   if (serials.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-caption font-medium text-text-soft">
+      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-role-caption font-medium text-text-soft">
         No serialized units on this receiving yet.
       </div>
     );

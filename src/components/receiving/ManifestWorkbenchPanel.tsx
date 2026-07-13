@@ -168,12 +168,12 @@ export function ManifestWorkbenchPanel({
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
         <Package className="h-4 w-4 shrink-0 text-violet-600" />
-        <span className="min-w-0 flex-1 truncate font-mono text-caption font-bold text-text-default">
+        <span className="min-w-0 flex-1 truncate font-mono text-role-caption font-bold text-text-default">
           {manifest?.manifest_uid || String(manifestRef)}
         </span>
         {manifest ? (
           <span
-            className={`rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest ${MANIFEST_STATUS_TONE[status] ?? 'bg-surface-sunken text-text-muted'}`}
+            className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${MANIFEST_STATUS_TONE[status] ?? 'bg-surface-sunken text-text-muted'}`}
           >
             {status}
           </span>
@@ -196,7 +196,7 @@ export function ManifestWorkbenchPanel({
 
       {/* Actions */}
       <div className="flex items-center gap-2 border-b border-border-soft px-4 py-2">
-        <span className="text-caption font-bold text-text-muted">
+        <span className="text-role-caption font-bold text-text-muted">
           {items.length} unit{items.length === 1 ? '' : 's'}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
@@ -228,7 +228,7 @@ export function ManifestWorkbenchPanel({
                 }
               }}
               placeholder="Scan a serial to add to the kit…"
-              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
             />
             {busy === 'add' ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-muted" /> : null}
           </div>
@@ -238,15 +238,15 @@ export function ManifestWorkbenchPanel({
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-caption text-text-muted">
+          <div className="flex items-center justify-center gap-2 py-8 text-role-caption text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading manifest…
           </div>
         ) : isError ? (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-700">
+          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
             {error instanceof Error ? error.message : 'Could not load this manifest.'}
           </div>
         ) : !manifest || items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">
+          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
             No units in this kit yet. Scan a serial above to add one.
           </div>
         ) : (
@@ -260,16 +260,16 @@ export function ManifestWorkbenchPanel({
                 <li key={u.serial_unit_id} className="flex items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-caption font-semibold text-text-default">
+                      <span className="font-mono text-role-caption font-semibold text-text-default">
                         …{getLast4(u.serial_number)}
                       </span>
                       <span
-                        className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
+                        className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
                       >
                         {u.current_status}
                       </span>
                     </div>
-                    <div className="mt-0.5 truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                    <div className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                       {u.sku || '—'}
                       {u.condition_grade ? ` · ${conditionLabel(u.condition_grade, 'compact')}` : ''}
                       {lineTitle ? ` · ${lineTitle}` : ''}

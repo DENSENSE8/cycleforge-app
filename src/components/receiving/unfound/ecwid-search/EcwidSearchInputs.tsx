@@ -39,7 +39,7 @@ export function EcwidSearchInputs({
                   c.setIsLoading(false);
                 }}
                 aria-label="Product not added yet?"
-                className="ds-raw-button max-w-[min(11rem,calc(100vw-200px))] shrink-0 truncate rounded-md border border-blue-200 bg-blue-50/80 px-1.5 py-0.5 text-left text-micro font-semibold text-blue-800 hover:bg-blue-100 sm:max-w-[14rem] sm:text-caption sm:leading-tight"
+                className="ds-raw-button max-w-[min(11rem,calc(100vw-200px))] shrink-0 truncate rounded-md border border-blue-200 bg-blue-50/80 px-1.5 py-0.5 text-left text-role-micro font-semibold text-blue-800 hover:bg-blue-100 sm:max-w-[14rem] sm:text-role-caption sm:leading-tight"
               >
                 Product not added yet?
               </button>
@@ -97,7 +97,7 @@ export function EcwidSearchInputs({
   }
 
   return (
-    <p className="px-3 pt-2 text-micro text-text-soft">
+    <p className="px-3 pt-2 text-role-micro text-text-soft">
       Pick an order containing a repair-service SKU to link this carton.
     </p>
   );

@@ -74,7 +74,7 @@ function prettyEnum(value: string): string {
  */
 function MetaPill({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-surface-card px-2 py-0.5 text-micro font-black uppercase tracking-[0.1em] text-emerald-800 ring-1 ring-inset ring-emerald-200">
+    <span className="inline-flex items-center gap-1 rounded-full bg-surface-card px-2 py-0.5 text-role-micro uppercase tracking-[0.1em] text-emerald-800 ring-1 ring-inset ring-emerald-200">
       <span className="text-emerald-500/70">{label}</span>
       <span>{value}</span>
     </span>
@@ -156,7 +156,7 @@ export function SerialMatchResult({
         <span className="flex items-center gap-2">
           Match found
           {isReturn ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-micro font-black uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-inset ring-emerald-500/25">
+            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-role-micro uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-inset ring-emerald-500/25">
               Returned item
             </span>
           ) : null}
@@ -173,7 +173,7 @@ export function SerialMatchResult({
               {matchedOrder.product_title ? (
                 // Truncation reveal of the full product title on a non-interactive clipped <p>.
                 // ds-allow-title
-                <p className="truncate text-label font-bold text-emerald-900" title={matchedOrder.product_title}>
+                <p className="truncate text-role-caption font-bold text-emerald-900" title={matchedOrder.product_title}>
                   {matchedOrder.product_title}
                 </p>
               ) : null}
@@ -214,7 +214,7 @@ export function SerialMatchResult({
               size="sm"
               onClick={() => onFileClaim(matchedOrder ?? null)}
               iconRight={<span aria-hidden>→</span>}
-              className="bg-emerald-600 text-micro font-black uppercase tracking-wider text-white hover:bg-emerald-700 active:bg-emerald-700"
+              className="bg-emerald-600 text-role-micro uppercase tracking-wider text-white hover:bg-emerald-700 active:bg-emerald-700"
             >
               File return claim
             </Button>

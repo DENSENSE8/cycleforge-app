@@ -78,13 +78,13 @@ export function ParkedSurface({
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-eyebrow font-black uppercase tracking-widest text-amber-700">
+          <p className="text-role-eyebrow uppercase tracking-widest text-amber-700">
             Work in progress
           </p>
           {!isSidebar ? (
             <h1 className="text-lg font-black text-text-default">{meta.label}</h1>
           ) : (
-            <h2 className="text-caption font-bold text-text-default">{meta.label}</h2>
+            <h2 className="text-role-caption font-bold text-text-default">{meta.label}</h2>
           )}
           <p className={isSidebar ? 'text-xs font-medium text-text-muted' : 'text-sm font-medium text-text-muted'}>
             {meta.blurb}

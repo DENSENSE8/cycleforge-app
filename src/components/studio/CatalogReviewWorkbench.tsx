@@ -96,8 +96,8 @@ export function CatalogReviewWorkbench() {
       {/* Eyebrow header */}
       <header className="flex items-center gap-2 border-b border-border-hairline px-5 py-3">
         <ClipboardList className="h-4 w-4 text-text-accent" />
-        <h1 className="text-caption font-bold text-text-default">Template catalog review</h1>
-        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <h1 className="text-role-caption font-bold text-text-default">Template catalog review</h1>
+        <span className="ml-auto rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
           {submissions?.length ?? 0} pending
         </span>
       </header>
@@ -107,20 +107,20 @@ export function CatalogReviewWorkbench() {
         <aside className="flex w-80 shrink-0 flex-col border-r border-border-hairline">
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="flex items-center gap-2 px-4 py-8 text-caption text-text-soft">
+              <div className="flex items-center gap-2 px-4 py-8 text-role-caption text-text-soft">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading queue…
               </div>
             ) : isError ? (
               <div className="m-4 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
                 <AlertCircle className="mx-auto h-4 w-4 text-rose-500" />
-                <p className="mt-1 text-caption font-semibold text-rose-700">Could not load the review queue.</p>
-                <p className="mt-0.5 text-eyebrow uppercase tracking-widest text-rose-400">Reload to try again.</p>
+                <p className="mt-1 text-role-caption font-semibold text-rose-700">Could not load the review queue.</p>
+                <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-rose-400">Reload to try again.</p>
               </div>
             ) : !submissions || submissions.length === 0 ? (
               <div className="m-4 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-8 text-center">
                 <Inbox className="mx-auto h-4 w-4 text-text-faint" />
-                <p className="mt-1 text-caption font-semibold text-text-soft">No submissions to review.</p>
-                <p className="mt-0.5 text-eyebrow uppercase tracking-widest text-text-faint">
+                <p className="mt-1 text-role-caption font-semibold text-text-soft">No submissions to review.</p>
+                <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
                   Org submissions land here for curation.
                 </p>
               </div>
@@ -139,8 +139,8 @@ export function CatalogReviewWorkbench() {
                           isSel ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover',
                         ].join(' ')}
                       >
-                        <span className="truncate text-caption font-bold text-text-default">{s.name}</span>
-                        <span className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                        <span className="truncate text-role-caption font-bold text-text-default">{s.name}</span>
+                        <span className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                           {s.nodeCount} step{s.nodeCount === 1 ? '' : 's'}
                           {s.category ? ` · ${s.category}` : ''}
                         </span>
@@ -166,38 +166,38 @@ export function CatalogReviewWorkbench() {
                 className="mx-auto max-w-2xl space-y-5 px-6 py-6"
               >
                 <div className="space-y-1">
-                  <span className="inline-flex items-center gap-1.5 text-eyebrow font-black uppercase tracking-widest text-text-accent">
+                  <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
                     <Clock className="h-3.5 w-3.5" /> Submitted {formatWhen(selected.submittedAt)}
                   </span>
                   <h2 className="text-lg font-bold text-text-default">{selected.name}</h2>
-                  <p className="font-mono text-eyebrow uppercase tracking-widest text-text-faint">{selected.slug}</p>
+                  <p className="font-mono text-role-eyebrow uppercase tracking-widest text-text-faint">{selected.slug}</p>
                 </div>
 
                 {selected.description && (
-                  <p className="text-caption leading-relaxed text-text-soft">{selected.description}</p>
+                  <p className="text-role-caption leading-relaxed text-text-soft">{selected.description}</p>
                 )}
 
                 <dl className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <dt className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Shape</dt>
-                    <dd className="flex items-center gap-1.5 text-caption font-semibold text-text-muted">
+                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Shape</dt>
+                    <dd className="flex items-center gap-1.5 text-role-caption font-semibold text-text-muted">
                       <Boxes className="h-3.5 w-3.5 text-text-soft" />
                       {selected.nodeCount} step{selected.nodeCount === 1 ? '' : 's'} · {selected.edgeCount} link
                       {selected.edgeCount === 1 ? '' : 's'}
                     </dd>
                   </div>
                   <div className="space-y-1">
-                    <dt className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Category</dt>
-                    <dd className="text-caption font-semibold text-text-muted">{selected.category ?? '—'}</dd>
+                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Category</dt>
+                    <dd className="text-role-caption font-semibold text-text-muted">{selected.category ?? '—'}</dd>
                   </div>
                   <div className="col-span-2 space-y-1">
-                    <dt className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Submitted by org</dt>
-                    <dd className="truncate font-mono text-eyebrow text-text-soft">{selected.submittedByOrg ?? '—'}</dd>
+                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">Submitted by org</dt>
+                    <dd className="truncate font-mono text-role-eyebrow text-text-soft">{selected.submittedByOrg ?? '—'}</dd>
                   </div>
                 </dl>
 
                 {review.isError && (
-                  <p className="text-caption font-semibold text-rose-600">
+                  <p className="text-role-caption font-semibold text-rose-600">
                     Couldn&apos;t record that review: {(review.error as Error)?.message ?? 'unknown error'}
                   </p>
                 )}
@@ -226,7 +226,7 @@ export function CatalogReviewWorkbench() {
                     Reject
                   </Button>
                 </div>
-                <p className="flex items-center gap-1.5 text-micro text-text-faint">
+                <p className="flex items-center gap-1.5 text-role-micro text-text-faint">
                   <Check className="h-3 w-3" /> Approving makes this template public + clonable by every tenant.
                 </p>
               </motion.div>
@@ -241,10 +241,10 @@ export function CatalogReviewWorkbench() {
               >
                 <div className="max-w-sm text-center">
                   <ClipboardList className="mx-auto h-5 w-5 text-text-faint" />
-                  <p className="mt-2 text-caption font-semibold text-text-soft">
+                  <p className="mt-2 text-role-caption font-semibold text-text-soft">
                     Select a submission to review it.
                   </p>
-                  <p className="mt-0.5 text-eyebrow uppercase tracking-widest text-text-faint">
+                  <p className="mt-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
                     Approve to publish it to the curated catalog, or reject to keep it private.
                   </p>
                 </div>

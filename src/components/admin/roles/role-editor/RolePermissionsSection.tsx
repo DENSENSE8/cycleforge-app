@@ -29,7 +29,7 @@ export function RolePermissionsSection({
         <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
           <div>
             <h2 className="text-sm font-semibold text-text-default">.access</h2>
-            <p className="mt-0.5 text-caption text-text-soft">
+            <p className="mt-0.5 text-role-caption text-text-soft">
               Quick-toggle which sidebar pages this role can see. Each toggle flips the matching <code className="font-mono">.view</code> permission below.
             </p>
           </div>
@@ -58,7 +58,7 @@ export function RolePermissionsSection({
         <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
           <div>
             <h2 className="text-sm font-semibold text-text-default">Permissions</h2>
-            <p className="mt-0.5 text-caption text-text-soft">
+            <p className="mt-0.5 text-role-caption text-text-soft">
               {isAdminRole
                 ? 'Admin role grants every permission and cannot be customised.'
                 : `Toggle what staff in this role can do. ${enabledSet.size} of many enabled.`}
@@ -67,7 +67,7 @@ export function RolePermissionsSection({
         </header>
         {PERMISSION_CATEGORIES.map((cat) => (
           <div key={cat.id} className="border-b border-border-hairline last:border-b-0">
-            <div className="bg-surface-canvas/60 px-5 py-2 text-micro font-bold uppercase tracking-widest text-text-soft">{cat.label}</div>
+            <div className="bg-surface-canvas/60 px-5 py-2 text-role-micro font-bold uppercase tracking-widest text-text-soft">{cat.label}</div>
             <ul className="divide-y divide-border-hairline">
               {cat.permissions.map((perm) => (
                 <PermissionToggle

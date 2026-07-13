@@ -159,7 +159,7 @@ export default async function CycleCountsAdminPage({
               </Button>
             </div>
           </form>
-          <p className="border-t border-border-hairline bg-surface-canvas px-6 py-3 text-caption text-text-muted">
+          <p className="border-t border-border-hairline bg-surface-canvas px-6 py-3 text-role-caption text-text-muted">
             Snapshots every <code>bin_contents</code> row with <code>qty &gt; 0</code> or
             never-counted. Default tolerance 0.05 (5%) — counts within that auto-approve on close;
             beyond it routes to <em>pending review</em>.
@@ -195,7 +195,7 @@ export default async function CycleCountsAdminPage({
                       <Link href={`/admin/inventory/cycle-counts/${c.id}`} className="font-semibold text-blue-600 hover:underline">
                         {c.name}
                       </Link>
-                      <div className="text-caption text-text-soft">tol {c.variance_tol}</div>
+                      <div className="text-role-caption text-text-soft">tol {c.variance_tol}</div>
                     </td>
                     <td className="px-4 py-2">
                       <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${

@@ -57,11 +57,11 @@ function ReceiveInlineProgress({ startedAt, intent }: ReceiveInFlight) {
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-caption font-bold text-blue-900">
+        <span className="flex items-center gap-1.5 text-role-caption font-bold text-blue-900">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           {label}
         </span>
-        <span className="text-eyebrow font-semibold tabular-nums text-blue-500">{elapsed}s</span>
+        <span className="text-role-eyebrow font-semibold tabular-nums text-blue-500">{elapsed}s</span>
       </div>
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-blue-200/70">
         <div className="recv-indet-bar h-full w-1/3 rounded-full bg-blue-500" />
@@ -192,13 +192,13 @@ function ReceiveSuccessChecklist({
         <>
           {/* Reconcile footer — only while a real Zoho receive is in flight. */}
           {result.reconcile && status === 'pending' && view.tone === 'emerald' ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-text-faint">
+            <p className="mt-1.5 flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-wider text-text-faint">
               <Loader2 className="h-3 w-3 animate-spin" />
               Syncing to inventory…
             </p>
           ) : null}
           {status === 'confirmed' ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-emerald-600">
+            <p className="mt-1.5 flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-wider text-emerald-600">
               <Check className="h-3 w-3" />
               Confirmed in inventory
             </p>
@@ -215,7 +215,7 @@ function ReceiveSuccessChecklist({
                 className={`transition-transform duration-150 ${detailsOpen ? 'rotate-180' : ''}`}
               />
             }
-            className="mt-1.5 -ml-0.5 text-eyebrow font-black uppercase tracking-widest text-text-faint hover:text-text-muted"
+            className="mt-1.5 -ml-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-muted"
           >
             {detailsOpen ? 'Hide details' : 'Details'}
           </Button>
@@ -233,11 +233,11 @@ function ReceiveSuccessChecklist({
                 <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded border border-border-soft bg-surface-card/70 px-2 py-1.5">
                   {detailRows.map(([k, v]) => (
                     <div key={k} className="contents">
-                      <dt className="text-micro font-semibold uppercase tracking-wide text-text-faint">
+                      <dt className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">
                         {k}
                       </dt>
                       <dd
-                        className={`min-w-0 break-words text-micro font-medium text-text-muted ${
+                        className={`min-w-0 break-words text-role-micro font-medium text-text-muted ${
                           k === 'Item description' || k === 'PO notes' ? 'whitespace-pre-wrap' : ''
                         }`}
                       >

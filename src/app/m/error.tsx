@@ -33,11 +33,11 @@ export default function MobileError({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-canvas px-6 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className="text-micro font-black uppercase tracking-[0.22em] text-rose-500">
+        <p className="text-role-micro uppercase tracking-[0.22em] text-rose-500">
           Something broke
         </p>
         <h1 className="text-lg font-black text-text-default">This screen hit an error</h1>
-        <p className="max-w-xs text-caption font-bold text-text-soft">
+        <p className="max-w-xs text-role-caption font-bold text-text-soft">
           {error?.message || 'Unexpected error.'}
         </p>
       </div>

@@ -32,7 +32,7 @@ export function PairedReviewWorkspace({
           bottom action bar, like receiving / testing). */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-hairline px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <p className="shrink-0 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <p className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
             FBA Shipment ID
           </p>
           <input
@@ -59,7 +59,7 @@ export function PairedReviewWorkspace({
         </div>
 
         {c.hasItems ? (
-          <span className="shrink-0 text-micro font-bold uppercase tracking-wider tabular-nums text-text-soft">
+          <span className="shrink-0 text-role-micro font-bold uppercase tracking-wider tabular-nums text-text-soft">
             {selectedItems.length} line{selectedItems.length === 1 ? '' : 's'} · {c.totalQty} units
           </span>
         ) : null}
@@ -69,7 +69,7 @@ export function PairedReviewWorkspace({
       {(c.activeSplit || c.success) ? (
         <div className="shrink-0 space-y-1 px-4 pt-2">
           {c.activeSplit ? (
-            <p className="text-eyebrow font-semibold leading-snug text-amber-800">
+            <p className="text-role-eyebrow font-semibold leading-snug text-amber-800">
               If you change this FBA ID from the prefilled value, Save creates a new active shipment for these
               FNSKUs with this Amazon ID and UPS; the original card keeps its FBA ID for remaining lines.
             </p>
@@ -120,7 +120,7 @@ export function PairedReviewWorkspace({
                 type="button"
                 onClick={c.addBucket}
                 disabled={c.saving}
-                className="flex w-44 shrink-0 flex-col items-center justify-center gap-1.5 self-stretch rounded-lg border border-dashed border-border-default py-6 text-micro font-bold uppercase tracking-wider text-text-soft transition-colors hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 disabled:opacity-40"
+                className="flex w-44 shrink-0 flex-col items-center justify-center gap-1.5 self-stretch rounded-lg border border-dashed border-border-default py-6 text-role-micro font-bold uppercase tracking-wider text-text-soft transition-colors hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 disabled:opacity-40"
               >
                 <Plus className="h-4 w-4" />
                 Add UPS Box

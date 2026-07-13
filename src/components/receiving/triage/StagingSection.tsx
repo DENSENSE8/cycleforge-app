@@ -26,7 +26,7 @@ export function StagingSection({ staging }: { staging: TriageStagingController }
   return (
     <WorkspaceCard label="Staging" variant="glass" overflow="visible" actions={savingIndicator ?? undefined}>
       <div className="space-y-1">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Shelf</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Shelf</p>
         <div className="flex items-center gap-1.5">
           <MapPin className="h-3.5 w-3.5 shrink-0 text-text-faint" />
           <select

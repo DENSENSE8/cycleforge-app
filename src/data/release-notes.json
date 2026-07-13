@@ -1,7 +1,57 @@
 {
-  "generatedAt": "2026-07-12T18:39:42.782Z",
+  "generatedAt": "2026-07-13T15:39:24.502Z",
   "count": 196,
   "commits": [
+    {
+      "sha": "36926feb2374e93933a387ddff476de7dec35bf9",
+      "shortSha": "36926feb2",
+      "date": "2026-07-12T17:49:27-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(rules): slim always-on context layer ~59% + add slim rule",
+      "body": "CLAUDE.md is now a thin Claude-native entry (@AGENTS.md + on-demand\nrule pointers + Claude-only notes). Dropped the duplicative \"(Claude\nsummary)\" sections and demoted @source-of-truth.md / @build-gotchas.md\nfrom always-on @imports to on-demand path references (their summaries\nstay always-on inside AGENTS.md). Merged AGENTS.md \"Pattern evolution\"\n+ \"Compound design system\" into one section and compressed Kinetic\nLedger to Five laws + on-demand pointers. Added a \"Keep the always-on\nlayer slim\" rule (never @import a file you also summarize).\n\nAlways-on layer ~4071 -> ~1664 words. No hard law lost; every SoT\npointer resolves; only one @import remains (AGENTS.md).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01NFYUCXUAhBa5iRsixJQeVH",
+      "type": "docs",
+      "title": "slim always-on context layer ~59% + add slim rule"
+    },
+    {
+      "sha": "d5704bc232bf60e54d3944c4910d0e8bd623eaf0",
+      "shortSha": "d5704bc23",
+      "date": "2026-07-12T12:27:40-07:00",
+      "author": "DENSENSE8",
+      "subject": "HOME-OPS Phase B: Tasks mode on Home (ops-plans inbox + claim/complete/reopen)",
+      "body": "Wire the Home `?mode=tasks` region to the existing ops-plans surface:\nGET /api/ops-plans/inbox (Mine/All scope, open tasks) drives a two-column\nWorkbench — ranked list + a durable ?task= detail with claim / complete /\nreopen (POST .../claim, POST .../complete, PATCH .../[id] {status}),\npermission-gated via `has`. Live-refreshes on the org ops_plans channel\n('ops_plan.updated'). Composes TASK_STATUS_DOT + the house one-row anatomy;\nno new list engine or search waist. Replaces the Tasks teaching placeholder.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "other",
+      "title": "HOME-OPS Phase B: Tasks mode on Home (ops-plans inbox + claim/complete/reopen)"
+    },
+    {
+      "sha": "240673f9e6d9bcfde631626e9aab8cd0c6dbc0ac",
+      "shortSha": "240673f9e",
+      "date": "2026-07-12T12:23:15-07:00",
+      "author": "DENSENSE8",
+      "subject": "HOME-OPS A3: re-add Home to nav (parked-aware) + redirect Operations plans",
+      "body": "Add Home as the first APP_SIDEBAR_NAV row, marked parkedSurface:'home' so it\nshows only when the Home surface is unlocked (DOGFOOD_FULL_SURFACE) and stays\nhidden for customers — the locked-prod-nav tests still see it absent, no test\nchanges needed. Remove 'plans' from the Operations mode rail and redirect\n?mode=plans → Home (/?mode=forge&view=live if the live console was requested,\nelse /?mode=tasks); the 'plans' URL SoT + round-trip stay intact so bookmarks\nand /forge history keep working.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "other",
+      "title": "HOME-OPS A3: re-add Home to nav (parked-aware) + redirect Operations plans"
+    },
+    {
+      "sha": "2bf06953e1b743a654951e7832bf4846bded8294",
+      "shortSha": "2bf06953e",
+      "date": "2026-07-12T12:14:24-07:00",
+      "author": "DENSENSE8",
+      "subject": "HOME-OPS Phase A: Home mode rail + forge redirect",
+      "body": "Restore Home (/) as a Workbench with a ?mode= rail (Today | Tasks | Collab\n| Plan | Brief). `today` composes the real MyDayWorkspace; `forge` mounts\nthe live AgenticLoopLiveConsole; Tasks/Collab/Brief are teaching seams for\nPhases B/D/E. /forge now redirects to /?mode=forge&view=live, and the park\ngate lets ?mode= through so it lands. MyDayWorkspace height adapts\n(h-[calc(100vh-64px)] -> h-full) so it composes under the rail.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "other",
+      "title": "HOME-OPS Phase A: Home mode rail + forge redirect"
+    },
+    {
+      "sha": "fb99ffa3580b4ae06a65464c3d6255d234c7efc5",
+      "shortSha": "fb99ffa35",
+      "date": "2026-07-12T11:41:53-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(integrations): break server-only import chain in capability-labels.ts",
+      "body": "",
+      "type": "fix",
+      "title": "break server-only import chain in capability-labels.ts"
+    },
     {
       "sha": "f7dea9c1e6199347117f637f946953f10f1740e3",
       "shortSha": "f7dea9c1e",
@@ -1911,56 +1961,6 @@
       "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
       "type": "chore",
       "title": "gitignore local scratch script artifacts (studio verify runs + screenshots)"
-    },
-    {
-      "sha": "d3bc2d0afa2611a5a967759462d285061a7bde0c",
-      "shortSha": "d3bc2d0af",
-      "date": "2026-06-13T18:45:56-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: gitignore Playwright MCP scratch output (.playwright-mcp/)",
-      "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "gitignore Playwright MCP scratch output (.playwright-mcp/)"
-    },
-    {
-      "sha": "e0d982a1dbb0ac769e8ff6290a0106dee726bf3a",
-      "shortSha": "e0d982a1d",
-      "date": "2026-06-13T18:45:56-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: gitignore Playwright MCP scratch output (.playwright-mcp/)",
-      "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "gitignore Playwright MCP scratch output (.playwright-mcp/)"
-    },
-    {
-      "sha": "489330f89a6ca65a401ab317aad53774300774be",
-      "shortSha": "489330f89",
-      "date": "2026-06-13T17:05:07-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: tenancy isolation guards + Studio/stations/sourcing/testing WIP",
-      "body": "Large batch across several in-flight initiatives:\n\n- Tenancy hardening: org-scope/permission guards added across ~100 API\n  routes, RLS enforcement infra + app_tenant role template migrations,\n  cross-org isolation harness/tests, and CI gates (tenancy:guard:check\n  static + live BYPASSRLS invariant). New scripts: tenancy-guard.ts,\n  tenancy-coverage.mjs, tenancy-route-audit.mjs.\n- Operations Studio: /studio page, lenses + semantic zoom, diagnostics\n  linter, draft/publish, node-stats; StudioSidebarPanel + /api/studio.\n- Station builder: src/lib/stations registries, /api/stations,\n  station_definitions + seed reseller workflow migrations, station nodes.\n- Workflow engine: node types, diagnostics, tap, node-stats cron.\n- Sourcing hub: SourceAdapter layer, saved searches, scour-watch cron,\n  demand-unify migration, Source-this/Watch buttons.\n- Testing refactor: split TechTestingWorkspace -> TestingLineWorkspace/\n  TestingPanel + hooks; recordTestVerdict; slim serial-units test route.\n- Warranty/Zendesk round-trip: link candidates, ticket popover, soft\n  delete, claims zendesk link route.\n- Unshipped/outbound: AddTracking + OrdersSync popovers, EventTimeline +\n  timeline lib, order timeline, ship-confirm scan-out + outbound-state.\n- Receiving: carton intake_type model, line-edit mode-registry + hooks,\n  Viewed rail (line views), carton-source-link, source-order migration.\n- Staff messages + clipboard history; DateGroupHeader consolidation;\n  realtime channels/publish refactor; new project skills (ops-studio,\n  reseller-flow, station-block, workflow-node).\n\nExcludes secrets (.env/.env.local) and local debug artifacts.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "tenancy isolation guards + Studio/stations/sourcing/testing WIP"
-    },
-    {
-      "sha": "766717dcf3042cfef42d91602c94863d1c1faea7",
-      "shortSha": "766717dcf",
-      "date": "2026-06-13T17:05:07-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: tenancy isolation guards + Studio/stations/sourcing/testing WIP",
-      "body": "Large batch across several in-flight initiatives:\n\n- Tenancy hardening: org-scope/permission guards added across ~100 API\n  routes, RLS enforcement infra + app_tenant role template migrations,\n  cross-org isolation harness/tests, and CI gates (tenancy:guard:check\n  static + live BYPASSRLS invariant). New scripts: tenancy-guard.ts,\n  tenancy-coverage.mjs, tenancy-route-audit.mjs.\n- Operations Studio: /studio page, lenses + semantic zoom, diagnostics\n  linter, draft/publish, node-stats; StudioSidebarPanel + /api/studio.\n- Station builder: src/lib/stations registries, /api/stations,\n  station_definitions + seed reseller workflow migrations, station nodes.\n- Workflow engine: node types, diagnostics, tap, node-stats cron.\n- Sourcing hub: SourceAdapter layer, saved searches, scour-watch cron,\n  demand-unify migration, Source-this/Watch buttons.\n- Testing refactor: split TechTestingWorkspace -> TestingLineWorkspace/\n  TestingPanel + hooks; recordTestVerdict; slim serial-units test route.\n- Warranty/Zendesk round-trip: link candidates, ticket popover, soft\n  delete, claims zendesk link route.\n- Unshipped/outbound: AddTracking + OrdersSync popovers, EventTimeline +\n  timeline lib, order timeline, ship-confirm scan-out + outbound-state.\n- Receiving: carton intake_type model, line-edit mode-registry + hooks,\n  Viewed rail (line views), carton-source-link, source-order migration.\n- Staff messages + clipboard history; DateGroupHeader consolidation;\n  realtime channels/publish refactor; new project skills (ops-studio,\n  reseller-flow, station-block, workflow-node).\n\nExcludes secrets (.env/.env.local) and local debug artifacts.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "tenancy isolation guards + Studio/stations/sourcing/testing WIP"
-    },
-    {
-      "sha": "891571795857dff37a4266fd3ebedd2c114ba957",
-      "shortSha": "891571795",
-      "date": "2026-06-13T14:43:38-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: commit remaining WIP (silent printing, vision scripts, misc)",
-      "body": "Bundles the rest of the working tree per request, minus the 198MB installer\nartifact (removed; context/*.exe now gitignored).\n\n- Silent label printing: src/lib/print/* (browserPrint, iframePrint,\n  labelCommands, printErrors, printMode, printLabel, silentPrint),\n  PrintPreferences, CommandBar, electron/main.js, playwright.silentprint.config\n  + receiving-silent-print e2e + docs/receiving-silent-printing.md\n- Vision data pipeline scripts: vision/scripts/* (crawl, download, NAS pairing,\n  OCR dump/extract/identify, eval/golden, zoho image pull, reclassify)\n- Misc: receiving workspace tweaks (UnmatchedItemsSection, label helpers),\n  proxy.ts, route-permissions.json, release-notes.json, .gitignore\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "commit remaining WIP (silent printing, vision scripts, misc)"
     }
   ]
 }

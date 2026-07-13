@@ -34,8 +34,8 @@ import {
   Pencil,
   Search,
   ShoppingCart,
+  Ticket,
   Unlink,
-  ZendeskMark,
 } from '@/components/Icons';
 import {
   dispatchLineUpdated,
@@ -115,7 +115,7 @@ export function LineMatchingSection({
     if (embedded) {
       return (
         <div className="space-y-2">
-          <h3 className="text-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+          <h3 className="text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
             Package Pairing
           </h3>
           {teaching}
@@ -357,7 +357,7 @@ function TriageMatchingCard({
     // Storefront search — search ALL recent orders by order #, title, or SKU
     // (relaxed to include normal orders + returns/trade-ins, not just -RS).
     { id: 'ecwid', label: 'Store', icon: ShoppingCart },
-    { id: 'zendesk', label: 'Tickets', icon: ZendeskMark },
+    { id: 'zendesk', label: 'Tickets', icon: Ticket },
     // Email PO — search the Gmail-ingested PO worklist (purchase-order emails with
     // no Zoho match) and link the carton to its order. Works for any carton.
     { id: 'email', label: 'Email PO', icon: Mail },
@@ -424,7 +424,7 @@ function TriageMatchingCard({
         />
         {tab === 'zendesk' && t.hiddenLinked > 0 ? (
           <HoverTooltip label={`${t.hiddenLinked} ticket(s) already linked elsewhere are hidden`}>
-            <span className="ml-auto shrink-0 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+            <span className="ml-auto shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
               {t.hiddenLinked} hidden
             </span>
           </HoverTooltip>
@@ -471,13 +471,13 @@ function TriageMatchingCard({
   const ticketLinkRow = hasTicket ? (
     <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-        <ZendeskMark className="h-4 w-4" />
+        <Ticket className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <span className="text-eyebrow font-black uppercase tracking-widest text-violet-700">
+        <span className="text-role-eyebrow uppercase tracking-widest text-violet-700">
           Claim ticket
         </span>
-        <p className="truncate text-caption font-bold font-mono text-text-default">
+        <p className="truncate text-role-caption font-bold font-mono text-text-default">
           {pkg.zendeskTicket}
         </p>
       </div>
@@ -557,7 +557,7 @@ function TriageMatchingCard({
       >
         <div className={showTopRule ? 'border-t border-border-hairline pt-4' : undefined}>
           <div className="mb-3 flex min-w-0 items-center justify-between gap-2 overflow-visible">
-            <h3 className="min-w-0 shrink text-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+            <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
               Package Pairing
             </h3>
             {headerActions}
