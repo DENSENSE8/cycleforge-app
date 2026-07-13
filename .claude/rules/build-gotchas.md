@@ -2,13 +2,14 @@
 
 Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). Summarized in root `CLAUDE.md`.
 
-## tailwind.config.ts must import the z-index token with an explicit `.ts` extension
+## tailwind.config.ts must import the z-index token from `z-index.mjs`
 
-- `tailwind.config.ts` imports the z-index token (see `.claude/rules/source-of-truth.md`).
-- The import **must** use an explicit `.ts` extension. Next 16 dev uses Turbopack, whose resolver won't guess `.ts`
-  → it fails as a silent "Module not found" and **all `z-*` utilities are dropped in DEV only**.
-- Production build (webpack/jiti) resolves fine, so this bug is invisible in CI/prod and only bites locally.
-- Requires `allowImportingTsExtensions` in `tsconfig`.
+- `tailwind.config.ts` imports the z-index scale from `src/design-system/tokens/z-index.mjs`.
+- Use the explicit `.mjs` extension — do **not** import `z-index.ts` here. Node loads
+  Tailwind config directly; a `.ts` ESM import triggers `MODULE_TYPELESS_PACKAGE_JSON`
+  reparsing (build noise + overhead). App code keeps importing `@/design-system/tokens/z-index`.
+- Values live in `z-index.mjs`; `z-index.ts` re-exports with types.
+- A bare extensionless import can also fail under Turbopack dev (silent missing `z-*` utilities).
 
 ## Tailwind content globs: a class used only in an un-scanned file renders invisible
 

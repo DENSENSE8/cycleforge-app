@@ -49,13 +49,16 @@ async function signInPinless(
   tenantSlug: string,
   staffName: string,
   storagePath: string,
+  pin?: string,
 ): Promise<void> {
   const request = await pwRequest.newContext({ baseURL });
   try {
     const staffId = await findStaffId(request, tenantSlug, staffName);
+    const body: Record<string, unknown> = { staffId, deviceKind: 'personal' };
+    if (pin) body.pin = pin;
     const signin = await request.post('/api/auth/signin', {
       headers: { [TENANT_HEADER]: tenantSlug },
-      data: { staffId, deviceKind: 'personal' },
+      data: body,
     });
     if (!signin.ok()) {
       const body = await signin.text();
@@ -143,7 +146,8 @@ async function signInStaff(
     await signInOwnerActAs(baseURL, ownerEmail, ownerPassword, staffName, storagePath);
     return;
   }
-  await signInPinless(baseURL, tenantSlug, staffName, storagePath);
+  const pin = process.env.PW_STAFF_PIN?.trim();
+  await signInPinless(baseURL, tenantSlug, staffName, storagePath, pin);
 }
 
 export default async function globalSetup(config: FullConfig) {

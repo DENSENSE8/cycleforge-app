@@ -93,7 +93,12 @@ function useActiveUnfoundLineSerials({
           toast.error(json?.error || 'Scan failed');
           return;
         }
-        dispatchLineUpdated({ id: lineId });
+        const su = json.serial_unit as { id?: number; serial_number?: string } | undefined;
+        const nextSerials =
+          su?.id != null
+            ? [{ id: su.id, serial_number: String(su.serial_number ?? serial) }]
+            : [{ id: -lineId, serial_number: serial }];
+        dispatchLineUpdated({ id: lineId, serials: nextSerials });
         refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Scan failed');

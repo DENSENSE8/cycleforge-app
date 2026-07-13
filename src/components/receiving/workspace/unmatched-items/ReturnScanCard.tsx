@@ -8,8 +8,9 @@ import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSe
  * The unfound carton's "scan a return serial" entry — a regular unbox serial
  * card (white chrome + condition pills) whose scan runs the carton-level
  * lookup→create-line→attach flow (`handleReturnSerialScan`). On a shipped match
- * it imports the sales order and populates the line; while it runs the card
- * shows an inline importing loader (the import IS the result — no match band).
+ * it imports the sales order and populates the line; when there is no order
+ * match the serial is still recorded and flagged for triage. While the scan
+ * runs the card shows an inline loader (the new line row IS the result).
  *
  * Extracted from {@link UnmatchedItemsSection} so the legacy list body and the
  * unified accordion surface render the identical scanner (plan Phase 2). In the
@@ -72,7 +73,7 @@ export function ReturnScanCard({
         isSubmitting ? (
           <div className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption font-bold uppercase tracking-wider text-text-muted">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
-            Matching serial — importing the sales order…
+            Recording serial…
           </div>
         ) : undefined
       }

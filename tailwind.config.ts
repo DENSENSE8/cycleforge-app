@@ -1,12 +1,10 @@
 import type { Config } from "tailwindcss";
-// NOTE: the explicit `.ts` extension is required. Next 16's `next dev
-// --turbopack` loads this config through Turbopack's PostCSS pipeline, whose
-// resolver does NOT try the `.ts` extension when guessing an extensionless
-// import — so a bare `./src/.../z-index` raises a non-fatal "Module not found"
-// and the z-* utilities silently fail to generate in dev. The `--webpack`
-// build (jiti loader) resolves either form. Keep the extension. See tsconfig
-// `allowImportingTsExtensions`.
-import { zIndex } from "./src/design-system/tokens/z-index.ts";
+// NOTE: import the `.mjs` values module, not `.ts`. Tailwind's config loader
+// runs under Node; a `.ts` import with ESM syntax triggers
+// MODULE_TYPELESS_PACKAGE_JSON reparsing (performance overhead + build noise).
+// Turbopack dev also resolves `.mjs` from this config. Values + types SoT:
+// `src/design-system/tokens/z-index.mjs` + `z-index.ts`.
+import { zIndex } from "./src/design-system/tokens/z-index.mjs";
 
 // Expose the centralized z-index scale as semantic Tailwind utilities
 // (z-panel, z-modal, z-popover, z-toast, z-tooltip, …) so components stop

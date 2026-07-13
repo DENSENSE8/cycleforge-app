@@ -1,7 +1,7 @@
 import { ExternalLink } from '@/components/Icons';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { formatDateTimePST } from '@/utils/date';
-import { PoChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { PoChip, TrackingChip, SerialChip, getLast4 } from '@/components/ui/CopyChip';
 import type { TriageDetail } from '@/components/po-triage/types';
 import type { UnfoundQueueDetailsRow } from '../unfound-triage-types';
 import { Section, Row } from './details-primitives';
@@ -74,6 +74,20 @@ export function OverviewTab({
           </p>
         </Section>
       )}
+
+      {row.serial_numbers ? (
+        <Section title="Serials">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {row.serial_numbers
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((sn) => (
+                <SerialChip key={sn} value={sn} width="w-fit max-w-full" dense />
+              ))}
+          </div>
+        </Section>
+      ) : null}
 
       <Section title="Helpdesk ticket">
         {row.zendesk_ticket_id ? (

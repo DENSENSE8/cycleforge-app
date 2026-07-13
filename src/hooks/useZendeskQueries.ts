@@ -9,7 +9,7 @@
  * module's server-only code is bundled into the client.
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import type {
   ZendeskTicket,
@@ -57,6 +57,7 @@ export interface TicketPatch {
 
 export const zendeskKeys = {
   tickets: (p: TicketListParams) => ['zendesk', 'tickets', p] as const,
+  bundle: (id: number) => ['zendesk', 'ticket', id, 'bundle'] as const,
   ticket: (id: number) => ['zendesk', 'ticket', id] as const,
   comments: (id: number) => ['zendesk', 'ticket', id, 'comments'] as const,
   photos: (id: number) => ['zendesk', 'ticket', id, 'photos'] as const,
@@ -64,6 +65,19 @@ export const zendeskKeys = {
   agents: () => ['zendesk', 'agents'] as const,
   users: (ids: number[]) => ['zendesk', 'users', [...ids].sort((a, b) => a - b)] as const,
 };
+
+/** Detail reads stay warm 90s — matches server bundle cache TTL. */
+export const ZENDESK_DETAIL_STALE_MS = 90_000;
+
+function zendeskShouldRetry(count: number, err: HttpError): boolean {
+  if (err.status === 503 || err.status === 429) return false;
+  return count < 1;
+}
+
+const zendeskReadDefaults = {
+  refetchOnWindowFocus: false,
+  retry: zendeskShouldRetry,
+} as const;
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -75,6 +89,11 @@ class HttpError extends Error {
 /** True when the API reported Zendesk credentials are not configured (503). */
 export function isNotConfigured(err: unknown): boolean {
   return err instanceof HttpError && err.status === 503;
+}
+
+/** True when Zendesk (or our circuit) reported rate limiting. */
+export function isRateLimited(err: unknown): boolean {
+  return err instanceof HttpError && err.status === 429;
 }
 
 async function getJson<T = any>(url: string): Promise<T> {
@@ -122,7 +141,48 @@ export function useZendeskTickets(params: TicketListParams) {
     // Keep the previous page/search visible while the next loads (no blanking).
     placeholderData: (prev) => prev,
     staleTime: 30_000,
-    retry: (count, err) => err.status !== 503 && count < 2,
+    ...zendeskReadDefaults,
+    retry: zendeskShouldRetry,
+  });
+}
+
+export interface ZendeskTicketBundle {
+  ticket: ZendeskTicket;
+  comments: ZendeskComment[];
+  commentsCount: number;
+  commentsNextPage: string | null;
+  agents: ZendeskAgent[];
+  assignment: TicketAssignment | null;
+  entity: { type: string; id: number; source: string } | null;
+  photos: TicketPhoto[];
+}
+
+/** Hydrate per-slice caches so thread/header reuse bundle data without refetch. */
+export function seedZendeskTicketCaches(qc: QueryClient, id: number, bundle: ZendeskTicketBundle) {
+  qc.setQueryData(zendeskKeys.ticket(id), bundle.ticket);
+  qc.setQueryData(zendeskKeys.comments(id), {
+    comments: bundle.comments,
+    count: bundle.commentsCount,
+    next_page: bundle.commentsNextPage,
+  });
+  qc.setQueryData(zendeskKeys.agents(), bundle.agents);
+  qc.setQueryData(zendeskKeys.assignment(id), bundle.assignment);
+  qc.setQueryData(zendeskKeys.photos(id), { entity: bundle.entity, photos: bundle.photos });
+}
+
+/** One round-trip for the support detail panel (server bundle + Redis cache). */
+export function useZendeskTicketBundle(id: number | null) {
+  const qc = useQueryClient();
+  return useQuery<ZendeskTicketBundle, HttpError>({
+    queryKey: zendeskKeys.bundle(id ?? 0),
+    queryFn: async () => {
+      const data = await getJson<ZendeskTicketBundle>(`/api/zendesk/tickets/${id}/bundle`);
+      if (id) seedZendeskTicketCaches(qc, id, data);
+      return data;
+    },
+    enabled: !!id,
+    staleTime: ZENDESK_DETAIL_STALE_MS,
+    ...zendeskReadDefaults,
   });
 }
 
@@ -134,7 +194,8 @@ export function useZendeskTicket(id: number | null) {
       return data.ticket;
     },
     enabled: !!id,
-    retry: (count, err) => err.status !== 503 && count < 2,
+    staleTime: ZENDESK_DETAIL_STALE_MS,
+    ...zendeskReadDefaults,
   });
 }
 
@@ -149,7 +210,8 @@ export function useTicketComments(id: number | null) {
     queryKey: zendeskKeys.comments(id ?? 0),
     queryFn: () => getJson<CommentsResult>(`/api/zendesk/tickets/${id}/comments`),
     enabled: !!id,
-    retry: (count, err) => err.status !== 503 && count < 2,
+    staleTime: ZENDESK_DETAIL_STALE_MS,
+    ...zendeskReadDefaults,
   });
 }
 
@@ -165,6 +227,8 @@ export function useTicketPhotos(id: number | null) {
     queryKey: zendeskKeys.photos(id ?? 0),
     queryFn: () => getJson<{ entity: unknown; photos: TicketPhoto[] }>(`/api/zendesk/tickets/${id}/photos`),
     enabled: !!id,
+    staleTime: ZENDESK_DETAIL_STALE_MS,
+    refetchOnWindowFocus: false,
     retry: false,
   });
 }
@@ -177,7 +241,7 @@ export function useZendeskAgents() {
       return data.agents;
     },
     staleTime: 5 * 60_000,
-    retry: (count, err) => err.status !== 503 && count < 1,
+    ...zendeskReadDefaults,
   });
 }
 
@@ -198,7 +262,7 @@ export function useZendeskUsers(ids: number[]) {
     },
     enabled: cleaned.length > 0,
     staleTime: 5 * 60_000,
-    retry: (count, err) => err.status !== 503 && count < 1,
+    ...zendeskReadDefaults,
   });
 }
 
@@ -221,7 +285,8 @@ export function useTicketAssignment(id: number | null) {
       return data.assignment;
     },
     enabled: !!id,
-    retry: (count, err) => err.status !== 503 && count < 2,
+    staleTime: ZENDESK_DETAIL_STALE_MS,
+    ...zendeskReadDefaults,
   });
 }
 
@@ -272,6 +337,7 @@ export function useAssignTicket() {
     },
     onSettled: (_a, _e, { id }) => {
       void qc.invalidateQueries({ queryKey: zendeskKeys.assignment(id) });
+      void qc.invalidateQueries({ queryKey: zendeskKeys.bundle(id) });
     },
   });
 }
@@ -317,6 +383,7 @@ export function useUpdateTicket() {
     },
     onSettled: (_d, _e, { id }) => {
       void qc.invalidateQueries({ queryKey: zendeskKeys.ticket(id) });
+      void qc.invalidateQueries({ queryKey: zendeskKeys.bundle(id) });
       void qc.invalidateQueries({ queryKey: ['zendesk', 'tickets'] });
     },
   });
@@ -347,6 +414,7 @@ export function useAddComment() {
       toast.success(isPublic ? 'Reply sent' : 'Internal note added');
       void qc.invalidateQueries({ queryKey: zendeskKeys.comments(id) });
       void qc.invalidateQueries({ queryKey: zendeskKeys.ticket(id) });
+      void qc.invalidateQueries({ queryKey: zendeskKeys.bundle(id) });
     },
     onError: () => toast.error('Could not add the comment'),
   });

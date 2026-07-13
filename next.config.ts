@@ -38,6 +38,14 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
     turbopack: {},
     outputFileTracingRoot: process.cwd(),
+    // Type-check + lint are the gate in CI (.github/workflows/ci.yml runs
+    // `eslint src` + `tsc --noEmit`). Running them AGAIN inside `next build`
+    // is redundant, and on this ~550k-LOC strict project the in-build `tsc`
+    // step ("Running TypeScript …") GC-thrashes under the build heap and
+    // wedges Vercel prod deploys until the 45-min build timeout. Keep the
+    // Vercel build a pure bundler step; CI owns correctness.
+    typescript: { ignoreBuildErrors: true },
+    eslint: { ignoreDuringBuilds: true },
     // Remote hosts allowed through the next/image optimizer. The mobile
     // receiving gallery (PhotoGalleryView) renders photos with <Image>, which
     // rejects any un-listed host. NAS photos are served over the Cloudflare

@@ -56,6 +56,16 @@ export function receivingLabelTypeDisplay(code: string | null | undefined): stri
 }
 
 /**
+ * Compact platform name for small thermal labels where the full catalog name
+ * overflows the top-left slot (e.g. "Amazon - Return" → "AMZ - Return").
+ */
+function receivingLabelPlatformCompact(platform: string, type: string): string {
+  if (!type) return platform;
+  if (platform.trim().toLowerCase() === 'amazon') return 'AMZ';
+  return platform;
+}
+
+/**
  * Top-left label face — "Platform - Type" (e.g. "eBay - Return"), or just
  * the platform when no receiving type is set.
  */
@@ -65,7 +75,8 @@ export function receivingLabelPlatformDisplay(
   const platform = String(payload.platform ?? '').trim();
   // Prefer the org-catalog label (custom / renamed types); else the built-in map.
   const type = (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType);
-  return type ? `${platform} - ${type}` : platform;
+  const compact = receivingLabelPlatformCompact(platform, type);
+  return type ? `${compact} - ${type}` : compact;
 }
 
 /**

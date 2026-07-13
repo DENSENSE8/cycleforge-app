@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, Loader2 } from '@/components/Icons';
 import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
-import { ListingUrlChip } from '@/components/ui/CopyChip';
+import { ListingUrlChip, SerialChip } from '@/components/ui/CopyChip';
 import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 
 export type SerialMatchState = 'idle' | 'searching' | 'found' | 'not-found';
@@ -129,11 +129,14 @@ export function SerialMatchResult({
         icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
       >
         {serial ? (
-          <>
-            Serial <span className="font-mono font-semibold">{serial}</span> has no
-            sales-order match. It&apos;s recorded for review — keep going; just double-check
-            the serial, or that the item is ours.
-          </>
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <span>Serial</span>
+            <SerialChip value={serial} width="w-fit max-w-full" dense />
+            <span>
+              has no sales-order match. It&apos;s recorded for review — keep going; just
+              double-check the serial, or that the item is ours.
+            </span>
+          </span>
         ) : (
           'This returned serial has no sales-order match. It’s recorded for review — keep going; just double-check the serial, or that the item is ours.'
         )}
@@ -165,6 +168,11 @@ export function SerialMatchResult({
     >
       {unit ? (
         <div className="space-y-2">
+          {serial ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <SerialChip value={serial} width="w-fit max-w-full" dense />
+            </div>
+          ) : null}
           {/* Originating order — the headline of a return match. Shows the
               product title we shipped + the order # so the operator can
               confirm the pairing before filing a claim. */}

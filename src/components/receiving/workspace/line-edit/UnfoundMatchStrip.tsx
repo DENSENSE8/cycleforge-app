@@ -48,7 +48,7 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { Popover } from '@/design-system/primitives/Popover';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ListingUrlChip, OrderIdChip } from '@/components/ui/CopyChip';
+import { ListingUrlChip, OrderIdChip, SerialChip } from '@/components/ui/CopyChip';
 import { getLast4 } from '@/lib/copy-chip-format';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -64,7 +64,7 @@ import type {
   SerialCompareOutcome,
   ShippedOrderSuggestion,
 } from '@/lib/receiving/returned-serial-link';
-import { diffSerials, pickClosestShippedSerial, type SerialDiffCell } from '@/lib/receiving/serial-diff';
+import { diffSerials, pickClosestShippedSerial } from '@/lib/receiving/serial-diff';
 import { ClaimTicketReply } from '@/components/receiving/workspace/claim/components/ClaimTicketReply';
 import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-types';
@@ -348,6 +348,14 @@ function OrderSearchRow({
 
   return (
     <div className="space-y-2">
+      {trimmedSerial ? (
+        <div className="flex items-center gap-2 px-0.5">
+          <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
+            Scanned
+          </span>
+          <SerialChip value={trimmedSerial} width="w-fit max-w-full" dense />
+        </div>
+      ) : null}
       <form
         className="flex min-w-0 items-center gap-2"
         onSubmit={(e) => {
@@ -613,49 +621,33 @@ function CompareResult({
   );
 }
 
-/** Compare & contrast two serials as aligned character rows — matching chars
- *  tinted, differing chars highlighted, so the difference is legible at a glance. */
+/** Compare received vs shipped serials as last-4 {@link SerialChip}s. */
 function SerialContrast({ received, shipped }: { received: string | null; shipped: string | null }) {
-  const diff = diffSerials(received, shipped);
   return (
     <div className="space-y-1.5 rounded-lg bg-surface-canvas px-2.5 py-2 ring-1 ring-inset ring-border-soft">
-      <SerialContrastRow label="Received" cells={diff.received} present={Boolean((received ?? '').trim())} />
-      <SerialContrastRow label="Shipped" cells={diff.shipped} present={Boolean((shipped ?? '').trim())} />
+      <SerialContrastRow label="Received" serial={received} />
+      <SerialContrastRow label="Shipped" serial={shipped} />
     </div>
   );
 }
 
 function SerialContrastRow({
   label,
-  cells,
-  present,
+  serial,
 }: {
   label: string;
-  cells: SerialDiffCell[];
-  present: boolean;
+  serial: string | null;
 }) {
+  const trimmed = (serial ?? '').trim();
   return (
-    <div className="flex items-start gap-2">
-      <span className="mt-1 w-14 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
+    <div className="flex items-center gap-2">
+      <span className="w-14 shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
         {label}
       </span>
-      {!present || cells.length === 0 ? (
-        <span className="font-mono text-role-caption text-text-faint">—</span>
+      {trimmed ? (
+        <SerialChip value={trimmed} width="w-fit max-w-full" dense />
       ) : (
-        <span className="flex flex-wrap gap-0.5">
-          {cells.map((c, i) => (
-            <span
-              key={i}
-              className={`inline-flex h-5 min-w-[1.15ch] items-center justify-center rounded px-0.5 font-mono text-role-caption font-bold ${
-                c.match
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-300'
-              }`}
-            >
-              {c.ch}
-            </span>
-          ))}
-        </span>
+        <span className="font-mono text-role-caption text-text-faint">—</span>
       )}
     </div>
   );
