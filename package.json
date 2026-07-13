@@ -97,6 +97,7 @@
     "test:e2e:photos-gcs": "node scripts/e2e-photos-gcs.mjs",
     "test:e2e:realtime-token": "playwright test tests/e2e/realtime-token.spec.ts",
     "test:e2e:ebay": "playwright test tests/e2e/ebay-connect.spec.ts",
+    "test:e2e:zendesk-bundle": "playwright test tests/e2e/support-zendesk-bundle-perf.spec.ts --project=desktop",
     "test:e2e:workflow-tap": "tsx scripts/e2e-workflow-tap.ts",
     "test:e2e:qa": "playwright test --project=qa-desktop",
     "db:studio": "drizzle-kit studio",

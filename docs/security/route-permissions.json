@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-13T06:41:20Z",
-  "totalRoutes": 839,
+  "generatedAt": "2026-07-13T19:07:16Z",
+  "totalRoutes": 840,
   "summary": {
-    "permissionGated": 712,
+    "permissionGated": 713,
     "authenticatedNoPermission": 45,
     "anonymousIntentional": 80,
     "serviceToService": 2,
@@ -7569,6 +7569,15 @@
       "methods": [
         "GET",
         "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "integrations.zendesk",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/zendesk/tickets/[id]/bundle/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "integrations.zendesk",

@@ -117,9 +117,13 @@ export function SupportChatThread({
 
   const comments = data?.comments ?? [];
 
-  // Resolve non-agent authors (requester / end users) to a real name + email.
+  // Resolve non-agent authors only when the bundle/comments route did not already enrich them.
   const userIds = useMemo(
-    () => comments.map((c) => c.author_id).filter((id) => id > 0 && !agentsById.has(id)),
+    () =>
+      comments
+        .filter((c) => !(c as { author_name?: string }).author_name)
+        .map((c) => c.author_id)
+        .filter((id) => id > 0 && !agentsById.has(id)),
     [comments, agentsById],
   );
   const { data: users = [] } = useZendeskUsers(userIds);

@@ -8,6 +8,7 @@ import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
+import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,6 +99,7 @@ export const PATCH = withAuth(
 
       const ticket = await helpdesk.updateTicket(id, input);
       if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
+      await invalidateZendeskTicketCache(ctx.organizationId, id);
       return NextResponse.json({ success: true, ticket });
     } catch (err) {
       return mapZendeskError(err, context);

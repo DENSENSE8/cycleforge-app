@@ -4,6 +4,7 @@ import {
   HELPDESK_NOT_CONNECTED_MESSAGE,
   type HelpdeskOverview,
 } from '@/lib/integrations/helpdesk';
+import { getOrSetZendeskOverview } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 import { formatPSTTimestamp } from '@/utils/date';
 import { withAuth } from '@/lib/auth/withAuth';
 
@@ -20,7 +21,7 @@ export const GET = withAuth(async (_req, ctx) => {
   try {
     const helpdesk = await getHelpdeskProvider(ctx.organizationId);
     const zendesk: HelpdeskOverview = helpdesk
-      ? await helpdesk.getOverview(10)
+      ? await getOrSetZendeskOverview(ctx.organizationId, 10, () => helpdesk.getOverview(10))
       : {
           configured: false,
           healthy: false,

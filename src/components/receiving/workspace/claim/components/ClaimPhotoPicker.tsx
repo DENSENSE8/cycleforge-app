@@ -211,7 +211,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
       </div>
       <p className="mt-2 text-role-micro font-medium text-text-faint">
         Checked photos attach to the support ticket. All carton photos also save to local storage in
-        a folder named after the case #.
+        a folder named after the Ticket #.
       </p>
 
       {g.mounted && typeof document !== 'undefined'

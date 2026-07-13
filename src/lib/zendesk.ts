@@ -17,7 +17,16 @@ import {
     getIntegrationCredentials,
     type ZendeskCredentials,
 } from '@/lib/integrations/credentials';
+import {
+    zendeskHttpRequest,
+    type ZendeskHttpAuth,
+    ZendeskApiError,
+    ZendeskRateLimitError,
+    ZendeskCircuitOpenError,
+} from '@/lib/integrations/helpdesk/zendesk-http';
 import type { OrgId } from '@/lib/tenancy/constants';
+
+export { ZendeskApiError, ZendeskRateLimitError, ZendeskCircuitOpenError };
 
 interface RepairTicketData {
     repairServiceId: number;
@@ -91,23 +100,8 @@ async function resolveZendeskAuthConfig(orgId?: OrgId): Promise<ZendeskAuthConfi
     return { subdomain: creds.subdomain, user: creds.email, apiToken: creds.apiToken };
 }
 
-async function zendeskRequest(config: ZendeskAuthConfig, path: string): Promise<any> {
-    const auth = Buffer.from(`${config.user}/token:${config.apiToken}`).toString('base64');
-    const response = await fetch(`https://${config.subdomain}.zendesk.com${path}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${auth}`,
-        },
-        cache: 'no-store',
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new Error(`Zendesk request failed (${response.status})${errorText ? `: ${errorText}` : ''}`);
-    }
-
-    return response.json().catch(() => ({}));
+async function zendeskRequest(config: ZendeskAuthConfig, path: string, orgId?: OrgId): Promise<any> {
+    return zendeskHttpRequest(config, 'GET', path, {}, orgId);
 }
 
 export async function getZendeskSupportOverview(limit = 10, orgId?: OrgId): Promise<ZendeskSupportOverview> {
@@ -134,7 +128,8 @@ export async function getZendeskSupportOverview(limit = 10, orgId?: OrgId): Prom
         const encodedQuery = encodeURIComponent('type:ticket status<solved');
         const data = await zendeskRequest(
             config,
-            `/api/v2/search.json?query=${encodedQuery}&sort_by=updated_at&sort_order=desc`
+            `/api/v2/search.json?query=${encodedQuery}&sort_by=updated_at&sort_order=desc`,
+            orgId,
         );
 
         const results = Array.isArray(data?.results) ? data.results : [];
@@ -298,14 +293,6 @@ export class ZendeskNotConfiguredError extends Error {
     }
 }
 
-/** Thrown for non-2xx Zendesk API responses. `status` mirrors the HTTP status. */
-export class ZendeskApiError extends Error {
-    constructor(public readonly status: number, message: string) {
-        super(message);
-        this.name = 'ZendeskApiError';
-    }
-}
-
 /**
  * Synchronous env-only configured check. Kept sync (and env-only) for
  * backward-compatible callers. For a per-tenant check, await
@@ -320,7 +307,7 @@ export async function isZendeskConfiguredForOrg(orgId?: OrgId): Promise<boolean>
     return (await resolveZendeskAuthConfig(orgId)) !== null;
 }
 
-async function requireZendeskConfig(orgId?: OrgId): Promise<ZendeskAuthConfig> {
+async function requireZendeskConfig(orgId?: OrgId): Promise<ZendeskHttpAuth> {
     const config = await resolveZendeskAuthConfig(orgId);
     if (!config) throw new ZendeskNotConfiguredError();
     return config;
@@ -333,28 +320,14 @@ async function zendeskApiRequest<T = any>(
     orgId?: OrgId,
 ): Promise<T> {
     const config = await requireZendeskConfig(orgId);
-    const auth = Buffer.from(`${config.user}/token:${config.apiToken}`).toString('base64');
-    const response = await fetch(`https://${config.subdomain}.zendesk.com${path}`, {
-        method: init.method ?? 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${auth}`,
-            ...(init.headers ?? {}),
-        },
-        body: init.body != null ? JSON.stringify(init.body) : undefined,
-        cache: 'no-store',
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new ZendeskApiError(
-            response.status,
-            `Zendesk request failed (${response.status})${errorText ? `: ${errorText}` : ''}`,
-        );
-    }
-
-    if (response.status === 204) return undefined as T;
-    return response.json().catch(() => ({} as T));
+    const method = (init.method ?? 'GET').toUpperCase() as 'GET' | 'POST' | 'PUT' | 'DELETE';
+    return zendeskHttpRequest<T>(
+        config,
+        method,
+        path,
+        { body: init.body, headers: init.headers },
+        orgId,
+    );
 }
 
 export type ZendeskTicketStatus = 'new' | 'open' | 'pending' | 'hold' | 'solved' | 'closed';
@@ -506,26 +479,13 @@ export async function uploadFileToZendesk(
     orgId?: OrgId,
 ): Promise<string> {
     const config = await requireZendeskConfig(orgId);
-    const auth = Buffer.from(`${config.user}/token:${config.apiToken}`).toString('base64');
-    const response = await fetch(
-        `https://${config.subdomain}.zendesk.com/api/v2/uploads.json?filename=${encodeURIComponent(filename)}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': contentType, Authorization: `Basic ${auth}` },
-            // Raw bytes (not JSON). Node's fetch accepts a Uint8Array body at
-            // runtime; the cast sidesteps the over-narrow DOM BodyInit typing.
-            body: bytes as unknown as BodyInit,
-            cache: 'no-store',
-        },
-    );
-    if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new ZendeskApiError(
-            response.status,
-            `Zendesk upload failed (${response.status})${errorText ? `: ${errorText}` : ''}`,
-        );
-    }
-    const data = (await response.json().catch(() => ({}))) as { upload?: { token?: string } };
+    const data = (await zendeskHttpRequest<{ upload?: { token?: string } }>(
+        config,
+        'POST',
+        `/api/v2/uploads.json?filename=${encodeURIComponent(filename)}`,
+        { rawBody: bytes, contentType },
+        orgId,
+    )) as { upload?: { token?: string } };
     const token = data.upload?.token;
     if (!token) throw new ZendeskApiError(502, 'Zendesk upload returned no token');
     return token;

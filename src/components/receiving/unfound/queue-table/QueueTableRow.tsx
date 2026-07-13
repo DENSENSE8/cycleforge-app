@@ -4,7 +4,7 @@ import { useCallback, useRef } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
-import { PoChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
+import { PoChip, TrackingChip, SerialChip, getLast4 } from '@/components/ui/CopyChip';
 import { DEBOUNCE_MS, splitPoContext, type PatchBody, type QueueRow } from './unfound-queue-shared';
 
 interface QueueTableRowProps {
@@ -100,6 +100,17 @@ export function QueueTableRow({
           return (
             <>
               <div className="text-left">{row.product_title || '—'}</div>
+              {row.serial_numbers ? (
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                  {row.serial_numbers
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((sn) => (
+                      <SerialChip key={sn} value={sn} width="w-fit max-w-full" dense />
+                    ))}
+                </div>
+              ) : null}
               {row.context && (
                 <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-micro font-normal text-text-soft">
                   {row.kind === 'unmatched_receiving' ? (

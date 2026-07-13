@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   isNotConfigured,
-  useTicketComments,
-  useTicketPhotos,
-  useZendeskTicket,
+  isRateLimited,
+  useZendeskTicketBundle,
 } from '@/hooks/useZendeskQueries';
 import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
@@ -47,11 +46,12 @@ function commentImageUrls(c: ZendeskComment): string[] {
  * tab) and the viewer can page across the whole ticket.
  */
 export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; onBack?: () => void }) {
-  const { data: ticket, isLoading, error } = useZendeskTicket(ticketId);
-  // These are cached by the thread / linked-context too — calling them here is a
-  // dedupe, not a second fetch — and lets us build one viewer over every photo.
-  const { data: commentsData } = useTicketComments(ticketId);
-  const { data: photosData } = useTicketPhotos(ticketId);
+  const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
+  const ticket = bundle?.ticket;
+  const commentsData = bundle
+    ? { comments: bundle.comments, count: bundle.commentsCount, next_page: bundle.commentsNextPage }
+    : undefined;
+  const photosData = bundle ? { entity: bundle.entity, photos: bundle.photos } : undefined;
 
   const photoUrls = useMemo(() => {
     const urls: string[] = [];
@@ -101,11 +101,19 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
-          title={isNotConfigured(error) ? 'Helpdesk isn’t connected' : 'Couldn’t load ticket'}
+          title={
+            isNotConfigured(error)
+              ? 'Helpdesk isn’t connected'
+              : isRateLimited(error)
+                ? 'Zendesk is busy'
+                : 'Couldn’t load ticket'
+          }
           description={
             isNotConfigured(error)
               ? 'Connect one in Settings → Integrations to use the console.'
-              : 'Try selecting the ticket again.'
+              : isRateLimited(error)
+                ? 'Too many requests to Zendesk. Wait a moment, then refresh or reselect the ticket.'
+                : 'Try selecting the ticket again.'
           }
           action={
             isNotConfigured(error) ? (

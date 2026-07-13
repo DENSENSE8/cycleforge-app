@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   labelCornerTicketDigits,
+  receivingLabelPlatformDisplay,
   receivingLabelPoCornerDisplay,
 } from './printReceivingLabel';
 
@@ -12,6 +13,26 @@ test('labelCornerTicketDigits prefers Zendesk provider id over registry id', () 
       externalTicketId: '9395',
     }),
     '9395',
+  );
+});
+
+test('receivingLabelPlatformDisplay abbreviates Amazon Return for small labels', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Amazon',
+      receivingType: 'RETURN',
+    }),
+    'AMZ - Return',
+  );
+});
+
+test('receivingLabelPlatformDisplay keeps full Amazon name without a type', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Amazon',
+      receivingType: null,
+    }),
+    'Amazon',
   );
 });
 

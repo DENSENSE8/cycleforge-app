@@ -15,6 +15,7 @@ import {
 } from './unmatched-items-shared';
 import { useReceivingCartonUnlink } from './useReceivingCartonUnlink';
 import { isSalesOrderDerivedCarton } from '@/lib/receiving/intake-items-routing';
+import { getLast4Serial } from '@/lib/copy-chip-format';
 import {
   classificationToColumns,
   columnsToClassification,
@@ -51,12 +52,10 @@ export function useUnmatchedItems({
   const [assignedBox, setAssignedBox] = useState<AssignedBox | null>(null);
 
   // Carton-level serial matcher. An unfound carton has no lines until something
-  // is added, so this lets the operator scan a serial directly: on a
-  // shipped-serial match we create a line populated from the matched sales order
-  // (title + sku, classified intake_type='return') and attach the serial — no
-  // manual Add-item step. No match band is rendered — the import IS the result
-  // (the line row appears below, the carton binds the order #); while it runs
-  // the card shows an inline importing loader.
+  // is added, so this lets the operator scan a serial directly: on a shipped-
+  // serial match we create a line populated from the matched sales order and
+  // attach the serial; when there is no order match we still record the serial
+  // (create line → scan-serial → log-serial) and flag RETURN_NO_ORDER for triage.
   const [returnScanBusy, setReturnScanBusy] = useState(false);
   // Condition for the carton-level serial scan, shown via the same ConditionPills
   // a regular unbox serial card uses. Applied to the line the scan creates.
@@ -206,8 +205,9 @@ export function useUnmatchedItems({
 
   // Scan a returned serial against the whole carton. Looks the serial up; on a
   // shipped match it creates a return line populated from the matched order and
-  // attaches the serial, so the receiving record shows the right product +
-  // classification with no manual Add-item step.
+  // attaches the serial. When there is no sales-order match the serial is still
+  // recorded (create line → scan-serial → log-serial for RETURN_NO_ORDER) — the
+  // match is enrichment, not a gate.
   const handleReturnSerialScan = useCallback(
     async (rawSerial: string) => {
       const serial = rawSerial.trim();
@@ -220,18 +220,16 @@ export function useUnmatchedItems({
           { cache: 'no-store' },
         );
         const data = await res.json().catch(() => null);
-        const found = !!data?.found;
         const matchedOrder: SerialMatchedOrder | null = data?.matched_order ?? null;
         const unit: SerialMatchUnit | null = data?.unit ?? null;
 
-        if (!found) {
-          toast.error('No shipped match for this serial — use Add item to record it manually.');
-          return;
-        }
-
-        const itemName = matchedOrder?.product_title || `Returned serial ${serial}`;
         const clientEventId = `unfound-return-${receivingId}-${serial}`;
         const orderNo = (matchedOrder?.order_id || '').trim();
+        const hasOrderMatch = Boolean(orderNo);
+        const itemName =
+          matchedOrder?.product_title ||
+          (unit?.sku ? `Return · ${unit.sku}` : null) ||
+          `Return serial ${serial}`;
 
         const addRes = await fetch('/api/receiving/add-unmatched-line', {
           method: 'POST',
@@ -242,8 +240,6 @@ export function useUnmatchedItems({
             sku: matchedOrder?.sku || unit?.sku || undefined,
             intake_type: 'return',
             source_order_id: orderNo || undefined,
-            // The grade the operator picked on the scan card — without it the
-            // line lands on the server default instead of the selected pill.
             condition_grade: cartonScanCondition || undefined,
             client_event_id: clientEventId,
           }),
@@ -256,87 +252,155 @@ export function useUnmatchedItems({
           return;
         }
 
-        // Attach the scanned serial to the new line.
+        const lineId = addBody.line.id as number;
+
+        // Attach the scanned serial — same path as every other receiving surface.
         const scanRes = await fetch('/api/receiving/scan-serial', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             receiving_id: receivingId,
-            receiving_line_id: addBody.line.id,
+            receiving_line_id: lineId,
             serial_number: serial,
             staff_id: Number(staffId) || undefined,
             condition_grade: cartonScanCondition || undefined,
+            client_event_id: clientEventId,
           }),
         });
         const scanBody = await scanRes.json().catch(() => ({}));
         if (!scanRes.ok || !scanBody?.success) {
           toast.error(scanBody?.error || 'Line created, but the serial scan failed');
+          return;
+        }
+
+        const scannedSerialUnit = scanBody.serial_unit as
+          | { id?: number; serial_number?: string }
+          | undefined;
+        const lineSerials =
+          scannedSerialUnit?.id != null
+            ? [
+                {
+                  id: scannedSerialUnit.id,
+                  serial_number: String(scannedSerialUnit.serial_number ?? serial),
+                },
+              ]
+            : [{ id: -lineId, serial_number: serial }];
+        const lineWithSerials = { ...addBody.line, serials: lineSerials };
+
+        // No sales-order match — flag for triage via log-serial (RETURN_NO_ORDER
+        // + investigate NOTE). Idempotent re-attach; scan-serial already landed
+        // the serial_unit on the line.
+        if (!hasOrderMatch) {
+          try {
+            await fetch('/api/receiving/log-serial', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Idempotency-Key': `${clientEventId}:log`,
+              },
+              body: JSON.stringify({
+                serial_number: serial,
+                receiving_id: receivingId,
+                receiving_line_id: lineId,
+                client_event_id: `${clientEventId}:log`,
+              }),
+            });
+          } catch {
+            /* non-fatal — serial already attached */
+          }
+
+          // Mark the carton as a return even without an order binding.
+          try {
+            await fetch(`/api/receiving/${receivingId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ intake_type: 'RETURN', is_return: true }),
+            });
+          } catch {
+            /* non-fatal */
+          }
+
+          await refreshLines();
+          window.dispatchEvent(new CustomEvent('app-refresh-data'));
+          window.dispatchEvent(
+            new CustomEvent('receiving-line-updated', {
+              detail: {
+                id: lineId,
+                receiving_type: 'RETURN',
+                carton_intake_type: 'RETURN',
+                serials: lineSerials,
+              },
+            }),
+          );
+          onLinked?.({
+            carton: {
+              zoho_purchaseorder_number: null,
+              source: 'unmatched',
+              source_platform: null,
+              intake_type: 'RETURN',
+            },
+            line: lineWithSerials,
+          });
+          toast.info(`Serial ${getLast4Serial(serial)} recorded — no sales order match`);
+          return;
         }
 
         // Graduate the carton off the Unfound queue: bind the matched order #,
         // classify as RETURN, and tag the platform inferred from the order shape.
-        const platform = orderNo ? inferPlatformFromOrderId(orderNo) : null;
-        if (orderNo) {
-          let poApplied = false;
-          try {
-            const r1 = await fetch(`/api/receiving/${receivingId}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                zoho_purchaseorder_number: orderNo,
-                intake_type: 'RETURN',
-                is_return: true,
-                ...(platform ? { source_platform: platform } : {}),
-              }),
-            });
-            poApplied = r1.ok;
-          } catch {
-            /* non-fatal — carton stays unfound; operator can bind manually */
-          }
-          // Mirror onto every surface holding this carton (workspace header
-          // chips, rails, unfound queue) — same events the repair-service
-          // link fires.
-          window.dispatchEvent(new CustomEvent('app-refresh-data'));
-          window.dispatchEvent(
-            new CustomEvent('receiving-package-updated', {
-              detail: {
-                receiving_id: receivingId,
-                ...(platform ? { source_platform: platform } : {}),
-                zoho_purchaseorder_number: poApplied ? orderNo : null,
-              },
+        const platform = inferPlatformFromOrderId(orderNo);
+        let poApplied = false;
+        try {
+          const r1 = await fetch(`/api/receiving/${receivingId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              zoho_purchaseorder_number: orderNo,
+              intake_type: 'RETURN',
+              is_return: true,
+              ...(platform ? { source_platform: platform } : {}),
             }),
-          );
-          // Update the open panel immediately — carton header + the new return
-          // line (re-selected off the stub by the host).
-          if (poApplied) {
-            onLinked?.({
-              carton: {
-                zoho_purchaseorder_number: orderNo,
-                source: 'zoho_po',
-                source_platform: platform,
-                intake_type: 'RETURN',
-              },
-              line: addBody.line ?? null,
-            });
-          }
+          });
+          poApplied = r1.ok;
+        } catch {
+          /* non-fatal — carton stays unfound; operator can bind manually */
+        }
+        window.dispatchEvent(new CustomEvent('app-refresh-data'));
+        window.dispatchEvent(
+          new CustomEvent('receiving-package-updated', {
+            detail: {
+              receiving_id: receivingId,
+              ...(platform ? { source_platform: platform } : {}),
+              zoho_purchaseorder_number: poApplied ? orderNo : null,
+            },
+          }),
+        );
+        if (poApplied) {
+          onLinked?.({
+            carton: {
+              zoho_purchaseorder_number: orderNo,
+              source: 'zoho_po',
+              source_platform: platform,
+              intake_type: 'RETURN',
+            },
+            line: lineWithSerials,
+          });
         }
 
         await refreshLines();
         window.dispatchEvent(new CustomEvent('app-refresh-data'));
-        if (addBody.line?.id) {
-          window.dispatchEvent(
-            new CustomEvent('receiving-line-updated', {
-              detail: {
-                id: addBody.line.id,
-                receiving_type: 'RETURN',
-                carton_intake_type: 'RETURN',
-                receiving_source: orderNo ? 'zoho_po' : undefined,
-                zoho_purchaseorder_number: orderNo || null,
-                source_platform: platform,
-              },
-            }),
-          );
-        }
+        window.dispatchEvent(
+          new CustomEvent('receiving-line-updated', {
+            detail: {
+              id: lineId,
+              receiving_type: 'RETURN',
+              carton_intake_type: 'RETURN',
+              receiving_source: 'zoho_po',
+              zoho_purchaseorder_number: orderNo,
+              source_platform: platform,
+              serials: lineSerials,
+            },
+          }),
+        );
         toast.success(
           matchedOrder?.product_title
             ? `Matched return: ${matchedOrder.product_title}`
