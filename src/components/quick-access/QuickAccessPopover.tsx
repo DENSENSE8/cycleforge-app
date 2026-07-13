@@ -81,13 +81,13 @@ export function QuickAccessPopover({
             initials={staffName ? initials(staffName) : '·'}
           />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
+            <div className="truncate text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
               {user.organizationName}
             </div>
             <div className="truncate text-sm font-semibold text-text-default">
               {staffName || `Staff #${user.staffId}`}
             </div>
-            <div className="truncate text-micro font-medium uppercase tracking-[0.14em] text-text-soft">
+            <div className="truncate text-role-micro font-medium uppercase tracking-[0.14em] text-text-soft">
               {user.role.replace(/_/g, ' ')}
             </div>
           </div>
@@ -116,7 +116,7 @@ export function QuickAccessPopover({
           className="ds-raw-button flex shrink-0 items-center justify-between border-t border-border-hairline bg-surface-canvas/60 px-4 py-3 text-left transition hover:bg-surface-sunken"
         >
           <span className="text-sm font-semibold text-text-default">Sign in</span>
-          <span className="text-caption text-text-soft">Pick a staff →</span>
+          <span className="text-role-caption text-text-soft">Pick a staff →</span>
         </button>
       )}
     </div>
@@ -128,7 +128,7 @@ function StaffIdentityAvatar({ value, initials }: { value: string; initials: str
   return (
     <span
       aria-hidden
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-caption font-bold text-white ring-1 ring-border-soft"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-role-caption font-bold text-white ring-1 ring-border-soft"
       style={{ backgroundColor: value }}
     >
       {initials}

@@ -29,13 +29,13 @@ export function PermissionToggle({ label, permission, enabled, color, disabled, 
           <span className="truncate">{label}</span>
           {stepUp && (
             <HoverTooltip label="Requires step-up (fresh PIN) before this action" asChild>
-              <span className="rounded-full bg-amber-100 px-1 py-0 text-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
+              <span className="rounded-full bg-amber-100 px-1 py-0 text-role-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
                 ⚡
               </span>
             </HoverTooltip>
           )}
         </div>
-        <code className="truncate text-micro font-mono text-text-soft">{permission}</code>
+        <code className="truncate text-role-micro font-mono text-text-soft">{permission}</code>
       </div>
       {/* ds-raw-button */}
       <button

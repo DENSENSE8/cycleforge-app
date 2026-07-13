@@ -41,7 +41,7 @@ export function RecentlyPrintedList({ onSelect, selectedKey }: RecentlyPrintedLi
 
   if (isLoading && items.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 py-6 text-center text-caption font-semibold text-text-faint">
+      <div className="flex-1 overflow-y-auto px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
         Loading recent prints…
       </div>
     );
@@ -49,7 +49,7 @@ export function RecentlyPrintedList({ onSelect, selectedKey }: RecentlyPrintedLi
 
   if (isError) {
     return (
-      <div className="flex-1 overflow-y-auto px-4 py-6 text-center text-caption font-semibold text-red-500">
+      <div className="flex-1 overflow-y-auto px-4 py-6 text-center text-role-caption font-semibold text-red-500">
         Couldn't load recent prints.
       </div>
     );
@@ -59,10 +59,10 @@ export function RecentlyPrintedList({ onSelect, selectedKey }: RecentlyPrintedLi
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
         <Clock className="mb-3 h-8 w-8 text-text-faint" />
-        <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+        <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
           No recent prints
         </p>
-        <p className="mt-2 max-w-[240px] text-caption font-medium text-text-soft">
+        <p className="mt-2 max-w-[240px] text-role-caption font-medium text-text-soft">
           Issued labels appear here automatically — switch to Products to print your first one.
         </p>
       </div>
@@ -122,13 +122,13 @@ function RecentRow({
           )}
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="line-clamp-2 text-label font-semibold leading-snug text-text-default">
+          <span className="line-clamp-2 text-role-caption font-semibold leading-snug text-text-default">
             {item.product_title || item.sku || item.unit_id || 'Untitled'}
           </span>
-          <span className="truncate font-mono text-micro text-text-soft">
+          <span className="truncate font-mono text-role-micro text-text-soft">
             {item.unit_id || item.sku || '—'}
           </span>
-          <span className="mt-0.5 flex items-center gap-2 text-micro text-text-faint">
+          <span className="mt-0.5 flex items-center gap-2 text-role-micro text-text-faint">
             <span>{timeAgo(item.printed_at)}</span>
             {item.current_status ? (
               <>
@@ -152,7 +152,7 @@ function RecentRow({
 function StatusChip({ status }: { status: string }) {
   return (
     <span
-      className={`rounded px-1.5 py-0.5 text-micro font-bold uppercase tracking-wider ${unitStatusBadgeClass(status)}`}
+      className={`rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider ${unitStatusBadgeClass(status)}`}
     >
       {status}
     </span>

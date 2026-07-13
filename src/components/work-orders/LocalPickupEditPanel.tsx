@@ -145,7 +145,7 @@ export function LocalPickupEditPanel() {
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-role-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700"
             >
               <Plus className="h-3.5 w-3.5" />
               Add item
@@ -193,10 +193,10 @@ function PickupEmptyState({ onAdd }: { onAdd: () => void }) {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
           <ShoppingCart className="h-8 w-8 text-emerald-300" />
         </div>
-        <p className="text-label font-black uppercase tracking-tight text-text-muted">
+        <p className="text-role-caption font-black uppercase tracking-tight text-text-muted">
           No items yet
         </p>
-        <p className="mt-1 text-micro text-text-faint">
+        <p className="mt-1 text-role-micro text-text-faint">
           Add products to start a local pickup intake. Each item lands in the
           sidebar and opens here for editing.
         </p>
@@ -204,7 +204,7 @@ function PickupEmptyState({ onAdd }: { onAdd: () => void }) {
         <button
           type="button"
           onClick={onAdd}
-          className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700"
+          className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-role-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700"
         >
           <Plus className="h-4 w-4" />
           Add item
@@ -251,14 +251,14 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
         <h2 className="text-base font-black leading-snug text-text-default">
           {line.product_title}
         </h2>
-        <p className="mt-1 font-mono text-micro font-black uppercase text-emerald-600">
+        <p className="mt-1 font-mono text-role-micro uppercase text-emerald-600">
           Ecwid: {line.sku}
         </p>
       </div>
 
       {/* Condition Received */}
       <div>
-        <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+        <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
           Condition Received
         </label>
         <ConditionPills
@@ -271,7 +271,7 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
 
       {/* Parts status */}
       <div>
-        <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+        <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
           Parts
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -279,7 +279,7 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
           <button
             type="button"
             onClick={() => patchLine(line.key, { partsStatus: 'COMPLETE' })}
-            className={`h-9 rounded-lg text-caption font-black uppercase tracking-wider transition-colors ${
+            className={`h-9 rounded-lg text-role-caption font-black uppercase tracking-wider transition-colors ${
               !isMissing
                 ? 'bg-emerald-600 text-white'
                 : 'bg-surface-sunken text-text-soft hover:bg-surface-strong'
@@ -291,7 +291,7 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
           <button
             type="button"
             onClick={() => patchLine(line.key, { partsStatus: 'MISSING_PARTS' })}
-            className={`h-9 rounded-lg text-caption font-black uppercase tracking-wider transition-colors ${
+            className={`h-9 rounded-lg text-role-caption font-black uppercase tracking-wider transition-colors ${
               isMissing
                 ? 'bg-amber-500 text-white'
                 : 'bg-surface-sunken text-text-soft hover:bg-surface-strong'
@@ -305,32 +305,32 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
             value={line.missingPartsNote}
             onChange={(e) => patchLine(line.key, { missingPartsNote: e.target.value })}
             placeholder="List missing parts…"
-            className="mt-2 min-h-[56px] w-full rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-caption text-text-default placeholder:text-text-faint focus:border-amber-400 focus:outline-none"
+            className="mt-2 min-h-[56px] w-full rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:border-amber-400 focus:outline-none"
           />
         ) : null}
       </div>
 
       {/* Condition note */}
       <div>
-        <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+        <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
           Condition note
         </label>
         <textarea
           value={line.conditionNote}
           onChange={(e) => patchLine(line.key, { conditionNote: e.target.value })}
           placeholder="What's wrong or notable about the unit…"
-          className="min-h-[56px] w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-caption text-text-default placeholder:text-text-faint focus:border-emerald-400 focus:outline-none"
+          className="min-h-[56px] w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:border-emerald-400 focus:outline-none"
         />
       </div>
 
       {/* Total Price + Qty */}
       <div className="grid grid-cols-2 gap-3 border-t border-border-hairline pt-4">
         <div>
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
             Total Price
           </label>
           <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-caption font-bold text-emerald-700">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-role-caption font-bold text-emerald-700">
               $
             </span>
             <input
@@ -344,12 +344,12 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
                 if (v === '' || Number(v) >= 0) patchLine(line.key, { total: v });
               }}
               placeholder="0.00"
-              className="h-9 w-full rounded-lg border border-border-soft bg-surface-card pl-6 pr-3 text-caption font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+              className="h-9 w-full rounded-lg border border-border-soft bg-surface-card pl-6 pr-3 text-role-caption font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
             />
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+          <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
             Qty
           </label>
           <input
@@ -364,7 +364,7 @@ function LocalPickupLineEditor({ line }: { line: CartLine }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
             }}
-            className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-center text-caption font-black text-text-default focus:border-emerald-500 focus:outline-none"
+            className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-center text-role-caption font-black text-text-default focus:border-emerald-500 focus:outline-none"
           />
         </div>
       </div>

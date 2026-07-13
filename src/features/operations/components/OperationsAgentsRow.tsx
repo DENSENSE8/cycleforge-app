@@ -78,31 +78,31 @@ function AgentCard({ agent, index }: { agent: LocalAgentState; index: number }) 
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-[14px] font-extrabold tracking-tight text-text-default">
+            <p className="truncate text-role-body font-extrabold tracking-tight text-text-default">
               {meta.name}
             </p>
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wider ${tone.chip}`}
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${tone.chip}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
               {tone.label}
             </span>
           </div>
-          <p className="mt-0.5 text-micro font-bold uppercase tracking-[0.12em] text-text-muted">
+          <p className="mt-0.5 text-role-micro font-bold uppercase tracking-[0.12em] text-text-muted">
             {meta.stage}
           </p>
         </div>
       </div>
 
-      <p className="mt-3 text-label font-medium leading-snug text-text-muted">{meta.blurb}</p>
+      <p className="mt-3 text-role-caption font-medium leading-snug text-text-muted">{meta.blurb}</p>
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border-soft pt-2.5">
-        <span className="truncate text-caption font-semibold tabular-nums text-text-muted">
+        <span className="truncate text-role-caption font-semibold tabular-nums text-text-muted">
           {agent.detail}
         </span>
         <Link
           href={meta.href}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-micro font-black uppercase tracking-wider text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default"
         >
           Map in Studio
           <ExternalLink className="h-3 w-3" />
@@ -123,7 +123,7 @@ export function OperationsAgentsRow() {
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Local agents</span>
-          <h2 className="mt-1 text-[20px] font-extrabold tracking-tight text-text-default sm:text-[22px]">
+          <h2 className="mt-1 text-xl font-extrabold tracking-tight text-text-default sm:text-2xl">
             Agents paired to the workflow
           </h2>
         </div>
@@ -133,7 +133,7 @@ export function OperationsAgentsRow() {
           onClick={refetch}
           loading={isLoading}
           icon={<RefreshCw className="h-3 w-3" />}
-          className="shrink-0 rounded-full text-micro font-black uppercase tracking-[0.14em] text-text-muted"
+          className="shrink-0 rounded-full text-role-micro uppercase tracking-[0.14em] text-text-muted"
         >
           Re-check
         </Button>

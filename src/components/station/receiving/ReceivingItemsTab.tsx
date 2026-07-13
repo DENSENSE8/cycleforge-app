@@ -30,7 +30,7 @@ export function ReceivingItemsTab({
         {/* ds-raw-button: simple disclosure toggle for the serial journey list (lazy-mount). */}
         <button
           type="button"
-          className="ds-raw-button text-left text-eyebrow font-black uppercase tracking-widest text-text-soft hover:text-text-default"
+          className="ds-raw-button text-left text-role-eyebrow uppercase tracking-widest text-text-soft hover:text-text-default"
           onClick={() => setJourneysOpen((v) => !v)}
         >
           {journeysLabel}
@@ -38,7 +38,7 @@ export function ReceivingItemsTab({
         {journeysOpen ? (
           <ReceivingSerialJourneys receivingId={receivingId} />
         ) : (
-          <p className="text-caption font-medium text-text-faint">
+          <p className="text-role-caption font-medium text-text-faint">
             Expand to see per-unit journeys and cross-station history.
           </p>
         )}

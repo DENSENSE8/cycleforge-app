@@ -46,7 +46,7 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
               onClick={() => onPillClick(id)}
               disabled={!isClickable}
               aria-current={isActive ? 'step' : undefined}
-              className={`ds-raw-button flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-caption font-semibold transition-all active:scale-95 ${
+              className={`ds-raw-button flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-role-caption font-semibold transition-all active:scale-95 ${
                 isActive
                   ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-600/30'
                   : isDone
@@ -54,8 +54,8 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
                     : 'bg-surface-sunken text-text-faint cursor-not-allowed'
               }`}
             >
-              <span className="text-micro uppercase tracking-wider opacity-80">{label}</span>
-              <span className="font-mono text-micro font-semibold tabular-nums">{value ?? '—'}</span>
+              <span className="text-role-micro uppercase tracking-wider opacity-80">{label}</span>
+              <span className="font-mono text-role-micro font-semibold tabular-nums">{value ?? '—'}</span>
             </button>
           );
           return (
@@ -67,7 +67,7 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
               ) : (
                 pill
               )}
-              {showChevron && <span className="shrink-0 text-micro text-text-faint">›</span>}
+              {showChevron && <span className="shrink-0 text-role-micro text-text-faint">›</span>}
             </React.Fragment>
           );
         })}

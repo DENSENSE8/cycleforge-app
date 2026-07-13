@@ -172,7 +172,7 @@ function WarehouseSidebarInner() {
       )}
 
       <footer className="p-4 border-t border-border-hairline opacity-30 mt-auto text-center">
-        <p className="text-eyebrow font-mono uppercase tracking-[0.2em] text-text-soft">
+        <p className="text-role-eyebrow font-mono uppercase tracking-[0.2em] text-text-soft">
           {(user?.organizationName || 'Workspace').toUpperCase()} INV
         </p>
       </footer>
@@ -194,12 +194,12 @@ function LabelsSidebarBody() {
         <BinLabelPrinter variant="sidebar" />
       </div>
       <div className={`space-y-3 ${SIDEBAR_GUTTER} py-4 lg:hidden`}>
-        <p className="text-caption text-text-soft">
+        <p className="text-role-caption text-text-soft">
           Build a bin label in the main workspace — pick a room, then drill into
           aisle, bay, level, and position. Live preview + QR render alongside the
           picker.
         </p>
-        <p className="text-micro text-text-faint">
+        <p className="text-role-micro text-text-faint">
           Tip: ⌘P / Ctrl+P prints the current label once all steps are picked.
         </p>
       </div>
@@ -216,12 +216,12 @@ function RacksSidebarBody() {
         <RackLabelPrinter variant="sidebar" />
       </div>
       <div className={`space-y-3 ${SIDEBAR_GUTTER} py-4 lg:hidden`}>
-        <p className="text-caption text-text-soft">
+        <p className="text-role-caption text-text-soft">
           Print a rack-level label in the main workspace — pick a room, then
           aisle, bay, and level. No position needed; one label covers the whole
           rack column on that level.
         </p>
-        <p className="text-micro text-text-faint">
+        <p className="text-role-micro text-text-faint">
           Scanning a rack label opens the rack view so pickers and putaway can
           see everything on it at once.
         </p>
@@ -235,12 +235,12 @@ function RacksSidebarBody() {
 function BinsSidebarBody() {
   return (
     <div className={`space-y-3 ${SIDEBAR_GUTTER} py-4`}>
-      <p className="text-caption text-text-soft">
+      <p className="text-role-caption text-text-soft">
         Filter, sort, and select bins in the table to the right. Click any
         bin to see its full contents + history.
       </p>
       <div>
-        <h3 className="mb-2 text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
           Recent activity
         </h3>
         <RecentBinsActivity />
@@ -255,10 +255,10 @@ function RecentBinsActivity() {
   // requires an id — surface a hint then.
   return (
     <div className="rounded-xl border border-dashed border-border-soft bg-surface-card p-3 text-center">
-      <p className="text-caption text-text-soft">
+      <p className="text-role-caption text-text-soft">
         Click a bin in the table to see its history.
       </p>
-      <p className="mt-1 text-micro text-text-faint">
+      <p className="mt-1 text-role-micro text-text-faint">
         A cross-bin feed lands in the next update.
       </p>
     </div>
@@ -292,7 +292,7 @@ function MapSidebarBody() {
   return (
     <div className={`space-y-4 ${SIDEBAR_GUTTER} py-4`}>
       <div>
-        <h3 className="mb-2 text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
           View by
         </h3>
         <div className="grid grid-cols-2 gap-1">
@@ -303,7 +303,7 @@ function MapSidebarBody() {
                 key={m}
                 type="button"
                 onClick={() => setView(m)}
-                className={`ds-raw-button rounded-md px-2 py-1.5 text-caption font-semibold transition-colors ${
+                className={`ds-raw-button rounded-md px-2 py-1.5 text-role-caption font-semibold transition-colors ${
                   active
                     ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
                     : 'text-text-muted hover:bg-surface-sunken'
@@ -317,7 +317,7 @@ function MapSidebarBody() {
       </div>
 
       <div>
-        <h3 className="mb-2 text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
           Legend
         </h3>
         <MapLegend mode={view === 'floorplan' ? 'fill' : view} />

@@ -81,10 +81,10 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
   return (
     <section>
       <div className="px-1 mb-2 flex items-baseline justify-between">
-        <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+        <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
           What was repaired
         </p>
-        <span className="text-micro font-bold text-text-faint">
+        <span className="text-role-micro font-bold text-text-faint">
           {actions.length} action{actions.length === 1 ? '' : 's'}
         </span>
       </div>
@@ -102,7 +102,7 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
       {!loading && actions.length === 0 && !error && (
         <div className="rounded-lg border border-dashed border-border-default bg-surface-card p-6 text-center">
           <p className="text-sm font-bold text-text-muted">No actions logged yet.</p>
-          <p className="mt-1 text-caption text-text-soft">
+          <p className="mt-1 text-role-caption text-text-soft">
             Tap the + button to record the first one.
           </p>
         </div>
@@ -131,13 +131,13 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
                           <span className="ml-1.5 font-bold text-text-muted">— {a.part_name}</span>
                         ) : null}
                       </p>
-                      <span className="text-micro font-bold text-text-soft shrink-0">
+                      <span className="text-role-micro font-bold text-text-soft shrink-0">
                         {formatAgo(a.created_at)}
                       </span>
                     </div>
 
                     {hasReplacement && (
-                      <div className="mt-1.5 flex items-center gap-1.5 text-caption font-mono">
+                      <div className="mt-1.5 flex items-center gap-1.5 text-role-caption font-mono">
                         {a.old_sku && (
                           <span className="rounded bg-rose-100 px-1.5 py-0.5 text-rose-700 line-through">
                             {a.old_sku}
@@ -155,7 +155,7 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
                     )}
 
                     {(a.old_serial || a.new_serial) && (
-                      <div className="mt-1 flex items-center gap-1.5 text-micro font-mono text-text-muted">
+                      <div className="mt-1 flex items-center gap-1.5 text-role-micro font-mono text-text-muted">
                         {a.old_serial && <span>SN: {a.old_serial}</span>}
                         {a.old_serial && a.new_serial && <span className="text-text-faint">→</span>}
                         {a.new_serial && <span>SN: {a.new_serial}</span>}
@@ -163,12 +163,12 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
                     )}
 
                     {a.notes && (
-                      <p className="mt-1.5 text-label text-text-muted leading-snug whitespace-pre-wrap">
+                      <p className="mt-1.5 text-role-caption text-text-muted leading-snug whitespace-pre-wrap">
                         {a.notes}
                       </p>
                     )}
 
-                    <div className="mt-2 flex items-center gap-2 text-micro font-bold text-text-soft">
+                    <div className="mt-2 flex items-center gap-2 text-role-micro font-bold text-text-soft">
                       {a.staff_name && <span>{a.staff_name}</span>}
                       {a.duration_min != null && (
                         <>

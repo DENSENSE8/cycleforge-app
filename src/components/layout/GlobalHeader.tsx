@@ -19,7 +19,7 @@ import { IconButton } from '@/design-system/primitives';
  *     {@link useHeader} / {@link usePageHeader} — title, "Select" toggle,
  *     filters, bulk-action triggers. Empty on pages that don't set it.
  *   - **Right (persistent):** {@link GlobalHeaderActions} — inline search (420px
- *     expand-on-focus, Enter → `/search`; contextual when a page registers via
+ *     expand-on-focus, Enter → orders board / best match; contextual when a page registers via
  *     {@link usePageHeaderSearch}), notifications, staff switcher, account.
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.

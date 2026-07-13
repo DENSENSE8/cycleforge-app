@@ -38,7 +38,7 @@ export function ZohoPoPairTab({
             <Search className="h-4 w-4" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-caption font-black uppercase leading-none tracking-widest text-blue-900">
+            <p className="text-role-caption font-black uppercase leading-none tracking-widest text-blue-900">
               Search &amp; add inventory SKU
             </p>
             <p className="mt-1 text-xs leading-snug text-blue-700">
@@ -60,7 +60,7 @@ export function ZohoPoPairTab({
       </section>
 
       <div className="border-t border-border-hairline pt-4">
-        <p className="mb-2 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+        <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
           Link purchase order
         </p>
         <PoLinkTab row={row} receivingId={receivingId} />

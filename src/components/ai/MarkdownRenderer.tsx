@@ -27,7 +27,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
           <h3 className="mb-1 mt-3 text-sm font-semibold text-text-default">{children}</h3>
         ),
         p: ({ children }) => (
-          <p className="mb-2 text-label leading-6 text-text-default">{children}</p>
+          <p className="mb-2 text-role-caption leading-6 text-text-default">{children}</p>
         ),
         strong: ({ children }) => (
           <strong className="font-semibold text-text-default">{children}</strong>
@@ -36,10 +36,10 @@ export default function MarkdownRenderer({ content }: { content: string }) {
           <em className="italic text-text-muted">{children}</em>
         ),
         ul: ({ children }) => (
-          <ul className="mb-2 ml-4 list-disc space-y-1 text-label leading-6 text-text-default">{children}</ul>
+          <ul className="mb-2 ml-4 list-disc space-y-1 text-role-caption leading-6 text-text-default">{children}</ul>
         ),
         ol: ({ children }) => (
-          <ol className="mb-2 ml-4 list-decimal space-y-1 text-label leading-6 text-text-default">{children}</ol>
+          <ol className="mb-2 ml-4 list-decimal space-y-1 text-role-caption leading-6 text-text-default">{children}</ol>
         ),
         li: ({ children }) => (
           <li className="pl-1">{children}</li>
@@ -54,7 +54,7 @@ export default function MarkdownRenderer({ content }: { content: string }) {
             return <CodeBlock language={language}>{children}</CodeBlock>;
           }
           return (
-            <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-caption font-mono text-text-default" {...props}>
+            <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-caption font-mono text-text-default" {...props}>
               {children}
             </code>
           );
@@ -62,13 +62,13 @@ export default function MarkdownRenderer({ content }: { content: string }) {
         // CodeBlock renders its own <pre>; pass through so we don't double-wrap.
         pre: ({ children }) => <>{children}</>,
         blockquote: ({ children }) => (
-          <blockquote className="mb-2 border-l-2 border-border-default pl-3 text-label italic text-text-muted">
+          <blockquote className="mb-2 border-l-2 border-border-default pl-3 text-role-caption italic text-text-muted">
             {children}
           </blockquote>
         ),
         table: ({ children }) => (
           <div className="mb-2 overflow-x-auto">
-            <table className="w-full border-collapse border border-border-soft text-caption">{children}</table>
+            <table className="w-full border-collapse border border-border-soft text-role-caption">{children}</table>
           </div>
         ),
         thead: ({ children }) => (

@@ -79,7 +79,7 @@ export function GlobalDesktopSkuScanner() {
   return (
     <div className="fixed inset-0 z-modal flex flex-col bg-stage">
       <div className="flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
-        <p className="text-micro font-black uppercase tracking-[0.2em] text-white/60">Scan SKU Barcode</p>
+        <p className="text-role-micro uppercase tracking-[0.2em] text-white/60">Scan SKU Barcode</p>
         <IconButton
           onClick={() => void handleCloseScanner()}
           ariaLabel="Close scanner"

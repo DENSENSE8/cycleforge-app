@@ -192,11 +192,11 @@ export function TestingSerialLinkControls({
         padded={false}
       >
         {siblings == null ? (
-          <div className="flex items-center gap-2 px-3 py-2.5 text-caption text-text-faint">
+          <div className="flex items-center gap-2 px-3 py-2.5 text-role-caption text-text-faint">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading rows…
           </div>
         ) : siblings.length === 0 ? (
-          <div className="px-3 py-2.5 text-caption text-text-soft">
+          <div className="px-3 py-2.5 text-role-caption text-text-soft">
             No other row on this carton has a scanned serial to combine.
           </div>
         ) : (
@@ -210,10 +210,10 @@ export function TestingSerialLinkControls({
                   className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left transition-colors hover:bg-surface-hover disabled:opacity-40"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-caption font-bold text-text-default">
+                    <span className="block truncate text-role-caption font-bold text-text-default">
                       {s.item_name || s.sku || `Line #${s.id}`}
                     </span>
-                    <span className="block truncate text-micro font-semibold uppercase tracking-widest text-text-faint">
+                    <span className="block truncate text-role-micro font-semibold uppercase tracking-widest text-text-faint">
                       {(s.serials?.length ?? 0)} serial{(s.serials?.length ?? 0) === 1 ? '' : 's'}
                     </span>
                   </span>

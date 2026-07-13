@@ -44,12 +44,12 @@ export function OrderRailPopover({
         <div className="flex items-start gap-2">
           <p className="flex-1 text-sm font-black leading-snug text-text-default">{title}</p>
           {condition ? (
-            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
               {condition}
             </span>
           ) : null}
         </div>
-        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-caption font-semibold text-text-soft">
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-role-caption font-semibold text-text-soft">
           <span className="font-mono font-bold text-text-muted">#{getLast4(orderId)}</span>
           <span className="text-text-faint">·</span>
           <span className="truncate">{channel}</span>
@@ -63,13 +63,13 @@ export function OrderRailPopover({
       </div>
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-3">
-        <div className="flex items-center gap-1.5 text-caption">
+        <div className="flex items-center gap-1.5 text-role-caption">
           <span className="inline-flex items-center rounded-md bg-surface-sunken px-1.5 py-0.5 font-bold text-text-muted">
             {shipBy}
           </span>
           <span className={`font-bold tracking-tight ${urgencyTone}`}>{urgencyText}</span>
         </div>
-        <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-micro font-bold text-text-muted">
+        <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-bold text-text-muted">
           ×{quantity}
         </span>
       </div>
@@ -82,20 +82,20 @@ export function OrderRailPopover({
 
       {order.out_of_stock && String(order.out_of_stock).trim() ? (
         <div className="flex items-center gap-1.5 rounded-md border border-red-100 bg-red-50/60 px-2 py-1">
-          <span className="min-w-0 flex-1 truncate text-caption font-semibold text-red-700">
+          <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-red-700">
             {order.out_of_stock}
           </span>
         </div>
       ) : null}
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
-        <span className="text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
           {railRelativeTime(order.created_at)} ago
         </span>
         <button
           type="button"
           onClick={onOpen}
-          className="ds-raw-button rounded-md bg-blue-600 px-2.5 py-1 text-micro font-black uppercase tracking-widest text-white shadow-sm transition-colors hover:bg-blue-700"
+          className="ds-raw-button rounded-md bg-blue-600 px-2.5 py-1 text-role-micro uppercase tracking-widest text-white shadow-sm transition-colors hover:bg-blue-700"
         >
           Open →
         </button>

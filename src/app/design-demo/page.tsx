@@ -65,7 +65,7 @@ function Bay({ title, path, children }: { title: string; path: string; children:
     <section className="space-y-3">
       <header className="flex items-baseline justify-between gap-3 border-b border-border-soft pb-2">
         <h2 className="text-sm font-black uppercase tracking-[0.14em] text-text-default">{title}</h2>
-        <code className="text-micro text-text-muted">{path}</code>
+        <code className="text-role-micro text-text-muted">{path}</code>
       </header>
       {children}
     </section>

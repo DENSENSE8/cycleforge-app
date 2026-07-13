@@ -28,7 +28,7 @@ export default function PhotoPeekDemoPage() {
     <div className="grid min-h-screen place-items-center bg-surface-sunken p-6">
       {/* Mock right-pane: same relative + gray surface as the unbox LineEditPanel. */}
       <div className="relative flex h-[720px] w-[900px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-canvas shadow-xl">
-        <div className="border-b border-border-hairline px-5 py-3 text-caption font-black uppercase tracking-widest text-text-faint">
+        <div className="border-b border-border-hairline px-5 py-3 text-role-caption font-black uppercase tracking-widest text-text-faint">
           Mock unbox panel
         </div>
         <div className="flex-1 space-y-3 p-5">

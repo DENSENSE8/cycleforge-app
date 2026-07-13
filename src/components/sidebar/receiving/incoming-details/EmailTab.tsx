@@ -22,15 +22,15 @@ export function EmailTab({ data }: { data: DetailsResponse }) {
               return (same order ID), so a single chip is all the operator needs. */}
           <div className="flex items-center gap-2">
             <OrderIdChip value={e.order_number} display={e.order_number} dense />
-            <span className="ml-auto whitespace-nowrap text-eyebrow font-semibold text-rose-700">
+            <span className="ml-auto whitespace-nowrap text-role-eyebrow font-semibold text-rose-700">
               Delivered · {fmtDateTime(e.delivered_at)}
             </span>
           </div>
           {e.email_subject ? (
-            <div className="mt-1 text-label font-bold text-text-default">{e.email_subject}</div>
+            <div className="mt-1 text-role-caption font-bold text-text-default">{e.email_subject}</div>
           ) : null}
           {e.snippet ? (
-            <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-caption leading-relaxed text-text-muted">{e.snippet}</p>
+            <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-role-caption leading-relaxed text-text-muted">{e.snippet}</p>
           ) : null}
         </div>
       ))}
@@ -38,20 +38,20 @@ export function EmailTab({ data }: { data: DetailsResponse }) {
       {worklist.length > 0 ? (
         <div className="space-y-2 pt-1">
           {delivered.length > 0 ? (
-            <div className="text-eyebrow font-black uppercase tracking-wide text-text-faint">PO mailbox</div>
+            <div className="text-role-eyebrow uppercase tracking-wide text-text-faint">PO mailbox</div>
           ) : null}
           {worklist.map((e) => (
             <div key={`w-${e.gmail_msg_id}`} className="border-l-2 border-border-soft pl-3">
               <div className="flex items-center gap-2">
                 {e.status ? (
-                  <span className="text-eyebrow font-bold uppercase tracking-wide text-text-soft">{e.status}</span>
+                  <span className="text-role-eyebrow font-bold uppercase tracking-wide text-text-soft">{e.status}</span>
                 ) : null}
-                <span className="ml-auto whitespace-nowrap text-eyebrow font-semibold text-text-faint">
+                <span className="ml-auto whitespace-nowrap text-role-eyebrow font-semibold text-text-faint">
                   {fmtDateTime(e.email_received)}
                 </span>
               </div>
               {e.email_subject ? (
-                <div className="mt-0.5 text-label font-bold text-text-default">{e.email_subject}</div>
+                <div className="mt-0.5 text-role-caption font-bold text-text-default">{e.email_subject}</div>
               ) : null}
             </div>
           ))}

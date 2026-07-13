@@ -156,13 +156,13 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Buy Label</h3>
+        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">Buy Label</h3>
         {rates.length > 0 && !bought ? (
           <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
             type="button"
             onClick={() => ratesMutation.mutate()}
             disabled={ratesMutation.isPending}
-            className="-my-0.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-violet-600 disabled:opacity-40"
+            className="-my-0.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-violet-600 disabled:opacity-40"
           >
             {ratesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
             Refresh
@@ -177,49 +177,49 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
               <div className="flex items-center gap-1.5 text-emerald-700">
                 <Check className="h-4 w-4" />
-                <span className="text-caption font-bold">
+                <span className="text-role-caption font-bold">
                   {bought.idempotent ? 'Label already purchased' : 'Label purchased'}
                 </span>
               </div>
               <dl className="mt-2 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-eyebrow font-bold uppercase tracking-widest text-emerald-700/70">Tracking</dt>
-                  <dd className="truncate font-mono text-caption font-semibold text-text-default">{bought.tracking}</dd>
+                  <dt className="text-role-eyebrow font-bold uppercase tracking-widest text-emerald-700/70">Tracking</dt>
+                  <dd className="truncate font-mono text-role-caption font-semibold text-text-default">{bought.tracking}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-eyebrow font-bold uppercase tracking-widest text-emerald-700/70">Carrier</dt>
-                  <dd className="text-caption font-semibold uppercase text-text-default">{bought.carrier}</dd>
+                  <dt className="text-role-eyebrow font-bold uppercase tracking-widest text-emerald-700/70">Carrier</dt>
+                  <dd className="text-role-caption font-semibold uppercase text-text-default">{bought.carrier}</dd>
                 </div>
                 {typeof bought.cost === 'number' ? (
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-eyebrow font-bold uppercase tracking-widest text-emerald-700/70">Cost</dt>
-                    <dd className="text-caption font-bold text-text-default">{money(bought.cost, bought.currency)}</dd>
+                    <dt className="text-role-eyebrow font-bold uppercase tracking-widest text-emerald-700/70">Cost</dt>
+                    <dd className="text-role-caption font-bold text-text-default">{money(bought.cost, bought.currency)}</dd>
                   </div>
                 ) : null}
               </dl>
             </div>
 
             {bought.warning ? (
-              <div className="flex items-start gap-1.5 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-eyebrow text-amber-700">
+              <div className="flex items-start gap-1.5 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-role-eyebrow text-amber-700">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{bought.warning}</span>
               </div>
             ) : (
-              <p className="text-eyebrow text-text-faint">Label + packing slip are ready — print them from the main panel.</p>
+              <p className="text-role-eyebrow text-text-faint">Label + packing slip are ready — print them from the main panel.</p>
             )}
 
             {/* Void / refund */}
             {voidOpen ? (
               <div className="space-y-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
-                <label className="block text-eyebrow font-black uppercase tracking-widest text-rose-700">Reason to void</label>
+                <label className="block text-role-eyebrow uppercase tracking-widest text-rose-700">Reason to void</label>
                 <input
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   placeholder="e.g. wrong service selected"
-                  className="w-full rounded-lg border border-rose-200 bg-surface-card px-2.5 py-1.5 text-caption text-text-default outline-none focus:border-rose-400"
+                  className="w-full rounded-lg border border-rose-200 bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none focus:border-rose-400"
                 />
                 {voidMutation.isError ? (
-                  <p className="text-eyebrow font-bold text-rose-600">{voidMutation.error.message}</p>
+                  <p className="text-role-eyebrow font-bold text-rose-600">{voidMutation.error.message}</p>
                 ) : null}
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -248,7 +248,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
                 onClick={() => setVoidOpen(true)}
-                className="flex items-center gap-1 text-eyebrow font-bold uppercase tracking-widest text-text-faint hover:text-rose-600"
+                className="flex items-center gap-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint hover:text-rose-600"
               >
                 <Trash2 className="h-3 w-3" /> Void / refund this label
               </button>
@@ -256,18 +256,18 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
           </motion.div>
         ) : ratesMutation.isPending ? (
           /* ── Loading ────────────────────────────────────────────────── */
-          <motion.div key="loading" {...paneMotion} className="flex items-center gap-2 px-1 py-3 text-caption text-text-soft">
+          <motion.div key="loading" {...paneMotion} className="flex items-center gap-2 px-1 py-3 text-role-caption text-text-soft">
             <Loader2 className="h-4 w-4 animate-spin text-violet-600" /> Fetching live rates…
           </motion.div>
         ) : ratesMutation.isError ? (
           /* ── Error ──────────────────────────────────────────────────── */
           <motion.div key="error" {...paneMotion}>
             <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-4 text-center">
-              <p className="text-caption font-semibold text-rose-700">{ratesMutation.error.message}</p>
+              <p className="text-role-caption font-semibold text-rose-700">{ratesMutation.error.message}</p>
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
                 onClick={() => ratesMutation.mutate()}
-                className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-rose-700 hover:underline"
+                className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-rose-700 hover:underline"
               >
                 Try again
               </button>
@@ -277,7 +277,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
           /* ── Rate list ──────────────────────────────────────────────── */
           <motion.div key="rates" {...paneMotion} className="space-y-2">
             {rates.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-center text-caption text-text-soft">
+              <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-center text-role-caption text-text-soft">
                 No rates returned for this parcel.
               </p>
             ) : (
@@ -295,19 +295,19 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
                       >
                         <Truck className={`h-4 w-4 shrink-0 ${selected ? 'text-blue-600' : 'text-text-faint'}`} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-caption font-bold text-text-default">{rate.carrierName}</p>
-                          <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                          <p className="truncate text-role-caption font-bold text-text-default">{rate.carrierName}</p>
+                          <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                             {rate.serviceName}
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className="text-caption font-black tabular-nums text-text-default">{money(rate.amount, rate.currency)}</p>
-                          <p className="flex items-center justify-end gap-0.5 text-eyebrow font-semibold text-text-faint">
+                          <p className="text-role-caption font-black tabular-nums text-text-default">{money(rate.amount, rate.currency)}</p>
+                          <p className="flex items-center justify-end gap-0.5 text-role-eyebrow font-semibold text-text-faint">
                             <Clock className="h-2.5 w-2.5" /> {eta(rate)}
                           </p>
                         </div>
                         {i === 0 ? (
-                          <span className="ml-1 shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 leading-none">
+                          <span className="ml-1 shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 leading-none">
                             Best
                           </span>
                         ) : null}
@@ -319,7 +319,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
             )}
 
             {invalidRates.length > 0 ? (
-              <p className="px-1 text-eyebrow text-text-faint">
+              <p className="px-1 text-role-eyebrow text-text-faint">
                 {invalidRates.length} carrier{invalidRates.length > 1 ? 's' : ''} couldn’t rate this parcel.
               </p>
             ) : null}
@@ -328,11 +328,11 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
             {selectedRate ? (
               confirming ? (
                 <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
-                  <p className="text-caption font-semibold text-text-default">
+                  <p className="text-role-caption font-semibold text-text-default">
                     Purchase this <span className="font-bold">{money(selectedRate.amount, selectedRate.currency)}</span>{' '}
                     {selectedRate.carrierName} {selectedRate.serviceName} label?
                   </p>
-                  <label className="flex items-center gap-1.5 text-eyebrow font-semibold text-text-muted">
+                  <label className="flex items-center gap-1.5 text-role-eyebrow font-semibold text-text-muted">
                     <input
                       type="checkbox"
                       checked={notifyCustomer}
@@ -342,7 +342,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
                     Email the customer a tracking notification
                   </label>
                   {buyMutation.isError ? (
-                    <p className="text-eyebrow font-bold text-rose-600">{buyMutation.error.message}</p>
+                    <p className="text-role-eyebrow font-bold text-rose-600">{buyMutation.error.message}</p>
                   ) : null}
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -393,7 +393,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
             >
               Get shipping rates
             </Button>
-            <p className="mt-1 px-1 text-eyebrow text-text-faint">Rate-shop live carrier prices for {orderRef}.</p>
+            <p className="mt-1 px-1 text-role-eyebrow text-text-faint">Rate-shop live carrier prices for {orderRef}.</p>
           </motion.div>
         )}
       </AnimatePresence>

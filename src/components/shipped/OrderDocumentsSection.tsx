@@ -122,7 +122,7 @@ function DocumentTypeGroup({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-eyebrow font-black uppercase tracking-wider text-text-soft">{title}</h3>
+        <h3 className="text-role-eyebrow uppercase tracking-wider text-text-soft">{title}</h3>
         {!readOnly ? (
           <HoverTooltip label="Fetch from the marketplace" focusable={false}>
             {/* ds-raw-button */}
@@ -130,7 +130,7 @@ function DocumentTypeGroup({
               type="button"
               onClick={() => fetchMutation.mutate()}
               disabled={fetchMutation.isPending}
-              className="-my-0.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-blue-600 disabled:opacity-40"
+              className="-my-0.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-blue-600 disabled:opacity-40"
             >
               {fetchMutation.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -160,7 +160,7 @@ function DocumentTypeGroup({
           ) : (
             <FileText className="h-5 w-5 text-text-faint" />
           )}
-          <span className="text-caption font-semibold text-text-muted">
+          <span className="text-role-caption font-semibold text-text-muted">
             {uploadMutation.isPending ? 'Uploading to NAS…' : 'Drop PDF / PNG, or click to choose'}
           </span>
           <input
@@ -173,14 +173,14 @@ function DocumentTypeGroup({
         </div>
       ) : null}
 
-      {error ? <p className="mt-2 text-eyebrow font-bold text-text-danger">{error}</p> : null}
+      {error ? <p className="mt-2 text-role-eyebrow font-bold text-text-danger">{error}</p> : null}
       {fetchError ? (
         <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-caption text-text-warning">{fetchError}</p>
+          <p className="text-role-caption text-text-warning">{fetchError}</p>
           <button
             type="button"
             onClick={() => fetchMutation.mutate()}
-            className="shrink-0 text-eyebrow font-bold uppercase tracking-widest text-text-warning hover:underline"
+            className="shrink-0 text-role-eyebrow font-bold uppercase tracking-widest text-text-warning hover:underline"
           >
             Retry
           </button>
@@ -189,9 +189,9 @@ function DocumentTypeGroup({
 
       <div className="mt-3 space-y-1.5">
         {isLoading ? (
-          <p className="text-caption text-text-faint">Loading…</p>
+          <p className="text-role-caption text-text-faint">Loading…</p>
         ) : documents.length === 0 ? (
-          <p className="text-caption text-text-faint">
+          <p className="text-role-caption text-text-faint">
             {readOnly ? `No ${title.toLowerCase()} attached.` : `No ${title.toLowerCase()} attached yet.`}
           </p>
         ) : (
@@ -206,7 +206,7 @@ function DocumentTypeGroup({
                   href={`/api/documents/${doc.id}/content`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex min-w-0 items-center gap-2 text-caption font-semibold text-text-muted hover:text-blue-600"
+                  className="flex min-w-0 items-center gap-2 text-role-caption font-semibold text-text-muted hover:text-blue-600"
                 >
                   <FileText className="h-4 w-4 shrink-0 text-text-faint" />
                   <span className="truncate">{displayName(doc)}</span>
@@ -214,7 +214,7 @@ function DocumentTypeGroup({
                 </a>
                 <div className="flex shrink-0 items-center gap-2">
                   {shipmentLink ? (
-                    <span className="rounded bg-blue-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+                    <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
                       Box
                     </span>
                   ) : null}
@@ -285,7 +285,7 @@ export function OrderDocumentsSection({ orderId, orderRef, readOnly = false }: O
       <div className="flex items-center justify-end">
         <Link
           href={`/ops/photos?sourceScope=outbound&poRef=${encodeURIComponent(orderRef)}`}
-          className="text-caption font-semibold text-blue-600 hover:text-blue-800"
+          className="text-role-caption font-semibold text-blue-600 hover:text-blue-800"
         >
           Open in media library
         </Link>

@@ -68,7 +68,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
 
   const ctrlSize = isMobile ? 'h-10 w-10' : 'h-8 w-8';
   const iconSize = isMobile ? 'h-5 w-5' : 'h-4 w-4';
-  const avatarSize = isMobile ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-caption';
+  const avatarSize = isMobile ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-role-caption';
 
   const iconCluster = (
     <>
@@ -116,7 +116,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
               <span className="relative inline-flex shrink-0">
                 <Inbox className={iconSize} />
                 {inboxCount > 0 && (
-                  <span className="pointer-events-none absolute -right-1 -top-1 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-mini font-bold leading-none tabular-nums text-white ring-1 ring-white">
+                  <span className="pointer-events-none absolute -right-1 -top-1 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-role-micro font-bold leading-none tabular-nums text-white ring-1 ring-white">
                     {inboxCount > 9 ? '9+' : inboxCount}
                   </span>
                 )}

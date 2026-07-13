@@ -20,7 +20,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
         value={manualSheetName}
         onChange={(e) => setManualSheetName(e.target.value)}
         placeholder="e.g., Sheet_01_14_2026"
-        className="w-full px-3 py-2 bg-surface-card border border-border-soft rounded-xl text-caption font-mono text-text-default outline-none focus:border-blue-500 transition-all"
+        className="w-full px-3 py-2 bg-surface-card border border-border-soft rounded-xl text-role-caption font-mono text-text-default outline-none focus:border-blue-500 transition-all"
         disabled={isTransferring}
       />
 
@@ -30,7 +30,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
           size="lg"
           icon={<X />}
           onClick={handleCancelTransfer}
-          className="w-full text-micro font-black uppercase tracking-[0.2em]"
+          className="w-full text-role-micro uppercase tracking-[0.2em]"
         >
           Cancel Import
         </Button>
@@ -40,7 +40,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
           size="lg"
           icon={<Database />}
           onClick={handleTransfer}
-          className="w-full text-micro font-black uppercase tracking-[0.2em]"
+          className="w-full text-role-micro uppercase tracking-[0.2em]"
         >
           Import Latest Orders
         </Button>
@@ -65,13 +65,13 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
               <div className="flex items-center gap-2 min-w-0">
                 {isTransferring ? <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" /> : <Check className="w-3.5 h-3.5 text-blue-600" />}
                 <span className={`${sectionLabel} text-blue-700`}>{isTransferring ? 'Importing orders…' : 'Import complete'}</span>
-                <span className="text-eyebrow text-blue-400">View details</span>
+                <span className="text-role-eyebrow text-blue-400">View details</span>
               </div>
               <motion.span
                 key={Math.floor(elapsedMs / 1000)}
                 initial={{ opacity: 0.5, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-caption font-mono font-bold text-blue-500 tabular-nums"
+                className="text-role-caption font-mono font-bold text-blue-500 tabular-nums"
               >
                 {(elapsedMs / 1000).toFixed(1)}s
               </motion.span>

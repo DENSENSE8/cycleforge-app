@@ -69,7 +69,7 @@ export function CustomerInfoForm({
 
     return (
         <div className="space-y-4">
-            <p className="text-micro font-black uppercase tracking-[0.16em] text-text-faint">
+            <p className="text-role-micro uppercase tracking-[0.16em] text-text-faint">
                 {fieldIndex + 1} of {fieldCount} · {fieldLabel}
             </p>
 
@@ -124,7 +124,7 @@ export function CustomerInfoForm({
                     />
 
                     <div className="relative w-full">
-                        <span className="pointer-events-none absolute left-3.5 top-1.5 text-micro font-semibold uppercase tracking-wide text-text-soft">
+                        <span className="pointer-events-none absolute left-3.5 top-1.5 text-role-micro font-semibold uppercase tracking-wide text-text-soft">
                             Price
                         </span>
                         <div className="flex h-11 items-center overflow-hidden rounded-xl border border-border-soft bg-surface-card px-3.5 pt-3 focus-within:border-border-strong focus-within:ring-2 focus-within:ring-border-strong/10">

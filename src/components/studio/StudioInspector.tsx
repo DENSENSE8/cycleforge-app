@@ -86,11 +86,11 @@ export function StudioInspector({
           <PaneHeading text="Workflow" />
           <p className="text-sm font-bold text-text-default">{definition.name}</p>
           <div className="mt-1 flex items-center gap-1.5">
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-semibold text-text-muted">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted">
               v{definition.version}
             </span>
             {definition.isActive && (
-              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-micro font-semibold text-emerald-700">
+              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro font-semibold text-emerald-700">
                 Active
               </span>
             )}
@@ -139,9 +139,9 @@ export function StudioInspector({
       <section>
         <PaneHeading text="Node" />
         <p className="text-sm font-bold text-text-default">{node.meta?.label ?? node.type}</p>
-        <p className="font-mono text-caption text-text-faint">{node.type}</p>
+        <p className="font-mono text-role-caption text-text-faint">{node.type}</p>
         {node.meta && (
-          <span className="mt-1 inline-block rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wide text-text-soft">
+          <span className="mt-1 inline-block rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-soft">
             {node.meta.category}
           </span>
         )}
@@ -151,7 +151,7 @@ export function StudioInspector({
         <section>
           <PaneHeading text="In flight now" />
           <p className="text-sm font-bold text-blue-700">{live.total}</p>
-          <p className="text-caption text-text-soft">
+          <p className="text-role-caption text-text-soft">
             {live.active} active · {live.blocked} parked
             {live.error > 0 && <span className="font-semibold text-rose-600"> · {live.error} in error</span>}
           </p>
@@ -159,7 +159,7 @@ export function StudioInspector({
             const age = oldestAgeHours(live);
             if (age == null) return null;
             const display = age >= 48 ? `${Math.round(age / 24)}d` : `${Math.round(age)}h`;
-            return <p className="text-caption text-text-faint">oldest here for {display}</p>;
+            return <p className="text-role-caption text-text-faint">oldest here for {display}</p>;
           })()}
         </section>
       )}
@@ -200,7 +200,7 @@ export function StudioInspector({
               renderFieldHint={(fieldKey, value) => {
                 if (fieldKey !== 'station') return null;
                 const s = STATIONS.find((x) => x.key === String(value ?? ''));
-                return s ? <p className="text-caption text-text-soft">{s.blurb}</p> : null;
+                return s ? <p className="text-role-caption text-text-soft">{s.blurb}</p> : null;
               }}
             />
           </section>
@@ -215,7 +215,7 @@ export function StudioInspector({
             >
               {station.label}
             </span>
-            <p className="mt-1 text-caption text-text-soft">{station.blurb}</p>
+            <p className="mt-1 text-role-caption text-text-soft">{station.blurb}</p>
           </section>
         )
       )}
@@ -242,7 +242,7 @@ export function StudioInspector({
                   <span className="font-semibold text-text-muted">
                     {circledNumber(stage.order)} {stage.label}
                   </span>
-                  <span className="truncate text-micro text-text-faint">{stage.description}</span>
+                  <span className="truncate text-role-micro text-text-faint">{stage.description}</span>
                 </div>
               );
             })}
@@ -260,7 +260,7 @@ export function StudioInspector({
               const wired = outgoing.find((e) => e.sourcePort === port.id);
               return (
                 <li key={port.id} className="flex items-center gap-1.5 text-xs">
-                  <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-micro font-semibold text-text-muted">
+                  <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-semibold text-text-muted">
                     {port.id}
                   </span>
                   {wired ? (
@@ -274,7 +274,7 @@ export function StudioInspector({
           </ul>
         )}
         {incoming.length > 0 && (
-          <p className="mt-1.5 text-caption text-text-faint">
+          <p className="mt-1.5 text-role-caption text-text-faint">
             Fed by {incoming.map((e) => `${labelOf(e.source)} (${e.sourcePort})`).join(', ')}
           </p>
         )}
@@ -287,12 +287,12 @@ export function StudioInspector({
             {diagnostics
               .filter((d) => d.severity !== 'info')
               .map((d) => (
-                <li key={d.id} className="text-caption leading-tight">
+                <li key={d.id} className="text-role-caption leading-tight">
                   <span className={d.severity === 'error' ? 'font-bold text-rose-600' : 'font-bold text-amber-600'}>
                     {d.severity === 'error' ? '✖' : '⚠'}
                   </span>{' '}
                   <span className="text-text-muted">{d.message}</span>
-                  {d.fix && <span className="mt-0.5 block text-micro text-text-faint">↳ {d.fix}</span>}
+                  {d.fix && <span className="mt-0.5 block text-role-micro text-text-faint">↳ {d.fix}</span>}
                 </li>
               ))}
           </ul>
@@ -307,7 +307,7 @@ export function StudioInspector({
           <dl className="space-y-1">
             {configEntries.map(([key, value]) => (
               <div key={key} className="flex items-baseline justify-between gap-2 text-xs">
-                <dt className="font-mono text-caption text-text-soft">{key}</dt>
+                <dt className="font-mono text-role-caption text-text-soft">{key}</dt>
                 <dd className="truncate font-semibold text-text-muted">{String(value)}</dd>
               </div>
             ))}
@@ -322,7 +322,7 @@ export function StudioInspector({
           </Button>
         </div>
       ) : (
-        <p className="border-t border-border-hairline pt-3 text-caption text-text-faint">
+        <p className="border-t border-border-hairline pt-3 text-role-caption text-text-faint">
           Read-only — edit on a draft, then publish.
         </p>
       )}
@@ -331,7 +331,7 @@ export function StudioInspector({
 }
 
 function PaneHeading({ text }: { text: string }) {
-  return <h3 className="mb-1.5 text-micro font-bold uppercase tracking-wider text-text-faint">{text}</h3>;
+  return <h3 className="mb-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">{text}</h3>;
 }
 
 function PaneHint({ text }: { text: string }) {
@@ -369,12 +369,12 @@ function BottlenecksSection({
                 onClick={() => onFocus?.(b.nodeId)}
                 className="flex w-full items-start gap-2 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-hover"
               >
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-micro font-bold text-rose-700">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-role-micro font-bold text-rose-700">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-xs font-semibold text-text-default">{labelOf(b.nodeId)}</span>
-                  <span className="block text-caption text-text-soft">{b.reason}</span>
+                  <span className="block text-role-caption text-text-soft">{b.reason}</span>
                 </span>
               </button>
             </li>
@@ -401,17 +401,17 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
       ) : people.coverage === 0 ? (
         <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-2.5 text-center">
           <p className="text-xs font-semibold text-amber-700">No staff scoped to {people.station}</p>
-          <p className="mt-0.5 text-caption text-amber-600">This step is a coverage gap.</p>
+          <p className="mt-0.5 text-role-caption text-amber-600">This step is a coverage gap.</p>
           <a
             href="/admin?section=staff_schedule"
-            className="mt-1.5 inline-block text-caption font-semibold text-violet-700 underline-offset-2 hover:underline"
+            className="mt-1.5 inline-block text-role-caption font-semibold text-violet-700 underline-offset-2 hover:underline"
           >
             Assign staff in the editor →
           </a>
         </div>
       ) : (
         <>
-          <p className="mb-1.5 text-caption text-text-soft">
+          <p className="mb-1.5 text-role-caption text-text-soft">
             {people.coverage} staffer{people.coverage === 1 ? '' : 's'} scoped to{' '}
             <span className="font-semibold text-text-muted">{people.station}</span>
           </p>
@@ -423,17 +423,17 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
                     href={`/admin?section=staff_schedule&staffId=${s.id}`}
                     className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface-hover"
                   >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-eyebrow font-bold text-violet-700">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-role-eyebrow font-bold text-violet-700">
                     {staffInitials(s.name)}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-semibold text-text-default">{s.name}</span>
                     {s.role && (
-                      <span className="block truncate text-micro text-text-faint">{s.role}</span>
+                      <span className="block truncate text-role-micro text-text-faint">{s.role}</span>
                     )}
                   </span>
                   {s.isPrimary && (
-                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-eyebrow font-bold uppercase tracking-wide text-violet-700 ring-1 ring-inset ring-violet-200">
+                    <span className="shrink-0 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide text-violet-700 ring-1 ring-inset ring-violet-200">
                       Primary
                     </span>
                   )}
@@ -442,7 +442,7 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-micro text-text-faint">
+          <p className="mt-2 text-role-micro text-text-faint">
             Read-only — staff↔station access is managed in the staff editor.
           </p>
         </>
@@ -465,38 +465,38 @@ function FlowMetricsSection({
       <PaneHeading text={`Throughput · last ${windowDays}d`} />
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
         <div>
-          <p className="text-micro font-semibold uppercase tracking-wide text-text-faint">In queue</p>
+          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">In queue</p>
           <p className="font-bold text-text-default tabular-nums">{metrics.currentWip}</p>
         </div>
         <div>
-          <p className="text-micro font-semibold uppercase tracking-wide text-text-faint">Runs</p>
+          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Runs</p>
           <p className="font-bold text-text-default tabular-nums">{metrics.runCount}</p>
         </div>
         <div>
-          <p className="text-micro font-semibold uppercase tracking-wide text-text-faint">Median dwell</p>
+          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">Median dwell</p>
           <p className="font-bold text-text-default tabular-nums">
             {metrics.dwellMedianS != null ? formatDuration(metrics.dwellMedianS) : '—'}
           </p>
         </div>
         <div>
-          <p className="text-micro font-semibold uppercase tracking-wide text-text-faint">p90 dwell</p>
+          <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">p90 dwell</p>
           <p className="font-bold text-text-default tabular-nums">
             {metrics.dwellP90S != null ? formatDuration(metrics.dwellP90S) : '—'}
           </p>
         </div>
       </div>
       {metrics.failRate != null && metrics.failRate > 0 && (
-        <p className="mt-1.5 text-caption font-semibold text-rose-600">
+        <p className="mt-1.5 text-role-caption font-semibold text-rose-600">
           {Math.round(metrics.failRate * 100)}% of runs took a fail/error port
         </p>
       )}
       {ports.length > 0 && (
         <div className="mt-2">
-          <p className="mb-1 text-micro font-semibold uppercase tracking-wide text-text-faint">Port split</p>
+          <p className="mb-1 text-role-micro font-semibold uppercase tracking-wide text-text-faint">Port split</p>
           <ul className="space-y-1">
             {ports.map(([port, n]) => (
               <li key={port} className="flex items-center gap-1.5 text-xs">
-                <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-micro font-semibold text-text-muted">
+                <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-semibold text-text-muted">
                   {port}
                 </span>
                 <span className="tabular-nums text-text-soft">{n}</span>

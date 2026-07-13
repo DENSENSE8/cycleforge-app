@@ -96,7 +96,7 @@ export function FbaStatusBadge({
   const Icon = token.icon;
 
   const pad = size === 'sm' ? 'px-2 py-1' : 'px-2 py-0.5';
-  const text = size === 'sm' ? 'text-micro' : 'text-eyebrow';
+  const text = size === 'sm' ? 'text-role-micro' : 'text-role-eyebrow';
   const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-2.5 w-2.5';
 
   if (iconOnly) {

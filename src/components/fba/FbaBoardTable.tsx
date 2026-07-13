@@ -405,7 +405,7 @@ export function FbaBoardTable({
             weekNav={{ weekOffset, onPrev: onPrevWeek, onNext: onNextWeek }}
           />
         ) : (
-          <span className="rounded-full border border-border-soft bg-surface-canvas px-3 py-1 text-caption font-bold tabular-nums text-text-soft">
+          <span className="rounded-full border border-border-soft bg-surface-canvas px-3 py-1 text-role-caption font-bold tabular-nums text-text-soft">
             {sortedItems.length}
           </span>
         )}
@@ -415,7 +415,7 @@ export function FbaBoardTable({
           <Button
             type="button"
             variant="secondary"
-            className="h-8 px-2.5 text-[10px] font-black uppercase tracking-widest"
+            className="h-8 px-2.5 text-role-micro uppercase tracking-widest"
             onClick={() =>
               window.dispatchEvent(
                 new CustomEvent(FBA_BOARD_TOGGLE_ALL, {
@@ -427,7 +427,7 @@ export function FbaBoardTable({
             {allVisibleSelected ? 'Clear' : 'Select all'}
           </Button>
           {someSelected ? (
-            <span className="text-eyebrow font-black uppercase tracking-widest tabular-nums text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-widest tabular-nums text-text-soft">
               {selectedIds.size} selected
             </span>
           ) : null}
@@ -444,7 +444,7 @@ export function FbaBoardTable({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter title, FNSKU, ASIN, SKU, plan…"
-          className="h-9 w-full max-w-md rounded-xl border border-border-soft bg-surface-canvas px-3 text-caption font-semibold text-text-default outline-none ring-0 placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+          className="h-9 w-full max-w-md rounded-xl border border-border-soft bg-surface-canvas px-3 text-role-caption font-semibold text-text-default outline-none ring-0 placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
         />
         {(statusFilter !== 'ALL' || query) && (
           <button
@@ -453,7 +453,7 @@ export function FbaBoardTable({
               setStatusFilter('ALL');
               setQuery('');
             }}
-            className="text-eyebrow font-black uppercase tracking-widest text-text-soft hover:text-text-default"
+            className="text-role-eyebrow uppercase tracking-widest text-text-soft hover:text-text-default"
           >
             Reset filters
           </button>
@@ -487,7 +487,7 @@ export function FbaBoardTable({
                   setStatusFilter('ALL');
                   setQuery('');
                 }}
-                className="text-caption font-black uppercase tracking-widest text-blue-700 hover:underline"
+                className="text-role-caption font-black uppercase tracking-widest text-blue-700 hover:underline"
               >
                 Clear filters
               </button>
@@ -510,7 +510,7 @@ export function FbaBoardTable({
         <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
           <table className="min-w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-surface-card">
-              <tr className="border-b border-border-soft text-left text-micro font-black uppercase tracking-widest text-text-soft">
+              <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
                 <th className="w-10 px-3 py-3">
                   <span className="sr-only">Select</span>
                 </th>
@@ -567,15 +567,15 @@ export function FbaBoardTable({
                       {item.asin ? (
                         <CopyChip value={item.asin} display={getLast4(item.asin)} tone="id" dense />
                       ) : (
-                        <span className="text-caption text-text-faint">—</span>
+                        <span className="text-role-caption text-text-faint">—</span>
                       )}
                     </td>
                     <td className="max-w-[320px] px-3 py-3 align-middle">
-                      <p className="truncate text-caption font-bold text-gray-900">
+                      <p className="truncate text-role-caption font-bold text-gray-900">
                         {item.display_title || '—'}
                       </p>
                       {item.sku ? (
-                        <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+                        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
                           {item.sku}
                         </p>
                       ) : null}
@@ -584,7 +584,7 @@ export function FbaBoardTable({
                       <FnskuChip value={item.fnsku} />
                     </td>
                     <td className="px-3 py-3 align-middle">
-                      <span className="tabular-nums text-caption font-bold text-text-default">
+                      <span className="tabular-nums text-role-caption font-bold text-text-default">
                         {item.actual_qty}
                         <span className="text-text-faint"> / </span>
                         {item.expected_qty}
@@ -593,10 +593,10 @@ export function FbaBoardTable({
                     <td className="px-3 py-3 align-middle">
                       <StatusPill status={item.item_status} />
                     </td>
-                    <td className="px-3 py-3 align-middle text-caption font-semibold text-text-soft">
+                    <td className="px-3 py-3 align-middle text-role-caption font-semibold text-text-soft">
                       {item.condition || '—'}
                     </td>
-                    <td className="px-3 py-3 align-middle text-caption tabular-nums text-text-soft">
+                    <td className="px-3 py-3 align-middle text-role-caption tabular-nums text-text-soft">
                       {due}
                     </td>
                     <td className="px-3 py-3 align-middle">
@@ -604,13 +604,13 @@ export function FbaBoardTable({
                         <div className="flex flex-col gap-0.5">
                           <CopyChip value={planRef} display={getLast4(planRef)} tone="id" dense />
                           {item.destination_fc ? (
-                            <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                            <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                               {item.destination_fc}
                             </p>
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-caption text-text-faint">—</span>
+                        <span className="text-role-caption text-text-faint">—</span>
                       )}
                     </td>
                     <td className="px-3 py-3 align-middle">
@@ -646,7 +646,7 @@ function StatusPill({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        'inline-block rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-wider',
+        'inline-block rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-wider',
         color,
       )}
     >

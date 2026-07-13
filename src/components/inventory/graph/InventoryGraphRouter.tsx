@@ -43,7 +43,7 @@ export function InventoryGraphRouter() {
               type="button"
               onClick={() => switchTo(t.id)}
               className={cn(
-                'ds-raw-button rounded-lg px-3 py-1.5 text-label font-medium transition-colors',
+                'ds-raw-button rounded-lg px-3 py-1.5 text-role-caption font-medium transition-colors',
                 t.active ? 'bg-surface-card text-text-default shadow-sm' : 'text-text-soft hover:text-text-default',
               )}
             >

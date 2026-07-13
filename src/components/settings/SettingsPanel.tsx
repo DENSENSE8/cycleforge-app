@@ -30,7 +30,7 @@ function Badge({ tone, children }: { tone: 'amber' | 'gray'; children: React.Rea
       ? 'bg-amber-50 text-amber-700 ring-amber-200'
       : 'bg-surface-sunken text-text-muted ring-border-soft';
   return (
-    <span className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${cls}`}>
+    <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${cls}`}>
       {children}
     </span>
   );
@@ -59,14 +59,14 @@ function SettingRow({ def, resolved, value, caption, onChange }: RowProps) {
           {resolved.locked && <Badge tone="amber">Upgrade</Badge>}
           {def.comingSoon && <Badge tone="gray">Coming soon</Badge>}
         </div>
-        {def.description && <p className="mt-0.5 text-caption text-text-soft">{def.description}</p>}
+        {def.description && <p className="mt-0.5 text-role-caption text-text-soft">{def.description}</p>}
         {upgradeFor && (
-          <p className="mt-0.5 text-caption font-medium text-amber-600">Available on the {upgradeFor} plan.</p>
+          <p className="mt-0.5 text-role-caption font-medium text-amber-600">Available on the {upgradeFor} plan.</p>
         )}
         {lockedOptionPlan && (
-          <p className="mt-0.5 text-caption font-medium text-amber-600">Direct mode needs the {lockedOptionPlan} plan.</p>
+          <p className="mt-0.5 text-role-caption font-medium text-amber-600">Direct mode needs the {lockedOptionPlan} plan.</p>
         )}
-        {caption && <p className="mt-0.5 text-caption font-medium text-text-faint">{caption}</p>}
+        {caption && <p className="mt-0.5 text-role-caption font-medium text-text-faint">{caption}</p>}
       </div>
       <div className="flex-shrink-0 pt-0.5">
         <SettingControl
@@ -112,13 +112,13 @@ function PanelSection({ title, subtitle, defs, byKey, variant, onChange }: Secti
     <section className="space-y-3">
       <header>
         <h3 className="text-sm font-bold uppercase tracking-widest text-text-soft">{title}</h3>
-        <p className="mt-0.5 text-caption text-text-soft">{subtitle}</p>
+        <p className="mt-0.5 text-role-caption text-text-soft">{subtitle}</p>
       </header>
       <div className="space-y-4">
         {groups.map(({ group, defs: groupDefsList }) => (
           <div key={group} className="rounded-2xl border border-border-soft bg-surface-card px-5 shadow-sm">
             <div className="border-b border-border-hairline py-2.5">
-              <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">{group}</span>
+              <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{group}</span>
             </div>
             <div className="divide-y divide-border-hairline">
               {groupDefsList.map((def) => {

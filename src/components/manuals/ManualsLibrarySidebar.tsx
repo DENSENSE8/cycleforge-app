@@ -30,10 +30,10 @@ export function ManualsLibrarySidebar() {
     <div className="flex h-full w-full flex-col bg-gradient-to-b from-white to-gray-50">
       {/* Header */}
       <div className={`${sidebarHeaderBandClass} ${sidebarHeaderRowClass}`}>
-        <p className="truncate text-caption font-black uppercase tracking-[0.2em] text-text-default">
+        <p className="truncate text-role-caption font-black uppercase tracking-[0.2em] text-text-default">
           Manuals Library
         </p>
-        <span className="text-micro font-black uppercase tracking-[0.18em] text-text-soft">
+        <span className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
           {loading ? 'Loading…' : `${tree.totalCount}`}
         </span>
       </div>
@@ -59,7 +59,7 @@ export function ManualsLibrarySidebar() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Fuzzy search folders & manuals…"
-            className="w-full rounded-2xl border border-border-soft bg-surface-canvas py-2.5 pl-10 pr-9 text-label font-semibold text-text-default placeholder:text-text-faint transition-all focus:border-indigo-300 focus:bg-surface-card focus:outline-none focus:ring-4 focus:ring-indigo-100"
+            className="w-full rounded-2xl border border-border-soft bg-surface-canvas py-2.5 pl-10 pr-9 text-role-caption font-semibold text-text-default placeholder:text-text-faint transition-all focus:border-indigo-300 focus:bg-surface-card focus:outline-none focus:ring-4 focus:ring-indigo-100"
           />
           {query && (
             <IconButton
@@ -79,7 +79,7 @@ export function ManualsLibrarySidebar() {
             key={opt.value}
             type="button"
             onClick={() => setStatus(opt.value)}
-            className={`ds-raw-button flex-1 rounded-xl px-2 py-1.5 text-micro font-black uppercase tracking-wider transition-all ${
+            className={`ds-raw-button flex-1 rounded-xl px-2 py-1.5 text-role-micro uppercase tracking-wider transition-all ${
               status === opt.value
                 ? 'bg-surface-inverse text-white shadow-sm shadow-gray-900/20'
                 : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted'
@@ -96,7 +96,7 @@ export function ManualsLibrarySidebar() {
           <button
             type="button"
             onClick={() => goToCrumb(0)}
-            className={`ds-raw-button flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-micro font-black uppercase tracking-wider transition-colors ${
+            className={`ds-raw-button flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider transition-colors ${
               currentPath.length === 0
                 ? 'bg-indigo-50 text-indigo-700'
                 : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted'
@@ -111,7 +111,7 @@ export function ManualsLibrarySidebar() {
               <button
                 type="button"
                 onClick={() => goToCrumb(i + 1)}
-                className={`ds-raw-button shrink-0 rounded-lg px-2 py-1 text-micro font-black uppercase tracking-wider transition-colors ${
+                className={`ds-raw-button shrink-0 rounded-lg px-2 py-1 text-role-micro uppercase tracking-wider transition-colors ${
                   i === currentPath.length - 1
                     ? 'bg-surface-inverse text-white'
                     : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted'

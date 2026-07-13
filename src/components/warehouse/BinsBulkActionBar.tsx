@@ -88,7 +88,7 @@ export function BinsBulkActionBar({ selected, rows, onClearSelection }: Props) {
           variant="ghost"
           size="sm"
           onClick={onClearSelection}
-          className="text-caption text-text-soft hover:text-text-muted"
+          className="text-role-caption text-text-soft hover:text-text-muted"
         >
           Clear
         </Button>

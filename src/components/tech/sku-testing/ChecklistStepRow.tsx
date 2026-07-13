@@ -60,7 +60,7 @@ export function ChecklistStepRow({
                 if (e.key === 'Escape') ed.setEditingId(null);
               }}
               autoFocus
-              className="w-full rounded-md border border-blue-300 px-2 py-1 text-caption font-medium text-text-default focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className="w-full rounded-md border border-blue-300 px-2 py-1 text-role-caption font-medium text-text-default focus:outline-none focus:ring-2 focus:ring-blue-500/10"
             />
             <IconButton
               onClick={() => void ed.saveEdit()}
@@ -78,7 +78,7 @@ export function ChecklistStepRow({
           </div>
         ) : (
           <>
-            <span className="block text-caption font-semibold leading-snug text-text-default">{step.step_label}</span>
+            <span className="block text-role-caption font-semibold leading-snug text-text-default">{step.step_label}</span>
             {isValueStep && canRecord ? (
               <StepValueControl
                 step={step}
@@ -88,7 +88,7 @@ export function ChecklistStepRow({
               />
             ) : null}
             {result?.verified_by_name && (checked || isValueStep) ? (
-              <span className="mt-0.5 block text-micro font-medium uppercase tracking-wide text-emerald-700">
+              <span className="mt-0.5 block text-role-micro font-medium uppercase tracking-wide text-emerald-700">
                 {result.verified_by_name}
               </span>
             ) : null}

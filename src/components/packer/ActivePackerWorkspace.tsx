@@ -91,7 +91,7 @@ export function ActivePackerWorkspace({ activeOrder, onClose }: ActivePackerWork
         }
         rightSlot={
           <>
-            <span className="hidden items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-eyebrow font-black uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200 md:inline-flex">
+            <span className="hidden items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200 md:inline-flex">
               <Barcode className="h-3 w-3" />
               <span>Scan next</span>
             </span>
@@ -115,15 +115,15 @@ export function ActivePackerWorkspace({ activeOrder, onClose }: ActivePackerWork
             <h2 className="text-base font-black leading-snug text-text-default">{activeOrder.productTitle}</h2>
             <dl className="mt-3 grid grid-cols-3 gap-2">
               <div className="rounded-xl border border-border-hairline bg-surface-canvas px-2.5 py-2">
-                <dt className="text-eyebrow font-black uppercase tracking-wider text-text-faint">Qty</dt>
+                <dt className="text-role-eyebrow uppercase tracking-wider text-text-faint">Qty</dt>
                 <dd className="text-xs font-bold text-text-default">{activeOrder.qty}</dd>
               </div>
               <div className="rounded-xl border border-border-hairline bg-surface-canvas px-2.5 py-2">
-                <dt className="text-eyebrow font-black uppercase tracking-wider text-text-faint">Condition</dt>
+                <dt className="text-role-eyebrow uppercase tracking-wider text-text-faint">Condition</dt>
                 <dd className="text-xs font-bold text-text-default">{activeOrder.condition}</dd>
               </div>
               <div className="rounded-xl border border-border-hairline bg-surface-canvas px-2.5 py-2">
-                <dt className="text-eyebrow font-black uppercase tracking-wider text-text-faint">
+                <dt className="text-role-eyebrow uppercase tracking-wider text-text-faint">
                   {activeOrder.scanType === 'SKU' ? 'SKU' : 'Tracking'}
                 </dt>
                 <dd className="truncate font-mono text-xs font-bold text-text-default">

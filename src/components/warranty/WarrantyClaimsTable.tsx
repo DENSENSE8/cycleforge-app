@@ -41,7 +41,7 @@ export function WarrantyClaimsTable() {
       <div className="min-w-full p-4">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="text-left text-caption font-semibold uppercase tracking-wide text-text-faint">
+            <tr className="text-left text-role-caption font-semibold uppercase tracking-wide text-text-faint">
               <th className="bg-surface-canvas px-3 py-2">Claim</th>
               <th className="bg-surface-canvas px-3 py-2">Item</th>
               <th className="bg-surface-canvas px-3 py-2">Customer</th>
@@ -72,15 +72,15 @@ export function WarrantyClaimsTable() {
                     )}
                   >
                     <td className="border-b border-border-hairline px-3 py-2 align-top">
-                      <div className="font-mono text-caption text-text-soft">{claim.claimNumber}</div>
+                      <div className="font-mono text-role-caption text-text-soft">{claim.claimNumber}</div>
                       {claim.serialNumber && (
-                        <div className="font-mono text-caption text-text-faint">{claim.serialNumber}</div>
+                        <div className="font-mono text-role-caption text-text-faint">{claim.serialNumber}</div>
                       )}
                     </td>
                     <td className="border-b border-border-hairline px-3 py-2 align-top">
                       <div className="max-w-[280px] truncate text-text-default">{title}</div>
                       {claim.sku && claim.productTitle && (
-                        <div className="truncate text-caption text-text-faint">{claim.sku}</div>
+                        <div className="truncate text-role-caption text-text-faint">{claim.sku}</div>
                       )}
                     </td>
                     <td className="border-b border-border-hairline px-3 py-2 align-top text-text-muted">
@@ -92,7 +92,7 @@ export function WarrantyClaimsTable() {
                     <td className="border-b border-border-hairline px-3 py-2 align-top">
                       <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />
                     </td>
-                    <td className="border-b border-border-hairline px-3 py-2 align-top text-caption text-text-faint">
+                    <td className="border-b border-border-hairline px-3 py-2 align-top text-role-caption text-text-faint">
                       {formatDateTimePST(claim.createdAt)}
                     </td>
                     <td

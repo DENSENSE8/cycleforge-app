@@ -114,7 +114,7 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
               <h2 className="text-xl font-black tracking-tighter uppercase leading-none text-text-default">
                 Outbound
               </h2>
-              <p className="text-eyebrow font-bold text-text-accent uppercase tracking-widest mt-1">
+              <p className="text-role-eyebrow font-bold text-text-accent uppercase tracking-widest mt-1">
                 Fulfillment queue
               </p>
             </motion.header>

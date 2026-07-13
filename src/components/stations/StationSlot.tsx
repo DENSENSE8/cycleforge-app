@@ -76,7 +76,7 @@ function SortableBlockRow({ inst, onConfigure, onRemove }: SortableBlockRowProps
           <GripVertical className="h-3.5 w-3.5" />
         </button>
         <StationIcon name={blockDef?.icon ?? 'Box'} className="h-3.5 w-3.5 text-text-faint" />
-        <span className="flex-1 truncate text-mini font-bold text-text-muted">
+        <span className="flex-1 truncate text-role-micro font-bold text-text-muted">
           {blockDef?.label ?? inst.block}
         </span>
         <HoverTooltip label="Configure source, display & actions" asChild>
@@ -207,7 +207,7 @@ export function StationSlot({ pageKey, modeKey, slot, stationLabel }: StationSlo
           when there's nothing to show. */}
       {(editing || instances.length > 0 || canManage) && (
         <div className="flex items-center justify-between px-2.5 pt-2">
-          <span className="text-eyebrow font-black uppercase tracking-wider text-text-faint">
+          <span className="text-role-eyebrow uppercase tracking-wider text-text-faint">
             {editing ? `Blocks · editing (${slot})` : instances.length > 0 ? 'Blocks' : ''}
           </span>
           {canManage && !editing ? (

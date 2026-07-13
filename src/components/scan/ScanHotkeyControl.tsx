@@ -102,7 +102,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           <span className="inline-flex size-[17px] shrink-0 items-center justify-center">
             <Settings className="block size-[17px]" />
           </span>
-          <kbd className="inline-flex h-[17px] items-center rounded border border-border-soft bg-surface-card px-1 font-mono text-micro font-bold leading-none text-text-muted">
+          <kbd className="inline-flex h-[17px] items-center rounded border border-border-soft bg-surface-card px-1 font-mono text-role-micro font-bold leading-none text-text-muted">
             {hotkey}
           </kbd>
         </button>
@@ -122,7 +122,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           className="w-60 overflow-hidden rounded-2xl border border-white/40 bg-surface-card/95 p-3 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.08] backdrop-blur-xl"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-eyebrow font-black uppercase tracking-wider text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-wider text-text-soft">
               Focus-scan hotkey
             </span>
             <IconButton
@@ -144,7 +144,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
 
           <p
             className={cn(
-              'mt-1.5 text-caption font-medium',
+              'mt-1.5 text-role-caption font-medium',
               error ? 'text-rose-600' : 'text-text-faint',
             )}
           >

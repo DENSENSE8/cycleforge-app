@@ -252,7 +252,7 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
             label="Reason or Ticket #"
             required
             hintBelow={
-              <p className="text-eyebrow font-medium text-text-soft">
+              <p className="text-role-eyebrow font-medium text-text-soft">
                 Will be saved as:{' '}
                 <span className="font-bold">
                   {replacementData.reason || '[Reason]'} - {replacementData.product_title || '[Product Title]'}
@@ -276,7 +276,7 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
                 {isProductTitleLocked ? (
                   <span className="ml-2 inline-flex items-center gap-1 text-green-600">
                     <Lock className="h-3 w-3" />
-                    <span className="text-mini">Locked</span>
+                    <span className="text-role-micro">Locked</span>
                   </span>
                 ) : null}
               </>
@@ -284,7 +284,7 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
             required
             hintBelow={
               isProductTitleLocked ? (
-                <p className="text-eyebrow font-medium text-green-600">
+                <p className="text-role-eyebrow font-medium text-green-600">
                   This field is locked because the order ID was found in the database.
                 </p>
               ) : null

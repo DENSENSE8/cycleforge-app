@@ -10,6 +10,10 @@ import {
   type Density,
 } from '@/lib/settings/appearance';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
+import { setTimeFormat } from '@/lib/time-format/store';
+import { TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences';
+import { formatTime12hPST } from '@/utils/date';
 import { applyTheme, type ThemeName } from '@/lib/theme/theme';
 import {
   THEME_NAMES,
@@ -65,6 +69,16 @@ const DENSITY_HINTS: Record<Density, string> = {
   comfortable: 'Roomier — easier to read.',
 };
 
+const TIME_FORMAT_LABELS: Record<TimeFormat, string> = {
+  '12h': '12-hour',
+  '24h': '24-hour',
+};
+
+const TIME_FORMAT_HINTS: Record<TimeFormat, string> = {
+  '12h': 'AM / PM',
+  '24h': '00:00–23:59',
+};
+
 export function AppearanceSection() {
   const [settings, setSettings] = useState<AppearanceSettings>({
     density: 'cozy',
@@ -78,9 +92,17 @@ export function AppearanceSection() {
   // an impossible selection.
   const currentTheme: ThemeName = resolveTheme(prefs?.theme).name;
 
+  // Live clock-format preference (12h/24h). The store handles the instant local
+  // flip + localStorage cache; <TimeFormatSync/> mirrors it to the server.
+  const timeFormat = useTimeFormat();
+
   function updateTheme(t: ThemeName) {
     applyTheme(t); // instant local feedback
     update({ theme: t }); // durable, cross-device via staff_preferences
+  }
+
+  function updateTimeFormat(tf: TimeFormat) {
+    setTimeFormat(tf); // instant local feedback + persists via the registered persister
   }
 
   function updateDensity(d: Density) {
@@ -116,7 +138,7 @@ export function AppearanceSection() {
                 aria-pressed={isActive}
               >
                 <div className="text-sm font-semibold">{DENSITY_LABELS[d]}</div>
-                <div className="mt-1 text-caption text-text-soft">{DENSITY_HINTS[d]}</div>
+                <div className="mt-1 text-role-caption text-text-soft">{DENSITY_HINTS[d]}</div>
               </button>
             );
           })}
@@ -146,8 +168,42 @@ export function AppearanceSection() {
             );
           })}
         </div>
-        <p className="mt-3 text-caption text-text-soft">
+        <p className="mt-3 text-role-caption text-text-soft">
           Applies globally. 100% is the default; higher values are easier to read from across the warehouse.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-text-default">Time format</h3>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {TIME_FORMAT_VALUES.map((tf) => {
+            const isActive = timeFormat === tf;
+            // Real formatter output for a sample afternoon instant, so the
+            // preview always matches what the app will actually render.
+            const sample = formatTime12hPST('2026-01-01 16:17:00', { hour12: tf === '12h' });
+            return (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => updateTimeFormat(tf)}
+                className={`ds-raw-button rounded-xl border px-4 py-3 text-left transition ${
+                  isActive
+                    ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
+                    : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
+                }`}
+                aria-pressed={isActive}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold">{TIME_FORMAT_LABELS[tf]}</span>
+                  <span className="text-role-caption font-bold tabular-nums text-text-soft">{sample}</span>
+                </div>
+                <div className="mt-1 text-role-caption text-text-soft">{TIME_FORMAT_HINTS[tf]}</div>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-role-caption text-text-soft">
+          Applies to every timestamp across the app. Saved to your account — follows you across devices.
         </p>
       </div>
 
@@ -163,7 +219,7 @@ export function AppearanceSection() {
             if (names.length === 0) return null;
             return (
               <div key={scheme}>
-                <p className="mb-2 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+                <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
                   {scheme === 'light' ? 'Light themes' : 'Dark themes'}
                 </p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -184,12 +240,12 @@ export function AppearanceSection() {
                       >
                         <ThemePreviewMini palette={palette} />
                         <span className="mt-2 flex items-center justify-between px-0.5">
-                          <span className="text-caption font-bold text-text-default">{palette.label}</span>
+                          <span className="text-role-caption font-bold text-text-default">{palette.label}</span>
                           {isActive ? (
                             <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
                           ) : null}
                         </span>
-                        <span className="mt-0.5 block truncate px-0.5 text-micro text-text-soft">
+                        <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">
                           {palette.hint}
                         </span>
                       </button>
@@ -200,7 +256,7 @@ export function AppearanceSection() {
             );
           })}
         </div>
-        <p className="mt-3 text-caption text-text-soft">
+        <p className="mt-3 text-role-caption text-text-soft">
           Saved to your account — follows you across devices.
         </p>
       </div>

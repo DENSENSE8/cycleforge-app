@@ -49,7 +49,7 @@ export function FbaQtyStepper({
         min={0}
         onChange={(v) => onChange(Math.max(0, v))}
         onClick={(e) => e.stopPropagation()}
-        className={`h-7 w-10 border-x bg-surface-card text-center text-label font-black tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${inputBorder}`}
+        className={`h-7 w-10 border-x bg-surface-card text-center text-role-caption font-black tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${inputBorder}`}
       />
       <IconButton
         icon={<Minus className={`h-3 w-3 ${value <= 1 ? 'text-red-500' : 'text-text-soft'}`} />}
@@ -71,7 +71,7 @@ export function FbaQtyDisplay({ value }: { value: number }) {
   return (
     <div className="flex shrink-0 flex-col items-center text-center px-2">
       <span className="text-sm font-black tabular-nums text-text-default">{value}</span>
-      <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">qty</span>
+      <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">qty</span>
     </div>
   );
 }

@@ -25,9 +25,9 @@ function DocumentPreviewPane({ title, doc }: DocumentPreviewPaneProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border-soft bg-surface-card">
       <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-4 py-2.5">
-        <h3 className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{title}</h3>
+        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</h3>
         {doc?.data.platform ? (
-          <span className="text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
             {sourcePlatformLabel(doc.data.platform)}
           </span>
         ) : null}
@@ -51,8 +51,8 @@ function DocumentPreviewPane({ title, doc }: DocumentPreviewPaneProps) {
         ) : (
           <div className="flex flex-col items-center gap-2 px-6 text-center">
             <FileText className="h-8 w-8 text-text-faint" />
-            <p className="text-caption font-semibold text-text-soft">No {title.toLowerCase()} attached</p>
-            <p className="text-eyebrow text-text-faint">Attach one from the Documents tab</p>
+            <p className="text-role-caption font-semibold text-text-soft">No {title.toLowerCase()} attached</p>
+            <p className="text-role-eyebrow text-text-faint">Attach one from the Documents tab</p>
           </div>
         )}
       </div>
@@ -107,7 +107,7 @@ export function OutboundDocumentsPrintView({ orderId }: OutboundDocumentsPrintVi
     <div className="flex h-full min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-surface-card p-6 pr-[456px]">
       <div className="flex shrink-0 items-center justify-between gap-3">
         <div>
-          <p className="text-eyebrow font-bold uppercase tracking-widest text-text-faint">Order #</p>
+          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Order #</p>
           <p className="text-lg font-black text-text-default">{order?.order_id ?? orderId}</p>
         </div>
         <Button

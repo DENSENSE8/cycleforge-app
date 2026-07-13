@@ -16,7 +16,7 @@ export function ClaimRecipientsField({ c }: { c: ReceivingClaimController }) {
   return (
     <section className="space-y-2 rounded-lg border border-border-soft bg-surface-canvas/40 p-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">Recipients</p>
+        <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">Recipients</p>
         <VisibilityToggle
           value={notePublic}
           onChange={setNotePublic}
@@ -32,12 +32,12 @@ export function ClaimRecipientsField({ c }: { c: ReceivingClaimController }) {
             onChange={setCcEmails}
             placeholder="Add vendor / teammate email to CC…"
           />
-          <p className="text-micro font-medium text-blue-700">
+          <p className="text-role-micro font-medium text-blue-700">
             Files the opening comment as a public reply — emails the CC recipients. Attached photos ride along.
           </p>
         </>
       ) : (
-        <p className="text-micro font-medium text-text-faint">
+        <p className="text-role-micro font-medium text-text-faint">
           Private internal note — not emailed to anyone.
         </p>
       )}

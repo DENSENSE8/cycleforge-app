@@ -46,7 +46,7 @@ function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClos
     <DetailStackRailRegistrar id={`detail:global:${stackId}`} onClose={onClose}>
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 bg-surface-card">
         <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-        <p className="text-caption font-semibold text-text-soft">Loading…</p>
+        <p className="text-role-caption font-semibold text-text-soft">Loading…</p>
       </div>
     </DetailStackRailRegistrar>
   );

@@ -10,6 +10,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
+import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   fetchReceivingDetailsEnrich,
   receivingDetailsInstantSeed,
@@ -76,6 +79,28 @@ export function useReceivingDetailOverlays(isIncomingMode: boolean): ReceivingDe
       // Keep the instant seed visible when enrichment fails.
     }
   }, []);
+
+  // Keep the open carton overlay LIVE: `unboxed_at`/`received_at` and the
+  // Progress stepper are seeded into `overlayLog` state, so a mutation elsewhere
+  // (condition edit, serial scan, receive, unbox acknowledgement) that stamps a
+  // milestone must re-enrich the open panel — otherwise it shows the stale seed
+  // until the operator hits Refresh. The server publishes `receiving-log.changed`
+  // (carton id as `rowId`) on every such write; re-enrich when it matches the
+  // open overlay. Ably echoes to the publishing client, so a same-browser edit
+  // updates too.
+  const { user } = useAuth();
+  const stationChannel = safeChannelName(() => getStationChannelName(user!.organizationId));
+  useAblyChannel(
+    stationChannel,
+    'receiving-log.changed',
+    (msg: { data?: { rowId?: string | number | null } }) => {
+      const rowId = msg?.data?.rowId != null ? String(msg.data.rowId) : '';
+      if (rowId && rowId === overlayLogIdRef.current) {
+        void enrichOverlayLog(Number(rowId));
+      }
+    },
+    !!stationChannel && overlayLog != null,
+  );
 
   // Incoming-mode row select → open the IncomingDetailsPanel overlay. Listens on
   // the same `receiving-select-line` event the table dispatches; the mode check

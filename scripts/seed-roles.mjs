@@ -70,7 +70,7 @@ const ROLE_PERMISSION_SETS = {
     'rma.view', 'rma.manage',
   ],
   viewer: [
-    'dashboard.view', 'operations.view', 'receiving.view', 'packing.view',
+    'dashboard.view', 'operations.view', 'operations.tv.view', 'receiving.view', 'packing.view',
     'tech.view', 'shipping.view', 'fba.view', 'sku_stock.view',
     'cycle_count.view', 'work_orders.view',
     'walk_in.view', 'repair.view', 'orders.view', 'reports.view',
@@ -81,6 +81,13 @@ const ROLE_PERMISSION_SETS = {
     // RMA-read-only is a real, separate access-policy call for the org to
     // make deliberately, not a side effect of this permission-split migration.
     'rma.view', 'rma.manage',
+  ],
+  // Unattended wall / TV kiosk (HOME-OPS Phase C). Least-privilege: a wall token
+  // can reach ONLY the read-only Operations TV board, nothing editable. Paired
+  // with a persistent session (session_policy='persistent') + a dedicated kiosk
+  // staff row — see the kiosk provisioning runbook. Never grant a kiosk `admin`.
+  kiosk: [
+    'operations.tv.view',
   ],
 };
 
@@ -110,6 +117,7 @@ const SEED = [
   { key: 'inventory_manager', label: 'Inventory Manager', color: '#a855f7', position: 50, permissions: ROLE_PERMISSION_SETS.inventory_manager },
   { key: 'sales',             label: 'Sales',             color: '#ec4899', position: 60, permissions: ROLE_PERMISSION_SETS.sales },
   { key: 'viewer',            label: 'Viewer',            color: '#6b7280', position: 70, permissions: ROLE_PERMISSION_SETS.viewer },
+  { key: 'kiosk',             label: 'TV Kiosk',          color: '#0f766e', position: 80, permissions: ROLE_PERMISSION_SETS.kiosk },
 ];
 
 async function main() {

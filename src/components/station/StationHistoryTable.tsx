@@ -257,12 +257,12 @@ export function StationHistoryTable<T>({
     selection && selectMode && selectedCount > 0 ? (
       <div className="absolute inset-x-0 bottom-3 z-toast flex justify-center">
         <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5 shadow-lg ring-1 ring-black/5">
-          <span className="text-caption font-bold text-text-muted">{selectedCount} selected</span>
+          <span className="text-role-caption font-bold text-text-muted">{selectedCount} selected</span>
           {/* ds-raw-button: compact bulk-action capsule button */}
           <button
             type="button"
             onClick={() => void copySelected()}
-            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-caption font-bold text-white transition-colors hover:bg-blue-700"
+            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-role-caption font-bold text-white transition-colors hover:bg-blue-700"
           >
             <Copy className="h-3.5 w-3.5" /> Copy
           </button>

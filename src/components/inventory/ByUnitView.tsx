@@ -214,7 +214,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                                     </pre>
                                 ) : null}
                                 {e.client_event_id ? (
-                                    <p className="mt-1 text-micro text-text-faint">
+                                    <p className="mt-1 text-role-micro text-text-faint">
                                         client_event_id: <code>{e.client_event_id}</code>
                                         {e.stock_ledger_id ? ` · stock_ledger_id: ${e.stock_ledger_id}` : ''}
                                     </p>

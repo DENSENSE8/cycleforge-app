@@ -57,10 +57,10 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
       renderRowMain={(r) => (
         <>
           {/* ds-allow-title: truncation-only fallback on a non-interactive clipped <p> */}
-          <p className="truncate text-caption font-bold text-text-default" title={r.display_title}>
+          <p className="truncate text-role-caption font-bold text-text-default" title={r.display_title}>
             {r.display_title || r.fnsku}
           </p>
-          <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {r.actual_qty}/{r.expected_qty} units · {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
           </p>
         </>
@@ -69,14 +69,14 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
         <div className="space-y-2 p-3.5">
           <p className="text-sm font-black leading-snug text-text-default">{r.display_title || r.fnsku}</p>
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded bg-purple-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-purple-700">
+            <span className="rounded bg-purple-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-purple-700">
               {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
             </span>
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted tabular-nums">
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted tabular-nums">
               {r.actual_qty}/{r.expected_qty} units
             </span>
           </div>
-          <dl className="space-y-1 border-t border-border-hairline pt-2 text-caption">
+          <dl className="space-y-1 border-t border-border-hairline pt-2 text-role-caption">
             <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">FNSKU</dt><dd className="font-mono font-black text-text-default">{r.fnsku}</dd></div>
             {r.shipment_ref ? <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">Plan</dt><dd className="font-black text-text-default">{r.shipment_ref}</dd></div> : null}
           </dl>

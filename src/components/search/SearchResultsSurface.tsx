@@ -175,7 +175,7 @@ export function SearchResultsSurface({
       />
 
       {state.status === 'done' && (
-        <p className="text-caption font-medium text-text-soft">
+        <p className="text-role-caption font-medium text-text-soft">
           {state.hits.length === 50 ? '50+' : state.hits.length} result
           {state.hits.length === 1 ? '' : 's'} for “{q}”
           {state.usedSemantic ? ' · semantic + keyword' : ' · keyword'}
@@ -187,7 +187,7 @@ export function SearchResultsSurface({
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-10 text-center">
           <Search className="mx-auto mb-2 h-6 w-6 text-text-faint" />
           <p className="text-sm font-semibold text-text-muted">Search everything, from anywhere</p>
-          <p className="text-caption font-medium text-text-soft">
+          <p className="text-role-caption font-medium text-text-soft">
             Orders, serial units, receiving cartons, SKUs, repairs and FBA shipments — one query.
           </p>
         </div>
@@ -198,18 +198,18 @@ export function SearchResultsSurface({
         </div>
       )}
       {state.status === 'forbidden' && (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption font-medium text-rose-700">
+        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-medium text-rose-700">
           Your role doesn’t include AI search yet — ask an admin to grant the “AI search
           retrieval” permission.
         </div>
       )}
       {state.status === 'error' && (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption font-medium text-rose-700">
+        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-medium text-rose-700">
           Search failed — try again.
         </div>
       )}
       {state.status === 'done' && state.hits.length === 0 && q && (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption font-medium text-text-soft">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption font-medium text-text-soft">
           No matches for “{q}”
           {activeTab !== 'all' ? ` in ${CATEGORY_LABELS[activeTab] ?? activeTab}` : ''}. Try fewer
           words, a partial serial, or the last 8 digits of a tracking number.
@@ -222,7 +222,7 @@ export function SearchResultsSurface({
           {grouped.map((group) => (
             <section key={group.id} className="rounded-xl border border-border-hairline bg-surface-card">
               <div className="flex items-center justify-between border-b border-border-hairline px-3 py-2">
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
                   {group.label}
                   <span className="ml-1.5 rounded bg-surface-sunken px-1.5 py-0.5 text-text-soft">
                     {group.hits.length}
@@ -233,7 +233,7 @@ export function SearchResultsSurface({
                     variant="ghost"
                     size="sm"
                     onClick={() => onTabChange(group.id as TabId)}
-                    className="-my-1.5 px-1 text-caption font-semibold text-blue-600 hover:bg-transparent hover:underline"
+                    className="-my-1.5 px-1 text-role-caption font-semibold text-blue-600 hover:bg-transparent hover:underline"
                   >
                     View all →
                   </Button>

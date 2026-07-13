@@ -81,7 +81,7 @@ export function Stat({
       : 'text-text-default';
   return (
     <div className="rounded-2xl bg-gradient-to-b from-gray-50/70 to-white px-3 py-2.5 ring-1 ring-border-hairline">
-      <div className="flex items-center gap-1 text-micro font-semibold uppercase tracking-wider text-text-soft">
+      <div className="flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wider text-text-soft">
         {icon}
         {label}
       </div>
@@ -112,7 +112,7 @@ export function Tally({
           : 'bg-surface-canvas text-text-muted ring-border-soft';
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-semibold uppercase tracking-wider ring-1 ${cls}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wider ring-1 ${cls}`}
     >
       {label}
       <span className="tabular-nums">{n}</span>

@@ -102,10 +102,10 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
             </span>
           ) : null}
         </span>
-        <span className="text-caption font-bold text-text-muted group-hover:text-blue-700">
+        <span className="text-role-caption font-bold text-text-muted group-hover:text-blue-700">
           {sending ? 'Sending…' : 'No photos taken yet'}
         </span>
-        <span className="max-w-xs text-micro font-medium leading-4 text-text-faint">
+        <span className="max-w-xs text-role-micro font-medium leading-4 text-text-faint">
           {sending
             ? 'Opening the camera on your phone…'
             : 'Send to your phone to take photos — they appear here automatically.'}
@@ -126,7 +126,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
               className="-ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-faint hover:bg-surface-sunken hover:text-text-muted"
             />
           </HoverTooltip>
-          <p className="truncate text-micro font-black uppercase tracking-widest text-text-soft">
+          <p className="truncate text-role-micro uppercase tracking-widest text-text-soft">
             Attach {selectedPhotoIds.size === 1 ? 'photo' : 'photos'} to ticket ({selectedPhotoIds.size}/{list.length})
           </p>
         </div>
@@ -171,7 +171,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
                   className={cn(!isSel && tile.ratio === 'square' ? 'opacity-70' : '')}
                 />
                 {isSel ? (
-                  <span className="absolute right-1 top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-rose-600 text-caption font-black text-white shadow-sm">
+                  <span className="absolute right-1 top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-rose-600 text-role-caption font-black text-white shadow-sm">
                     ✓
                   </span>
                 ) : null}
@@ -203,13 +203,13 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
                   <Plus className="h-2 w-2" />
                 </span>
               </span>
-              <span className="text-eyebrow font-black uppercase tracking-widest">Phone</span>
+              <span className="text-role-eyebrow uppercase tracking-widest">Phone</span>
             </>
           )}
         </button>
         </HoverTooltip>
       </div>
-      <p className="mt-2 text-micro font-medium text-text-faint">
+      <p className="mt-2 text-role-micro font-medium text-text-faint">
         Checked photos attach to the support ticket. All carton photos also save to local storage in
         a folder named after the case #.
       </p>

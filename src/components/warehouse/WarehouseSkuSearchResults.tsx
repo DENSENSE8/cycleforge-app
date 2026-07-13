@@ -48,11 +48,11 @@ export function WarehouseSkuSearchResults({
                     {h.sku}
                   </div>
                   {h.product_title && (
-                    <div className="mt-0.5 line-clamp-1 text-caption text-text-muted">
+                    <div className="mt-0.5 line-clamp-1 text-role-caption text-text-muted">
                       {h.product_title}
                     </div>
                   )}
-                  <div className="mt-0.5 text-micro text-text-faint">
+                  <div className="mt-0.5 text-role-micro text-text-faint">
                     {h.bin_count} bin{h.bin_count === 1 ? '' : 's'} ·{' '}
                     {h.total_qty} unit{h.total_qty === 1 ? '' : 's'}
                   </div>

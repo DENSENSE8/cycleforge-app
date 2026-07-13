@@ -6,7 +6,7 @@ export const photoLibraryControlGroupClass =
 
 export function photoLibraryControlButtonClass(active: boolean, extra?: string) {
   return cn(
-    'flex h-7 items-center justify-center rounded-md text-micro font-semibold leading-none transition-colors',
+    'flex h-7 items-center justify-center rounded-md text-role-micro font-semibold leading-none transition-colors',
     active
       ? 'bg-blue-600 text-white shadow-sm'
       : 'text-text-soft hover:bg-surface-sunken hover:text-text-default',

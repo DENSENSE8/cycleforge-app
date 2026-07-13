@@ -95,7 +95,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
 
   if (!plan.canView) {
     return (
-      <div className="rounded-xl border border-dashed border-border-default bg-surface-sunken px-4 py-6 text-center text-caption text-text-muted">
+      <div className="rounded-xl border border-dashed border-border-default bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-muted">
         You need operations.plans.view to open the live master plan.
       </div>
     );
@@ -110,7 +110,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
       {/* Plan MDX — independent scroll on lg+; flows in page scroll on mobile */}
       <section className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
         <div className="flex shrink-0 flex-wrap items-center gap-3">
-          <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">Master plan</p>
+          <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">Master plan</p>
           <HoverTooltip label={planDot.label} focusable={false}>
             <span className="inline-flex h-2 w-2 rounded-full align-middle">
               <span className={`h-2 w-2 rounded-full ${planDot.dot}`} />
@@ -118,17 +118,17 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
           </HoverTooltip>
           {rollup.total > 0 && (
             <span className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded bg-amber-50 px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
+              <span className="rounded bg-amber-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">
                 {rollup.pending} pending
               </span>
-              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
                 {rollup.inProgress} active
               </span>
-              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
                 {rollup.deployed} deployed
               </span>
               {rollup.invalid > 0 && (
-                <span className="rounded bg-rose-50 px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-rose-700 ring-1 ring-inset ring-rose-200">
+                <span className="rounded bg-rose-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-rose-700 ring-1 ring-inset ring-rose-200">
                   {rollup.invalid} invalid
                 </span>
               )}
@@ -138,12 +138,12 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
 
         <div className="mt-3 border-t border-border-hairline pt-4 pb-6 pr-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pb-8">
           {plan.status === 'connecting' && (
-            <p className="flex items-center gap-2 text-caption text-text-muted">
+            <p className="flex items-center gap-2 text-role-caption text-text-muted">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading the live plan…
             </p>
           )}
           {plan.status === 'error' && (
-            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-700">
+            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
               Could not join the live plan{plan.error ? ` — ${plan.error}` : ''}. The file copy in
               <code className="mx-1 font-mono">master-plan.mdx</code> is still the source of truth.
             </div>
@@ -164,25 +164,25 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
 
         {showRuns && (
           <section className="min-w-0 shrink-0">
-            <p className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-faint">
+            <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
               Run history
             </p>
-            <p className="mt-1 text-mini text-text-faint">
+            <p className="mt-1 text-role-micro text-text-faint">
               Hermes/`forge.sh` runs (`cycle_forge_runs`) — adjacent to plan tasks, not merged into them.
             </p>
             <div className="mt-3 space-y-4 border-t border-border-hairline pt-4">
               {loading && (
-                <p className="flex items-center gap-2 text-caption text-text-muted">
+                <p className="flex items-center gap-2 text-role-caption text-text-muted">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading runs…
                 </p>
               )}
               {error && (
-                <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-700">
+                <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
                   {error}
                 </div>
               )}
               {!loading && !error && runs.length === 0 && (
-                <p className="text-caption text-text-muted">
+                <p className="text-role-caption text-text-muted">
                   No runs yet. Kick one off with <code className="font-mono">forge.sh &quot;&lt;feature&gt;&quot;</code>.
                 </p>
               )}
@@ -190,14 +190,14 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
                 <section key={run.id} className="rounded-lg border border-border-soft bg-surface-card p-4">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-caption font-bold text-text-default">{run.feature_request}</p>
-                      <p className="mt-0.5 truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                      <p className="truncate text-role-caption font-bold text-text-default">{run.feature_request}</p>
+                      <p className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                         {run.run_uid}
                         {run.branch ? ` · ${run.branch}` : ''}
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ${
+                      className={`shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ${
                         STATUS_BADGE[run.status] ?? 'bg-surface-sunken text-text-muted'
                       }`}
                     >

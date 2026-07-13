@@ -37,8 +37,8 @@ export function SkuInput({ sku, uniqueSku, mode, skuInputRef, isActive, density 
     return (
         <div className={`transition-opacity duration-200 ${!isActive ? 'opacity-25 pointer-events-none' : ''}`}>
             <div className={`flex items-center gap-3 ${comfy ? 'px-7 pt-6 pb-3' : 'px-5 pt-5 pb-3'}`}>
-                <span className={`font-black tabular-nums text-text-soft tracking-widest ${comfy ? 'text-micro' : 'text-eyebrow'}`}>01</span>
-                <span className={`font-black uppercase text-text-muted ${comfy ? 'text-caption tracking-[0.16em]' : 'text-eyebrow tracking-[0.18em]'}`}>SKU</span>
+                <span className={`tabular-nums text-text-soft tracking-widest ${comfy ? 'text-role-micro' : 'text-role-eyebrow'}`}>01</span>
+                <span className={`uppercase text-text-muted ${comfy ? 'text-role-caption tracking-[0.16em]' : 'text-role-eyebrow tracking-[0.18em]'}`}>SKU</span>
             </div>
 
             <div className="flex border-t border-b border-border-soft">

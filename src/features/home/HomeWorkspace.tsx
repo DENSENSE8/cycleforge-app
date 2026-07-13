@@ -37,7 +37,7 @@ export function HomeWorkspace() {
       <header className="shrink-0 border-b border-border-soft bg-surface-card/90 px-4 py-2.5 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-col gap-2">
           <div className="flex items-baseline gap-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-soft">Home</p>
+            <p className="text-role-micro uppercase tracking-widest text-text-soft">Home</p>
             <span className="text-text-soft/60">·</span>
             <h1 className="text-sm font-bold text-text-strong">{homeModeLabel(mode)}</h1>
           </div>

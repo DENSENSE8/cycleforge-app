@@ -32,14 +32,14 @@ export default function RouteError({
     <div className="flex min-h-0 flex-1 items-center justify-center p-6">
       <div className="w-full max-w-md rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-8 text-center">
         <AlertTriangle className="mx-auto h-6 w-6 text-rose-500" />
-        <p className="mt-3 text-eyebrow font-black uppercase tracking-widest text-rose-500">
+        <p className="mt-3 text-role-eyebrow uppercase tracking-widest text-rose-500">
           Something broke
         </p>
         <h1 className="mt-1 text-base font-black text-text-default">This page hit an error</h1>
-        <p className="mx-auto mt-2 max-w-sm text-caption font-bold text-text-soft">
+        <p className="mx-auto mt-2 max-w-sm text-role-caption font-bold text-text-soft">
           {error?.message || 'Unexpected error.'}
           {error?.digest ? (
-            <span className="block text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+            <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
               ref: {error.digest}
             </span>
           ) : null}

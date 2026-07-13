@@ -26,7 +26,7 @@ export function ShippedNotesComposer({
   return (
     <section className="mx-8 pt-2">
       <div className="relative rounded-2xl border border-border-soft bg-surface-card shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-        <span className="pointer-events-none absolute left-4 top-2 z-10 text-micro font-semibold uppercase tracking-[0.18em] text-text-faint">
+        <span className="pointer-events-none absolute left-4 top-2 z-10 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">
           Notes
         </span>
         {readOnly ? (

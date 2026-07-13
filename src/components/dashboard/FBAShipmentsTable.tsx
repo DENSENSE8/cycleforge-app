@@ -31,7 +31,7 @@ function ReadinessBar({ ready, total }: { ready: number; total: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-micro font-bold text-text-soft tabular-nums">{ready}/{total}</span>
+      <span className="text-role-micro font-bold text-text-soft tabular-nums">{ready}/{total}</span>
     </div>
   );
 }
@@ -142,7 +142,7 @@ export default function FBAShipmentsTable() {
             </p>
           </div>
           {isLegacy && (
-            <span className="text-eyebrow font-black uppercase tracking-widest bg-surface-warning text-text-warning border border-border-warning px-2 py-1 rounded-lg">
+            <span className="text-role-eyebrow uppercase tracking-widest bg-surface-warning text-text-warning border border-border-warning px-2 py-1 rounded-lg">
               Run migration to enable lifecycle view
             </span>
           )}
@@ -162,7 +162,7 @@ export default function FBAShipmentsTable() {
               action={
                 <Link
                   href="/outbound?mode=fba"
-                  className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
+                  className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
                 >
                   <Package className="h-4 w-4" />
                   Plan an FBA shipment
@@ -174,7 +174,7 @@ export default function FBAShipmentsTable() {
           /* ── Legacy table (pre-migration) ── */
           <table className="min-w-full border-collapse">
             <thead className="sticky top-0 bg-surface-card">
-              <tr className="border-b border-border-soft text-left text-micro font-black uppercase tracking-widest text-text-soft">
+              <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Tracking</th>
                 <th className="px-3 py-2">Carrier</th>
@@ -188,7 +188,7 @@ export default function FBAShipmentsTable() {
             </thead>
             <tbody>
               {(rows as FBAShipmentLegacyRow[]).map((row) => (
-                <tr key={row.id} className="border-b border-border-hairline text-caption font-bold text-text-muted hover:bg-surface-hover">
+                <tr key={row.id} className="border-b border-border-hairline text-role-caption font-bold text-text-muted hover:bg-surface-hover">
                   <td className="px-3 py-2 font-mono">{row.id}</td>
                   <td className="px-3 py-2 font-mono text-text-fulfillment">{row.shipment_ref || '-'}</td>
                   <td className="px-3 py-2">{row.carrier || '-'}</td>
@@ -206,7 +206,7 @@ export default function FBAShipmentsTable() {
           /* ── Lifecycle table (post-migration) ── */
           <table className="min-w-full border-collapse">
             <thead className="sticky top-0 bg-surface-card z-10">
-              <tr className="border-b border-border-soft text-left text-micro font-black uppercase tracking-widest text-text-soft">
+              <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
                 <th className="px-3 py-2">Shipment Ref</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Items Ready</th>
@@ -223,11 +223,11 @@ export default function FBAShipmentsTable() {
                 const totalItems = Number(row.total_items) || 0;
                 const readyItems = Number(row.ready_items) + Number(row.labeled_items) + Number(row.shipped_items);
                 return (
-                  <tr key={row.id} className="border-b border-border-hairline text-caption font-bold text-text-muted hover:bg-fill-fulfillment/10 transition-colors">
+                  <tr key={row.id} className="border-b border-border-hairline text-role-caption font-bold text-text-muted hover:bg-fill-fulfillment/10 transition-colors">
                     <td className="px-3 py-2">
                       <span className="font-mono text-text-fulfillment font-black">{row.shipment_ref}</span>
                       {row.notes && (
-                        <p className="text-eyebrow text-text-soft font-normal truncate max-w-[140px]">{row.notes}</p>
+                        <p className="text-role-eyebrow text-text-soft font-normal truncate max-w-[140px]">{row.notes}</p>
                       )}
                     </td>
                     <td className="px-3 py-2">

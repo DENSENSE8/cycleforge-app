@@ -166,7 +166,7 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
             type="button"
             onClick={startEditing}
             disabled={disabled}
-            className="text-eyebrow font-black uppercase tracking-widest text-emerald-700 hover:text-emerald-900 disabled:opacity-40"
+            className="text-role-eyebrow uppercase tracking-widest text-emerald-700 hover:text-emerald-900 disabled:opacity-40"
           >
             Change
           </button>
@@ -261,7 +261,7 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
                   <span className="flex items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-text-default">{o.displayNumber}</span>
                     {date ? (
-                      <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                      <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                         {date}
                       </span>
                     ) : null}

@@ -85,7 +85,7 @@ export function PhotosPlatformPanel() {
             key={card.label}
             className="rounded-xl border border-border-soft bg-surface-card px-4 py-3 shadow-sm"
           >
-            <p className="text-micro font-bold uppercase tracking-wider text-text-faint">
+            <p className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
               {card.label}
             </p>
             <p className="mt-1 text-2xl font-black tabular-nums text-text-default">{card.value}</p>
@@ -99,7 +99,7 @@ export function PhotosPlatformPanel() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-text-default">NAS mirror backlog</p>
-            <p className="text-caption text-text-soft">
+            <p className="text-role-caption text-text-soft">
               Enqueues mirror jobs for GCS photos older than the configured threshold.
             </p>
           </div>

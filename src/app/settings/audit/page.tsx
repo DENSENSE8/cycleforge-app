@@ -89,14 +89,14 @@ export default async function AuditPage({ searchParams }: PageProps) {
           Every privileged write, every permission denial. Last {PAGE_SIZE} rows{source || action ? ' matching filter' : ''}.
         </p>
 
-        <form className="flex flex-wrap items-center gap-2 rounded-2xl border border-border-soft bg-surface-card p-3 text-label shadow-sm">
+        <form className="flex flex-wrap items-center gap-2 rounded-2xl border border-border-soft bg-surface-card p-3 text-role-caption shadow-sm">
           <label className="flex items-center gap-2">
             <span className="font-medium text-text-soft">Source</span>
             <input
               name="source"
               defaultValue={source ?? ''}
               placeholder="e.g. receiving"
-              className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-label focus:border-border-emphasis focus:outline-none focus:ring-1 focus:ring-border-soft"
+              className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption focus:border-border-emphasis focus:outline-none focus:ring-1 focus:ring-border-soft"
             />
           </label>
           <label className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
               name="action"
               defaultValue={action ?? ''}
               placeholder="e.g. mark_received"
-              className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-label focus:border-border-emphasis focus:outline-none focus:ring-1 focus:ring-border-soft"
+              className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption focus:border-border-emphasis focus:outline-none focus:ring-1 focus:ring-border-soft"
             />
           </label>
           <Button variant="brand" size="sm" type="submit">Apply</Button>
@@ -116,7 +116,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
 
         <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
           <table className="min-w-full divide-y divide-border-hairline text-[12.5px]">
-            <thead className="bg-surface-canvas text-left text-caption font-medium uppercase tracking-[0.08em] text-text-soft">
+            <thead className="bg-surface-canvas text-left text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">
               <tr>
                 <th className="px-3 py-2">When</th>
                 <th className="px-3 py-2">Actor</th>
@@ -153,7 +153,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
         {nextCursor && (
           <div className="text-right">
             <a
-              className="inline-flex items-center rounded-2xl border border-border-soft bg-surface-card px-3 py-1.5 text-label font-medium text-text-muted shadow-sm hover:text-text-default"
+              className="inline-flex items-center rounded-2xl border border-border-soft bg-surface-card px-3 py-1.5 text-role-caption font-medium text-text-muted shadow-sm hover:text-text-default"
               href={`?${new URLSearchParams({
                 ...(source ? { source } : {}),
                 ...(action ? { action } : {}),

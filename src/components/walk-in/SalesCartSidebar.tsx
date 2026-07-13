@@ -35,10 +35,10 @@ export function SalesCartSidebar() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
       <div className="border-b border-border-hairline px-3 py-2.5">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-emerald-500">
+        <p className="text-role-eyebrow uppercase tracking-widest text-emerald-500">
           Walk-In Sale
         </p>
-        <h3 className="mt-0.5 text-label font-black uppercase tracking-tight text-text-default">
+        <h3 className="mt-0.5 text-role-caption font-black uppercase tracking-tight text-text-default">
           New Sale
         </h3>
       </div>
@@ -47,7 +47,7 @@ export function SalesCartSidebar() {
         {cart.length === 0 ? (
           <div className="mt-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 p-4 text-center">
             <ShoppingCart className="mx-auto mb-1 h-5 w-5 text-text-faint" />
-            <p className="text-micro font-bold text-text-faint">
+            <p className="text-role-micro font-bold text-text-faint">
               Add items from the panel →
             </p>
           </div>
@@ -71,7 +71,7 @@ export function SalesCartSidebar() {
         <div className="space-y-2">
           {cart.length > 0 ? (
             <div className="flex items-center justify-between border-b border-border-hairline pb-2">
-              <span className="text-micro font-black uppercase tracking-wider text-text-soft">
+              <span className="text-role-micro uppercase tracking-wider text-text-soft">
                 Subtotal
               </span>
               <span className="text-sm font-black text-emerald-600">
@@ -103,7 +103,7 @@ export function SalesCartSidebar() {
                   : 'Add Products'}
           </Button>
           {submitError ? (
-            <p className="text-center text-eyebrow font-bold text-red-600">
+            <p className="text-center text-role-eyebrow font-bold text-red-600">
               {submitError}
             </p>
           ) : null}
@@ -143,11 +143,11 @@ function SalesListRow({ line, active, onSelect }: SalesListRowProps) {
             <Package className="h-5 w-5 text-text-faint" />
           )}
         </div>
-        <p className="min-w-0 flex-1 truncate text-caption font-bold leading-snug text-text-default">
+        <p className="min-w-0 flex-1 truncate text-role-caption font-bold leading-snug text-text-default">
           {line.product_title}
         </p>
       </div>
-      <div className="mt-1.5 flex items-center gap-2 text-eyebrow">
+      <div className="mt-1.5 flex items-center gap-2 text-role-eyebrow">
         <span className="font-black text-emerald-700">
           {formatCentsToDollars(line.unitAmount * line.quantity)}
         </span>

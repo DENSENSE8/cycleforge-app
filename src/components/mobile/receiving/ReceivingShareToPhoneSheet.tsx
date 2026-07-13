@@ -93,7 +93,7 @@ export function ReceivingShareToPhoneSheet() {
         </div>
         <div>
           <p className="text-sm font-semibold text-text-default">{shared?.label}</p>
-          <p className="mt-1 text-caption font-medium leading-snug text-text-soft">
+          <p className="mt-1 text-role-caption font-medium leading-snug text-text-soft">
             Sent from the receiving workstation. Take photos for this package on your phone.
           </p>
         </div>

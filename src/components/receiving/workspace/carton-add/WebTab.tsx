@@ -85,7 +85,7 @@ export function WebTab({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {error ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-label text-amber-800">{error}</div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption text-amber-800">{error}</div>
         ) : hits.length > 0 ? (
           <ul className="flex flex-col gap-1">
             {hits.map((hit, idx) => (
@@ -107,9 +107,9 @@ export function WebTab({
             ))}
           </ul>
         ) : searched && !loading ? (
-          <p className="px-2 py-3 text-label text-text-faint">No web results.</p>
+          <p className="px-2 py-3 text-role-caption text-text-faint">No web results.</p>
         ) : (
-          <p className="px-2 py-3 text-label text-text-faint">Type a query and press Enter to search eBay.</p>
+          <p className="px-2 py-3 text-role-caption text-text-faint">Type a query and press Enter to search eBay.</p>
         )}
       </div>
     </>

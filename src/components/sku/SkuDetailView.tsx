@@ -74,13 +74,13 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
       {/* Footer: deactivate (panel only, active catalog SKUs) */}
       {isPanel && data.catalog?.isActive ? (
         <div className="flex-shrink-0 border-t border-border-soft bg-surface-card px-4 py-3">
-          {c.deactivateError ? <p className="mb-2 text-caption font-semibold text-rose-600">{c.deactivateError}</p> : null}
+          {c.deactivateError ? <p className="mb-2 text-role-caption font-semibold text-rose-600">{c.deactivateError}</p> : null}
           <DeleteButton
             onConfirm={c.handleDeactivate}
             onDeleted={c.handleClose}
             label="Deactivate SKU"
             armedLabel="Click again to deactivate"
-            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-caption font-bold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 text-role-caption font-bold text-rose-700 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
       ) : null}

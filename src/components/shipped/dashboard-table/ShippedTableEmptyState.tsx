@@ -68,8 +68,8 @@ export function ShippedTableEmptyState({
         </>
       ) : idleEmpty ? (
         <div className="mx-auto max-w-sm rounded-xl border border-dashed border-border-soft bg-surface-canvas px-5 py-7 text-center">
-          <p className="text-caption font-bold text-text-default">{idleEmpty.title}</p>
-          <p className="mt-1.5 text-caption text-text-muted">{idleEmpty.body}</p>
+          <p className="text-role-caption font-bold text-text-default">{idleEmpty.title}</p>
+          <p className="mt-1.5 text-role-caption text-text-muted">{idleEmpty.body}</p>
           {idleEmpty.actionLabel && idleEmpty.onAction ? (
             <Button
               variant="secondary"
@@ -83,7 +83,7 @@ export function ShippedTableEmptyState({
           ) : null}
         </div>
       ) : (
-        <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">No shipped records for this week</div>
+        <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">No shipped records for this week</div>
       )}
     </div>
   );

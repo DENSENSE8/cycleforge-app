@@ -52,7 +52,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
 
       {/* Name field */}
       <WorkspaceCard label="Room name">
-        <p className="mb-2 text-caption text-text-soft">
+        <p className="mb-2 text-role-caption text-text-soft">
           The friendly label your team sees in pickers, scanners, and reports.
         </p>
         <input
@@ -68,7 +68,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           }`}
         />
         {(nameTaken || renameTaken) && (
-          <p className="mt-1.5 text-caption font-medium text-red-600">
+          <p className="mt-1.5 text-role-caption font-medium text-red-600">
             A room named “{trimmedName}” already exists.
           </p>
         )}
@@ -78,12 +78,12 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
       <WorkspaceCard
         label="Zone letter"
         actions={
-          <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-caption font-semibold text-blue-700 ring-1 ring-blue-200">
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-role-caption font-semibold text-blue-700 ring-1 ring-blue-200">
             {trimmedLetter || '—'}
           </span>
         }
       >
-        <p className="mb-3 text-caption text-text-soft">
+        <p className="mb-3 text-role-caption text-text-soft">
           One A–Z letter per room. Locked letters are already in use by
           another room.
         </p>
@@ -120,7 +120,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
 
       {/* Description */}
       <WorkspaceCard label="Notes (optional)">
-        <p className="mb-2 text-caption text-text-soft">
+        <p className="mb-2 text-role-caption text-text-soft">
           Anything pickers should know — e.g. “fragile only” or “overflow cage.”
         </p>
         <textarea
@@ -156,7 +156,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
               onClick={() => setConfirmDelete(true)}
               disabled={roomMutating}
               icon={<Trash2 className="h-3.5 w-3.5" />}
-              className="h-10 shrink-0 rounded-full bg-red-50 px-3 text-label text-red-700 ring-red-200 hover:bg-red-100 hover:text-red-700"
+              className="h-10 shrink-0 rounded-full bg-red-50 px-3 text-role-caption text-red-700 ring-red-200 hover:bg-red-100 hover:text-red-700"
             >
               Delete
             </Button>

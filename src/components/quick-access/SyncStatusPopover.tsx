@@ -56,10 +56,10 @@ export function SyncStatusPopover({ onClose }: { onClose: () => void }) {
     <div className="w-[360px] overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl">
       <header className="flex items-center justify-between border-b border-border-hairline px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-label font-black text-text-default">Sync status</span>
+          <span className="text-role-caption font-black text-text-default">Sync status</span>
           {data && (
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-mini font-bold ${
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-micro font-bold ${
                 data.health === 'failed'
                   ? 'bg-rose-50 text-rose-700'
                   : data.health === 'stale'
@@ -74,7 +74,7 @@ export function SyncStatusPopover({ onClose }: { onClose: () => void }) {
         <Link
           href="/admin?section=system_sync"
           onClick={onClose}
-          className="text-mini font-bold text-blue-600 hover:underline"
+          className="text-role-micro font-bold text-blue-600 hover:underline"
         >
           View all
         </Link>
@@ -82,11 +82,11 @@ export function SyncStatusPopover({ onClose }: { onClose: () => void }) {
 
       <div className="max-h-[420px] overflow-y-auto">
         {isLoading ? (
-          <div className="flex items-center gap-2 px-4 py-6 text-caption text-text-faint">
+          <div className="flex items-center gap-2 px-4 py-6 text-role-caption text-text-faint">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         ) : isError || !data ? (
-          <div className="px-4 py-6 text-caption text-rose-600">Failed to load sync status.</div>
+          <div className="px-4 py-6 text-role-caption text-rose-600">Failed to load sync status.</div>
         ) : (
           <ul className="divide-y divide-border-hairline">
             {data.jobs.map((j) => (
@@ -105,14 +105,14 @@ function JobRow({ job, running, onRun }: { job: CronJobStatus; running: boolean;
     <li className="group flex items-center gap-2.5 px-4 py-2">
       <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[job.health]}`} aria-hidden />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-label font-bold text-text-default">{job.label}</div>
-        <div className="truncate text-mini text-text-soft">
+        <div className="truncate text-role-caption font-bold text-text-default">{job.label}</div>
+        <div className="truncate text-role-micro text-text-soft">
           {HEALTH_LABEL[job.health]} · {relative(last?.finishedAt ?? last?.startedAt ?? null)}
           {last?.durationMs != null ? ` · ${(last.durationMs / 1000).toFixed(1)}s` : ''}
         </div>
         {job.health === 'failed' && last?.error ? (
           // ds-allow-title: truncation-only native title on a non-interactive element
-          <div className="mt-0.5 truncate text-mini text-rose-600" title={last.error}>
+          <div className="mt-0.5 truncate text-role-micro text-rose-600" title={last.error}>
             {last.error}
           </div>
         ) : null}

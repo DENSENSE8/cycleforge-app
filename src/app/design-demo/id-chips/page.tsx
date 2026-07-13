@@ -30,13 +30,13 @@ const ROWS = [
 export default function IdChipsDemoPage() {
   return (
     <div className="min-h-screen bg-surface-card p-10" data-testid="id-chips-demo">
-      <h1 className="mb-4 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+      <h1 className="mb-4 text-role-eyebrow uppercase tracking-widest text-text-soft">
         ID chips — tracking column (empty vs filled), final
       </h1>
       <div className="w-[520px] divide-y divide-border-hairline rounded-xl border border-border-soft">
         {ROWS.map((r, i) => (
           <div key={i} className="flex items-center justify-between px-3 py-1.5">
-            <span className="text-eyebrow uppercase tracking-widest text-text-faint">{r.note}</span>
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{r.note}</span>
             <ReceivingIdentityChips
               po={r.po}
               sku={r.sku}

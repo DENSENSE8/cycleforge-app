@@ -51,14 +51,14 @@ function StageBar({ title, href, stages, isLoading, empty }: StageBarProps) {
       className="block bg-surface-card rounded-2xl border border-border-soft p-5 shadow-[0_2px_12px_rgba(161,140,90,0.04)] hover:shadow-[0_4px_18px_rgba(161,140,90,0.08)] transition-shadow"
     >
       <div className="flex items-baseline justify-between mb-4">
-        <p className="text-[13px] font-extrabold text-text-default tracking-tight">{title}</p>
-        <div className="text-[22px] font-extrabold text-text-default tabular-nums leading-none">
+        <p className="text-role-data font-extrabold text-text-default tracking-tight">{title}</p>
+        <div className="text-2xl font-extrabold text-text-default tabular-nums leading-none">
           {isLoading ? '–' : total}
         </div>
       </div>
 
       {empty ? (
-        <div className="text-caption text-text-muted py-3">
+        <div className="text-role-caption text-text-muted py-3">
           Source unavailable — check feature flag / permissions.
         </div>
       ) : (
@@ -82,10 +82,10 @@ function StageBar({ title, href, stages, isLoading, empty }: StageBarProps) {
             {stages.map((s) => (
               <div key={s.label} className="flex items-center gap-2 min-w-0">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${s.color}`} />
-                <span className="text-micro font-bold uppercase tracking-[0.12em] text-text-muted truncate">
+                <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-muted truncate">
                   {s.label}
                 </span>
-                <span className="ml-auto text-caption font-extrabold text-text-default tabular-nums">
+                <span className="ml-auto text-role-caption font-extrabold text-text-default tabular-nums">
                   {s.count}
                 </span>
               </div>
@@ -137,7 +137,7 @@ export function PipelineRow() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>Pipelines</span>
-          <h2 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-text-default mt-0.5">
+          <h2 className="text-role-title sm:text-xl font-extrabold tracking-tight text-text-default mt-0.5">
             FBA + RMA at a glance
           </h2>
         </div>

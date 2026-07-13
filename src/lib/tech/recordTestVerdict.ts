@@ -40,7 +40,8 @@ import { tapWorkflow } from '@/lib/workflow/tap';
 import { applyTransition } from '@/lib/workflow/applyTransition';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
-import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig } from '@/lib/feature-flags';
+import { getPrimarySupportTicketForReceiving } from '@/lib/support/tickets';
+import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig, isTestingAutoLinkTicket } from '@/lib/feature-flags';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
 
@@ -338,6 +339,25 @@ export async function recordTestVerdict(
           inventoryEventId: eventId,
         },
       });
+    }
+
+    // Auto-link a failed unit's serial to the carton's primary support ticket.
+    if (verdict === 'TESTING_FAILED' && lineId != null && orgId && isTestingAutoLinkTicket()) {
+      try {
+        const primaryTicket = await getPrimarySupportTicketForReceiving({ orgId, lineId });
+        if (primaryTicket && primaryTicket.provider === 'zendesk' && primaryTicket.externalTicketId) {
+          // Explicitly insert into ticket_links for the SERIAL_UNIT to link this specific unit.
+          await pool.query(
+            `INSERT INTO ticket_links
+               (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id, created_by)
+             VALUES ($1, $2, $3, 'SERIAL_UNIT', $4, $5)
+             ON CONFLICT DO NOTHING`,
+            [orgId, primaryTicket.id, primaryTicket.externalTicketId, unit.id, actorStaffId],
+          );
+        }
+      } catch (err) {
+        console.warn('[recordTestVerdict] auto-link ticket failed (non-fatal):', err);
+      }
     }
   }
 

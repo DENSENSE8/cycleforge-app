@@ -65,7 +65,7 @@ export function FbaEmptyState({
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 py-20 text-center text-text-soft">
       <p className="text-xs font-black uppercase tracking-[0.3em]">{title}</p>
-      {subtitle ? <p className="mt-1 text-caption">{subtitle}</p> : null}
+      {subtitle ? <p className="mt-1 text-role-caption">{subtitle}</p> : null}
     </div>
   );
 }

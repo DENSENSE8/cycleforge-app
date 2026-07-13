@@ -444,7 +444,7 @@ function SectionHeader({
   collapsed?: boolean;
 }) {
   return (
-    <span className="flex min-w-0 items-center gap-1.5 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+    <span className="flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
       {chevron ? (
         <ChevronDown
           className={cn('h-3.5 w-3.5 shrink-0 transition-transform', collapsed ? '-rotate-90' : '')}
@@ -453,7 +453,7 @@ function SectionHeader({
       {title}
       {badge != null && badge !== false ? (
         typeof badge === 'number' || typeof badge === 'string' ? (
-          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-mini font-black tabular-nums text-text-muted">
+          <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-muted">
             {badge}
           </span>
         ) : (

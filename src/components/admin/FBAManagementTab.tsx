@@ -191,14 +191,14 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
           <div className="mx-auto max-w-2xl space-y-5">
             <header className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-micro font-bold uppercase tracking-widest text-text-soft">FNSKU</p>
+                <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">FNSKU</p>
                 <h2 className="mt-0.5 break-all font-mono text-xl font-bold text-text-default">
                   {detail.fnsku}
                 </h2>
               </div>
               <div className="flex flex-shrink-0 items-center gap-2">
                 <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-micro font-bold uppercase tracking-wider ${
+                  className={`inline-flex rounded-full px-2.5 py-1 text-role-micro font-bold uppercase tracking-wider ${
                     isStub ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
                   }`}
                 >
@@ -250,7 +250,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                     setEditAsin(e.target.value);
                     setIsEditing(true);
                   }}
-                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-label outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
                 />
               </FieldRow>
               <FieldRow label="SKU">
@@ -261,7 +261,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                     setEditSku(e.target.value);
                     setIsEditing(true);
                   }}
-                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-label outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
                 />
               </FieldRow>
 
@@ -306,16 +306,16 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
             aria-label="Close delete confirmation"
           />
           <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 space-y-4">
-            <h3 className="text-label font-bold uppercase tracking-wider text-text-default">
+            <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-default">
               Delete FNSKU
             </h3>
-            <p className="text-label text-text-muted leading-relaxed">
+            <p className="text-role-caption text-text-muted leading-relaxed">
               Remove <span className="font-mono font-bold">{selectedFnsku}</span> from the catalog?
               It will no longer appear in the FNSKU directory. Re-adding or re-uploading the same
               FNSKU restores it.
             </p>
             {deleteMutation.isError ? (
-              <p className="text-caption font-semibold text-red-600">
+              <p className="text-role-caption font-semibold text-red-600">
                 {(deleteMutation.error as Error)?.message || 'Failed to delete.'}
               </p>
             ) : null}
@@ -352,10 +352,10 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
             aria-label="Close FNSKU upload instructions"
           />
           <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 space-y-4">
-            <h3 className="text-label font-bold uppercase tracking-wider text-text-default">
+            <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-default">
               Upload FNSKU CSV
             </h3>
-            <p className="text-label text-text-muted leading-relaxed">
+            <p className="text-role-caption text-text-muted leading-relaxed">
               Include <span className="font-bold">fnsku</span>,{' '}
               <span className="font-bold">product_title</span>,{' '}
               <span className="font-bold">asin</span>, and <span className="font-bold">sku</span>{' '}
@@ -399,10 +399,10 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
           />
           <div className="relative w-full max-w-lg rounded-2xl border border-border-soft bg-surface-card p-5 space-y-4">
             <div>
-              <h3 className="text-label font-bold uppercase tracking-wider text-text-default">
+              <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-default">
                 Add FNSKU Mapping
               </h3>
-              <p className="mt-1 text-caption text-text-muted">
+              <p className="mt-1 text-role-caption text-text-muted">
                 Create one catalog row manually when you don&apos;t want to use a CSV upload.
               </p>
             </div>
@@ -413,7 +413,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={productTitle}
                   onChange={(e) => setProductTitle(e.target.value)}
                   placeholder="Enter product title"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-label outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
               <Field label="ASIN">
@@ -422,7 +422,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={asin}
                   onChange={(e) => setAsin(e.target.value)}
                   placeholder="Enter ASIN"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-label outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
               <Field label="SKU">
@@ -431,7 +431,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="Enter SKU"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-label outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
               <Field label="FNSKU">
@@ -440,7 +440,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={fnsku}
                   onChange={(e) => setFnsku(e.target.value.toUpperCase())}
                   placeholder="Enter FNSKU"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-label outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
             </div>
@@ -480,7 +480,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[120px_1fr] items-center gap-3">
-      <p className="text-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
       {children}
     </div>
   );
@@ -489,7 +489,7 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1">
-      <span className="block text-micro font-bold uppercase tracking-wider text-text-muted">
+      <span className="block text-role-micro font-bold uppercase tracking-wider text-text-muted">
         {label}
       </span>
       {children}

@@ -58,7 +58,7 @@ function badge(kind: 'inserted' | 'updated' | 'deleted' | 'unknown' | 'resolved'
     resolved: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     open: 'bg-red-50 text-red-700 ring-red-200',
   };
-  return `inline-flex items-center rounded-md px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
+  return `inline-flex items-center rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
 }
 
 function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
@@ -243,7 +243,7 @@ function DetailTable({
     <div className="max-h-[40vh] overflow-y-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
-          <tr className="text-micro uppercase tracking-wide text-text-soft">
+          <tr className="text-role-micro uppercase tracking-wide text-text-soft">
             <th className="px-3 py-2 font-semibold">Order</th>
             <th className="px-3 py-2 font-semibold">Product</th>
             <th className="px-3 py-2 font-semibold">SKU</th>
@@ -263,7 +263,7 @@ function DetailTable({
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}
                   {provenance ? (
-                    <div className="mt-0.5 pl-1.5 text-micro font-normal text-text-faint">{provenance}</div>
+                    <div className="mt-0.5 pl-1.5 text-role-micro font-normal text-text-faint">{provenance}</div>
                   ) : null}
                 </td>
                 <td className="px-3 py-2 text-text-muted align-top">
@@ -271,7 +271,7 @@ function DetailTable({
                     <span className="text-amber-700">Unknown Product</span>
                   )}
                   {row.titleSource && row.titleSource !== 'sheet' && row.productTitle ? (
-                    <span className="ml-1 text-micro uppercase tracking-wide text-text-faint">
+                    <span className="ml-1 text-role-micro uppercase tracking-wide text-text-faint">
                       · {row.titleSource.replace('_', ' ')}
                     </span>
                   ) : null}
@@ -320,7 +320,7 @@ function ExceptionTable({
     <div className="max-h-[40vh] overflow-y-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
-          <tr className="text-micro uppercase tracking-wide text-text-soft">
+          <tr className="text-role-micro uppercase tracking-wide text-text-soft">
             <th className="px-3 py-2 font-semibold">Exception</th>
             <th className="px-3 py-2 font-semibold">Tracking</th>
             <th className="px-3 py-2 font-semibold">Source</th>
@@ -427,7 +427,7 @@ export function OrderSyncDialog({
                   key={Math.floor(elapsedMs / 100)}
                   initial={{ opacity: 0.4 }}
                   animate={{ opacity: 1 }}
-                  className="text-caption font-mono font-semibold text-blue-600 tabular-nums"
+                  className="text-role-caption font-mono font-semibold text-blue-600 tabular-nums"
                 >
                   {(elapsedMs / 1000).toFixed(1)}s
                 </motion.span>
@@ -470,7 +470,7 @@ export function OrderSyncDialog({
                       {statusDot(meta.status)}
                     </span>
                     {meta.count > 0 ? (
-                      <span className="ml-0.5 rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-bold tabular-nums text-text-muted">
+                      <span className="ml-0.5 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-muted">
                         {meta.count}
                       </span>
                     ) : null}

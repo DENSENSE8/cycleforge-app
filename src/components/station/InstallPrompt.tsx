@@ -85,7 +85,7 @@ export function InstallPrompt() {
           <div className="p-4">
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-navy-300 font-sans mb-0.5">
+                <p className="text-role-eyebrow font-bold tracking-[0.18em] uppercase text-navy-300 font-sans mb-0.5">
                   {PRODUCT_NAME}
                 </p>
                 <p className="text-sm font-bold text-white font-sans">
@@ -119,7 +119,7 @@ export function InstallPrompt() {
                   variant="ghost"
                   size="md"
                   onClick={dismiss}
-                  className="flex-1 rounded-station border border-glass/20 text-caption font-bold tracking-wide uppercase text-white/70 hover:bg-glass/10 hover:text-white/70 touch-manipulation font-sans"
+                  className="flex-1 rounded-station border border-glass/20 text-role-caption font-bold tracking-wide uppercase text-white/70 hover:bg-glass/10 hover:text-white/70 touch-manipulation font-sans"
                 >
                   Not now
                 </Button>
@@ -127,7 +127,7 @@ export function InstallPrompt() {
                   variant="secondary"
                   size="md"
                   onClick={install}
-                  className="flex-1 rounded-station ring-0 bg-surface-card text-navy-800 text-caption font-bold tracking-wide uppercase hover:bg-navy-50 touch-manipulation font-sans"
+                  className="flex-1 rounded-station ring-0 bg-surface-card text-navy-800 text-role-caption font-bold tracking-wide uppercase hover:bg-navy-50 touch-manipulation font-sans"
                 >
                   Install
                 </Button>

@@ -76,19 +76,19 @@ export function DateGroupHeader({
           key={total}
           {...countPresence}
           transition={{ opacity: mountTransition, y: mountTransition }}
-          className="text-caption font-bold tabular-nums text-text-soft"
+          className="text-role-caption font-bold tabular-nums text-text-soft"
         >
           {total}
         </motion.span>
       </AnimatePresence>
     </span>
   ) : (
-    <span className="text-caption font-bold tabular-nums text-text-soft">{total}</span>
+    <span className="text-role-caption font-bold tabular-nums text-text-soft">{total}</span>
   );
 
   const labelEl = (
     <>
-      <span className="text-caption font-black uppercase tracking-widest text-text-default">
+      <span className="text-role-caption font-black uppercase tracking-widest text-text-default">
         {formatDateWithOrdinal(date)}
       </span>
       <span aria-hidden className="text-text-faint">

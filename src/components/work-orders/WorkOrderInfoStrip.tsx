@@ -72,7 +72,7 @@ export function WorkOrderInfoStrip({
 }) {
   return (
     <div className={className}>
-      <span className="shrink-0 text-mini font-black uppercase tracking-wider text-text-soft">
+      <span className="shrink-0 text-role-micro uppercase tracking-wider text-text-soft">
         Work Order Info -
       </span>
       <div className="flex shrink-0 items-center gap-1.5">

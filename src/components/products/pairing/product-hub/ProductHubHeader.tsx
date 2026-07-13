@@ -5,10 +5,10 @@ export function ProductHubHeader({ sku, title }: { sku: string; title: string | 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-4">
       <h1 className="min-w-0 flex-1 truncate text-sm font-black tracking-tight text-text-default">{title || '—'}</h1>
-      <span className="inline-flex shrink-0 items-center rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-eyebrow font-semibold uppercase tracking-wider text-red-700">
+      <span className="inline-flex shrink-0 items-center rounded-md border border-red-200 bg-red-50 px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider text-red-700">
         Inventory
       </span>
-      <CopyableId value={sku} className="shrink-0 font-mono text-caption font-bold tracking-tight text-text-soft" />
+      <CopyableId value={sku} className="shrink-0 font-mono text-role-caption font-bold tracking-tight text-text-soft" />
     </header>
   );
 }

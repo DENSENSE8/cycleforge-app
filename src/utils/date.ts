@@ -1,4 +1,5 @@
 import { fromZonedTime } from 'date-fns-tz';
+import { isHour12 } from '@/lib/time-format/store';
 
 /** Warehouse business zone — every civil “day” in ops is this zone unless noted. */
 export const WAREHOUSE_TIME_ZONE = 'America/Los_Angeles';
@@ -191,6 +192,42 @@ function to12h(hour24: number, minute: number, second: number, withSeconds = tru
     : `${h12}:${pad2(minute)} ${period}`;
 }
 
+/** Render a wall-clock time as zero-padded 24-hour (e.g. "16:17:50"). */
+function to24h(hour24: number, minute: number, second: number, withSeconds = true): string {
+  return withSeconds
+    ? `${pad2(hour24)}:${pad2(minute)}:${pad2(second)}`
+    : `${pad2(hour24)}:${pad2(minute)}`;
+}
+
+/**
+ * Resolve the effective 12h/24h choice: an explicit caller override wins,
+ * otherwise the user's live time-format preference (defaults to 12h — the
+ * historical behavior — on the server and before hydration).
+ */
+function resolveHour12(explicit?: boolean): boolean {
+  return explicit ?? isHour12();
+}
+
+/** Wall clock from h/m/s in the resolved format. */
+function formatWallClock(
+  hour24: number,
+  minute: number,
+  second: number,
+  opts?: { hour12?: boolean; withSeconds?: boolean },
+): string {
+  const withSeconds = opts?.withSeconds ?? true;
+  return resolveHour12(opts?.hour12)
+    ? to12h(hour24, minute, second, withSeconds)
+    : to24h(hour24, minute, second, withSeconds);
+}
+
+/** Intl time-part options for the resolved format (used by the Date/parsed branches). */
+function intlTimeOptions(hour12: boolean, withSeconds: boolean): Intl.DateTimeFormatOptions {
+  return hour12
+    ? { hour: 'numeric', minute: '2-digit', ...(withSeconds ? { second: '2-digit' } : {}), hour12: true }
+    : { hour: '2-digit', minute: '2-digit', ...(withSeconds ? { second: '2-digit' } : {}), hourCycle: 'h23' };
+}
+
 function getPstYmdFromDate(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: PST_TIME_ZONE,
@@ -359,8 +396,14 @@ export function toPSTDateKey(input: string | Date | null | undefined): string {
   return getPstYmdFromDate(parsed);
 }
 
-export function formatDateTimePST(input: string | Date | null | undefined): string {
+export function formatDateTimePST(
+  input: string | Date | null | undefined,
+  options?: { hour12?: boolean },
+): string {
   if (!input) return 'N/A';
+
+  const hour12 = resolveHour12(options?.hour12);
+  const timeOpts = intlTimeOptions(hour12, true);
 
   if (input instanceof Date) {
     if (Number.isNaN(input.getTime())) return 'N/A';
@@ -370,10 +413,7 @@ export function formatDateTimePST(input: string | Date | null | undefined): stri
         month: '2-digit',
         day: '2-digit',
         year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
+        ...timeOpts,
       })
       .replace(',', '');
   }
@@ -387,12 +427,12 @@ export function formatDateTimePST(input: string | Date | null | undefined): stri
     if (!month || !day || !year) return 'N/A';
 
     const [h = '00', m = '00', s = '00'] = (timePart || '00:00:00').split(':');
-    return `${pad2(month)}/${pad2(day)}/${year} ${to12h(Number(h), Number(m), Number(s))}`;
+    return `${pad2(month)}/${pad2(day)}/${year} ${formatWallClock(Number(h), Number(m), Number(s), { hour12 })}`;
   }
 
   if (ISO_DATE_ONLY_RE.test(raw)) {
     const [year, month, day] = raw.split('-').map(Number);
-    return `${pad2(month)}/${pad2(day)}/${year} ${to12h(0, 0, 0)}`;
+    return `${pad2(month)}/${pad2(day)}/${year} ${formatWallClock(0, 0, 0, { hour12 })}`;
   }
 
   if ((ISO_NAIVE_RE.test(raw) || ISO_NAIVE_FRACTION_RE.test(raw)) && !TZ_SUFFIX_RE.test(raw)) {
@@ -401,7 +441,7 @@ export function formatDateTimePST(input: string | Date | null | undefined): stri
     const [year, month, day] = datePart.split('-').map(Number);
     const timePart = (timePartRaw || '00:00:00').split('.')[0];
     const [hh = '00', mm = '00', ss = '00'] = timePart.split(':');
-    return `${pad2(month)}/${pad2(day)}/${year} ${to12h(Number(hh), Number(mm), Number(ss))}`;
+    return `${pad2(month)}/${pad2(day)}/${year} ${formatWallClock(Number(hh), Number(mm), Number(ss), { hour12 })}`;
   }
 
   const parsed = new Date(raw);
@@ -413,10 +453,7 @@ export function formatDateTimePST(input: string | Date | null | undefined): stri
       month: '2-digit',
       day: '2-digit',
       year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
+      ...timeOpts,
     })
     .replace(',', '');
 }
@@ -441,9 +478,10 @@ export function formatDatePST(
 
 export function formatTimePST(
   input: string | Date | null | undefined,
-  options?: { withSeconds?: boolean }
+  options?: { withSeconds?: boolean; hour12?: boolean }
 ): string {
-  // Time-of-day display is 12-hour with AM/PM; delegate to the canonical 12h formatter.
+  // Time-of-day display follows the user's clock-format preference; delegate to
+  // the canonical formatter (which resolves 12h/24h unless explicitly overridden).
   return formatTime12hPST(input, options);
 }
 
@@ -557,22 +595,26 @@ export function formatOpsStageTime(
   return formatTime12hPST(input);
 }
 
-/** Wall-clock time in America/Los_Angeles (12-hour with AM/PM). */
+/**
+ * Wall-clock time in America/Los_Angeles, following the user's clock-format
+ * preference (12-hour with AM/PM by default, or 24-hour `HH:mm`). Pass
+ * `hour12` to force a specific format regardless of the preference.
+ *
+ * (Name kept for back-compat; it is no longer strictly 12-hour.)
+ */
 export function formatTime12hPST(
   input: string | Date | null | undefined,
-  options?: { withSeconds?: boolean }
+  options?: { withSeconds?: boolean; hour12?: boolean }
 ): string {
   const placeholder = '--:--';
   const withSeconds = options?.withSeconds ?? false;
+  const hour12 = resolveHour12(options?.hour12);
 
   if (input instanceof Date) {
     if (Number.isNaN(input.getTime())) return placeholder;
     return new Intl.DateTimeFormat('en-US', {
       timeZone: PST_TIME_ZONE,
-      hour: 'numeric',
-      minute: '2-digit',
-      ...(withSeconds ? { second: '2-digit' } : {}),
-      hour12: true,
+      ...intlTimeOptions(hour12, withSeconds),
     }).format(input);
   }
 
@@ -591,13 +633,18 @@ export function formatTime12hPST(
   const s = Number(ssRaw);
   if (!Number.isFinite(h24) || !Number.isFinite(m) || !Number.isFinite(s)) return placeholder;
 
-  const period = h24 >= 12 ? 'PM' : 'AM';
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  const min = pad2(m);
-  if (withSeconds) {
-    return `${h12}:${min}:${pad2(s)} ${period}`;
-  }
-  return `${h12}:${min} ${period}`;
+  return formatWallClock(h24, m, s, { hour12, withSeconds });
+}
+
+/**
+ * Stage/row clock time (no seconds) that FOLLOWS the user's clock-format
+ * preference: `HH:mm` in 24-hour mode, `h:mm AM/PM` in 12-hour mode. Use for
+ * pipeline stage rows (scanned / unboxed / received) and any dense timestamp
+ * where the format should track the setting. For a hard-24h clock regardless of
+ * preference, use {@link formatClockTimePST}.
+ */
+export function formatStageClockTimePST(input: string | Date | null | undefined): string {
+  return formatTime12hPST(input, { withSeconds: false });
 }
 
 /** Wall-clock HH:mm (24-hour, zero-padded) in America/Los_Angeles — no date, no seconds. */

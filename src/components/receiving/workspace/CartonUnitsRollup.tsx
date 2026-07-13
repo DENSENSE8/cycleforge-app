@@ -93,7 +93,7 @@ export function CartonUnitsRollupBody({
         {totalSerials > 0 ? (
           <>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+              <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 R-{receivingId}
                 {po ? ` · PO-${po}` : ''}
               </p>
@@ -101,11 +101,11 @@ export function CartonUnitsRollupBody({
                 <button
                   type="button"
                   onClick={() => setWizardOpen(true)}
-                  className="ds-raw-button -my-0.5 inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200 transition-colors hover:bg-violet-100"
+                  className="ds-raw-button -my-0.5 inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200 transition-colors hover:bg-violet-100"
                 >
                   <Package className="h-3 w-3 shrink-0" /> Prebox
                 </button>
-                <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
                   {totalSerials} unit{totalSerials === 1 ? '' : 's'}
                 </span>
               </div>
@@ -121,10 +121,10 @@ export function CartonUnitsRollupBody({
                     }`}
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 truncate text-caption font-bold text-text-default">
+                      <span className="min-w-0 truncate text-role-caption font-bold text-text-default">
                         {line.item_name || line.sku || `Line #${line.id}`}
                       </span>
-                      <span className="shrink-0 text-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+                      <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
                         {line.quantity_received ?? 0}/{line.quantity_expected ?? '?'}
                       </span>
                     </div>
@@ -140,7 +140,7 @@ export function CartonUnitsRollupBody({
             </ul>
           </>
         ) : (
-          <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-caption text-text-soft">
+          <p className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-role-caption text-text-soft">
             No serials scanned on this carton yet.
           </p>
         )}

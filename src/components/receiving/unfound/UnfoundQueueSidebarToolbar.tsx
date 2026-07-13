@@ -165,7 +165,7 @@ export function UnfoundQueueSidebarToolbar() {
             icon={<RefreshCw />}
             onClick={onRefresh}
             ariaLabel="Refresh the queue from the local DB (no mailbox call)"
-            className="gap-1 rounded-md border border-border-soft px-2 py-1 text-micro font-bold uppercase tracking-wider text-text-muted hover:bg-surface-hover"
+            className="gap-1 rounded-md border border-border-soft px-2 py-1 text-role-micro font-bold uppercase tracking-wider text-text-muted hover:bg-surface-hover"
           >
             Refresh
           </Button>
@@ -187,7 +187,7 @@ export function UnfoundQueueSidebarToolbar() {
             onClick={() => void onScanEmails()}
             disabled={scanning}
             ariaLabel={`Pull the last ${scanLimit} inbox emails and reconcile against your purchase orders`}
-            className="flex-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-micro font-bold uppercase tracking-wider text-blue-700 hover:bg-blue-100"
+            className="flex-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5 text-role-micro font-bold uppercase tracking-wider text-blue-700 hover:bg-blue-100"
           >
             {scanning ? 'Scanning…' : `Scan last ${scanLimit}`}
           </Button>
@@ -205,7 +205,7 @@ export function UnfoundQueueSidebarToolbar() {
             onChange={(e) => onScanLimitChange(Number(e.target.value))}
             disabled={scanning}
             aria-label="How many recent inbox emails to fetch on each scan"
-            className="h-7 rounded-md border border-border-soft bg-surface-card px-1.5 text-micro font-bold tracking-wider text-text-muted outline-none focus:border-blue-500 disabled:opacity-60"
+            className="h-7 rounded-md border border-border-soft bg-surface-card px-1.5 text-role-micro font-bold tracking-wider text-text-muted outline-none focus:border-blue-500 disabled:opacity-60"
           >
             {[10, 25, 50, 100, 200].map((n) => (
               <option key={n} value={n}>
@@ -224,7 +224,7 @@ export function UnfoundQueueSidebarToolbar() {
           defaultValue={q}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search title, serial, note, ticket…"
-          className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-3 text-label outline-none focus:border-blue-500"
+          className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-3 text-role-caption outline-none focus:border-blue-500"
         />
       </div>
 
@@ -233,7 +233,7 @@ export function UnfoundQueueSidebarToolbar() {
           flips between work-to-do and completed work the same way they flip
           between sources. */}
       <div className="flex flex-col gap-1">
-        <p className="text-micro font-bold uppercase tracking-wider text-text-faint">
+        <p className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
           Source
         </p>
         {ENABLED_KINDS.map((k) => (
@@ -242,7 +242,7 @@ export function UnfoundQueueSidebarToolbar() {
             variant={kind === k ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => onKind(k)}
-            className={`justify-start rounded-md px-2.5 py-1.5 text-left text-label font-semibold ${
+            className={`justify-start rounded-md px-2.5 py-1.5 text-left text-role-caption font-semibold ${
               kind === k
                 ? 'bg-blue-600 text-white'
                 : 'border border-border-soft bg-surface-card text-text-muted hover:border-border-default'

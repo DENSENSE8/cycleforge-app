@@ -3,7 +3,7 @@
 import { Camera } from '@/components/Icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
-import { unboxingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,6 +17,9 @@ interface ReceivingPhoto {
 
 interface ReceivingPhotosSectionProps {
   receivingId: string;
+  /** Carton PO#/order ref — stamped onto each photo's meta so the viewer's
+   *  details panel resolves the linked PO. Pass null when genuinely unknown. */
+  poRef?: string | null;
   /** Passed to PhotoGallery downloads as `orderId` filename stem. */
   downloadLabel?: string;
   /** Section heading (shipping panel uses “Packing Photos”). */
@@ -27,6 +30,7 @@ interface ReceivingPhotosSectionProps {
 
 export function ReceivingPhotosSection({
   receivingId,
+  poRef = null,
   downloadLabel,
   sectionTitle = 'Receiving photos',
   launcherTitle = 'View Receiving Photos',
@@ -70,11 +74,7 @@ export function ReceivingPhotosSection({
   const photosArr: ReceivingPhoto[] = Array.isArray(photos) ? photos : [];
   const galleryPhotos = photosArr
     .filter((p) => !!p.photoUrl)
-    .map((p) => ({
-      id: p.id,
-      url: p.photoUrl,
-      meta: unboxingPhotoMeta({ caption: p.caption, createdAt: p.createdAt }),
-    }));
+    .map((p) => receivingPhotoToGalleryInput(p, { poRef }));
   const loadingEmpty = isFetching && galleryPhotos.length === 0;
 
   return (
@@ -82,7 +82,7 @@ export function ReceivingPhotosSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Camera className="h-4 w-4 text-text-muted" aria-hidden />
-          <h3 className="text-caption font-black uppercase tracking-widest text-text-default">
+          <h3 className="text-role-caption font-black uppercase tracking-widest text-text-default">
             {sectionTitle}
           </h3>
         </div>
@@ -98,8 +98,8 @@ export function ReceivingPhotosSection({
       ) : galleryPhotos.length === 0 ? (
         <div className="flex min-h-[5.5rem] items-center justify-center rounded-xl border-2 border-dashed border-border-hairline bg-surface-canvas px-4">
           <div className="text-center">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">No photos yet</p>
-            <p className="mt-1 text-eyebrow font-medium text-text-faint">
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">No photos yet</p>
+            <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
               Mobile app → Receiving → ID <span className="font-mono font-black">#{receivingId}</span>
             </p>
           </div>

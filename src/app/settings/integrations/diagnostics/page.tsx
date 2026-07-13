@@ -77,7 +77,7 @@ const INTEGRATION_JOB_RE = String.raw`^(ebay|zoho|google_sheets|amazon|square|sh
 
 function EmptyBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-caption text-text-faint">
+    <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-faint">
       {children}
     </div>
   );
@@ -85,14 +85,14 @@ function EmptyBox({ children }: { children: React.ReactNode }) {
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-caption font-black uppercase tracking-[0.18em] text-text-faint">{children}</h2>
+    <h2 className="text-role-caption font-black uppercase tracking-[0.18em] text-text-faint">{children}</h2>
   );
 }
 
 function Chip({ tone, children }: { tone: string; children: React.ReactNode }) {
   return (
     <span
-      className={`rounded ${tone} px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset`}
+      className={`rounded ${tone} px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset`}
     >
       {children}
     </span>
@@ -165,24 +165,24 @@ export default async function IntegrationsDiagnosticsPage() {
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-caption text-text-soft">
+            <p className="text-role-caption text-text-soft">
               Read-only diagnostics for this workspace&apos;s integrations — connection states, credential usage, and
               recent sync runs.
             </p>
             <div className="flex items-center gap-2">
               {errored > 0 && (
-                <span className="rounded-full bg-rose-50 px-2.5 py-1 text-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+                <span className="rounded-full bg-rose-50 px-2.5 py-1 text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
                   {errored} connection{errored === 1 ? '' : 's'} in error
                 </span>
               )}
               {denied24h > 0 && (
-                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-role-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
                   {denied24h} denied credential use{denied24h === 1 ? '' : 's'} · 24h
                 </span>
               )}
               <Link
                 href="/settings/integrations"
-                className="rounded-full bg-surface-sunken px-2.5 py-1 text-caption font-semibold text-text-muted transition-colors hover:text-text-default"
+                className="rounded-full bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted transition-colors hover:text-text-default"
               >
                 ← Integrations
               </Link>
@@ -200,11 +200,11 @@ export default async function IntegrationsDiagnosticsPage() {
                   <div key={`${c.provider}-${c.scope ?? ''}`} className="flex items-center gap-3 px-4 py-2.5">
                     <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${STATE_DOT[c.state]}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-caption font-bold text-text-default">
+                      <p className="truncate text-role-caption font-bold text-text-default">
                         {c.provider}
                         {c.scope ? <span className="font-normal text-text-faint"> · {c.scope}</span> : null}
                       </p>
-                      <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                      <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                         {c.state}
                         {c.displayLabel ? ` · ${c.displayLabel}` : ''}
                         {c.lastError ? ` · ${c.lastError}` : ''}
@@ -217,7 +217,7 @@ export default async function IntegrationsDiagnosticsPage() {
                         </Chip>
                       ))}
                       <Chip tone="bg-blue-50 text-blue-700 ring-blue-200">{c.authKind}</Chip>
-                      <span className="w-20 text-right text-micro font-semibold tabular-nums text-text-faint">
+                      <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
                         {relTime(c.lastUsedAt ?? null)}
                       </span>
                     </div>
@@ -242,7 +242,7 @@ export default async function IntegrationsDiagnosticsPage() {
                 {credentialUsage.map((r, i) => (
                   <div key={`${r.provider}-${r.operation}-${r.outcome}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-caption font-bold text-text-default">
+                      <p className="truncate text-role-caption font-bold text-text-default">
                         {r.provider}
                         <span className="font-normal text-text-faint"> · {r.operation}</span>
                       </p>
@@ -251,10 +251,10 @@ export default async function IntegrationsDiagnosticsPage() {
                       <Chip tone={OUTCOME_CHIP[r.outcome] ?? 'bg-surface-sunken text-text-muted ring-border-soft'}>
                         {r.outcome}
                       </Chip>
-                      <span className="w-10 text-right text-caption font-bold tabular-nums text-text-muted">
+                      <span className="w-10 text-right text-role-caption font-bold tabular-nums text-text-muted">
                         ×{r.n}
                       </span>
-                      <span className="w-20 text-right text-micro font-semibold tabular-nums text-text-faint">
+                      <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
                         {relTime(r.last_at)}
                       </span>
                     </div>
@@ -276,9 +276,9 @@ export default async function IntegrationsDiagnosticsPage() {
                 {cronRuns.map((r, i) => (
                   <div key={`${r.job}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-caption font-bold text-text-default">{r.job}</p>
+                      <p className="truncate text-role-caption font-bold text-text-default">{r.job}</p>
                       {r.error ? (
-                        <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-rose-700">
+                        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-rose-700">
                           {r.error}
                         </p>
                       ) : null}
@@ -286,10 +286,10 @@ export default async function IntegrationsDiagnosticsPage() {
                     <div className="flex shrink-0 items-center gap-2">
                       <Chip tone="bg-surface-sunken text-text-muted ring-border-soft">{r.trigger}</Chip>
                       <Chip tone={RUN_CHIP[r.status]}>{r.status}</Chip>
-                      <span className="w-14 text-right text-micro font-semibold tabular-nums text-text-faint">
+                      <span className="w-14 text-right text-role-micro font-semibold tabular-nums text-text-faint">
                         {r.duration_ms != null ? `${(r.duration_ms / 1000).toFixed(1)}s` : '—'}
                       </span>
-                      <span className="w-20 text-right text-micro font-semibold tabular-nums text-text-faint">
+                      <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
                         {relTime(r.started_at)}
                       </span>
                     </div>

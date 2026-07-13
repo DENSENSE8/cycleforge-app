@@ -46,10 +46,10 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
       </button>
 
       <div className="min-w-0 text-center leading-tight">
-        <p className="text-eyebrow font-black uppercase tracking-[0.22em] text-text-soft">
+        <p className="text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">
           {remaining} remaining
         </p>
-        <p className="mt-0.5 text-mini font-black uppercase tracking-[0.16em] text-text-soft">
+        <p className="mt-0.5 text-role-micro uppercase tracking-[0.16em] text-text-soft">
           {todayUnassignedCount} unassigned · {todayTotalCount} total today
         </p>
       </div>
@@ -127,7 +127,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               emptyMessage="No technicians"
             />
             {staffContext && (staffContext.techniciansOff?.length || staffContext.techniciansInactive?.length) ? (
-              <p className="mt-1.5 text-eyebrow font-bold text-text-faint">
+              <p className="mt-1.5 text-role-eyebrow font-bold text-text-faint">
                 Unavailable: {[
                   ...(staffContext.techniciansOff || []).map((m) => `${m.name} (Off today)`),
                   ...(staffContext.techniciansInactive || []).map((m) => `${m.name} (Inactive)`),
@@ -146,7 +146,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               emptyMessage="No packers"
             />
             {staffContext && (staffContext.packersOff?.length || staffContext.packersInactive?.length) ? (
-              <p className="mt-1.5 text-eyebrow font-bold text-text-faint">
+              <p className="mt-1.5 text-role-eyebrow font-bold text-text-faint">
                 Unavailable: {[
                   ...(staffContext.packersOff || []).map((m) => `${m.name} (Off today)`),
                   ...(staffContext.packersInactive || []).map((m) => `${m.name} (Inactive)`),
@@ -156,7 +156,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-border-hairline pt-3">
-            <span className="text-eyebrow font-black uppercase tracking-[0.22em] text-text-soft">
+            <span className="text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">
               Deadline
             </span>
             <input
@@ -167,7 +167,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
                 setDeadline(next);
                 updateCurrentDraft({ deadline: next });
               }}
-              className="rounded-md border border-border-soft bg-surface-card px-2 py-1 text-micro font-bold text-text-default outline-none transition-colors focus:border-border-emphasis tabular-nums"
+              className="rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-micro font-bold text-text-default outline-none transition-colors focus:border-border-emphasis tabular-nums"
             />
           </div>
 
@@ -175,7 +175,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
             <button
               type="button"
               onClick={handleMarkDone}
-              className="h-8 rounded-lg border border-border-soft bg-surface-canvas text-eyebrow font-black uppercase tracking-[0.18em] text-text-muted transition-colors hover:border-border-default hover:bg-surface-sunken"
+              className="h-8 rounded-lg border border-border-soft bg-surface-canvas text-role-eyebrow uppercase tracking-[0.18em] text-text-muted transition-colors hover:border-border-default hover:bg-surface-sunken"
             >
               Mark as Done
             </button>
@@ -183,7 +183,7 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
               <button
                 type="button"
                 onClick={handleMarkShipped}
-                className="h-8 rounded-lg bg-emerald-600 text-eyebrow font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-700 shadow-sm"
+                className="h-8 rounded-lg bg-emerald-600 text-role-eyebrow uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-700 shadow-sm"
               >
                 Mark as Shipped
               </button>

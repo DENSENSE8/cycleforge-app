@@ -35,7 +35,7 @@ export function SkuGraphToolbar({
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-border-soft bg-surface-card px-4 py-3">
       {/* Focused SKU */}
-      <span className="text-[13px] font-semibold text-text-default">
+      <span className="text-role-data font-semibold text-text-default">
         {focusedLabel ?? <span className="font-medium text-text-faint">No SKU focused</span>}
       </span>
 
@@ -47,7 +47,7 @@ export function SkuGraphToolbar({
             type="button"
             onClick={() => onModeChange(m.id)}
             className={cn(
-              'ds-raw-button rounded-lg px-3 py-1.5 text-label font-medium transition-colors',
+              'ds-raw-button rounded-lg px-3 py-1.5 text-role-caption font-medium transition-colors',
               mode === m.id ? 'bg-surface-card text-text-default shadow-sm' : 'text-text-soft hover:text-text-default',
             )}
           >

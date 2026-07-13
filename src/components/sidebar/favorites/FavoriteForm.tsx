@@ -18,7 +18,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder="Search storefront products by name or SKU"
-          className="w-full rounded-xl border-0 bg-transparent px-3 py-2.5 text-caption font-semibold text-text-default outline-none placeholder:text-text-soft"
+          className="w-full rounded-xl border-0 bg-transparent px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none placeholder:text-text-soft"
         />
         {searchingProducts ? (
           <div className="flex items-center gap-2 border-t border-border-hairline px-3 py-2.5 text-text-soft">
@@ -42,14 +42,14 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
                 >
                   {isSelected && <Check className="mt-0.5 h-3 w-3 shrink-0 text-blue-600" />}
                   <div className="min-w-0 flex-1">
-                    <p className={`text-caption font-black leading-snug tracking-tight ${isSelected ? 'text-blue-700' : 'text-text-default'}`}>
+                    <p className={`text-role-caption font-black leading-snug tracking-tight ${isSelected ? 'text-blue-700' : 'text-text-default'}`}>
                       {product.name}
                     </p>
                     <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
-                      <span className="shrink-0 text-micro font-bold tabular-nums text-emerald-600">
+                      <span className="shrink-0 text-role-micro font-bold tabular-nums text-emerald-600">
                         {product.price != null ? `$${product.price.toFixed(2)}` : ''}
                       </span>
-                      <span className={`min-w-0 truncate text-micro font-bold uppercase tracking-[0.14em] ${isSelected ? 'text-blue-500' : 'text-text-soft'}`}>
+                      <span className={`min-w-0 truncate text-role-micro font-bold uppercase tracking-[0.14em] ${isSelected ? 'text-blue-500' : 'text-text-soft'}`}>
                         {product.sku || 'No SKU'}
                       </span>
                     </div>
@@ -68,12 +68,12 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
       {/* Selected product — two rows */}
       {selectedProduct && (
         <div className="rounded-xl border border-blue-200 bg-surface-card px-3 py-2">
-          <p className="text-caption font-black leading-snug text-blue-900">{selectedProduct.name}</p>
+          <p className="text-role-caption font-black leading-snug text-blue-900">{selectedProduct.name}</p>
           <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
-            <span className="shrink-0 text-micro font-bold tabular-nums text-emerald-600">
+            <span className="shrink-0 text-role-micro font-bold tabular-nums text-emerald-600">
               {selectedProduct.price != null ? `$${selectedProduct.price.toFixed(2)}` : ''}
             </span>
-            <span className="min-w-0 truncate text-micro font-bold uppercase tracking-[0.14em] text-blue-500">
+            <span className="min-w-0 truncate text-role-micro font-bold uppercase tracking-[0.14em] text-blue-500">
               {selectedProduct.sku || 'No SKU'}
             </span>
           </div>
@@ -84,7 +84,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
         value={draft.label}
         onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
         placeholder="Label"
-        className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-caption font-semibold text-text-default outline-none focus:border-blue-300"
+        className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-300"
       />
 
       {allowRepairDefaults && (
@@ -92,7 +92,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
           value={draft.issueTemplate}
           onChange={(e) => setDraft((prev) => ({ ...prev, issueTemplate: e.target.value }))}
           placeholder="Issue template"
-          className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-caption font-semibold text-text-default outline-none focus:border-blue-300"
+          className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-300"
         />
       )}
 
@@ -101,7 +101,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
         onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
         placeholder="Notes"
         rows={2}
-        className="w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-caption font-semibold text-text-default outline-none focus:border-blue-300"
+        className="w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-300"
       />
 
       {/* Footer */}

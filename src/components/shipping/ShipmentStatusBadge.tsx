@@ -119,7 +119,7 @@ export function ShipmentStatusBadge({
           asChild
         >
           <span
-            className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-white"
+            className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-white"
           >
             <AlertTriangle className="h-3 w-3" />
             {exceptionShown ? 'Exception' : 'Stalled'}
@@ -129,7 +129,7 @@ export function ShipmentStatusBadge({
 
       {relative && (
         <HoverTooltip label={latestEventAt ?? ''} asChild>
-          <span className="whitespace-nowrap text-caption text-text-soft">
+          <span className="whitespace-nowrap text-role-caption text-text-soft">
             {relative}
             {loc ? ` · ${loc}` : ''}
           </span>

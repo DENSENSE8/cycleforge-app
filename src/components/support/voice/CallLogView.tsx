@@ -46,7 +46,7 @@ export function CallLogView() {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-          <p className="text-caption font-semibold text-rose-700">Could not load the call log.</p>
+          <p className="text-role-caption font-semibold text-rose-700">Could not load the call log.</p>
         </div>
       </div>
     );
@@ -56,7 +56,7 @@ export function CallLogView() {
     <div className="mx-auto h-full w-full max-w-3xl overflow-y-auto px-6 py-6">
       <header className="mb-2 flex items-baseline justify-between gap-3">
         <h1 className="text-xl font-black uppercase tracking-tighter text-text-default">Call log</h1>
-        <p className="text-eyebrow font-bold uppercase tracking-widest text-blue-600">
+        <p className="text-role-eyebrow font-bold uppercase tracking-widest text-blue-600">
           {directionLabel} · live
         </p>
       </header>

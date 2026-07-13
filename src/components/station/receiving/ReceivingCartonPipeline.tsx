@@ -4,13 +4,18 @@ import type { ReceivingDetailsLog } from '@/components/station/receiving-details
 import type { CartonReadiness, CartonPipelineKey } from '@/lib/receiving/carton-readiness';
 import { LinearWorkflowStepper, type LinearStep } from '@/components/receiving/workspace/ReceivingProgressStepper';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
-import { formatClockTimePST, formatDatePST } from '@/utils/date';
+import { formatStageClockTimePST, formatDatePST } from '@/utils/date';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 
 const STEPS: ReadonlyArray<LinearStep> = [
   { key: 'scanned', label: 'Scanned' },
   { key: 'unboxed', label: 'Unboxed' },
   { key: 'received', label: 'Received' },
 ];
+
+function hasStamp(value: string | null | undefined): boolean {
+  return Boolean(value && String(value).trim());
+}
 
 function resolveStaffLabel(
   nameFromApi: string | null | undefined,
@@ -28,18 +33,29 @@ function StageRow({
   at,
   staffName,
   emptyFallback,
+  note,
+  muted = false,
 }: {
   label: string;
   at: string | null | undefined;
   staffName: string;
   emptyFallback: string;
+  /** Provenance tag when the stamp is inherited from a later milestone (e.g. "At receive"). */
+  note?: string;
+  /** Render the inherited time softer, so a folded step doesn't read as a distinct stamp. */
+  muted?: boolean;
 }) {
-  const hasAt = Boolean(at && String(at).trim());
+  const hasAt = hasStamp(at);
   return (
     <div className="flex items-center justify-between gap-3 py-2">
       <div className="min-w-0">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
-        {staffName ? (
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
+        {/* Attribution rides with the milestone: show a stage's staff name ONLY
+            when that stage's own timestamp exists. A name without a timestamp
+            (e.g. a stale received_by while the carton is still "NOT RECEIVED")
+            is misleading — the Received name/time appear only when the Receive
+            button actually stamps received_at. */}
+        {hasAt && staffName ? (
           <p className="truncate text-sm font-bold text-text-default">{staffName}</p>
         ) : (
           <p className="text-sm font-bold text-text-faint">—</p>
@@ -47,13 +63,18 @@ function StageRow({
       </div>
       {hasAt ? (
         <div className="shrink-0 text-right tabular-nums">
-          <p className="text-eyebrow font-bold uppercase tracking-widest text-text-muted">
+          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-muted">
             {formatDatePST(at, { withLeadingZeros: true })}
           </p>
-          <p className="text-sm font-bold text-text-default">{formatClockTimePST(at)}</p>
+          <p className={`text-sm font-bold ${muted ? 'text-text-muted' : 'text-text-default'}`}>
+            {formatStageClockTimePST(at)}
+          </p>
+          {note ? (
+            <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">{note}</p>
+          ) : null}
         </div>
       ) : (
-        <p className="shrink-0 text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <p className="shrink-0 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
           {emptyFallback}
         </p>
       )}
@@ -73,6 +94,8 @@ export function ReceivingCartonPipeline({
   readiness: CartonReadiness;
 }) {
   const { getStaffName } = useStaffNameMap();
+  // Re-render the stage rows the instant the clock-format preference flips.
+  useTimeFormat();
 
   const scanName = resolveStaffLabel(
     log.tracking_scanned_by_name,
@@ -82,9 +105,25 @@ export function ReceivingCartonPipeline({
   const unboxName = resolveStaffLabel(log.unboxed_by_name, log.unboxed_by, getStaffName);
   const receiveName = resolveStaffLabel(log.received_by_name, log.received_by, getStaffName);
 
+  // A carton can be received in one motion (scan → receive) without a distinct,
+  // operator-acknowledged unbox — no manual condition/serial edit, sometimes no
+  // serial at all. In that case "Unboxed" was folded into the receive: show the
+  // receive instant with an "At receive" tag instead of a misleading "Pending
+  // unbox", and credit the receiver. Never fabricate a separate earlier time.
+  const receivedDone = hasStamp(log.received_at);
+  const unboxStamped = hasStamp(log.unboxed_at);
+  const unboxFolded = !unboxStamped && receivedDone;
+  const unboxCoStamped = unboxStamped && String(log.unboxed_at) === String(log.received_at);
+
+  const unboxAt = unboxStamped ? log.unboxed_at : unboxFolded ? log.received_at : null;
+  const unboxDisplayName = unboxStamped ? unboxName : unboxFolded ? receiveName : unboxName;
+  const unboxNote = unboxFolded || unboxCoStamped ? 'At receive' : undefined;
+
   const states: Record<string, 'done' | 'active' | 'pending'> = {
     scanned: readiness.pipelineStates.scanned,
-    unboxed: readiness.pipelineStates.unboxed,
+    // A received carton has, by definition, been unboxed — keep the stepper
+    // honest even when the distinct unbox step was folded into the receive.
+    unboxed: unboxFolded ? 'done' : readiness.pipelineStates.unboxed,
     received: readiness.pipelineStates.received,
   };
 
@@ -107,9 +146,11 @@ export function ReceivingCartonPipeline({
         />
         <StageRow
           label="Unboxed"
-          at={log.unboxed_at}
-          staffName={unboxName}
+          at={unboxAt}
+          staffName={unboxDisplayName}
           emptyFallback="Pending unbox"
+          note={unboxNote}
+          muted={unboxFolded}
         />
         <StageRow
           label="Received"

@@ -59,7 +59,7 @@ export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) 
             <span>{ago || 'Receiving'}</span>
           </div>
         </div>
-        <span className="inline-flex items-center rounded-lg border border-teal-200 px-3 py-2 text-micro font-black uppercase tracking-widest text-text-default">
+        <span className="inline-flex items-center rounded-lg border border-teal-200 px-3 py-2 text-role-micro uppercase tracking-widest text-text-default">
           Receiving
         </span>
       </div>
@@ -84,7 +84,7 @@ export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) 
 
       {(item.line_skus.length > 0 || item.carrier || item.qa_status) && (
         <div className="mb-4 mx-3 rounded-xl border border-teal-200 px-3 py-2">
-          <div className="text-micro font-black uppercase tracking-widest text-teal-700 mb-1">
+          <div className="text-role-micro uppercase tracking-widest text-teal-700 mb-1">
             Receiving Details
           </div>
           <p className="text-sm text-text-default break-words whitespace-pre-wrap">
@@ -99,19 +99,19 @@ export function ReceivingAssignmentCard({ item }: ReceivingAssignmentCardProps) 
 
       <div className="flex items-center gap-2 px-3 pt-2 border-t border-teal-200">
         <div className="min-w-0 flex-1">
-          <div className="text-micro font-black text-text-default truncate">
+          <div className="text-role-micro text-text-default truncate">
             {item.assigned_tech_name || 'Receiving Queue'}
           </div>
-          <div className="text-micro text-text-soft truncate">
+          <div className="text-role-micro text-text-soft truncate">
             {workflowStatusTableLabel(item.workflow_status)}
           </div>
         </div>
-        <span className={`text-eyebrow font-black uppercase tracking-widest border rounded-lg px-2 py-0.5 ${statusCls}`}>
+        <span className={`text-role-eyebrow uppercase tracking-widest border rounded-lg px-2 py-0.5 ${statusCls}`}>
           {workflowStatusTableLabel(item.workflow_status)}
         </span>
         <button
           onClick={(e) => { e.stopPropagation(); openReceiving(); }}
-          className="ds-raw-button flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-micro font-black uppercase tracking-widest transition-all ml-auto"
+          className="ds-raw-button flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-role-micro uppercase tracking-widest transition-all ml-auto"
         >
           <ExternalLink className="w-3 h-3" />
           Open

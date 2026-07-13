@@ -13,7 +13,7 @@ export function ScanControls({
   return (
     <div className="flex flex-wrap items-end gap-3">
       <label className="flex-1 min-w-[220px]">
-        <span className="block text-caption font-medium text-text-muted">Mailbox query</span>
+        <span className="block text-role-caption font-medium text-text-muted">Mailbox query</span>
         <input
           type="text"
           value={query}
@@ -23,7 +23,7 @@ export function ScanControls({
         />
       </label>
       <label>
-        <span className="block text-caption font-medium text-text-muted">Limit</span>
+        <span className="block text-role-caption font-medium text-text-muted">Limit</span>
         <input
           type="number"
           min={1}
@@ -51,7 +51,7 @@ export function SummaryRow({ elapsedMs, counts, extra }: {
   elapsedMs: number; counts: { missing: number; in_zoho: number; received: number; no_match: number }; extra?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-border-hairline pt-3 text-label text-text-soft">
+    <div className="flex flex-wrap items-center gap-2 border-t border-border-hairline pt-3 text-role-caption text-text-soft">
       <span><span className="font-semibold text-amber-700">{counts.missing}</span> missing</span>
       <span aria-hidden>·</span>
       <span><span className="font-semibold text-blue-700">{counts.in_zoho}</span> in inventory</span>

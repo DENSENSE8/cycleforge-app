@@ -51,16 +51,16 @@ export function OverviewTab({
             )}
           />
           {row.kind === 'station_exception' && (
-            <p className="mt-1 text-micro text-text-soft">{row.context}</p>
+            <p className="mt-1 text-role-micro text-text-soft">{row.context}</p>
           )}
         </Section>
       )}
 
       {subjectPrefix && row.kind === 'email_po' && (
         <Section title="Subject">
-          <p className="text-label text-text-muted">{subjectPrefix}</p>
+          <p className="text-role-caption text-text-muted">{subjectPrefix}</p>
           {detail?.row.email_from && (
-            <p className="mt-0.5 text-micro text-text-soft">
+            <p className="mt-0.5 text-role-micro text-text-soft">
               {detail.row.email_from}
             </p>
           )}
@@ -69,7 +69,7 @@ export function OverviewTab({
 
       {row.product_title && row.kind !== 'email_po' && (
         <Section title="Product">
-          <p className="text-label font-semibold text-text-default">
+          <p className="text-role-caption font-semibold text-text-default">
             {row.product_title}
           </p>
         </Section>
@@ -85,19 +85,19 @@ export function OverviewTab({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-mono text-label font-bold text-emerald-700 underline-offset-2 hover:underline"
+                  className="inline-flex items-center gap-1 font-mono text-role-caption font-bold text-emerald-700 underline-offset-2 hover:underline"
                 >
                   {row.zendesk_ticket_id}
                   <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
-                <p className="font-mono text-label font-bold text-emerald-700">
+                <p className="font-mono text-role-caption font-bold text-emerald-700">
                   {row.zendesk_ticket_id}
                 </p>
               );
             })()}
             {row.zendesk_synced_at && (
-              <p className="text-micro text-text-soft">
+              <p className="text-role-micro text-text-soft">
                 synced {formatDateTimePST(row.zendesk_synced_at)}
               </p>
             )}
@@ -111,20 +111,20 @@ export function OverviewTab({
         <Section title="Team notes">
           {row.usa_team_note && (
             <div className="mb-2">
-              <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+              <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
                 USA
               </p>
-              <p className="whitespace-pre-wrap text-label text-text-muted">
+              <p className="whitespace-pre-wrap text-role-caption text-text-muted">
                 {row.usa_team_note}
               </p>
             </div>
           )}
           {row.vietnam_team_note && (
             <div>
-              <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+              <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
                 Vietnam
               </p>
-              <p className="whitespace-pre-wrap text-label text-text-muted">
+              <p className="whitespace-pre-wrap text-role-caption text-text-muted">
                 {row.vietnam_team_note}
               </p>
             </div>
@@ -133,7 +133,7 @@ export function OverviewTab({
       )}
 
       <Section title="Timing">
-        <dl className="space-y-1 text-label">
+        <dl className="space-y-1 text-role-caption">
           <Row label="Created" value={formatDateTimePST(row.created_at)} />
           <Row
             label="Follow-up"

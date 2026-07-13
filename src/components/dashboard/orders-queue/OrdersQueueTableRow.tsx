@@ -620,7 +620,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                             className="ds-raw-button inline-flex h-7 items-center gap-1 rounded-md bg-rose-600 px-2 text-white hover:bg-rose-700 disabled:opacity-60"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            <span className="text-eyebrow font-black uppercase tracking-widest leading-none">
+                            <span className="text-role-eyebrow uppercase tracking-widest leading-none">
                               Confirm
                             </span>
                           </button>

@@ -213,7 +213,7 @@ export default function MobileReceivingPipelinePage() {
             ))}
           </div>
         ) : error ? (
-          <p className="px-6 py-12 text-center text-label font-bold text-rose-600">
+          <p className="px-6 py-12 text-center text-role-caption font-bold text-rose-600">
             Couldn't load receiving lines. Pull to refresh.
           </p>
         ) : rows.length === 0 ? (
@@ -221,7 +221,7 @@ export default function MobileReceivingPipelinePage() {
             <p className="text-sm font-black uppercase tracking-[0.18em] text-text-muted">
               No matches
             </p>
-            <p className="mt-1 text-caption font-semibold text-text-soft">
+            <p className="mt-1 text-role-caption font-semibold text-text-soft">
               Try switching the filter, clearing the search, or scanning a PO label.
             </p>
           </div>

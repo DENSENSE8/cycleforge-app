@@ -26,7 +26,7 @@ export function VisibilityToggle({ value, onChange, internalLabel, publicLabel, 
         type="button"
         onClick={() => onChange(false)}
         className={cn(
-          'ds-raw-button inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-caption font-bold transition',
+          'ds-raw-button inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
           !value ? 'bg-surface-card text-amber-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
         )}
       >
@@ -36,7 +36,7 @@ export function VisibilityToggle({ value, onChange, internalLabel, publicLabel, 
         type="button"
         onClick={() => onChange(true)}
         className={cn(
-          'ds-raw-button inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-caption font-bold transition',
+          'ds-raw-button inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
           value ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
         )}
       >

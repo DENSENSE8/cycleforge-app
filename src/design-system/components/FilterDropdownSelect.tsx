@@ -3,10 +3,10 @@
 import { ChevronDown } from '@/components/Icons';
 
 export const FILTER_DROPDOWN_SELECT_CLASS =
-  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 export const FILTER_DROPDOWN_LABEL_CLASS =
-  'mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft';
+  'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 
 export interface FilterDropdownSelectOption {
   value: string | number;

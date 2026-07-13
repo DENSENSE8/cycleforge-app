@@ -36,7 +36,7 @@ export function DriftAlertsSection({ openDriftAlerts }: { openDriftAlerts: Drift
               </td>
               <td className="px-6 py-2 text-right font-semibold text-red-700">{a.qty_at_trigger ?? '—'}</td>
               <td className="px-6 py-2 text-xs text-red-700">{new Date(a.triggered_at).toLocaleString()}</td>
-              <td className="px-6 py-2 font-mono text-caption text-text-muted">{a.notes ?? '—'}</td>
+              <td className="px-6 py-2 font-mono text-role-caption text-text-muted">{a.notes ?? '—'}</td>
             </tr>
           ))}
         </tbody>

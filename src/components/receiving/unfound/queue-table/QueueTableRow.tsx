@@ -58,7 +58,7 @@ export function QueueTableRow({
         row.checked ? 'bg-surface-canvas/60 text-text-soft' : 'text-text-default'
       }`}
     >
-      <td className="px-3 py-2 font-mono text-label">
+      <td className="px-3 py-2 font-mono text-role-caption">
         <input
           type="text"
           defaultValue={row.zendesk_ticket_id ?? ''}
@@ -101,7 +101,7 @@ export function QueueTableRow({
             <>
               <div className="text-left">{row.product_title || '—'}</div>
               {row.context && (
-                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-micro font-normal text-text-soft">
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-micro font-normal text-text-soft">
                   {row.kind === 'unmatched_receiving' ? (
                     <TrackingChip
                       value={row.context}
@@ -124,7 +124,7 @@ export function QueueTableRow({
             debouncedPatch({ usa_team_note: e.target.value || null })
           }
           placeholder="—"
-          className="w-full resize-none border-b border-transparent bg-transparent px-1 py-0.5 text-label outline-none focus:border-blue-500"
+          className="w-full resize-none border-b border-transparent bg-transparent px-1 py-0.5 text-role-caption outline-none focus:border-blue-500"
         />
       </td>
       <td className="px-3 py-2">
@@ -135,7 +135,7 @@ export function QueueTableRow({
             debouncedPatch({ vietnam_team_note: e.target.value || null })
           }
           placeholder="—"
-          className="w-full resize-none border-b border-transparent bg-transparent px-1 py-0.5 text-label outline-none focus:border-blue-500"
+          className="w-full resize-none border-b border-transparent bg-transparent px-1 py-0.5 text-role-caption outline-none focus:border-blue-500"
         />
       </td>
       <td className="px-3 py-2 text-center">
@@ -147,7 +147,7 @@ export function QueueTableRow({
             className="h-4 w-4"
           />
           {justSaved ? (
-            <span className="text-micro font-bold uppercase tracking-wider text-emerald-600">
+            <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
               Saved
             </span>
           ) : null}
@@ -155,7 +155,7 @@ export function QueueTableRow({
       </td>
       <td className="px-3 py-2 text-right">
         {row.zendesk_ticket_id ? (
-          <span className="text-micro font-bold uppercase tracking-wider text-emerald-600">
+          <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
             Synced
           </span>
         ) : (
@@ -166,7 +166,7 @@ export function QueueTableRow({
               icon={<ExternalLink />}
               onClick={() => void onPush(row)}
               disabled={pushing}
-              className="gap-1 rounded-md border border-blue-200 px-2 py-1 text-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+              className="gap-1 rounded-md border border-blue-200 px-2 py-1 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
             >
               {pushing ? '…' : 'Push'}
             </Button>

@@ -52,7 +52,7 @@ export function LabelRoomSidebar({
         <h2 className="text-base font-bold tracking-tight text-text-default">
           Pick a room
         </h2>
-        <p className="mt-0.5 text-caption text-text-soft">
+        <p className="mt-0.5 text-role-caption text-text-soft">
           {selectedRoom
             ? (zoneLetter ?? '?')
             : emptySubtitle}

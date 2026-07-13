@@ -191,7 +191,7 @@ export function RepairTable({ filter }: RepairTableProps) {
               {search && (
                 <div className="flex items-center gap-2 px-2 py-0.5 bg-orange-50 text-orange-700 rounded-lg border border-orange-100">
                   <Search className="w-3 h-3" />
-                  <span className="text-eyebrow font-black uppercase tracking-widest">{search}</span>
+                  <span className="text-role-eyebrow uppercase tracking-widest">{search}</span>
                   {/* ds-raw-button: dismiss embedded inside an orange filter chip; inherits the chip hue, not a DS variant */}
                   <button
                     onClick={clearSearch}
@@ -216,7 +216,7 @@ export function RepairTable({ filter }: RepairTableProps) {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-40 gap-3 text-text-soft">
               <LoadingSpinner size="lg" className="text-blue-600" />
-              <p className="text-micro font-black uppercase tracking-widest">Loading Repairs...</p>
+              <p className="text-role-micro uppercase tracking-widest">Loading Repairs...</p>
             </div>
           ) : filteredRepairs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-40 text-center">
@@ -270,28 +270,28 @@ export function RepairTable({ filter }: RepairTableProps) {
                           <div className="text-sm font-black text-text-default truncate leading-tight">
                             {repair.product_title || 'Unknown Product'}
                           </div>
-                          <div className="text-caption font-black text-text-muted truncate leading-tight">
+                          <div className="text-role-caption font-black text-text-muted truncate leading-tight">
                             {repair.issue || repair.source_tracking_number || 'No issue specified'}
                           </div>
                           <div className="flex items-center gap-3 mt-0.5">
-                            <div className="text-micro font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                            <div className="text-role-micro text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
                               {repair.price ? `$${repair.price}` : '---'}
                             </div>
-                            <div className="text-micro font-black text-text-muted truncate uppercase tracking-tight">
+                            <div className="text-role-micro text-text-muted truncate uppercase tracking-tight">
                               {repair.customer_name || (() => {
                                 if (!repair.contact_info) return 'No Name';
                                 const parts = repair.contact_info.split(',').map((p: string) => p.trim());
                                 return parts[0] || 'No Name';
                               })()}
                             </div>
-                            <div className="text-eyebrow font-bold text-text-soft truncate">
+                            <div className="text-role-eyebrow font-bold text-text-soft truncate">
                               {formatPhoneNumber(repair.customer_phone || (() => {
                                 if (!repair.contact_info) return '';
                                 const parts = repair.contact_info.split(',').map((p: string) => p.trim());
                                 return parts[1] || '';
                               })())}
                             </div>
-                            <div className="text-mini font-bold text-text-default lowercase truncate">
+                            <div className="text-role-micro font-bold text-text-default lowercase truncate">
                               {repair.source_tracking_number || repair.customer_email || (() => {
                                 if (!repair.contact_info) return '';
                                 const parts = repair.contact_info.split(',').map((p: string) => p.trim());

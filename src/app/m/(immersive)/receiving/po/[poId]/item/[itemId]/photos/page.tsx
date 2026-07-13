@@ -45,7 +45,7 @@ function ItemPhotoPageInner(
 
   if (isLoading) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center text-caption font-bold uppercase tracking-widest text-white/60">
+      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-bold uppercase tracking-widest text-white/60">
         Opening camera…
       </div>
     );
@@ -54,7 +54,7 @@ function ItemPhotoPageInner(
   if (error || !item?.receiving_id) {
     return (
       <div className="grid min-h-[100dvh] place-items-center px-6 text-center">
-        <p className="text-label font-bold text-white/70">This item isn&apos;t ready for photos yet.</p>
+        <p className="text-role-caption font-bold text-white/70">This item isn&apos;t ready for photos yet.</p>
       </div>
     );
   }

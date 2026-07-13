@@ -96,17 +96,17 @@ export function RowFieldPreview({
             />
             <p
               className={cn(
-                'mb-0.5 text-eyebrow font-black uppercase tracking-widest leading-none',
+                'mb-0.5 text-role-eyebrow uppercase tracking-widest leading-none',
                 isDanger ? 'text-red-500' : 'text-text-soft',
               )}
             >
               {label}
             </p>
-            <p className="max-h-24 overflow-hidden whitespace-pre-wrap break-words text-caption text-text-default">
+            <p className="max-h-24 overflow-hidden whitespace-pre-wrap break-words text-role-caption text-text-default">
               {value}
             </p>
             {editable ? (
-              <p className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+              <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
                 Click to edit
               </p>
             ) : null}

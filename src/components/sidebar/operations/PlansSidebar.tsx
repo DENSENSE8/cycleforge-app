@@ -93,15 +93,15 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
       </div>
       <div className="pt-3">
         {isLoading && plans.length === 0 && (
-          <p className="py-6 text-center text-caption text-text-faint">Loading plans…</p>
+          <p className="py-6 text-center text-role-caption text-text-faint">Loading plans…</p>
         )}
         {isError && (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center text-caption text-rose-700">
+          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center text-role-caption text-rose-700">
             Could not load plans.
           </div>
         )}
         {!isLoading && !isError && plans.length === 0 && (
-          <p className="py-6 text-center text-caption text-text-faint">
+          <p className="py-6 text-center text-role-caption text-text-faint">
             {q ? 'No plans match this search.' : 'No plans yet. Plans appear here once created — including the auto-synced agentic master plan.'}
           </p>
         )}
@@ -123,7 +123,7 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1.5 truncate text-caption font-bold text-text-default">
+                    <p className="flex min-w-0 items-center gap-1.5 truncate text-role-caption font-bold text-text-default">
                       {isMasterPlan && (
                         <HoverTooltip label="Auto-synced from the agentic-loop master plan — open Live in the detail pane" focusable={false}>
                           <span className="inline-flex">
@@ -135,7 +135,7 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                     </p>
                     <span
                       className={cn(
-                        'shrink-0 rounded px-1.5 py-0.5 text-mini font-black uppercase tracking-widest ring-1 ring-inset',
+                        'shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
                         PLAN_STATUS_TONE[plan.status] ?? PLAN_STATUS_TONE.draft,
                       )}
                     >
@@ -144,9 +144,9 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
                     <ProgressBar percent={pct} />
-                    <span className="shrink-0 text-mini font-bold tabular-nums text-text-soft">{Math.round(pct)}%</span>
+                    <span className="shrink-0 text-role-micro font-bold tabular-nums text-text-soft">{Math.round(pct)}%</span>
                   </div>
-                  <p className="mt-1 truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                  <p className="mt-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                     {plan.progress ? `${plan.progress.doneTasks}/${plan.progress.totalTasks} tasks` : '—'}
                     {plan.targetDate ? ` · due ${plan.targetDate}` : ''}
                   </p>

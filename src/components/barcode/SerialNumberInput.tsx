@@ -91,8 +91,8 @@ export function SerialNumberInput({
         <div className={`transition-opacity duration-200 ${!isActive ? 'opacity-15 pointer-events-none' : ''}`}>
             {/* Step label */}
             <div className={`flex items-center gap-3 ${comfy ? 'px-7 pt-7 pb-3' : 'px-5 pt-5 pb-3'}`}>
-                <span className={`font-black tabular-nums text-text-soft tracking-widest ${comfy ? 'text-micro' : 'text-eyebrow'}`}>02</span>
-                <span className={`font-black uppercase text-text-muted ${comfy ? 'text-caption tracking-[0.16em]' : 'text-eyebrow tracking-[0.18em]'}`}>
+                <span className={`tabular-nums text-text-soft tracking-widest ${comfy ? 'text-role-micro' : 'text-role-eyebrow'}`}>02</span>
+                <span className={`uppercase text-text-muted ${comfy ? 'text-role-caption tracking-[0.16em]' : 'text-role-eyebrow tracking-[0.18em]'}`}>
                     Details & Serial Numbers
                 </span>
                 {showChangeSku && onChangeSku && (
@@ -102,7 +102,7 @@ export function SerialNumberInput({
                         onClick={onChangeSku}
                         className={cn(
                             'ml-auto h-auto px-0 font-black uppercase tracking-widest text-blue-600 hover:bg-transparent hover:text-blue-800',
-                            comfy ? 'text-micro' : 'text-eyebrow',
+                            comfy ? 'text-role-micro' : 'text-role-eyebrow',
                         )}
                     >
                         ← Change SKU
@@ -133,7 +133,7 @@ export function SerialNumberInput({
                     )}
 
                     <div className="flex-1 min-w-0">
-                        <p className={`font-black uppercase tracking-widest text-text-soft ${comfy ? 'text-micro mb-1.5' : 'text-eyebrow mb-1'}`}>Product</p>
+                        <p className={`uppercase tracking-widest text-text-soft ${comfy ? 'text-role-micro mb-1.5' : 'text-role-eyebrow mb-1'}`}>Product</p>
                         {isLoadingTitle ? (
                             <div className={`animate-pulse rounded bg-surface-strong ${comfy ? 'h-5 w-3/4' : 'h-4 w-2/3'}`} />
                         ) : (
@@ -142,14 +142,14 @@ export function SerialNumberInput({
                             </p>
                         )}
                         {comfy && currentLocation && (
-                            <p className="mt-2 text-caption font-mono text-text-soft">
+                            <p className="mt-2 text-role-caption font-mono text-text-soft">
                                 <span className="text-text-faint">LAST LOC </span>
                                 <span className="font-bold text-orange-600">{currentLocation}</span>
                             </p>
                         )}
                     </div>
                     <div className="text-right flex-shrink-0">
-                        <p className={`font-black uppercase tracking-widest text-text-soft ${comfy ? 'text-micro mb-1.5' : 'text-eyebrow mb-1'}`}>Stock</p>
+                        <p className={`uppercase tracking-widest text-text-soft ${comfy ? 'text-role-micro mb-1.5' : 'text-role-eyebrow mb-1'}`}>Stock</p>
                         <span className={`font-black ${
                             comfy ? 'text-base px-2.5 py-1' : 'text-xs px-2 py-0.5'
                         } ${
@@ -180,7 +180,7 @@ export function SerialNumberInput({
                     {/* SN count badge */}
                     {serialNumbers.length > 0 && (
                         <div className={`flex items-center bg-blue-50 border-l border-border-soft ${comfy ? 'px-5' : 'px-4'}`}>
-                            <span className={`font-black text-blue-700 tabular-nums ${comfy ? 'text-xs' : 'text-caption'}`}>
+                            <span className={`font-black text-blue-700 tabular-nums ${comfy ? 'text-xs' : 'text-role-caption'}`}>
                                 {serialNumbers.length} SN{serialNumbers.length !== 1 ? 's' : ''}
                             </span>
                         </div>
@@ -190,7 +190,7 @@ export function SerialNumberInput({
                 {/* Accumulated SN list */}
                 {serialNumbers.length > 0 && (
                     <div className={`bg-surface-canvas border-b border-border-soft ${comfy ? 'px-7 py-3' : 'px-5 py-2.5'}`}>
-                        <p className={`font-mono text-text-muted break-all leading-relaxed ${comfy ? 'text-caption' : 'text-micro'}`}>
+                        <p className={`font-mono text-text-muted break-all leading-relaxed ${comfy ? 'text-role-caption' : 'text-role-micro'}`}>
                             {serialNumbers.join(', ')}
                         </p>
                     </div>
@@ -224,7 +224,7 @@ export function SerialNumberInput({
                     <span className="flex items-center justify-center gap-2.5">
                         Continue →
                         {comfy && (
-                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-eyebrow font-mono font-bold tracking-tighter">⏎</kbd>
+                            <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono font-bold tracking-tighter">⏎</kbd>
                         )}
                     </span>
                 )}

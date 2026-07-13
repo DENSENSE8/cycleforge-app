@@ -490,7 +490,7 @@ export function CommandBar() {
                   autoFocus
                   className="flex-1 bg-transparent text-base font-medium text-text-default placeholder:text-text-faint outline-none"
                 />
-                <kbd className="hidden shrink-0 rounded-md border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-micro font-semibold text-text-soft md:inline-flex">
+                <kbd className="hidden shrink-0 rounded-md border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-role-micro font-semibold text-text-soft md:inline-flex">
                   ESC
                 </kbd>
               </div>
@@ -506,7 +506,7 @@ export function CommandBar() {
                 {showRecentGroup && (
                   <Command.Group
                     heading="Recent"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
+                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
                   >
                     {recents.map((r) => {
                       const Icon = r.entityType
@@ -529,7 +529,7 @@ export function CommandBar() {
                 {filteredNav.length > 0 && (
                   <Command.Group
                     heading="Pages"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
+                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
                   >
                     {filteredNav.map((n) => {
                       const Icon = n.icon;
@@ -552,18 +552,18 @@ export function CommandBar() {
                 {showSearchGroup && searchResults.length > 0 && (
                   <Command.Group
                     heading="Search results"
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
+                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
                   >
                     <CmdRow
                       value={`search all results ${query}`}
                       icon={<Search className="h-4 w-4 text-text-faint" />}
-                      label={`See all results for "${query.trim()}"`}
-                      subLabel="Open the full search page with categories"
+                      label={`See all matching orders for "${query.trim()}"`}
+                      subLabel="Open the orders board filtered by this search"
                       onSelect={() =>
                         navigate({
                           id: `search-all:${query.trim()}`,
                           label: `Search: ${query.trim()}`,
-                          href: `/search?q=${encodeURIComponent(query.trim())}`,
+                          href: `/dashboard?search=${encodeURIComponent(query.trim())}`,
                         })
                       }
                     />
@@ -596,7 +596,7 @@ export function CommandBar() {
                 {showAskAi && (
                   <Command.Group
                     heading={askAi.status === 'done' ? 'AI results' : 'AI'}
-                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-black [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
+                    className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
                   >
                     {askAi.status === 'loading' && (
                       <CmdRow
@@ -683,7 +683,7 @@ export function CommandBar() {
               </Command.List>
 
               {/* Footer */}
-              <div className="flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas/70 px-4 py-2 text-micro font-bold text-text-soft">
+              <div className="flex items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas/70 px-4 py-2 text-role-micro font-bold text-text-soft">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center gap-1">
                     <kbd className="rounded border border-border-soft bg-surface-card px-1 py-0.5 font-mono">↑↓</kbd>
@@ -746,13 +746,13 @@ function CmdRow({ value, icon, label, subLabel, badge, chips, onSelect }: CmdRow
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{label}</span>
         {subLabel && (
-          <span className="block truncate text-caption font-medium text-text-soft">{subLabel}</span>
+          <span className="block truncate text-role-caption font-medium text-text-soft">{subLabel}</span>
         )}
       </span>
       {chips?.slice(0, 2).map((chip) => (
         <span
           key={chip.label}
-          className={`hidden shrink-0 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset md:inline-flex ${
+          className={`hidden shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset md:inline-flex ${
             CHIP_TONE_CLASSES[chip.tone ?? 'gray'] ?? CHIP_TONE_CLASSES.gray
           }`}
         >
@@ -760,7 +760,7 @@ function CmdRow({ value, icon, label, subLabel, badge, chips, onSelect }: CmdRow
         </span>
       ))}
       {badge && (
-        <span className="shrink-0 rounded-md bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft group-data-[selected=true]:bg-surface-card group-data-[selected=true]:text-text-muted">
+        <span className="shrink-0 rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft group-data-[selected=true]:bg-surface-card group-data-[selected=true]:text-text-muted">
           {badge}
         </span>
       )}

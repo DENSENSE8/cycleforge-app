@@ -6,6 +6,8 @@ export type ConditionGradeTone = {
   active: string;
   /** Unselected pill (outline). */
   inactive: string;
+  /** Static badge (non-interactive). */
+  badge: string;
   /** Inline text/badge color matching the active pill hue. */
   text: string;
   /** {@link CopyChip} underline border — matches active pill hue. */
@@ -23,6 +25,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   BRAND_NEW: {
     active: 'bg-yellow-500 text-white shadow-sm shadow-yellow-200 ring-yellow-600',
     inactive: 'bg-surface-card text-yellow-800 ring-yellow-200 hover:bg-yellow-50',
+    badge: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
     text: 'text-yellow-600',
     chipUnderline: 'border-yellow-500',
     chipIconClass: 'inline-flex items-center justify-center text-yellow-600',
@@ -30,6 +33,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   LIKE_NEW: {
     active: 'bg-teal-600 text-white shadow-sm shadow-teal-200 ring-teal-700',
     inactive: 'bg-surface-card text-teal-800 ring-teal-200 hover:bg-teal-50',
+    badge: 'bg-teal-50 text-teal-700 ring-teal-200',
     text: 'text-teal-600',
     chipUnderline: 'border-teal-600',
     chipIconClass: 'inline-flex items-center justify-center text-teal-600',
@@ -37,6 +41,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   REFURBISHED: {
     active: 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 ring-indigo-700',
     inactive: 'bg-surface-card text-indigo-800 ring-indigo-200 hover:bg-indigo-50',
+    badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
     text: 'text-indigo-600',
     chipUnderline: 'border-indigo-600',
     chipIconClass: 'inline-flex items-center justify-center text-indigo-600',
@@ -44,6 +49,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   USED_A: {
     active: 'bg-emerald-600 text-white shadow-sm shadow-emerald-200 ring-emerald-700',
     inactive: 'bg-surface-card text-emerald-800 ring-emerald-200 hover:bg-emerald-50',
+    badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     text: 'text-emerald-600',
     chipUnderline: 'border-emerald-500',
     chipIconClass: 'inline-flex items-center justify-center text-emerald-600',
@@ -51,6 +57,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   USED_B: {
     active: 'bg-blue-600 text-white shadow-sm shadow-blue-200 ring-blue-700',
     inactive: 'bg-surface-card text-blue-800 ring-blue-200 hover:bg-blue-50',
+    badge: 'bg-blue-50 text-blue-700 ring-blue-200',
     text: 'text-blue-600',
     chipUnderline: 'border-blue-500',
     chipIconClass: 'inline-flex items-center justify-center text-blue-600',
@@ -59,6 +66,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     // ds-allow-raw-neutral: identity/tone hue — USED_C's slate among emerald/blue/amber grade hues, not chrome
     active: 'bg-slate-700 text-white shadow-sm shadow-slate-300 ring-slate-800',
     inactive: 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover',
+    badge: 'bg-surface-sunken text-text-muted ring-border-soft',
     text: 'text-text-muted',
     chipUnderline: 'border-slate-600', // ds-allow-raw-neutral: identity/tone hue — USED_C slate underline
     chipIconClass: 'inline-flex items-center justify-center text-text-muted',
@@ -66,6 +74,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
   PARTS: {
     active: 'bg-amber-700 text-white shadow-sm shadow-amber-200 ring-amber-800',
     inactive: 'bg-surface-card text-amber-800 ring-amber-200 hover:bg-amber-50',
+    badge: 'bg-amber-50 text-amber-700 ring-amber-200',
     text: 'text-amber-700',
     chipUnderline: 'border-amber-600',
     chipIconClass: 'inline-flex items-center justify-center text-amber-700',
@@ -116,7 +125,7 @@ export function conditionGradeChipStyleOrPending(code: string | null | undefined
 /** Tailwind classes for a single condition picker pill. */
 export function conditionPillClass(gradeValue: string, isActive: boolean): string {
   const tone = conditionGradeTone(gradeValue);
-  return `inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-caption font-black uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
+  return `inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-role-caption font-black uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
     isActive ? tone.active : tone.inactive
   }`;
 }

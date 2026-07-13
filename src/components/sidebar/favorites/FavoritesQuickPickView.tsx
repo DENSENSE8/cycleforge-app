@@ -13,7 +13,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-caption font-black uppercase tracking-[0.16em] text-text-default">
+        <h3 className="text-role-caption font-black uppercase tracking-[0.16em] text-text-default">
           {title}
           {!f.isLoading && f.favorites.length > 0 && <span className="ml-1.5 tabular-nums text-text-faint">{f.favorites.length}</span>}
         </h3>
@@ -60,7 +60,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
             </div>
           ) : f.favorites.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border-soft px-4 py-8 text-center">
-              <p className="text-micro font-black uppercase tracking-[0.14em] text-text-faint">{emptyLabel}</p>
+              <p className="text-role-micro uppercase tracking-[0.14em] text-text-faint">{emptyLabel}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-2 p-0.5 sm:grid-cols-2">
@@ -72,7 +72,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
                       <p className="text-sm font-bold leading-snug tracking-tight text-text-default">{favorite.label}</p>
                       <div className="mt-2 flex min-w-0 items-baseline gap-2">
                         {priceLabel && <span className="shrink-0 text-sm font-black tabular-nums text-emerald-600">{priceLabel}</span>}
-                        {favorite.sku && <span className="min-w-0 truncate text-micro font-bold uppercase tracking-[0.12em] text-text-faint">{favorite.sku}</span>}
+                        {favorite.sku && <span className="min-w-0 truncate text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint">{favorite.sku}</span>}
                       </div>
                       {favorite.issueTemplate ? <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-soft">{favorite.issueTemplate}</p> : null}
                     </div>
@@ -81,7 +81,7 @@ export function FavoritesQuickPickView({ f }: { f: FavoritesWorkspaceController 
                         variant="secondary"
                         size="md"
                         onClick={() => onUseFavorite(favorite)}
-                        className="w-full text-micro font-black uppercase tracking-[0.14em] text-text-default"
+                        className="w-full text-role-micro uppercase tracking-[0.14em] text-text-default"
                       >
                         {useLabel}
                       </Button>

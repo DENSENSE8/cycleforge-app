@@ -50,7 +50,7 @@ export function ShippingInfoEditModal({
           >
             <div className="flex items-center justify-between border-b border-border-hairline px-5 py-4">
               <div>
-                <p className="text-micro font-black uppercase tracking-[0.24em] text-text-soft">Shipping Info</p>
+                <p className="text-role-micro uppercase tracking-[0.24em] text-text-soft">Shipping Info</p>
                 <h3 className="mt-1 text-lg font-black tracking-tight text-text-default">Edit Order Details</h3>
               </div>
               <HoverTooltip label="Close shipping editor" asChild>
@@ -66,7 +66,7 @@ export function ShippingInfoEditModal({
             <div className="space-y-4 px-5 py-5">
               <div className="space-y-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-micro font-black uppercase tracking-[0.18em] text-text-soft">Ship By Date</span>
+                  <span className="mb-1.5 block text-role-micro uppercase tracking-[0.18em] text-text-soft">Ship By Date</span>
                   <input
                     type="text"
                     value={draft.shipByDate}
@@ -76,7 +76,7 @@ export function ShippingInfoEditModal({
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-micro font-black uppercase tracking-[0.18em] text-text-soft">Order ID</span>
+                  <span className="mb-1.5 block text-role-micro uppercase tracking-[0.18em] text-text-soft">Order ID</span>
                   <input
                     type="text"
                     value={draft.orderNumber}
@@ -89,7 +89,7 @@ export function ShippingInfoEditModal({
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-micro font-black uppercase tracking-[0.18em] text-text-soft">Tracking Numbers</p>
+                  <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Tracking Numbers</p>
                 </div>
                 <div className="space-y-2">
                   {draft.trackingRows.map((row, index) => (
@@ -163,7 +163,7 @@ export function ShippingInfoEditModal({
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-micro font-black uppercase tracking-[0.18em] text-text-soft">Serial Numbers</p>
+                  <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Serial Numbers</p>
                 </div>
                 <div className="space-y-2">
                   {(draft.serialRows.length > 0 ? draft.serialRows : ['']).map((row, index) => {

@@ -144,7 +144,7 @@ export function PreboxWizard({
       <div className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-xl">
         <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
           <Package className="h-4 w-4 shrink-0 text-violet-600" />
-          <span className="flex-1 text-caption font-bold text-text-default">Create prebox label</span>
+          <span className="flex-1 text-role-caption font-bold text-text-default">Create prebox label</span>
           <button
             type="button"
             onClick={onClose}
@@ -160,7 +160,7 @@ export function PreboxWizard({
           <button
             type="button"
             onClick={() => setMode('master')}
-            className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset transition-colors ${
+            className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
               mode === 'master'
                 ? 'bg-violet-50 text-violet-700 ring-violet-300'
                 : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
@@ -171,7 +171,7 @@ export function PreboxWizard({
           <button
             type="button"
             onClick={() => setMode('per-unit')}
-            className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset transition-colors ${
+            className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
               mode === 'per-unit'
                 ? 'bg-emerald-50 text-emerald-700 ring-emerald-300'
                 : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
@@ -184,7 +184,7 @@ export function PreboxWizard({
         {/* Serial checklist */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
           {serials.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">
+            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
               No serialized units to prebox.
             </div>
           ) : (
@@ -206,13 +206,13 @@ export function PreboxWizard({
                         {on ? <Check className="h-3 w-3" /> : null}
                       </span>
                       <Barcode className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                      <span className="font-mono text-caption font-semibold text-text-default">
+                      <span className="font-mono text-role-caption font-semibold text-text-default">
                         …{getLast4(s.serial_number)}
                       </span>
                       {s.unit_uid ? (
-                        <span className="ml-auto truncate font-mono text-eyebrow text-text-soft">{s.unit_uid}</span>
+                        <span className="ml-auto truncate font-mono text-role-eyebrow text-text-soft">{s.unit_uid}</span>
                       ) : (
-                        <span className="ml-auto text-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+                        <span className="ml-auto text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
                           not labeled
                         </span>
                       )}
@@ -226,7 +226,7 @@ export function PreboxWizard({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 border-t border-border-soft px-4 py-3">
-          <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
             {chosen.length} selected
           </span>
           <Button size="sm" variant="primary" disabled={busy || chosen.length === 0} onClick={() => void run()}>

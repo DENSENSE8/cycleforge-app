@@ -74,12 +74,15 @@ export function TestingPanel({ row, staffId }: { row: ReceivingLineRow; staffId:
           busy={c.saving || c.isMutating}
           copyingAll={c.copyingAll}
           handlers={{
+            refresh: () => void c.syncWithZoho(),
+            share: () => void c.handleShare(),
             audit: () => c.setAuditOpen(true),
             pair:
               row.sku_catalog_id != null
                 ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
                 : undefined,
             copy: () => void c.handleCopyAll(),
+            photoNote: () => c.setPhotoNoteOpen(true),
           }}
         />
 
@@ -103,13 +106,13 @@ export function TestingPanel({ row, staffId }: { row: ReceivingLineRow; staffId:
               serialUnitId={c.activeSerial?.id ?? null}
             />
 
-            {c.providerTicketId != null && c.providerTicketId > 0 ? (
-              <TestingTicketReplyCard
-                ticketId={c.providerTicketId}
-                ticketNumber={`#${c.providerTicketId}`}
-                ticketUrl={c.zendeskHref}
-              />
-            ) : null}
+            <TestingTicketReplyCard
+              ticketId={c.providerTicketId ?? null}
+              ticketNumber={c.providerTicketId ? `#${c.providerTicketId}` : undefined}
+              ticketUrl={c.zendeskHref}
+              failed={c.deriveLineVerdict(row.serials ?? []) === 'TESTING_FAILED'}
+              onFileClaim={() => c.setClaimOpen(true)}
+            />
 
             {labelOptions.length > 0 ? (
               <>

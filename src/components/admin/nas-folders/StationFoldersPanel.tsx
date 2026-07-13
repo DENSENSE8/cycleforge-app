@@ -12,8 +12,8 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
         {STATIONS.map((s) => (
           <div key={s.key} className="flex items-center gap-3 px-4 py-3">
             <div className="w-36 shrink-0">
-              <p className="text-label font-black text-text-default">{s.label}</p>
-              <p className="text-micro font-bold uppercase tracking-widest text-text-faint">{s.key}</p>
+              <p className="text-role-caption font-black text-text-default">{s.label}</p>
+              <p className="text-role-micro font-bold uppercase tracking-widest text-text-faint">{s.key}</p>
             </div>
             <div className="min-w-0 flex-1">
               <input
@@ -21,9 +21,9 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
                 value={draft[s.key] ?? ''}
                 onChange={(e) => setFolder(s.key, e.target.value)}
                 placeholder="Root (no folder)"
-                className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
-              {s.hint ? <p className="mt-1 text-micro text-text-faint">{s.hint}</p> : null}
+              {s.hint ? <p className="mt-1 text-role-micro text-text-faint">{s.hint}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               {nasConfigured() ? (
@@ -42,7 +42,7 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        {dirty ? <span className="text-micro font-bold uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+        {dirty ? <span className="text-role-micro font-bold uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
         <Button
           variant="primary"
           size="md"

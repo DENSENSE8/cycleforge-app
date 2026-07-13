@@ -26,8 +26,8 @@ export function StudioNodeDetail() {
   if (!node) {
     return (
       <div className="border-t border-border-hairline px-4 py-3">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Studio</p>
-        <p className="mt-1 text-micro leading-5 text-text-faint">
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Studio</p>
+        <p className="mt-1 text-role-micro leading-5 text-text-faint">
           {studio.isDraft ? 'Editing a draft.' : 'Viewing the live graph.'} Ask me to change it, or click a node to
           inspect it here.
         </p>
@@ -44,17 +44,17 @@ export function StudioNodeDetail() {
   return (
     <div className="border-t border-border-hairline px-4 py-3">
       <div className="flex items-center justify-between">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Node</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Node</p>
         {occupancy ? (
-          <span className="text-mini font-black uppercase tracking-widest text-blue-600">
+          <span className="text-role-micro uppercase tracking-widest text-blue-600">
             {occupancy.total} in flight
           </span>
         ) : null}
       </div>
 
       <div className="mt-1.5 space-y-1">
-        <p className="truncate text-caption font-bold text-text-default">{meta?.label ?? node.type}</p>
-        <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+        <p className="truncate text-role-caption font-bold text-text-default">{meta?.label ?? node.type}</p>
+        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
           {node.type}
           {meta?.category ? ` · ${meta.category}` : ''}
         </p>
@@ -65,7 +65,7 @@ export function StudioNodeDetail() {
           {ports.map((p) => (
             <span
               key={p.id}
-              className="rounded bg-surface-canvas px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft"
+              className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft"
             >
               {p.label}
             </span>
@@ -77,7 +77,7 @@ export function StudioNodeDetail() {
           chat). Reuses the same NodeConfigForm + onUpdateNodeConfig seam. */}
       {editable && configSchema ? (
         <div className={cn('mt-3 max-h-64 overflow-y-auto rounded-lg border border-border-hairline bg-surface-canvas/50 p-2')}>
-          <p className="mb-1.5 text-mini font-black uppercase tracking-widest text-text-faint">Config (draft)</p>
+          <p className="mb-1.5 text-role-micro uppercase tracking-widest text-text-faint">Config (draft)</p>
           <NodeConfigForm
             nodeId={node.id}
             schema={configSchema}
@@ -90,7 +90,7 @@ export function StudioNodeDetail() {
           {Object.entries(node.config)
             .slice(0, 6)
             .map(([k, v]) => (
-              <div key={k} className="flex items-baseline justify-between gap-2 text-micro">
+              <div key={k} className="flex items-baseline justify-between gap-2 text-role-micro">
                 <dt className="truncate font-semibold uppercase tracking-widest text-text-faint">{k}</dt>
                 <dd className="truncate text-text-muted">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>
               </div>

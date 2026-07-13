@@ -433,6 +433,13 @@ test('regression: operations.plans.* gates ops-plans routes', () => {
   assert.ok(claimPaths.includes('/api/ops-plans/tasks/[taskId]/claim/route.ts'));
 });
 
+test('regression: operations.tv.view gates the unattended TV wall board (read-only, least-privilege)', () => {
+  // HOME-OPS Phase C: a kiosk token holds ONLY operations.tv.view, so the TV
+  // board feed must be gated by it and NOT by the broader operations.view.
+  const tvPaths = routesGatedBy('operations.tv.view').map((r) => r.path);
+  assert.ok(tvPaths.includes('/api/operations/tv-board/route.ts'));
+});
+
 test('regression: beta.review gates the beta-applications review queue; the public apply route stays exempt', () => {
   // Beta intake P-1a (docs/todo/beta-intake-funnel-plan.md §6): the review
   // queue over pre-tenant beta_applications is withAuth(beta.review) even

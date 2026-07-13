@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import {
   printReceivingLabel,
+  markReceivingLabelPrinted,
   type ReceivingLabelPayload,
 } from '../../receiving-label-helpers';
 import { labelCornerTicketDigits } from '@/lib/print/printReceivingLabel';
-import { markConditionSet } from '../../ReceivingProgressStepper';
 import { useSerialLookup, type SerialMatchedOrder } from '../../SerialMatchResult';
 import { takeSerialEditHandoff } from '../../serialEditHandoff';
 import { printProductLabel } from '@/lib/print/printProductLabel';
@@ -328,14 +328,7 @@ export function useUnboxLineController(
   // Stamp the "label printed" marker + event so the row chips flip. One place,
   // shared by the default print and the custom print.
   const markLabelPrinted = useCallback(() => {
-    try {
-      window.localStorage.setItem(`receiving-label-printed:${row.id}`, String(Date.now()));
-    } catch {
-      /* private-mode / quota — non-fatal */
-    }
-    window.dispatchEvent(
-      new CustomEvent('receiving-label-printed', { detail: { line_id: row.id } }),
-    );
+    markReceivingLabelPrinted(row.id);
   }, [row.id]);
 
   const runPrintLabel = useCallback(() => {
@@ -372,7 +365,6 @@ export function useUnboxLineController(
       if (labelNotesChanged) setLabelNotes(nextLabelNotes);
       if (condChanged) {
         setCond(nextCond);
-        markConditionSet(row.id);
         void core.patch({ condition_grade: nextCond });
       }
       if (nextRef && nextRef !== core.poNumber) {
@@ -605,7 +597,5 @@ export function useUnboxLineController(
     claimModalOpen, setClaimModalOpen, returnClaimPrefill, setReturnClaimPrefill,
     handleFileReturnClaim,
     commitPoNumberOrImportOrder,
-    // re-exported helper used by the active-row condition change
-    markConditionSet,
   };
 }

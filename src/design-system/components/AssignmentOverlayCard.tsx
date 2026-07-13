@@ -79,7 +79,7 @@ export function AssignmentOverlayCard({
         <div className="min-w-0 flex-1">
           {!headerEyebrow ? (
             <div className={`${showHeaderGradient ? 'text-blue-100' : 'text-text-muted'}`.trim()}>
-              <p className={`truncate text-eyebrow font-black uppercase tracking-[0.10rem] ${showHeaderGradient ? 'text-blue-100' : 'text-text-soft'}`.trim()}>
+              <p className={`truncate text-role-eyebrow uppercase tracking-[0.10rem] ${showHeaderGradient ? 'text-blue-100' : 'text-text-soft'}`.trim()}>
                 Assignment
               </p>
             </div>
@@ -112,7 +112,7 @@ export function AssignmentOverlayCard({
         ) : null}
       </div>
       {meta ? (
-        <div className={`text-eyebrow font-black uppercase tracking-[0.08em] ${showHeaderGradient ? 'text-blue-100' : 'text-text-soft'}`.trim()}>
+        <div className={`text-role-eyebrow uppercase tracking-[0.08em] ${showHeaderGradient ? 'text-blue-100' : 'text-text-soft'}`.trim()}>
           {meta}
         </div>
       ) : null}

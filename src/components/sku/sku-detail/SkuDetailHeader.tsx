@@ -18,7 +18,7 @@ export function SkuDetailHeader({ c, data }: { c: SkuDetailController; data: Sku
         <h1 className={`${cardTitle} truncate`}>{data.productTitle || data.sku}</h1>
         <button
           onClick={() => c.handleCopy(data.sku, 'sku')}
-          className={`ds-raw-button ${monoValue} text-caption text-text-soft hover:text-blue-600 transition-colors flex items-center gap-1`}
+          className={`ds-raw-button ${monoValue} text-role-caption text-text-soft hover:text-blue-600 transition-colors flex items-center gap-1`}
         >
           {data.sku}
           {c.copiedField === 'sku' ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
@@ -27,7 +27,7 @@ export function SkuDetailHeader({ c, data }: { c: SkuDetailController; data: Sku
       {data.ecwid?.price != null && (
         <div className="text-right">
           <p className="text-lg font-black text-text-default">${data.ecwid.price.toFixed(2)}</p>
-          <p className={`text-micro font-bold uppercase tracking-wider ${data.ecwid.inStock ? 'text-emerald-600' : 'text-red-500'}`}>
+          <p className={`text-role-micro font-bold uppercase tracking-wider ${data.ecwid.inStock ? 'text-emerald-600' : 'text-red-500'}`}>
             {data.ecwid.inStock ? 'In Stock' : 'Out of Stock'}
           </p>
         </div>

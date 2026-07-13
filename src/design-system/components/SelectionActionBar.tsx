@@ -93,7 +93,7 @@ export function SelectionActionBar<T>({
             primaryFullWidth
             leading={
               leading ?? (
-                <span className="text-micro font-black uppercase tracking-widest tabular-nums text-text-soft">
+                <span className="text-role-micro uppercase tracking-widest tabular-nums text-text-soft">
                   {count} selected
                 </span>
               )

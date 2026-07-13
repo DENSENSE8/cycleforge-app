@@ -123,7 +123,7 @@ export function RepairDetailsPanel({
                   pulse
                   className={
                     repair.status === 'Repaired, Contact Customer'
-                      ? 'text-micro tracking-[0.14em]'
+                      ? 'text-role-micro tracking-[0.14em]'
                       : undefined
                   }
                 >
@@ -190,7 +190,7 @@ export function RepairDetailsPanel({
               onDeleted={onClose}
               label="Delete"
               armedLabel="Click Again To Confirm"
-              className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 text-white text-micro font-black uppercase tracking-wider transition hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 text-white text-role-micro uppercase tracking-wider transition hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </section>
         </div>

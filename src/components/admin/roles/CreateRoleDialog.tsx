@@ -65,7 +65,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
 
         <div className="mt-5 space-y-3">
           <label className="block">
-            <span className="block text-caption font-semibold uppercase tracking-wider text-text-soft">Label</span>
+            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Label</span>
             <input
               autoFocus
               value={label}
@@ -79,17 +79,17 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
             />
           </label>
           <label className="block">
-            <span className="block text-caption font-semibold uppercase tracking-wider text-text-soft">Key (slug)</span>
+            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Key (slug)</span>
             <input
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40))}
               className="mt-1 w-full rounded-md border border-border-default px-2.5 py-1.5 text-sm font-mono outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
               placeholder="shift_lead"
             />
-            <span className="mt-0.5 block text-micro text-text-faint">Stable identifier; cannot be changed later.</span>
+            <span className="mt-0.5 block text-role-micro text-text-faint">Stable identifier; cannot be changed later.</span>
           </label>
           <label className="block">
-            <span className="block text-caption font-semibold uppercase tracking-wider text-text-soft">Color</span>
+            <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Color</span>
             <div className="mt-1 flex items-center gap-2">
               <input
                 type="color"
@@ -97,7 +97,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
                 onChange={(e) => setColor(e.target.value)}
                 className="h-9 w-12 cursor-pointer rounded-md border border-border-default"
               />
-              <code className="rounded-md bg-surface-sunken px-2 py-1 text-caption font-mono text-text-muted">{color}</code>
+              <code className="rounded-md bg-surface-sunken px-2 py-1 text-role-caption font-mono text-text-muted">{color}</code>
             </div>
           </label>
         </div>

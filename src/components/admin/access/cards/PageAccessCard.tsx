@@ -24,7 +24,7 @@ export function PageAccessCard({
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">.access</h2>
-          <p className="mt-0.5 text-caption text-text-soft">
+          <p className="mt-0.5 text-role-caption text-text-soft">
             {isAdmin
               ? 'Admin role grants everything. Remove the admin role to customise.'
               : 'Toggle to grant or revoke individual pages on top of the role.'}

@@ -136,7 +136,7 @@ export function LocationSelector({
               value={value}
               onChange={onChange}
               variant="boxy"
-              buttonClassName="h-12 w-full border-b border-border-soft bg-surface-card px-5 pr-12 text-left text-micro font-black uppercase tracking-widest text-text-default outline-none transition-colors hover:bg-surface-hover"
+              buttonClassName="h-12 w-full border-b border-border-soft bg-surface-card px-5 pr-12 text-left text-role-micro uppercase tracking-widest text-text-default outline-none transition-colors hover:bg-surface-hover"
             />
           </div>
           <HoverTooltip label={showAdd ? 'Cancel' : 'Add new location'} asChild>
@@ -150,7 +150,7 @@ export function LocationSelector({
               }`}
             >
               {showAdd ? <X className="h-3.5 w-3.5" /> : (
-                <><Plus className="h-3.5 w-3.5" /><span className="text-eyebrow font-black uppercase tracking-widest">New</span></>
+                <><Plus className="h-3.5 w-3.5" /><span className="text-role-eyebrow uppercase tracking-widest">New</span></>
               )}
             </button>
           </HoverTooltip>
@@ -167,7 +167,7 @@ export function LocationSelector({
       {currentLocation && (
         <div className="flex items-center gap-2 px-5 py-2.5 bg-surface-canvas border-b border-border-soft">
           <MapPin className="h-3 w-3 text-orange-500" />
-          <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Current:</span>
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Current:</span>
           <span className="text-xs font-black font-mono text-orange-600">{currentLocation}</span>
         </div>
       )}
@@ -194,7 +194,7 @@ export function LocationSelector({
             }`}
           >
             {showAdd ? <X className="h-3.5 w-3.5" /> : (
-              <><Plus className="h-3.5 w-3.5" /><span className="text-eyebrow font-black uppercase tracking-widest">New</span></>
+              <><Plus className="h-3.5 w-3.5" /><span className="text-role-eyebrow uppercase tracking-widest">New</span></>
             )}
           </button>
         </HoverTooltip>
@@ -206,7 +206,7 @@ export function LocationSelector({
           <div className="flex items-center gap-2 mb-2">
             <span className={sectionLabel}>Select Bin — {selectedRoom}</span>
             {value && (
-              <span className="text-micro font-black font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+              <span className="text-role-micro font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                 {value}
               </span>
             )}
@@ -217,9 +217,9 @@ export function LocationSelector({
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="w-10 p-1 text-eyebrow font-black text-text-faint text-center">ROW</th>
+                  <th className="w-10 p-1 text-role-eyebrow text-text-faint text-center">ROW</th>
                   {grid.allCols.map((col) => (
-                    <th key={col} className="p-1 text-eyebrow font-black text-text-faint text-center min-w-[36px]">
+                    <th key={col} className="p-1 text-role-eyebrow text-text-faint text-center min-w-[36px]">
                       {col}
                     </th>
                   ))}
@@ -228,7 +228,7 @@ export function LocationSelector({
               <tbody>
                 {grid.rowLabels.map((row) => (
                   <tr key={row}>
-                    <td className="p-1 text-micro font-black text-text-soft text-center">{row}</td>
+                    <td className="p-1 text-role-micro text-text-soft text-center">{row}</td>
                     {grid.allCols.map((col) => {
                       const hasCell = grid.rows[row]?.includes(col);
                       const bin = locations.find(
@@ -250,7 +250,7 @@ export function LocationSelector({
                               type="button"
                               onClick={() => handleGridSelect(row, col)}
                               aria-label={binBarcode}
-                              className={`h-8 w-full rounded text-eyebrow font-black uppercase tracking-wider transition-all ${
+                              className={`h-8 w-full rounded text-role-eyebrow uppercase tracking-wider transition-all ${
                                 isSelected
                                   ? 'bg-blue-600 text-white ring-2 ring-blue-300'
                                   : isCurrent
@@ -344,7 +344,7 @@ function AddForm({
         />
       </div>
       {createError && (
-        <p className="text-micro font-bold text-red-600">{createError.message}</p>
+        <p className="text-role-micro font-bold text-red-600">{createError.message}</p>
       )}
     </div>
   );

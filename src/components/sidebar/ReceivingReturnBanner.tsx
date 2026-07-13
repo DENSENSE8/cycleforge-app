@@ -53,22 +53,22 @@ export function ReceivingReturnBanner({
         >
           <div className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500" />
           <div className="min-w-0 flex-1">
-            <p className="text-eyebrow font-black uppercase tracking-wider text-amber-800">
+            <p className="text-role-eyebrow uppercase tracking-wider text-amber-800">
               Return detected
             </p>
-            <p className="mt-0.5 truncate font-mono text-micro font-bold text-text-default">
+            <p className="mt-0.5 truncate font-mono text-role-micro font-bold text-text-default">
               {ret.serial_number}
             </p>
             {ret.sku && (
-              <p className="truncate text-eyebrow font-bold text-text-muted">{ret.sku}</p>
+              <p className="truncate text-role-eyebrow font-bold text-text-muted">{ret.sku}</p>
             )}
             {ret.order_id && (
-              <p className="truncate text-mini font-black uppercase tracking-wider text-emerald-600">
+              <p className="truncate text-role-micro uppercase tracking-wider text-emerald-600">
                 order {ret.order_id}
               </p>
             )}
             {ret.prior_status && (
-              <p className="text-mini font-black uppercase tracking-wider text-text-faint">
+              <p className="text-role-micro uppercase tracking-wider text-text-faint">
                 prior: {ret.prior_status}
               </p>
             )}

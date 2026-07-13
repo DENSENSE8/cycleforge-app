@@ -65,7 +65,7 @@ export default function SubstitutionLiveDemoPage() {
   return (
     <QueryClientProvider client={qc}>
       <div className="min-h-screen bg-surface-canvas p-10" data-testid="substitution-live-demo">
-        <h1 className="mb-6 text-eyebrow font-black uppercase tracking-widest text-text-soft">
+        <h1 className="mb-6 text-role-eyebrow uppercase tracking-widest text-text-soft">
           SubstituteUnitCard — real container + hooks (mocked API)
         </h1>
         <div className="max-w-xl rounded-xl border border-border-soft bg-surface-card p-4">

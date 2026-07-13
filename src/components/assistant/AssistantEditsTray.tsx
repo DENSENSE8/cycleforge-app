@@ -84,18 +84,18 @@ export function AssistantEditsTray() {
 
   return (
     <div className="shrink-0 border-t border-border-hairline px-4 py-3">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
         AI edits{definitionId ? ' · this draft' : ''}
       </p>
       <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
         {rows.map((m) => (
             <li key={m.id} className="flex items-center gap-2 py-0.5">
-              <span className="min-w-0 flex-1 truncate text-caption font-semibold text-text-default">
+              <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
                 {m.mutation_kind.replaceAll('_', ' ')}
               </span>
               <span
                 className={cn(
-                  'rounded-full px-1.5 text-mini font-black uppercase tracking-widest ring-1 ring-inset',
+                  'rounded-full px-1.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
                   STATUS_CHIP[m.status] ?? 'bg-surface-canvas text-text-soft ring-border-soft',
                 )}
               >

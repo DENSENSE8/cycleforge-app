@@ -126,12 +126,12 @@ export function orderToRailVM(order: Order, facts: OrderRailFacts): RailRowVM {
       <>
         {order.condition && conditionBadgeClasses ? (
           <span
-            className={`inline-flex items-center rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-wide ${conditionBadgeClasses}`}
+            className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-micro uppercase tracking-wide ${conditionBadgeClasses}`}
           >
             {order.condition}
           </span>
         ) : null}
-        <span className={`rounded px-1.5 font-mono text-micro font-bold ${qtyBadgeClasses}`}>
+        <span className={`rounded px-1.5 font-mono text-role-micro font-bold ${qtyBadgeClasses}`}>
           ×{facts.quantity}
         </span>
       </>

@@ -378,9 +378,9 @@ export function readSelectLineDetail(
 // ── Form input class tokens ─────────────────────────────────────────────────
 
 export const SELECT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card px-1.5 py-0.5 text-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
+  'w-full rounded-md border border-border-soft bg-surface-card px-1.5 py-0.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
 export const INPUT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card px-1.5 py-0.5 text-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
+  'w-full rounded-md border border-border-soft bg-surface-card px-1.5 py-0.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
 
 // ── Type scale (sidebar + workspace share this) ─────────────────────────────
 /**
@@ -401,16 +401,16 @@ export const TYPE_PRODUCT_TITLE_COMPACT_CLASS =
   'text-sm font-extrabold leading-snug tracking-tight text-text-default break-words line-clamp-3';
 
 export const TYPE_SECTION_TITLE_CLASS =
-  'shrink-0 text-micro font-black uppercase tracking-wider';
+  'shrink-0 text-role-micro uppercase tracking-wider';
 
 export const TYPE_FIELD_LABEL_CLASS =
-  'block text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft';
+  'block text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
 
 export const TYPE_HEADER_SUMMARY_CLASS =
-  'inline-flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-1 gap-y-0.5 text-eyebrow font-semibold leading-none tracking-wide text-text-muted';
+  'inline-flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-1 gap-y-0.5 text-role-eyebrow font-semibold leading-none tracking-wide text-text-muted';
 
 export const TYPE_INPUT_INLINE_CLASS =
-  'text-caption font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint';
+  'text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-text-faint';
 
 // ── Flow-section class + tone tokens ────────────────────────────────────────
 

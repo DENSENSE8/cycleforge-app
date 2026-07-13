@@ -31,10 +31,8 @@ export const framerDuration = {
   tableRowMount: 0.22,
   /** Workbench right-pane / detail crossfade */
   workbenchPaneMount: 0.18,
-  /** Photo viewer details column — slides in from the right */
+  /** Photo viewer details column — one symmetric drawer toggle (open == close reversed) */
   photoContextPanelMount: 0.22,
-  /** Photo viewer details column — exit (~75% of mount, mirrors detail-stack) */
-  photoContextPanelUnmount: 0.17,
   /** Global detail-stack overlay card (full-height flyout) — slow, soft enter/exit */
   detailStackOverlayMount: 0.4,
   /**
@@ -83,15 +81,10 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Photo viewer details column — pair with `framerPresence.photoContextPanel` */
+  /** Photo viewer details drawer — one symmetric width toggle (open == close
+   *  reversed); consumed by `PhotoContextPanel` via `useMotionTransition` */
   photoContextPanelMount: {
     duration: framerDuration.photoContextPanelMount,
-    ease: motionBezier.easeOut,
-  } satisfies Transition,
-
-  /** Photo viewer details column — exit; pair with `framerPresence.photoContextPanel` */
-  photoContextPanelUnmount: {
-    duration: framerDuration.photoContextPanelUnmount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -446,16 +439,6 @@ export const framerPresence = {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
-  },
-  /**
-   * Photo viewer details column — slides in from the right while the image-lane
-   * toolbar stays scoped to the stage. Opacity + x only (GPU-composited); flex
-   * width is instant. Consume via `useMotionPresence` + `useMotionTransition`.
-   */
-  photoContextPanel: {
-    initial: { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 20 },
   },
   /**
    * Global detail-stack overlay — floating card near the top-right edge.

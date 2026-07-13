@@ -113,7 +113,7 @@ export function ZohoSplitPane() {
       />
 
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-3">
-        <span className="text-caption font-black uppercase tracking-[0.18em] text-text-muted">
+        <span className="text-role-caption font-black uppercase tracking-[0.18em] text-text-muted">
           Zoho · Purchase Order
         </span>
         <IconButton
@@ -125,7 +125,7 @@ export function ZohoSplitPane() {
       </header>
 
       <div className="min-h-0 flex-1">
-        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-label text-text-soft">
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-role-caption text-text-soft">
           <p className="leading-snug">
             Purchase orders open in the inventory provider. Use the link below to view the PO.
           </p>
@@ -133,7 +133,7 @@ export function ZohoSplitPane() {
             href={url}
             target="_blank"
             rel="noreferrer"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-caption font-black uppercase tracking-[0.16em] text-white hover:bg-blue-700"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-role-caption font-black uppercase tracking-[0.16em] text-white hover:bg-blue-700"
           >
             Open in Zoho
           </a>

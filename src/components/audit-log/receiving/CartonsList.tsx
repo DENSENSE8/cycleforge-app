@@ -13,12 +13,12 @@ export function CartonsList({ cartons }: { cartons: Carton[] }) {
         <article key={c.id} className="rounded-lg border border-border-soft bg-surface-card p-4 shadow-sm">
           <header className="flex items-start justify-between gap-2">
             <div>
-              <div className="text-caption uppercase tracking-wider text-text-faint">Package #{c.id}</div>
+              <div className="text-role-caption uppercase tracking-wider text-text-faint">Package #{c.id}</div>
               <div className="mt-0.5 truncate font-mono text-sm font-medium text-text-default">{c.tracking_number ?? '—'}</div>
               {c.carrier && <div className="text-xs text-text-soft">{c.carrier}</div>}
             </div>
             {c.is_return && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-caption font-medium text-amber-700 ring-1 ring-amber-100">
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-role-caption font-medium text-amber-700 ring-1 ring-amber-100">
                 Return{c.return_platform ? ` · ${c.return_platform}` : ''}
               </span>
             )}
@@ -40,7 +40,7 @@ export function CartonsList({ cartons }: { cartons: Carton[] }) {
 
           {c.photos.length > 0 && (
             <div className="mt-3">
-              <div className="text-caption uppercase tracking-wider text-text-faint">Photos ({c.photos.length})</div>
+              <div className="text-role-caption uppercase tracking-wider text-text-faint">Photos ({c.photos.length})</div>
               <div className="mt-1 flex flex-wrap gap-2">
                 {c.photos.map((p) => (
                   <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="group">

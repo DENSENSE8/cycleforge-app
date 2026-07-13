@@ -103,7 +103,7 @@ function mapTaskRow(row: Record<string, unknown>): TaskRow {
 
 export async function listPlans(
   orgId: OrgId,
-  opts: { status?: string | null; q?: string | null } = {},
+  opts: { status?: string | null; q?: string | null; limit?: number } = {},
 ): Promise<{ plans: PlanRow[]; total: number }> {
   const params: unknown[] = [orgId];
   const clauses = ['p.organization_id = $1::uuid', 'p.archived_at IS NULL'];
@@ -116,6 +116,15 @@ export async function listPlans(
     clauses.push(`(p.title ILIKE $${params.length} OR COALESCE(p.description, '') ILIKE $${params.length})`);
   }
   const where = clauses.join(' AND ');
+  // Optional cap: each row costs one `ops_plan_progress()` round trip below, so a
+  // caller that only renders the top few plans (e.g. the TV board) bounds the
+  // fan-out here instead of scoring every active plan. `ORDER BY updated_at DESC`
+  // keeps the most-recently-touched plans.
+  let limitClause = '';
+  if (opts.limit != null && Number.isFinite(opts.limit) && opts.limit > 0) {
+    params.push(Math.floor(opts.limit));
+    limitClause = ` LIMIT $${params.length}`;
+  }
   const result = await tenantQuery(orgId,
     `SELECT p.id, p.title, p.description, p.status::text AS status, p.target_date,
             p.created_by_staff_id, s.name AS created_by_name,
@@ -123,7 +132,7 @@ export async function listPlans(
        FROM ops_plans p
        LEFT JOIN staff s ON s.id = p.created_by_staff_id
       WHERE ${where}
-      ORDER BY p.updated_at DESC, p.id`,
+      ORDER BY p.updated_at DESC, p.id${limitClause}`,
     params,
   );
   const plans: PlanRow[] = [];

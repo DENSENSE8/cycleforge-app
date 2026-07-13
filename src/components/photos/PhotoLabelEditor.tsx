@@ -132,11 +132,11 @@ export function PhotoLabelEditor({
 
         <div className="max-h-[50vh] overflow-y-auto px-4 py-3">
           {isLoading && labels.length === 0 ? (
-            <div className="flex items-center gap-2 py-4 text-caption text-text-faint">
+            <div className="flex items-center gap-2 py-4 text-role-caption text-text-faint">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading labels…
             </div>
           ) : labels.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-soft">
+            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
               No labels yet. Create one to get started.
             </div>
           ) : (
@@ -152,7 +152,7 @@ export function PhotoLabelEditor({
                     onClick={() => toggle(lbl.id)}
                     aria-pressed={checked}
                     className={cn(
-                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-widest transition',
+                      'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest transition',
                       labelChipClasses(lbl.color),
                       checked
                         ? 'ring-2 ring-offset-1 ring-blue-500'

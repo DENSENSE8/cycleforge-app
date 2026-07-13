@@ -215,6 +215,8 @@ export interface ReceivingLineRow {
   unbox_only_intake?: boolean;
   /** Server stamp when operator explicitly picked condition_grade. */
   condition_set_at?: string | null;
+  /** Server stamp when a receiving label was first printed for this line (Print step). */
+  label_printed_at?: string | null;
   /**
    * Rail fetcher stamp — line + distinct-SKU counts for adaptive title mode
    * (unbox Recent per-carton; door-scan per-PO). Set client-side only.

@@ -122,7 +122,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
       <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-4 py-2.5">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-blue-600" />
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Assistant</p>
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Assistant</p>
         </div>
         <div className="flex items-center gap-1 -my-1.5">
           <Button variant="ghost" size="sm" onClick={chat.reset} ariaLabel="New conversation">
@@ -143,7 +143,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
           aria-expanded={contextOpen}
           className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-surface-sunken"
         >
-          <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Context</span>
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">Context</span>
           {contextOpen ? (
             <ChevronUp className="h-3.5 w-3.5 text-text-faint" />
           ) : (
@@ -166,7 +166,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
               <div
                 key={m.id}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-caption leading-5',
+                  'rounded-lg px-3 py-2 text-role-caption leading-5',
                   m.role === 'user'
                     ? 'ml-8 bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-100'
                     : m.error
@@ -178,7 +178,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
               </div>
             ))}
             {chat.activeTool ? (
-              <p className="flex items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+              <p className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> {chat.activeTool.replaceAll('_', ' ')}
               </p>
             ) : null}
@@ -197,7 +197,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
               key={s}
               type="button"
               onClick={() => void chat.send(s, context)}
-              className="block w-full rounded-lg px-2 py-1.5 text-left text-caption font-medium text-text-muted hover:bg-surface-sunken"
+              className="block w-full rounded-lg px-2 py-1.5 text-left text-role-caption font-medium text-text-muted hover:bg-surface-sunken"
             >
               {s}
             </button>
@@ -230,7 +230,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
             rows={1}
             placeholder="Ask about your operation…"
             aria-keyshortcuts="Meta+J"
-            className="block max-h-32 min-h-[40px] w-full resize-none rounded-lg border border-border-soft bg-surface-card py-2.5 pl-3 pr-11 text-caption leading-5 text-text-default placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className="block max-h-32 min-h-[40px] w-full resize-none rounded-lg border border-border-soft bg-surface-card py-2.5 pl-3 pr-11 text-role-caption leading-5 text-text-default placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
           <div className="absolute bottom-1.5 right-1.5">
             <HoverTooltip label="Send (Enter)" focusable={false}>
@@ -251,8 +251,8 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
             </HoverTooltip>
           </div>
         </div>
-        <p className="mt-1.5 text-micro text-text-faint">
-          <span className="rounded bg-surface-canvas px-1 py-px text-micro font-semibold ring-1 ring-inset ring-border-hairline">
+        <p className="mt-1.5 text-role-micro text-text-faint">
+          <span className="rounded bg-surface-canvas px-1 py-px text-role-micro font-semibold ring-1 ring-inset ring-border-hairline">
             ⌘J
           </span>{' '}
           ⌘J toggle · Enter send · Esc close

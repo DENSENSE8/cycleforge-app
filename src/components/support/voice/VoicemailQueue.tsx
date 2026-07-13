@@ -113,7 +113,7 @@ export function VoicemailQueue({ modeToggle = null }: { modeToggle?: ReactNode }
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-micro font-bold uppercase tracking-widest text-text-faint">
+      <div className="flex shrink-0 items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro font-bold uppercase tracking-widest text-text-faint">
         <Voicemail className="h-3 w-3" />
         {openCount > 0 ? `${openCount} open follow-up${openCount === 1 ? '' : 's'}` : 'Follow-up queue'}
       </div>
@@ -162,7 +162,7 @@ function VoicemailRow({
           <span className="flex items-center gap-1.5">
             <span
               className={cn(
-                'min-w-0 flex-1 truncate text-label font-bold text-text-default',
+                'min-w-0 flex-1 truncate text-role-caption font-bold text-text-default',
                 !vm.isRead && 'after:ml-1 after:inline-block after:h-1.5 after:w-1.5 after:rounded-full after:bg-blue-500 after:align-middle',
               )}
             >
@@ -174,13 +174,13 @@ function VoicemailRow({
               </span>
             ) : null}
           </span>
-          <span className="mt-0.5 flex items-center gap-1 truncate text-micro font-semibold uppercase tracking-widest text-text-soft">
+          <span className="mt-0.5 flex items-center gap-1 truncate text-role-micro font-semibold uppercase tracking-widest text-text-soft">
             <Clock className="h-2.5 w-2.5 shrink-0 text-text-faint" />
             {meta}
             {number ? <span className="text-text-faint">· {number}</span> : null}
           </span>
           {vm.transcriptPreview ? (
-            <span className="mt-1 block truncate text-caption leading-4 text-text-soft">
+            <span className="mt-1 block truncate text-role-caption leading-4 text-text-soft">
               “{vm.transcriptPreview}”
             </span>
           ) : null}

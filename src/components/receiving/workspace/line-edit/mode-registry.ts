@@ -62,8 +62,8 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
   },
   testing: {
     label: 'Testing',
-    headerActions: ['audit', 'pair', 'copy'],
-    showDetails: false,
+    headerActions: ['refresh', 'share', 'audit', 'pair', 'copy', 'photoNote', 'details'],
+    showDetails: true,
     navChannel: 'testing-navigate-rail',
   },
 };

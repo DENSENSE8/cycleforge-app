@@ -47,7 +47,7 @@ export function PhotoLabelsSection({
   return (
     <div className="mt-4 space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Labels</p>
+        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Labels</p>
         <div className="flex items-center gap-1">
           {activeLabel ? (
             <Button
@@ -55,7 +55,7 @@ export function PhotoLabelsSection({
               size="sm"
               onClick={() => onSelect(undefined)}
               icon={<X className="h-3.5 w-3.5" />}
-              className="-my-1 h-7 gap-1 px-2 text-micro font-bold uppercase tracking-wider text-text-faint hover:text-text-muted"
+              className="-my-1 h-7 gap-1 px-2 text-role-micro font-bold uppercase tracking-wider text-text-faint hover:text-text-muted"
             >
               Clear
             </Button>
@@ -73,11 +73,11 @@ export function PhotoLabelsSection({
       </div>
 
       {isLoading && labels.length === 0 ? (
-        <div className="flex items-center gap-2 px-3 py-1.5 text-caption text-text-faint">
+        <div className="flex items-center gap-2 px-3 py-1.5 text-role-caption text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : labels.length === 0 ? (
-        <p className="px-3 py-1.5 text-caption text-text-faint">No labels yet.</p>
+        <p className="px-3 py-1.5 text-role-caption text-text-faint">No labels yet.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5 px-1">
           {labels.map((lbl) => {
@@ -90,7 +90,7 @@ export function PhotoLabelsSection({
                 aria-pressed={active}
                 className={cn(
                   // ds-raw-button — filter toggle chip with dynamic per-label color; not expressible via Button/IconButton.
-                  'ds-raw-button inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-micro font-black uppercase tracking-widest transition',
+                  'ds-raw-button inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest transition',
                   labelChipClasses(lbl.color),
                   active ? 'ring-2 ring-offset-1 ring-blue-500' : 'hover:opacity-80',
                 )}

@@ -155,7 +155,7 @@ function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
         PILL_TONE[tone],
       )}
     >
@@ -192,7 +192,7 @@ function InboxTabs({
             aria-selected={active}
             onClick={() => onChange(tabId)}
             className={cn(
-              'ds-raw-button flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-caption font-semibold transition-colors',
+              'ds-raw-button flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-role-caption font-semibold transition-colors',
               active
                 ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft'
                 : 'text-text-soft hover:text-text-muted',
@@ -267,7 +267,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
             variant="ghost"
             size="sm"
             onClick={() => clear()}
-            className="h-7 px-2 text-caption font-semibold leading-none text-text-soft hover:text-text-default"
+            className="h-7 px-2 text-role-caption font-semibold leading-none text-text-soft hover:text-text-default"
           >
             Clear all
           </Button>
@@ -285,14 +285,14 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       }
     >
       {tabEmpty ? (
-        <p className="px-4 py-10 text-center text-caption text-text-soft">
+        <p className="px-4 py-10 text-center text-role-caption text-text-soft">
           {TAB_EMPTY_COPY[activeTab] ?? `No ${INBOX_TAB_LABEL[activeTab].toLowerCase()} items`}
         </p>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
           <Inbox className="h-5 w-5 text-text-faint" />
           <p className="text-sm font-semibold text-text-default">All caught up</p>
-          <p className="max-w-[14rem] text-caption text-text-soft">
+          <p className="max-w-[14rem] text-role-caption text-text-soft">
             Tech items, repair updates, and messages will show up here.
           </p>
         </div>
@@ -336,7 +336,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                   <div className="min-w-0 flex-1">
                     <p
                       className={cn(
-                        'truncate text-caption font-bold text-text-default',
+                        'truncate text-role-caption font-bold text-text-default',
                         navigable && 'group-hover:text-blue-700',
                       )}
                     >
@@ -344,7 +344,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                     </p>
 
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                      <span className="shrink-0 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                      <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                         {inboxRelativeTime(it.createdAt)}
                       </span>
 
@@ -409,7 +409,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                     </div>
 
                     {it.kind === 'staff_message' && it.body ? (
-                      <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-caption text-text-soft">
+                      <p className="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-role-caption text-text-soft">
                         {it.body}
                       </p>
                     ) : null}
@@ -417,7 +417,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                     {it.kind === 'repair_status' && (it.undone || it.undoFailed) ? (
                       <p
                         className={cn(
-                          'mt-1 text-eyebrow font-semibold uppercase tracking-widest',
+                          'mt-1 text-role-eyebrow font-semibold uppercase tracking-widest',
                           it.undoFailed ? 'text-rose-600' : 'text-text-faint',
                         )}
                       >
@@ -433,7 +433,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                         size="sm"
                         onClick={() => void undoItem(it.id)}
                         disabled={undoing}
-                        className="h-7 px-1.5 text-micro font-semibold text-text-soft"
+                        className="h-7 px-1.5 text-role-micro font-semibold text-text-soft"
                       >
                         {undoing ? (
                           <Loader2 className="h-3 w-3 animate-spin" />

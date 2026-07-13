@@ -44,10 +44,10 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
             {onPickStep ? <ImageIcon className="h-5 w-5" /> : <TicketHelp className="h-5 w-5" />}
           </span>
           <div>
-            <p className="text-micro font-black uppercase tracking-widest text-rose-500">
+            <p className="text-role-micro uppercase tracking-widest text-rose-500">
               {onPickStep ? 'Step 1 · Photos' : 'Support'}
             </p>
-            <h2 className="text-[15px] font-bold tracking-tight text-text-default">
+            <h2 className="text-role-body font-bold tracking-tight text-text-default">
               {c.result
                 ? 'Done'
                 : onPickStep
@@ -81,12 +81,12 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
               href="/ops/photos"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-caption font-semibold text-blue-600 hover:text-blue-800"
+              className="inline-flex items-center gap-1 text-role-caption font-semibold text-blue-600 hover:text-blue-800"
             >
               Open full library <ExternalLink className="h-3 w-3" />
             </a>
             <div className="flex items-center gap-2">
-              <span className="text-caption text-text-soft">{c.libraryPhotos.length} selected</span>
+              <span className="text-role-caption text-text-soft">{c.libraryPhotos.length} selected</span>
               <Button variant="ghost" onClick={c.onClose}>
                 Cancel
               </Button>
@@ -116,13 +116,13 @@ export function ZendeskClaimModal(props: ZendeskClaimModalProps) {
           </div>
 
           <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-hairline px-5 py-3.5">
-            <div className="flex items-center gap-1.5 text-caption font-semibold text-text-faint">
+            <div className="flex items-center gap-1.5 text-role-caption font-semibold text-text-faint">
               <Paperclip className="h-3.5 w-3.5" />
               {c.totalAttach} attachment{c.totalAttach === 1 ? '' : 's'}
             </div>
             <div className="flex items-center gap-2">
               {c.error ? (
-                <span className="hidden items-center gap-1 text-caption font-semibold text-rose-600 sm:flex">
+                <span className="hidden items-center gap-1 text-role-caption font-semibold text-rose-600 sm:flex">
                   <AlertCircle className="h-3.5 w-3.5" /> {c.error}
                 </span>
               ) : null}

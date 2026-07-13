@@ -240,7 +240,7 @@ function ViewToggle({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode
     <div
       role="tablist"
       aria-label="View mode"
-      className="flex shrink-0 items-center rounded-full bg-surface-sunken p-0.5 text-caption font-semibold"
+      className="flex shrink-0 items-center rounded-full bg-surface-sunken p-0.5 text-role-caption font-semibold"
     >
       {/* ds-raw-button: segmented tab toggle (role=tab + aria-selected), not a standalone action */}
       {(['face', 'list'] as const).map((m) => (
@@ -286,7 +286,7 @@ function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between px-1">
-        <p className="text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+        <p className="text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
           Level {noPad(level)} · {positions.length} position{positions.length === 1 ? '' : 's'}
         </p>
         <FillLegend />
@@ -303,7 +303,7 @@ function RackFace({ loading, positions, level, onCellClick }: RackFaceProps) {
 
 function FillLegend() {
   return (
-    <div className="flex items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-wider text-text-faint">
+    <div className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-wider text-text-faint">
       <span className="flex items-center gap-1">
         <span className="h-2 w-2 rounded-full bg-surface-strong" /> Empty
       </span>
@@ -349,7 +349,7 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
           {pos}
         </span>
         {row.is_over_capacity && (
-          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-mini font-bold uppercase tracking-wider text-white">
+          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-white">
             !
           </span>
         )}
@@ -357,12 +357,12 @@ function PositionCell({ row, onClick }: { row: BinsOverviewRow; onClick: () => v
 
       <div className="mt-1 flex-1 px-2.5">
         {row.is_empty ? (
-          <p className="text-micro font-semibold uppercase tracking-wider text-text-faint">
+          <p className="text-role-micro font-semibold uppercase tracking-wider text-text-faint">
             Empty
           </p>
         ) : (
           <>
-            <p className="text-caption font-bold tabular-nums text-text-default">
+            <p className="text-role-caption font-bold tabular-nums text-text-default">
               {row.total_qty}
             </p>
             <p className="text-[9.5px] text-text-soft">
@@ -396,7 +396,7 @@ function NeighborLevel({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-micro font-bold uppercase tracking-[0.16em] text-text-soft">
+      <p className="mb-1.5 text-role-micro font-bold uppercase tracking-[0.16em] text-text-soft">
         Level {noPad(level)} · {positions.length}
       </p>
       <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:thin]">
@@ -449,7 +449,7 @@ function RackList({
             </span>
             <div className="min-w-0 flex-1">
               {row.is_empty ? (
-                <p className="text-label font-semibold uppercase tracking-wider text-text-faint">
+                <p className="text-role-caption font-semibold uppercase tracking-wider text-text-faint">
                   Empty
                 </p>
               ) : (
@@ -465,7 +465,7 @@ function RackList({
               )}
             </div>
             {hasIssue && (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-micro font-bold uppercase tracking-wider text-amber-800">
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider text-amber-800">
                 Issue
               </span>
             )}

@@ -52,7 +52,7 @@ export function FbaBoardRegion({
   if (activeMode === 'shipped') {
     return (
       <div className="flex h-full flex-1 items-center justify-center px-5 text-center">
-        <p className="max-w-sm text-caption font-black uppercase tracking-widest text-text-faint">
+        <p className="max-w-sm text-role-caption font-black uppercase tracking-widest text-text-faint">
           Shipped mode is managed from the sidebar table.
         </p>
       </div>

@@ -86,11 +86,11 @@ export function StaffEditCard({
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-xl font-bold tracking-tight text-text-default">{member.name}</h3>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-micro font-semibold uppercase tracking-[0.14em] text-text-muted">{member.role}</span>
+              <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-text-muted">{member.role}</span>
               {member.employee_id ? (
-                <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-micro font-semibold uppercase tracking-[0.14em] text-text-muted">ID {member.employee_id}</span>
+                <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-text-muted">ID {member.employee_id}</span>
               ) : null}
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-micro font-semibold uppercase tracking-[0.14em] ${member.active ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-strong text-text-muted'}`}>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] ${member.active ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-strong text-text-muted'}`}>
                 {member.active ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -140,7 +140,7 @@ export function StaffEditCard({
         <div className="mt-5 flex items-center gap-4 rounded-3xl border border-border-soft bg-surface-card px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-text-soft">Identity color</p>
-            <p className="mt-1 text-label text-text-soft">Tap the wheel — picks up on the sidebar, sign-in picker, and FAB.</p>
+            <p className="mt-1 text-role-caption text-text-soft">Tap the wheel — picks up on the sidebar, sign-in picker, and FAB.</p>
           </div>
           <StaffColorWheel value={editColorHex} onChange={setEditColorHex} />
         </div>
@@ -151,7 +151,7 @@ export function StaffEditCard({
         <div className="mt-4 flex items-center gap-4 rounded-3xl border border-border-soft bg-surface-card px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-text-soft">Default home page</p>
-            <p className="mt-1 text-label text-text-soft">
+            <p className="mt-1 text-role-caption text-text-soft">
               Where this staffer lands after sign-in. Use role default keeps the current behavior.
             </p>
           </div>
@@ -167,7 +167,7 @@ export function StaffEditCard({
           </select>
         </div>
 
-        <label className="mt-5 inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-surface-card px-3.5 py-2 text-caption font-semibold uppercase tracking-[0.16em] text-text-muted ring-1 ring-border-soft transition hover:bg-surface-hover">
+        <label className="mt-5 inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-surface-card px-3.5 py-2 text-role-caption font-semibold uppercase tracking-[0.16em] text-text-muted ring-1 ring-border-soft transition hover:bg-surface-hover">
           <input
             type="checkbox"
             checked={editActive}

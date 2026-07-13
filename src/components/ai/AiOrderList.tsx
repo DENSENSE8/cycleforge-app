@@ -75,7 +75,7 @@ export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
         <span className={sectionLabel}>{orders.length} order{orders.length !== 1 ? 's' : ''}</span>
         <a
           href="/dashboard?shipped="
-          className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-micro font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
+          className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-role-micro font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
         >
           Take me there
           <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -88,11 +88,11 @@ export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
           <a key={o.id} href={o.href} className="flex items-start gap-3 px-3 py-2.5 transition-colors hover:bg-surface-hover">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-caption font-semibold text-blue-700">#{o.orderId.slice(-8)}</span>
-                {o.condition ? <span className="text-micro uppercase tracking-wide text-text-faint">{o.condition}</span> : null}
+                <span className="font-mono text-role-caption font-semibold text-blue-700">#{o.orderId.slice(-8)}</span>
+                {o.condition ? <span className="text-role-micro uppercase tracking-wide text-text-faint">{o.condition}</span> : null}
               </div>
-              <p className="mt-0.5 truncate text-label text-text-default">{o.productTitle || 'Unknown product'}</p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-micro text-text-soft">
+              <p className="mt-0.5 truncate text-role-caption text-text-default">{o.productTitle || 'Unknown product'}</p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-role-micro text-text-soft">
                 {o.packerName ? <span>Packed · {o.packerName}</span> : null}
                 {o.testerName ? <span>Tested · {o.testerName}</span> : null}
                 {o.outOfStock ? <span className="font-medium text-rose-600">Missing: {o.outOfStock}</span> : null}
@@ -109,7 +109,7 @@ export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
                   isTerminal={o.isTerminal}
                 />
               ) : (
-                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-micro font-medium text-amber-700">pending</span>
+                <span className="rounded bg-amber-50 px-1.5 py-0.5 text-role-micro font-medium text-amber-700">pending</span>
               )}
             </div>
           </a>

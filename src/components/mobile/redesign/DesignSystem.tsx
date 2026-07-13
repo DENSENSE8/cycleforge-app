@@ -112,7 +112,7 @@ export const BentoItem = ({
     {title && (
       <div className="flex items-center gap-2 px-1">
         {Icon && <Icon className="h-3.5 w-3.5 text-blue-400" />}
-        <span className="text-micro font-black uppercase tracking-[0.15em] text-blue-400">{title}</span>
+        <span className="text-role-micro uppercase tracking-[0.15em] text-blue-400">{title}</span>
       </div>
     )}
     <MobileCard variant={variant} className="flex-1">
@@ -139,12 +139,12 @@ export const MobilePageHeader = ({ title, subtitle, action }: { title: string, s
  */
 export const SectionHeader = ({ title, actionLabel, onAction }: { title: string, actionLabel?: string, onAction?: () => void }) => (
   <div className="flex items-center justify-between px-1 mb-3">
-    <span className="text-caption font-black uppercase tracking-[0.2em] text-blue-400">{title}</span>
+    <span className="text-role-caption font-black uppercase tracking-[0.2em] text-blue-400">{title}</span>
     {actionLabel && (
       <Button
         variant="ghost"
         onClick={onAction}
-        className="h-auto px-0 text-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-transparent hover:text-blue-600"
+        className="h-auto px-0 text-role-caption font-bold uppercase tracking-wider text-blue-600 hover:bg-transparent hover:text-blue-600"
       >
         {actionLabel}
       </Button>

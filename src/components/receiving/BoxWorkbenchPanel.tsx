@@ -119,12 +119,12 @@ export function BoxWorkbenchPanel({
       {/* Header — box identity + status + close. */}
       <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
         <Package className="h-4 w-4 shrink-0 text-teal-600" />
-        <span className="min-w-0 flex-1 truncate text-caption font-bold text-text-default">
+        <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">
           {box?.code || `H-${handlingUnitId}`}
         </span>
         {box ? (
           <span
-            className={`rounded-full px-2 py-0.5 text-eyebrow font-black uppercase tracking-widest ${handlingUnitStatusChipClass(box.status)}`}
+            className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${handlingUnitStatusChipClass(box.status)}`}
           >
             {box.status}
           </span>
@@ -149,7 +149,7 @@ export function BoxWorkbenchPanel({
       {/* Rollup band — k/n tested + progress. */}
       <div className="border-b border-border-soft px-4 py-2.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-caption font-bold text-text-muted">
+          <span className="text-role-caption font-bold text-text-muted">
             {rollup.tested}/{rollup.total} tested
           </span>
           <HandlingUnitChip handlingUnitId={handlingUnitId} code={box?.code} unitCount={rollup.total} dense />
@@ -173,7 +173,7 @@ export function BoxWorkbenchPanel({
               }
             }}
             placeholder="Scan a serial to add…"
-            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
           />
           {busy === 'add' ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-muted" /> : null}
         </div>
@@ -182,15 +182,15 @@ export function BoxWorkbenchPanel({
       {/* Body — unit list / loading / error / empty. */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-caption text-text-muted">
+          <div className="flex items-center justify-center gap-2 py-8 text-role-caption text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading box…
           </div>
         ) : isError ? (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-700">
+          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
             {error instanceof Error ? error.message : 'Could not load this box.'}
           </div>
         ) : !box || box.units.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">
+          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
             No units in this box yet. Scan a serial above to add one.
           </div>
         ) : (
@@ -205,16 +205,16 @@ export function BoxWorkbenchPanel({
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-caption font-semibold text-text-default">
+                        <span className="font-mono text-role-caption font-semibold text-text-default">
                           …{getLast4(u.serial_number)}
                         </span>
                         <span
-                          className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
+                          className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
                         >
                           {u.current_status}
                         </span>
                       </div>
-                      <div className="mt-0.5 truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                      <div className="mt-0.5 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                         {u.sku || '—'}
                         {u.condition_grade ? ` · ${conditionLabel(u.condition_grade, 'compact')}` : ''}
                         {lineTitle ? ` · ${lineTitle}` : ''}

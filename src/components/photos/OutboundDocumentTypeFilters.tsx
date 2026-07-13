@@ -35,7 +35,7 @@ export function OutboundDocumentTypeFilters({
 
   return (
     <div className="space-y-1.5 px-1">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Document type</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">Document type</p>
       <ul className="flex flex-wrap gap-1">
         {chips.map((chip) => {
           const on = chipIsActive(chip, documentType, outboundMedia);
@@ -46,7 +46,7 @@ export function OutboundDocumentTypeFilters({
                 onClick={() => (chip === 'pack_photos' ? onSelectPackPhotos() : onSelectDocumentType(chip))}
                 aria-pressed={on}
                 className={cn(
-                  'ds-raw-button rounded-lg px-2.5 py-1 text-micro font-semibold transition',
+                  'ds-raw-button rounded-lg px-2.5 py-1 text-role-micro font-semibold transition',
                   on
                     ? 'bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-400'
                     : 'text-text-muted hover:bg-surface-hover',

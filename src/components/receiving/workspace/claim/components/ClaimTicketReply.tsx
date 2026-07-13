@@ -28,7 +28,7 @@ export function ClaimTicketReply({ reply, filedTicket, prefill }: Props) {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <p className="truncate text-micro font-black uppercase tracking-widest text-text-soft">
+        <p className="truncate text-role-micro uppercase tracking-widest text-text-soft">
           Reply on {filedTicket.number}
         </p>
         <PaneHeaderTabs<ReplyMode>
@@ -66,7 +66,7 @@ export function ClaimTicketReply({ reply, filedTicket, prefill }: Props) {
             : 'Internal note — not emailed to anyone…'
         }
         className={cn(
-          'block w-full resize-y rounded-lg border bg-surface-card px-3 py-2 text-caption font-medium leading-snug text-text-default outline-none focus:ring-2',
+          'block w-full resize-y rounded-lg border bg-surface-card px-3 py-2 text-role-caption font-medium leading-snug text-text-default outline-none focus:ring-2',
           isPublic
             ? 'border-emerald-200 focus:border-emerald-400 focus:ring-emerald-500/20'
             : 'border-border-default focus:border-border-emphasis focus:ring-text-soft/20',
@@ -74,7 +74,7 @@ export function ClaimTicketReply({ reply, filedTicket, prefill }: Props) {
       />
 
       <div className="flex items-center justify-between gap-3">
-        <p className={cn('text-mini font-semibold', isPublic ? 'text-emerald-700' : 'text-text-faint')}>
+        <p className={cn('text-role-micro font-semibold', isPublic ? 'text-emerald-700' : 'text-text-faint')}>
           {isPublic ? 'Emails the customer.' : 'Private note — no email sent.'}
         </p>
         <div className="flex items-center gap-2">

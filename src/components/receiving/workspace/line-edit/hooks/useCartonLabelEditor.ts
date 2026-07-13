@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { labelCornerTicketDigits } from '@/lib/print/printReceivingLabel';
 import { formatLabelDateFromIso } from '@/components/labels/labelDate';
 import { usePlatformMeta, useReceivingTypeLabel } from '@/hooks/useCatalog';
-import { printReceivingLabel } from '@/components/receiving/workspace/receiving-label-helpers';
+import {
+  printReceivingLabel,
+  markReceivingLabelPrinted,
+} from '@/components/receiving/workspace/receiving-label-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { LabelCornerMode, LabelEditDraft } from '../LabelEditPopover';
 import { buildCartonLabelPayloadFromDraft } from '../cartonLabelPayload';
@@ -126,15 +129,9 @@ export function useCartonLabelEditor(
         tracking: draft.tracking,
       });
       printReceivingLabel(buildPayload(draft));
-      // Same "label printed" marker + event the unbox print fires, so row chips flip.
-      try {
-        window.localStorage.setItem(`receiving-label-printed:${row.id}`, String(Date.now()));
-      } catch {
-        /* private-mode / quota — non-fatal */
-      }
-      window.dispatchEvent(
-        new CustomEvent('receiving-label-printed', { detail: { line_id: row.id } }),
-      );
+      // Same choke point the unbox print fires: optimistic marker/event + durable
+      // label_printed_at stamp, so row chips flip and the Print step persists.
+      markReceivingLabelPrinted(row.id);
     },
     [
       opts.conditionCode,

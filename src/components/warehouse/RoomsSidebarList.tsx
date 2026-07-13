@@ -240,7 +240,7 @@ export function RoomsSidebarList() {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="text-lg font-bold tracking-tight text-text-default">Rooms</h2>
-            <p className="mt-0.5 text-caption font-medium text-text-soft">
+            <p className="mt-0.5 text-role-caption font-medium text-text-soft">
               {loading
                 ? 'Loading…'
                 : `${orderedSummaries.length} room${orderedSummaries.length === 1 ? '' : 's'} · ${totals.bins} bin${totals.bins === 1 ? '' : 's'} · ${totals.qty} unit${totals.qty === 1 ? '' : 's'}`}
@@ -253,7 +253,7 @@ export function RoomsSidebarList() {
                 type="button"
                 onClick={() => startCreate()}
                 aria-label="Add a new room"
-                className={`flex h-9 items-center gap-1 rounded-full px-3 text-label font-semibold transition-all active:scale-[0.97] ${
+                className={`flex h-9 items-center gap-1 rounded-full px-3 text-role-caption font-semibold transition-all active:scale-[0.97] ${
                   creating
                     ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-600/30'
                     : 'border border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover'
@@ -459,7 +459,7 @@ function EmptyState({ query, onAdd }: { query: string; onAdd: () => void }) {
           <X className="h-5 w-5 text-text-faint" />
         </div>
         <p className="text-[12.5px] font-semibold text-text-muted">No rooms match “{query}”</p>
-        <p className="max-w-[240px] text-caption text-text-soft">
+        <p className="max-w-[240px] text-role-caption text-text-soft">
           Try a different name or zone letter.
         </p>
       </div>
@@ -471,7 +471,7 @@ function EmptyState({ query, onAdd }: { query: string; onAdd: () => void }) {
         <Plus className="h-5 w-5 text-blue-500" />
       </div>
       <p className="text-[12.5px] font-semibold text-text-muted">No rooms yet</p>
-      <p className="max-w-[240px] text-caption text-text-soft">
+      <p className="max-w-[240px] text-role-caption text-text-soft">
         Add your first room. Each room gets a zone letter that prints on every
         label.
       </p>

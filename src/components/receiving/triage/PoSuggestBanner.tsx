@@ -19,7 +19,7 @@ export function PoSuggestBanner({ suggestions }: { suggestions: PoSuggestionsCon
 
   if (loading) {
     return (
-      <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+      <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Checking for a tracking match…
       </div>
@@ -30,7 +30,7 @@ export function PoSuggestBanner({ suggestions }: { suggestions: PoSuggestionsCon
 
   return (
     <div className="mb-3 space-y-1.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5">
-      <p className="flex items-center gap-1.5 px-0.5 text-eyebrow font-black uppercase tracking-widest text-emerald-700">
+      <p className="flex items-center gap-1.5 px-0.5 text-role-eyebrow uppercase tracking-widest text-emerald-700">
         <MapPin className="h-3 w-3" />
         Suggested — tracking match
       </p>
@@ -40,10 +40,10 @@ export function PoSuggestBanner({ suggestions }: { suggestions: PoSuggestionsCon
           className="flex items-center gap-2 rounded-lg border border-emerald-200/70 bg-surface-card px-3 py-2"
         >
           <div className="min-w-0 flex-1">
-            <p className="truncate text-caption font-bold text-text-default">
+            <p className="truncate text-role-caption font-bold text-text-default">
               {po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
             </p>
-            <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+            <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
               {po.vendor_name || 'Unknown vendor'}
               {po.reference_number ? ` · ref ${po.reference_number}` : ''}
             </p>

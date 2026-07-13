@@ -49,7 +49,7 @@ export function RepairIntakeStepper({
   const connectorMt = compact || spread ? 'mt-3.5' : 'mt-4';
   const connectorW = compact ? 'w-3 sm:w-5' : 'w-6 sm:w-10';
   const colW = compact || spread ? 'w-auto shrink-0' : 'w-[4.75rem] sm:w-[5.5rem]';
-  const numSize = compact || spread ? 'text-micro' : 'text-caption';
+  const numSize = compact || spread ? 'text-role-micro' : 'text-role-caption';
 
   const renderStepNode = (step: (typeof REPAIR_INTAKE_STEPS)[number], idx: number) => {
     const state = stepState(step.key, currentStep);
@@ -105,7 +105,7 @@ export function RepairIntakeStepper({
                 <li className="flex shrink-0 flex-col items-center">
                   {renderStepNode(step, idx)}
                   <span
-                    className={`mt-2 max-w-[4.25rem] text-center text-mini font-black uppercase leading-tight tracking-[0.08em] sm:max-w-[5rem] sm:text-eyebrow sm:tracking-[0.1em] ${
+                    className={`mt-2 max-w-[4.25rem] text-center text-role-micro uppercase leading-tight tracking-[0.08em] sm:max-w-[5rem] sm:text-role-eyebrow sm:tracking-[0.1em] ${
                       state === 'active'
                         ? 'text-text-default'
                         : state === 'done'
@@ -174,7 +174,7 @@ export function RepairIntakeStepper({
 
                 {!compact && (
                   <span
-                    className={`mt-2 w-full text-center text-mini font-black uppercase leading-tight tracking-[0.1em] sm:text-eyebrow sm:tracking-[0.12em] ${
+                    className={`mt-2 w-full text-center text-role-micro uppercase leading-tight tracking-[0.1em] sm:text-role-eyebrow sm:tracking-[0.12em] ${
                       state === 'active'
                         ? 'text-text-default'
                         : state === 'done'

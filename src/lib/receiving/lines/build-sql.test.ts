@@ -223,3 +223,24 @@ test('unbox-opened placeholders included only for view=unbox_opened with the sam
   assert.equal(shouldIncludeUnboxOpenedPlaceholders(q('view=unbox_opened&search_field=serial')), false);
   assert.equal(shouldIncludeUnboxOpenedPlaceholders(q('view=unbox_opened&search_field=tracking')), true);
 });
+
+// ── serial_projection surfaced as `serials` (Tier B2 immediate-serial display) ─
+
+test('serials column: rlt.serial_projection surfaced as `serials` in all list builders', () => {
+  const list = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=activity')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  const byId = buildReceivingLineByIdSql(4821, ORG);
+  const byReceiving = buildReceivingLinesByReceivingIdSql(917, ORG);
+
+  const COL = `COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,`;
+  assert.ok(list.list.sql.includes(COL), 'list builder must surface serials from rlt.serial_projection');
+  assert.ok(byId.sql.includes(COL), 'by-id builder must surface serials from rlt.serial_projection');
+  assert.ok(byReceiving.lines.sql.includes(COL), 'by-receiving builder must surface serials from rlt.serial_projection');
+  // Byte-stable against the legacy fixture is already asserted by the equality
+  // suites above; this just pins the projection read as intentional, not incidental.
+});

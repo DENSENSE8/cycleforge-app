@@ -295,12 +295,12 @@ function ProfileCard({
           onChange={(e) => set('name', e.target.value)}
           className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-text-default hover:border-border-default focus:border-blue-500 focus:outline-none"
         />
-        <span className="shrink-0 text-caption text-text-faint">{profileSummary(profile)}</span>
+        <span className="shrink-0 text-role-caption text-text-faint">{profileSummary(profile)}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1 block text-caption font-medium text-text-muted">Role</span>
+          <span className="mb-1 block text-role-caption font-medium text-text-muted">Role</span>
           <select value={profile.role} onChange={(e) => set('role', e.target.value as PrinterRole)} className={`${FIELD_CLS} px-2 py-1.5`}>
             {PRINTER_ROLES.map((r) => (<option key={r.id} value={r.id}>{r.label}</option>))}
           </select>
@@ -308,20 +308,20 @@ function ProfileCard({
 
         {profile.kind !== 'os' ? (
           <label className="block">
-            <span className="mb-1 block text-caption font-medium text-text-muted">Language</span>
+            <span className="mb-1 block text-role-caption font-medium text-text-muted">Language</span>
             <select value={profile.language} onChange={(e) => set('language', e.target.value as LabelLanguage)} className={`${FIELD_CLS} px-2 py-1.5`}>
               {LANGUAGES.map((l) => (<option key={l.id} value={l.id}>{l.label}</option>))}
             </select>
           </label>
         ) : (
           <label className="block">
-            <span className="mb-1 block text-caption font-medium text-text-muted">OS printer name</span>
+            <span className="mb-1 block text-role-caption font-medium text-text-muted">OS printer name</span>
             <input value={profile.deviceName ?? ''} onChange={(e) => set('deviceName', e.target.value)} placeholder="System default" className={`${FIELD_CLS} px-2 py-1.5`} />
           </label>
         )}
 
         <label className="block">
-          <span className="mb-1 block text-caption font-medium text-text-muted">Paper size</span>
+          <span className="mb-1 block text-role-caption font-medium text-text-muted">Paper size</span>
           <select value={profile.paperSizeId} onChange={(e) => set('paperSizeId', e.target.value)} className={`${FIELD_CLS} px-2 py-1.5`}>
             {sizes.map((s) => (<option key={s.id} value={s.id}>{s.label}</option>))}
           </select>
@@ -329,7 +329,7 @@ function ProfileCard({
 
         {profile.kind === 'serial' && (
           <label className="block">
-            <span className="mb-1 block text-caption font-medium text-text-muted">Baud</span>
+            <span className="mb-1 block text-role-caption font-medium text-text-muted">Baud</span>
             <select value={profile.baudRate ?? 9600} onChange={(e) => set('baudRate', Number(e.target.value))} className={`${FIELD_CLS} px-2 py-1.5`}>
               {[9600, 19200, 38400, 57600, 115200].map((b) => (<option key={b} value={b}>{b}</option>))}
             </select>
@@ -337,7 +337,7 @@ function ProfileCard({
         )}
 
         <label className="block">
-          <span className="mb-1 block text-caption font-medium text-text-muted">Copies</span>
+          <span className="mb-1 block text-role-caption font-medium text-text-muted">Copies</span>
           <input type="number" min={1} max={20} value={profile.copies} onChange={(e) => set('copies', Math.max(1, Math.min(20, Number(e.target.value) || 1)))} className={`${FIELD_CLS} px-2 py-1.5`} />
         </label>
       </div>
@@ -345,7 +345,7 @@ function ProfileCard({
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-hairline pt-3">
         <Button type="button" variant="primary" size="sm" onClick={onTest}>Test</Button>
         {isDefaultForRole ? (
-          <span className="rounded-lg bg-green-50 px-2 py-1 text-caption font-medium text-green-700">Default for {profile.role}</span>
+          <span className="rounded-lg bg-green-50 px-2 py-1 text-role-caption font-medium text-green-700">Default for {profile.role}</span>
         ) : (
           <Button type="button" variant="secondary" size="sm" onClick={onMakeDefault}>Make default for {profile.role}</Button>
         )}

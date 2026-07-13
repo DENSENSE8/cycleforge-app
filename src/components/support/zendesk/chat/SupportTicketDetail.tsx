@@ -111,7 +111,7 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
             isNotConfigured(error) ? (
               <Link
                 href="/settings/integrations#zendesk"
-                className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
+                className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
               >
                 <Link2 className="h-4 w-4" />
                 Connect a helpdesk
@@ -166,7 +166,7 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
             <div className="flex flex-col items-center gap-2 text-blue-700">
               <Upload className="h-7 w-7" />
               <p className="text-sm font-bold">Drop photo to add to ticket #{ticketId}</p>
-              <p className="text-caption font-semibold text-blue-500">Uploads to the library, attaches on your next reply</p>
+              <p className="text-role-caption font-semibold text-blue-500">Uploads to the library, attaches on your next reply</p>
             </div>
           </motion.div>
         ) : null}

@@ -15,7 +15,7 @@ import { useActiveAssistantContext } from '@/hooks/useAssistantContext';
 
 function Chip({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-surface-canvas px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-hairline">
+    <span className="inline-flex items-center gap-1 rounded bg-surface-canvas px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-hairline">
       {children}
     </span>
   );
@@ -34,9 +34,9 @@ export function PageContextSection() {
 
   return (
     <div className="px-4 py-2.5">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-faint">This page</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">This page</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-mini font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
+        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
           <Layers className="h-3 w-3" /> {pageLabel}
         </span>
         {ctx?.station ? <Chip>{ctx.station}</Chip> : null}

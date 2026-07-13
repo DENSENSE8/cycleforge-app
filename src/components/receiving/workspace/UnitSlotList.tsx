@@ -156,7 +156,7 @@ function UnitRowTitle({
 }) {
   return (
     <div className="flex w-full items-center gap-2">
-      <span className="shrink-0 font-mono text-micro font-black tabular-nums text-text-soft">
+      <span className="shrink-0 font-mono text-role-micro tabular-nums text-text-soft">
         {index + 1}/{total}
       </span>
       {meta ? <span className="inline-flex items-center">{meta}</span> : null}
@@ -201,7 +201,7 @@ function CollapsedRow({
               {last4(serial.serial_number)}
             </span>
           ) : (
-            <span className="text-caption font-semibold uppercase tracking-widest text-text-faint">
+            <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
               Empty · tap to scan
             </span>
           )
@@ -287,7 +287,7 @@ function ExpandedRow({
             condition read down one vertical line instead of jumping left.
             Hidden in single-row mode so the active unit mirrors a single-qty line. */}
         {singleRow ? null : (
-          <span className="shrink-0 font-mono text-micro font-black tabular-nums text-text-soft">
+          <span className="shrink-0 font-mono text-role-micro tabular-nums text-text-soft">
             {index + 1}/{total}
           </span>
         )}

@@ -56,7 +56,7 @@ export function OutboundFilterDropdown({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => setUstatus(opt.id === 'all' ? null : opt.id)}
                 className={cn(
-                  'rounded-full px-2.5 py-1 text-caption font-medium ring-1 ring-inset transition',
+                  'rounded-full px-2.5 py-1 text-role-caption font-medium ring-1 ring-inset transition',
                   active
                     ? 'bg-accent-bg text-accent-text ring-accent-bg'
                     : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover',
@@ -80,7 +80,7 @@ export function OutboundFilterDropdown({ onClose }: { onClose: () => void }) {
           aria-label="Coarse fulfillment stage"
           className="w-full"
         />
-        <p className="mt-1.5 text-micro font-medium text-text-faint">
+        <p className="mt-1.5 text-role-micro font-medium text-text-faint">
           Stage is a server-side facet. Lane is exact PENDING / TESTED / BLOCKED.
         </p>
       </div>

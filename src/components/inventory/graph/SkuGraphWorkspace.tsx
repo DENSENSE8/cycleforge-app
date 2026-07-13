@@ -114,7 +114,7 @@ export function SkuGraphWorkspace() {
         <div className="relative min-w-0 flex-1">
           {!focused ? (
             <div className="flex h-full items-center justify-center text-center">
-              <p className="max-w-xs text-[13px] text-text-faint">
+              <p className="max-w-xs text-role-data text-text-faint">
                 Search for a SKU in the sidebar to explore its parents, children, or full BOM tree.
               </p>
             </div>
@@ -128,7 +128,7 @@ export function SkuGraphWorkspace() {
                 onNodeRecenter={onNodeRecenter}
               />
               {isLoading && (
-                <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-surface-card/90 px-2 py-1 text-caption text-text-faint shadow-sm">
+                <div className="pointer-events-none absolute right-3 top-3 rounded-md bg-surface-card/90 px-2 py-1 text-role-caption text-text-faint shadow-sm">
                   Loading…
                 </div>
               )}

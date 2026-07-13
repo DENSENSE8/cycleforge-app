@@ -57,6 +57,19 @@ test('lines_in_progress when carton received but not all lines complete', () => 
   assert.equal(r.pipelineStates.received, 'done');
 });
 
+test('received in one motion (no unboxed_at) is NOT awaiting_unbox — unbox folds into receive', () => {
+  // Scan → receive with no distinct operator-acknowledged unbox (auto-condition,
+  // no serial): received_at set, unboxed_at never stamped. Must skip awaiting_unbox.
+  const r = deriveCartonReadiness(
+    { tracking_scanned_at: '2026-07-06T00:00:00Z', unboxed_at: null, received_at: '2026-07-06T02:00:00Z' },
+    [{ quantity_expected: 1, quantity_received: 1, workflow_status: 'DONE' }],
+  );
+  assert.notEqual(r.stage, 'awaiting_unbox');
+  assert.equal(r.stage, 'carton_received');
+  assert.equal(r.pipelineStates.unboxed, 'done');
+  assert.equal(r.pipelineStates.received, 'done');
+});
+
 test('carton_received when carton received and all lines complete', () => {
   const r = deriveCartonReadiness(
     { tracking_scanned_at: '2026-07-06T00:00:00Z', unboxed_at: '2026-07-06T01:00:00Z', received_at: '2026-07-06T02:00:00Z' },

@@ -21,7 +21,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Stations</h2>
-          <p className="mt-0.5 text-caption text-text-soft">
+          <p className="mt-0.5 text-role-caption text-text-soft">
             The <b>primary</b> station is always shown in the header goal chip and stays locked.
             Add <b>secondary</b> stations to let this staffer switch between goals — the Switch
             control only appears when at least one secondary is set.
@@ -31,7 +31,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
       <div className="space-y-3 px-5 py-4">
         {/* Primary station */}
         <label className="flex items-center gap-2.5">
-          <span className="w-20 shrink-0 text-micro font-semibold uppercase tracking-wider text-text-soft">Primary</span>
+          <span className="w-20 shrink-0 text-role-micro font-semibold uppercase tracking-wider text-text-soft">Primary</span>
           <select
             value={stations.primary ?? ''}
             onChange={(e) => {
@@ -41,7 +41,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
               onSave({ primary: p, secondary: stations.secondary.filter((s) => s !== p) });
             }}
             disabled={busy}
-            className="h-8 rounded-full bg-surface-sunken px-3 text-micro font-bold uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
+            className="h-8 rounded-full bg-surface-sunken px-3 text-role-micro font-bold uppercase tracking-wider text-text-muted outline-none ring-1 ring-border-soft transition disabled:opacity-60"
           >
             <option value="">— none (auto from employee code) —</option>
             {STATION_OPTIONS.map((st) => (
@@ -52,7 +52,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
 
         {/* Secondary stations */}
         <div className="flex items-start gap-2.5">
-          <span className="mt-1.5 w-20 shrink-0 text-micro font-semibold uppercase tracking-wider text-text-soft">Secondary</span>
+          <span className="mt-1.5 w-20 shrink-0 text-role-micro font-semibold uppercase tracking-wider text-text-soft">Secondary</span>
           <div className="flex flex-wrap gap-1.5">
             {STATION_OPTIONS.map((st) => {
               const isPrimary = stations.primary === st;
@@ -80,14 +80,14 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
                     }}
                     className={
                       isPrimary
-                        ? 'inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-caption font-semibold text-blue-600 ring-1 ring-inset ring-blue-200'
+                        ? 'inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-role-caption font-semibold text-blue-600 ring-1 ring-inset ring-blue-200'
                         : selected
-                          ? 'inline-flex items-center gap-1 rounded-full bg-surface-inverse px-2.5 py-1 text-caption font-semibold text-white ring-1 ring-inset ring-surface-inverse transition disabled:opacity-50'
-                          : 'inline-flex items-center gap-1 rounded-full bg-surface-card px-2.5 py-1 text-caption font-semibold text-text-muted ring-1 ring-inset ring-border-soft transition hover:bg-surface-hover disabled:opacity-50'
+                          ? 'inline-flex items-center gap-1 rounded-full bg-surface-inverse px-2.5 py-1 text-role-caption font-semibold text-white ring-1 ring-inset ring-surface-inverse transition disabled:opacity-50'
+                          : 'inline-flex items-center gap-1 rounded-full bg-surface-card px-2.5 py-1 text-role-caption font-semibold text-text-muted ring-1 ring-inset ring-border-soft transition hover:bg-surface-hover disabled:opacity-50'
                     }
                   >
                     {STATION_LABELS[st]}
-                    {isPrimary && <span className="text-eyebrow font-bold uppercase tracking-wider opacity-70">primary</span>}
+                    {isPrimary && <span className="text-role-eyebrow font-bold uppercase tracking-wider opacity-70">primary</span>}
                   </button>
                 </HoverTooltip>
               );
@@ -95,7 +95,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
           </div>
         </div>
       </div>
-      <div className="border-t border-border-hairline bg-surface-canvas/60 px-5 py-2 text-micro text-text-muted">
+      <div className="border-t border-border-hairline bg-surface-canvas/60 px-5 py-2 text-role-micro text-text-muted">
         {stations.primary
           ? <>Chip shows <b>{STATION_LABELS[stations.primary]}</b>{stations.secondary.length > 0 ? ` · Switch between ${stations.secondary.length + 1} stations` : ' · no switch (single station)'}</>
           : <>No assignment — chip falls back to the station derived from the employee code.</>}

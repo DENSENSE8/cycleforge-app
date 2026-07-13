@@ -136,7 +136,7 @@ export function IncomingSyncDialog({
               key={Math.floor(elapsedMs / 100)}
               initial={{ opacity: 0.4 }}
               animate={{ opacity: 1 }}
-              className={`text-caption font-mono font-semibold tabular-nums ${meta.tone}`}
+              className={`text-role-caption font-mono font-semibold tabular-nums ${meta.tone}`}
             >
               {(elapsedMs / 1000).toFixed(1)}s
             </motion.span>
@@ -204,7 +204,7 @@ export function IncomingSyncDialog({
                   </div>
                   <ul className="max-h-40 space-y-1 overflow-y-auto px-3 py-2">
                     {result.errors.map((e, i) => (
-                      <li key={i} className="text-caption font-medium text-red-700">{e}</li>
+                      <li key={i} className="text-role-caption font-medium text-red-700">{e}</li>
                     ))}
                   </ul>
                 </div>

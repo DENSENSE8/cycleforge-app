@@ -202,10 +202,12 @@ async function ticketFromDirectEntityLinks(args: {
   if (lineId != null) {
     params.push(lineId);
     clauses.push(`(tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id = $${params.length})`);
+    clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id = $${params.length} AND sup.organization_id = $1))`);
   }
   if (receivingId != null) {
     params.push(receivingId);
     clauses.push(`(tl.entity_type = 'RECEIVING' AND tl.entity_id = $${params.length})`);
+    clauses.push(`(tl.entity_type = 'SERIAL_UNIT' AND tl.entity_id IN (SELECT sup.serial_unit_id FROM serial_unit_provenance sup WHERE sup.origin_type = 'RECEIVING_LINE' AND sup.origin_id IN (SELECT id FROM receiving_line WHERE receiving_id = $${params.length} AND organization_id = $1) AND sup.organization_id = $1))`);
   }
 
   const res = await tenantQuery<SupportTicketDbRow & { zendesk_ticket_id: string | null }>(
@@ -217,7 +219,11 @@ async function ticketFromDirectEntityLinks(args: {
       WHERE tl.organization_id = $1
         AND (${clauses.join(' OR ')})
       ORDER BY
-        CASE tl.entity_type WHEN 'RECEIVING_LINE' THEN 0 ELSE 1 END,
+        CASE tl.entity_type 
+          WHEN 'SERIAL_UNIT' THEN 0 
+          WHEN 'RECEIVING_LINE' THEN 1 
+          ELSE 2 
+        END,
         tl.created_at DESC
       LIMIT 1`,
     params,
@@ -307,18 +313,82 @@ async function ticketFromPhotoEntityLinks(args: {
 }
 
 /**
+ * Denormalized display-cache fallback: the `zendesk_ticket` column on
+ * receiving_line / receiving_carton (stored "#<id>"). Authoritative link tables
+ * win above — this only resolves the column when they're all empty, so the
+ * carton header (which resolves via this fn) agrees with the rail flag / pairing
+ * "Claim ticket" row, both of which read this column directly. The link/unlink
+ * routes write and clear the column in lockstep with ticket_links, so a set
+ * column means genuinely-linked (no ghost after an unlink).
+ */
+async function ticketFromReceivingColumn(args: {
+  orgId: string;
+  lineId?: number | null;
+  receivingId?: number | null;
+}): Promise<SupportTicketRow | null> {
+  const { orgId, lineId, receivingId } = args;
+  if (lineId == null && receivingId == null) return null;
+
+  const readZendeskId = async (sql: string, id: number): Promise<number | null> => {
+    const res = await tenantQuery<{ zendesk_ticket: string | null }>(orgId, sql, [orgId, id]);
+    const raw = res.rows[0]?.zendesk_ticket?.trim();
+    const digits = raw ? raw.match(/\d+/)?.[0] : null;
+    const zd = digits ? Number(digits) : NaN;
+    return Number.isFinite(zd) && zd > 0 ? zd : null;
+  };
+
+  // Prefer the specific line's column, then the carton's.
+  let zd: number | null = null;
+  if (lineId != null) {
+    zd = await readZendeskId(
+      `SELECT zendesk_ticket FROM receiving_line WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+      lineId,
+    );
+  }
+  if (zd == null && receivingId != null) {
+    zd = await readZendeskId(
+      `SELECT zendesk_ticket FROM receiving_carton WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+      receivingId,
+    );
+  }
+  if (zd == null) return null;
+  return supportTicketFromZendeskId(orgId, zd);
+}
+
+/**
  * Primary ticket linked to a receiving carton/line. Resolution order:
  *   1. ticket_links on RECEIVING / RECEIVING_LINE
  *   2. ticket_links on SHIPMENT via receiving.shipment_id (STN)
  *   3. ZENDESK_TICKET on photos linked to this carton/line (media library SoT)
+ *   4. `zendesk_ticket` display column on receiving_line / receiving_carton
  */
 export async function getPrimarySupportTicketForReceiving(args: {
   orgId: string;
   lineId?: number | null;
   receivingId?: number | null;
+  serialUnitId?: number | null;
 }): Promise<SupportTicketRow | null> {
-  const { orgId } = args;
-  const { lineId, receivingId: receivingIdArg } = normalizeReceivingTicketEntityRefs(args);
+  const { orgId, serialUnitId } = args;
+  let resolvedLineId = args.lineId ?? null;
+
+  if (serialUnitId != null && resolvedLineId == null) {
+    const parent = await tenantQuery<{ receiving_line_id: number | null }>(
+      orgId,
+      `SELECT origin_id AS receiving_line_id
+         FROM serial_unit_provenance
+        WHERE serial_unit_id = $1 AND origin_type = 'RECEIVING_LINE' AND organization_id = $2
+        ORDER BY occurred_at DESC LIMIT 1`,
+      [serialUnitId, orgId]
+    );
+    if (parent.rows[0]?.receiving_line_id != null) {
+      resolvedLineId = Number(parent.rows[0].receiving_line_id);
+    }
+  }
+
+  const { lineId, receivingId: receivingIdArg } = normalizeReceivingTicketEntityRefs({
+    ...args,
+    lineId: resolvedLineId,
+  });
   if (lineId == null && receivingIdArg == null) return null;
 
   const receivingId = await resolveReceivingId({ orgId, lineId, receivingId: receivingIdArg });
@@ -335,7 +405,19 @@ export async function getPrimarySupportTicketForReceiving(args: {
     if (viaShipment) return viaShipment;
   }
 
-  return ticketFromPhotoEntityLinks({
+  const viaPhotos = await ticketFromPhotoEntityLinks({
+    orgId,
+    lineId,
+    receivingId: receivingId ?? receivingIdArg ?? null,
+  });
+  if (viaPhotos) return viaPhotos;
+
+  // Last resort: the denormalized `zendesk_ticket` display column. The authoritative
+  // link tables win above; this only fires when the column is set but every
+  // polymorphic link is missing (out-of-sync legacy rows, or a ticket_links write
+  // that never landed). Without it the carton header shows the CLAIM button while
+  // the rail flag / pairing row — which read this column — already show the ticket.
+  return ticketFromReceivingColumn({
     orgId,
     lineId,
     receivingId: receivingId ?? receivingIdArg ?? null,

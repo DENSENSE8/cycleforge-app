@@ -268,7 +268,7 @@ export function MobileIdentify() {
                   />
                 ))}
                 {rawText && (
-                  <p className="px-1 pt-1 text-caption text-white/30">read: “{rawText.slice(0, 90)}”</p>
+                  <p className="px-1 pt-1 text-role-caption text-white/30">read: “{rawText.slice(0, 90)}”</p>
                 )}
                 <Button
                   variant="ghost"

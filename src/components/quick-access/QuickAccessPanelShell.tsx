@@ -58,13 +58,13 @@ export function QuickAccessPanelShell({
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold leading-none text-text-default">{title}</p>
             {count != null && count > 0 ? (
-              <span className="shrink-0 tabular-nums text-caption font-semibold text-text-soft">
+              <span className="shrink-0 tabular-nums text-role-caption font-semibold text-text-soft">
                 {count}
               </span>
             ) : null}
           </div>
           {subtitle ? (
-            <p className="truncate text-caption text-text-soft">{subtitle}</p>
+            <p className="truncate text-role-caption text-text-soft">{subtitle}</p>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">

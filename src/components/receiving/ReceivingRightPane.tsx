@@ -19,12 +19,13 @@ import { ContextualSelectionBar } from '@/design-system/components/ContextualSel
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { EmptyState } from '@/design-system/primitives';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
-import { ReceivingScanLoader } from '@/components/receiving/workspace/ReceivingScanLoader';
 import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
+import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
 import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
 import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
+import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type {
   NavState,
@@ -60,7 +61,7 @@ interface ReceivingRightPaneProps {
   bulkActions: SelectionAction<ReceivingLineRow>[];
   workspace: WorkspaceState | null;
   nav: NavState | null;
-  scanInFlight: { tracking: string; startedAt: number } | null;
+  scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
   staffId: string;
   incomingDetails: IncomingDetailsTarget | null;
   onCloseIncoming: () => void;
@@ -86,14 +87,18 @@ export function ReceivingRightPane({
 }: ReceivingRightPaneProps) {
   const showWorkspace = !!workspace && !isTableOnlyMode;
   // Scan loader covers the gap between scan and PO/line mounting, rendered above
-  // the workspace (z-20) so it overlays the previously-open line. TRIAGE shows no
-  // takeover: the sidebar's optimistic "importing" row (a leadingRow stub titled
-  // with the scanned tracking #) is the only loading affordance there, and the
-  // unfound workspace opens optimistically from a stub. Unbox keeps it (covers the
-  // gap before the matched workspace crossfades in).
-  const showScanLoader = !!scanInFlight && !isTableOnlyMode && !isTriageMode;
+  // the workspace (z-20) so it overlays the previously-open line. Each mode gets
+  // its OWN skeleton loader — never the other mode's display — gated on the
+  // surface the in-flight scan belongs to (`scanInFlight.surface`). Unbox → the
+  // LineEditPanel-shaped ReceivingWorkspaceSkeleton; Triage → the TriagePanel-
+  // shaped TriageWorkspaceSkeleton. A scan in one mode can never paint the other
+  // mode's pane. There is no "Finding your PO" hero — the skeleton is the loader.
+  const showUnboxScanLoader =
+    !!scanInFlight && scanInFlight.surface === 'unbox' && !isTableOnlyMode && !isTriageMode;
+  const showTriageScanLoader =
+    !!scanInFlight && scanInFlight.surface === 'triage' && isTriageMode;
   const emptyState = RECEIVING_EMPTY_STATE[mode];
-  const showIdleSkeleton = mode === 'receive' && !isTableOnlyMode && !showWorkspace && !showScanLoader;
+  const showIdleSkeleton = mode === 'receive' && !isTableOnlyMode && !showWorkspace && !showUnboxScanLoader;
   // Heavy line-workspace overlay crossfade. Uses the slower, opacity-led
   // `workbenchPaneSettle` (not the snappy `workbenchPane`): a carton→carton swap
   // dissolves — the incoming pane rises + fades in over a static, fading-out
@@ -165,7 +170,7 @@ export function ReceivingRightPane({
       {/* Empty right pane — per-mode copy from RECEIVING_EMPTY_STATE. Sits under
           the workspace/loader overlays (no z), so it only shows when neither is
           mounted. */}
-      {!isTableOnlyMode && !showWorkspace && !showScanLoader && !showIdleSkeleton && emptyState ? (
+      {!isTableOnlyMode && !showWorkspace && !showUnboxScanLoader && !showTriageScanLoader && !showIdleSkeleton && emptyState ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <EmptyState
             title={emptyState.title}
@@ -174,21 +179,27 @@ export function ReceivingRightPane({
         </div>
       ) : null}
 
-      {/* Scan-in-flight skeleton loader — shown the moment a tracking scan is
-          submitted; cleared 500ms after the response lands. */}
-      {showScanLoader ? (
-        // With a workspace already mounted behind, start BELOW its 80px header
-        // chrome (40px stepper + 40px toolbar) so those rows stay visible and the
-        // loader reads as a clean white body. Cold start fills from the top.
+      {/* Unbox scan-in-flight skeleton — shown the moment an unbox tracking scan
+          is submitted; cleared 500ms after the response lands. With a workspace
+          already mounted behind, start BELOW its 80px header chrome (40px stepper
+          + 40px toolbar) and drop the skeleton's own header so those rows stay
+          visible. Cold start fills from the top with the full skeleton. */}
+      {showUnboxScanLoader ? (
         <div
           className={`absolute inset-x-0 bottom-0 z-20 overflow-hidden ${
             showWorkspace ? 'top-[80px]' : 'top-0'
           }`}
         >
-          <ReceivingScanLoader
-            tracking={scanInFlight!.tracking}
-            startedAt={scanInFlight!.startedAt}
-          />
+          <ReceivingWorkspaceSkeleton showHeader={!showWorkspace} />
+        </div>
+      ) : null}
+
+      {/* Triage scan-in-flight skeleton — triage's OWN skeleton (TriagePanel-
+          shaped), full-bleed so it cleanly takes over the triage pane while the
+          carton is being identified. Never renders the unbox display. */}
+      {showTriageScanLoader ? (
+        <div className="absolute inset-0 z-20 overflow-hidden">
+          <TriageWorkspaceSkeleton />
         </div>
       ) : null}
 
@@ -217,7 +228,6 @@ export function ReceivingRightPane({
               row={workspace!.row}
               staffId={staffId}
               accordionBootstrap={workspace!.accordionBootstrap}
-              scanDriven={workspace!.scanDriven}
               nav={nav}
               variant={isTriageMode ? 'triage' : 'unbox'}
               onPrev={() => {

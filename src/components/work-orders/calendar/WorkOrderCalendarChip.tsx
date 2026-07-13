@@ -32,7 +32,7 @@ export function WorkOrderCalendarChip({
           ref={anchorRef}
           type="button"
           onClick={() => setOpen(true)}
-          className={`ds-raw-button block w-full truncate rounded px-1.5 py-0.5 text-left text-micro font-semibold leading-tight transition-colors hover:brightness-95 ${tone}`}
+          className={`ds-raw-button block w-full truncate rounded px-1.5 py-0.5 text-left text-role-micro font-semibold leading-tight transition-colors hover:brightness-95 ${tone}`}
         >
           <span className="truncate">{row.recordLabel}</span>
           <span className="ml-1 font-medium opacity-70">{assignee}</span>

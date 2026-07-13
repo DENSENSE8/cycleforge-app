@@ -77,7 +77,7 @@ function PhotoStrip({ photos }: { photos: HistoryPhoto[] }) {
         </span>
       ))}
       {extra > 0 ? (
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-sunken text-micro font-bold text-text-soft ring-1 ring-border-soft">
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-sunken text-role-micro font-bold text-text-soft ring-1 ring-border-soft">
           +{extra}
         </span>
       ) : null}
@@ -88,7 +88,7 @@ function PhotoStrip({ photos }: { photos: HistoryPhoto[] }) {
 function PanelSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section className="pb-2">
-      <p className="px-2 pb-0.5 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+      <p className="px-2 pb-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint">
         {label}
       </p>
       <div className="space-y-0.5">{children}</div>
@@ -124,8 +124,8 @@ function HistoryRow({
     >
       <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-muted">{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-caption font-bold text-text-default">{title}</span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+        <span className="block truncate text-role-caption font-bold text-text-default">{title}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
           {meta}
         </span>
       </span>
@@ -245,12 +245,12 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
       ) : null}
 
       {entries === null ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-caption text-text-soft">
+        <div className="flex items-center justify-center gap-2 py-8 text-role-caption text-text-soft">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading packs…
         </div>
       ) : entries.length === 0 ? (
-        <p className="mx-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-soft">
+        <p className="mx-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
           {error ?? 'No recent packs yet. Pack an order on your phone to see it here.'}
         </p>
       ) : (
@@ -270,7 +270,7 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
                     {entry.carrier ? (
                       <span
                         className={cn(
-                          'inline-flex rounded-full px-1.5 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset',
+                          'inline-flex rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
                           carrierChipClass(entry.carrier),
                         )}
                       >

@@ -74,7 +74,7 @@ export function LabelTypeSelect({
                     setOpen(false);
                     triggerRef.current?.focus();
                   }}
-                  className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-label font-bold transition-colors hover:bg-surface-hover ${
+                  className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-bold transition-colors hover:bg-surface-hover ${
                     active ? 'text-text-default' : 'text-text-soft'
                   }`}
                 >

@@ -58,14 +58,14 @@ export function StudioLibrary({
   return (
     <div className="space-y-5 p-4">
       <section>
-        <h3 className="mb-2 text-micro font-bold uppercase tracking-wider text-text-faint">Node types</h3>
+        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">Node types</h3>
         {palette.length === 0 ? (
           <p className="text-xs text-text-faint">No node types registered.</p>
         ) : (
           <div className="space-y-3">
             {CATEGORY_ORDER.filter((cat) => palette.some((p) => p.category === cat)).map((cat) => (
               <div key={cat}>
-                <p className="mb-1 text-micro font-semibold uppercase tracking-wide text-text-faint">
+                <p className="mb-1 text-role-micro font-semibold uppercase tracking-wide text-text-faint">
                   {CATEGORY_LABELS[cat]}
                 </p>
                 <ul className="space-y-1">
@@ -78,7 +78,7 @@ export function StudioLibrary({
                         <>
                           <Icon className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                           <span className="truncate text-xs font-semibold text-text-muted">{p.label}</span>
-                          <span className="ml-auto truncate font-mono text-eyebrow text-text-faint">
+                          <span className="ml-auto truncate font-mono text-role-eyebrow text-text-faint">
                             {editable ? '+ add' : p.type}
                           </span>
                         </>
@@ -107,13 +107,13 @@ export function StudioLibrary({
             ))}
           </div>
         )}
-        <p className="mt-2 text-micro text-text-faint">
+        <p className="mt-2 text-role-micro text-text-faint">
           {editable ? 'Click a type to add it to the draft.' : 'Adding nodes unlocks on a draft.'}
         </p>
       </section>
 
       <section>
-        <h3 className="mb-2 text-micro font-bold uppercase tracking-wider text-text-faint">Stations</h3>
+        <h3 className="mb-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">Stations</h3>
         <ul className="space-y-1">
           {STATIONS.map((s) => (
             <HoverTooltip key={s.key} label={s.blurb} asChild>
@@ -129,7 +129,7 @@ export function StudioLibrary({
       {/* ─── Templates (ST6 / Phase E4) — system blueprints to clone ─── */}
       {templates.length > 0 && (
         <section className="border-t border-border-hairline pt-4">
-          <h3 className="mb-2 text-micro font-bold uppercase tracking-wider text-text-faint">Templates</h3>
+          <h3 className="mb-2 text-role-micro font-bold uppercase tracking-wider text-text-faint">Templates</h3>
           <ul className="space-y-1.5">
             {templates.map((t) => {
               const importing = importingTemplateId === t.id;
@@ -143,11 +143,11 @@ export function StudioLibrary({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-semibold text-text-muted">{t.name}</p>
                       {t.description && (
-                        <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-text-faint">
+                        <p className="mt-0.5 line-clamp-2 text-role-micro leading-snug text-text-faint">
                           {t.description}
                         </p>
                       )}
-                      <p className="mt-1 font-mono text-eyebrow text-text-faint">
+                      <p className="mt-1 font-mono text-role-eyebrow text-text-faint">
                         {t.nodeCount} step{t.nodeCount === 1 ? '' : 's'} · {t.edgeCount} link
                         {t.edgeCount === 1 ? '' : 's'}
                       </p>
@@ -162,7 +162,7 @@ export function StudioLibrary({
                       disabled={importingTemplateId !== null}
                       loading={importing}
                       icon={<icons.Plus />}
-                      className="mt-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-caption font-semibold text-violet-700 hover:bg-violet-100"
+                      className="mt-1.5 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-role-caption font-semibold text-violet-700 hover:bg-violet-100"
                     >
                       {importing ? 'Importing…' : 'Import as draft'}
                     </Button>
@@ -172,7 +172,7 @@ export function StudioLibrary({
             })}
           </ul>
           {!canManage && (
-            <p className="mt-1.5 text-micro text-text-faint">
+            <p className="mt-1.5 text-role-micro text-text-faint">
               Importing a template needs the manage permission.
             </p>
           )}
@@ -181,11 +181,11 @@ export function StudioLibrary({
 
       {/* ─── Issues rail (ST3) — the operation's linter output ─── */}
       <section className="border-t border-border-hairline pt-4">
-        <h3 className="mb-2 flex items-center gap-1.5 text-micro font-bold uppercase tracking-wider text-text-faint">
+        <h3 className="mb-2 flex items-center gap-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
           Issues
           <span
             className={[
-              'rounded-full px-1.5 py-0.5 text-micro font-bold',
+              'rounded-full px-1.5 py-0.5 text-role-micro font-bold',
               issues.some((d) => d.severity === 'error')
                 ? 'bg-rose-100 text-rose-700'
                 : issues.length
@@ -208,9 +208,9 @@ export function StudioLibrary({
                     onClick={() => d.nodeId && onFocusIssue(d.nodeId)}
                     className="ds-raw-button w-full rounded-lg border border-border-hairline bg-surface-canvas/60 px-2 py-1.5 text-left transition-colors hover:border-border-soft hover:bg-surface-sunken"
                   >
-                    <span className={`mr-1.5 text-caption font-bold ${g.cls}`}>{g.glyph}</span>
-                    <span className="text-caption leading-tight text-text-muted">{d.message}</span>
-                    {d.fix && <span className="mt-0.5 block text-micro text-text-faint">↳ {d.fix}</span>}
+                    <span className={`mr-1.5 text-role-caption font-bold ${g.cls}`}>{g.glyph}</span>
+                    <span className="text-role-caption leading-tight text-text-muted">{d.message}</span>
+                    {d.fix && <span className="mt-0.5 block text-role-micro text-text-faint">↳ {d.fix}</span>}
                   </button>
                 </li>
               );

@@ -80,11 +80,11 @@ export function StudioRecoveryPanel({ definitionId }: { definitionId: number }) 
 
   return (
     <section>
-      <h3 className="mb-1.5 text-micro font-bold uppercase tracking-wider text-text-faint">
+      <h3 className="mb-1.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
         Stuck items{items ? ` · ${items.length}` : ''}
       </h3>
 
-      {error && <p className="mb-1.5 text-caption font-semibold text-rose-600">{error}</p>}
+      {error && <p className="mb-1.5 text-role-caption font-semibold text-rose-600">{error}</p>}
       {items === null && <p className="text-xs text-text-faint">Checking…</p>}
 
       <ul className="space-y-1.5">
@@ -94,12 +94,12 @@ export function StudioRecoveryPanel({ definitionId }: { definitionId: number }) 
             className="rounded-md border border-border-hairline bg-surface-canvas/60 px-2 py-1.5"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-mono text-caption font-semibold text-text-muted">
+              <span className="truncate font-mono text-role-caption font-semibold text-text-muted">
                 {it.serialNumber || `#${it.serialUnitId}`}
               </span>
               <span
                 className={[
-                  'shrink-0 rounded px-1.5 py-0.5 text-micro font-bold uppercase tracking-wide',
+                  'shrink-0 rounded px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wide',
                   it.status === 'error'
                     ? 'bg-rose-50 text-rose-600'
                     : 'bg-amber-50 text-amber-700',
@@ -108,14 +108,14 @@ export function StudioRecoveryPanel({ definitionId }: { definitionId: number }) 
                 {it.status}
               </span>
             </div>
-            <p className="mt-0.5 truncate text-micro text-text-faint">
+            <p className="mt-0.5 truncate text-role-micro text-text-faint">
               {it.sku ? `${it.sku} · ` : ''}
               {it.currentStatus ?? '—'}
               {it.nodeType ? ` · at ${it.nodeType}` : ''}
             </p>
             {it.lastError && (
               // ds-allow-title: truncation-only tooltip surfacing the full clipped error on a non-interactive line
-              <p className="mt-0.5 truncate text-micro text-rose-400" title={it.lastError}>
+              <p className="mt-0.5 truncate text-role-micro text-rose-400" title={it.lastError}>
                 ↳ {it.lastError}
               </p>
             )}

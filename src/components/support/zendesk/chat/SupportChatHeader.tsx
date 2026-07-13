@@ -86,7 +86,7 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
             className="-ml-1 mt-0.5 rounded-md p-1 hover:bg-surface-sunken lg:hidden"
           />
         ) : null}
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-black text-text-soft">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-role-caption font-black text-text-soft">
           {initials(reqName)}
         </span>
         <div className="min-w-0 flex-1">
@@ -105,7 +105,7 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
                       setEditingTitle(false);
                     }
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 text-[15px] font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100"
+                  className="min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 text-role-body font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 <HoverTooltip label="Save title" asChild>
                   <IconButton
@@ -133,18 +133,18 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
                     type="button"
                     onClick={startEditTitle}
                     aria-label="Click to edit title"
-                    className="min-w-0 truncate text-left text-[15px] font-bold tracking-tight text-text-default transition hover:text-blue-700"
+                    className="min-w-0 truncate text-left text-role-body font-bold tracking-tight text-text-default transition hover:text-blue-700"
                   >
                     {ticket.subject || '(no subject)'}
                   </button>
                 </HoverTooltip>
-                <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest', sb.className)}>
+                <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
                   {sb.label}
                 </span>
               </>
             )}
           </div>
-          <p className="mt-0.5 truncate text-label text-text-soft">
+          <p className="mt-0.5 truncate text-role-caption text-text-soft">
             <span className="font-semibold text-text-muted">{reqName}</span>
             {requester.email && requester.name ? <span className="text-text-faint"> · {requester.email}</span> : null}
             <span className="text-text-faint"> · #{ticket.id}</span>
@@ -170,7 +170,7 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         {/* Zendesk ticket fields — these write back to Zendesk. */}
         <div className="flex items-center gap-2">
-          <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Helpdesk</span>
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">Helpdesk</span>
           <ZendeskSelect
             value={String(ticket.status)}
             options={STATUS_OPTIONS}
@@ -197,7 +197,7 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
 
         {/* In-website follow-up — assigning notifies that staffer's inbox bell. */}
         <div className="flex items-center gap-2 border-l border-border-soft pl-3">
-          <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">Follow-up</span>
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">Follow-up</span>
           <ZendeskSelect
             value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
             options={staffOptions}

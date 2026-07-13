@@ -7,7 +7,7 @@ export function EmailTab({ detail }: { detail: TriageDetail }) {
   const { html, text, error } = detail.body;
   return (
     <div className="space-y-3">
-      <dl className="space-y-1 text-label">
+      <dl className="space-y-1 text-role-caption">
         <Row label="From" value={detail.row.email_from ?? '—'} />
         <Row label="Subject" value={detail.row.email_subject ?? '—'} />
         <Row
@@ -23,14 +23,14 @@ export function EmailTab({ detail }: { detail: TriageDetail }) {
         )}
       </dl>
       {error ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-caption text-amber-800">
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-role-caption text-amber-800">
           {error}
         </div>
       ) : html ? (
         <EmailHtmlFrame html={html} />
       ) : (
         <div className="rounded-md border border-border-soft bg-surface-canvas p-3">
-          <pre className="whitespace-pre-wrap break-words font-sans text-caption leading-relaxed text-text-muted">
+          <pre className="whitespace-pre-wrap break-words font-sans text-role-caption leading-relaxed text-text-muted">
             {text || '(empty body)'}
           </pre>
         </div>

@@ -34,7 +34,7 @@ function GoalRing({ percent, color }: { percent: number; color: string }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-label font-extrabold text-text-default tabular-nums tracking-tight">
+        <span className="text-role-caption font-extrabold text-text-default tabular-nums tracking-tight">
           {clamped}%
         </span>
       </div>
@@ -70,21 +70,21 @@ function StaffGoalCard({ row, index }: {
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-6 h-6 rounded-full bg-surface-canvas text-text-muted text-eyebrow font-extrabold flex items-center justify-center shrink-0">
+          <div className="w-6 h-6 rounded-full bg-surface-canvas text-text-muted text-role-eyebrow font-extrabold flex items-center justify-center shrink-0">
             {initials || '··'}
           </div>
-          <p className="text-[13px] font-bold text-text-default truncate leading-tight">
+          <p className="text-role-data font-bold text-text-default truncate leading-tight">
             {row.name}
           </p>
         </div>
-        <p className="text-micro font-bold text-text-muted uppercase tracking-[0.14em] mb-1.5">
+        <p className="text-role-micro font-bold text-text-muted uppercase tracking-[0.14em] mb-1.5">
           {row.station}
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-caption font-semibold text-text-muted tabular-nums">
+          <span className="text-role-caption font-semibold text-text-muted tabular-nums">
             {row.current} / {row.goal}
           </span>
-          <span className={`text-eyebrow font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tone.chip}`}>
+          <span className={`text-role-eyebrow uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tone.chip}`}>
             {tone.label}
           </span>
         </div>
@@ -104,12 +104,12 @@ export function StaffGoalsRail({ staffProgress, isLoading }: StaffGoalsRailProps
           <span className={`${sectionLabel} !text-text-muted`}>
             Staff goals · today
           </span>
-          <h2 className="text-[20px] sm:text-[22px] font-extrabold tracking-tight text-text-default mt-1">
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-text-default mt-1">
             Who’s pacing where
           </h2>
         </div>
         {rows.length > 0 && (
-          <span className="text-caption font-semibold text-text-muted tabular-nums shrink-0">
+          <span className="text-role-caption font-semibold text-text-muted tabular-nums shrink-0">
             <span className="text-text-default font-extrabold">{onTrack}</span>
             <span className="text-text-soft">/{rows.length}</span> on track
           </span>
@@ -124,8 +124,8 @@ export function StaffGoalsRail({ staffProgress, isLoading }: StaffGoalsRailProps
         </div>
       ) : rows.length === 0 ? (
         <div className="bg-surface-card border border-dashed border-border-soft rounded-[20px] p-8 text-center">
-          <p className="text-[13px] font-semibold text-text-muted">No staff goals set yet.</p>
-          <p className="text-caption text-text-muted mt-1">Set daily goals from the staff settings to track progress here.</p>
+          <p className="text-role-data font-semibold text-text-muted">No staff goals set yet.</p>
+          <p className="text-role-caption text-text-muted mt-1">Set daily goals from the staff settings to track progress here.</p>
         </div>
       ) : (
         <div className="overflow-x-auto -mx-4 sm:mx-0 pb-1">

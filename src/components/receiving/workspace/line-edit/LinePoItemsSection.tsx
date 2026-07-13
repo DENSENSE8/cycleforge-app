@@ -1,11 +1,16 @@
 'use client';
 
 /**
- * PO-items section of the LineEditPanel. Unmatched cartons, returns, and
- * sales-order-linked cartons render the Ecwid add-item / serial-scan
- * {@link UnmatchedItemsSection}; real Zoho PO cartons render
- * {@link PoLinesAccordion}. Lineless real PO cartons fall back to the unmatched
- * surface so the workspace never paints a blank card.
+ * PO-items section of the LineEditPanel. Both source lanes now render the SAME
+ * one-row surface — `PoLinesAccordion` (receiving-condition-serial-unification-
+ * plan.md): a real Zoho PO carton mounts it directly (driven by the
+ * `useUnboxLineController` layer); an unmatched / return / sales-order-linked
+ * carton mounts it inside {@link UnmatchedItemsSection} → `UnmatchedAccordionSurface`
+ * (driven by the `useUnmatchedItems` layer, with the return scanner as the
+ * active row). {@link classifyLineSource} selects the controller layer, NOT the
+ * surface — there is no standing carton scanner beside the rows, and no feature
+ * flag. Lineless real PO cartons fall back to the unmatched lane so the
+ * workspace never paints a blank card.
  */
 
 import { useMemo } from 'react';
@@ -14,7 +19,6 @@ import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PoLinesAccordion } from '../PoLinesAccordion';
 import { UnmatchedItemsSection } from '../UnmatchedItemsSection';
-import { markConditionSet } from '../ReceivingProgressStepper';
 import { ActiveLineConditionSerial } from './ActiveLineConditionSerial';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
@@ -216,7 +220,6 @@ export function LinePoItemsSection({
           onActiveConditionChange={c.setUnitLabelCondition}
           onConditionChange={(next) => {
             c.setCond(next);
-            markConditionSet(row.id);
             void c.patch({ condition_grade: next });
           }}
           onEditingSerialChange={c.setHeaderSerialEdit}

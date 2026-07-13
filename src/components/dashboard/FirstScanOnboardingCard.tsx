@@ -42,9 +42,9 @@ import { useOperationsRoi } from '@/features/operations/workspace/useOperationsR
 /** The seeded electronics-refurb lifecycle, in flow order — what each scanned unit runs through. */
 const SEEDED_STAGES = ['Receive', 'Test', 'Wipe', 'Grade', 'List', 'Ship'] as const;
 
-const EYEBROW = 'text-eyebrow font-black uppercase tracking-widest text-text-accent';
+const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-accent';
 const STAGE_CHIP =
-  'rounded bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft px-1.5 py-0.5 text-micro font-black uppercase tracking-widest';
+  'rounded bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft px-1.5 py-0.5 text-role-micro uppercase tracking-widest';
 
 /**
  * Permission gate. Rendering the data-owning inner component conditionally keeps
@@ -95,7 +95,7 @@ function FirstScanOnboardingCardInner({ variant }: { variant: FirstScanVariant }
         <h2 className="mt-2 text-lg font-black leading-tight text-text-default">
           Let&apos;s process your first unit
         </h2>
-        <p className="mt-1 text-caption font-medium text-text-muted">
+        <p className="mt-1 text-role-caption font-medium text-text-muted">
           Your refurb workflow is ready. Every unit you scan flows down this line:
         </p>
 

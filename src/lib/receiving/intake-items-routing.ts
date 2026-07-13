@@ -41,20 +41,40 @@ export function isSalesOrderDerivedCarton(carton: {
 }
 
 /**
- * Use {@link UnmatchedItemsSection} (serial scan, Ecwid add, return lines) instead
- * of the Zoho PO accordion.
+ * A receiving line's source lane. Post-unification BOTH lanes render the same
+ * one-row surface (`PoLinesAccordion` — the matched carton mounts it directly,
+ * the unfound carton mounts it inside `UnmatchedAccordionSurface`), so this is a
+ * **source classifier**, not a surface switch: it selects which sibling
+ * controller layer drives the shared row surface
+ * (receiving-condition-serial-unification-plan.md, Phase 3).
+ *
+ *   - `'unmatched'` → `useUnmatchedItems` layer (serial scan → create line,
+ *      Ecwid add, return lines, door classification, unlink).
+ *   - `'po'`        → `useUnboxLineController` layer (Zoho PO receive/print).
  */
-export function shouldUseUnmatchedItemsSurface(row: RowSlice): boolean {
-  if (row.receiving_source === 'unmatched') return true;
-  if (isReturnIntake(row)) return true;
-  if (isSalesOrderLinkage(row)) return true;
-  return false;
+export type LineSource = 'po' | 'unmatched';
+
+/** Classify a line's source lane (drives which controller layer, not the surface). */
+export function classifyLineSource(row: RowSlice): LineSource {
+  if (row.receiving_source === 'unmatched') return 'unmatched';
+  if (isReturnIntake(row)) return 'unmatched';
+  if (isSalesOrderLinkage(row)) return 'unmatched';
+  return 'po';
 }
 
-/** Mount `PoLinesAccordion` — real Zoho PO cartons only. */
+/**
+ * The `'unmatched'` source lane — serial scan, Ecwid add, return lines. Thin
+ * boolean alias over {@link classifyLineSource} kept for the many existing
+ * call sites; new code should prefer the classifier so the source is explicit.
+ */
+export function shouldUseUnmatchedItemsSurface(row: RowSlice): boolean {
+  return classifyLineSource(row) === 'unmatched';
+}
+
+/** The `'po'` source lane — real Zoho PO cartons that receive against inventory. */
 export function shouldUsePoAccordion(row: RowSlice): boolean {
   if (row.receiving_id == null) return false;
-  return !shouldUseUnmatchedItemsSurface(row);
+  return classifyLineSource(row) === 'po';
 }
 
 /**

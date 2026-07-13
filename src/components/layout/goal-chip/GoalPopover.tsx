@@ -41,9 +41,9 @@ export function GoalPopover({
         <div className="flex items-center gap-2.5">
           <GoalRing percent={view.percent} color={tone.ring} size={38} />
           <div className="leading-tight">
-            <p className="text-[13px] font-bold tracking-tight text-text-default">Today&apos;s {STATION_LABEL[active]} goal</p>
+            <p className="text-role-data font-bold tracking-tight text-text-default">Today&apos;s {STATION_LABEL[active]} goal</p>
             <p className="mt-0.5 flex items-center gap-1.5">
-              <span className="text-micro font-semibold tabular-nums text-text-soft">
+              <span className="text-role-micro font-semibold tabular-nums text-text-soft">
                 <AnimatedStat value={chipCount.value} speed="fast" className="inline" /> /{' '}
                 <AnimatedStat value={chipCount.total} speed="fast" className="inline" />
               </span>
@@ -76,7 +76,7 @@ export function GoalPopover({
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
             className="p-2"
           >
-            <p className="px-2 pb-1.5 pt-1 text-eyebrow font-bold uppercase tracking-wider text-text-faint">Your stations</p>
+            <p className="px-2 pb-1.5 pt-1 text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">Your stations</p>
             {goals.map((gg) => {
               const pct = gg.target <= 0 ? 0 : Math.round((gg.scanCount / gg.target) * 100);
               const gt = toneFor(pct);
@@ -91,7 +91,7 @@ export function GoalPopover({
                 >
                   <GoalRing percent={pct} color={gt.ring} size={30} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-label font-bold text-text-default">
+                    <span className="block truncate text-role-caption font-bold text-text-default">
                       {STATION_LABEL[gg.station]}
                       {gg.isPrimary && <span className="ml-1.5 text-[8.5px] font-black uppercase tracking-wider text-blue-500">primary</span>}
                     </span>
@@ -120,7 +120,7 @@ export function GoalPopover({
                     type="button"
                     onClick={() => g.changeMode(m)}
                     className={cn(
-                      'relative flex-1 rounded-lg px-1.5 py-1.5 text-micro font-bold transition-colors',
+                      'relative flex-1 rounded-lg px-1.5 py-1.5 text-role-micro font-bold transition-colors',
                       g.mode === m ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft' : 'text-text-soft hover:text-text-default',
                     )}
                   >
@@ -134,10 +134,10 @@ export function GoalPopover({
             {g.mode === 'scans' ? (
               <div className="px-3.5 py-3.5">
                 <div className="flex items-end justify-between">
-                  <span className="text-[28px] font-extrabold leading-none tabular-nums text-text-default">
+                  <span className="text-3xl font-extrabold leading-none tabular-nums text-text-default">
                     <AnimatedStat value={view.scanCount} />
                   </span>
-                  <span className="pb-0.5 text-label font-bold tabular-nums text-text-faint">
+                  <span className="pb-0.5 text-role-caption font-bold tabular-nums text-text-faint">
                     of <AnimatedStat value={view.target} className="inline" />
                   </span>
                 </div>
@@ -161,7 +161,7 @@ export function GoalPopover({
               <div>
                 {/* whole-list reset interval */}
                 <div className="flex items-center justify-between gap-2 px-3 pt-2.5">
-                  <span className="flex items-center gap-1 text-eyebrow font-bold uppercase tracking-wider text-text-faint">
+                  <span className="flex items-center gap-1 text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">
                     <Clock className="h-3 w-3" /> Resets every
                   </span>
                   <div className="flex gap-0.5 rounded-lg bg-surface-sunken p-0.5 ring-1 ring-border-soft">
@@ -172,7 +172,7 @@ export function GoalPopover({
                         type="button"
                         onClick={() => g.changeInterval(opt.ms)}
                         className={cn(
-                          'rounded-md px-1.5 py-0.5 text-micro font-bold transition-colors',
+                          'rounded-md px-1.5 py-0.5 text-role-micro font-bold transition-colors',
                           g.intervalMs === opt.ms ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft' : 'text-text-soft hover:text-text-default',
                         )}
                       >

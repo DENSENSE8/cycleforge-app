@@ -355,7 +355,7 @@ export function OrdersQueueTable({
                 <div className="mx-auto animate-in fade-in zoom-in duration-300">{firstRunEmpty}</div>
               ) : (
                 <div className="max-w-xs mx-auto">
-                  <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-muted">{emptyMessage}</div>
+                  <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">{emptyMessage}</div>
                   {showWeekControls && weekOffset > 0 && onResetWeek ? (
                     <Button
                       type="button"

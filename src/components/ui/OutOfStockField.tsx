@@ -63,7 +63,7 @@ export function OutOfStockField({
           </span>
           <div className="flex items-center gap-2">
             <span
-              className={`text-eyebrow font-bold uppercase tracking-wide text-emerald-500 transition-opacity duration-300 ${
+              className={`text-role-eyebrow font-bold uppercase tracking-wide text-emerald-500 transition-opacity duration-300 ${
                 showSaved ? 'opacity-100' : 'opacity-0'
               }`}
             >
@@ -112,7 +112,7 @@ export function OutOfStockField({
             onClick={onEdit}
             icon={<Pencil className="h-3 w-3" />}
             ariaLabel="Edit need-to-order note"
-            className="h-auto gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-micro font-black uppercase tracking-[0.18em] text-red-700 ring-0 hover:border-red-300 hover:bg-red-100"
+            className="h-auto gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-role-micro uppercase tracking-[0.18em] text-red-700 ring-0 hover:border-red-300 hover:bg-red-100"
           >
             Edit Note
           </Button>

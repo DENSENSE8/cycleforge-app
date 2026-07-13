@@ -46,9 +46,9 @@ When a unit fails testing, support and warehouse must share **one thread**. Toda
 
 ## Done looks like
 
-- [ ] Fail a unit in testing → ticket appears on that serial within the same flow.
+- [x] Fail a unit in testing → ticket appears on that serial within the same flow.
 - [ ] Open Support → open ticket → jump to unit journey and bin.
-- [ ] Open testing → see ticket chip → reply without leaving context.
+- [x] Open testing → see ticket chip → reply without leaving context.
 - [ ] In a 1-on-1, the fail → ticket → journey loop is practiced in under two minutes.
 
 ---

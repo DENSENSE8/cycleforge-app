@@ -20,7 +20,7 @@ export function IncomingSyncButtons({ sync }: { sync: ReturnType<typeof useIncom
           onClick={() => void sync.refreshMarketplace()}
           disabled={sync.marketplaceRefreshing}
           aria-label="Import purchases from linked marketplace buyer accounts"
-          className="ds-raw-button flex w-full items-center justify-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-caption font-bold text-amber-800 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ds-raw-button flex w-full items-center justify-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-role-caption font-bold text-amber-800 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Package className={`h-3.5 w-3.5 ${sync.marketplaceRefreshing ? 'animate-pulse' : ''}`} />
           {sync.marketplaceRefreshing ? 'Marketplace…' : 'Marketplace'}
@@ -36,7 +36,7 @@ export function IncomingSyncButtons({ sync }: { sync: ReturnType<typeof useIncom
             onClick={() => void sync.refreshZoho()}
             disabled={sync.zohoRefreshing}
             aria-label="Re-sync issued purchase orders + mirror status. Received POs clear from Incoming."
-            className="ds-raw-button flex flex-1 items-center justify-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ds-raw-button flex flex-1 items-center justify-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-role-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${sync.zohoRefreshing ? 'animate-spin' : ''}`} />
             {sync.zohoRefreshing ? 'Inventory…' : 'Inventory'}

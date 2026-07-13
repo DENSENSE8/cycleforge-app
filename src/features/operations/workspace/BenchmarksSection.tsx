@@ -115,7 +115,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
 
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-6 text-caption font-semibold text-text-soft">
+      <div className="flex items-center gap-2 py-6 text-role-caption font-semibold text-text-soft">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading…
       </div>
     );
@@ -124,7 +124,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
   if (query.isError || !query.data?.success) {
     return (
       <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-        <p className="text-caption font-bold text-rose-700">Could not load benchmarks.</p>
+        <p className="text-role-caption font-bold text-rose-700">Could not load benchmarks.</p>
         <div className="mt-2">
           <Button variant="ghost" size="sm" onClick={() => query.refetch()}>
             Retry
@@ -140,8 +140,8 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
   if (!seeded) {
     return (
       <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
-        <p className="text-caption font-bold text-text-muted">No benchmarks seeded yet</p>
-        <p className="mt-1 text-micro leading-5 text-text-soft">
+        <p className="text-role-caption font-bold text-text-muted">No benchmarks seeded yet</p>
+        <p className="mt-1 text-role-micro leading-5 text-text-soft">
           Apply the insight_links seed migration to compare your numbers against the vertical.
         </p>
       </div>
@@ -155,18 +155,18 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
           <div key={row.key} className="flex items-center gap-3 py-2.5">
             <div className="min-w-0 flex-1">
               <HoverTooltip label={row.basis}>
-                <p className="truncate text-caption font-bold text-text-default">{row.label}</p>
+                <p className="truncate text-role-caption font-bold text-text-default">{row.label}</p>
               </HoverTooltip>
-              <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+              <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 Typical {row.typical}
               </p>
             </div>
-            <p className="text-label font-black tabular-nums text-text-default">
+            <p className="text-role-caption font-black tabular-nums text-text-default">
               {row.you != null ? `${row.you}${row.youSuffix}` : '—'}
             </p>
             <span
               className={cn(
-                'rounded-full px-1.5 py-0.5 text-mini font-black uppercase tracking-widest ring-1 ring-inset',
+                'rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
                 VERDICT_CHIP[row.verdict].cls,
               )}
             >
@@ -175,7 +175,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
           </div>
         ))}
       </div>
-      <p className="text-micro leading-5 text-text-soft">
+      <p className="text-role-micro leading-5 text-text-soft">
         Your last {query.data.actuals.rangeDays}d vs seeded used-electronics-reseller benchmarks (editable seeds — ask
         the assistant &ldquo;how do we compare to typical&rdquo; for the full picture).
       </p>

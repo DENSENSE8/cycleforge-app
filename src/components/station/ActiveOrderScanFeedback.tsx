@@ -264,9 +264,9 @@ function FeedbackBody({
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             <Icon className={`h-3.5 w-3.5 shrink-0 ${tint}`} />
-            <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">{label}</span>
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</span>
             <HoverTooltip label={activeOrder.tracking ?? ''} asChild>
-              <span className="truncate text-caption font-black tracking-tight text-text-default">
+              <span className="truncate text-role-caption font-black tracking-tight text-text-default">
                 {variant === 'exception' ? (
                   <span className="font-mono tabular-nums">{identifier}</span>
                 ) : (
@@ -300,7 +300,7 @@ function FeedbackBody({
               }}
             />
           </div>
-          <span className="inline-flex shrink-0 items-baseline text-micro font-black text-text-muted">
+          <span className="inline-flex shrink-0 items-baseline text-role-micro text-text-muted">
             <AnimatedStat value={scanned} speed="fast" />
             <span>/</span>
             <AnimatedStat value={qty} speed="fast" />
@@ -326,8 +326,8 @@ function FeedbackBody({
             >
               <div className="mt-2 flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 ring-1 ring-inset ring-emerald-200">
                 <Barcode className="h-3 w-3 shrink-0 text-emerald-600" />
-                <span className="text-eyebrow font-black uppercase tracking-widest text-emerald-600">Last</span>
-                <span className="truncate font-mono text-micro font-bold text-emerald-900">{lastSerial}</span>
+                <span className="text-role-eyebrow uppercase tracking-widest text-emerald-600">Last</span>
+                <span className="truncate font-mono text-role-micro font-bold text-emerald-900">{lastSerial}</span>
               </div>
             </motion.div>
           ) : null}
@@ -341,7 +341,7 @@ function FeedbackBody({
             onClick={() => void handleUndoLastSerial()}
             whileTap={scanned >= 1 && !undoBusy ? framerGesture.tapPress : undefined}
             transition={framerTransition.stationSerialRow}
-            className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg text-caption font-black uppercase tracking-widest text-amber-800 transition-colors hover:bg-amber-50 active:bg-amber-100 disabled:pointer-events-none disabled:opacity-35 sm:min-h-0 sm:justify-start sm:py-1.5"
+            className="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg text-role-caption font-black uppercase tracking-widest text-amber-800 transition-colors hover:bg-amber-50 active:bg-amber-100 disabled:pointer-events-none disabled:opacity-35 sm:min-h-0 sm:justify-start sm:py-1.5"
             title={
               variant === 'exception'
                 ? 'Remove the last scanned serial from this exceptions session'

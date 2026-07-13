@@ -111,7 +111,7 @@ export function ScanInputDesktop({
   return (
     <div className={`space-y-1 ${className}`.trim()}>
       {label && (
-        <label className="block text-eyebrow font-black uppercase tracking-[0.2em] text-text-soft">
+        <label className="block text-role-eyebrow uppercase tracking-[0.2em] text-text-soft">
           {label}
         </label>
       )}
@@ -187,7 +187,7 @@ export function ScanInputDesktop({
           {!isProcessing && (
             <span className="pr-2.5 flex-shrink-0">
               <span className="h-6 min-w-6 px-1.5 bg-surface-card rounded border border-border-hairline shadow-sm flex items-center justify-center">
-                <span className="text-mini font-black text-text-faint">ENTER</span>
+                <span className="text-role-micro text-text-faint">ENTER</span>
               </span>
             </span>
           )}

@@ -83,7 +83,7 @@ export function WarrantyTicketButton({
 function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
   if (entry.kind === 'event') {
     return (
-      <li className="flex items-start gap-2 px-1 text-caption text-text-faint">
+      <li className="flex items-start gap-2 px-1 text-role-caption text-text-faint">
         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-surface-strong" />
         <span>
           <span className="font-medium text-text-soft">{warrantyEventLabel(entry.event)}</span>
@@ -100,13 +100,13 @@ function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
         comment.public ? 'border-border-accent bg-surface-accent/60' : 'border-border-warning bg-surface-warning/60',
       )}
     >
-      <div className="mb-1 flex items-center justify-between gap-2 text-micro uppercase tracking-wide">
+      <div className="mb-1 flex items-center justify-between gap-2 text-role-micro uppercase tracking-wide">
         <span className={comment.public ? 'font-semibold text-text-accent' : 'font-semibold text-text-warning'}>
           {comment.public ? 'Public reply' : 'Internal note'}
         </span>
         <span className="text-text-faint normal-case">{formatDateTimePST(comment.createdAt)}</span>
       </div>
-      <p className="whitespace-pre-wrap text-[13px] leading-snug text-text-default">{comment.body}</p>
+      <p className="whitespace-pre-wrap text-role-data leading-snug text-text-default">{comment.body}</p>
     </li>
   );
 }
@@ -170,15 +170,15 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-text-accent" />
           <div className="min-w-0">
-            <div className="truncate text-[13px] font-semibold text-text-default">
+            <div className="truncate text-role-data font-semibold text-text-default">
               {linked ? `Ticket #${claim?.zendeskTicketId}` : 'Support thread'}
             </div>
-            <div className="truncate font-mono text-micro text-text-faint">{claim?.claimNumber}</div>
+            <div className="truncate font-mono text-role-micro text-text-faint">{claim?.claimNumber}</div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {ticketQuery.data?.ticket && (
-            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-medium uppercase tracking-wide text-text-soft">
+            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
               {ticketQuery.data.ticket.status}
             </span>
           )}
@@ -235,7 +235,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
               size="sm"
               disabled={lifecycle.isPending}
               onClick={() => lifecycle.mutate({ id: claimId, action: 'close' })}
-              className="h-auto rounded-md bg-fill-success px-2 py-1 text-caption font-medium text-white hover:bg-fill-success/90"
+              className="h-auto rounded-md bg-fill-success px-2 py-1 text-role-caption font-medium text-white hover:bg-fill-success/90"
             >
               {lifecycle.isPending ? 'Resolving…' : 'Resolve'}
             </Button>
@@ -266,7 +266,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
               </ul>
             )}
             {commentsQuery.isError && (
-              <p className="rounded-md bg-surface-danger px-2 py-1.5 text-caption text-text-danger">
+              <p className="rounded-md bg-surface-danger px-2 py-1.5 text-role-caption text-text-danger">
                 Ticket history unavailable:{' '}
                 {commentsQuery.error instanceof Error ? commentsQuery.error.message : 'request failed'}
               </p>
@@ -276,21 +276,21 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
           <footer className="border-t border-border-hairline bg-surface-canvas/60 px-3 py-2.5">
             {!linked ? (
               <div className="space-y-2">
-                <p className="text-label text-text-soft">
+                <p className="text-role-caption text-text-soft">
                   No support ticket yet — create one from this claim to start the support thread.
                 </p>
                 {createDraft && (
                   <div className="rounded-md border border-border-warning bg-surface-warning p-2">
-                    <p className="mb-1 text-caption font-medium text-text-warning">
+                    <p className="mb-1 text-role-caption font-medium text-text-warning">
                       {createDraft.message} — copy the draft and file it manually:
                     </p>
-                    <pre className="max-h-28 overflow-y-auto whitespace-pre-wrap text-caption text-text-muted">
+                    <pre className="max-h-28 overflow-y-auto whitespace-pre-wrap text-role-caption text-text-muted">
                       {[createDraft.draftSubject, createDraft.draftBody].filter(Boolean).join('\n\n')}
                     </pre>
                   </div>
                 )}
                 {createTicket.isError && !createDraft && (
-                  <p className="text-caption text-text-danger">
+                  <p className="text-role-caption text-text-danger">
                     {createTicket.error instanceof Error ? createTicket.error.message : 'Create failed.'}
                   </p>
                 )}
@@ -317,14 +317,14 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                     size="sm"
                     onClick={() => setLinkOpen(true)}
                     icon={<Link2 className="h-3.5 w-3.5" />}
-                    className="h-auto w-full justify-center gap-1.5 rounded-lg border border-border-soft px-3 py-1.5 text-label font-medium text-text-muted hover:bg-surface-hover"
+                    className="h-auto w-full justify-center gap-1.5 rounded-lg border border-border-soft px-3 py-1.5 text-role-caption font-medium text-text-muted hover:bg-surface-hover"
                   >
                     Link an existing ticket
                   </Button>
                 ) : (
                   <div className="space-y-2 rounded-lg border border-border-soft p-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-caption font-semibold text-text-muted">Link existing ticket</span>
+                      <span className="text-role-caption font-semibold text-text-muted">Link existing ticket</span>
                       <IconButton
                         type="button"
                         onClick={() => {
@@ -343,11 +343,11 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                         onChange={(e) => setLinkQuery(e.target.value)}
                         placeholder="Search subject or type ticket # (e.g. 12345)"
                         autoFocus
-                        className="w-full rounded-md border border-border-soft py-1.5 pl-7 pr-2 text-label focus:border-border-accent focus:outline-none"
+                        className="w-full rounded-md border border-border-soft py-1.5 pl-7 pr-2 text-role-caption focus:border-border-accent focus:outline-none"
                       />
                     </div>
                     {linkExisting.isError && (
-                      <p className="text-caption text-text-danger">
+                      <p className="text-role-caption text-text-danger">
                         {linkExisting.error instanceof Error ? linkExisting.error.message : 'Link failed.'}
                       </p>
                     )}
@@ -357,11 +357,11 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                           <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
                         </div>
                       ) : candidatesQuery.isError ? (
-                        <p className="px-1 py-2 text-caption text-text-danger">
+                        <p className="px-1 py-2 text-role-caption text-text-danger">
                           {candidatesQuery.error instanceof Error ? candidatesQuery.error.message : 'Search failed.'}
                         </p>
                       ) : (candidatesQuery.data?.tickets.length ?? 0) === 0 ? (
-                        <p className="px-1 py-2 text-center text-caption text-text-faint">
+                        <p className="px-1 py-2 text-center text-role-caption text-text-faint">
                           {debouncedQuery.trim() ? 'No matching tickets.' : 'No recent tickets.'}
                         </p>
                       ) : (
@@ -383,14 +383,14 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                             }
                             className="h-auto w-full items-start justify-start gap-2 rounded-md border border-border-hairline px-2 py-1.5 text-left hover:border-border-accent hover:bg-surface-accent/40"
                           >
-                            <span className="mt-0.5 shrink-0 font-mono text-micro font-semibold text-text-faint">
+                            <span className="mt-0.5 shrink-0 font-mono text-role-micro font-semibold text-text-faint">
                               #{t.id}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-label font-medium text-text-muted">
+                              <span className="block truncate text-role-caption font-medium text-text-muted">
                                 {t.subject || '(no subject)'}
                               </span>
-                              <span className="block text-micro uppercase tracking-wide text-text-faint">
+                              <span className="block text-role-micro uppercase tracking-wide text-text-faint">
                                 {t.status}
                               </span>
                             </span>
@@ -400,7 +400,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                       )}
                     </div>
                     {(candidatesQuery.data?.hiddenLinked ?? 0) > 0 && (
-                      <p className="px-1 text-micro text-text-faint">
+                      <p className="px-1 text-role-micro text-text-faint">
                         {candidatesQuery.data!.hiddenLinked} hidden — already linked elsewhere.
                       </p>
                     )}
@@ -410,7 +410,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
             ) : (
               <div className="space-y-2">
                 {reply.isError && (
-                  <p className="text-caption text-text-danger">
+                  <p className="text-role-caption text-text-danger">
                     {reply.error instanceof Error ? reply.error.message : 'Reply failed.'}
                   </p>
                 )}
@@ -429,7 +429,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                   className="w-full resize-none rounded-md border border-border-soft px-2 py-1.5 text-sm focus:border-border-accent focus:outline-none"
                 />
                 <div className="flex items-center justify-between gap-2">
-                  <label className="flex cursor-pointer items-center gap-1.5 text-caption text-text-soft">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-role-caption text-text-soft">
                     <input
                       type="checkbox"
                       checked={isPublic}
@@ -446,7 +446,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                     loading={reply.isPending}
                     onClick={sendReply}
                     icon={<Send className="h-3.5 w-3.5" />}
-                    className="text-label font-medium"
+                    className="text-role-caption font-medium"
                   >
                     Send
                   </Button>

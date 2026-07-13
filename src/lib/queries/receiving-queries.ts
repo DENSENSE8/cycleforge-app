@@ -250,9 +250,72 @@ export function deferInvalidateTriageAndUnboxQueueFeeds(queryClient: QueryClient
   }
 }
 
-/** TanStack key for carton sibling hydration (`include=serials`). */
+/** TanStack key for carton sibling metadata (sku/price/condition/qty — no serials). */
 export function receivingSiblingsQueryKey(receivingId: number) {
   return ['receiving-siblings', receivingId] as const;
+}
+
+/**
+ * TanStack key for the parallel serials-hydration fetch (`include=serials`).
+ * Its result is overlaid onto {@link receivingSiblingsQueryKey}'s cache — that
+ * remains the single `row.serials` SoT every consumer (accordion rows, the
+ * optimistic scan path in `useLineSerials`) reads. Splitting the fetch lets the
+ * sibling metadata paint instantly while the heavier serial resolution streams
+ * in behind a per-row skeleton, instead of gating the whole row on it.
+ */
+export function receivingSiblingsSerialsQueryKey(receivingId: number) {
+  return ['receiving-siblings-serials', receivingId] as const;
+}
+
+/** The `{ success, receiving_lines }` envelope stored under {@link receivingSiblingsQueryKey}. */
+export interface ReceivingSiblingsCache<L extends { id: number } = { id: number }> {
+  success: boolean;
+  receiving_lines: L[];
+}
+
+/**
+ * Pure upsert of one line into a siblings-cache envelope — INSERT when the id is
+ * absent (appended, preserving API order), else a shallow field merge onto the
+ * existing row. Returns a fresh envelope so React Query notifies; a caller that
+ * needs referential no-op semantics can compare `.receiving_lines`.
+ *
+ * This is the cache-patch primitive behind the unified unfound surface (plan
+ * Phase 2): a return import creates a NEW line, which `usePoLinesData`'s
+ * `receiving-line-updated` handler can't surface (it only maps over rows that
+ * already exist). Upserting into {@link receivingSiblingsQueryKey} makes the new
+ * line reflow in the active-row accordion instantly, before the reconciling
+ * refetch lands. Pure + DB-free so it is unit-testable.
+ */
+export function upsertSiblingLine<L extends { id: number }>(
+  prev: ReceivingSiblingsCache<L> | undefined,
+  line: L,
+): ReceivingSiblingsCache<L> {
+  const base = prev?.receiving_lines ?? [];
+  const idx = base.findIndex((r) => r.id === line.id);
+  if (idx === -1) {
+    return { success: prev?.success ?? true, receiving_lines: [...base, line] };
+  }
+  const next = base.slice();
+  next[idx] = { ...next[idx], ...line };
+  return { success: prev?.success ?? true, receiving_lines: next };
+}
+
+/**
+ * Write one line into the shared {@link receivingSiblingsQueryKey} cache via
+ * {@link upsertSiblingLine} — the client wrapper used by the unified unfound
+ * surface's return-import path so the just-created line lands on the accordion's
+ * own SoT cache (not just a window event). No-op for a non-materialized carton.
+ */
+export function writeReceivingSiblingLine<L extends { id: number }>(
+  queryClient: QueryClient,
+  receivingId: number,
+  line: L,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  queryClient.setQueryData<ReceivingSiblingsCache<L>>(
+    receivingSiblingsQueryKey(receivingId),
+    (prev) => upsertSiblingLine(prev, line),
+  );
 }
 
 /**

@@ -52,10 +52,10 @@ export function ReceivingProductLabelPreview({ sku, title, serialNumber, embedde
       <div className="min-w-0 flex-1">
         <p className="font-mono text-base font-black tracking-tight text-text-default">{sku.trim()}</p>
         {title.trim() ? (
-          <p className="mt-1 line-clamp-3 text-caption text-text-soft leading-snug">{title}</p>
+          <p className="mt-1 line-clamp-3 text-role-caption text-text-soft leading-snug">{title}</p>
         ) : null}
         {serialNumber.trim() ? (
-          <p className="mt-1 text-micro font-mono text-text-soft">SN: {serialNumber.trim()}</p>
+          <p className="mt-1 text-role-micro font-mono text-text-soft">SN: {serialNumber.trim()}</p>
         ) : null}
       </div>
       <div className="shrink-0 self-center">
@@ -70,8 +70,8 @@ export function ReceivingProductLabelPreview({ sku, title, serialNumber, embedde
   return (
     <div className="border-t border-border-soft bg-surface-canvas">
       <div className="flex items-center gap-3 px-3 pt-3 pb-2">
-        <span className="text-eyebrow font-black tabular-nums text-text-soft tracking-widest">03</span>
-        <span className="text-eyebrow font-black uppercase tracking-[0.18em] text-text-muted">
+        <span className="text-role-eyebrow tabular-nums text-text-soft tracking-widest">03</span>
+        <span className="text-role-eyebrow uppercase tracking-[0.18em] text-text-muted">
           Review & print
         </span>
       </div>

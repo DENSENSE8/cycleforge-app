@@ -88,7 +88,7 @@ export function MobileDisplayCard({
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Mobile display</h2>
-          <p className="mt-0.5 text-caption text-text-soft">
+          <p className="mt-0.5 text-role-caption text-text-soft">
             Controls what this staff sees on their phone. Defaults inherit from <b>{primaryRoleLabel}</b>.
             Edit role defaults in <a href="/settings/roles" className="text-blue-600 hover:underline">Roles</a>.
           </p>
@@ -107,7 +107,7 @@ export function MobileDisplayCard({
         <label className="flex items-center justify-between gap-4">
           <div>
             <div className="text-sm font-semibold text-text-default">Bottom navigation bar</div>
-            <p className="mt-0.5 text-caption text-text-soft">
+            <p className="mt-0.5 text-role-caption text-text-soft">
               When off, the phone is locked to a single page — no tabs to wander into other sections.
             </p>
           </div>
@@ -133,7 +133,7 @@ export function MobileDisplayCard({
         {/* Tabs */}
         <div>
           <div className="text-sm font-semibold text-text-default">Tabs</div>
-          <p className="mb-2 mt-0.5 text-caption text-text-soft">
+          <p className="mb-2 mt-0.5 text-role-caption text-text-soft">
             Tap to toggle. Scan stays centre and raised when included.
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -146,7 +146,7 @@ export function MobileDisplayCard({
                   type="button"
                   onClick={() => toggleTab(id)}
                   disabled={busy || !draftEnabled}
-                  className={`rounded-full px-2.5 py-1 text-caption font-semibold ring-1 ring-inset transition ${
+                  className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ring-1 ring-inset transition ${
                     on
                       ? 'bg-blue-100 text-blue-800 ring-blue-300'
                       : 'bg-surface-canvas text-text-soft ring-border-soft hover:bg-surface-sunken'
@@ -161,7 +161,7 @@ export function MobileDisplayCard({
 
         {/* Save row */}
         <div className="flex items-center justify-between gap-3 border-t border-border-hairline pt-3">
-          <div className="text-micro text-text-soft">
+          <div className="text-role-micro text-text-soft">
             {hasOverride ? 'Per-staff override active.' : 'Inheriting role default.'}
           </div>
           <Button type="button" variant="brand" size="sm" onClick={save} disabled={busy || !dirty}>

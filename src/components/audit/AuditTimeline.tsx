@@ -162,7 +162,7 @@ export function AuditTimeline(props: Props) {
             History
           </h2>
           {!loading && events.length > 0 && (
-            <span className="text-micro text-text-faint">{events.length} events</span>
+            <span className="text-role-micro text-text-faint">{events.length} events</span>
           )}
         </header>
       )}
@@ -197,27 +197,27 @@ export function AuditTimeline(props: Props) {
                 <div className="min-w-0">
                   <HoverTooltip label={ev.source} asChild>
                     <span
-                      className={`inline-block rounded-sm px-1.5 py-px text-eyebrow font-bold uppercase tracking-wider ${SOURCE_BADGE[ev.source]}`}
+                      className={`inline-block rounded-sm px-1.5 py-px text-role-eyebrow font-bold uppercase tracking-wider ${SOURCE_BADGE[ev.source]}`}
                     >
                       {SOURCE_LABEL[ev.source]}
                     </span>
                   </HoverTooltip>
                   <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <span className="font-mono text-label font-semibold text-text-default">
+                    <span className="font-mono text-role-caption font-semibold text-text-default">
                       {ev.kind}
                     </span>
                     {ev.sku && (
-                      <span className="font-mono text-caption text-text-muted">
+                      <span className="font-mono text-role-caption text-text-muted">
                         {ev.sku}
                       </span>
                     )}
                     {ev.bin_code && (
-                      <span className="font-mono text-caption text-text-muted">
+                      <span className="font-mono text-role-caption text-text-muted">
                         @ {ev.bin_code}
                       </span>
                     )}
                     {ev.reason_code && (
-                      <span className="rounded-sm bg-surface-sunken px-1 py-px text-micro text-text-muted">
+                      <span className="rounded-sm bg-surface-sunken px-1 py-px text-role-micro text-text-muted">
                         {ev.reason_code}
                       </span>
                     )}
@@ -228,7 +228,7 @@ export function AuditTimeline(props: Props) {
                       {diffs.map((d, i) => (
                         <li
                           key={i}
-                          className="font-mono text-caption text-text-muted"
+                          className="font-mono text-role-caption text-text-muted"
                         >
                           {d}
                         </li>
@@ -237,10 +237,10 @@ export function AuditTimeline(props: Props) {
                   )}
 
                   {ev.note && (
-                    <p className="mt-1 text-caption italic text-text-soft">{ev.note}</p>
+                    <p className="mt-1 text-role-caption italic text-text-soft">{ev.note}</p>
                   )}
 
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 text-micro text-text-soft">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 text-role-micro text-text-soft">
                     <span className="font-semibold text-text-muted">
                       {ev.actor_name ?? 'Unknown'}
                     </span>

@@ -181,8 +181,8 @@ export function MobileReceivingUnitRow({
             <dl className="divide-y divide-border-hairline rounded-lg border border-border-hairline bg-surface-canvas/60">
               {detailFields.map((f) => (
                 <div key={f.k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
-                  <dt className="text-eyebrow font-black uppercase tracking-widest text-text-faint">{f.k}</dt>
-                  <dd className="min-w-0 truncate text-caption font-semibold text-text-muted">{f.v}</dd>
+                  <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">{f.k}</dt>
+                  <dd className="min-w-0 truncate text-role-caption font-semibold text-text-muted">{f.v}</dd>
                 </div>
               ))}
             </dl>

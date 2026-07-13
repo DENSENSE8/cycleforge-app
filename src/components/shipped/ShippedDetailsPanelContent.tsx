@@ -99,7 +99,7 @@ export function ShippedDetailsPanelContent({
               <div className="mb-3 flex items-center gap-2">
                 <ShieldCheck className="h-3.5 w-3.5 text-text-muted" />
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-text-default">SKU Integrity Photos</h3>
-                <span className="text-micro font-bold text-text-faint">· {prepackedSku.staticSku}</span>
+                <span className="text-role-micro font-bold text-text-faint">· {prepackedSku.staticSku}</span>
               </div>
               <PhotoGallery
                 photos={prepackedSku.photos}

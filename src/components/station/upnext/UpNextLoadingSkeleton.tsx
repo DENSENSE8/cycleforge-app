@@ -25,7 +25,7 @@ export function UpNextLoadingSkeleton() {
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-200" />
             <SkeletonBase width="44px" height="10px" />
           </span>
-          <span className="text-text-faint text-eyebrow">·</span>
+          <span className="text-text-faint text-role-eyebrow">·</span>
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-200" />
             <SkeletonBase width="64px" height="10px" />

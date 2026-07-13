@@ -49,7 +49,7 @@ export function ChecklistSection({
         <div className="flex items-center gap-2">
           {steps.length > 0 ? (
             <span
-              className={`rounded-md px-2 py-0.5 text-micro font-bold uppercase tracking-wider ${
+              className={`rounded-md px-2 py-0.5 text-role-micro font-bold uppercase tracking-wider ${
                 canRecord && ed.done === steps.length
                   ? 'bg-emerald-50 text-emerald-700'
                   : 'bg-surface-sunken text-text-muted'
@@ -69,7 +69,7 @@ export function ChecklistSection({
                   size="sm"
                   loading={ed.bulkBusy}
                   onClick={() => void ed.bulkSet(ed.allDone ? 'clear' : 'pass')}
-                  className="gap-1 rounded-md px-2 text-micro font-bold uppercase tracking-wider text-emerald-600 hover:bg-emerald-50"
+                  className="gap-1 rounded-md px-2 text-role-micro font-bold uppercase tracking-wider text-emerald-600 hover:bg-emerald-50"
                 >
                   {ed.allDone ? 'Clear all' : 'Check all'}
                 </Button>
@@ -85,7 +85,7 @@ export function ChecklistSection({
               ed.setAdding((v) => !v);
               ed.setDraft('');
             }}
-            className="gap-1 rounded-md px-2 text-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+            className="gap-1 rounded-md px-2 text-role-micro font-bold uppercase tracking-wider text-blue-600 hover:bg-blue-50"
           >
             Add
           </Button>
@@ -119,14 +119,14 @@ export function ChecklistSection({
             }}
             autoFocus
             placeholder="New checklist step…"
-            className="w-full rounded-md border border-border-soft px-2 py-1.5 text-caption font-medium text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+            className="w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-medium text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
           />
           <Button
             variant="primary"
             size="sm"
             onClick={() => void ed.addStep()}
             disabled={ed.busy || !ed.draft.trim()}
-            className="shrink-0 rounded-md px-3 text-caption font-bold"
+            className="shrink-0 rounded-md px-3 text-role-caption font-bold"
           >
             {ed.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
           </Button>
@@ -134,11 +134,11 @@ export function ChecklistSection({
       ) : null}
 
       {steps.length === 0 && !ed.adding ? (
-        <p className="text-caption text-text-faint">No checklist steps yet. Use “Add” to create one.</p>
+        <p className="text-role-caption text-text-faint">No checklist steps yet. Use “Add” to create one.</p>
       ) : null}
 
       {steps.length > 0 && !canRecord ? (
-        <p className="mt-2.5 text-micro font-medium uppercase tracking-wide text-text-faint">
+        <p className="mt-2.5 text-role-micro font-medium uppercase tracking-wide text-text-faint">
           Scan a serial to record results
         </p>
       ) : null}

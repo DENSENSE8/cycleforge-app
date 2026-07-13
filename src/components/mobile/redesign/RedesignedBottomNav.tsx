@@ -117,7 +117,7 @@ export const RedesignedBottomNav = () => {
                 <Icon className={`h-6 w-6 ${isActive ? 'fill-blue-600/10' : ''}`} />
               </motion.div>
               <span className={`
-                text-eyebrow font-black uppercase tracking-[0.1em] truncate w-full px-1 transition-colors
+                text-role-eyebrow uppercase tracking-[0.1em] truncate w-full px-1 transition-colors
                 ${isActive ? 'text-blue-600' : 'text-text-faint'}
               `}>
                 {tab.label}

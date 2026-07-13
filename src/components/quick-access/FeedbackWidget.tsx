@@ -77,7 +77,7 @@ function FeedbackPopoverBody({
       <div className="flex flex-col items-center gap-2 px-2 py-10 text-center">
         <Check className="h-8 w-8 text-emerald-600" />
         <p className="text-sm font-semibold text-text-default">Issue logged</p>
-        <p className="text-caption text-text-soft">The team will pick it up from here.</p>
+        <p className="text-role-caption text-text-soft">The team will pick it up from here.</p>
       </div>
     ) : (
       <div className="space-y-4 px-2 pb-2">
@@ -88,7 +88,7 @@ function FeedbackPopoverBody({
               type="button"
               onClick={() => setType(opt.value)}
               className={cn(
-                'ds-raw-button flex-1 rounded-md px-2 py-1.5 text-caption font-semibold transition-colors',
+                'ds-raw-button flex-1 rounded-md px-2 py-1.5 text-role-caption font-semibold transition-colors',
                 type === opt.value
                   ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft'
                   : 'text-text-soft hover:text-text-muted',
@@ -100,7 +100,7 @@ function FeedbackPopoverBody({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="issue-title" className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+          <label htmlFor="issue-title" className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             Title
           </label>
           <input
@@ -115,7 +115,7 @@ function FeedbackPopoverBody({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="issue-details" className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+          <label htmlFor="issue-details" className="text-role-eyebrow uppercase tracking-widest text-text-faint">
             Details
           </label>
           <textarea
@@ -129,13 +129,13 @@ function FeedbackPopoverBody({
         </div>
 
         {pagePath ? (
-          <p className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+          <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
             From {pagePath}
           </p>
         ) : null}
 
         {phase === 'error' ? (
-          <p className="text-caption text-rose-600">{errorMsg}</p>
+          <p className="text-role-caption text-rose-600">{errorMsg}</p>
         ) : null}
       </div>
     );

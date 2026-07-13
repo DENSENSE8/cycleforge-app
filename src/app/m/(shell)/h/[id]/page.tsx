@@ -269,7 +269,7 @@ export default function MobileHandlingUnitPage() {
                     <span className="font-mono text-sm font-semibold text-text-default">
                       …{getLast4(u.serial_number)}
                     </span>
-                    <span className={`rounded px-1.5 py-0.5 text-micro font-bold ${unitStatusBadgeTone(u.current_status)}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-role-micro font-bold ${unitStatusBadgeTone(u.current_status)}`}>
                       {u.current_status}
                     </span>
                   </div>

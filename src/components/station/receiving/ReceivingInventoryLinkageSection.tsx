@@ -23,7 +23,7 @@ export function ReceivingInventoryLinkageSection({
 
   return (
     <section className="space-y-2">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Inventory linkage</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Inventory linkage</p>
       <div className="space-y-0">
         <TrackingNumberRow
           label="Tracking"

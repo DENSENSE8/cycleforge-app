@@ -78,7 +78,7 @@ export function LineReceiveActionBar({
         <div className="shrink-0 px-4 sm:px-6">
           <p
             role="status"
-            className={`mx-auto w-full ${maxWidthClass} text-center text-caption font-semibold text-amber-700`}
+            className={`mx-auto w-full ${maxWidthClass} text-center text-role-caption font-semibold text-amber-700`}
           >
             {disabledReason}
           </p>

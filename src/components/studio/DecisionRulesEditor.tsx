@@ -49,7 +49,7 @@ interface DecisionRulesEditorProps {
 const INPUT_CLASS =
   'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1 text-xs font-medium text-text-muted';
 const SMALL_INPUT_CLASS =
-  'min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-caption font-medium text-text-muted';
+  'min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-role-caption font-medium text-text-muted';
 
 const WHEN_FIELDS: Array<keyof RuleRow['when']> = ['grade', 'channel', 'disposition'];
 
@@ -142,7 +142,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
       {/* Output ports */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-micro font-bold uppercase tracking-wider text-text-faint">
+          <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
             Output ports
           </span>
           <Button
@@ -156,7 +156,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
           </Button>
         </div>
         {outputs.length === 0 ? (
-          <p className="text-caption text-text-faint">No ports yet — add one to route to.</p>
+          <p className="text-role-caption text-text-faint">No ports yet — add one to route to.</p>
         ) : (
           <ul className="space-y-1">
             {outputs.map((o, i) => (
@@ -194,7 +194,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
       {/* Rules */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1 text-micro font-bold uppercase tracking-wider text-text-faint">
+          <span className="flex items-center gap-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">
             Rules · first match wins
             <HoverTooltip
               label="Rules are tested top-to-bottom; the first whose when-conditions all match routes the item to its port. Reorder with the arrows. An empty when matches any item."
@@ -215,7 +215,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
           </Button>
         </div>
         {rules.length === 0 ? (
-          <p className="text-caption text-text-faint">
+          <p className="text-role-caption text-text-faint">
             No rules — items fall through to the default port (or park).
           </p>
         ) : (
@@ -223,7 +223,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
             {rules.map((r, i) => (
               <li key={r.id} className="rounded-md border border-border-soft bg-surface-canvas p-2">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-eyebrow font-bold uppercase tracking-wider text-text-faint">
+                  <span className="text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">
                     #{i + 1} When
                   </span>
                   <div className="flex items-center gap-0.5">
@@ -252,7 +252,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
                 <div className="space-y-1">
                   {WHEN_FIELDS.map((field) => (
                     <div key={field} className="flex items-center gap-1.5">
-                      <span className="w-20 shrink-0 text-micro font-semibold capitalize text-text-soft">
+                      <span className="w-20 shrink-0 text-role-micro font-semibold capitalize text-text-soft">
                         {field}
                       </span>
                       <input
@@ -268,7 +268,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
                   ))}
                 </div>
                 <div className="mt-1.5 flex items-center gap-1.5">
-                  <span className="w-20 shrink-0 text-micro font-bold uppercase tracking-wider text-text-faint">
+                  <span className="w-20 shrink-0 text-role-micro font-bold uppercase tracking-wider text-text-faint">
                     → Then
                   </span>
                   <select
@@ -288,7 +288,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
                 {/* Placement directive (optional) — the action layer moves the unit
                     to this bin / files it under this category. Blank = route-only. */}
                 <div className="mt-1.5 flex items-center gap-1.5">
-                  <span className="flex w-20 shrink-0 items-center gap-1 text-micro font-bold uppercase tracking-wider text-text-faint">
+                  <span className="flex w-20 shrink-0 items-center gap-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">
                     <MapPin className="h-3 w-3" />
                     Place
                     <HoverTooltip
@@ -327,7 +327,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
       <div className="space-y-1">
         <label
           htmlFor={`decision-default-${nodeId}`}
-          className="block text-micro font-bold uppercase tracking-wider text-text-faint"
+          className="block text-role-micro font-bold uppercase tracking-wider text-text-faint"
         >
           Default port
         </label>
@@ -344,7 +344,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
             </option>
           ))}
         </select>
-        <p className="text-caption text-text-faint">
+        <p className="text-role-caption text-text-faint">
           Where items go when no rule matches. Leave unset to park them for a human.
         </p>
       </div>
@@ -378,17 +378,17 @@ export function DecisionRulesReadout({ config }: { config: Record<string, unknow
             const conds = WHEN_FIELDS.filter((f) => r.when[f]);
             return (
               <li key={r.id} className="flex items-start gap-1.5 text-xs">
-                <span className="mt-0.5 shrink-0 font-mono text-micro font-semibold text-text-faint">
+                <span className="mt-0.5 shrink-0 font-mono text-role-micro font-semibold text-text-faint">
                   {i + 1}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                   {conds.length === 0 ? (
-                    <span className="text-caption italic text-text-faint">any item</span>
+                    <span className="text-role-caption italic text-text-faint">any item</span>
                   ) : (
                     conds.map((f) => (
                       <span
                         key={f}
-                        className="rounded bg-surface-sunken px-1.5 py-0.5 text-micro font-semibold text-text-muted"
+                        className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted"
                       >
                         <span className="capitalize text-text-faint">{f} </span>
                         {r.when[f]}
@@ -397,11 +397,11 @@ export function DecisionRulesReadout({ config }: { config: Record<string, unknow
                   )}
                 </span>
                 <span className="shrink-0 text-text-faint">→</span>
-                <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-micro font-semibold text-text-muted">
+                <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro font-semibold text-text-muted">
                   {labelOf(r.thenPort)}
                 </span>
                 {r.then?.placement && (
-                  <span className="flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 font-mono text-micro font-semibold text-blue-700 ring-1 ring-inset ring-blue-200">
+                  <span className="flex shrink-0 items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 font-mono text-role-micro font-semibold text-blue-700 ring-1 ring-inset ring-blue-200">
                     <MapPin className="h-3 w-3" />
                     {r.then.placement}
                   </span>
@@ -411,7 +411,7 @@ export function DecisionRulesReadout({ config }: { config: Record<string, unknow
           })}
         </ol>
       )}
-      <p className="text-caption text-text-faint">
+      <p className="text-role-caption text-text-faint">
         Default ·{' '}
         {defaultPort ? (
           <span className="font-semibold text-text-muted">{labelOf(defaultPort)}</span>

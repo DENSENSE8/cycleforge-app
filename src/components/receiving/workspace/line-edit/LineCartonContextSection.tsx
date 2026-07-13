@@ -22,6 +22,13 @@ interface LineCartonContextSectionProps {
    * identity that replaces the standalone LINKAGE panel.
    */
   linkedOrderNumber?: string | null;
+  /**
+   * Toggle the inline support-ticket editor (`?ticketView=1`). Passed through to
+   * the carton card's reply-toggle button (unbox-only opt-in). Omit to hide it.
+   */
+  onToggleTicketView?: () => void;
+  /** True while the inline ticket editor is open. */
+  ticketViewActive?: boolean;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -32,6 +39,8 @@ export function LineCartonContextSection({
   staffId,
   c,
   linkedOrderNumber = null,
+  onToggleTicketView,
+  ticketViewActive = false,
 }: LineCartonContextSectionProps) {
   return (
     <CartonContextCard
@@ -96,6 +105,8 @@ export function LineCartonContextSection({
       }}
       priorityTier={c.priorityTier}
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
+      onToggleTicketView={onToggleTicketView}
+      ticketViewActive={ticketViewActive}
     />
   );
 }

@@ -102,8 +102,8 @@ function ReportsPageInner() {
 function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unknown>> }) {
   if (tab === 'utilization') {
     return (
-      <table className="w-full text-left text-label">
-        <thead className="sticky top-0 bg-surface-canvas text-micro font-black uppercase tracking-widest text-text-muted">
+      <table className="w-full text-left text-role-caption">
+        <thead className="sticky top-0 bg-surface-canvas text-role-micro uppercase tracking-widest text-text-muted">
           <tr>
             <th className="px-3 py-2">Bin</th>
             <th className="px-3 py-2">Room</th>
@@ -140,8 +140,8 @@ function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unkno
   }
   if (tab === 'velocity') {
     return (
-      <table className="w-full text-left text-label">
-        <thead className="sticky top-0 bg-surface-canvas text-micro font-black uppercase tracking-widest text-text-muted">
+      <table className="w-full text-left text-role-caption">
+        <thead className="sticky top-0 bg-surface-canvas text-role-micro uppercase tracking-widest text-text-muted">
           <tr>
             <th className="px-3 py-2">Tier</th>
             <th className="px-3 py-2">SKU</th>
@@ -175,8 +175,8 @@ function ReportTable({ tab, rows }: { tab: Tab; rows: Array<Record<string, unkno
     );
   }
   return (
-    <table className="w-full text-left text-label">
-      <thead className="sticky top-0 bg-surface-canvas text-micro font-black uppercase tracking-widest text-text-muted">
+    <table className="w-full text-left text-role-caption">
+      <thead className="sticky top-0 bg-surface-canvas text-role-micro uppercase tracking-widest text-text-muted">
         <tr>
           <th className="px-3 py-2">SKU</th>
           <th className="px-3 py-2">Product</th>

@@ -68,7 +68,7 @@ function StatusPill({ status }: { status: string | null }) {
   const v = (status || 'UNKNOWN').toUpperCase();
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${unitStatusBadgeTone(v)}`}
     >
       {v}
     </span>
@@ -225,16 +225,16 @@ function UnitPageInner() {
           {unit?.serial_number || unitParam}
         </h1>
         {unit?.sku && (
-          <p className="mt-1 font-mono text-caption font-bold text-text-muted">
+          <p className="mt-1 font-mono text-role-caption font-bold text-text-muted">
             {unit.sku}
           </p>
         )}
         {unit?.product_title && (
-          <p className="mt-1 text-caption text-text-soft line-clamp-2 leading-snug">
+          <p className="mt-1 text-role-caption text-text-soft line-clamp-2 leading-snug">
             {unit.product_title}
           </p>
         )}
-        <div className="mt-2 flex items-center justify-between text-caption font-bold">
+        <div className="mt-2 flex items-center justify-between text-role-caption font-bold">
           <span className="text-text-muted">
             {unit?.current_location ? `Loc: ${unit.current_location}` : 'No location'}
           </span>
@@ -274,7 +274,7 @@ function UnitPageInner() {
         {unit && (
           <>
             <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-              <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Test status
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -307,7 +307,7 @@ function UnitPageInner() {
             </section>
 
             <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-              <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Stash in bin
               </p>
               <div className="flex gap-2">
@@ -334,7 +334,7 @@ function UnitPageInner() {
             </section>
 
             <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-              <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Note (optional)
               </p>
               <textarea
@@ -347,15 +347,15 @@ function UnitPageInner() {
             </section>
 
             <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
-              <p className="mb-2 text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+              <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Lifecycle
               </p>
               {events.length === 0 ? (
-                <p className="text-caption text-text-soft">No activity yet.</p>
+                <p className="text-role-caption text-text-soft">No activity yet.</p>
               ) : (
                 <ul className="space-y-2">
                   {events.map((ev) => (
-                    <li key={ev.id} className="flex items-start gap-2 text-caption">
+                    <li key={ev.id} className="flex items-start gap-2 text-role-caption">
                       <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-border-emphasis shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-text-default">

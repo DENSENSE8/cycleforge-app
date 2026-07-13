@@ -101,7 +101,7 @@ function ResetInner() {
     <div className="flex min-h-screen items-center justify-center bg-surface-canvas px-4">
       <div className="w-full max-w-sm space-y-6 rounded-2xl border border-border-soft bg-surface-card p-8 shadow-sm">
         <div className="space-y-1">
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Cycle Forge</p>
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Cycle Forge</p>
           <h1 className="text-lg font-bold text-text-default">
             {mode === 'request' ? 'Reset your password' : 'Choose a new password'}
           </h1>
@@ -129,7 +129,7 @@ function ResetInner() {
             }}
           >
             <div className="space-y-1">
-              <label htmlFor="reset-email" className="text-micro font-black uppercase tracking-widest text-text-soft">
+              <label htmlFor="reset-email" className="text-role-micro uppercase tracking-widest text-text-soft">
                 Email
               </label>
               <input
@@ -156,7 +156,7 @@ function ResetInner() {
             }}
           >
             <div className="space-y-1">
-              <label htmlFor="reset-pw" className="text-micro font-black uppercase tracking-widest text-text-soft">
+              <label htmlFor="reset-pw" className="text-role-micro uppercase tracking-widest text-text-soft">
                 New password
               </label>
               <input
@@ -172,7 +172,7 @@ function ResetInner() {
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="reset-pw2" className="text-micro font-black uppercase tracking-widest text-text-soft">
+              <label htmlFor="reset-pw2" className="text-role-micro uppercase tracking-widest text-text-soft">
                 Confirm password
               </label>
               <input

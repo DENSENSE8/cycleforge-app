@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-12T07:08:52Z",
-  "totalRoutes": 836,
+  "generatedAt": "2026-07-13T06:41:20Z",
+  "totalRoutes": 839,
   "summary": {
-    "permissionGated": 710,
-    "authenticatedNoPermission": 44,
+    "permissionGated": 712,
+    "authenticatedNoPermission": 45,
     "anonymousIntentional": 80,
     "serviceToService": 2,
     "ungatedRead": 0,
@@ -3159,6 +3159,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/operations/tv-board/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.tv.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/ops-plans/[id]/phases/route.ts",
       "methods": [
         "POST"
@@ -4599,6 +4608,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/[id]/acknowledge-unbox/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/[id]/amazon-return-lookup/route.ts",
       "methods": [
         "POST"
@@ -4733,6 +4751,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/lines/[id]/label-printed/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {

@@ -157,11 +157,11 @@ export function SetPinPad({ staff, onSubmit, onBack }: SetPinPadProps) {
         </div>
       </div>
       <div className="mt-5 text-2xl font-semibold tracking-tight text-text-default">{staff.name}</div>
-      <div className={`mt-0.5 text-caption font-medium uppercase tracking-[0.18em] ${t.accentText}`}>
+      <div className={`mt-0.5 text-role-caption font-medium uppercase tracking-[0.18em] ${t.accentText}`}>
         {staff.role.replace(/_/g, ' ')}
       </div>
 
-      <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-scrim/95 px-3 py-1 text-micro font-semibold uppercase tracking-[0.18em] text-white">
+      <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-scrim/95 px-3 py-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-white">
         First-time setup
       </div>
 
@@ -233,7 +233,7 @@ export function SetPinPad({ staff, onSubmit, onBack }: SetPinPadProps) {
         {advanceLabel}
       </button>
 
-      <p className="mt-4 max-w-xs text-center text-caption leading-relaxed text-text-faint">
+      <p className="mt-4 max-w-xs text-center text-role-caption leading-relaxed text-text-faint">
         Your PIN is hashed with scrypt before being saved. You can change it later from Settings.
       </p>
     </div>

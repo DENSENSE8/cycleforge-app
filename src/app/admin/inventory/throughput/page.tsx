@@ -229,7 +229,7 @@ export default async function ThroughputPage({
                   <tr>
                     <th className="px-2 py-1 text-left font-medium text-text-soft">Station</th>
                     {hourlyBuckets.map((iso) => (
-                      <th key={iso} className="px-1 py-1 text-center font-normal text-micro text-text-faint">
+                      <th key={iso} className="px-1 py-1 text-center font-normal text-role-micro text-text-faint">
                         {new Date(iso).toLocaleTimeString([], { hour: 'numeric', hour12: true })}
                       </th>
                     ))}
@@ -238,7 +238,7 @@ export default async function ThroughputPage({
                 <tbody>
                   {hourlyStations.map((station) => (
                     <tr key={station}>
-                      <td className="px-2 py-1 font-mono text-caption text-text-muted">{station}</td>
+                      <td className="px-2 py-1 font-mono text-role-caption text-text-muted">{station}</td>
                       {hourlyBuckets.map((iso) => {
                         const count = hourlyByCell.get(`${station}|${iso}`) ?? 0;
                         const intensity = count === 0 ? 0 : Math.max(0.1, count / maxHourly);

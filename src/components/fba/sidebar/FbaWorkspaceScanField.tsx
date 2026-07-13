@@ -236,8 +236,8 @@ export function FbaWorkspaceScanField({
                   <div className="flex items-start gap-2">
                     <AlertCircle className={`mt-0.5 h-4 w-4 shrink-0 ${themeColors.text}`} />
                     <div>
-                      <p className="text-micro font-black uppercase tracking-[0.16em] text-text-default">Apply to selected plans</p>
-                      <p className="mt-1 text-caption leading-5 text-text-default">
+                      <p className="text-role-micro uppercase tracking-[0.16em] text-text-default">Apply to selected plans</p>
+                      <p className="mt-1 text-role-caption leading-5 text-text-default">
                         Changes here will apply to all {trackingTargetPlanIds.length} selected plans.
                       </p>
                     </div>
@@ -274,7 +274,7 @@ export function FbaWorkspaceScanField({
                 type="button"
                 onClick={() => void onSaveTracking()}
                 disabled={saving || !trackingReady}
-                className={`h-auto w-full rounded-xl border-2 px-3 py-2.5 text-caption font-black uppercase tracking-[0.12em] ring-0 ${
+                className={`h-auto w-full rounded-xl border-2 px-3 py-2.5 text-role-caption font-black uppercase tracking-[0.12em] ring-0 ${
                   trackingReady && !saving
                     ? `${themeColors.border} ${themeColors.light} text-text-default hover:opacity-95`
                     : 'cursor-not-allowed border-border-soft bg-surface-sunken text-text-faint'
@@ -285,21 +285,21 @@ export function FbaWorkspaceScanField({
             </div>
 
             {saveError && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-caption font-semibold text-red-700">
+              <p className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700">
                 {saveError}
               </p>
             )}
 
             {/* Selection summary + clear */}
             <div className={`${scanChrome.trackingSectionBorder} flex items-center justify-between gap-2 pt-3`}>
-              <span className="text-micro font-black uppercase tracking-[0.14em] text-text-soft">
+              <span className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
                 {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
               </span>
               <Button
                 variant="secondary"
                 type="button"
                 onClick={() => clearSelection()}
-                className="h-auto rounded-full border border-border-soft px-2.5 py-1 text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft ring-0 hover:bg-surface-hover hover:text-text-default"
+                className="h-auto rounded-full border border-border-soft px-2.5 py-1 text-role-eyebrow uppercase tracking-[0.14em] text-text-soft ring-0 hover:bg-surface-hover hover:text-text-default"
               >
                 Clear
               </Button>

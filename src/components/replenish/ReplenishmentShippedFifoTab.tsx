@@ -88,7 +88,7 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                     <div className="grid grid-cols-[minmax(0,1.6fr)_70px_90px_90px_90px_90px_120px] gap-3 items-start">
                       {/* Item info */}
                       <div className="min-w-0">
-                        <p className="text-label font-black text-text-default truncate">
+                        <p className="text-role-caption font-black text-text-default truncate">
                           {row.product_title || row.sku}
                         </p>
                         <p className={`${fieldLabel} mt-0.5 truncate`}>
@@ -96,18 +96,18 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                           {row.account_source && ` · ${row.account_source}`}
                         </p>
                         {!zohoLinked && (
-                          <p className="text-eyebrow font-bold text-amber-600 mt-0.5">Not linked to Zoho item</p>
+                          <p className="text-role-eyebrow font-bold text-amber-600 mt-0.5">Not linked to Zoho item</p>
                         )}
                       </div>
 
                       {/* Shipped qty */}
-                      <div className="text-micro font-black text-text-muted">
+                      <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Shipped</p>
                         <p className="mt-1">{row.shipped_qty}</p>
                       </div>
 
                       {/* Units/week */}
-                      <div className="text-micro font-black text-text-muted">
+                      <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Units/Wk</p>
                         <p className={`mt-1 ${Number(row.avg_units_per_week) >= 3 ? 'text-red-600' : ''}`}>
                           {row.avg_units_per_week}
@@ -115,19 +115,19 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                       </div>
 
                       {/* Zoho available */}
-                      <div className="text-micro font-black text-text-muted">
+                      <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Avail</p>
                         <p className="mt-1">{zohoLinked ? numText(row.zoho_qty_available) : '—'}</p>
                       </div>
 
                       {/* Zoho incoming */}
-                      <div className="text-micro font-black text-text-muted">
+                      <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Incoming</p>
                         <p className="mt-1">{zohoLinked ? numText(row.zoho_incoming_qty) : '—'}</p>
                       </div>
 
                       {/* Reorder level */}
-                      <div className="text-micro font-black text-text-muted">
+                      <div className="text-role-micro text-text-muted">
                         <p className={`uppercase tracking-widest text-text-soft ${tableHeader}`}>Reorder Lvl</p>
                         <p className="mt-1">{row.reorder_level != null ? row.reorder_level : '—'}</p>
                       </div>
@@ -136,15 +136,15 @@ export function ReplenishmentShippedFifoTab({ skuSearch }: ReplenishmentShippedF
                       <div>
                         {hasReplenishment ? (
                           <div>
-                            <span className={`inline-flex items-center rounded-full border px-2 py-1 text-eyebrow font-black uppercase tracking-wider ${statusPillClass(row.replenishment_status || '')}`}>
+                            <span className={`inline-flex items-center rounded-full border px-2 py-1 text-role-eyebrow uppercase tracking-wider ${statusPillClass(row.replenishment_status || '')}`}>
                               {(row.replenishment_status || '').replace(/_/g, ' ')}
                             </span>
                             {row.zoho_po_number && (
-                              <p className="text-eyebrow font-bold text-text-soft mt-1">PO {row.zoho_po_number}</p>
+                              <p className="text-role-eyebrow font-bold text-text-soft mt-1">PO {row.zoho_po_number}</p>
                             )}
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center rounded-full border px-2 py-1 text-eyebrow font-black uppercase tracking-wider ${
+                          <span className={`inline-flex items-center rounded-full border px-2 py-1 text-role-eyebrow uppercase tracking-wider ${
                             needsAttention
                               ? 'bg-red-100 text-red-700 border-red-200'
                               : 'bg-surface-sunken text-text-soft border-border-soft'

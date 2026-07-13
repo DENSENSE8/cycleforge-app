@@ -30,6 +30,7 @@ import { TechSubstituteSection } from './TechSubstituteSection';
 import { useSubstitutionPolicy } from '@/hooks/fulfillment/useSubstitutionPolicy';
 import { useOrderAmendments } from '@/hooks/fulfillment/useSubstitution';
 import { canShowTechSubstitution } from '@/lib/tech/substitution-eligibility';
+import { useOrderAssignment } from '@/hooks';
 
 interface ActiveOrderWorkspaceProps {
   activeOrder: ActiveStationOrder;
@@ -49,6 +50,8 @@ interface ActiveOrderWorkspaceProps {
    * (`ActiveStationOrder` doesn't carry the numeric row id).
    */
   previewOrder?: Order;
+  /** Optionally pass the setActiveOrder updater from the controller to sync local condition. */
+  setActiveOrder?: (next: ActiveStationOrder | null) => void;
 }
 
 function getVariantIcon(activeOrder: ActiveStationOrder) {
@@ -78,6 +81,7 @@ export function ActiveOrderWorkspace({
   onRemoveSerial,
   mode = 'active',
   previewOrder,
+  setActiveOrder,
 }: ActiveOrderWorkspaceProps) {
   const { Icon, tint, label } = getVariantIcon(activeOrder);
   const trackingDisplay = (activeOrder.tracking || '').trim() || '—';
@@ -123,6 +127,21 @@ export function ActiveOrderWorkspace({
     ? (amendments.data ?? []).filter((r) => r.status === 'PENDING').length
     : 0;
 
+  const orderAssignmentMutation = useOrderAssignment();
+  const handleConditionChange = async (nextCondition: string) => {
+    const orderId = isPreview ? previewOrder?.id : activeOrder.id;
+    if (!orderId) return;
+
+    await orderAssignmentMutation.mutateAsync({
+      orderId,
+      condition: nextCondition,
+    });
+
+    if (setActiveOrder && !isPreview) {
+      setActiveOrder({ ...activeOrder, condition: nextCondition });
+    }
+  };
+
   return (
     <motion.div
       key={activeOrder.tracking || activeOrder.orderId}
@@ -154,7 +173,7 @@ export function ActiveOrderWorkspace({
         rightSlot={
           <>
             {!isPreview && (
-              <span className="hidden items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-eyebrow font-black uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200 md:inline-flex">
+              <span className="hidden items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-role-eyebrow uppercase tracking-widest text-emerald-600 ring-1 ring-inset ring-emerald-200 md:inline-flex">
                 <Barcode className="h-3 w-3" />
                 <span>Scan next</span>
               </span>
@@ -180,10 +199,10 @@ export function ActiveOrderWorkspace({
               <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <div className="space-y-0.5">
-                  <p className="text-caption font-bold text-amber-800">
+                  <p className="text-role-caption font-bold text-amber-800">
                     Substitution pending approval
                   </p>
-                  <p className="text-micro font-semibold text-amber-700">
+                  <p className="text-role-micro font-semibold text-amber-700">
                     {pendingCount === 1 ? 'A substitution on this order is' : `${pendingCount} substitutions on this order are`}{' '}
                     awaiting supervisor approval — the order cannot pack or ship until approved.
                   </p>
@@ -192,12 +211,19 @@ export function ActiveOrderWorkspace({
             ) : null}
 
             {isPreview && previewOrder ? (
-              <OrderPreviewPanel order={previewOrder} revealItem={revealItem} />
+              <OrderPreviewPanel
+                order={previewOrder}
+                revealItem={revealItem}
+                onChangeCondition={handleConditionChange}
+                isMutatingCondition={orderAssignmentMutation.isPending}
+              />
             ) : (
               <ActiveOrderBody
                 activeOrder={activeOrder}
                 onRemoveSerial={onRemoveSerial}
                 revealItem={revealItem}
+                onChangeCondition={handleConditionChange}
+                isMutatingCondition={orderAssignmentMutation.isPending}
               />
             )}
 

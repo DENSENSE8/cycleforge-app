@@ -37,9 +37,9 @@ function formatDays(days: number | null): string {
 function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-3">
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
       <p className="mt-1 text-lg font-bold text-text-default">{value}</p>
-      {sub ? <p className="text-caption text-text-faint">{sub}</p> : null}
+      {sub ? <p className="text-role-caption text-text-faint">{sub}</p> : null}
     </div>
   );
 }
@@ -47,7 +47,7 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-border-soft bg-surface-card p-4">
-      <p className="mb-3 text-eyebrow font-black uppercase tracking-widest text-text-soft">{title}</p>
+      <p className="mb-3 text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
       {children}
     </section>
   );
@@ -133,7 +133,7 @@ export function AnalyticsPane() {
           variant={r.id === range ? 'secondary' : 'ghost'}
           size="sm"
           onClick={() => setRange(r.id)}
-          className="text-caption font-semibold"
+          className="text-role-caption font-semibold"
         >
           {r.label}
         </Button>
@@ -145,7 +145,7 @@ export function AnalyticsPane() {
   if (isError) {
     return (
       <div className="mx-auto max-w-4xl p-6">
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-caption text-rose-700">
+        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
           Could not load sourcing analytics. Try another range or reload.
         </div>
       </div>
@@ -186,7 +186,7 @@ export function AnalyticsPane() {
 
       <Section title="Spend & acquisitions per week">
         {a.spendByWeek.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-caption text-text-faint">
+          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
             No acquisitions in this range.
           </div>
         ) : (
@@ -209,7 +209,7 @@ export function AnalyticsPane() {
               },
             ]}
           />
-          <p className="mt-2 text-center text-caption text-text-faint">
+          <p className="mt-2 text-center text-role-caption text-text-faint">
             {a.demand.opened} demand rows opened in this range
           </p>
         </Section>

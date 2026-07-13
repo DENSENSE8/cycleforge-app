@@ -24,7 +24,7 @@ export function FillBar({ pct, current, max, className }: Props) {
     return (
       <div className={`flex items-center gap-1 ${className ?? ''}`}>
         <div className="h-1.5 flex-1 rounded-full bg-surface-sunken" />
-        <span className="text-micro tabular-nums text-text-faint">—</span>
+        <span className="text-role-micro tabular-nums text-text-faint">—</span>
       </div>
     );
   }
@@ -59,7 +59,7 @@ export function FillBar({ pct, current, max, className }: Props) {
             />
           )}
         </div>
-        <span className="w-12 shrink-0 text-right text-micro tabular-nums text-text-soft">
+        <span className="w-12 shrink-0 text-right text-role-micro tabular-nums text-text-soft">
           {labelText}
         </span>
       </div>

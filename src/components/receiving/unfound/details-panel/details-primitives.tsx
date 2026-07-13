@@ -17,7 +17,7 @@ export function Section({
   return (
     <section>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h3 className="text-eyebrow font-black uppercase tracking-widest text-text-faint">
+        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-faint">
           {title}
         </h3>
         {action}
@@ -30,10 +30,10 @@ export function Section({
 export function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-micro font-semibold uppercase tracking-wider text-text-soft">
+      <dt className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
         {label}
       </dt>
-      <dd className="text-label text-text-default text-right">{value}</dd>
+      <dd className="text-role-caption text-text-default text-right">{value}</dd>
     </div>
   );
 }
@@ -67,7 +67,7 @@ export function FieldRow({
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="text-micro font-bold uppercase tracking-wider text-text-soft">
+          <span className="text-role-micro font-bold uppercase tracking-wider text-text-soft">
             {label}
           </span>
           {value != null && (
@@ -79,7 +79,7 @@ export function FieldRow({
             </HoverTooltip>
           )}
         </div>
-        <p className="truncate text-label text-text-default">{value ?? '—'}</p>
+        <p className="truncate text-role-caption text-text-default">{value ?? '—'}</p>
       </div>
     </label>
   );
@@ -95,7 +95,7 @@ export function LoadingBlock() {
 
 export function ErrorBlock({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-label text-amber-800">
+    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption text-amber-800">
       {message}
     </div>
   );

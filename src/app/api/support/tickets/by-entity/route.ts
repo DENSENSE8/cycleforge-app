@@ -15,11 +15,12 @@ const Query = z.object({
   // Placeholder unfound rows use lineId = -receiving_id; normalized before lookup.
   lineId: z.coerce.number().int().optional(),
   receivingId: z.coerce.number().int().positive().optional(),
+  serialUnitId: z.coerce.number().int().positive().optional(),
 });
 
 /**
- * GET /api/support/tickets/by-entity?lineId=&receivingId=
- * Primary support ticket for a receiving carton/line — label matches the media
+ * GET /api/support/tickets/by-entity?lineId=&receivingId=&serialUnitId=
+ * Primary support ticket for a receiving carton/line/unit — label matches the media
  * library claims chip (#9395 for Zendesk tickets).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -29,11 +30,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const parsed = Query.parse({
       lineId: sp.get('lineId') ?? undefined,
       receivingId: sp.get('receivingId') ?? undefined,
+      serialUnitId: sp.get('serialUnitId') ?? undefined,
     });
     const { lineId, receivingId } = normalizeReceivingTicketEntityRefs(parsed);
-    if (lineId == null && receivingId == null) {
+    const serialUnitId = parsed.serialUnitId;
+    if (lineId == null && receivingId == null && serialUnitId == null) {
       return NextResponse.json(
-        { success: false, error: 'lineId or receivingId is required' },
+        { success: false, error: 'lineId, receivingId, or serialUnitId is required' },
         { status: 400 },
       );
     }
@@ -42,6 +45,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       orgId: ctx.organizationId,
       lineId,
       receivingId,
+      serialUnitId,
     });
 
     if (!ticket) {

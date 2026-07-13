@@ -155,23 +155,23 @@ export function BinCycleCountSheet({
           className="flex h-11 w-11 items-center justify-center rounded-md border border-border-default bg-surface-card active:bg-surface-hover"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-micro font-black uppercase tracking-[0.18em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
             Cycle count
           </p>
           <h1 className="truncate text-sm font-black text-text-default">{campaignName}</h1>
-          <p className="text-caption font-bold text-text-soft">
+          <p className="text-role-caption font-bold text-text-soft">
             {pendingCount} of {lines.length} pending
           </p>
         </div>
       </header>
 
       {flash && (
-        <div className="bg-emerald-50 px-4 py-1.5 text-center text-caption font-black uppercase tracking-widest text-emerald-700">
+        <div className="bg-emerald-50 px-4 py-1.5 text-center text-role-caption font-black uppercase tracking-widest text-emerald-700">
           {flash}
         </div>
       )}
       {error && (
-        <div className="bg-rose-50 px-4 py-1.5 text-center text-caption font-black uppercase tracking-widest text-rose-700">
+        <div className="bg-rose-50 px-4 py-1.5 text-center text-role-caption font-black uppercase tracking-widest text-rose-700">
           {error}
         </div>
       )}
@@ -196,11 +196,11 @@ export function BinCycleCountSheet({
             >
               <p className="font-mono text-sm font-black text-text-default">{line.sku}</p>
               {line.product_title && (
-                <p className="mt-1 line-clamp-2 text-caption leading-snug text-text-soft">
+                <p className="mt-1 line-clamp-2 text-role-caption leading-snug text-text-soft">
                   {line.product_title}
                 </p>
               )}
-              <p className="mt-1 text-micro font-bold uppercase tracking-widest text-text-faint">
+              <p className="mt-1 text-role-micro font-bold uppercase tracking-widest text-text-faint">
                 Expected {line.expected_qty} · {line.status}
               </p>
 
@@ -229,7 +229,7 @@ export function BinCycleCountSheet({
                   </Button>
                 </div>
               ) : (
-                <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-micro font-bold text-emerald-700">
+                <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-role-micro font-bold text-emerald-700">
                   <Check className="h-3 w-3" />
                   Counted {line.counted_qty ?? '—'}
                 </p>

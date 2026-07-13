@@ -5,6 +5,7 @@ import { LineEditPanel } from './LineEditPanel';
 import { TriagePanel } from '../triage/TriagePanel';
 import { ReceivingProgressStepper } from './ReceivingProgressStepper';
 import { TriageProgressStepper } from './TriageProgressStepper';
+import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** Which de-coupled right-pane panel to render. */
@@ -31,7 +32,6 @@ interface Props {
   row: ReceivingLineRow;
   staffId: string;
   accordionBootstrap: 'default' | 'all';
-  scanDriven: boolean;
   /** Nav state mirrored from the sidebar via `receiving-workspace-nav-state`. */
   nav: NavState | null;
   /** Which workspace mode — `triage` hides unbox-only sections (photos, claim,
@@ -58,21 +58,32 @@ export function ReceivingLineWorkspace({
   row,
   staffId,
   accordionBootstrap,
-  scanDriven,
   nav,
   variant = 'unbox',
   onPrev,
   onNext,
   onClose,
 }: Props) {
-  // Print step (#5) flips done once a label is printed for THIS line. Tracked
-  // in localStorage so the step survives refresh / re-mount without needing a
-  // schema column. LineEditPanel dispatches `receiving-label-printed` after a
-  // successful print; we re-read on every line change.
-  const [labelPrinted, setLabelPrinted] = useState(() => readLabelPrinted(row.id));
+  // Photos step reads the LIVE per-carton photo cache (same source as the camera
+  // ×N badge), not the denormalized `row.photo_count` snapshot — the snapshot
+  // gets clobbered to 0 when a Condition update re-patches the line, which used
+  // to flip Photos back to "active" even with photos plainly on the carton.
+  const photoCount = useReceivingPhotoCount(
+    row.receiving_id,
+    Math.max(0, Number(row.photo_count ?? 0)),
+  );
+
+  // Print step (the last dot) flips done once a label is printed for THIS line.
+  // Reads the durable `label_printed_at` stamp (receiving_line_testing) OR the
+  // localStorage optimistic hint — so it survives refresh / another device while
+  // still flipping instantly on print. `markReceivingLabelPrinted` dispatches
+  // `receiving-label-printed` after a successful print; we re-read on line change.
+  const [labelPrinted, setLabelPrinted] = useState(
+    () => !!row.label_printed_at || readLabelPrinted(row.id),
+  );
   useEffect(() => {
-    setLabelPrinted(readLabelPrinted(row.id));
-  }, [row.id]);
+    setLabelPrinted(!!row.label_printed_at || readLabelPrinted(row.id));
+  }, [row.id, row.label_printed_at]);
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ line_id?: number }>).detail;
@@ -122,10 +133,9 @@ export function ReceivingLineWorkspace({
       ) : (
         <ReceivingProgressStepper
           row={row}
-          photoCount={Math.max(0, Number(row.photo_count ?? 0))}
+          photoCount={photoCount}
           serialCount={Array.isArray(row.serials) ? row.serials.length : 0}
           labelPrinted={labelPrinted}
-          scanDriven={scanDriven}
           siblingLineCount={nav?.total ?? 1}
         />
       )}

@@ -176,7 +176,7 @@ export function ListingResizePanel({
 
       {/* Title strip — outside the drag region so buttons stay clickable. */}
       <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-4 py-1.5">
-        <div className="flex min-w-0 items-center gap-1.5 text-micro font-black uppercase tracking-widest text-text-soft">
+        <div className="flex min-w-0 items-center gap-1.5 text-role-micro uppercase tracking-widest text-text-soft">
           <ExternalLink className="h-3 w-3 shrink-0 text-blue-500" />
           <span className="truncate">{title}</span>
         </div>
@@ -185,7 +185,7 @@ export function ListingResizePanel({
             variant="ghost"
             size="sm"
             onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-            className="h-auto px-0 text-micro font-bold text-blue-600 hover:bg-transparent hover:text-blue-800"
+            className="h-auto px-0 text-role-micro font-bold text-blue-600 hover:bg-transparent hover:text-blue-800"
           >
             Open externally
           </Button>
@@ -211,7 +211,7 @@ export function ListingResizePanel({
       >
         {effectiveHeight > 0 ? (
           <div className="flex h-full items-center justify-center px-6 py-10 text-center">
-            <p className="text-label font-semibold text-text-soft">
+            <p className="text-role-caption font-semibold text-text-soft">
               Marketplace listings open in a new tab. Use{' '}
               {/* ds-raw-button — inline prose link */}
               <button

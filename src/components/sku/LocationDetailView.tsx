@@ -259,10 +259,10 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
           (subtitle || location.barcode) ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-border-hairline px-4 py-1.5">
               {subtitle && (
-                <p className="truncate text-caption font-semibold text-text-muted">{subtitle}</p>
+                <p className="truncate text-role-caption font-semibold text-text-muted">{subtitle}</p>
               )}
               {location.barcode && (
-                <p className="truncate font-mono text-caption font-bold text-text-soft">{location.barcode}</p>
+                <p className="truncate font-mono text-role-caption font-bold text-text-soft">{location.barcode}</p>
               )}
             </div>
           ) : undefined
@@ -277,13 +277,13 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
             className="ds-raw-button mb-3 flex w-full items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-left active:bg-blue-100"
           >
             <div className="min-w-0">
-              <p className="text-micro font-black uppercase tracking-[0.16em] text-blue-700">
+              <p className="text-role-micro uppercase tracking-[0.16em] text-blue-700">
                 Cycle count active
               </p>
               <p className="mt-0.5 truncate text-sm font-bold text-blue-900">
                 {activeCampaign.data.name}
               </p>
-              <p className="text-caption font-bold text-blue-700">
+              <p className="text-role-caption font-bold text-blue-700">
                 {activeCampaign.data.pending} pending
                 {activeCampaign.data.review > 0
                   ? ` · ${activeCampaign.data.review} in review`
@@ -297,7 +297,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
         )}
 
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
             Contents ({contents.length})
           </p>
           <Button
@@ -329,11 +329,11 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                         {row.sku}
                       </p>
                       {row.productTitle && (
-                        <p className="mt-1 line-clamp-2 text-caption leading-snug text-text-soft">
+                        <p className="mt-1 line-clamp-2 text-role-caption leading-snug text-text-soft">
                           {row.productTitle}
                         </p>
                       )}
-                      <p className="mt-1 text-micro font-bold uppercase tracking-widest text-text-faint">
+                      <p className="mt-1 text-role-micro font-bold uppercase tracking-widest text-text-faint">
                         Counted {formatAgo(row.lastCounted)} ago
                         {row.minQty != null && row.maxQty != null
                           ? ` · ${row.minQty}–${row.maxQty}`
@@ -345,7 +345,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
                       <p className="text-2xl font-black tabular-nums text-text-default">
                         {row.qty}
                       </p>
-                      <p className="mt-0.5 text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+                      <p className="mt-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
                         tap to edit
                       </p>
                     </div>

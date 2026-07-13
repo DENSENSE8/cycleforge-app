@@ -150,7 +150,7 @@ export function SupportChatComposer({
               size="sm"
               onClick={() => setLibraryOpen(true)}
               icon={<ImageIcon className="h-3.5 w-3.5" />}
-              className="gap-1.5 px-2 text-caption font-bold"
+              className="gap-1.5 px-2 text-role-caption font-bold"
             >
               Library
             </Button>
@@ -160,7 +160,7 @@ export function SupportChatComposer({
             size="sm"
             onClick={picker.openPicker}
             icon={<Paperclip className="h-3.5 w-3.5" />}
-            className="gap-1.5 px-2 text-caption font-bold"
+            className="gap-1.5 px-2 text-role-caption font-bold"
           >
             Attach
           </Button>
@@ -184,13 +184,13 @@ export function SupportChatComposer({
       {/* CC collaborators — public replies only (CCs make no sense on a note). */}
       {isPublic ? (
         <div className="mb-2.5 flex flex-wrap items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas/60 px-2 py-1.5">
-          <span className="inline-flex items-center gap-1 text-micro font-black uppercase tracking-widest text-text-faint">
+          <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
             <Mail className="h-3 w-3" /> Cc
           </span>
           {ccs.map((email) => (
             <span
               key={email}
-              className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+              className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
             >
               {email}
               <IconButton
@@ -216,7 +216,7 @@ export function SupportChatComposer({
             }}
             onBlur={() => addCc(ccInput)}
             placeholder={ccs.length ? 'Add another…' : 'Add email to CC…'}
-            className="min-w-[8rem] flex-1 bg-transparent px-1 text-label text-text-default outline-none placeholder:text-text-faint"
+            className="min-w-[8rem] flex-1 bg-transparent px-1 text-role-caption text-text-default outline-none placeholder:text-text-faint"
           />
           <datalist id="support-cc-suggestions">
             {ccSuggestions.map((email) => (
@@ -243,7 +243,7 @@ export function SupportChatComposer({
                 </div>
               ) : null}
               {s.status === 'error' ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-mini font-black uppercase text-white">
+                <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro uppercase text-white">
                   Failed
                 </div>
               ) : null}
@@ -277,10 +277,10 @@ export function SupportChatComposer({
           placeholder={
             isPublic ? 'Reply to the customer…  (⌘↵ to send)' : 'Internal note — not emailed…  (⌘↵ to send)'
           }
-          className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-label leading-relaxed text-text-default outline-none placeholder:text-text-faint"
+          className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default outline-none placeholder:text-text-faint"
         />
         <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
-          <span className="text-caption text-text-faint">{hint}</span>
+          <span className="text-role-caption text-text-faint">{hint}</span>
           <Button
             variant={isPublic ? 'primary' : 'secondary'}
             size="sm"

@@ -114,7 +114,7 @@ export default function InviteAcceptPage() {
             className="space-y-4"
           >
             <header className="space-y-1">
-              <p className="text-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
+              <p className="text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
                 You&rsquo;re invited to
               </p>
               <h1 className="text-lg font-bold text-text-default">{preview.organizationName}</h1>

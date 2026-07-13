@@ -51,7 +51,7 @@ export function FbaDeleteControl({ entries, onDeleted }: { entries: PlanEntry[];
   return (
     <div className="space-y-2">
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-micro font-semibold text-red-700">
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-role-micro font-semibold text-red-700">
           {error}
         </p>
       )}

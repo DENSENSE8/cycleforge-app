@@ -127,7 +127,7 @@ function DateFolderTile({ tile, onOpen }: { tile: FolderTileData; onOpen: () => 
         <div className="absolute left-3 right-2 top-0.5 h-3 rounded-t-md bg-surface-strong" aria-hidden="true" />
         <div className="relative h-full w-full overflow-hidden rounded-md border border-border-soft">
           <FolderTileCover photo={tile.previewPhoto} />
-          <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-micro font-bold tabular-nums text-white">
+          <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-white">
             {tile.count}
           </span>
         </div>
@@ -135,10 +135,10 @@ function DateFolderTile({ tile, onOpen }: { tile: FolderTileData; onOpen: () => 
       <div className="flex flex-col gap-0.5 px-2.5 py-2">
         <div className="flex items-center gap-1.5">
           <Folder className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-          <span className="truncate text-caption font-semibold text-text-default">{tile.label}</span>
+          <span className="truncate text-role-caption font-semibold text-text-default">{tile.label}</span>
         </div>
         {tile.latestAt ? (
-          <span className="truncate pl-5 text-micro tabular-nums text-text-faint">
+          <span className="truncate pl-5 text-role-micro tabular-nums text-text-faint">
             {formatDateTimePST(tile.latestAt)}
           </span>
         ) : null}

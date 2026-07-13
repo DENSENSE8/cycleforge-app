@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { getStaffName } from '@/utils/staff';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
-import { Camera } from '@/components/Icons';
+import { Camera, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { conditionGradeTableLabel, workflowStatusTableLabel, WORKFLOW_BADGE } from '@/components/station/receiving-constants';
 import {
-  OrderIdChip, TrackingChip, SkuScanRefChip, SerialChip, getLast4,
+  OrderIdChip, TrackingChip, SkuScanRefChip, SerialChip, TicketChip, getLast4,
 } from '@/components/ui/CopyChip';
 import { dispatchSelectLine } from '@/components/station/ReceivingLinesTable';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -98,6 +98,31 @@ export interface RecentActivityRailBaseProps {
   renderPopoverActions?: (row: ReceivingLineRow, ctx: { dismiss: () => void }) => ReactNode;
   /** Row title axis — default `line`; unbox Recent uses `po-group`. */
   rowTitleMode?: ReceivingRailRowTitleMode;
+  /**
+   * Flag rows that already have a filed claim/ticket (`row.zendesk_ticket`) with
+   * an inline ticket chip on the collapsed row + a "Claim ticket" badge in the
+   * hover popover — so the operator can scan the rail for POs that already have
+   * a problem/ticket applied. Additive; defaults on. Set false to hide.
+   */
+  showTicketFlag?: boolean;
+}
+
+/** Filed claim/ticket number on a line, normalized to a `#NNNN` label; null if none. */
+function railTicketNumber(row: ReceivingLineRow): string | null {
+  const t = (row.zendesk_ticket ?? '').trim();
+  if (!t) return null;
+  return t.startsWith('#') ? t : `#${t}`;
+}
+
+/** Compact ticket flag for the collapsed rail row's title accessory. */
+function TicketRailFlag({ ticket }: { ticket: string }) {
+  return (
+    <HoverTooltip label={`Claim ticket ${ticket} filed`} asChild focusable={false}>
+      <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-orange-50 px-1 py-0.5 text-[8.5px] font-black uppercase leading-none tracking-widest text-orange-700 ring-1 ring-inset ring-orange-200">
+        <Ticket className="h-3 w-3" />
+      </span>
+    </HoverTooltip>
+  );
 }
 
 // Stable module-scope callbacks. The shell wires `getId` into its optimistic-
@@ -173,6 +198,7 @@ export function RecentActivityRailBase({
   renderPopoverContext,
   renderPopoverActions,
   rowTitleMode = 'line',
+  showTicketFlag = true,
 }: RecentActivityRailBaseProps) {
   const resolvePlatformMeta = usePlatformMeta();
   const resolvePlatformLabel = (raw: string) => resolvePlatformMeta(raw).label;
@@ -215,6 +241,7 @@ export function RecentActivityRailBase({
           ctx={ctx}
           renderQuantity={renderQuantity}
           title={rowTitle(row)}
+          ticket={showTicketFlag ? railTicketNumber(row) : null}
         />
       )}
       renderPopover={(row, p) => (
@@ -228,6 +255,7 @@ export function RecentActivityRailBase({
           statusDot={getStatusDot(row)}
           statusLabel={getStatusDotLabel?.(row) ?? workflowStatusTableLabel(row.workflow_status || 'EXPECTED')}
           onOpenWorkspace={() => { p.openWorkspace(); p.dismiss(); }}
+          ticket={showTicketFlag ? railTicketNumber(row) : null}
           contextSlot={renderPopoverContext?.(row)}
           actionsSlot={renderPopoverActions?.(row, { dismiss: p.dismiss })}
         />
@@ -237,12 +265,14 @@ export function RecentActivityRailBase({
 }
 
 function ReceivingRowMain({
-  row, ctx, renderQuantity, title,
+  row, ctx, renderQuantity, title, ticket,
 }: {
   row: ReceivingLineRow;
   ctx: SidebarRailRowContext;
   renderQuantity: (row: ReceivingLineRow) => ReactNode;
   title: string;
+  /** Filed claim/ticket label (`#NNNN`) when this line has one; null hides the flag. */
+  ticket: string | null;
 }) {
   const techId = row.assigned_tech_id ?? null;
   const techColor = techId ? stationThemeColors[getStaffThemeById(techId)].text : 'text-text-faint';
@@ -257,7 +287,12 @@ function ReceivingRowMain({
       vm={{
         title,
         titleAttr: title,
-        titleAccessory: ctx.pkgChip,
+        titleAccessory: (
+          <>
+            {ctx.pkgChip}
+            {ticket ? <TicketRailFlag ticket={ticket} /> : null}
+          </>
+        ),
         meta: (
           <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
             {renderQuantity(row)}
@@ -270,7 +305,7 @@ function ReceivingRowMain({
 }
 
 function ReceivingPopoverContent({
-  row, title, groupSize, qtyLabel, getQty, activityAt, statusDot, statusLabel, onOpenWorkspace, contextSlot, actionsSlot,
+  row, title, groupSize, qtyLabel, getQty, activityAt, statusDot, statusLabel, onOpenWorkspace, ticket, contextSlot, actionsSlot,
 }: {
   row: ReceivingLineRow;
   title: string;
@@ -284,6 +319,8 @@ function ReceivingPopoverContent({
   /** Feed-scoped status label — replaces raw workflow_status in the badge. */
   statusLabel: string;
   onOpenWorkspace: () => void;
+  /** Filed claim/ticket label (`#NNNN`) when this line has one; null hides the badge. */
+  ticket: string | null;
   /** Optional read-only context (e.g. unfound exception dot) under the badges. */
   contextSlot?: ReactNode;
   /** Optional footer action (e.g. "File claim"), left of "Open →". */
@@ -316,6 +353,8 @@ function ReceivingPopoverContent({
   const isPickup = isLocalPickupFulfillment(row);
   const pickupLabel = fulfillmentModeLabel(row);
   const displayTrk = displayTrackingNumber(row);
+  // Ticket id sans leading `#` — the TicketChip's tone icon already renders `#`.
+  const ticketDigits = ticket ? ticket.replace(/^#/, '') : null;
 
   return (
     <div className="space-y-3 p-3.5">
@@ -327,14 +366,14 @@ function ReceivingPopoverContent({
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
-          <span className={`rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ${workflowTone}`}>{workflowLabel}</span>
+          <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
+          <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${workflowTone}`}>{workflowLabel}</span>
           {/* Unfound cartons have no Zoho PO — their RECEIVED state is local-only
               (no Zoho receive). The "No PO" tag marks that the website↔Zoho gap
               is intentional, not a failed sync. */}
           {row.receiving_source === 'unmatched' ? (
             <HoverTooltip label="No matching PO — received locally only" asChild>
-              <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
+              <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
             </HoverTooltip>
           ) : null}
           {/* Phase 2: a physically-present box whose Zoho PO already reads
@@ -344,14 +383,14 @@ function ReceivingPopoverContent({
             String(row.zoho_status || '').toLowerCase(),
           ) ? (
             <HoverTooltip label={`The inventory system marks this PO "${row.zoho_status}" — already received/closed upstream, but the box is still here to unbox`} asChild>
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
             </HoverTooltip>
           ) : null}
           {row.needs_test ? (
-            <span className="rounded bg-orange-100 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-orange-700">Test</span>
+            <span className="rounded bg-orange-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-orange-700">Test</span>
           ) : null}
           {pickupLabel ? (
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
               {pickupLabel}
             </span>
           ) : null}
@@ -360,7 +399,7 @@ function ReceivingPopoverContent({
             asChild
           >
             <span
-              className={`ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ${
+              className={`ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${
                 (row.photo_count ?? 0) > 0 ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200' : 'bg-surface-canvas text-text-faint ring-1 ring-inset ring-border-soft'
               }`}
             >
@@ -375,8 +414,8 @@ function ReceivingPopoverContent({
 
       <div>
         <div className="flex items-baseline justify-between">
-          <span className="text-eyebrow font-black uppercase tracking-widest text-text-faint">{qtyLabel}</span>
-          <span className={`text-caption font-black tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
+          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{qtyLabel}</span>
+          <span className={`text-role-caption font-black tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
             {qtyCurrent}<span className="text-text-faint mx-0.5">/</span><span className="text-text-faint">{qtyTotal ?? '?'}</span>
           </span>
         </div>
@@ -385,7 +424,11 @@ function ReceivingPopoverContent({
         </div>
       </div>
 
-      <div className="flex flex-nowrap items-center justify-between gap-1.5 overflow-x-auto border-t border-border-hairline pt-3 [&>*]:shrink-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      {/* Wrap (not scroll): the ticket chip makes this a 5-chip row that can't
+          fit the 360px popover on one line. flex-wrap keeps every chip full-size
+          and drops the overflow chip to a second line; justify-between still
+          spreads the common 4-chip row edge-to-edge (PO left · serial right). */}
+      <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-2 border-t border-border-hairline pt-3 [&>*]:shrink-0">
         <OrderIdChip value={poValue} display={getLast4(poValue)} />
         <SkuScanRefChip value={skuValue} display={getLast4(skuValue)} />
         {isPickup ? (
@@ -399,10 +442,15 @@ function ReceivingPopoverContent({
             so the value hugs the right edge of this justify-end row instead of
             leaving dead space to its right. */}
         <SerialChip value={serialsCsv} width="w-fit shrink-0" />
+        {/* Filed claim/ticket id — the ticket lives in the copy-chip row (orange
+            `TicketChip`, hash icon), not as a status-row badge. Only present when
+            the line has a ticket. The tone's `#` glyph supplies the hash, so the
+            display drops the leading `#`. */}
+        {ticketDigits ? <TicketChip value={ticketDigits} display={ticketDigits} /> : null}
       </div>
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
-        <span className="text-eyebrow font-bold uppercase tracking-widest text-text-faint">
+        <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
           {railRelativeTime(activityAt ?? row.created_at)} ago
           {row.assigned_tech_id ? ` · ${getStaffName(row.assigned_tech_id)}` : ''}
         </span>
@@ -412,7 +460,7 @@ function ReceivingPopoverContent({
             variant="primary"
             size="sm"
             onClick={onOpenWorkspace}
-            className="h-auto rounded-md px-2.5 py-1 text-micro font-black uppercase tracking-widest"
+            className="h-auto rounded-md px-2.5 py-1 text-role-micro uppercase tracking-widest"
           >
             Open →
           </Button>

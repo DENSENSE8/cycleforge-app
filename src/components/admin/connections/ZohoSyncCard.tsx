@@ -92,7 +92,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
       <div className={`flex items-center justify-between gap-3 ${embedded ? 'border-b border-border-soft pb-3' : ''}`}>
         <div>
           <h2 className="text-sm font-black uppercase tracking-widest text-text-default">Zoho Receiving Sync</h2>
-          <p className="text-eyebrow font-bold text-text-soft mt-1">Refresh the Zoho token, sync expected PO lines, or import one purchase receive.</p>
+          <p className="text-role-eyebrow font-bold text-text-soft mt-1">Refresh the Zoho token, sync expected PO lines, or import one purchase receive.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -102,7 +102,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
             loading={zohoRefreshMutation.isPending}
             disabled={anyPending}
             onClick={() => void handleRefresh()}
-            className="bg-surface-sunken hover:bg-surface-strong text-micro font-black uppercase tracking-widest text-text-muted"
+            className="bg-surface-sunken hover:bg-surface-strong text-role-micro uppercase tracking-widest text-text-muted"
           >
             {zohoRefreshMutation.isPending ? 'Refreshing...' : 'Refresh Token'}
           </Button>
@@ -110,7 +110,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           <button
             onClick={() => void handleSync()}
             disabled={anyPending}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all text-micro font-black uppercase tracking-widest text-white shadow-sm disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all text-role-micro uppercase tracking-widest text-white shadow-sm disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${zohoSyncMutation.isPending ? 'animate-spin' : ''}`} />
             {zohoSyncMutation.isPending ? 'Syncing...' : 'Sync Expected POs'}
@@ -123,14 +123,14 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           value={purchaseReceiveId}
           onChange={(e) => setPurchaseReceiveId(e.target.value)}
           placeholder="Enter purchase receive ID"
-          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-micro font-bold uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
+          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-micro font-bold uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
         />
         <Button
           variant="primary"
           size="md"
           disabled={!purchaseReceiveId.trim() || anyPending}
           onClick={() => void handleImportOne()}
-          className="text-micro font-black uppercase tracking-widest"
+          className="text-role-micro uppercase tracking-widest"
         >
           {zohoImportOneMutation.isPending ? 'Importing...' : 'Import Receive'}
         </Button>
@@ -140,7 +140,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`border-l-2 px-4 py-3 text-micro font-black uppercase tracking-widest ${
+          className={`border-l-2 px-4 py-3 text-role-micro uppercase tracking-widest ${
             status.type === 'success' ? 'border-l-green-500 bg-green-50/70 text-green-700' : 'border-l-red-500 bg-red-50/70 text-red-700'
           }`}
         >

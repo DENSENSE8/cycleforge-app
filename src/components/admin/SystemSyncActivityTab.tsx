@@ -61,7 +61,7 @@ export function SystemSyncActivityTab() {
           <h1 className="flex items-center gap-2 text-xl font-black tracking-tight text-text-default">
             <Activity className="h-5 w-5 text-text-faint" /> System sync activity
           </h1>
-          <p className="mt-0.5 text-caption text-text-soft">
+          <p className="mt-0.5 text-role-caption text-text-soft">
             Cron health, last runs, and history across every scheduled job.
           </p>
         </div>
@@ -77,11 +77,11 @@ export function SystemSyncActivityTab() {
 
       {/* Health cards */}
       {summary.isLoading ? (
-        <div className="flex items-center gap-2 p-8 text-caption text-text-faint">
+        <div className="flex items-center gap-2 p-8 text-role-caption text-text-faint">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading jobs…
         </div>
       ) : summary.isError || !summary.data ? (
-        <div className="p-8 text-caption text-rose-600">Failed to load sync status.</div>
+        <div className="p-8 text-role-caption text-rose-600">Failed to load sync status.</div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {summary.data.jobs.map((j) => (
@@ -100,7 +100,7 @@ export function SystemSyncActivityTab() {
       {/* Run history */}
       <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
         <header className="flex items-center justify-between px-5 py-4">
-          <h3 className="text-eyebrow font-black uppercase tracking-[0.14em] text-text-soft">
+          <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
             Run history {jobFilter ? `· ${jobFilter}` : ''}
           </h3>
           {jobFilter && (
@@ -115,11 +115,11 @@ export function SystemSyncActivityTab() {
           )}
         </header>
         {list.isLoading ? (
-          <div className="flex items-center gap-2 border-t border-border-hairline px-5 py-4 text-caption text-text-faint">
+          <div className="flex items-center gap-2 border-t border-border-hairline px-5 py-4 text-role-caption text-text-faint">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         ) : !list.data || list.data.runs.length === 0 ? (
-          <p className="border-t border-border-hairline px-5 py-3 text-caption text-text-faint">No runs recorded yet.</p>
+          <p className="border-t border-border-hairline px-5 py-3 text-role-caption text-text-faint">No runs recorded yet.</p>
         ) : (
           <ul className="border-t border-border-hairline divide-y divide-border-hairline">
             {list.data.runs.map((r) => (
@@ -156,8 +156,8 @@ function JobCard({
         <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${DOT[job.health]}`} aria-hidden />
         {/* ds-raw-button: text-left multi-line master-detail select row (label + schedule meta) */}
         <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
-          <div className="truncate text-label font-bold text-text-default">{job.label}</div>
-          <div className="truncate text-mini text-text-soft">
+          <div className="truncate text-role-caption font-bold text-text-default">{job.label}</div>
+          <div className="truncate text-role-micro text-text-soft">
             {job.schedule ?? 'unscheduled'} · {rel(last?.finishedAt ?? last?.startedAt ?? null)}
           </div>
         </button>
@@ -173,7 +173,7 @@ function JobCard({
       </div>
       {job.health === 'failed' && last?.error ? (
         // ds-allow-title: truncation-reveal of the full error on a non-interactive line
-        <div className="mt-1.5 truncate text-mini text-rose-600" title={last.error}>
+        <div className="mt-1.5 truncate text-role-micro text-rose-600" title={last.error}>
           {last.error}
         </div>
       ) : null}
@@ -192,18 +192,18 @@ function RunRow({ run }: { run: CronRunRow }) {
         onClick={() => hasDetail && setOpen((o) => !o)}
         className="flex w-full items-center gap-3 text-left"
       >
-        <span className={`rounded-full px-1.5 py-0.5 text-mini font-bold ${syncRunStatusChipClass(run.status)}`}>
+        <span className={`rounded-full px-1.5 py-0.5 text-role-micro font-bold ${syncRunStatusChipClass(run.status)}`}>
           {run.status}
         </span>
-        <span className="min-w-0 flex-1 truncate text-label font-bold text-text-default">{run.job}</span>
+        <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">{run.job}</span>
         {run.trigger === 'manual' && (
-          <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-mini font-bold text-text-soft">manual</span>
+          <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold text-text-soft">manual</span>
         )}
-        <span className="shrink-0 text-mini tabular-nums text-text-faint">{dur(run.duration_ms)}</span>
-        <span className="shrink-0 text-mini tabular-nums text-text-faint">{rel(run.started_at)}</span>
+        <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{dur(run.duration_ms)}</span>
+        <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{rel(run.started_at)}</span>
       </button>
       {open && hasDetail && (
-        <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-surface-canvas p-2.5 text-mini text-text-muted">
+        <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-surface-canvas p-2.5 text-role-micro text-text-muted">
           {run.error ? `ERROR: ${run.error}\n` : ''}
           {run.summary && typeof run.summary === 'object' ? JSON.stringify(run.summary, null, 2) : ''}
         </pre>

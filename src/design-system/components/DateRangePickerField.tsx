@@ -114,7 +114,7 @@ export function DateRangePickerField({
           type="button"
           disabled={disabled}
           className={cn(
-            'inline-flex h-9 w-full items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 text-left text-caption font-semibold text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50',
+            'inline-flex h-9 w-full items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 text-left text-role-caption font-semibold text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50',
             hasValue ? 'text-text-default' : 'text-text-faint',
             className,
           )}
@@ -157,7 +157,7 @@ export function DateRangePickerField({
                     onChange(r);
                     setOpen(false);
                   }}
-                  className="rounded-md px-2 py-1 text-eyebrow font-black uppercase tracking-wider text-text-muted hover:bg-surface-sunken hover:text-text-default"
+                  className="rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-wider text-text-muted hover:bg-surface-sunken hover:text-text-default"
                 >
                   {p.label}
                 </button>
@@ -186,7 +186,7 @@ export function DateRangePickerField({
                 onChange(undefined);
                 setOpen(false);
               }}
-              className="text-eyebrow font-black uppercase tracking-wider text-text-soft hover:text-text-default"
+              className="text-role-eyebrow uppercase tracking-wider text-text-soft hover:text-text-default"
             >
               Clear
             </button>
@@ -197,7 +197,7 @@ export function DateRangePickerField({
                 setOpen(false);
               }}
               disabled={!draft?.from}
-              className="rounded-md bg-blue-600 px-3 py-1 text-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+              className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
             >
               Apply
             </button>

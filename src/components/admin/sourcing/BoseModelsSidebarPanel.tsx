@@ -101,7 +101,7 @@ export function BoseModelsSidebarPanel() {
                     asChild
                     focusable={false}
                   >
-                    <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-micro font-semibold text-text-muted">
+                    <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted">
                       {row.compat_count}
                     </span>
                   </HoverTooltip>

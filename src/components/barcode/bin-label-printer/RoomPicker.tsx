@@ -41,7 +41,7 @@ export function RoomPicker({ rooms, zoneMap, loading, selectedRoom, onSelect }: 
             <ZoneLetterTile letter={letter} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold leading-snug text-text-default break-words">{room}</p>
-              <p className="mt-0.5 text-caption text-text-soft">
+              <p className="mt-0.5 text-role-caption text-text-soft">
                 {letter ? `Zone ${letter}` : 'No zone letter'}
               </p>
             </div>

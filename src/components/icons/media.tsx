@@ -88,10 +88,11 @@ export const MessageSquare = ({ className = "w-6 h-6" }: { className?: string })
     </svg>
 );
 
-/** Support / helpdesk ticket — Lucide Ticket + perforation dashes, mild tilt.
- *  Uses Lucide’s full-canvas ticket path so optical volume matches PackageOpen /
- *  Wrench / Truck at h-5. See lucide.dev/contribute/icon-design-guide. */
-export const TicketHelp = ({ className = "w-6 h-6" }: { className?: string }) => (
+/** Support / helpdesk ticket — straight/flat Lucide `ticket` (side notches +
+ *  perforation dashes). Single house ticket glyph; the capability-noun icon for
+ *  tickets that replaces the Zendesk brand mark on product surfaces (Integrations
+ *  hub / deep links keep {@link ZendeskMark}). */
+export const Ticket = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg
         className={className}
         fill="none"
@@ -102,15 +103,18 @@ export const TicketHelp = ({ className = "w-6 h-6" }: { className?: string }) =>
         strokeLinejoin="round"
         aria-hidden
     >
-        {/* Lucide `ticket` geometry (fills the 24 grid); mild tilt keeps silhouette distinctive */}
-        <g transform="translate(12 12) rotate(-10) scale(1.06) translate(-12 -12)">
-            <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
-            {/* Perforation — same dashes as Lucide `ticket` */}
-            <path d="M13 5v2" />
-            <path d="M13 11v2" />
-            <path d="M13 17v2" />
-        </g>
+        <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+        <path d="M13 5v2" />
+        <path d="M13 11v2" />
+        <path d="M13 17v2" />
     </svg>
+);
+
+/** Flat ticket glyph — delegates to {@link Ticket}. Kept as a named export for
+ *  the many `TicketHelp` importers + string-key icon registries. Previously a
+ *  tilted variant; now flat so every ticket icon reads the same. */
+export const TicketHelp = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <Ticket className={className} />
 );
 
 export const Folder = ({ className = "w-6 h-6" }: { className?: string }) => (

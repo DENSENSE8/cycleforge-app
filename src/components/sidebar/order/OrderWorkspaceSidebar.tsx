@@ -125,7 +125,7 @@ export function OrderWorkspaceSidebar() {
           scopeLabel: 'Orders',
           scopeHref: currentOrderId
             ? `/o/${encodeURIComponent(currentOrderId)}?mode=search&q=${encodeURIComponent(t)}`
-            : `/search?type=order&q=${encodeURIComponent(t)}`,
+            : `/dashboard?search=${encodeURIComponent(t)}`,
         });
         updateQuery(t);
       },
@@ -231,8 +231,8 @@ function RecentOrdersList({
     return (
       <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
         <Box className="mx-auto mb-2 h-5 w-5 text-text-faint" />
-        <p className="text-caption font-semibold text-text-muted">No recently opened orders</p>
-        <p className="mt-1 text-mini font-medium text-text-faint">
+        <p className="text-role-caption font-semibold text-text-muted">No recently opened orders</p>
+        <p className="mt-1 text-role-micro font-medium text-text-faint">
           Orders you open here or from the dashboard will appear in this list.
         </p>
       </div>
@@ -259,8 +259,8 @@ function RecentOrdersList({
                 className="min-w-0 flex-1 px-2 py-1.5 text-left"
                 aria-current={selected ? 'page' : undefined}
               >
-                <p className="truncate text-caption font-bold text-text-default">{entry.label}</p>
-                <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                <p className="truncate text-role-caption font-bold text-text-default">{entry.label}</p>
+                <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
                   {when ? `Opened ${when}` : `Order · ${entry.id}`}
                 </p>
               </button>
@@ -314,8 +314,8 @@ function SearchOrdersBody({
       <div className="space-y-3">
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
           <Search className="mx-auto mb-2 h-5 w-5 text-text-faint" />
-          <p className="text-caption font-semibold text-text-muted">Find a customer&apos;s order</p>
-          <p className="mt-1 text-mini font-medium text-text-faint">
+          <p className="text-role-caption font-semibold text-text-muted">Find a customer&apos;s order</p>
+          <p className="mt-1 text-role-micro font-medium text-text-faint">
             Type an order #, tracking, serial, or customer in the header search.
           </p>
         </div>
@@ -340,8 +340,8 @@ function SearchOrdersBody({
       />
       {!searching && hits.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
-          <p className="text-caption font-semibold text-text-muted">No matching orders</p>
-          <p className="mt-1 text-mini font-medium text-text-faint">
+          <p className="text-role-caption font-semibold text-text-muted">No matching orders</p>
+          <p className="mt-1 text-role-micro font-medium text-text-faint">
             Try a different order #, tracking, or serial.
           </p>
         </div>

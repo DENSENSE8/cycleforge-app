@@ -301,7 +301,7 @@ export default async function CycleCountDetailPage({
         <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
           <header className="border-b border-border-hairline px-6 py-3">
             <h2 className="text-base font-medium text-text-default">Lines</h2>
-            <p className="mt-1 text-caption text-text-soft">
+            <p className="mt-1 text-role-caption text-text-soft">
               Pending lines accept a count submission. Pending review needs an admin decision.
             </p>
           </header>
@@ -366,7 +366,7 @@ export default async function CycleCountDetailPage({
                           {l.variance == null ? '—' : (l.variance > 0 ? '+' : '') + l.variance}
                         </td>
                         <td className="px-4 py-2">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-micro font-medium ${
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-role-micro font-medium ${
                             l.status === 'pending' ? 'bg-surface-sunken text-text-muted' :
                             l.status === 'counted' ? 'bg-blue-100 text-blue-700' :
                             l.status === 'pending_review' ? 'bg-amber-100 text-amber-800' :
@@ -383,7 +383,7 @@ export default async function CycleCountDetailPage({
                                 <input type="hidden" name="campaignId" value={campaign.id} />
                                 <input type="hidden" name="lineId" value={l.id} />
                                 {/* ds-raw-button: solid-green approve CTA — no DS Button variant maps to green */}
-                                <button type="submit" className="rounded bg-green-600 px-2.5 py-1 text-caption font-medium text-white hover:bg-green-700">
+                                <button type="submit" className="rounded bg-green-600 px-2.5 py-1 text-role-caption font-medium text-white hover:bg-green-700">
                                   Approve
                                 </button>
                               </form>
@@ -396,7 +396,7 @@ export default async function CycleCountDetailPage({
                               </form>
                             </div>
                           ) : (
-                            <span className="text-caption text-text-soft">
+                            <span className="text-role-caption text-text-soft">
                               {l.approved_by_name ? `by ${l.approved_by_name}` :
                                 l.counted_by_name ? `counted by ${l.counted_by_name}` : '—'}
                             </span>

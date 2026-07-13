@@ -95,7 +95,7 @@ export function MetricTile({
       role={clickable ? 'button' : undefined}
       tabIndex={clickable ? 0 : undefined}
     >
-      <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
       <MetricRing
         fraction={fraction}
         toneClass={toneClass}
@@ -104,7 +104,7 @@ export function MetricTile({
       {delta !== undefined ? (
         <DeltaChip delta={delta} invert={deltaInvert} vsLabel={deltaVsLabel ?? 'vs last wk'} className="mt-0" />
       ) : status ? (
-        <p className={cn('text-eyebrow font-black uppercase tracking-widest', toneClass)}>{status}</p>
+        <p className={cn('text-role-eyebrow uppercase tracking-widest', toneClass)}>{status}</p>
       ) : null}
     </div>
   );

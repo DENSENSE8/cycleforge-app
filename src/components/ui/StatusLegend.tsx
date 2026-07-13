@@ -97,7 +97,7 @@ export function StatusLegend<K extends string>({
             }`}
           >
             <span
-              className={`text-micro font-bold uppercase tracking-wide ${
+              className={`text-role-micro font-bold uppercase tracking-wide ${
                 allActive ? 'text-text-default' : 'text-text-soft'
               }`}
             >
@@ -123,7 +123,7 @@ export function StatusLegend<K extends string>({
         const inner = (
           <>
             <span className={`h-2 w-2 shrink-0 rounded-full ${m.dot} ${dimmed ? 'opacity-40' : ''}`} />
-            <span className={`text-micro font-bold uppercase tracking-wide ${active ? 'text-text-default' : 'text-text-soft'} ${dimmed ? 'opacity-60' : ''}`}>{short}</span>
+            <span className={`text-role-micro font-bold uppercase tracking-wide ${active ? 'text-text-default' : 'text-text-soft'} ${dimmed ? 'opacity-60' : ''}`}>{short}</span>
             <span className={`text-xs font-black tabular-nums ${active ? 'text-text-default' : 'text-text-default'} ${dimmed ? 'opacity-60' : ''}`}>{value}</span>
           </>
         );

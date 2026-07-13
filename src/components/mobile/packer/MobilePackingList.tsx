@@ -57,7 +57,7 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-text-muted">No pack history yet</p>
-            <p className="max-w-[260px] text-caption font-semibold text-text-soft">
+            <p className="max-w-[260px] text-role-caption font-semibold text-text-soft">
               Pack something at a desktop station — recent entries will land here.
             </p>
           </div>

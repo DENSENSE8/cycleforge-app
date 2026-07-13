@@ -212,7 +212,7 @@ export function NoSerialControl({
             {fullWidth ? (
               <>
                 <Icon className={`h-4 w-4 shrink-0 ${tone.icon}`} />
-                <span className="truncate text-label font-semibold text-text-muted">{label}</span>
+                <span className="truncate text-role-caption font-semibold text-text-muted">{label}</span>
                 <ChevronGlyph className="ml-auto mr-0.5 shrink-0" />
               </>
             ) : (
@@ -256,7 +256,7 @@ export function NoSerialControl({
                 role="menuitemradio"
                 aria-checked={selected}
                 onClick={() => pick(r.code)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-label font-semibold transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-role-caption font-semibold transition-colors ${
                   selected ? rowTone.rowSel : 'text-text-muted hover:bg-surface-hover'
                 }`}
               >

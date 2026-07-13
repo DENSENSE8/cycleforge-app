@@ -48,7 +48,6 @@ import {
   type OperationsMode,
 } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { useOperationsMode } from '@/components/sidebar/operations/useOperationsMode';
-import { PlansSidebar } from '@/components/sidebar/operations/PlansSidebar';
 import { useOperationsTimelineUrlState } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { SearchRecentsDropdown } from '@/components/search/SearchRecentsDropdown';
@@ -104,7 +103,9 @@ export function OperationsSidebarPanel() {
   if (mode === 'insights') return <InsightsSidebar modeToggle={modeToggle} />;
   if (mode === 'history') return <HistorySidebar modeToggle={modeToggle} />;
   if (mode === 'signals') return <SignalsSidebar modeToggle={modeToggle} />;
-  if (mode === 'plans') return <PlansSidebar modeToggle={modeToggle} />;
+  // `plans` is no longer an Operations mode — forge/plans moved to Home and the
+  // right pane redirects `?mode=plans` there (HOME-OPS §3.2). No plan-edit chrome
+  // renders in Operations; a stale `?mode=plans` bookmark falls through to Live.
   return <LiveSidebar modeToggle={modeToggle} />;
 }
 
@@ -174,7 +175,7 @@ function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
             const cell = data?.summary?.[k.key];
             return (
               <div key={k.key} className="rounded-xl border border-border-soft bg-surface-card p-2.5">
-                <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">{k.label}</p>
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{k.label}</p>
                 <p className={cn('mt-0.5 text-xl font-black tabular-nums leading-none', k.tone)}>
                   {cell ? cell.value.toLocaleString() : isLoading ? '·' : '0'}
                 </p>
@@ -191,15 +192,15 @@ function LiveSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
               <li key={r.id} className="flex items-start gap-2 py-1.5">
                 <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-400" aria-hidden />
                 <div className="min-w-0">
-                  <p className="truncate text-caption font-semibold text-text-default">{r.summary || r.type}</p>
-                  <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <p className="truncate text-role-caption font-semibold text-text-default">{r.summary || r.type}</p>
+                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {r.source} · {r.actor_name ?? 'system'}
                   </p>
                 </div>
               </li>
             ))}
             {feed.length === 0 && (
-              <li className="py-6 text-center text-caption text-text-faint">
+              <li className="py-6 text-center text-role-caption text-text-faint">
                 {isLoading ? 'Loading live activity…' : 'No matching activity.'}
               </li>
             )}
@@ -234,7 +235,7 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
       <div className={cn('space-y-5 pt-3')}>
         <header>
           <h2 className="text-xl font-black uppercase leading-none tracking-tighter text-text-default">Analytics</h2>
-          <p className="mt-1 text-eyebrow font-bold uppercase tracking-widest text-blue-600">
+          <p className="mt-1 text-role-eyebrow font-bold uppercase tracking-widest text-blue-600">
             Trends · breakdowns · inventory health
           </p>
         </header>
@@ -249,7 +250,7 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                 onClick={() => setParam('range', r)}
                 /* ds-raw-button: vertical segmented time-range toggle (selection ring) — not a Button shape */
                 className={cn(
-                  'ds-raw-button flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-caption font-semibold transition-colors',
+                  'ds-raw-button flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-role-caption font-semibold transition-colors',
                   range === r
                     ? 'border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
                     : 'border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover',
@@ -272,7 +273,7 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                   onClick={() => setParam('section', s.id)}
                   /* ds-raw-button: jump-to nav row (icon + label, selection ring) — not a Button shape */
                   className={cn(
-                    'ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-caption font-semibold transition-colors',
+                    'ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors',
                     activeSection === s.id
                       ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
                       : 'text-text-muted hover:bg-surface-hover',
@@ -314,7 +315,7 @@ function InsightsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
           </HoverTooltip>
         </div>
 
-        <p className="text-caption leading-5 text-text-muted">
+        <p className="text-role-caption leading-5 text-text-muted">
           Ask about the floor in plain English. The assistant streams its reply in the panel on the
           right with live operations + inventory context.
         </p>
@@ -324,15 +325,15 @@ function InsightsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
             <div key={c.title} className="rounded-xl border border-border-soft bg-surface-card p-3">
               <div className="flex items-center gap-2 text-text-default">
                 <c.icon className="h-4 w-4 text-blue-500" />
-                <p className="text-caption font-semibold tracking-tight">{c.title}</p>
+                <p className="text-role-caption font-semibold tracking-tight">{c.title}</p>
               </div>
-              <p className="mt-1 text-micro leading-5 text-text-muted">{c.detail}</p>
+              <p className="mt-1 text-role-micro leading-5 text-text-muted">{c.detail}</p>
             </div>
           ))}
         </div>
 
         <div>
-          <p className="text-micro font-black uppercase tracking-[0.2em] text-text-soft">Try asking</p>
+          <p className="text-role-micro uppercase tracking-[0.2em] text-text-soft">Try asking</p>
           <div className="mt-3 flex flex-col gap-2">
             {INSIGHTS_PROMPTS.map((p) => (
               <button
@@ -340,7 +341,7 @@ function InsightsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                 type="button"
                 onClick={() => emitAiChatPrompt(p)}
                 /* ds-raw-button: multi-line text-left prompt suggestion card — not a Button shape */
-                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
               >
                 {p}
               </button>
@@ -362,7 +363,7 @@ const SIGNALS_WINDOWS: Array<{ id: string; label: string; days: number | null }>
 ];
 
 const SIGNALS_FILTER_SELECT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-caption font-semibold text-text-muted focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400';
+  'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-muted focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400';
 
 function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
   const router = useRouter();
@@ -412,7 +413,7 @@ function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
       <div className={cn('space-y-4 pt-3')}>
         {signalsView === 'timeline' ? (
           <>
-            <p className="text-caption leading-5 text-text-muted">
+            <p className="text-role-caption leading-5 text-text-muted">
               Org-scoped timeline — returns, test fails, receiving exceptions, denials, buyer notes.
             </p>
             <div className="space-y-2">
@@ -461,7 +462,7 @@ function SignalsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
               onClear={() => setParam('q', '')}
               placeholder="Filter signal notes…"
             />
-            <p className="text-caption leading-5 text-text-muted">
+            <p className="text-role-caption leading-5 text-text-muted">
               Select a signal from the list to inspect its detail.
             </p>
           </div>
@@ -547,12 +548,12 @@ function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
 // ── Shared bits ───────────────────────────────────────────────────────────────
 
 function DeltaPill({ delta, invert = false }: { delta: number; invert?: boolean }) {
-  if (!delta) return <p className="mt-1 text-eyebrow font-semibold text-text-faint">No change</p>;
+  if (!delta) return <p className="mt-1 text-role-eyebrow font-semibold text-text-faint">No change</p>;
   const positive = invert ? delta < 0 : delta > 0;
   return (
     <p
       className={cn(
-        'mt-1 inline-flex items-center gap-0.5 text-eyebrow font-black tabular-nums',
+        'mt-1 inline-flex items-center gap-0.5 text-role-eyebrow tabular-nums',
         positive ? 'text-emerald-600' : 'text-rose-600',
       )}
     >

@@ -109,7 +109,7 @@ export function StudioShell() {
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-soft bg-surface-card px-4 py-2.5">
         <div className="min-w-0">
           <h1 className="text-sm font-bold tracking-tight text-text-default">Operations Studio</h1>
-          <p className="text-caption text-text-faint">
+          <p className="text-role-caption text-text-faint">
             {editing ? 'Editing a draft — changes go live on publish' : 'Viewing · edits happen on a draft'}
           </p>
         </div>
@@ -131,7 +131,7 @@ export function StudioShell() {
         )}
 
         {lens === 'live' && !editing && live && (
-          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-caption font-semibold text-blue-700">
+          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-role-caption font-semibold text-blue-700">
             {live.totalInFlight} in flight
           </span>
         )}
@@ -145,7 +145,7 @@ export function StudioShell() {
             }
             asChild
           >
-            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-caption font-semibold text-violet-700">
+            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-role-caption font-semibold text-violet-700">
               {people.totalCovering} covering
               {people.uncoveredNodeIds.length > 0 && ` · ${people.uncoveredNodeIds.length} gap`}
             </span>
@@ -191,7 +191,7 @@ export function StudioShell() {
               </Button>
             ) : (
               <>
-                <span className="rounded-md bg-amber-100 px-2 py-1 text-caption font-bold uppercase tracking-wide text-amber-700">
+                <span className="rounded-md bg-amber-100 px-2 py-1 text-role-caption font-bold uppercase tracking-wide text-amber-700">
                   Draft v{graph.definition.version}
                 </span>
                 {/* Add a sticky-note (Phase E3) — only on a draft (the active
@@ -282,7 +282,7 @@ export function StudioShell() {
             </HoverTooltip>
           </div>
         )}
-        {actionError && <span className="text-caption font-semibold text-rose-600">{actionError}</span>}
+        {actionError && <span className="text-role-caption font-semibold text-rose-600">{actionError}</span>}
       </header>
 
       {/* ─── Panes: full-width canvas + contextual inspector ─── */}
@@ -364,7 +364,7 @@ export function StudioShell() {
             )}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-3 py-2">
-              <span className="text-micro font-bold uppercase tracking-wider text-text-faint">Inspector</span>
+              <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">Inspector</span>
               <HoverTooltip label="Hide inspector" asChild>
                 <IconButton
                   type="button"
@@ -413,7 +413,7 @@ export function StudioShell() {
               )}
             >
               <ChevronLeft className="h-4 w-4" />
-              <span className="text-micro font-semibold uppercase tracking-wider [writing-mode:vertical-rl]">
+              <span className="text-role-micro font-semibold uppercase tracking-wider [writing-mode:vertical-rl]">
                 Inspector
               </span>
               {/* A node is selected but its detail is tucked away — hint it. */}

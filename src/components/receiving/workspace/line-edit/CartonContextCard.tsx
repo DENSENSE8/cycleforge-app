@@ -2,7 +2,7 @@
 
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Barcode, ExternalLink, Plus, SlidersHorizontal, X } from '@/components/Icons';
+import { Barcode, ExternalLink, Plus, Reply, SlidersHorizontal, X } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -93,6 +93,8 @@ export function CartonContextCard({
   onTypeSelect,
   priorityTier = null,
   onPrioritySelect,
+  onToggleTicketView,
+  ticketViewActive = false,
 }: {
   receivingId: number | null;
   staffId: string;
@@ -161,6 +163,15 @@ export function CartonContextCard({
   priorityTier?: number | null;
   /** Set/clear the priority tier (null = Auto). Omit to render urgency display-only. */
   onPrioritySelect?: (tier: number | null) => void;
+  /**
+   * Opt-in: toggle the inline support-ticket editor (`?ticketView=1`). Provided
+   * only by the unbox `LineCartonContextSection` for v1 — omitting it hides the
+   * reply-toggle button entirely (so the testing header shows nothing). The
+   * button also requires a linked ticket (`zendeskTrimmed` + `providerTicketId`).
+   */
+  onToggleTicketView?: () => void;
+  /** True while the inline ticket editor is open — drives aria-pressed + ring. */
+  ticketViewActive?: boolean;
 }) {
   const listingRef = useRef<HTMLInputElement>(null);
   const poInputRef = useRef<HTMLInputElement>(null);
@@ -458,7 +469,7 @@ export function CartonContextCard({
                       label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
                       asChild
                     >
-                      <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-eyebrow font-black tabular-nums text-text-muted">
+                      <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-role-eyebrow tabular-nums text-text-muted">
                         +{filledExtraTrackingsCount}
                       </span>
                     </HoverTooltip>
@@ -480,6 +491,28 @@ export function CartonContextCard({
                     lineId={lineId}
                     onUnlinked={() => onTicketUnlinked?.()}
                   />
+                  {/* Inline ticket editor toggle — opt-in per surface (unbox
+                      only for v1). Requires a resolved provider ticket to reply
+                      to; echoes the ticket chip's orange tone. */}
+                  {onToggleTicketView && providerTicketId != null ? (
+                    <HoverTooltip
+                      label={ticketViewActive ? 'Close ticket editor' : 'Reply on this ticket'}
+                      asChild
+                    >
+                      <IconButton
+                        type="button"
+                        onClick={onToggleTicketView}
+                        ariaLabel={ticketViewActive ? 'Close ticket editor' : 'Reply on this ticket'}
+                        aria-pressed={ticketViewActive}
+                        icon={<Reply className="h-3.5 w-3.5 text-orange-600" />}
+                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border shadow-sm ${
+                          ticketViewActive
+                            ? 'border-orange-300 bg-orange-100 ring-1 ring-inset ring-orange-400'
+                            : 'border-orange-200 bg-orange-50 hover:border-orange-300 hover:bg-orange-100'
+                        }`}
+                      />
+                    </HoverTooltip>
+                  ) : null}
                   <SellerMessageChip
                     receivingId={receivingId}
                     lineId={lineId}
@@ -494,7 +527,7 @@ export function CartonContextCard({
                     size="sm"
                     onClick={onMakeClaim}
                     ariaLabel="File claim"
-                    className="h-8 w-[50.32px] shrink-0 self-center rounded-full bg-orange-50 px-0 text-micro font-black uppercase leading-none tracking-wide text-orange-700 shadow-none ring-1 ring-inset ring-orange-200 hover:bg-orange-100 active:bg-orange-100"
+                    className="h-8 w-[50.32px] shrink-0 self-center rounded-full bg-orange-50 px-0 text-role-micro uppercase leading-none tracking-wide text-orange-700 shadow-none ring-1 ring-inset ring-orange-200 hover:bg-orange-100 active:bg-orange-100"
                   >
                     Claim
                   </Button>
@@ -507,6 +540,7 @@ export function CartonContextCard({
               <ReceivingPhotoButton
                 receivingId={receivingId}
                 staffId={Number(staffId) || 0}
+                poRef={effectiveOrder || null}
               />
             ) : null}
                 </motion.div>
@@ -727,7 +761,7 @@ export function CartonContextCard({
                               key={`${l.href}-${i}`}
                               type="button"
                               onClick={() => window.open(l.href, '_blank', 'noopener,noreferrer')}
-                              className="flex w-full items-center justify-between gap-2 rounded-md border border-border-hairline bg-surface-card/70 px-2 py-1.5 text-left text-caption font-semibold text-text-muted transition hover:bg-surface-hover"
+                              className="flex w-full items-center justify-between gap-2 rounded-md border border-border-hairline bg-surface-card/70 px-2 py-1.5 text-left text-role-caption font-semibold text-text-muted transition hover:bg-surface-hover"
                             >
                               <span className="min-w-0 flex-1 truncate">
                                 {(l.label || '').trim() || `Listing ${i + 1}/${syncNoteListingLinks.length}`}

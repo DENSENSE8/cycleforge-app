@@ -52,7 +52,7 @@ export function LabelFacePreview({
         </div>
       ) : null}
       {model.hri ? (
-        <span className="font-mono text-[7px] font-extrabold leading-none tracking-wide text-text-default">
+        <span className="font-mono text-role-micro font-extrabold leading-none tracking-wide text-text-default">
           {model.hri}
         </span>
       ) : null}
@@ -65,10 +65,10 @@ export function LabelFacePreview({
       <div className={shell}>
         <div className="flex min-h-[6rem] flex-nowrap items-stretch gap-4">
           <div className="min-w-0 flex flex-1 flex-col justify-between">
-            <span className="line-clamp-2 text-micro font-bold leading-snug tracking-tight text-text-default">
+            <span className="line-clamp-2 text-role-micro font-bold leading-snug tracking-tight text-text-default">
               {model.topLeft}
             </span>
-            <div className="flex items-baseline justify-between gap-2 text-micro leading-none">
+            <div className="flex items-baseline justify-between gap-2 text-role-micro leading-none">
               <span className="font-black text-text-default">{model.bottomLeft}</span>
               <span className="shrink-0 tabular-nums font-black text-text-default">
                 {model.bottomRight}
@@ -93,7 +93,7 @@ export function LabelFacePreview({
             </span>
           </div>
           <div className="flex min-h-0 flex-1 min-w-0 items-center justify-center px-0.5">
-            <span className="line-clamp-3 w-full text-center text-caption font-semibold leading-tight tracking-normal text-text-default normal-case">
+            <span className="line-clamp-3 w-full text-center text-role-caption font-semibold leading-tight tracking-normal text-text-default normal-case">
               {model.center}
             </span>
           </div>

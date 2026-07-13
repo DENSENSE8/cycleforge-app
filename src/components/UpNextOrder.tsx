@@ -192,16 +192,16 @@ export default function UpNextOrder({ techId, onStart, onMissingParts, onAllComp
               >
                 <div className="flex items-center gap-2 px-1 pt-0.5">
                   {lateCount > 0 && (
-                    <span className="flex items-center gap-1 text-eyebrow font-black uppercase tracking-widest text-red-500">
+                    <span className="flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-red-500">
                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
                       {lateCount} late
                     </span>
                   )}
                   {lateCount > 0 && dueTodayCount > 0 && (
-                    <span className="text-text-soft text-eyebrow">·</span>
+                    <span className="text-text-soft text-role-eyebrow">·</span>
                   )}
                   {dueTodayCount > 0 && (
-                    <span className="flex items-center gap-1 text-eyebrow font-black uppercase tracking-widest text-amber-500">
+                    <span className="flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-amber-500">
                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
                       {dueTodayCount} due today
                     </span>

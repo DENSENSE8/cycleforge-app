@@ -1,6 +1,7 @@
 import { toast } from '@/lib/toast';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
+import { SendPhotoNoteModal } from '@/components/receiving/workspace/SendPhotoNoteModal';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { TestingController } from './testing-panel-types';
 
@@ -27,6 +28,12 @@ export function TestingPanelModals({
       {row.receiving_id != null ? (
         <ReceivingAuditModal open={c.auditOpen} onClose={() => c.setAuditOpen(false)} receivingId={row.receiving_id} />
       ) : null}
+
+      <SendPhotoNoteModal
+        open={c.photoNoteOpen}
+        row={row}
+        onClose={() => c.setPhotoNoteOpen(false)}
+      />
     </>
   );
 }

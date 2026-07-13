@@ -113,7 +113,7 @@ export function PhotoSortMenu({
                   onClick={() => handleSelect(o.value)}
                   onKeyDown={(event) => handleOptionKeyDown(event, index)}
                   className={cn(
-                    'ds-raw-button flex w-full items-center justify-start gap-1.5 rounded-md py-1.5 pl-1.5 pr-1 text-micro font-semibold transition-colors',
+                    'ds-raw-button flex w-full items-center justify-start gap-1.5 rounded-md py-1.5 pl-1.5 pr-1 text-role-micro font-semibold transition-colors',
                     active
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',

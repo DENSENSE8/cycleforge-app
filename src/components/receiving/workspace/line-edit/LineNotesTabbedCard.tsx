@@ -379,7 +379,7 @@ export function LineNotesTabbedCard({
           <button
             type="button"
             onClick={() => setMoreNotesOpen(true)}
-            className="ml-auto flex items-center gap-0.5 text-eyebrow font-semibold uppercase tracking-widest text-text-faint transition-colors hover:text-text-muted"
+            className="ml-auto flex items-center gap-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint transition-colors hover:text-text-muted"
           >
             More notes
             <ChevronDown className="h-3 w-3" />
@@ -420,7 +420,7 @@ export function LineNotesTabbedCard({
             value={labelNotes}
             onChange={(e) => onLabelNotesChange(e.target.value)}
             placeholder="Compose label notes"
-            className={`w-full resize-none rounded-lg border border-border-soft px-3 text-caption text-text-default placeholder:text-text-faint ${NOTE_COMPOSER_OVERLAY_PAD} ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS} ${NOTES_TEXTAREA_FOCUS}`}
+            className={`w-full resize-none rounded-lg border border-border-soft px-3 text-role-caption text-text-default placeholder:text-text-faint ${NOTE_COMPOSER_OVERLAY_PAD} ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS} ${NOTES_TEXTAREA_FOCUS}`}
           />
 
           {/* Top-left repeat-previous; top-right insert rail; bottom-right save actions. */}
@@ -492,7 +492,7 @@ export function LineNotesTabbedCard({
           onChange={(e) => onInternalNotesChange(e.target.value)}
           onBlur={onInternalNotesBlur}
           placeholder="Internal notes for this line"
-          className={`w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-caption text-text-default placeholder:text-text-faint ${NOTES_TEXTAREA_FOCUS}`}
+          className={`w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint ${NOTES_TEXTAREA_FOCUS}`}
         />
       ) : moreNotesOpen && tab === 'po' ? (
         <div className="space-y-1">
@@ -505,10 +505,10 @@ export function LineNotesTabbedCard({
               setOverallDraft(e.target.value);
               onOverallDraftChange?.();
             }}
-            className={`min-h-[8rem] w-full resize-y rounded-lg border border-border-soft px-3 py-2 text-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
+            className={`min-h-[8rem] w-full resize-y rounded-lg border border-border-soft px-3 py-2 text-role-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
           />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-micro font-semibold uppercase tracking-wide text-text-faint">
+            <span className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">
               {loadingZoho ? (
                 <span className="inline-flex items-center gap-1 text-blue-500">
                   <Loader2 className="h-3 w-3 animate-spin" /> Syncing from inventory…
@@ -525,7 +525,7 @@ export function LineNotesTabbedCard({
                     onClick={() => void loadZohoNotes()}
                     disabled={overallDirty}
                     aria-label={overallDirty ? 'Save or discard edits first' : 'Reload the latest synced notes'}
-                    className="h-auto gap-1 px-0 text-micro font-semibold uppercase tracking-wide text-text-faint hover:bg-transparent hover:text-text-muted"
+                    className="h-auto gap-1 px-0 text-role-micro font-semibold uppercase tracking-wide text-text-faint hover:bg-transparent hover:text-text-muted"
                   >
                     Sync from inventory
                   </Button>
@@ -538,7 +538,7 @@ export function LineNotesTabbedCard({
                 onClick={() => void handleSaveOverall()}
                 disabled={!overallDirty || savingOverall || loadingZoho}
                 aria-label="Append the edited note to the synced PO notes"
-                className="ds-raw-button inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-caption font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-40"
+                className="ds-raw-button inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-role-caption font-bold uppercase tracking-wide text-white ring-1 ring-inset ring-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Check className="h-3.5 w-3.5" />
                 {savingOverall ? 'Saving…' : 'Save to inventory'}

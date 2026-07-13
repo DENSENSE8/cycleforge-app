@@ -5,14 +5,17 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
 /**
- * Guards scan-stable PO line meta chip order in PoLinesAccordion.
+ * Guards scan-stable PO line meta chip order in the PO-line row.
  *
  * Price is variable-width and optional — it must render last so qty · SKU ·
  * condition · serial columns align vertically across rows when operators
  * down-scan a multi-item PO.
+ *
+ * The chip render sites live in PoLineRow.tsx (extracted from PoLinesAccordion
+ * in the god-component cleanup); this guard reads that file.
  */
 const SRC = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'PoLinesAccordion.tsx'),
+  join(dirname(fileURLToPath(import.meta.url)), 'PoLineRow.tsx'),
   'utf8',
 );
 

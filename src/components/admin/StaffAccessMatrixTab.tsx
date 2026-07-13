@@ -33,7 +33,7 @@ export function StaffAccessMatrixTab() {
             </svg>
           </div>
           <h2 className="text-base font-semibold text-text-default">Pick a staff member</h2>
-          <p className="mt-1 text-label text-text-soft">
+          <p className="mt-1 text-role-caption text-text-soft">
             Choose someone from the sidebar to manage their role, page access, PIN, passkeys, and sessions.
           </p>
         </div>

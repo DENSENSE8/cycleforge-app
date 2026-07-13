@@ -14,6 +14,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
+import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
 
 const ALLOWED_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 type Grade = (typeof ALLOWED_GRADES)[number];
@@ -83,6 +84,10 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
                  condition_set_at::text AS condition_set_at`,
       [lineId, ctx.organizationId, grade],
     );
+    // Operator explicitly set the condition — set-once stamp the carton's
+    // "Unboxed" milestone (evidence the unit was opened & acknowledged). COALESCE
+    // -once inside the helper, and shares this tenant tx so it commits atomically.
+    await acknowledgeUnbox(client, ctx.organizationId, line.receiving_id, ctx.staffId ?? null);
     return {
       id: line.id,
       receiving_id: line.receiving_id,

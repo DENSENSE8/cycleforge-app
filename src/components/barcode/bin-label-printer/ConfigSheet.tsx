@@ -43,7 +43,7 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Configure counts">
-      <p className="mb-4 text-center text-label text-text-soft">
+      <p className="mb-4 text-center text-role-caption text-text-soft">
         Match these to your warehouse layout. Saved locally — no rebuild required.
       </p>
 
@@ -55,7 +55,7 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
       </div>
 
       <div className="mt-4">
-        <label className="text-micro font-semibold uppercase tracking-wider text-text-soft">
+        <label className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
           GLN (Global Location Number)
         </label>
         <input
@@ -64,13 +64,13 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
           onChange={(e) => set('gln')(e.target.value)}
           className="mt-1 h-11 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 font-mono text-sm font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
         />
-        <p className="mt-1 text-micro text-text-faint">
+        <p className="mt-1 text-role-micro text-text-faint">
           Default is the GS1 documentation placeholder ({DEFAULT_GLN}). Replace once registered with
           GS1 US.
         </p>
       </div>
 
-      <div className="mt-3 text-micro text-text-faint">
+      <div className="mt-3 text-role-micro text-text-faint">
         Domain in QR: <span className="font-mono">{QR_BASE_URL}</span>
       </div>
 
@@ -106,7 +106,7 @@ function NumField({
 }) {
   return (
     <div>
-      <label className="text-micro font-semibold uppercase tracking-wider text-text-soft">
+      <label className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
         {label}
       </label>
       <input

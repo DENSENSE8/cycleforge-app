@@ -58,7 +58,7 @@ export default function AiAnswerCard({
           </span>
           <div className="flex items-center gap-2">
             <CopyAnswerButton text={content} />
-            <span className="text-micro text-text-soft">{timestampLabel}</span>
+            <span className="text-role-micro text-text-soft">{timestampLabel}</span>
           </div>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function AiAnswerCard({
           </p>
           <h3 className="mt-1 text-sm font-semibold tracking-tight text-text-default">{analysis.title}</h3>
           {analysis.timeframe ? (
-            <p className="mt-1 text-caption text-text-soft">{analysis.timeframe.exactLabel}</p>
+            <p className="mt-1 text-role-caption text-text-soft">{analysis.timeframe.exactLabel}</p>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
@@ -88,14 +88,14 @@ export default function AiAnswerCard({
               .filter((s, i, arr) => arr.indexOf(s) === i)
               .join('\n\n')}
           />
-          <span className="text-micro text-text-soft">{timestampLabel}</span>
+          <span className="text-role-micro text-text-soft">{timestampLabel}</span>
         </div>
       </div>
 
       <div className="space-y-4 px-4 py-4">
         <MarkdownRenderer content={analysis.summary} />
         {content.trim() && content.trim() !== analysis.summary.trim() ? (
-          <div className="border-l border-border-soft pl-3 text-caption leading-6 text-text-muted">
+          <div className="border-l border-border-soft pl-3 text-role-caption leading-6 text-text-muted">
             <MarkdownRenderer content={content} />
           </div>
         ) : null}
@@ -107,7 +107,7 @@ export default function AiAnswerCard({
                 <p className={sectionLabel}>{metric.label}</p>
                 <p className="mt-1 text-lg font-semibold tracking-tight text-text-default">{metric.value}</p>
                 {metric.detail ? (
-                  <p className="mt-1 text-caption leading-5 text-text-soft">{metric.detail}</p>
+                  <p className="mt-1 text-role-caption leading-5 text-text-soft">{metric.detail}</p>
                 ) : null}
               </div>
             ))}
@@ -121,7 +121,7 @@ export default function AiAnswerCard({
             </div>
             <div className="divide-y divide-border-hairline">
               {analysis.breakdown.map((row) => (
-                <div key={row.id} className="flex items-center justify-between gap-3 px-3 py-2 text-label">
+                <div key={row.id} className="flex items-center justify-between gap-3 px-3 py-2 text-role-caption">
                   <div className="min-w-0">
                     {row.href ? (
                       <a href={row.href} className="font-medium text-text-default underline-offset-2 hover:underline">
@@ -130,7 +130,7 @@ export default function AiAnswerCard({
                     ) : (
                       <span className="font-medium text-text-default">{row.label}</span>
                     )}
-                    {row.detail ? <p className="text-caption text-text-soft">{row.detail}</p> : null}
+                    {row.detail ? <p className="text-role-caption text-text-soft">{row.detail}</p> : null}
                   </div>
                   <span className={tableCell}>{row.value}</span>
                 </div>
@@ -148,20 +148,20 @@ export default function AiAnswerCard({
               {analysis.sampleRecords.map((record) => (
                 <div key={record.id} className="px-3 py-2">
                   {record.href ? (
-                    <a href={record.href} className="text-label font-medium text-text-default underline-offset-2 hover:underline">
+                    <a href={record.href} className="text-role-caption font-medium text-text-default underline-offset-2 hover:underline">
                       {record.primary}
                     </a>
                   ) : (
-                    <p className="text-label font-medium text-text-default">{record.primary}</p>
+                    <p className="text-role-caption font-medium text-text-default">{record.primary}</p>
                   )}
-                  {record.secondary ? <p className="mt-1 text-caption text-text-soft">{record.secondary}</p> : null}
+                  {record.secondary ? <p className="mt-1 text-role-caption text-text-soft">{record.secondary}</p> : null}
                 </div>
               ))}
             </div>
           </details>
         ) : null}
 
-        <div className="flex flex-wrap gap-2 text-micro">
+        <div className="flex flex-wrap gap-2 text-role-micro">
           {analysis.sources.map((source) => (
             <HoverTooltip key={source.id} label={source.detail ?? ''} asChild>
               <span className="border border-border-soft bg-surface-canvas px-2 py-1 text-text-muted">
@@ -177,7 +177,7 @@ export default function AiAnswerCard({
               <a
                 key={action.href}
                 href={action.href}
-                className="border border-border-default px-3 py-1.5 text-caption font-medium text-text-muted transition-colors hover:border-border-emphasis hover:text-text-default"
+                className="border border-border-default px-3 py-1.5 text-role-caption font-medium text-text-muted transition-colors hover:border-border-emphasis hover:text-text-default"
               >
                 {action.label}
               </a>
@@ -193,7 +193,7 @@ export default function AiAnswerCard({
                 key={prompt}
                 type="button"
                 onClick={() => onFollowUp?.(prompt)}
-                className="border border-border-soft px-3 py-1.5 text-left text-caption text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
+                className="border border-border-soft px-3 py-1.5 text-left text-role-caption text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
               >
                 {prompt}
               </button>

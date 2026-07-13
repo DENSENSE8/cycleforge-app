@@ -35,12 +35,13 @@ export function ReceivingProgressTab({
 
   return (
     <div className="space-y-4">
-      <ReceivingReadinessCallout log={log} readiness={readiness} />
+      <ReceivingReadinessCallout readiness={readiness} />
 
       <ReceivingCartonPipeline log={log} readiness={readiness} />
 
       <ReceivingPhotosSection
         receivingId={log.id}
+        poRef={log.zoho_purchaseorder_number || log.zoho_purchaseorder_id || null}
         downloadLabel={`recv-${log.id}`}
         sectionTitle="Receiving photos"
       />
@@ -52,7 +53,7 @@ export function ReceivingProgressTab({
           {/* ds-raw-button: simple disclosure toggle for optional carton metadata. */}
           <button
             type="button"
-            className="ds-raw-button text-left text-eyebrow font-black uppercase tracking-widest text-text-soft hover:text-text-default"
+            className="ds-raw-button text-left text-role-eyebrow uppercase tracking-widest text-text-soft hover:text-text-default"
             onClick={() => setShowMore((v) => !v)}
           >
             {showMore ? 'Hide carton details' : 'More carton details'}

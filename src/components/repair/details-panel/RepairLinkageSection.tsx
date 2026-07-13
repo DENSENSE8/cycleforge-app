@@ -17,7 +17,7 @@ export function RepairLinkageSection({ c }: { c: RepairDetailsController }) {
               size="sm"
               onClick={c.handleClearLinks}
               disabled={c.savingLink}
-              className="h-auto px-0 text-eyebrow font-black uppercase tracking-widest text-rose-600 hover:bg-transparent hover:text-rose-700"
+              className="h-auto px-0 text-role-eyebrow uppercase tracking-widest text-rose-600 hover:bg-transparent hover:text-rose-700"
             >
               Unlink All
             </Button>

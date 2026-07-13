@@ -68,7 +68,7 @@ export function ChannelManualAdd({
         size="sm"
         onClick={() => setOpen(true)}
         icon={<Plus className="h-3 w-3" />}
-        className="mt-1.5 h-auto gap-1 px-0 text-eyebrow font-bold uppercase tracking-wider text-text-faint hover:bg-transparent hover:text-blue-600"
+        className="mt-1.5 h-auto gap-1 px-0 text-role-eyebrow font-bold uppercase tracking-wider text-text-faint hover:bg-transparent hover:text-blue-600"
       >
         Add {platformStyle(platform).label} identifier
       </Button>
@@ -80,13 +80,13 @@ export function ChannelManualAdd({
       <TextField label="Item number" value={itemNumber} onChange={setItemNumber} mono trailing={<PasteButton onPaste={setItemNumber} />} />
       <TextField label="SKU" value={sku} onChange={setSku} mono trailing={<PasteButton onPaste={setSku} />} />
       <TextField label="Account (optional)" value={account} onChange={setAccount} />
-      {error ? <p className="text-micro font-semibold text-red-600">{error}</p> : null}
+      {error ? <p className="text-role-micro font-semibold text-red-600">{error}</p> : null}
       <div className="flex items-center justify-end gap-2">
         <Button
           variant="ghost"
           size="sm"
           onClick={close}
-          className="text-micro font-bold uppercase tracking-wider text-text-soft hover:bg-surface-card"
+          className="text-role-micro font-bold uppercase tracking-wider text-text-soft hover:bg-surface-card"
         >
           Cancel
         </Button>
@@ -97,7 +97,7 @@ export function ChannelManualAdd({
           disabled={saving || (!itemNumber.trim() && !sku.trim())}
           loading={saving}
           icon={<Link2 className="h-3.5 w-3.5" />}
-          className="text-micro font-bold uppercase tracking-wider"
+          className="text-role-micro font-bold uppercase tracking-wider"
         >
           Add
         </Button>

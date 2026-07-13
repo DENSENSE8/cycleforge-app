@@ -35,7 +35,7 @@ export function SuppliersPane() {
           <li key={s.id} className="flex items-center gap-3 rounded-xl border border-border-soft bg-surface-card p-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-text-default">{s.name}</p>
-              <p className="truncate text-caption text-text-soft">
+              <p className="truncate text-role-caption text-text-soft">
                 {SUPPLIER_TYPE_LABEL[s.supplier_type] ?? s.supplier_type}
                 {s.lead_time_days != null ? ` · ${s.lead_time_days}d lead` : ''}
                 {s.rating != null ? ` · ${s.rating}★` : ''}
@@ -47,7 +47,7 @@ export function SuppliersPane() {
               <Stat label="acq" value={s.acquisition_count} />
               <div className="w-20">
                 <p className="text-sm font-bold text-text-default">{formatCents(s.spend_cents)}</p>
-                <p className="text-micro font-semibold uppercase tracking-wide text-text-faint">spend</p>
+                <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">spend</p>
               </div>
             </div>
           </li>
@@ -61,7 +61,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="w-12">
       <p className="text-sm font-bold text-text-default">{value}</p>
-      <p className="text-micro font-semibold uppercase tracking-wide text-text-faint">{label}</p>
+      <p className="text-role-micro font-semibold uppercase tracking-wide text-text-faint">{label}</p>
     </div>
   );
 }

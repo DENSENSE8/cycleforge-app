@@ -91,11 +91,11 @@ export function InlineActionFeedbackCard({
       <div className="flex items-start gap-2 px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <p className={`text-eyebrow font-black uppercase tracking-widest ${palette.title}`}>
+            <p className={`text-role-eyebrow uppercase tracking-widest ${palette.title}`}>
               {headline}
             </p>
             {timestamp ? (
-              <span className="shrink-0 text-eyebrow font-semibold tabular-nums text-text-faint">
+              <span className="shrink-0 text-role-eyebrow font-semibold tabular-nums text-text-faint">
                 {timestamp}
               </span>
             ) : null}
@@ -119,7 +119,7 @@ export function InlineActionFeedbackCard({
                 <motion.li
                   key={`${i}-${label}`}
                   variants={item as Variants}
-                  className={`flex items-start gap-1.5 text-caption font-semibold leading-snug ${palette.body}`}
+                  className={`flex items-start gap-1.5 text-role-caption font-semibold leading-snug ${palette.body}`}
                 >
                   <motion.span
                     variants={reduce ? undefined : CHECK_ICON_VARIANTS}
@@ -134,7 +134,7 @@ export function InlineActionFeedbackCard({
           ) : null}
 
           {note ? (
-            <p className="mt-1.5 flex items-start gap-1.5 text-micro font-medium leading-snug text-text-muted">
+            <p className="mt-1.5 flex items-start gap-1.5 text-role-micro font-medium leading-snug text-text-muted">
               {tone === 'amber' ? (
                 <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" />
               ) : null}

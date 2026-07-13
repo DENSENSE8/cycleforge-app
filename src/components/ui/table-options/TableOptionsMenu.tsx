@@ -56,7 +56,7 @@ export interface TableOptionsMenuProps {
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="px-2 py-1.5">
-      <p className="px-1 pb-1 text-eyebrow font-black uppercase tracking-widest text-text-faint">{label}</p>
+      <p className="px-1 pb-1 text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</p>
       {children}
     </div>
   );
@@ -83,7 +83,7 @@ function Segment<T extends string>({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(o.id)}
-            className={`flex-1 rounded-md px-2 py-1 text-caption font-bold transition-colors ${
+            className={`flex-1 rounded-md px-2 py-1 text-role-caption font-bold transition-colors ${
               active
                 ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
                 : 'text-text-muted hover:bg-surface-hover'
@@ -128,7 +128,7 @@ function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; para
   return (
     <Section label="Saved views">
       {views.length === 0 ? (
-        <p className="px-1 py-1 text-caption italic text-text-faint">No saved views yet.</p>
+        <p className="px-1 py-1 text-role-caption italic text-text-faint">No saved views yet.</p>
       ) : (
         <ul className="max-h-48 overflow-y-auto">
           {views.map((view) => {
@@ -139,7 +139,7 @@ function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; para
                 <button
                   type="button"
                   onClick={() => applyView(view)}
-                  className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-caption transition-colors hover:bg-surface-hover ${
+                  className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left text-role-caption transition-colors hover:bg-surface-hover ${
                     isActive ? 'font-semibold text-text-default' : 'text-text-muted'
                   }`}
                 >
@@ -175,13 +175,13 @@ function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; para
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Name this view…"
-              className="min-w-0 flex-1 rounded-md border border-border-soft px-2 py-1 text-caption outline-none focus:border-blue-400"
+              className="min-w-0 flex-1 rounded-md border border-border-soft px-2 py-1 text-role-caption outline-none focus:border-blue-400"
             />
             {/* ds-raw-button: inline save submit */}
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-caption font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
+              className="shrink-0 rounded-md bg-blue-600 px-2 py-1 text-role-caption font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
             >
               Save
             </button>
@@ -196,7 +196,7 @@ function SavedViewsSection({ storageKey, paramKeys }: { storageKey: string; para
               type="button"
               onClick={() => setNaming(true)}
               disabled={!hasActiveFilters || Boolean(activeView)}
-              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover disabled:opacity-40"
+              className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5 shrink-0" /> Save current view
             </button>
@@ -307,7 +307,7 @@ function StaffFilterList({ staffFilter }: { staffFilter: UseStaffFilterResult })
       <button
         type="button"
         onClick={() => setStaff(id)}
-        className={`flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1 text-caption font-semibold transition-colors ${
+        className={`flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1 text-role-caption font-semibold transition-colors ${
           active ? 'bg-blue-50 text-blue-700' : 'text-text-muted hover:bg-surface-hover'
         }`}
       >

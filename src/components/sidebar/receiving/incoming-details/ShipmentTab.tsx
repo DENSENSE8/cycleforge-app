@@ -97,7 +97,7 @@ export function ShipmentTab({ data }: { data: DetailsResponse }) {
       <div className={`mb-3 rounded-xl border p-3 ${tone.wrap}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="flex items-center gap-1 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+            <div className="flex items-center gap-1 text-role-eyebrow uppercase tracking-wider text-text-soft">
               <span>{shortCarrier(s.carrier) || s.carrier || 'Carrier'}</span>
               {s.tracking_number ? (
                 <>
@@ -111,9 +111,9 @@ export function ShipmentTab({ data }: { data: DetailsResponse }) {
               {headline}
             </div>
             {subLine ? (
-              <div className="mt-1 text-caption font-semibold text-text-muted">{subLine}</div>
+              <div className="mt-1 text-role-caption font-semibold text-text-muted">{subLine}</div>
             ) : null}
-            <div className="mt-0.5 text-eyebrow font-semibold text-text-faint">
+            <div className="mt-0.5 text-role-eyebrow font-semibold text-text-faint">
               Last checked {fmtDateTime(s.last_checked_at)}
             </div>
           </div>
@@ -134,7 +134,7 @@ export function ShipmentTab({ data }: { data: DetailsResponse }) {
       </div>
 
       <div>
-        <h3 className="mb-2 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+        <h3 className="mb-2 text-role-eyebrow uppercase tracking-wider text-text-soft">
           Recent carrier events
         </h3>
         <EventTimeline

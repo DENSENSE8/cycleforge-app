@@ -18,7 +18,7 @@ export function AdminEmptyDetail({ title, hint, icon }: AdminEmptyDetailProps) {
           </div>
         ) : null}
         <p className="text-sm font-bold text-text-muted">{title}</p>
-        {hint ? <p className="text-caption text-text-soft">{hint}</p> : null}
+        {hint ? <p className="text-role-caption text-text-soft">{hint}</p> : null}
       </div>
     </div>
   );

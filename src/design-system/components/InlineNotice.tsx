@@ -28,13 +28,13 @@ const containerSizeClasses: Record<InlineNoticeSize, string> = {
 };
 
 const titleSizeClasses: Record<InlineNoticeSize, string> = {
-  sm: 'text-eyebrow tracking-[0.14em]',
-  md: 'text-micro tracking-[0.16em]',
+  sm: 'text-role-eyebrow tracking-[0.14em]',
+  md: 'text-role-micro tracking-[0.16em]',
 };
 
 const bodySizeClasses: Record<InlineNoticeSize, string> = {
-  sm: 'text-micro leading-4',
-  md: 'text-caption leading-5',
+  sm: 'text-role-micro leading-4',
+  md: 'text-role-caption leading-5',
 };
 
 export function InlineNotice({

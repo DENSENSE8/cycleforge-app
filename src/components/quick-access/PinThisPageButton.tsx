@@ -50,7 +50,7 @@ export function PinThisPageButton({ onPinned }: PinThisPageButtonProps) {
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       }
-      className="text-caption font-semibold text-blue-600 hover:bg-blue-50"
+      className="text-role-caption font-semibold text-blue-600 hover:bg-blue-50"
     >
       Pin page
     </Button>

@@ -28,7 +28,7 @@ export function PairedReviewPanelLayout({
     <div className="border-b border-border-hairline">
       {onToggleExpanded ? (
         <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-          <p className="text-micro font-black uppercase tracking-widest text-text-soft">Combine review</p>
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">Combine review</p>
           <HoverTooltip label="Collapse" asChild>
             <IconButton
               type="button"
@@ -45,7 +45,7 @@ export function PairedReviewPanelLayout({
         {/* FBA Shipment ID — parent card header */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">FBA Shipment ID</p>
+            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">FBA Shipment ID</p>
             {c.lockedFbaId && (
               <HoverTooltip label="Done with this FBA Shipment ID" asChild>
                 <IconButton
@@ -69,7 +69,7 @@ export function PairedReviewPanelLayout({
             className={`${c.chrome.monoInput} ${c.lockedFbaId ? '!bg-emerald-50 !border-emerald-200 !text-emerald-800' : ''}`}
           />
           {c.activeSplit ? (
-            <p className="mt-1.5 text-eyebrow font-semibold leading-snug text-amber-800">
+            <p className="mt-1.5 text-role-eyebrow font-semibold leading-snug text-amber-800">
               If you change this FBA ID from the prefilled value, Save creates a new active shipment for these
               FNSKUs with this Amazon ID and UPS; the original card keeps its FBA ID for remaining lines.
             </p>

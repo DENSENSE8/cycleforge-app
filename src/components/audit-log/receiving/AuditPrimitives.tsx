@@ -4,7 +4,7 @@ import { WORKFLOW_BADGE, QA_BADGE, DISP_BADGE } from '@/components/station/recei
 export function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <div className="text-micro uppercase tracking-wider text-text-faint">{label}</div>
+      <div className="text-role-micro uppercase tracking-wider text-text-faint">{label}</div>
       <div className="text-base font-semibold text-text-default">{value}</div>
     </div>
   );
@@ -13,7 +13,7 @@ export function Stat({ label, value }: { label: string; value: string | number }
 export function KV({ label, value, span2 = false }: { label: string; value: string; span2?: boolean }) {
   return (
     <div className={span2 ? 'col-span-2' : ''}>
-      <dt className="text-micro uppercase tracking-wider text-text-faint">{label}</dt>
+      <dt className="text-role-micro uppercase tracking-wider text-text-faint">{label}</dt>
       <dd className="text-text-default">{value}</dd>
     </div>
   );
@@ -21,7 +21,7 @@ export function KV({ label, value, span2 = false }: { label: string; value: stri
 
 export function WorkflowBadge({ status }: { status: string }) {
   return (
-    <span className={`rounded-full px-1.5 py-0.5 text-micro font-medium ${WORKFLOW_BADGE[status] ?? 'bg-surface-sunken text-text-muted'}`}>
+    <span className={`rounded-full px-1.5 py-0.5 text-role-micro font-medium ${WORKFLOW_BADGE[status] ?? 'bg-surface-sunken text-text-muted'}`}>
       {status}
     </span>
   );
@@ -30,7 +30,7 @@ export function WorkflowBadge({ status }: { status: string }) {
 export function QABadge({ status }: { status: string }) {
   if (!status || status === 'PENDING') return null;
   return (
-    <span className={`rounded-full px-1.5 py-0.5 text-micro font-medium ${QA_BADGE[status] ?? 'bg-surface-sunken text-text-muted'}`}>
+    <span className={`rounded-full px-1.5 py-0.5 text-role-micro font-medium ${QA_BADGE[status] ?? 'bg-surface-sunken text-text-muted'}`}>
       QA: {status}
     </span>
   );
@@ -39,7 +39,7 @@ export function QABadge({ status }: { status: string }) {
 export function DispositionBadge({ code }: { code: string }) {
   if (!code || code === 'HOLD') return null;
   return (
-    <span className={`rounded-full px-1.5 py-0.5 text-micro font-medium ${DISP_BADGE[code] ?? 'bg-surface-sunken text-text-muted'}`}>
+    <span className={`rounded-full px-1.5 py-0.5 text-role-micro font-medium ${DISP_BADGE[code] ?? 'bg-surface-sunken text-text-muted'}`}>
       {code}
     </span>
   );

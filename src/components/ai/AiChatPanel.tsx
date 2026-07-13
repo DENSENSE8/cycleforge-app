@@ -248,7 +248,7 @@ export default function AiChatPanel() {
         }
         rightSlot={
           <>
-            <div className="hidden border border-border-soft bg-surface-card px-3 py-1.5 text-micro font-medium text-text-muted md:block">
+            <div className="hidden border border-border-soft bg-surface-card px-3 py-1.5 text-role-micro font-medium text-text-muted md:block">
               PST week ranges
             </div>
             <Button
@@ -263,7 +263,7 @@ export default function AiChatPanel() {
         }
         belowSlot={
           <div className="grid gap-px border-t border-border-soft bg-surface-strong px-6 py-px md:grid-cols-3">
-            <div className="flex items-center gap-2 bg-surface-card px-3 py-2 text-caption text-text-muted">
+            <div className="flex items-center gap-2 bg-surface-card px-3 py-2 text-role-caption text-text-muted">
               {connectionStatus === 'online' ? (
                 <Check className="h-4 w-4 text-emerald-600" />
               ) : connectionStatus === 'offline' ? (
@@ -273,11 +273,11 @@ export default function AiChatPanel() {
               )}
               <span>{statusLabel(connectionStatus)}</span>
             </div>
-            <div className="flex items-center gap-2 bg-surface-card px-3 py-2 text-caption text-text-muted">
+            <div className="flex items-center gap-2 bg-surface-card px-3 py-2 text-role-caption text-text-muted">
               <Database className="h-4 w-4 text-text-soft" />
               <span>Local shipped summaries use app-side order data</span>
             </div>
-            <div className="flex items-center gap-2 bg-surface-card px-3 py-2 text-caption text-text-muted">
+            <div className="flex items-center gap-2 bg-surface-card px-3 py-2 text-role-caption text-text-muted">
               <Clock className="h-4 w-4 text-text-soft" />
               <span>
                 {connectionStatus === 'offline'
@@ -314,7 +314,7 @@ export default function AiChatPanel() {
                   <Database className="h-4 w-4 text-text-soft" />
                   What The Panel Uses
                 </div>
-                <div className="space-y-3 text-label leading-6 text-text-muted">
+                <div className="space-y-3 text-role-caption leading-6 text-text-muted">
                   <div className="border-b border-border-hairline pb-3">
                     <p className="font-medium text-text-default">Shipped summaries</p>
                     <p>`shipping_tracking_numbers`, `packer_logs`, and `work_assignments`</p>
@@ -341,7 +341,7 @@ export default function AiChatPanel() {
                   <div key={msg.id} className="ml-auto w-full max-w-2xl border border-border-soft bg-surface-card px-4 py-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className={sectionLabel}>Question</span>
-                      <span className="text-micro text-text-soft">{timestampLabel}</span>
+                      <span className="text-role-micro text-text-soft">{timestampLabel}</span>
                     </div>
                     <p className="mt-2 text-sm leading-6 text-text-default">{msg.content}</p>
                   </div>
@@ -353,9 +353,9 @@ export default function AiChatPanel() {
                   <div key={msg.id} className="w-full max-w-3xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
                     <div className="flex items-center justify-between gap-3">
                       <span className={`${sectionLabel} text-red-500`}>Error</span>
-                      <span className="text-micro text-red-500">{timestampLabel}</span>
+                      <span className="text-role-micro text-red-500">{timestampLabel}</span>
                     </div>
-                    <p className="mt-2 text-label leading-6 whitespace-pre-wrap">{msg.content}</p>
+                    <p className="mt-2 text-role-caption leading-6 whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 );
               }
@@ -379,7 +379,7 @@ export default function AiChatPanel() {
                   <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
                   <div>
                     <p className={sectionLabel}>Working</p>
-                    <p className="mt-1 text-label text-text-muted">
+                    <p className="mt-1 text-role-caption text-text-muted">
                       {connectionStatus === 'offline'
                         ? 'Running local ops query or waiting for model backend'
                         : 'Preparing the answer'}
@@ -430,7 +430,7 @@ export default function AiChatPanel() {
             />
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-micro text-text-soft">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-role-micro text-text-soft">
             <span>Shift+Enter for new line. Deterministic shipped summaries use PST date ranges and local app data.</span>
             <span>{connectionStatus === 'offline' ? 'Model backend offline' : 'Model backend online'}</span>
           </div>

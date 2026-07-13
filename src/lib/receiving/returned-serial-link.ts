@@ -858,6 +858,61 @@ export async function lookupShippedOrderForCompare(
   };
 }
 
+// ─── Order-number typeahead (read-only) ───────────────────────────────────────
+
+export interface ShippedOrderSuggestion {
+  order_pk: number;
+  order_id: string;
+  product_title: string | null;
+  sku: string | null;
+}
+
+export interface ShippedOrderSuggestDeps {
+  query: typeof tenantQuery;
+}
+
+const suggestDefaultDeps: ShippedOrderSuggestDeps = { query: tenantQuery };
+
+/**
+ * READ-ONLY typeahead behind the Order # search: candidate shipped orders whose
+ * order number CONTAINS the partial the operator is typing (org-scoped, capped
+ * at 8, exact order_id first). Feeds the Auto-match list on an Unfound carton; an
+ * exact order_id match auto-links via {@link importSalesOrderByNumber}. No
+ * mutation. Deps-injected so it unit-tests DB-free.
+ */
+export async function suggestShippedOrdersByNumber(
+  query: string,
+  orgId: OrgId,
+  deps: ShippedOrderSuggestDeps = suggestDefaultDeps,
+): Promise<ShippedOrderSuggestion[]> {
+  const q = (query || '').trim();
+  if (q.length < 2) return [];
+  const res = await deps.query<{
+    order_pk: number;
+    order_id: string | null;
+    product_title: string | null;
+    sku: string | null;
+  }>(
+    orgId,
+    `SELECT o.id AS order_pk, o.order_id, o.product_title, o.sku
+       FROM orders o
+      WHERE o.organization_id = $2
+        AND o.order_id IS NOT NULL
+        AND o.order_id ILIKE $1
+      ORDER BY (lower(o.order_id) = lower($3)) DESC, length(o.order_id) ASC, o.id DESC
+      LIMIT 8`,
+    [`%${q}%`, orgId, q],
+  );
+  return res.rows
+    .filter((r): r is typeof r & { order_id: string } => Boolean(r.order_id))
+    .map((r) => ({
+      order_pk: r.order_pk,
+      order_id: String(r.order_id),
+      product_title: r.product_title,
+      sku: r.sku,
+    }));
+}
+
 // ─── Entry 4: log an unmatched received serial INTO the system ────────────────────
 
 export interface LogUnmatchedSerialInput {

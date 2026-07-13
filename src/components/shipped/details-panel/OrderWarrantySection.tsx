@@ -70,12 +70,12 @@ export function OrderWarrantySection({ order }: { order: ShippedOrder }) {
 
       <section className="rounded-xl border border-border-soft bg-surface-card">
         <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-4 py-2.5">
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Claims for this order
           </p>
           <Link
             href={`/support?mode=warranty${claimsSearch ? `&search=${encodeURIComponent(claimsSearch)}` : ''}`}
-            className="inline-flex items-center gap-1 text-caption font-semibold text-blue-600 hover:text-blue-800"
+            className="inline-flex items-center gap-1 text-role-caption font-semibold text-blue-600 hover:text-blue-800"
           >
             Open warranty logger <ExternalLink className="h-3 w-3" />
           </Link>
@@ -103,10 +103,10 @@ export function OrderWarrantySection({ order }: { order: ShippedOrder }) {
                   className="flex items-center justify-between gap-3 px-4 py-2.5 transition hover:bg-surface-hover"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-caption font-bold text-text-default">
+                    <p className="truncate text-role-caption font-bold text-text-default">
                       {claim.productTitle || claim.sku || claim.serialNumber || claim.claimNumber}
                     </p>
-                    <p className="mt-0.5 truncate font-mono text-micro text-text-faint">
+                    <p className="mt-0.5 truncate font-mono text-role-micro text-text-faint">
                       {claim.claimNumber}
                       {claim.serialNumber ? ` · ${claim.serialNumber}` : ''}
                     </p>
@@ -224,7 +224,7 @@ function CoverageBlock({
             <span className={cn('text-sm font-semibold', tone.text)}>{headline}</span>
             <span
               className={cn(
-                'rounded-full px-2 py-0.5 text-caption font-semibold tabular-nums ring-1 ring-inset bg-surface-card',
+                'rounded-full px-2 py-0.5 text-role-caption font-semibold tabular-nums ring-1 ring-inset bg-surface-card',
                 tone.ring,
                 tone.text,
               )}
@@ -236,7 +236,7 @@ function CoverageBlock({
                 label="Provisional — based on packed date + delivery estimate; confirms when the carrier delivered date lands."
                 asChild
               >
-                <span className="rounded border border-dashed border-border-warning px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide text-text-warning">
+                <span className="rounded border border-dashed border-border-warning px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-warning">
                   Est.
                 </span>
               </HoverTooltip>
@@ -244,7 +244,7 @@ function CoverageBlock({
             {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" />}
           </div>
 
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-label sm:grid-cols-3">
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-role-caption sm:grid-cols-3">
             <Fact label="Order #" value={coverage.sourceOrderId} mono />
             <Fact label="Customer" value={coverage.customerName} />
             <Fact
@@ -268,7 +268,7 @@ function CoverageBlock({
                     View claim {coverage.existingClaim.claimNumber}
                   </Button>
                 </Link>
-                <span className="text-caption text-text-faint">
+                <span className="text-role-caption text-text-faint">
                   Already logged · {WARRANTY_STATUS_LABEL[coverage.existingClaim.status]}
                 </span>
               </>
@@ -287,8 +287,8 @@ function CoverageBlock({
 function Fact({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="text-micro font-medium uppercase tracking-wide text-text-faint">{label}</dt>
-      <dd className={cn('truncate text-text-muted', mono && 'font-mono text-caption')}>
+      <dt className="text-role-micro font-medium uppercase tracking-wide text-text-faint">{label}</dt>
+      <dd className={cn('truncate text-text-muted', mono && 'font-mono text-role-caption')}>
         {value || <span className="text-text-faint">—</span>}
       </dd>
     </div>

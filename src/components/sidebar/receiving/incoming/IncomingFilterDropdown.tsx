@@ -6,9 +6,9 @@ import { TILES, TONE } from './incoming-tiles';
 import type { IncomingSummary } from './incoming-summary-types';
 import type { useIncomingFilters } from './useIncomingFilters';
 
-const dropdownLabelClass = 'mb-1.5 block text-eyebrow font-black uppercase tracking-wider text-text-soft';
+const dropdownLabelClass = 'mb-1.5 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 const selectClass =
-  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
 
 /** The Incoming filter dropdown: PO date range + sort + status tiles + by-carrier table. */
 export function IncomingFilterDropdown({
@@ -25,7 +25,7 @@ export function IncomingFilterDropdown({
       <div>
         <span className={dropdownLabelClass}>PO purchased between</span>
         <DateRangePickerField value={dateRange} onChange={setDateRange} placeholder="Any date" />
-        <p className="mt-1 text-eyebrow font-medium text-text-faint">Date in header is when the PO was created</p>
+        <p className="mt-1 text-role-eyebrow font-medium text-text-faint">Date in header is when the PO was created</p>
       </div>
 
       <label className="block">
@@ -61,13 +61,13 @@ export function IncomingFilterDropdown({
                   type="button"
                   onClick={() => setState(active ? null : t.state)}
                   aria-pressed={active}
-                  className={`ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-label font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 ${
+                  className={`ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 ${
                     active ? tone.active : tone.inactive
                   } ${tone.ring}`}
                 >
                   <Icon className={`h-4 w-4 shrink-0 ${active ? tone.iconActive : tone.iconInactive}`} />
                   <span className="flex-1 truncate">{t.label}</span>
-                  <span className="ml-1 tabular-nums text-caption font-black">
+                  <span className="ml-1 tabular-nums text-role-caption font-black">
                     {count == null ? '—' : count.toLocaleString()}
                   </span>
                 </button>
@@ -83,7 +83,7 @@ export function IncomingFilterDropdown({
         <div>
           <span className={dropdownLabelClass}>By carrier</span>
           <div className="overflow-hidden rounded-lg ring-1 ring-inset ring-border-soft">
-            <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 bg-surface-canvas px-2 py-1 text-mini font-black uppercase tracking-wide text-text-faint">
+            <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 bg-surface-canvas px-2 py-1 text-role-micro uppercase tracking-wide text-text-faint">
               <span>Carrier</span>
               <HoverTooltip label="In transit" asChild>
                 <span className="text-right tabular-nums">Trans</span>
@@ -101,7 +101,7 @@ export function IncomingFilterDropdown({
             {summary.by_carrier!.map((c) => (
               <div
                 key={c.carrier}
-                className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 border-t border-border-hairline px-2 py-1 text-caption"
+                className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 border-t border-border-hairline px-2 py-1 text-role-caption"
               >
                 <span className="truncate font-bold text-text-muted">{c.carrier === 'UNKNOWN' ? 'Other' : c.carrier}</span>
                 <span className={`text-right font-bold tabular-nums ${c.in_transit ? 'text-blue-600' : 'text-text-faint'}`}>{c.in_transit}</span>

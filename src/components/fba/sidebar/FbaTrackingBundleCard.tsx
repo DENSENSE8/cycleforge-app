@@ -118,13 +118,13 @@ export function FbaTrackingBundleCard({
             onKeyDown={(e) => { if (e.key === 'Enter' && bundle.tracking_number.trim()) setEditingTracking(false); }}
             autoFocus={editingTracking}
             placeholder="1Z..."
-            className="min-w-0 rounded-md border border-border-soft bg-surface-card px-2 py-1 font-mono text-micro font-bold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+            className="min-w-0 rounded-md border border-border-soft bg-surface-card px-2 py-1 font-mono text-role-micro font-bold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
           />
         )}
 
         {/* Col 3: actions */}
         <div className="flex shrink-0 items-center gap-1">
-          <span className="text-mini font-black uppercase tracking-widest text-text-faint">
+          <span className="text-role-micro uppercase tracking-widest text-text-faint">
             {bundle.allocations.length > 0
               ? `${bundle.allocations.length} · ${totalUnits}`
               : ''}
@@ -160,7 +160,7 @@ export function FbaTrackingBundleCard({
           >
             {bundle.allocations.length === 0 ? (
               <div className="border-t border-border-hairline px-3 py-2">
-                <p className="text-center text-eyebrow font-bold uppercase tracking-wider text-text-faint">
+                <p className="text-center text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">
                   Drag items here
                 </p>
               </div>

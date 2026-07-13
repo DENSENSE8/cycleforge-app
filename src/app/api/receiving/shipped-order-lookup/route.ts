@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { lookupShippedOrderForCompare } from '@/lib/receiving/returned-serial-link';
+import {
+  lookupShippedOrderForCompare,
+  suggestShippedOrdersByNumber,
+} from '@/lib/receiving/returned-serial-link';
 
 /**
  * GET /api/receiving/shipped-order-lookup?order_number=<n>&received_serial=<s>
@@ -15,6 +18,20 @@ import { lookupShippedOrderForCompare } from '@/lib/receiving/returned-serial-li
  * endpoint only reads — no mutation, no allocation flip, no promote, no audit.
  */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
+  // Typeahead mode: `?q=<partial>` returns candidate orders for the Auto-match
+  // order-number list. Read-only; no compare, no mutation.
+  const suggestQuery = (request.nextUrl.searchParams.get('q') ?? '').trim();
+  if (suggestQuery) {
+    try {
+      const candidates = await suggestShippedOrdersByNumber(suggestQuery, ctx.organizationId);
+      return NextResponse.json({ success: true, candidates });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Order suggest failed';
+      console.error('receiving/shipped-order-lookup suggest failed:', error);
+      return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+  }
+
   const orderNumber = (request.nextUrl.searchParams.get('order_number') ?? '').trim();
   const receivedSerial =
     (request.nextUrl.searchParams.get('received_serial') ?? '').trim() || null;

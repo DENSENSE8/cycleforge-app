@@ -108,14 +108,14 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
                 PO {header.po_number || header.po_id}
               </p>
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-black uppercase tracking-wide ${poHeaderStatusChipClass(
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro uppercase tracking-wide ${poHeaderStatusChipClass(
                   header.status,
                 )}`}
               >
                 {header.status}
               </span>
             </div>
-            <p className="mt-1 text-label font-bold text-text-muted">
+            <p className="mt-1 text-role-caption font-bold text-text-muted">
               {header.qty_received}/{header.qty_expected || '?'} received
               {' · '}
               {header.open_items} open
@@ -137,7 +137,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`h-12 flex-1 text-label font-black uppercase tracking-[0.18em] transition-colors ${
+              className={`h-12 flex-1 text-role-caption font-black uppercase tracking-[0.18em] transition-colors ${
                 active ? 'text-text-default' : 'text-text-faint'
               }`}
             >
@@ -156,7 +156,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
 
       {/* Tab content */}
       {error ? (
-        <p className="px-6 py-12 text-center text-label font-bold text-rose-600">
+        <p className="px-6 py-12 text-center text-role-caption font-bold text-rose-600">
           Couldn't load PO {poId}.
         </p>
       ) : tab === 'items' ? (
@@ -174,7 +174,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
 function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
   if (items.length === 0) {
     return (
-      <p className="px-6 py-10 text-center text-label font-bold text-text-soft">
+      <p className="px-6 py-10 text-center text-role-caption font-bold text-text-soft">
         No purchase order items yet.
       </p>
     );
@@ -200,7 +200,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                     className="object-cover"
                   />
                 ) : (
-                  <span className="absolute inset-0 grid place-items-center text-micro font-black uppercase tracking-wider text-text-faint">
+                  <span className="absolute inset-0 grid place-items-center text-role-micro uppercase tracking-wider text-text-faint">
                     {it.sku?.slice(0, 4) || 'SKU'}
                   </span>
                 )}
@@ -209,18 +209,18 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                 <p className="truncate text-sm font-black tracking-tight text-text-default">
                   {it.item_name || it.sku || 'Untitled item'}
                 </p>
-                <p className="mt-0.5 text-caption font-bold text-text-soft">
+                <p className="mt-0.5 text-role-caption font-bold text-text-soft">
                   {it.sku ? `${it.sku} · ` : ''}
                   {it.quantity_received}/{it.quantity_expected ?? '?'}
                   {' · '}
                   <span
-                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-wider ${workflowStageBadge(status)}`}
+                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${workflowStageBadge(status)}`}
                   >
                     {workflowStatusTableLabel(status)}
                   </span>
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-caption font-black text-text-muted">
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-role-caption font-black text-text-muted">
                 <Camera className="h-3.5 w-3.5" />
                 {it.item_photo_count}
               </span>
@@ -236,7 +236,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
 function PoPhotosTab({ header, staffId }: { header: PoHeader | undefined; staffId: number }) {
   if (!header?.receiving_id) {
     return (
-      <p className="px-6 py-10 text-center text-label font-bold text-text-soft">
+      <p className="px-6 py-10 text-center text-role-caption font-bold text-text-soft">
         No receiving package yet — scan tracking from desktop first.
       </p>
     );

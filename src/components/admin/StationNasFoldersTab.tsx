@@ -29,7 +29,7 @@ export function StationNasFoldersTab({ mode }: StationNasFoldersTabProps) {
       <div className="mx-auto max-w-3xl space-y-5">
         <div>
           <h1 className="sr-only">NAS Photos</h1>
-          <p className="mt-1 text-caption text-text-soft">
+          <p className="mt-1 text-role-caption text-text-soft">
             Control the NAS endpoint, workflow storage folders, and station picker defaults.
           </p>
         </div>

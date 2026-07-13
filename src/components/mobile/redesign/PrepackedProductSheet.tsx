@@ -305,13 +305,13 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
             {/* Raw label identifiers — the scanned QR/unit id + GTIN. */}
             <div className="flex flex-wrap items-center gap-2">
               {parsed && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950 px-3 py-1 text-caption font-black uppercase tracking-wider text-white">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-950 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white">
                   <Box className="h-3.5 w-3.5" />
                   {parsed.display}
                 </span>
               )}
               {gtin && (
-                <span className="rounded-full bg-surface-sunken px-3 py-1 text-caption font-bold tracking-wide text-text-soft">
+                <span className="rounded-full bg-surface-sunken px-3 py-1 text-role-caption font-bold tracking-wide text-text-soft">
                   GTIN {gtin}
                 </span>
               )}
@@ -370,11 +370,11 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
                       <History className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-black tracking-tight text-blue-950">{humanizeEvent(e.event_type)}</p>
-                        <p className="truncate text-caption font-semibold text-blue-400">
+                        <p className="truncate text-role-caption font-semibold text-blue-400">
                           {[e.station, e.next_status, e.notes].filter(Boolean).join(' · ') || '—'}
                         </p>
                       </div>
-                      <span className="shrink-0 text-caption font-bold text-blue-300">{formatWhen(e.occurred_at)}</span>
+                      <span className="shrink-0 text-role-caption font-bold text-blue-300">{formatWhen(e.occurred_at)}</span>
                     </div>
                   ))}
                 </div>
@@ -434,7 +434,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
           maxPhotos={10}
           header={
             <div className="min-w-0">
-              <p className="text-micro font-black uppercase tracking-[0.22em] text-white/60">
+              <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
                 Pack photos
               </p>
               <p className="truncate text-sm font-black text-white">{title}</p>
@@ -450,7 +450,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
 function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-12 shrink-0 text-micro font-black uppercase tracking-[0.14em] text-blue-300">
+      <span className="w-12 shrink-0 text-role-micro uppercase tracking-[0.14em] text-blue-300">
         {label}
       </span>
       {children}
@@ -461,7 +461,7 @@ function ChipRow({ label, children }: { label: string; children: React.ReactNode
 function StatField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-surface-canvas px-3 py-2.5">
-      <p className="text-micro font-black uppercase tracking-[0.15em] text-blue-300">{label}</p>
+      <p className="text-role-micro uppercase tracking-[0.15em] text-blue-300">{label}</p>
       <div className="mt-1 flex items-center gap-1">
         {icon}
         <p className="truncate text-sm font-black tracking-tight text-blue-950">{value}</p>

@@ -66,7 +66,7 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           href={photosHref}
           prefetch={false}
           aria-label="Take photos"
-          className="pointer-events-auto mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-white text-label font-black uppercase tracking-[0.18em] shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
+          className="pointer-events-auto mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-white text-role-caption font-black uppercase tracking-[0.18em] shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
         >
           <Camera className="h-5 w-5" />
           {photoCount > 0 ? (

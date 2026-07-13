@@ -146,7 +146,7 @@ export function RailRow<TRow>({
           {renderRowMain(row, { isSelected, isFocused, pkgChip })}
         </div>
         {activityAt != null ? (
-          <span className="shrink-0 self-center tabular-nums text-micro font-medium text-text-faint">
+          <span className="shrink-0 self-center tabular-nums text-role-micro font-medium text-text-faint">
             {railRelativeTime(activityAt)}
           </span>
         ) : null}

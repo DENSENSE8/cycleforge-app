@@ -54,7 +54,7 @@ export function SavedViewsControl({
         size="sm"
         onClick={() => setOpen((o) => !o)}
         icon={<Star className={`h-3.5 w-3.5 ${activeView ? 'text-amber-500' : 'text-text-faint'}`} />}
-        className={`text-caption font-bold uppercase tracking-wide ${
+        className={`text-role-caption font-bold uppercase tracking-wide ${
           activeView ? 'text-text-default' : 'text-text-soft hover:text-text-default'
         }`}
         aria-expanded={open}

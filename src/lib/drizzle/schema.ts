@@ -1370,6 +1370,16 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   dispositionAudit: jsonb('disposition_audit').notNull().default([]),
   /** When the operator explicitly picked condition_grade (distinct from the DB default). Moved from receiving_lines (2026-07-05c). */
   conditionSetAt: timestamp('condition_set_at', { withTimezone: true }),
+  /**
+   * Denormalized serial projection — a jsonb array of
+   * `{ id, serial_number, condition_grade }` for the serials whose CURRENT
+   * receiving line is this line. Fast-default for first-frame serial display;
+   * maintained by refreshLineSerialProjection, reconciled by the authoritative
+   * `?include=serials` path. Migration 2026-07-13. (Drizzle has no first-class
+   * "jsonb array of a typed shape" — the element shape is the display subset of
+   * the LineSerial type in src/lib/receiving/serial-projection.ts.)
+   */
+  serialProjection: jsonb('serial_projection').notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

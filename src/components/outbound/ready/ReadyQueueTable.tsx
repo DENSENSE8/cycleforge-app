@@ -52,7 +52,7 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-surface-card">
         <Loader2 className="h-6 w-6 animate-spin text-text-faint" />
-        <span className="ml-2 text-caption font-semibold text-text-soft">Loading ready queue…</span>
+        <span className="ml-2 text-role-caption font-semibold text-text-soft">Loading ready queue…</span>
       </div>
     );
   }
@@ -65,7 +65,7 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-3 text-caption font-black uppercase tracking-widest text-rose-600 underline"
+            className="mt-3 text-role-caption font-black uppercase tracking-widest text-rose-600 underline"
           >
             Retry
           </button>
@@ -84,7 +84,7 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
           action={
             <Link
               href={fbaOutboundHref()}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-[13px] font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90"
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90"
             >
               Open FBA prep
             </Link>
@@ -98,7 +98,7 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
       <div className="mx-auto flex h-full min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col overflow-hidden">
         <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border-soft bg-surface-card/95 px-4 py-4 sm:px-6 lg:px-8">
-          <p className="text-eyebrow font-black uppercase tracking-widest text-text-soft">
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             Ready queue · {hits.length}
             {isFetching ? ' · updating…' : ''}
           </p>
@@ -115,7 +115,7 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
                 <span
                   key={d}
                   className={cn(
-                    'rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-inset',
+                    'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
                     dispositionChipClass(d),
                   )}
                 >
@@ -130,7 +130,7 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
           <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
             <table className="min-w-full border-collapse">
               <thead className="sticky top-0 z-10 bg-surface-card">
-                <tr className="border-b border-border-soft text-left text-micro font-black uppercase tracking-widest text-text-soft">
+                <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
                   <th className="px-3 py-3">Title</th>
                   <th className="px-3 py-3">Disposition</th>
                   <th className="px-3 py-3">Reasons</th>
@@ -161,15 +161,15 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
   return (
     <tr className="hover:bg-gray-50">
       <td className="max-w-[280px] px-3 py-3">
-        <p className="truncate text-caption font-bold text-gray-900">{hit.title || hit.sku || `Unit #${hit.entityId}`}</p>
-        <p className="truncate text-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+        <p className="truncate text-role-caption font-bold text-gray-900">{hit.title || hit.sku || `Unit #${hit.entityId}`}</p>
+        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
           {[hit.sku, hit.fnsku, hit.asin].filter(Boolean).join(' · ') || `id ${hit.entityId}`}
         </p>
       </td>
       <td className="px-3 py-3">
         <span
           className={cn(
-            'rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-inset',
+            'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
             dispositionChipClass(hit.disposition),
           )}
         >
@@ -190,29 +190,29 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
       </td>
       <td className="px-3 py-3">
         {tierMeta ? (
-          <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ring-1 ring-inset ring-border-soft', tierMeta.ring)}>
+          <span className={cn('rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ring-border-soft', tierMeta.ring)}>
             {tierMeta.label}
           </span>
         ) : (
-          <span className="text-caption text-text-faint">—</span>
+          <span className="text-role-caption text-text-faint">—</span>
         )}
       </td>
-      <td className="px-3 py-3 text-caption font-semibold text-text-soft">{cond}</td>
-      <td className="px-3 py-3 text-caption text-text-soft tabular-nums">{testedLabel}</td>
+      <td className="px-3 py-3 text-role-caption font-semibold text-text-soft">{cond}</td>
+      <td className="px-3 py-3 text-role-caption text-text-soft tabular-nums">{testedLabel}</td>
       <td className="px-3 py-3">
         {hit.disposition === 'FBA' ? (
           <Link
             href={fbaOutboundHref()}
-            className="text-[11px] font-black uppercase tracking-widest text-violet-700 hover:underline"
+            className="text-role-caption font-black uppercase tracking-widest text-violet-700 hover:underline"
           >
             Stage FBA
           </Link>
         ) : hit.disposition === 'PREBOX_STOCK' ? (
-          <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">
+          <span className="text-role-caption font-black uppercase tracking-widest text-emerald-700">
             Pre-box & stock
           </span>
         ) : (
-          <span className="text-[11px] font-black uppercase tracking-widest text-amber-700">Hold</span>
+          <span className="text-role-caption font-black uppercase tracking-widest text-amber-700">Hold</span>
         )}
       </td>
     </tr>

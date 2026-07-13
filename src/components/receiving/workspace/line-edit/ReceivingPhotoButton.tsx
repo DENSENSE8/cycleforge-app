@@ -21,7 +21,7 @@ import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
 import { toast } from '@/lib/toast';
-import { unboxingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 
 interface PhotoRow {
   id: number;
@@ -43,9 +43,13 @@ const HOVER_LEAVE_MS = 140;
 export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   receivingId,
   staffId,
+  poRef,
 }: {
   receivingId: number;
   staffId: number;
+  /** Carton PO#/order ref — stamped onto each photo's meta so the viewer's
+   *  details panel shows the linked PO (parity with ReceivingPhotoPeek). */
+  poRef?: string | null;
 }) {
   const { getClient } = useAblyClient();
   const { user } = useAuth();
@@ -90,12 +94,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     () =>
       (data?.photos ?? [])
         .filter((p) => !!p.photoUrl?.trim())
-        .map((p) => ({
-          id: p.id,
-          url: p.photoUrl,
-          meta: unboxingPhotoMeta({ caption: p.caption, createdAt: p.createdAt }),
-        })),
-    [data],
+        .map((p) => receivingPhotoToGalleryInput(p, { poRef: poRef ?? null })),
+    [data, poRef],
   );
 
   const count = photos.length;
@@ -121,7 +121,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   // (Previously an `emphasized` variant added a ring/darker fill on the
   // photos-step-with-zero-photos case, which read as an inconsistent highlight.)
   const btnClass =
-    'h-8 shrink-0 gap-1 self-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-caption font-black tabular-nums text-blue-700 shadow-sm hover:bg-blue-100 hover:text-blue-700';
+    'h-8 shrink-0 gap-1 self-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-role-caption font-black tabular-nums text-blue-700 shadow-sm hover:bg-blue-100 hover:text-blue-700';
 
   const title = hasGallery
     ? `${count} photo${count === 1 ? '' : 's'} — click to send to phone, hover for gallery`

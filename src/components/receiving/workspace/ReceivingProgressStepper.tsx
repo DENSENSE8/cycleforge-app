@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment } from 'react';
 import { Check } from '@/components/Icons';
 import { receivingScanBandClass } from '@/components/layout/header-shell';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -12,46 +12,12 @@ import {
 } from './derive-receiving-step-states';
 import { RECEIVING_WORKSPACE_HEADER_COLUMN } from './receiving-workspace-layout';
 
-/**
- * Per-line localStorage key set by ConditionPills callers when the operator
- * actively picks a condition. Without this signal we can't tell apart the
- * receiving_lines.condition_grade NOT NULL default ('BRAND_NEW') from a real
- * operator selection — every row comes back from the DB with a non-empty
- * grade, so a naive "non-empty ⇒ done" check marks Condition done on
- * cartons the operator hasn't even looked at.
- */
-const CONDITION_SET_KEY = (lineId: number) =>
-  `receiving-condition-set:${lineId}`;
-
-export function hasConditionBeenSet(lineId: number | null | undefined): boolean {
-  if (typeof window === 'undefined' || lineId == null) return false;
-  try {
-    return !!window.localStorage.getItem(CONDITION_SET_KEY(lineId));
-  } catch {
-    return false;
-  }
-}
-
-export function markConditionSet(lineId: number | null | undefined): void {
-  if (typeof window === 'undefined' || lineId == null) return;
-  try {
-    window.localStorage.setItem(CONDITION_SET_KEY(lineId), String(Date.now()));
-  } catch {
-    /* private-mode / quota — non-fatal */
-  }
-  window.dispatchEvent(
-    new CustomEvent('receiving-condition-set', { detail: { line_id: lineId } }),
-  );
-}
-
 interface Props {
   row: ReceivingLineRow;
   photoCount: number;
   serialCount: number;
   /** Receiving label has been printed for this line (client-tracked). */
   labelPrinted?: boolean;
-  /** Carton opened via scanner rather than sidebar rail click. */
-  scanDriven?: boolean;
   /** PO sibling count — shows scope hint when 2+. */
   siblingLineCount?: number;
 }
@@ -88,8 +54,8 @@ export function LinearWorkflowStepper({
   const connectorPt = compact ? 'pt-1.5' : 'pt-2';
   const stepGap = compact ? 'gap-0.5' : 'gap-1';
   const labelClass = compact
-    ? 'text-eyebrow font-bold uppercase leading-none tracking-[0.1em]'
-    : 'text-micro font-black uppercase leading-none tracking-[0.12em]';
+    ? 'text-role-eyebrow font-bold uppercase leading-none tracking-[0.1em]'
+    : 'text-role-micro uppercase leading-none tracking-[0.12em]';
 
   return (
     <nav aria-label={ariaLabel} aria-description={ariaDescription} className={className}>
@@ -154,8 +120,13 @@ export function LinearWorkflowStepper({
 }
 
 /**
- * Five-dot horizontal stepper that mirrors the operator's actual workflow:
- *   Scan → Photos → Condition → Serial → Print
+ * Three-dot horizontal stepper for the operator's actionable unbox work:
+ *   Photos → Serial → Print
+ *
+ * No Scan or Condition step — both are always effectively done by the time the
+ * operator reads the bar, so they carried no signal (see derive-receiving-step-
+ * states.ts). Scan = reaching the workspace; Condition = the auto-defaulted
+ * grade in the pill. Every remaining dot reflects real, varying work.
  *
  * State is *derived* from the row — never stored — so it always reflects the
  * current source of truth. The "active" dot is the first step whose data gate
@@ -167,29 +138,12 @@ export function ReceivingProgressStepper({
   photoCount,
   serialCount,
   labelPrinted = false,
-  scanDriven = true,
   siblingLineCount = 1,
 }: Props) {
-  const [conditionSet, setConditionSet] = useState(
-    () => !!row.condition_set_at || hasConditionBeenSet(row.id),
-  );
-  useEffect(() => {
-    setConditionSet(!!row.condition_set_at || hasConditionBeenSet(row.id));
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ line_id: number }>).detail;
-      if (!detail || detail.line_id !== row.id) return;
-      setConditionSet(true);
-    };
-    window.addEventListener('receiving-condition-set', handler);
-    return () => window.removeEventListener('receiving-condition-set', handler);
-  }, [row.id, row.condition_set_at]);
-
   const states = deriveReceivingStepStates({
-    scanDriven,
     photoCount,
     serialCount,
     quantityExpected: row.quantity_expected ?? 0,
-    conditionSet,
     labelPrinted,
   });
 
@@ -234,7 +188,7 @@ function StepDot({
     return (
       <span
         className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card font-black text-blue-700 ring-2 ring-blue-500 ${sizeClass} ${
-          compact ? 'text-mini' : 'text-eyebrow'
+          compact ? 'text-role-micro' : 'text-role-eyebrow'
         }`}
       >
         {index}

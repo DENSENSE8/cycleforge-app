@@ -250,7 +250,7 @@ export function StudioCanvas({
       <Controls showInteractive={false} />
       <MiniMap pannable zoomable className="!bg-surface-sunken" />
       {lens === 'static' && zoom === 1 && staticFlow && (
-        <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-lg border border-border-soft bg-surface-card/90 px-3 py-1.5 text-micro font-semibold text-text-muted shadow-sm">
+        <div className="absolute left-3 top-3 z-10 flex items-center gap-3 rounded-lg border border-border-soft bg-surface-card/90 px-3 py-1.5 text-role-micro font-semibold text-text-muted shadow-sm">
           <span className="uppercase tracking-wide text-text-faint">Data flow</span>
           {(
             [
@@ -267,7 +267,7 @@ export function StudioCanvas({
         </div>
       )}
       {editable && (
-        <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-surface-inverse/80 px-3 py-1 text-micro font-medium text-white">
+        <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-surface-inverse/80 px-3 py-1 text-role-micro font-medium text-white">
           drag nodes to move · drag a port to wire it · click an edge to remove it
         </div>
       )}

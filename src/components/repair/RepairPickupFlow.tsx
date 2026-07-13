@@ -109,7 +109,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
               <h2 className="text-sm font-black uppercase tracking-tight text-text-default">
                 Pickup Confirmation
               </h2>
-              <p className="mt-0.5 text-micro font-bold text-text-soft">
+              <p className="mt-0.5 text-role-micro font-bold text-text-soft">
                 {rsCode} — {firstName} — {repair.product_title || 'Repair'} —{' '}
                 <span className="text-emerald-600">${repair.price || '0'}</span>
               </p>
@@ -119,7 +119,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
                 variant="secondary"
                 onClick={onClose}
                 icon={<ChevronLeft className="h-3 w-3" />}
-                className="text-eyebrow font-black uppercase tracking-wide text-text-muted"
+                className="text-role-eyebrow uppercase tracking-wide text-text-muted"
               >
                 Back
               </Button>
@@ -143,9 +143,9 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
           </div>
 
           <div className="shrink-0 border-b border-border-hairline px-6 py-3">
-            <p className="text-caption text-text-soft italic leading-relaxed">
+            <p className="text-role-caption text-text-soft italic leading-relaxed">
               {PICKUP_TERMS}
-              <span className="ml-2 font-black text-text-default not-italic uppercase text-micro">
+              <span className="ml-2 text-text-default not-italic uppercase text-role-micro">
                 30-Day Warranty
               </span>
             </p>
@@ -156,7 +156,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
               <SignaturePad onSignatureChange={setSignatureData} fillHeight label="Pickup Signature" />
             </div>
             <p
-              className={`text-eyebrow font-black uppercase tracking-wide transition-opacity ${
+              className={`text-role-eyebrow uppercase tracking-wide transition-opacity ${
                 signatureData ? 'opacity-0' : 'text-amber-600'
               }`}
             >
@@ -169,14 +169,14 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
               variant="ghost"
               onClick={handleDecline}
               disabled={isDeclining || isSubmitting}
-              className="h-auto px-0 text-micro font-black uppercase tracking-wide text-rose-600 hover:bg-transparent hover:text-rose-700 disabled:opacity-50"
+              className="h-auto px-0 text-role-micro uppercase tracking-wide text-rose-600 hover:bg-transparent hover:text-rose-700 disabled:opacity-50"
             >
               {isDeclining ? 'Recording…' : 'Customer declined to sign'}
             </Button>
           </div>
 
           {error && (
-            <div className="shrink-0 border-t border-red-100 bg-red-50 px-6 py-2 text-caption font-bold text-red-600">
+            <div className="shrink-0 border-t border-red-100 bg-red-50 px-6 py-2 text-role-caption font-bold text-red-600">
               {error}
             </div>
           )}
@@ -192,7 +192,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
                 <h2 className="text-sm font-black uppercase tracking-tight text-text-default">
                   Take a photo of this receipt to keep a copy
                 </h2>
-                <p className="mt-0.5 text-micro font-bold text-text-soft">
+                <p className="mt-0.5 text-role-micro font-bold text-text-soft">
                   {rsCode} — {firstName} — pickup complete
                 </p>
               </div>
@@ -201,7 +201,7 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
               variant="brand"
               onClick={onClose}
               icon={<X className="h-3 w-3" />}
-              className="bg-surface-inverse bg-none text-micro font-black uppercase tracking-wide hover:bg-surface-inverse-hover"
+              className="bg-surface-inverse bg-none text-role-micro uppercase tracking-wide hover:bg-surface-inverse-hover"
             >
               Done
             </Button>

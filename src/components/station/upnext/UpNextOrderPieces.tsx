@@ -26,7 +26,7 @@ export function SectionHeader({ label, color = 'orange' }: { label: string; colo
   return (
     <div className="flex items-center gap-2 px-1 py-1.5 mb-1">
       <div className={`h-px flex-1 ${lineClass}`} />
-      <span className={`text-eyebrow font-black uppercase tracking-widest ${textClass}`}>
+      <span className={`text-role-eyebrow uppercase tracking-widest ${textClass}`}>
         {label}
       </span>
       <div className={`h-px flex-1 ${lineClass}`} />

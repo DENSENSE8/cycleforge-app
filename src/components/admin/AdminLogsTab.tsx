@@ -116,18 +116,18 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
         <div className="mx-auto max-w-3xl space-y-5">
           <header className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-micro font-bold uppercase tracking-widest text-text-soft">
+              <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">
                 {event.kind} event
               </p>
               <h2 className="mt-0.5 break-words text-lg font-bold text-text-default">
                 {event.action}
               </h2>
-              <p className="mt-0.5 break-all font-mono text-caption text-text-faint">
+              <p className="mt-0.5 break-all font-mono text-role-caption text-text-faint">
                 {event.event_id}
               </p>
             </div>
             <span
-              className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-micro font-bold uppercase tracking-wider ${
+              className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-role-micro font-bold uppercase tracking-wider ${
                 event.kind === 'AUDIT'
                   ? 'bg-blue-50 text-blue-700'
                   : 'bg-purple-50 text-purple-700'
@@ -151,14 +151,14 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
           {(event.detail_value || event.detail_route) && (
             <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-              <p className="text-micro font-bold uppercase tracking-widest text-text-soft">Detail</p>
+              <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">Detail</p>
               {event.detail_value ? (
                 <p className="mt-1 break-words text-sm text-text-default">{event.detail_value}</p>
               ) : null}
               {event.detail_route ? (
                 <a
                   href={event.detail_route}
-                  className="mt-2 inline-block text-label font-semibold text-blue-600 hover:underline"
+                  className="mt-2 inline-block text-role-caption font-semibold text-blue-600 hover:underline"
                 >
                   Open route →
                 </a>
@@ -168,7 +168,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
           {event.notes ? (
             <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-              <p className="text-micro font-bold uppercase tracking-widest text-text-soft">Notes</p>
+              <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">Notes</p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm text-text-default">
                 {event.notes}
               </p>
@@ -184,8 +184,8 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 
           {event.metadata && Object.keys(event.metadata).length > 0 ? (
             <div className="rounded-xl border border-border-soft bg-surface-card p-4">
-              <p className="text-micro font-bold uppercase tracking-widest text-text-soft">Metadata</p>
-              <pre className="mt-2 overflow-x-auto rounded-lg bg-surface-canvas p-3 text-caption text-text-default">
+              <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">Metadata</p>
+              <pre className="mt-2 overflow-x-auto rounded-lg bg-surface-canvas p-3 text-role-caption text-text-default">
                 {JSON.stringify(event.metadata, null, 2)}
               </pre>
             </div>
@@ -199,7 +199,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
 function DetailCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border-soft bg-surface-card p-3">
-      <p className="text-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
+      <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">{label}</p>
       <div className="mt-1 break-words text-sm font-semibold text-text-default">{value}</div>
     </div>
   );

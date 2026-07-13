@@ -149,7 +149,7 @@ export function ReceivingLineOrderRow({
                   asChild
                   focusable={false}
                 >
-                  <span className="hidden items-center gap-1.5 text-eyebrow font-semibold text-text-faint sm:inline-flex">
+                  <span className="hidden items-center gap-1.5 text-role-eyebrow font-semibold text-text-faint sm:inline-flex">
                     {fmtShortTs(row.scanned_at ?? row.received_at) ? (
                       <span>↓ {fmtShortTs(row.scanned_at ?? row.received_at)}{row.scanned_by_name ? ` · ${row.scanned_by_name}` : ''}</span>
                     ) : null}
@@ -173,14 +173,14 @@ export function ReceivingLineOrderRow({
               <DeliveryStateIcon state={row.delivery_state} />
               {isIncoming && row.tracking_confidence === 'seller_reported' ? (
                 <HoverTooltip label="Seller reported tracking — carrier has not confirmed yet">
-                  <span className="text-eyebrow font-semibold text-amber-700">Seller</span>
+                  <span className="text-role-eyebrow font-semibold text-amber-700">Seller</span>
                 </HoverTooltip>
               ) : null}
               {isIncoming && row.tracking_confidence === 'carrier_confirmed' && row.shipment_latest_event_city ? (
                 <HoverTooltip
                   label={`Last carrier event${row.shipment_latest_event_at ? ` · ${row.shipment_latest_event_at}` : ''}${row.shipment_last_checked_at ? ` · synced ${row.shipment_last_checked_at}` : ''}`}
                 >
-                  <span className="hidden text-eyebrow font-semibold text-text-faint sm:inline">
+                  <span className="hidden text-role-eyebrow font-semibold text-text-faint sm:inline">
                     {row.shipment_latest_event_city}
                     {row.shipment_latest_event_postal ? ` ${row.shipment_latest_event_postal}` : ''}
                   </span>

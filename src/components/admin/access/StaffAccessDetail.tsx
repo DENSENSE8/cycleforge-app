@@ -183,7 +183,7 @@ export function StaffAccessDetail({ staffId }: StaffAccessDetailProps) {
             <div className="my-5 inline-block rounded-2xl border border-border-soft bg-surface-card p-4">
               <QRCode value={qrUrl.url} size={220} level="M" />
             </div>
-            <p className="break-all text-micro text-text-faint">{qrUrl.url}</p>
+            <p className="break-all text-role-micro text-text-faint">{qrUrl.url}</p>
             <Button variant="brand" size="lg" onClick={() => setQrUrl(null)} className="mt-5">
               Done
             </Button>

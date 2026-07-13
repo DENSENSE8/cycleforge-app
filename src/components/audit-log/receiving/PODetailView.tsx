@@ -25,7 +25,7 @@ export function PODetailView({ detail }: { detail: PODetail }) {
           <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">Purchase Order</div>
           <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-text-default">{po.po_number ?? po.po_id}</h2>
           {po.vendor_name && <div className="text-sm text-text-soft">{po.vendor_name}</div>}
-          <div className="mt-1 text-caption text-text-faint">
+          <div className="mt-1 text-role-caption text-text-faint">
             Zoho PO id: <code className="font-mono">{po.po_id}</code>
           </div>
         </div>
@@ -39,7 +39,7 @@ export function PODetailView({ detail }: { detail: PODetail }) {
       {Object.keys(totals.byStatus).length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {Object.entries(totals.byStatus).map(([status, n]) => (
-            <span key={status} className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-caption font-medium text-text-muted">
+            <span key={status} className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-2 py-0.5 text-role-caption font-medium text-text-muted">
               <span className="font-semibold">{n}</span>
               <span className="text-text-soft">{status}</span>
             </span>

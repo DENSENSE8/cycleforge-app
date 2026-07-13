@@ -185,7 +185,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
         >
           {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-4 py-3">
-            <p className="text-micro font-black uppercase tracking-[0.16em] text-text-soft">
+            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
               {headerLabel}
             </p>
             <IconButton
@@ -200,18 +200,18 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
           {pending && style && (
             <div className="shrink-0 border-b border-border-hairline bg-surface-canvas px-4 py-2.5">
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center rounded border px-1.5 py-0 text-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
+                <span className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
                   {style.label}
                 </span>
                 <span className="font-mono text-xs font-bold text-text-default">{identifier}</span>
                 {pending.orderCount > 0 && (
-                  <span className="text-micro font-semibold text-amber-700">
+                  <span className="text-role-micro font-semibold text-amber-700">
                     links {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}
                   </span>
                 )}
               </div>
               {pending.suggestedTitle && (
-                <p className="mt-1 truncate text-caption text-text-soft">{pending.suggestedTitle}</p>
+                <p className="mt-1 truncate text-role-caption text-text-soft">{pending.suggestedTitle}</p>
               )}
             </div>
           )}
@@ -263,7 +263,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                   </Field>
                 </div>
                 {pending && (
-                  <p className="rounded-lg bg-emerald-50 px-3 py-2 text-micro font-semibold text-emerald-700">
+                  <p className="rounded-lg bg-emerald-50 px-3 py-2 text-role-micro font-semibold text-emerald-700">
                     Creating this SKU will also link <span className="font-mono">{identifier}</span> and backfill its {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}.
                   </p>
                 )}
@@ -282,7 +282,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                 </div>
                 <div className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border-hairline">
                   {results.length === 0 ? (
-                    <p className="px-3 py-6 text-center text-caption text-text-faint">
+                    <p className="px-3 py-6 text-center text-role-caption text-text-faint">
                       {existingQuery.trim() ? 'No matches' : 'Type to search the catalog'}
                     </p>
                   ) : (
@@ -298,7 +298,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
                         >
                           {isSel && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                           <span className="font-mono text-xs font-black text-text-default">{r.sku}</span>
-                          <span className="truncate text-caption text-text-soft">{r.product_title}</span>
+                          <span className="truncate text-role-caption text-text-soft">{r.product_title}</span>
                         </button>
                       );
                     })
@@ -310,7 +310,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
 
           {/* Error */}
           {error && (
-            <div className="flex shrink-0 items-center gap-1.5 border-t border-red-100 bg-red-50 px-4 py-2 text-micro font-semibold text-red-700">
+            <div className="flex shrink-0 items-center gap-1.5 border-t border-red-100 bg-red-50 px-4 py-2 text-role-micro font-semibold text-red-700">
               <AlertCircle className="h-3.5 w-3.5" />{error}
             </div>
           )}
@@ -344,7 +344,7 @@ function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-micro font-bold uppercase tracking-wider transition-colors ${
+      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-role-micro font-bold uppercase tracking-wider transition-colors ${
         active ? 'bg-surface-inverse text-white' : 'text-text-soft hover:bg-surface-sunken'
       }`}
     >
@@ -356,7 +356,7 @@ function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: (
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-micro font-bold uppercase tracking-wider text-text-soft">
+      <span className="mb-1 block text-role-micro font-bold uppercase tracking-wider text-text-soft">
         {label}{required && <span className="text-red-400"> *</span>}
       </span>
       {children}

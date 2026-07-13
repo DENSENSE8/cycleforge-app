@@ -235,7 +235,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
   return (
     <div className="space-y-2">
       {qcChecks.length === 0 && !showAdd && (
-        <p className="text-micro font-semibold text-text-faint px-1">No QC steps defined yet.</p>
+        <p className="text-role-micro font-semibold text-text-faint px-1">No QC steps defined yet.</p>
       )}
 
       {qcChecks.map((check, idx) => {
@@ -248,8 +248,8 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
               isDraft ? 'bg-amber-50/60 ring-1 ring-amber-100' : 'bg-surface-canvas'
             }`}
           >
-            <span className="shrink-0 w-5 text-center text-micro font-black text-text-faint tabular-nums">{idx + 1}</span>
-            <span className={`flex-1 min-w-0 truncate text-caption font-bold ${isDraft ? 'text-text-soft' : 'text-text-default'}`}>
+            <span className="shrink-0 w-5 text-center text-role-micro text-text-faint tabular-nums">{idx + 1}</span>
+            <span className={`flex-1 min-w-0 truncate text-role-caption font-bold ${isDraft ? 'text-text-soft' : 'text-text-default'}`}>
               {check.step_label}
             </span>
             {summary && (
@@ -273,7 +273,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                 variant="ghost"
                 onClick={() => togglePublish(check)}
                 disabled={publishing === check.id}
-                className={`shrink-0 h-auto rounded-lg px-1.5 py-0.5 text-micro font-black uppercase tracking-wider opacity-0 group-hover:opacity-100 ${
+                className={`shrink-0 h-auto rounded-lg px-1.5 py-0.5 text-role-micro uppercase tracking-wider opacity-0 group-hover:opacity-100 ${
                   isDraft
                     ? 'text-emerald-600 hover:bg-emerald-50'
                     : 'text-text-faint hover:bg-surface-sunken hover:text-text-muted'
@@ -312,14 +312,14 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                 value={stepLabel}
                 onChange={(e) => setStepLabel(e.target.value)}
                 placeholder="Check step description"
-                className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default placeholder:text-text-faint"
+                className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
               />
               <div className="flex gap-2">
                 <HoverTooltip label="Category badge" asChild>
                   <select
                     value={stepType}
                     onChange={(e) => setStepType(e.target.value)}
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default"
+                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default"
                     aria-label="Category badge"
                   >
                     {STEP_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -329,7 +329,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                   <select
                     value={valueKind}
                     onChange={(e) => setValueKind(e.target.value)}
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default"
+                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default"
                     aria-label="How the tester records this step"
                   >
                     {VALUE_KINDS.map((k) => (
@@ -346,14 +346,14 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                     value={passMin}
                     onChange={(e) => setPassMin(e.target.value)}
                     placeholder="Pass min"
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default placeholder:text-text-faint"
+                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
                   />
                   <input
                     type="number"
                     value={passMax}
                     onChange={(e) => setPassMax(e.target.value)}
                     placeholder="Pass max"
-                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default placeholder:text-text-faint"
+                    className="flex-1 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
                   />
                   {valueKind !== 'PERCENT' && (
                     <input
@@ -361,7 +361,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                       value={valueUnit}
                       onChange={(e) => setValueUnit(e.target.value)}
                       placeholder="Unit"
-                      className="w-20 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default placeholder:text-text-faint"
+                      className="w-20 rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
                     />
                   )}
                 </div>
@@ -373,7 +373,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                   value={valueEnumText}
                   onChange={(e) => setValueEnumText(e.target.value)}
                   placeholder="Choices, comma-separated (e.g. A, B, C)"
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default placeholder:text-text-faint"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
                 />
               )}
 
@@ -381,7 +381,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                 <select
                   value={failureModeId}
                   onChange={(e) => setFailureModeId(e.target.value)}
-                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-caption font-bold text-text-default"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption font-bold text-text-default"
                   aria-label="Auto-tag this failure mode on the unit when this step fails"
                 >
                   <option value="">Auto-tag on fail: none</option>
@@ -428,7 +428,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
           size="sm"
           icon={<Plus className="h-3 w-3" />}
           onClick={() => { resetForm(); setShowAdd(true); }}
-          className="text-micro font-black uppercase tracking-wider text-blue-600 hover:bg-blue-50"
+          className="text-role-micro uppercase tracking-wider text-blue-600 hover:bg-blue-50"
         >
           Add Step
         </Button>

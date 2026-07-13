@@ -57,7 +57,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
       >
         {/* ── Row 1 — ticket id · customer · trailing chevron. ── */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5 text-caption font-semibold text-text-soft">
+          <div className="flex min-w-0 items-center gap-1.5 text-role-caption font-semibold text-text-soft">
             <span className="font-mono font-bold text-orange-700">
               #{card.ticketShort}
             </span>
@@ -88,7 +88,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
         </h4>
 
         {/* ── Row 3 — date pill + urgency phrase. ── */}
-        <div className="mt-1.5 flex items-center gap-1.5 text-caption">
+        <div className="mt-1.5 flex items-center gap-1.5 text-role-caption">
           <span className="inline-flex items-center rounded-md bg-orange-50 px-1.5 py-0.5 font-bold text-orange-700">
             {formatMonthDay(card.displayDate) || '—'}
           </span>
@@ -100,7 +100,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
         {/* ── Issue summary — single line in the collapsed row; full text in
               the expanded section below. ── */}
         {repair.issue && (
-          <p className="mt-1.5 line-clamp-1 text-caption font-semibold leading-snug text-text-muted">
+          <p className="mt-1.5 line-clamp-1 text-role-caption font-semibold leading-snug text-text-muted">
             {repair.issue}
           </p>
         )}
@@ -122,7 +122,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
 
                 {card.hasOutcome && !card.hasOutOfStock && (
                   <div className="mb-2 rounded-xl border border-emerald-200 bg-emerald-50/40 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),inset_0_0_0_1px_rgba(16,185,129,0.06)]">
-                    <span className="mb-1 block text-micro font-black uppercase tracking-widest text-emerald-700">Repaired Part</span>
+                    <span className="mb-1 block text-role-micro uppercase tracking-widest text-emerald-700">Repaired Part</span>
                     <p className="text-sm text-text-default break-words leading-snug">{repair.repairOutcome}</p>
                   </div>
                 )}
@@ -214,18 +214,18 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
               <div className="mt-2.5 border-t border-orange-200 pt-2.5">
                 <DetailGrid className={fieldLabel}>
                   <DetailCell label="Customer">
-                    <span className={`${dataValue} text-caption normal-case tracking-normal break-words`}>
+                    <span className={`${dataValue} text-role-caption normal-case tracking-normal break-words`}>
                       {card.customerName || 'Unknown'}
                     </span>
                   </DetailCell>
                   <DetailCell label="Phone / Serial">
-                    <span className={`${dataValue} text-caption normal-case tracking-normal break-words`}>
+                    <span className={`${dataValue} text-role-caption normal-case tracking-normal break-words`}>
                       {card.customerPhone || repair.serialNumber || 'None'}
                     </span>
                   </DetailCell>
                   <DetailCell label="Assigned Tech">
                     <div className="flex items-center justify-between gap-1">
-                      <span className={`${dataValue} text-caption normal-case tracking-normal break-words`}>
+                      <span className={`${dataValue} text-role-caption normal-case tracking-normal break-words`}>
                         {repair.techName || (card.isUnassigned ? 'Unassigned' : 'Unknown')}
                       </span>
                       <button
@@ -238,7 +238,7 @@ export function RepairCard({ repair, techId, isExpanded, onToggleExpand, onRefre
                     </div>
                   </DetailCell>
                   <DetailCell label="Repair ID">
-                    <span className={`${dataValue} text-caption normal-case tracking-normal break-words`}>
+                    <span className={`${dataValue} text-role-caption normal-case tracking-normal break-words`}>
                       {repair.repairId != null ? String(repair.repairId) : 'Unknown'}
                     </span>
                   </DetailCell>

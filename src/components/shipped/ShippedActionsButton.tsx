@@ -234,7 +234,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
           <button
             type="button"
             aria-label="Shipped actions — sync fulfillment or print a pickup report"
-            className="ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-label font-bold text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-bold text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           >
             {triggerBusy ? (
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
@@ -243,7 +243,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
             )}
             <span className="flex-1 text-left">Sync &amp; Report</span>
             {canZoho && pendingCount > 0 ? (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-mini font-black text-white">
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-role-micro text-white">
                 {pendingCount}
               </span>
             ) : null}
@@ -265,7 +265,7 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
                     key={t}
                     type="button"
                     onClick={() => setTab(t)}
-                    className={`ds-raw-button flex-1 rounded-lg px-3 py-1.5 text-eyebrow font-black uppercase tracking-wider transition-colors ${
+                    className={`ds-raw-button flex-1 rounded-lg px-3 py-1.5 text-role-eyebrow uppercase tracking-wider transition-colors ${
                       tab === t ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted'
                     }`}
                   >
@@ -286,19 +286,19 @@ export function ShippedActionsButton({ defaultDateKey }: ShippedActionsButtonPro
                 >
                   Preview &amp; sync fulfillment
                   {pendingCount > 0 ? (
-                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-glass/25 px-1.5 text-mini font-black">
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-glass/25 px-1.5 text-role-micro ">
                       {pendingCount}
                     </span>
                   ) : null}
                 </Button>
-                <p className="px-1 text-eyebrow leading-relaxed text-text-faint">
+                <p className="px-1 text-role-eyebrow leading-relaxed text-text-faint">
                   Pushes each packer-scanned shipped order to your inventory system as one bundle
                   (sales order → package → shipment → invoice).
                 </p>
               </div>
             ) : (
               <div>
-                <div className="flex items-center gap-1.5 border-b border-border-hairline px-1 pb-2 text-eyebrow font-black uppercase tracking-wider text-text-soft">
+                <div className="flex items-center gap-1.5 border-b border-border-hairline px-1 pb-2 text-role-eyebrow uppercase tracking-wider text-text-soft">
                   <CalendarIcon className="h-3.5 w-3.5 text-text-faint" />
                   Print pickup report — pick a date
                   {reportBusy ? <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin text-blue-500" /> : <Printer className="ml-auto h-3.5 w-3.5 text-text-faint" />}

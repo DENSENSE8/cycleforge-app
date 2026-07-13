@@ -316,7 +316,7 @@ const VERDICT_META: Record<TestingVerdict, { label: string; cls: string }> = {
 function TestingStatField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-surface-canvas px-3 py-2.5">
-      <p className="text-micro font-black uppercase tracking-[0.15em] text-blue-300">{label}</p>
+      <p className="text-role-micro uppercase tracking-[0.15em] text-blue-300">{label}</p>
       <p className="mt-1 truncate text-sm font-black tracking-tight text-blue-950">{value}</p>
     </div>
   );
@@ -434,7 +434,7 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <span
-                            className={`rounded-full border px-2.5 py-0.5 text-micro font-black uppercase tracking-wider ${
+                            className={`rounded-full border px-2.5 py-0.5 text-role-micro uppercase tracking-wider ${
                               meta ? meta.cls : 'border-border-soft bg-surface-canvas text-text-soft'
                             }`}
                           >
@@ -473,7 +473,7 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                   {shownSerial.serial_number || '—'}
                 </p>
                 <span
-                  className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-micro font-black uppercase tracking-wider ${
+                  className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-role-micro uppercase tracking-wider ${
                     detailMeta ? detailMeta.cls : 'border-border-soft bg-surface-canvas text-text-soft'
                   }`}
                 >

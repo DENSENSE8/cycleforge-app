@@ -269,8 +269,8 @@ function OutboundStripEmpty({ mode }: { mode: 'shipped' | 'unshipped' }) {
       : { title: 'The unship queue is clear.', hint: 'Awaiting and tested units will roll up here.' };
   return (
     <div className="rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-8 text-center">
-      <p className="text-caption font-bold text-text-soft">{copy.title}</p>
-      <p className="mt-1 text-eyebrow font-semibold uppercase tracking-widest text-text-faint">{copy.hint}</p>
+      <p className="text-role-caption font-bold text-text-soft">{copy.title}</p>
+      <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">{copy.hint}</p>
     </div>
   );
 }
@@ -279,11 +279,11 @@ function OutboundStripEmpty({ mode }: { mode: 'shipped' | 'unshipped' }) {
 function OutboundStripError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-8 text-center">
-      <p className="text-caption font-bold text-rose-700">Couldn&apos;t load outbound metrics.</p>
+      <p className="text-role-caption font-bold text-rose-700">Couldn&apos;t load outbound metrics.</p>
       <button
         type="button"
         onClick={onRetry}
-        className="mt-2 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-surface-card px-2.5 py-1 text-eyebrow font-black uppercase tracking-widest text-rose-700 hover:bg-rose-100"
+        className="mt-2 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-surface-card px-2.5 py-1 text-role-eyebrow uppercase tracking-widest text-rose-700 hover:bg-rose-100"
       >
         <RefreshCw className="h-3.5 w-3.5" /> Try again
       </button>

@@ -42,10 +42,10 @@ export function ChannelSection({
     return (
       <section className={`border-l-2 py-2 pl-3 ${style.ring}`}>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wider ${style.chip}`}>
+          <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${style.chip}`}>
             {style.label}
           </span>
-          <span className="text-micro text-text-faint">empty</span>
+          <span className="text-role-micro text-text-faint">empty</span>
         </div>
         <ChannelManualAdd platform={platform} skuCatalogId={skuCatalogId} onAdded={onAdded} />
       </section>
@@ -58,7 +58,7 @@ export function ChannelSection({
   return (
     <section className={`border-l-2 py-2 pl-3 ${style.ring}`}>
       <div className="mb-1.5 flex items-center gap-2">
-        <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wider ${style.chip}`}>
+        <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${style.chip}`}>
           {style.label}
         </span>
       </div>
@@ -96,7 +96,7 @@ export function ChannelSection({
           size="sm"
           onClick={() => setShowAll(true)}
           iconRight={<ChevronDown className="h-3 w-3" />}
-          className="mt-1.5 text-micro font-semibold uppercase tracking-wider text-blue-600 hover:text-blue-800"
+          className="mt-1.5 text-role-micro font-semibold uppercase tracking-wider text-blue-600 hover:text-blue-800"
         >
           See {moreCount} more
         </Button>

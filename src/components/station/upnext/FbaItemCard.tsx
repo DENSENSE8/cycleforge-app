@@ -58,7 +58,7 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
       >
         {/* ── Row 1 — FNSKU id · pending group · trailing chevron. ── */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5 text-caption font-semibold text-text-soft">
+          <div className="flex min-w-0 items-center gap-1.5 text-role-caption font-semibold text-text-soft">
             {canOpenAsin ? (
               <button
                 type="button"
@@ -104,14 +104,14 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
         </h4>
 
         {/* ── Row 3 — ship-by pill + urgency phrase + qty pill. ── */}
-        <div className="mt-1.5 flex items-center gap-1.5 text-caption">
+        <div className="mt-1.5 flex items-center gap-1.5 text-role-caption">
           <span className="inline-flex items-center rounded-md bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700">
             {formatMonthDay(card.displayShipBy) || '—'}
           </span>
           <span className={`font-bold tracking-tight ${daysLateTone}`}>
             {urgencyText}
           </span>
-          <span className="ml-auto rounded bg-amber-100 px-1.5 font-mono text-micro font-bold text-amber-700">
+          <span className="ml-auto rounded bg-amber-100 px-1.5 font-mono text-role-micro font-bold text-amber-700">
             ×{card.qtyLabel}
           </span>
         </div>
@@ -128,18 +128,18 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
               <div className="mt-2.5 border-t border-purple-100 pt-2.5" onClick={(e) => e.stopPropagation()}>
                 <DetailGrid className={fieldLabel}>
                   <DetailCell label="Pending Group">
-                    <span className={`${monoValue} text-caption normal-case tracking-normal break-words`}>
+                    <span className={`${monoValue} text-role-caption normal-case tracking-normal break-words`}>
                       {card.pendingTitle || '—'}
                     </span>
                   </DetailCell>
                   <DetailCell label="Shipment row ID">
-                    <span className={`${dataValue} text-caption tabular-nums normal-case tracking-normal`}>
+                    <span className={`${dataValue} text-role-caption tabular-nums normal-case tracking-normal`}>
                       {item.shipment_id}
                     </span>
                   </DetailCell>
                   <DetailCell label="ASIN">
                     <div className="flex items-center justify-between gap-2">
-                      <div className={`min-w-0 ${dataValue} text-caption normal-case tracking-normal break-words`}>
+                      <div className={`min-w-0 ${dataValue} text-role-caption normal-case tracking-normal break-words`}>
                         {card.asin || 'Not available'}
                       </div>
                       <div className="flex items-center gap-1">
@@ -161,7 +161,7 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
                   </DetailCell>
                   <DetailCell label="Tech">
                     <div className="flex items-center justify-between gap-1">
-                      <span className={`${dataValue} text-caption normal-case tracking-normal`}>
+                      <span className={`${dataValue} text-role-caption normal-case tracking-normal`}>
                         {item.assigned_tech_name || 'Unassigned'}
                       </span>
                       <IconButton
@@ -173,7 +173,7 @@ export function FbaItemCard({ item, isExpanded, onToggleExpand }: FbaItemCardPro
                     </div>
                   </DetailCell>
                   <DetailCell label="FNSKU">
-                    <span className={`${dataValue} text-caption normal-case tracking-normal break-words`}>
+                    <span className={`${dataValue} text-role-caption normal-case tracking-normal break-words`}>
                       {card.fnsku || 'Not available'}
                     </span>
                   </DetailCell>

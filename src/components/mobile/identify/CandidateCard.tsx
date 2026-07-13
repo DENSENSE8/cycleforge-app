@@ -39,7 +39,7 @@ export function CandidateCard({
           <div className="truncate text-sm font-semibold">{title}</div>
           <div className="mt-0.5 flex items-center gap-2 text-xs text-white/50">
             {c.sku ? <span className="tabular-nums">SKU {c.sku}</span> : <span>no SKU</span>}
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-micro font-semibold text-emerald-300">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-role-micro font-semibold text-emerald-300">
               <Check className="h-3 w-3" /> label match
             </span>
             {unresolved && <span className="text-amber-300/80">· not in system</span>}

@@ -62,6 +62,9 @@ function initials(name: string): string {
 export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy }: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // When recent staff exist, keep the full roster collapsed behind a "More"
+  // button so the 3 recent names stay the focused, one-tap choice.
+  const [showAll, setShowAll] = useState(false);
 
   // Keep the latest onPolicy without retriggering the load effect. Passing the
   // callback in the dep array re-runs the fetch on every parent render (callers
@@ -107,20 +110,45 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
     );
   }
 
+  const hasRecent = recentRows.length > 0;
+  // With recent names on top, the rest collapse behind "More". Without any
+  // recent, the full roster is the primary list and always shows.
+  const showOthers = !hasRecent || showAll;
+
   return (
     <div className="space-y-6">
-      {recentRows.length > 0 && (
+      {hasRecent && (
         <Group label="Recent">
           {recentRows.map((s) => (
             <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} isRecent />
           ))}
         </Group>
       )}
-      <Group label={recentRows.length > 0 ? 'All staff' : undefined}>
-        {otherRows.map((s) => (
-          <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} />
-        ))}
-      </Group>
+      {showOthers && otherRows.length > 0 && (
+        <Group label={hasRecent ? 'All staff' : undefined}>
+          {otherRows.map((s) => (
+            <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} />
+          ))}
+        </Group>
+      )}
+      {hasRecent && !showAll && otherRows.length > 0 && (
+        // ds-raw-button: inline disclosure to reveal the full staff roster
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="ds-raw-button group flex w-full items-center justify-center gap-1.5 rounded-2xl border border-border-soft bg-surface-card/80 px-3.5 py-2.5 text-role-caption font-semibold text-text-soft shadow-sm shadow-gray-900/[0.03] backdrop-blur-sm transition hover:border-border-default hover:text-text-default"
+        >
+          More
+          <span className="text-text-faint">·</span>
+          <span className="font-medium text-text-faint">{otherRows.length} more staff</span>
+          <svg
+            className="h-3.5 w-3.5 text-text-faint transition group-hover:translate-y-0.5"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -129,7 +157,7 @@ function Group({ label, children }: { label?: string; children: React.ReactNode 
   return (
     <div>
       {label && (
-        <div className="mb-2 px-1 text-micro font-semibold uppercase tracking-[0.18em] text-text-faint">
+        <div className="mb-2 px-1 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-faint">
           {label}
         </div>
       )}
@@ -174,10 +202,10 @@ function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
       </div>
       <div className="min-w-0 flex-1">
         <div className={`truncate text-base font-semibold text-text-default transition-colors ${t.nameHover}`}>{s.name}</div>
-        <div className="truncate text-caption font-medium uppercase tracking-[0.14em] text-text-soft">
+        <div className="truncate text-role-caption font-medium uppercase tracking-[0.14em] text-text-soft">
           {s.role.replace(/_/g, ' ')}
           {needsSetup && (
-            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-eyebrow font-semibold tracking-normal text-blue-700 ring-1 ring-inset ring-blue-100">
+            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-role-eyebrow font-semibold tracking-normal text-blue-700 ring-1 ring-inset ring-blue-100">
               <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 5v14" /><path d="M5 12h14" />
               </svg>

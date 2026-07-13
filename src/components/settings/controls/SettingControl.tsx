@@ -134,7 +134,7 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
             }}
             className={`w-24 ${FIELD_CLS}`}
           />
-          {def.unit && <span className="text-caption text-text-soft">{def.unit}</span>}
+          {def.unit && <span className="text-role-caption text-text-soft">{def.unit}</span>}
         </div>
       );
 

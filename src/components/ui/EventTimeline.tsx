@@ -267,17 +267,17 @@ function groupBySerial(
 function DefaultGroupHeader({ group }: { group: SerialGroup }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-mini font-bold uppercase tracking-[0.12em] text-text-faint">
+      <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint">
         {group.ref ? `${REF_KIND_LABEL[group.ref.kind]} ` : ''}
       </span>
       {group.ref ? (
         <TimelineRefChip refItem={group.ref} />
       ) : (
-        <span className="text-mini font-bold uppercase tracking-[0.12em] text-text-faint">
+        <span className="text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint">
           {group.label}
         </span>
       )}
-      <span className="text-micro font-medium text-text-faint">
+      <span className="text-role-micro font-medium text-text-faint">
         {group.items.length} {group.items.length === 1 ? 'event' : 'events'}
       </span>
     </div>
@@ -290,7 +290,7 @@ function GroupLatestPeek({ items, richTime }: { items: TimelineItem[]; richTime:
   if (!latest) return null;
   const when = richTime ? relTime(latest.at) : fmt(latest.at, 'h:mma').toLowerCase();
   return (
-    <span className="ml-auto hidden min-w-0 shrink items-center gap-1.5 truncate text-micro font-medium text-text-faint sm:flex">
+    <span className="ml-auto hidden min-w-0 shrink items-center gap-1.5 truncate text-role-micro font-medium text-text-faint sm:flex">
       <span className="truncate">{latest.title}</span>
       <span className="shrink-0 whitespace-nowrap tabular-nums text-text-faint">· {when}</span>
     </span>
@@ -319,7 +319,7 @@ export function EventTimeline({
 
   if (items.length === 0) {
     return (
-      <div className="flex h-28 items-center justify-center px-4 text-center text-caption font-medium text-text-faint">
+      <div className="flex h-28 items-center justify-center px-4 text-center text-role-caption font-medium text-text-faint">
         {emptyMessage}
       </div>
     );
@@ -441,7 +441,7 @@ export function EventTimeline({
           <motion.li key={item.id} variants={row} className="relative pl-5">
             {showDay ? (
               <div
-                className={`${d.day} mb-1.5 pl-px text-mini font-bold uppercase tracking-[0.12em] text-text-faint`}
+                className={`${d.day} mb-1.5 pl-px text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint`}
               >
                 {dayKey}
               </div>
@@ -489,13 +489,13 @@ export function EventTimeline({
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <span
-                    className={`text-caption tracking-tight ${
+                    className={`text-role-caption tracking-tight ${
                       isLatest ? 'font-bold text-text-default' : 'font-semibold text-text-muted'
                     }`}
                   >
                     {item.title}
                   </span>
-                  <span className="shrink-0 whitespace-nowrap text-micro font-medium tabular-nums text-text-faint">
+                  <span className="shrink-0 whitespace-nowrap text-role-micro font-medium tabular-nums text-text-faint">
                     {richTime ? (
                       <HoverTooltip
                         label={absTimestamp(item.at)}
@@ -513,7 +513,7 @@ export function EventTimeline({
                 </div>
 
                 {item.subtitle ? (
-                  <div className="mt-0.5 text-micro font-medium tabular-nums text-text-faint">
+                  <div className="mt-0.5 text-role-micro font-medium tabular-nums text-text-faint">
                     {item.subtitle}
                   </div>
                 ) : null}
@@ -521,7 +521,7 @@ export function EventTimeline({
                 {item.changes?.length ? (
                   <ul className="mt-1 space-y-0.5">
                     {item.changes.map((c, ci) => (
-                      <li key={ci} className="text-micro font-medium text-text-faint">
+                      <li key={ci} className="text-role-micro font-medium text-text-faint">
                         <span className="font-semibold text-text-soft">{c.key}</span>
                         {': '}
                         <span className="text-text-faint">{c.before ?? '—'}</span>
@@ -543,7 +543,7 @@ export function EventTimeline({
                     {item.badges.map((badge, bi) => (
                       <span
                         key={bi}
-                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-eyebrow font-bold ${BADGE_TONE[badge.tone]}`}
+                        className={`inline-flex items-center rounded px-1.5 py-0.5 text-role-eyebrow font-bold ${BADGE_TONE[badge.tone]}`}
                       >
                         {badge.label}
                       </span>

@@ -167,7 +167,7 @@ export function LogsSidebarPanel() {
             });
           }}
           placeholder="Filter by actor staff id"
-          className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-label text-text-default outline-none transition placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+          className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-role-caption text-text-default outline-none transition placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
         />
       }
     >
@@ -203,7 +203,7 @@ export function LogsSidebarPanel() {
         <>
           {grouped.map((group) => (
             <div key={group.key} className="mb-2">
-              <p className="px-1 pb-1.5 pt-2 text-eyebrow font-black uppercase tracking-widest text-text-faint">
+              <p className="px-1 pb-1.5 pt-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
                 {group.label}
               </p>
               <ul className="space-y-1.5">
@@ -245,7 +245,7 @@ export function LogsSidebarPanel() {
             >
               Prev
             </Button>
-            <span className="text-micro text-text-soft">offset {offset}</span>
+            <span className="text-role-micro text-text-soft">offset {offset}</span>
             <Button
               variant="secondary"
               size="sm"

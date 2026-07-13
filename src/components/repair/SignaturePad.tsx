@@ -122,11 +122,11 @@ export function SignaturePad({ onSignatureChange, label = 'Customer Signature', 
     <div className={fillHeight ? 'flex h-full flex-col gap-2 px-3 pt-3' : 'space-y-2'}>
       {/* Label row */}
       <div className="flex items-center justify-between">
-        <label className={`block font-black uppercase tracking-[0.15em] text-text-soft ${isDropoff ? 'text-micro' : 'text-eyebrow'}`}>
+        <label className={`block uppercase tracking-[0.15em] text-text-soft ${isDropoff ? 'text-role-micro' : 'text-role-eyebrow'}`}>
           {label}
         </label>
         <div className="flex items-center gap-3">
-            <span className={`flex items-center gap-1.5 font-black uppercase tracking-wide border transition-opacity ${isDropoff ? 'rounded-none px-2 py-1 text-micro' : 'text-eyebrow px-2 py-1'} ${signed ? 'text-text-default bg-surface-sunken border-border-soft' : 'opacity-0 border-transparent'}`}>
+            <span className={`flex items-center gap-1.5 uppercase tracking-wide border transition-opacity ${isDropoff ? 'rounded-none px-2 py-1 text-role-micro' : 'text-role-eyebrow px-2 py-1'} ${signed ? 'text-text-default bg-surface-sunken border-border-soft' : 'opacity-0 border-transparent'}`}>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
@@ -136,7 +136,7 @@ export function SignaturePad({ onSignatureChange, label = 'Customer Signature', 
             variant="ghost"
             type="button"
             onClick={handleClear}
-            className={`h-auto rounded px-2 py-1 font-black uppercase tracking-wide text-red-500 hover:bg-red-50 hover:text-red-700 ${isDropoff ? 'text-micro' : 'text-eyebrow'}`}
+            className={`h-auto rounded px-2 py-1 uppercase tracking-wide text-red-500 hover:bg-red-50 hover:text-red-700 ${isDropoff ? 'text-role-micro' : 'text-role-eyebrow'}`}
           >
             Clear
           </Button>
@@ -160,12 +160,12 @@ export function SignaturePad({ onSignatureChange, label = 'Customer Signature', 
         />
         {/* Baseline */}
         <div className="absolute bottom-10 left-6 right-6 border-b-2 border-dashed border-border-soft pointer-events-none" />
-        <span className="absolute bottom-3 left-6 text-mini text-text-faint font-black uppercase tracking-[0.2em] pointer-events-none">
+        <span className="absolute bottom-3 left-6 text-role-micro text-text-faint uppercase tracking-[0.2em] pointer-events-none">
           Sign above
         </span>
         {/* Corner accent */}
         {!signed && (
-          <span className="absolute top-3 right-3 text-mini font-black text-text-faint uppercase tracking-wide pointer-events-none">
+          <span className="absolute top-3 right-3 text-role-micro text-text-faint uppercase tracking-wide pointer-events-none">
             Touch to sign
           </span>
         )}

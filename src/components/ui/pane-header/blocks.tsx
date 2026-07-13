@@ -25,7 +25,7 @@ interface PaneHeaderLabelProps {
 }
 
 export const paneHeaderLabelEyebrowClass =
-  'text-eyebrow font-black uppercase tracking-widest text-text-faint';
+  'text-role-eyebrow uppercase tracking-widest text-text-faint';
 
 export const paneHeaderLabelValueClass =
   'truncate text-sm font-black tracking-tight text-text-default';
@@ -183,7 +183,7 @@ export function PaneHeaderStatusPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-micro font-black uppercase tracking-widest ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
         STATUS_TONE_CLASS[tone],
         className,
       )}
@@ -263,7 +263,7 @@ export function PaneHeaderTabs<TValue extends string>({
             className={cn(
               'inline-flex items-center font-semibold transition-colors',
               dense
-                ? 'gap-1 rounded px-2 py-1 text-caption'
+                ? 'gap-1 rounded px-2 py-1 text-role-caption'
                 : 'gap-1.5 rounded-md px-3 py-1.5 text-xs',
               active
                 ? 'bg-surface-inverse text-white'
@@ -337,7 +337,7 @@ interface PaneHeaderActionBarProps {
 }
 
 const PANE_HEADER_ACTION_BTN_CLASS =
-  'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
 
 const PANE_HEADER_ACTION_NAV_CLASS =
   'inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
@@ -394,7 +394,7 @@ export function PaneHeaderActionBar({
       ))}
       {status != null ? (
         <span
-          className="text-eyebrow font-black uppercase tracking-[0.18em] text-blue-600"
+          className="text-role-eyebrow uppercase tracking-[0.18em] text-blue-600"
           aria-live="polite"
         >
           {status}
@@ -475,7 +475,7 @@ export function PaneHeaderPagination({
 
   return (
     <div className="flex items-center gap-3">
-      <span className="tabular-nums text-eyebrow font-black uppercase tracking-wider text-text-soft">
+      <span className="tabular-nums text-role-eyebrow uppercase tracking-wider text-text-soft">
         {total > 0 ? (
           <>
             <span className="text-text-default">
@@ -499,7 +499,7 @@ export function PaneHeaderPagination({
             icon={<ChevronLeft className="h-3.5 w-3.5" />}
           />
         </HoverTooltip>
-        <span className="px-1 tabular-nums text-eyebrow font-black uppercase tracking-wider text-text-soft">
+        <span className="px-1 tabular-nums text-role-eyebrow uppercase tracking-wider text-text-soft">
           <span className="text-text-default">{safePage}</span>
           <span className="text-text-faint"> / {totalPages}</span>
         </span>

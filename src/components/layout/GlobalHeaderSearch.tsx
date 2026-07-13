@@ -10,7 +10,8 @@
  * Combobox model: the input carries role=combobox + aria-activedescendant; the
  * dropdown is the listbox. ↓/↑ move a virtual activeIndex across the flattened
  * visible options (recents, or [see-all, ...preview hits]); Enter navigates the
- * active option or falls through to /search; Esc clears then blurs; ⌘K focuses.
+ * active option or falls through to the orders board (/dashboard?search=); Esc
+ * clears then blurs; ⌘K focuses. Order details live only on /o/[id].
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -116,13 +117,6 @@ export function GlobalHeaderSearch() {
     return () => clearTimeout(classicDebounceRef.current);
   }, [trimmedQuery, showPreview, aiQuickJump.aiEnabled]);
 
-  // Keep the global query in sync when landing on /search.
-  useEffect(() => {
-    if (!isGlobal || pathname !== '/search') return;
-    const sp = new URLSearchParams(window.location.search);
-    setGlobalQuery(sp.get('q') ?? '');
-  }, [isGlobal, pathname]);
-
   const handleFocusRequest = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -163,9 +157,12 @@ export function GlobalHeaderSearch() {
     return () => window.removeEventListener(GLOBAL_SEARCH_FOCUS_EVENT, handleFocusRequest);
   }, [handleFocusRequest]);
 
+  // "See all" / plain Enter → the orders board applied as a filter. There is no
+  // standalone /search results page; order details live only on `/o/[id]`
+  // (reached by selecting a specific order hit above).
   const openSearchPage = useCallback(() => {
     if (!trimmedQuery) return;
-    router.push(`/search?q=${encodeURIComponent(trimmedQuery)}`);
+    router.push(`/dashboard?search=${encodeURIComponent(trimmedQuery)}`);
     setFocused(false);
   }, [router, trimmedQuery]);
 
@@ -267,7 +264,7 @@ export function GlobalHeaderSearch() {
       const trimmed = raw.trim();
       if (!trimmed) return;
       if (unifiedOn) pushRecent({ query: trimmed, scope: 'global', scopeLabel: 'Everywhere' });
-      router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+      router.push(`/dashboard?search=${encodeURIComponent(trimmed)}`);
       setFocused(false);
     },
     [contextualSearch, router, unifiedOn, pushRecent, activeIndex, navigateActive],
@@ -330,7 +327,7 @@ export function GlobalHeaderSearch() {
         trailingPrefix={
           showShortcutHint ? (
             <span className="relative hidden h-4 min-w-[1.75rem] shrink-0 sm:inline-flex">
-              <kbd className="absolute inset-0 flex items-center justify-center rounded border border-border-hairline bg-surface-card px-1 text-mini font-semibold leading-none text-text-faint transition-opacity duration-100 group-hover/search:pointer-events-none group-hover/search:opacity-0">
+              <kbd className="absolute inset-0 flex items-center justify-center rounded border border-border-hairline bg-surface-card px-1 text-role-micro font-semibold leading-none text-text-faint transition-opacity duration-100 group-hover/search:pointer-events-none group-hover/search:opacity-0">
                 ⌘K
               </kbd>
               <HoverTooltip label="Paste from clipboard" asChild>

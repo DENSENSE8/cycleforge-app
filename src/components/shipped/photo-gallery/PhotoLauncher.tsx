@@ -59,10 +59,10 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
               </div>
               {g.toolbarShowLabel ? (
                 <div className="flex min-w-0 flex-col">
-                  <span className="text-micro font-black uppercase tracking-wider text-blue-600">
+                  <span className="text-role-micro uppercase tracking-wider text-blue-600">
                     {photoItems.length} {photoItems.length === 1 ? 'photo' : 'photos'}
                   </span>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-micro font-semibold">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-role-micro font-semibold">
                     {loadedCount < photoItems.length && errorCount === 0 ? <span className="text-amber-600">Loading…</span> : null}
                     {errorCount > 0 ? <span className="text-red-600">{errorCount} failed</span> : null}
                   </div>
@@ -116,13 +116,13 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           <div className="flex flex-col items-start">
             <span className="text-sm font-bold text-text-default">{g.launcherTitle}</span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-micro font-black text-blue-600 uppercase tracking-wider">
+              <span className="text-role-micro text-blue-600 uppercase tracking-wider">
                 {photoItems.length} {photoItems.length === 1 ? 'Photo' : 'Photos'}
               </span>
               {loadedCount < photoItems.length && errorCount === 0 && (
-                <span className="text-micro font-semibold text-amber-600">• Loading...</span>
+                <span className="text-role-micro font-semibold text-amber-600">• Loading...</span>
               )}
-              {errorCount > 0 && <span className="text-micro font-semibold text-red-600">• {errorCount} Failed</span>}
+              {errorCount > 0 && <span className="text-role-micro font-semibold text-red-600">• {errorCount} Failed</span>}
             </div>
           </div>
         </div>

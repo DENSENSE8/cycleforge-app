@@ -23,9 +23,9 @@ export function SidebarListPicker({
             {error}
           </div>
         ) : loading ? (
-          <div className="p-4 text-center text-caption text-text-faint">Loading…</div>
+          <div className="p-4 text-center text-role-caption text-text-faint">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="p-4 text-center text-caption text-text-faint">Nothing here.</div>
+          <div className="p-4 text-center text-role-caption text-text-faint">Nothing here.</div>
         ) : (
           <ul className="divide-y divide-border-hairline">
             {rows.map((row) => {
@@ -46,14 +46,14 @@ export function SidebarListPicker({
                         {row.title}
                       </div>
                       {row.trailing && (
-                        <div className="shrink-0 text-micro text-text-faint">{row.trailing}</div>
+                        <div className="shrink-0 text-role-micro text-text-faint">{row.trailing}</div>
                       )}
                     </div>
                     {row.subtitle && (
-                      <div className="truncate text-caption text-text-soft">{row.subtitle}</div>
+                      <div className="truncate text-role-caption text-text-soft">{row.subtitle}</div>
                     )}
                     {row.meta && (
-                      <div className="mt-1 text-micro text-text-soft">{row.meta}</div>
+                      <div className="mt-1 text-role-micro text-text-soft">{row.meta}</div>
                     )}
                   </button>
                 </li>

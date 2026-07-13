@@ -20,6 +20,7 @@ import { OperationsDashboard } from '@/features/operations/components/Operations
 import { OperationsAnalyticsView } from './OperationsAnalyticsView';
 import { OperationsInsightsView } from './OperationsInsightsView';
 import { OperationsHistoryView } from './OperationsHistoryView';
+import { OperationsTvBoard } from './OperationsTvBoard';
 import { SignalsWorkspace } from '@/features/signals/SignalsWorkspace';
 
 /** Legacy `/operations?mode=plans` → Home Plan/Tasks (plan §3.3). */
@@ -34,9 +35,24 @@ function OperationsPlansRedirect() {
 }
 
 export function OperationsWorkspace() {
+  const searchParams = useSearchParams();
   const { mode } = useOperationsMode();
   // Global-assistant context: KPI/benchmark skill fragment (plan §-2.2).
   useAssistantContext({ page: 'operations', mode, skill: OPERATIONS_SKILL });
+
+  // Kiosk / wall (HOME-OPS Phase C, plan §27): `?tv=1` strips the app chrome —
+  // a full-bleed takeover over the sidebar + header + command bar — and renders
+  // ONLY the read-only Monitor board. This is the unattended wall entry
+  // (default_home_path of a kiosk staff row); the interactive Operations modes
+  // below are untouched for human operators. Region stays a single archetype
+  // (Monitor); no plan-edit chrome is reachable here.
+  if (searchParams.get('tv') === '1') {
+    return (
+      <div className="fixed inset-0 z-takeover flex flex-col overflow-hidden bg-surface-canvas">
+        <OperationsTvBoard />
+      </div>
+    );
+  }
 
   if (mode === 'analytics') return <OperationsAnalyticsView />;
   if (mode === 'insights') return <OperationsInsightsView />;

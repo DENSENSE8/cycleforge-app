@@ -68,7 +68,7 @@ export function StudioSidebarPanel() {
 
   if (isLoaded && !has('studio.view')) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-center text-caption font-semibold text-text-soft">
+      <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
         Requires the “View Operations Studio” permission.
       </div>
     );
@@ -104,7 +104,7 @@ export function StudioSidebarPanel() {
             <span className="block text-sm font-semibold text-text-default">
               {activeLens.label} · {activeZoomLabel}
             </span>
-            <span className="block text-caption text-text-soft">Lens &amp; zoom</span>
+            <span className="block text-role-caption text-text-soft">Lens &amp; zoom</span>
           </span>
           <ChevronDown
             className={cn('h-4 w-4 shrink-0 text-text-faint transition-transform', open && 'rotate-180')}
@@ -125,7 +125,7 @@ export function StudioSidebarPanel() {
               className={`absolute left-0 right-0 z-panelPopover mt-1 ${SIDEBAR_GUTTER} `}
             >
               <div className="rounded-xl border border-border-soft bg-surface-card p-2 shadow-xl">
-                <p className="mb-1 px-1 text-micro font-bold uppercase tracking-wider text-text-faint">Lenses</p>
+                <p className="mb-1 px-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">Lenses</p>
                 <div className="space-y-0.5">
                   {LENSES.map((l) => {
                     const disabled = editing && l.id === 'live';
@@ -144,7 +144,7 @@ export function StudioSidebarPanel() {
                   })}
                 </div>
 
-                <p className="mb-1 mt-2 px-1 text-micro font-bold uppercase tracking-wider text-text-faint">Zoom</p>
+                <p className="mb-1 mt-2 px-1 text-role-micro font-bold uppercase tracking-wider text-text-faint">Zoom</p>
                 <div className="space-y-0.5">
                   {ZOOMS.map((zoom) => (
                     <Row
@@ -157,7 +157,7 @@ export function StudioSidebarPanel() {
                     />
                   ))}
                 </div>
-                <p className="mt-1.5 px-1 text-micro leading-relaxed text-text-faint">
+                <p className="mt-1.5 px-1 text-role-micro leading-relaxed text-text-faint">
                   Double-click a step at L1 to open its station detail (L2).
                 </p>
               </div>
@@ -220,7 +220,7 @@ function Row({
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', active ? 'text-blue-600' : 'text-text-faint')} />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{label}</span>
-        <span className="block text-caption text-text-soft">{detail}</span>
+        <span className="block text-role-caption text-text-soft">{detail}</span>
       </span>
       {active && <span className="mt-0.5 shrink-0 text-xs font-bold text-blue-600">✓</span>}
     </button>

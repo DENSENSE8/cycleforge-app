@@ -190,7 +190,7 @@ export function MobileReceivingList({
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-text-muted">No packages yet</p>
-            <p className="max-w-[260px] text-caption font-semibold text-text-soft">
+            <p className="max-w-[260px] text-role-caption font-semibold text-text-soft">
               Scan a tracking number on the desktop to drop one in here.
             </p>
           </div>

@@ -81,7 +81,7 @@ export function CompatibilityManagementTab() {
         </h2>
         <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
           <table className="w-full text-sm">
-            <thead className="bg-surface-canvas text-caption uppercase tracking-wide text-text-soft">
+            <thead className="bg-surface-canvas text-role-caption uppercase tracking-wide text-text-soft">
               <tr>
                 <th className="px-4 py-2 text-left font-semibold">Model</th>
                 <th className="px-4 py-2 text-left font-semibold">Part</th>
@@ -96,19 +96,19 @@ export function CompatibilityManagementTab() {
                 <tr key={r.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-2">
                     <div className="font-semibold text-text-default">{r.model_name}</div>
-                    <div className="text-caption text-text-soft">{r.model_number}</div>
+                    <div className="text-role-caption text-text-soft">{r.model_number}</div>
                   </td>
                   <td className="px-4 py-2">
                     <div className="font-semibold text-text-default">{r.product_title}</div>
-                    <div className="text-caption text-text-soft">{r.sku}</div>
+                    <div className="text-role-caption text-text-soft">{r.sku}</div>
                   </td>
                   <td className="px-4 py-2 text-text-muted">{r.part_role}</td>
                   <td className="px-4 py-2">
-                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-semibold text-text-muted">
+                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-muted">
                       {r.is_oem ? 'OEM ' : ''}{r.fit}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-caption text-text-soft">{r.source}</td>
+                  <td className="px-4 py-2 text-role-caption text-text-soft">{r.source}</td>
                   <td className="px-4 py-2 text-right">
                     <Button
                       variant="ghost"

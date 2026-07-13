@@ -48,7 +48,7 @@ export function FolderPickerModal({
       <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface-card shadow-2xl ring-1 ring-border-soft">
         <div className="flex items-center justify-between border-b border-border-hairline px-4 py-3">
           <div className="min-w-0">
-            <p className="text-micro font-black uppercase tracking-[0.18em] text-text-faint">Pick folder · {station}</p>
+            <p className="text-role-micro uppercase tracking-[0.18em] text-text-faint">Pick folder · {station}</p>
             <p className="truncate text-sm font-bold text-text-default">/{dir || 'Root'}</p>
           </div>
           <Button variant="secondary" size="sm" type="button" onClick={onCancel}>
@@ -71,13 +71,13 @@ export function FolderPickerModal({
             </div>
           ) : error ? (
             <div className="py-10 text-center">
-              <p className="text-caption font-bold text-rose-600">{error}</p>
+              <p className="text-role-caption font-bold text-rose-600">{error}</p>
               <Button variant="secondary" size="sm" type="button" onClick={() => void load(dir)} className="mt-3">
                 Retry
               </Button>
             </div>
           ) : folders.length === 0 ? (
-            <p className="py-10 text-center text-caption font-bold uppercase tracking-widest text-text-faint">No subfolders here.</p>
+            <p className="py-10 text-center text-role-caption font-bold uppercase tracking-widest text-text-faint">No subfolders here.</p>
           ) : (
             <div className="space-y-1.5">
               <NasSectionLabel>Folders · {folders.length}</NasSectionLabel>
@@ -89,7 +89,7 @@ export function FolderPickerModal({
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-border-hairline px-4 py-3">
-          <span className="truncate text-micro font-bold uppercase tracking-widest text-text-faint">
+          <span className="truncate text-role-micro font-bold uppercase tracking-widest text-text-faint">
             {dir ? `Selecting: /${dir}` : 'At root — pick a subfolder or use root'}
           </span>
           <Button variant="primary" size="md" type="button" onClick={() => onPick(dir)} className="shrink-0">

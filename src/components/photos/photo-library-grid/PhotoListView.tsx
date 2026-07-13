@@ -43,10 +43,10 @@ export function PhotoListView({
                     onToggle={() => onToggleGroupSelection(groupIds)}
                   />
                 ) : null}
-                <span className="truncate text-eyebrow font-black uppercase tracking-widest text-text-soft">
+                <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
                   {group.label}
                 </span>
-                <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-micro font-bold tabular-nums text-text-soft">
+                <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-soft">
                   {group.photos.length}
                 </span>
               </header>

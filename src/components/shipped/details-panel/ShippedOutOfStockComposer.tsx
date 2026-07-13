@@ -26,7 +26,7 @@ export function ShippedOutOfStockComposer({
   return (
     <section className="mx-8 pt-2">
       <div className="relative rounded-2xl border border-red-200/80 bg-surface-card shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-        <span className="pointer-events-none absolute left-4 top-2 z-10 text-micro font-semibold uppercase tracking-[0.18em] text-text-danger">
+        <span className="pointer-events-none absolute left-4 top-2 z-10 text-role-micro font-semibold uppercase tracking-[0.18em] text-text-danger">
           Out of stock
         </span>
         {readOnly ? (

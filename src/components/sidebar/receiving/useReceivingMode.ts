@@ -51,6 +51,10 @@ const MODE_SCOPED_PARAMS = [
   // §0.6). A separate param from History's own `q` (kept independent so this
   // change can't touch History's existing q/field/scope deep-link handling).
   'triq',
+  // Unbox inline support-ticket editor toggle (docs/todo/
+  // receiving-inline-ticket-editor-plan.md). Line/mode-scoped — a mode switch
+  // must never carry a stale ticket editor into a different surface.
+  'ticketView',
 ] as const;
 
 export interface ReceivingModeState {

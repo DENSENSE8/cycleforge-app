@@ -118,7 +118,7 @@ export function LineTestingTabbedCard({
           value={notes}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          className={`w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
+          className={`w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-role-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
         />
       ) : null}
 
@@ -172,7 +172,7 @@ function TestingSkuTabBody({
   if (loading) {
     if (tab !== 'checklist' && tab !== 'manuals') return null;
     return (
-      <div className="flex items-center gap-2 py-4 text-caption text-text-faint">
+      <div className="flex items-center gap-2 py-4 text-role-caption text-text-faint">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading testing details…
       </div>
     );

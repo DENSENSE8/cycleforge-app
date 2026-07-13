@@ -64,7 +64,7 @@ export function PhotoDateBreadcrumb({
   return (
     <nav
       aria-label="Date path"
-      className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-label scrollbar-hide"
+      className="flex min-w-0 items-center gap-0.5 overflow-x-auto text-role-caption scrollbar-hide"
     >
       <button
         type="button"

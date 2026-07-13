@@ -71,14 +71,19 @@ const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'gap-3 px-3 py-1.5',
   comfortable: 'gap-3.5 px-4 py-3',
 };
+// Title role by density — type role is (near-)constant; the row's padding does
+// the density work (plan §2.3-C). Compact = `role-caption` (12), comfortable =
+// `role-body` (14). Callers add `font-semibold` (600) for the title weight.
 const TITLE_BY_DENSITY: Record<SearchRowDensity, string> = {
-  compact: 'text-caption',
-  comfortable: 'text-sm',
+  compact: 'text-role-caption',
+  comfortable: 'text-role-body',
 };
 const ROW_BASE = 'group flex items-center text-left transition-colors hover:bg-surface-hover';
 const ROW_ACTIVE = 'bg-blue-50 ring-1 ring-inset ring-blue-400';
+// CF Type roles (plan §2.4): meta/eyebrows use `role-eyebrow` (11/600, no
+// font-black), chips `role-micro` (10/600) — weight/tracking baked in the role.
 const CHIP_BASE =
-  'hidden shrink-0 rounded px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset md:inline-flex';
+  'hidden shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase ring-1 ring-inset md:inline-flex';
 
 // UI entity type → chip tone for the leading tile + type tag (sanctioned 5-tone
 // families only — no new colours). Two entities may share a tone.
@@ -138,11 +143,11 @@ function OrderRow({ hit, active, optionId, density = 'compact', onNavigate, pack
         />
       </HoverTooltip>
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate font-bold text-text-default', TITLE_BY_DENSITY[density])}>
+        <span className={cn('block truncate font-semibold text-text-default', TITLE_BY_DENSITY[density])}>
           {hit.title}
         </span>
         {hit.subtitle && (
-          <span className="mt-0.5 block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
             {hit.subtitle}
           </span>
         )}
@@ -159,21 +164,21 @@ function OrderRow({ hit, active, optionId, density = 'compact', onNavigate, pack
           label={`${packout.photoCount} packing photo${packout.photoCount === 1 ? '' : 's'}`}
           focusable={false}
         >
-          <span className="hidden shrink-0 items-center gap-0.5 tabular-nums text-eyebrow font-black uppercase tracking-widest text-emerald-600 md:inline-flex">
+          <span className="hidden shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600 md:inline-flex">
             <Camera className="h-3 w-3" />
             {packout.photoCount}
           </span>
         </HoverTooltip>
       )}
       {packout?.packerName && (
-        <span className="hidden max-w-[7rem] shrink-0 truncate text-eyebrow font-semibold uppercase tracking-widest text-text-faint md:inline-flex">
+        <span className="hidden max-w-[7rem] shrink-0 truncate text-role-eyebrow uppercase text-text-faint md:inline-flex">
           {packout.packerName}
         </span>
       )}
       {!packout && tracking && (
         <span className="hidden shrink-0 items-center gap-1 md:inline-flex">
           {carrier && (
-            <span className="text-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+            <span className="text-role-eyebrow uppercase text-text-faint">
               {carrier}
             </span>
           )}
@@ -181,7 +186,7 @@ function OrderRow({ hit, active, optionId, density = 'compact', onNavigate, pack
         </span>
       )}
       {when && (
-        <span className="shrink-0 text-eyebrow font-semibold uppercase tracking-widest tabular-nums text-text-faint">
+        <span className="shrink-0 text-role-eyebrow uppercase tabular-nums text-text-faint">
           {whenLabel ? `${whenLabel} · ${when}` : when}
         </span>
       )}
@@ -210,8 +215,8 @@ function UnitRow({ hit, active, optionId, density = 'compact', onNavigate }: Sea
       {badge ? (
         <span
           className={cn(
-            'flex shrink-0 items-center justify-center rounded-lg font-mono font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50',
-            big ? 'h-9 min-w-[3rem] px-2 text-caption' : 'h-6 min-w-[2.5rem] px-1.5 text-eyebrow',
+            'flex shrink-0 items-center justify-center rounded-lg font-mono font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50',
+            big ? 'h-9 min-w-[3rem] px-2 text-role-data' : 'h-6 min-w-[2.5rem] px-1.5 text-role-micro',
           )}
         >
           {badge}
@@ -220,11 +225,11 @@ function UnitRow({ hit, active, optionId, density = 'compact', onNavigate }: Sea
         <EntityTile entityType="unit" density={density} />
       )}
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate font-bold text-text-default', TITLE_BY_DENSITY[density])}>
+        <span className={cn('block truncate font-semibold text-text-default', TITLE_BY_DENSITY[density])}>
           {hit.title}
         </span>
         {hit.subtitle && (
-          <span className="mt-0.5 block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
             {hit.subtitle}
           </span>
         )}
@@ -261,7 +266,7 @@ function EntityTag({ entityType, density }: { entityType: string; density: Searc
   return (
     <span
       className={cn(
-        'shrink-0 rounded-md px-1.5 py-0.5 text-eyebrow font-black uppercase tracking-widest',
+        'shrink-0 rounded-md px-1.5 py-0.5 text-role-micro uppercase',
         density === 'comfortable'
           ? cn('ring-1 ring-inset', CHIP_TONE_CLASSES[tone])
           : 'bg-surface-sunken text-text-soft',
@@ -285,11 +290,11 @@ function GenericRow({ hit, active, optionId, density = 'compact', onNavigate }: 
     >
       <EntityTile entityType={hit.entityType} density={density} />
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate font-bold text-text-default', TITLE_BY_DENSITY[density])}>
+        <span className={cn('block truncate font-semibold text-text-default', TITLE_BY_DENSITY[density])}>
           {hit.title}
         </span>
         {hit.subtitle && (
-          <span className="mt-0.5 block truncate text-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
             {hit.subtitle}
           </span>
         )}

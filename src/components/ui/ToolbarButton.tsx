@@ -44,7 +44,7 @@ export const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         type={type}
         data-active={active || undefined}
         className={cn(
-          'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg text-eyebrow font-black uppercase tracking-widest ring-1 ring-inset transition-colors active:scale-95',
+          'inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors active:scale-95',
           iconOnly ? 'w-8' : 'px-2.5',
           active
             ? 'bg-blue-600 text-white ring-blue-600 shadow-sm shadow-blue-600/25'

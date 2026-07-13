@@ -54,7 +54,7 @@ export function UnfoundQueueTable() {
       {/* Table */}
       <div className="min-h-0 flex-1 overflow-auto">
         {error && (
-          <div className="mx-4 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-label text-red-700">
+          <div className="mx-4 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-role-caption text-red-700">
             {error}
           </div>
         )}
@@ -72,7 +72,7 @@ export function UnfoundQueueTable() {
             <col style={{ width: '96px' }} />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-surface-card shadow-sm">
-            <tr className="text-left text-micro font-bold uppercase tracking-wider text-text-soft">
+            <tr className="text-left text-role-micro font-bold uppercase tracking-wider text-text-soft">
               <th className="px-3 py-2">Ticket</th>
               <th className="px-3 py-2">Product Title</th>
               <th className="px-3 py-2">USA Team Note</th>
@@ -84,7 +84,7 @@ export function UnfoundQueueTable() {
           <tbody className="divide-y divide-border-hairline">
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-label text-text-soft">
+                <td colSpan={6} className="px-3 py-8 text-center text-role-caption text-text-soft">
                   {error ? '—' : 'Nothing in the unfound queue. Nice.'}
                 </td>
               </tr>

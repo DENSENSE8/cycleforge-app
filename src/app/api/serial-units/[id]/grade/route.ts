@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { CONDITION_GRADE_VALUES } from '@/components/inventory/types';
 import { sortSerialUnitToParts } from '@/lib/inventory/parts-sort';
+import { resolveCurrentReceivingLineIds } from '@/lib/neon/serial-units-queries';
+import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 import { gatherQualityInputs, recomputeUnitQualitySafe } from '@/lib/neon/quality-queries';
 import { evaluateGradeAdvice } from '@/lib/quality/gradeAdvice';
 import type { ConditionGrade } from '@/lib/quality/qualityScore';
@@ -189,6 +191,20 @@ export const POST = withAuth(async (request, ctx) => {
             console.warn('[grade] advice failed (non-fatal)', adviceErr);
         }
         await recomputeUnitQualitySafe(serialUnitId, orgId);
+
+        // The unit's condition_grade changed — refresh the serial projection for
+        // whatever receiving line it currently sits on so the re-grade shows on
+        // the first frame of the next open (Tier B2). Post-response + best-effort:
+        // the ?include=serials reconcile self-heals any drift.
+        after(async () => {
+            try {
+                const lines = await resolveCurrentReceivingLineIds([serialUnitId], orgId);
+                const lineId = lines.get(serialUnitId);
+                if (lineId) await refreshLineSerialProjectionSafe(orgId, lineId);
+            } catch (projErr) {
+                console.warn('[grade] serial projection refresh failed (non-fatal)', projErr);
+            }
+        });
 
         return NextResponse.json({
             ok: true,

@@ -211,7 +211,7 @@ function CartonPageInner() {
               RCV-{receivingId}
             </h1>
             {data?.purchase_orders && data.purchase_orders.length > 0 ? (
-              <p className="mt-0.5 truncate font-mono text-caption font-bold text-text-muted">
+              <p className="mt-0.5 truncate font-mono text-role-caption font-bold text-text-muted">
                 PO{' '}
                 {data.purchase_orders
                   .map((p) => p.zoho_purchaseorder_number || p.zoho_purchaseorder_id)
@@ -231,7 +231,7 @@ function CartonPageInner() {
               variant="secondary"
               size="sm"
               onClick={load}
-              className="h-auto rounded-md px-2.5 py-1 text-caption"
+              className="h-auto rounded-md px-2.5 py-1 text-role-caption"
             >
               Refresh
             </Button>
@@ -349,11 +349,11 @@ function CartonPageInner() {
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-4">
                       <StatusPill status={line.workflow_status} />
                       {line.condition_grade && (
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-micro font-bold uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro font-bold uppercase tracking-wide ${conditionBadgeTone(line.condition_grade)}`}>
                           {conditionGradeTableLabel(line.condition_grade)}
                         </span>
                       )}
-                      <span className={`text-caption font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
+                      <span className={`text-role-caption font-black uppercase tracking-widest ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
                         {received}/{expected ?? '?'}
                       </span>
                     </div>
@@ -373,7 +373,7 @@ function CartonPageInner() {
                           <span
                             key={s.id}
                             title={s.serial_number}
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-micro font-bold ${unitStatusBadgeTone(s.current_status)}`}
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-role-micro font-bold ${unitStatusBadgeTone(s.current_status)}`}
                           >
                             …{getLast4(s.serial_number)}
                             {s.current_location ? (
@@ -409,7 +409,7 @@ function CartonPageInner() {
             </p>
             <ul className="space-y-2">
               {events.slice(0, 15).map((ev) => (
-                <li key={ev.id} className="flex items-start gap-2 text-caption">
+                <li key={ev.id} className="flex items-start gap-2 text-role-caption">
                   <span className="mt-[3px] inline-block h-1.5 w-1.5 rounded-full bg-border-emphasis shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-text-default">
@@ -455,7 +455,7 @@ function CartonPageInner() {
         >
           {lines.length === 0 ? 'No lines to update' : `Update ${lines.length} line${lines.length === 1 ? '' : 's'}`}
         </Button>
-        <p className="mt-2 text-center text-caption font-semibold text-text-soft">
+        <p className="mt-2 text-center text-role-caption font-semibold text-text-soft">
           Or tap a line above to update one at a time.
         </p>
       </footer>

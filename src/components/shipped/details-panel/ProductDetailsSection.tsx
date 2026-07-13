@@ -15,24 +15,7 @@ import { ShippingEditableRow, type EditableShippingFields } from '@/components/s
 import { useExternalItemUrl } from '@/hooks/useExternalItemUrl';
 import { isOrderShipped } from '@/components/shipped/details-panel/shipped-details-logic';
 
-type ConditionGrade = 'BRAND_NEW' | 'LIKE_NEW' | 'REFURBISHED' | 'USED_A' | 'USED_B' | 'USED_C' | 'PARTS';
-
-// Shipped orders historically stored the coarse 3-grade scale (NEW / USED /
-// PARTS); receiving switched to the 5-grade BRAND_NEW / USED_A/B/C / PARTS
-// scale. This maps legacy values forward so the picker can show the right
-// pill for existing rows. Unmapped values default to USED_B (the most
-// neutral "in service" grade).
-function normalizeCondition(value: string | null | undefined): ConditionGrade {
-  const normalized = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
-  if (normalized === 'BRAND_NEW' || normalized === 'NEW') return 'BRAND_NEW';
-  if (normalized === 'LIKE_NEW') return 'LIKE_NEW';
-  if (normalized === 'REFURBISHED' || normalized === 'REFURB') return 'REFURBISHED';
-  if (normalized === 'USED_A') return 'USED_A';
-  if (normalized === 'USED_B' || normalized === 'USED') return 'USED_B';
-  if (normalized === 'USED_C') return 'USED_C';
-  if (normalized === 'PARTS' || normalized === 'PARTS_USED') return 'PARTS';
-  return 'USED_B';
-}
+import { normalizeCondition, type ConditionGrade } from '@/components/tech/StationConditionEditor';
 
 // Per-platform CopyChip styling. Underline color matches the chip palette used
 // by SkuIdentity / order-platform.ts so the panel stays consistent with the
@@ -76,12 +59,12 @@ function PlatformSkuRow({ entry }: { entry: PlatformSkuEntry }) {
     <div className="flex items-center gap-2 py-1">
       <div className="flex w-[88px] shrink-0 flex-col items-start gap-0.5">
         <span
-          className={`inline-flex w-full items-center justify-center rounded-md border px-1.5 py-0.5 text-micro font-semibold uppercase tracking-wider ${style.chip}`}
+          className={`inline-flex w-full items-center justify-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${style.chip}`}
         >
           {style.label}
         </span>
         {entry.accountName && (
-          <span className="w-full truncate text-eyebrow font-medium uppercase tracking-wider text-text-faint">
+          <span className="w-full truncate text-role-eyebrow font-medium uppercase tracking-wider text-text-faint">
             {entry.accountName}
           </span>
         )}
@@ -246,7 +229,7 @@ export function ProductDetailsSection({
           <div className="border-b border-border-hairline py-3">
             {isSavingCondition ? (
               <div className="mb-1 flex justify-end">
-                <span className="text-micro font-black uppercase tracking-wide text-text-info">Saving</span>
+                <span className="text-role-micro uppercase tracking-wide text-text-info">Saving</span>
               </div>
             ) : null}
             <ConditionPills value={conditionValue} onChange={handleConditionChange} readOnly={conditionLocked} />

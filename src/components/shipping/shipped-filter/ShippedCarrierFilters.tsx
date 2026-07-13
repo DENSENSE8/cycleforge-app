@@ -11,8 +11,8 @@ import { useStaffOptions } from './useStaffOptions';
 import { CarrierSelect, NeedsAttentionButton, StatusSelect } from './ShippedFilterControls';
 
 const selectClass =
-  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-const labelClass = 'mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft';
+  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 
 export function ShippedCarrierFilters({
   className,
@@ -85,14 +85,14 @@ export function ShippedCarrierFilters({
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-haspopup="dialog"
-          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-label font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
             activeCount > 0 ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100' : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
           }`}
         >
           <Filter className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">Filters</span>
           {activeCount > 0 ? (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-mini font-black text-white">{activeCount}</span>
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-role-micro text-white">{activeCount}</span>
           ) : null}
           <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
@@ -188,7 +188,7 @@ export function ShippedCarrierFilters({
               key={chip.key}
               type="button"
               onClick={chip.onRemove}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1.5 text-caption font-bold text-blue-700 ring-1 ring-inset ring-blue-200 transition-colors hover:bg-blue-100"
+              className="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1.5 text-role-caption font-bold text-blue-700 ring-1 ring-inset ring-blue-200 transition-colors hover:bg-blue-100"
             >
               {chip.label}
               <X className="h-3 w-3" />

@@ -25,6 +25,18 @@
   --color-brand:    #0f1f3d;
   --color-brand-active: #1a3a6b;
   --color-brand-tint:   #f0f4fb;
+  /* CF Type density (search-and-dense-ui-refactor plan §2.3). Scales every
+     role-* font-size; default 1 = comfortable (no change). A container opts
+     into denser data by setting `data-density="compact"` on itself — weight
+     and tracking do NOT scale (Carbon principle). */
+  --cf-density: 1;
+}
+
+/* Ops/floor regions opt into denser data by scoping this on a container
+   (not the page shell — keep chrome comfortable; §2.3-D dense-data/generous-
+   chrome). Row height + padding are tuned per component (tables land in T2). */
+[data-density='compact'] {
+  --cf-density: 0.92;
 }
 
 /* Theme variable blocks (html[data-theme='dark'|'mono'|'slate']) and the

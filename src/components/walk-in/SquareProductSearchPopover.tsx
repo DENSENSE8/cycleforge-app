@@ -231,7 +231,7 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                         abortRef.current?.abort();
                         setIsLoading(false);
                       }}
-                      className="max-w-[min(11rem,calc(100vw-200px))] shrink-0 truncate rounded-md border border-emerald-200 bg-emerald-50/80 px-1.5 py-0.5 text-left text-micro font-semibold text-emerald-800 hover:bg-emerald-100 sm:max-w-[14rem] sm:text-caption sm:leading-tight"
+                      className="max-w-[min(11rem,calc(100vw-200px))] shrink-0 truncate rounded-md border border-emerald-200 bg-emerald-50/80 px-1.5 py-0.5 text-left text-role-micro font-semibold text-emerald-800 hover:bg-emerald-100 sm:max-w-[14rem] sm:text-role-caption sm:leading-tight"
                     >
                       Product not added yet?
                     </button>
@@ -251,11 +251,11 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                 hideUnderline
               />
               <div className="px-1">
-                <label className="mb-1 block text-eyebrow font-black uppercase tracking-wider text-text-soft">
+                <label className="mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft">
                   Price
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-caption font-bold text-emerald-700">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-role-caption font-bold text-emerald-700">
                     $
                   </span>
                   <input
@@ -266,7 +266,7 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                     value={manualPrice}
                     onChange={(e) => setManualPrice(e.target.value)}
                     placeholder="0.00"
-                    className="h-9 w-full rounded-lg border border-border-soft bg-surface-card pl-6 pr-3 text-caption font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+                    className="h-9 w-full rounded-lg border border-border-soft bg-surface-card pl-6 pr-3 text-role-caption font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -275,7 +275,7 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
                 type="button"
                 disabled={manualSubmitting || submittingId != null || !manualTitle.trim()}
                 onClick={() => void handleManualSubmit()}
-                className="w-full rounded-lg bg-emerald-600 py-2.5 text-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+                className="w-full rounded-lg bg-emerald-600 py-2.5 text-role-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
               >
                 {manualSubmitting ? 'Adding…' : 'Add to sale'}
               </button>
@@ -290,10 +290,10 @@ export function SquareProductSearchPopover({ onSelect, onClose }: SquareProductS
               aria-label="Square product results"
               className="min-h-[120px] flex-1 overflow-y-auto"
             >
-              {error && <li className="px-3 py-3 text-label text-red-600">{error}</li>}
+              {error && <li className="px-3 py-3 text-role-caption text-red-600">{error}</li>}
 
               {!error && !isLoading && query.trim() && items.length === 0 && (
-                <li className="px-3 py-3 text-label text-text-soft">
+                <li className="px-3 py-3 text-role-caption text-text-soft">
                   No matches. Refine the query, or use &ldquo;Product not added yet?&rdquo; for a manual line.
                 </li>
               )}
@@ -352,16 +352,16 @@ function SalesResultRow({ name, sku, price, isSubmitting, disabled, onSelect }: 
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-text-default">{name}</div>
           {sku ? (
-            <div className="mt-0.5 font-mono text-micro tracking-wide text-text-soft">{sku}</div>
+            <div className="mt-0.5 font-mono text-role-micro tracking-wide text-text-soft">{sku}</div>
           ) : null}
         </div>
 
-        <span className="shrink-0 text-caption font-black text-emerald-600">
+        <span className="shrink-0 text-role-caption font-black text-emerald-600">
           {formatCentsToDollars(price)}
         </span>
 
         {isSubmitting && (
-          <span className="text-micro font-bold uppercase tracking-wider text-emerald-600">
+          <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
             Adding…
           </span>
         )}

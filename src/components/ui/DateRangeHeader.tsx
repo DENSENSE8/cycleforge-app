@@ -82,11 +82,11 @@ export function DateRangePickerPill({
         className,
       )}
     >
-      <span className="text-caption font-black uppercase tracking-widest text-text-default">{label}</span>
+      <span className="text-role-caption font-black uppercase tracking-widest text-text-default">{label}</span>
       {count != null ? (
         <>
           <span aria-hidden className="text-text-faint">•</span>
-          <span className="text-caption font-bold tabular-nums text-text-soft">{count}</span>
+          <span className="text-role-caption font-bold tabular-nums text-text-soft">{count}</span>
         </>
       ) : null}
     </span>
@@ -132,7 +132,7 @@ export function DateRangePickerPill({
                     setOpen(false);
                   }}
                   className={cn(
-                    'rounded-md px-2 py-1 text-eyebrow font-black uppercase tracking-wider transition-colors',
+                    'rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-wider transition-colors',
                     p.active
                       ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200'
                       : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
@@ -155,7 +155,7 @@ export function DateRangePickerPill({
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-eyebrow font-black uppercase tracking-widest text-text-soft">Step week</span>
+              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Step week</span>
               {/* ds-raw-button: compact step control, icon-only, inside the popover */}
               <button
                 type="button"
@@ -186,7 +186,7 @@ export function DateRangePickerPill({
                     onClear?.();
                     setOpen(false);
                   }}
-                  className="text-eyebrow font-black uppercase tracking-wider text-text-soft hover:text-text-default"
+                  className="text-role-eyebrow uppercase tracking-wider text-text-soft hover:text-text-default"
                 >
                   {onClear ? 'Reset' : 'Cancel'}
                 </button>
@@ -199,7 +199,7 @@ export function DateRangePickerPill({
                     onSelectCustomRange({ startStr: fmtKey(draft.from), endStr: fmtKey(draft.to ?? draft.from) });
                     setOpen(false);
                   }}
-                  className="rounded-md bg-blue-600 px-3 py-1 text-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
+                  className="rounded-md bg-blue-600 px-3 py-1 text-role-caption font-black uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
                 >
                   Apply
                 </button>
@@ -214,7 +214,7 @@ export function DateRangePickerPill({
                   onClear();
                   setOpen(false);
                 }}
-                className="text-eyebrow font-black uppercase tracking-wider text-text-soft hover:text-text-default"
+                className="text-role-eyebrow uppercase tracking-wider text-text-soft hover:text-text-default"
               >
                 Reset to this week
               </button>

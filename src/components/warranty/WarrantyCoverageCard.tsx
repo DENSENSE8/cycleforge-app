@@ -89,7 +89,7 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className={cn('text-sm font-semibold', tone.text)}>{headline}</span>
-              <span className={cn('rounded-full px-2 py-0.5 text-caption font-semibold tabular-nums ring-1 ring-inset', tone.ring, tone.text, 'bg-surface-card')}>
+              <span className={cn('rounded-full px-2 py-0.5 text-role-caption font-semibold tabular-nums ring-1 ring-inset', tone.ring, tone.text, 'bg-surface-card')}>
                 {sub}
               </span>
               {provisional && (
@@ -97,7 +97,7 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
                   label="Provisional — based on packed date + delivery estimate; confirms when the carrier delivered date lands."
                   asChild
                 >
-                  <span className="rounded border border-dashed border-border-warning px-1.5 py-0.5 text-micro font-medium uppercase tracking-wide text-text-warning">
+                  <span className="rounded border border-dashed border-border-warning px-1.5 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-warning">
                     Est.
                   </span>
                 </HoverTooltip>
@@ -105,9 +105,9 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
               {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" />}
             </div>
 
-            <p className="mt-1 truncate text-[15px] font-medium text-text-default">{title}</p>
+            <p className="mt-1 truncate text-role-body font-medium text-text-default">{title}</p>
 
-            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-label sm:grid-cols-3">
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-role-caption sm:grid-cols-3">
               <Fact label="Order #" value={data.sourceOrderId} mono />
               <Fact label="Customer" value={data.customerName} />
               <Fact label={provisional ? 'Est. delivered' : 'Delivered'} value={fmt(data.deliveredAt ?? data.warrantyStartsAt)} />
@@ -127,7 +127,7 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
                   >
                     View claim {data.existingClaim.claimNumber}
                   </Button>
-                  <span className="text-caption text-text-faint">
+                  <span className="text-role-caption text-text-faint">
                     Already logged · {WARRANTY_STATUS_LABEL[data.existingClaim.status]}
                   </span>
                 </>
@@ -164,8 +164,8 @@ export function WarrantyCoverageCard({ query }: { query: string }) {
 function Fact({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="text-micro font-medium uppercase tracking-wide text-text-faint">{label}</dt>
-      <dd className={cn('truncate text-text-muted', mono && 'font-mono text-caption')}>
+      <dt className="text-role-micro font-medium uppercase tracking-wide text-text-faint">{label}</dt>
+      <dd className={cn('truncate text-text-muted', mono && 'font-mono text-role-caption')}>
         {value || <span className="text-text-faint">—</span>}
       </dd>
     </div>
