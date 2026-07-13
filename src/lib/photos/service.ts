@@ -14,7 +14,7 @@ import {
 } from './queries/list-for-entity';
 import { buildGcsObjectKey } from './storage/path-builder';
 import { resolveGcsPrefix } from './image-types';
-import { defaultGcsBucket, gcsAdapter, isGcsConfigured } from './storage/gcs-adapter';
+import { gcsAdapter, isGcsConfigured, resolveGcsBucket } from './storage/gcs-adapter';
 import { getDefaultStorageProvider } from './storage/resolve-primary';
 import { getStorageAdapter, isAdapterUploadEnabled } from './storage/registry';
 import { generateThumbnail, sha256Hex } from './read-bytes';
@@ -59,7 +59,9 @@ export interface AttachLegacyPhotoInput {
 export async function uploadPhoto(input: UploadPhotoInput): Promise<UploadPhotoResult> {
   if (input.useStorageAdapter !== false) {
     if (!isGcsConfigured()) {
-      throw new Error('GCS photo storage is not configured');
+      throw new Error(
+        'GCS photo storage is not configured (PHOTOS_GCS_BUCKET + Google service-account credentials required)',
+      );
     }
     return uploadPhotoToAdapter(input);
   }
@@ -149,9 +151,7 @@ async function uploadPhotoToAdapter(input: UploadPhotoInput): Promise<UploadPhot
 
   const providerCfg = await getDefaultStorageProvider(input.organizationId);
   const adapter = getStorageAdapter(providerCfg.provider);
-  const bucket =
-    (providerCfg.config.bucket as string | undefined) ||
-    defaultGcsBucket();
+  const bucket = resolveGcsBucket(providerCfg.config.bucket as string | undefined);
 
   // A custom image type (photoType matching a photo_image_types row) routes the
   // object to its own bucket path; built-ins resolve to undefined → entity flow.

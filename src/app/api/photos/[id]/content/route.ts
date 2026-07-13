@@ -82,8 +82,15 @@ export async function GET(
         ttlSeconds: TTL,
       });
       return NextResponse.redirect(signed, { status: 302 });
-    } catch {
-      /* fall through */
+    } catch (err) {
+      // Do NOT swallow silently — a signing failure here (bad SA key, missing
+      // IAM, malformed creds) is exactly how photo content 404s with no trace.
+      console.error(
+        '[photos/content] GCS signed-url failed',
+        { photoId, bucket: storage.bucket, objectKey: key },
+        err instanceof Error ? err.message : err,
+      );
+      /* fall through to byte read / legacy */
     }
   }
 
