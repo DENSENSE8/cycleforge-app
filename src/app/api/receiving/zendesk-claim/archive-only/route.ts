@@ -117,37 +117,71 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       .filter(Boolean)
       .join('\n');
 
-    const useAgent = Boolean(process.env.NAS_AGENT_URL && process.env.NAS_AGENT_TOKEN);
+    // Presence booleans (never the values) so a failure response can say WHICH
+    // side is missing without leaking a secret.
+    const hasAgentUrl = Boolean((process.env.NAS_AGENT_URL || '').trim());
+    const hasAgentToken = Boolean((process.env.NAS_AGENT_TOKEN || '').trim());
+    const useAgent = hasAgentUrl && hasAgentToken;
+
     let claimTarget = { root: '', folder: '' };
+    let claimTargetErr: string | null = null;
     if (useAgent) {
       try {
         const org = await getOrganization(ctx.organizationId);
         if (org) claimTarget = getNasStorageTarget(org.settings, 'claims');
-      } catch {
+      } catch (e) {
+        claimTargetErr = e instanceof Error ? e.message : 'org settings lookup failed';
         claimTarget = { root: '', folder: '' };
       }
     }
 
-    const archived = useAgent
-      ? await archiveClaimViaAgent({
-          ticketId: folderName,
-          photos: allPhotos,
-          info,
-          organizationId: ctx.organizationId,
-          archiveRoot: claimTarget.root,
-          archiveFolder: claimTarget.folder,
-        })
-      : await archiveClaimToFolder({
-          ticketId: folderName,
-          photos: allPhotos,
-          info,
-        });
+    // Capture the EXACT reason the archive failed → returned in `details` (and
+    // logged) so the operator's toast names it instead of a generic wall.
+    // `archiveClaimViaAgent` THROWS on agent/transport failure (vs returning
+    // null only when unconfigured), so wrap it and surface either shape.
+    let archived: { folder: string; copied: number; total: number } | null = null;
+    let failReason: string | null = null;
+    try {
+      archived = useAgent
+        ? await archiveClaimViaAgent({
+            ticketId: folderName,
+            photos: allPhotos,
+            info,
+            organizationId: ctx.organizationId,
+            archiveRoot: claimTarget.root,
+            archiveFolder: claimTarget.folder,
+          })
+        : await archiveClaimToFolder({
+            ticketId: folderName,
+            photos: allPhotos,
+            info,
+          });
+      if (!archived) {
+        failReason = useAgent
+          ? 'archive agent returned no result (unconfigured base/token at runtime)'
+          : `NAS agent not configured at runtime (NAS_AGENT_URL present=${hasAgentUrl}, NAS_AGENT_TOKEN present=${hasAgentToken}); direct-mount fallback is not writable on this host`;
+      }
+    } catch (agentErr) {
+      failReason = agentErr instanceof Error ? agentErr.message : 'archive failed';
+    }
 
     if (!archived) {
+      const details = [failReason, claimTargetErr ? `claims-target: ${claimTargetErr}` : null]
+        .filter(Boolean)
+        .join(' · ');
+      console.warn('[POST /api/receiving/zendesk-claim/archive-only] archive failed', {
+        useAgent,
+        hasAgentUrl,
+        hasAgentToken,
+        photoCount: allPhotos.length,
+        totalPhotoIds: allPhotoIds.length,
+        details,
+      });
       return NextResponse.json(
         {
           success: false,
           error: 'Photos were NOT archived to the NAS (archive agent/mount unavailable).',
+          details: details || undefined,
         },
         { status: 503 },
       );
