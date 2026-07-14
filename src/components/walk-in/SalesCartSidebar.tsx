@@ -28,7 +28,6 @@ export function SalesCartSidebar() {
   const { cart, selectedKey, isSubmitting, submitError, successMessage } = useSalesCart();
 
   const subtotal = cart.reduce((sum, l) => sum + l.unitAmount * l.quantity, 0);
-  const unitCount = cart.reduce((sum, l) => sum + l.quantity, 0);
   const canSubmit = cart.length > 0 && !isSubmitting;
   const submitClass = getSidebarIntakeSubmitButtonClass('green');
 

@@ -31,7 +31,6 @@ export function useInfiniteScroll<T>({
     const [offset, setOffset] = useState(initialData.length);
     const scrollRef = useRef<HTMLDivElement>(null);
     const observerRef = useRef<IntersectionObserver | null>(null);
-    const sentinelRef = useRef<HTMLDivElement | null>(null);
 
     const loadMore = useCallback(async () => {
         if (isLoading || !hasMore) return;

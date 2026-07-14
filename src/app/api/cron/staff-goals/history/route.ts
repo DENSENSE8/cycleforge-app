@@ -3,6 +3,7 @@ import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { runStaffGoalHistorySnapshotJob } from '@/lib/jobs/staff-goal-history-snapshot';
+import { logger } from '@/lib/observability/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, skipped: 'locked' });
     }
     const result = locked.result!;
-    console.log('[staff-goals/history] Completed', result);
+    logger.info(result, '[staff-goals/history] Completed');
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[staff-goals/history]', error);

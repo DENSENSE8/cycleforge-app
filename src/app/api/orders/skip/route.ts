@@ -5,10 +5,9 @@ import { withAuth } from '@/lib/auth/withAuth';
  * POST /api/orders/skip - Skip an order for a technician
  * NOTE: skipped_by column was removed from DB, so this is currently a no-op
  */
-export const POST = withAuth(async (req: NextRequest, ctx) => {
+export const POST = withAuth(async (req: NextRequest, _ctx) => {
   try {
     const { orderId } = await req.json();
-    const techId = ctx.staffId;
 
     if (!orderId) {
       return NextResponse.json(

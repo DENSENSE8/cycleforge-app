@@ -23,7 +23,7 @@ import type { TrainingPairInput } from './types';
  * of whether the implementation passed validation.
  */
 export async function collectTrainingPair(input: TrainingPairInput): Promise<number> {
-  const { task, implementation, scoring, repo, branch, commitSha } = input;
+  const { task, implementation, scoring, repo, commitSha } = input;
 
   const [inserted] = await db.insert(trainingSamples).values({
     organizationId: transitionalDogfoodOrgId(),

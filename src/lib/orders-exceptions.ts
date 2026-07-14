@@ -18,7 +18,7 @@ export interface OrdersExceptionRecord {
   updated_at: string;
 }
 
-let tableEnsured = false;
+let _tableEnsured = false;
 type DbClient = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[]; rowCount?: number }>;
 };
@@ -28,9 +28,9 @@ export async function findOrderByTrackingKey(
   dbClient: DbClient = pool,
   orgId?: OrgId
 ): Promise<{ id: number; shipping_tracking_number: string } | null> {
-  // Keep tableEnsured variable for backwards compatibility with existing imports/tests.
+  // Keep _tableEnsured variable for backwards compatibility with existing imports/tests.
   // Table creation is handled by migrations, not request-time DDL.
-  tableEnsured = true;
+  _tableEnsured = true;
 
   const rawTracking = String(shippingTrackingNumber || '').trim();
   const trackingKey18 = normalizeTrackingKey18(rawTracking);
@@ -134,7 +134,7 @@ export async function upsertOpenOrderException(params: {
   reason?: string;
   notes?: string | null;
 }, dbClient: DbClient = pool, orgId?: OrgId): Promise<{ exception: OrdersExceptionRecord | null; matchedOrderId: number | null }> {
-  tableEnsured = true;
+  _tableEnsured = true;
 
   const tracking = String(params.shippingTrackingNumber || '').trim();
   if (tracking.includes(':')) {
@@ -320,7 +320,7 @@ export async function syncOrderExceptionsToOrders(
   resolved: OrderExceptionResolutionDetail[];
   stillOpen: OrderExceptionResolutionDetail[];
 }> {
-  tableEnsured = true;
+  _tableEnsured = true;
 
   // Hard cap so a single sync doesn't churn through thousands of stale rows.
   // Older exceptions get processed on subsequent runs.

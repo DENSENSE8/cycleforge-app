@@ -136,7 +136,6 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome. */
   const chromeless = isClientPublicPath(pathname);
 
-  const openDrawer = useCallback(() => setDrawerOpen(true), []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   // Arm / cancel the 2-second left-edge dwell that re-opens the collapsed sidebar.

@@ -45,7 +45,7 @@ export function useFbaSelectMode({
   setInputValue,
   inputRef,
 }: FbaSelectModeDeps) {
-  const [selectResult, setSelectResult] = useState<FnskuSelectResult | null>(null);
+  const [_selectResult, setSelectResult] = useState<FnskuSelectResult | null>(null);
   const [selectModeItems, setSelectModeItems] = useState<FbaBoardItem[]>([]);
 
   useEffect(() => {

@@ -20,7 +20,6 @@ export function buildGcsObjectKey(opts: {
   const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
   const safePo = sanitizePathSegment(opts.poRef || 'unknown');
   const baseName = `${opts.photoId}.jpg`;
-  const thumbName = `${opts.photoId}_thumb.jpg`;
 
   // Custom image type → its own bucket path, date-partitioned, PO segment only
   // when the photo carries a poRef.

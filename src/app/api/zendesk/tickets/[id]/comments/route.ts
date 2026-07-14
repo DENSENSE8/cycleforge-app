@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { ZendeskApiError, ZendeskNotConfiguredError, type ZendeskComment } from '@/lib/zendesk';
+import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
   getHelpdeskProvider,
   HELPDESK_CONNECT_HINT,

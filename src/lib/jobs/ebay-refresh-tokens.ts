@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import { refreshEbayAccessToken, readEbayToken, writeEbayToken } from '@/lib/ebay/token-refresh';
 import { getEbayAppCreds, markEbayAccountNeedsReconsent } from '@/lib/ebay/credentials';
 import { ebayScopeStringForRole, normalizeEbayRole } from '@/lib/ebay/oauth-config';
+import { logger } from '@/lib/observability/logger';
 import { tenantQuery } from '@/lib/tenancy/db';
 
 export interface EbayRefreshTokensJobResult {
@@ -89,7 +90,7 @@ export async function runEbayRefreshTokensJob(): Promise<EbayRefreshTokensJobRes
         [encryptedAccessToken, newExpiresAt, account_name, organization_id]
       );
       refreshed++;
-      console.log(`[ebay-refresh-tokens] refreshed account=${account_name} under organization=${organization_id}`);
+      logger.info(`[ebay-refresh-tokens] refreshed account=${account_name} under organization=${organization_id}`);
     } catch (error: any) {
       const message = error?.message || 'unknown';
       // A dead refresh token won't recover on retry — flag for re-consent.

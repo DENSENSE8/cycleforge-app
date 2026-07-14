@@ -18,6 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isVercelCronOrigin } from '@/lib/cron/auth';
+import { logger } from '@/lib/observability/logger';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import {
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
     }
     const { metrics, alerts } = locked.result!;
 
-    console.log('[metrics.shipping.tracking]', {
+    logger.info({
       deliveredUnscanned: metrics.deliveredUnscanned,
       blockedTotal: metrics.blockedTotal,
       uspsBlocked: metrics.uspsBlocked,
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
       openReceivingExceptions: metrics.openReceivingExceptions,
       unmatchedTracking: metrics.unmatchedTracking,
       perCarrier: metrics.perCarrier,
-    });
+    }, '[metrics.shipping.tracking]');
 
     for (const alert of alerts) {
       const line = '[alert.shipping.tracking]';

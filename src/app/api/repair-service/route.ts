@@ -108,7 +108,7 @@ const handler = createCrudHandler({
   },
 
   hooks: {
-    afterUpdate: async (result) => {
+    afterUpdate: async (_result) => {
       // Publish realtime event — the body.id was already validated by the schema
       // We access it via the update function's closure over body
     },

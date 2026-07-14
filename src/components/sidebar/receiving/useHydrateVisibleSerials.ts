@@ -22,7 +22,7 @@
  * clobbering an in-flight optimistic serial (the scan path owns those).
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';

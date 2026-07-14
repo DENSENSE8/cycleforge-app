@@ -8,6 +8,7 @@ import { detectIntents } from '@/lib/ai/intent-router';
 import { queryNemoClawRag } from '@/lib/ai/nemoclaw-rag';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { persistChatMessage } from '@/lib/ai/chat-persistence';
+import { logger } from '@/lib/observability/logger';
 import { getHermesApiUrl, getHermesHeaders, getHermesModel } from '@/lib/ai/hermes-client';
 import type { AiChatRouteResponse, AiStructuredAnswer } from '@/lib/ai/types';
 import { enrichAssistantTurn } from '@/lib/assistant/enrich-turn';
@@ -63,11 +64,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     if (prepared.kind === 'local_ops') {
       const localResolution = prepared.resolution;
-      console.info('[ai-chat] local ops answer', {
+      logger.info({
         kind: localResolution.analysis.kind,
         title: localResolution.analysis.title,
         confidence: localResolution.analysis.confidence,
-      });
+      }, '[ai-chat] local ops answer');
 
       const localPayload: AiChatRouteResponse = {
         reply: localResolution.reply,
@@ -112,11 +113,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             ],
           };
 
-          console.info('[ai-chat] Bose RAG answer', {
+          logger.info({
             sources: ragResult.sources.length,
             chunks: ragResult.chunks.length,
             confidence,
-          });
+          }, '[ai-chat] Bose RAG answer');
 
           const ragPayload: AiChatRouteResponse = {
             reply: ragResult.answer,
@@ -186,10 +187,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // Strip <think>...</think> reasoning blocks if model includes them
     const reply = rawReply.replace(/<think>[\s\S]*?<\/think>/g, '').trim() || rawReply;
 
-    console.info('[ai-chat] Hermes answered', {
+    logger.info({
       model: data?.model ?? 'hermes-agent',
       chars: reply.length,
-    });
+    }, '[ai-chat] Hermes answered');
 
     // local_ops answers short-circuit above, so this path never carries a
     // local analysis — mode is plain 'assistant'.

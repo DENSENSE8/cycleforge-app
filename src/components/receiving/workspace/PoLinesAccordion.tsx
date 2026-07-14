@@ -11,7 +11,6 @@ import { usePoLinesData } from './hooks/usePoLinesData';
 import { usePoLineItemDescriptionEditor } from './hooks/usePoLineItemDescriptionEditor';
 import type {
   ActiveRowSlot,
-  ActiveRowSlotContext,
   PoLineSerialActions,
 } from './po-lines-accordion-types';
 

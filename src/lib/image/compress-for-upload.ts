@@ -55,6 +55,7 @@ function logTelemetry(source: string | undefined, result: DownscaleResult) {
     result.originalBytes > 0
       ? Math.round((result.finalBytes / result.originalBytes) * 100)
       : 100;
+  // eslint-disable-next-line no-console -- isomorphic compression telemetry; console is the sink in both browser and node
   console.info(
     `[${tag}] ${result.originalBytes} → ${result.finalBytes} bytes (${ratio}%) ${result.width}×${result.height}${result.passthrough ? ' [passthrough]' : ''}`,
   );

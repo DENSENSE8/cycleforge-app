@@ -71,7 +71,7 @@ export function ScanCameraMobile({
   onResetStatus,
   showManualEntry = true,
 }: ScanCameraMobileProps) {
-  const { videoRef, startCamera, stopCamera, takePhoto, isActive } = useCamera();
+  const { videoRef, startCamera, stopCamera, takePhoto } = useCamera();
   const [manualValue, setManualValue] = useState('');
   const [cameraError, setCameraError] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);

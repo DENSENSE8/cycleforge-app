@@ -107,7 +107,7 @@ export function IncomingAttachTrackingPopover({
   );
 
   const [internalOpen, setInternalOpen] = useState(false);
-  const [stationPreset, setStationPreset] = useState<PoHit | null>(null);
+  const [_stationPreset, setStationPreset] = useState<PoHit | null>(null);
   const open = controlledOpen ?? internalOpen;
   // Where focus was before we opened — restored on close for keyboard users.
   const lastFocusedRef = useRef<HTMLElement | null>(null);

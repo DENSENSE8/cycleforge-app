@@ -1,8 +1,9 @@
 import { eBayApi } from 'ebay-api';
 import pool from '@/lib/db';
+import { logger } from '@/lib/observability/logger';
 import { refreshEbayAccessToken, readEbayToken, writeEbayToken } from './token-refresh';
-import { getEbayAppCreds, EBAY_PLATFORM_PREDICATE, type EbayAppCreds } from './credentials';
-import { isEbaySandbox } from './oauth-config';
+import { getEbayAppCreds, getEbayAccount, EBAY_PLATFORM_PREDICATE, type EbayAppCreds } from './credentials';
+import { ebayScopeStringForRole, isEbaySandbox } from './oauth-config';
 import { tenantQuery } from '@/lib/tenancy/db';
 
 /**
@@ -195,7 +196,7 @@ export class EbayClient {
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
     if (expiresAt < fiveMinutesFromNow) {
-      console.log(`[${this.accountName}] Access token expired or expiring soon, refreshing...`);
+      logger.info(`[${this.accountName}] Access token expired or expiring soon, refreshing...`);
       const newAccessToken = await this.refreshAccessToken(decryptedRefreshToken);
       return { accessToken: newAccessToken, refreshToken: decryptedRefreshToken };
     }
@@ -209,21 +210,23 @@ export class EbayClient {
    */
   async refreshAccessToken(refreshToken: string): Promise<string> {
     try {
-      console.log(`[${this.accountName}] Refreshing access token...`);
+      logger.info(`[${this.accountName}] Refreshing access token...`);
 
-      // Resolve this account's app credentials (per-org / shared env app) and
-      // refresh against the matching environment's token endpoint.
       const creds = await this.ensureCreds();
+      const orgId = await this.getOrganizationId();
+      const account = await getEbayAccount(orgId, this.accountName);
+      const role = account?.accountRole ?? 'seller';
+
       const { accessToken, expiresIn } = await refreshEbayAccessToken(
         creds.appId,
         creds.certId,
         refreshToken,
-        creds.environment
+        creds.environment,
+        ebayScopeStringForRole(role),
       );
       
       const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
       const encryptedAccessToken = writeEbayToken(accessToken);
-      const orgId = await this.getOrganizationId();
 
       // Update database with new token using tenantQuery
       await tenantQuery(
@@ -234,7 +237,7 @@ export class EbayClient {
         [encryptedAccessToken, newExpiresAt, this.accountName, orgId]
       );
 
-      console.log(`[${this.accountName}] Access token refreshed successfully (expires in ${expiresIn}s)`);
+      logger.info(`[${this.accountName}] Access token refreshed successfully (expires in ${expiresIn}s)`);
       return accessToken;
     } catch (error: any) {
       console.error(`[${this.accountName}] Failed to refresh access token:`, error.message);
@@ -265,12 +268,12 @@ export class EbayClient {
           params.filter = `lastmodifieddate:[${options.lastModifiedDate}..]`;
         }
 
-        console.log(`[${this.accountName}] Fetching orders with params:`, params);
+        logger.info({ params }, `[${this.accountName}] Fetching orders with params`);
 
         return this.auditCall('GET', '/sell/fulfillment/v1/order', async () => {
           const response = await api.sell.fulfillment.getOrders(params);
           const orders = response.orders || [];
-          console.log(`[${this.accountName}] Fetched ${orders.length} orders`);
+          logger.info(`[${this.accountName}] Fetched ${orders.length} orders`);
           return orders;
         });
       });

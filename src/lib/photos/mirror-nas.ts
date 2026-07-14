@@ -80,7 +80,6 @@ export async function mirrorPhotoToNas(input: {
 
   const created = new Date(meta.created_at);
   const yyyy = String(created.getUTCFullYear());
-  const mm = String(created.getUTCMonth() + 1).padStart(2, '0');
   const po = (meta.po_ref || 'unknown').replace(/[^\w.-]+/g, '_');
   const relPath = `ReceivingPhotos/${yyyy}/PO-${po}/${input.photoId}.jpg`;
 

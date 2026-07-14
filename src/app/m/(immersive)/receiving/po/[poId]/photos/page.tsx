@@ -28,7 +28,6 @@ function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
   });
 
   const receivingId = data?.header.receiving_id ?? null;
-  const photosBase = `/m/receiving/po/${encodeURIComponent(poId)}/photos`;
   const poDetailHref = `/m/receiving/po/${encodeURIComponent(poId)}`;
   const headerLabel = `PO ${data?.header.po_number || data?.header.po_id || poId}`;
   const poRef = data?.header.po_number || data?.header.po_id || null;

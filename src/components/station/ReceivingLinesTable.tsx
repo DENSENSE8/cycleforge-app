@@ -123,7 +123,7 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
     modeContext,
   } = useReceivingModeContext();
 
-  const { data, isLoading, deliveredRows, localRows } = useReceivingLinesData({
+  const { data, isLoading, localRows } = useReceivingLinesData({
     mode,
     modeContext,
     isIncomingMode,

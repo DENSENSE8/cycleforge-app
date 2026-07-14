@@ -2,7 +2,6 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   workflowStatusTableLabel,
   conditionGradeTableLabel,
@@ -163,8 +162,6 @@ function CartonPageInner() {
   const params = useParams<{ id: string }>();
   const receivingId = Number(params?.id);
   // Identity from the verified session cookie.
-  const { user } = useAuth();
-  const staffId = user?.staffId ?? 0;
 
   const [data, setData] = useState<FullCarton | null>(null);
   const [error, setError] = useState<string | null>(null);

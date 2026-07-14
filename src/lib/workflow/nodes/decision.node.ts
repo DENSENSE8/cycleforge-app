@@ -70,7 +70,7 @@ export const DECISION_CONFIG_SCHEMA: Record<string, unknown> = {
 };
 
 /** Read the declared output ports from config, falling back to the defaults. */
-function configOutputs(config: Record<string, unknown>): NodeOutputPort[] {
+function _configOutputs(config: Record<string, unknown>): NodeOutputPort[] {
   const raw = config.outputs;
   if (!Array.isArray(raw) || raw.length === 0) return DEFAULT_OUTPUTS;
   return raw

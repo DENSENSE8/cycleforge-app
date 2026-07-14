@@ -79,6 +79,7 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
   const log = useCallback((msg: string) => {
     if (typeof window !== 'undefined' && !(window as any).__USAV_CAMERA_DEBUG) return;
     const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // eslint-disable-next-line no-console -- opt-in client camera-debug trace (gated by window.__USAV_CAMERA_DEBUG)
     console.debug(`[useBarcodeScanner ${ts}] ${msg}`);
   }, []);
 

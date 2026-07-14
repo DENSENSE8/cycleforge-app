@@ -21,7 +21,7 @@ interface Props {
 
 const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
 
-export function TestingLineWorkspace({ staffId, selectedLineId, onSelectedLineChange }: Props) {
+export function TestingLineWorkspace({ staffId, onSelectedLineChange }: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);
   const [restoring, setRestoring] = useState(true);
   const lastSelectedRef = useRef<number | null>(null);

@@ -33,7 +33,6 @@ export function LineReceiveActionBar({
   maxWidthClass = 'max-w-[720px]',
   onPrintAndReceive,
   onPrintOnly,
-  onMarkScanned,
   onReceive,
   onLocalReceive,
 }: {

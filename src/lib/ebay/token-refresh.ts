@@ -163,9 +163,11 @@ if (require.main === module) {
   refreshEbayAccessToken(CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN, ENVIRONMENT)
     .then(({ accessToken, expiresIn }) => {
       // Never print the raw token (it's a live credential) — redact to a prefix.
+      /* eslint-disable no-console -- CLI entrypoint: direct operator stdout feedback */
       console.log('\n✅ eBay access token refreshed (redacted for safety):');
       console.log(`   ${accessToken.slice(0, 12)}… (${accessToken.length} chars)`);
       console.log(`⏰ Expires in: ${expiresIn} seconds (${expiresIn / 3600} hours)`);
+      /* eslint-enable no-console */
     })
     .catch(error => {
       console.error(error);

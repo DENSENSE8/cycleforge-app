@@ -97,12 +97,6 @@ function yearRange(dt: Date): PhotoDateRange {
   return { dateFrom: `${y}-01-01`, dateTo: `${y}-12-31` };
 }
 
-function shortLabel(ymd: string): string {
-  const dt = ymdToUtc(ymd);
-  if (!dt) return ymd;
-  return `${MONTHS[dt.getUTCMonth()].slice(0, 3)} ${dt.getUTCDate()}`;
-}
-
 /** `June 23` from a `YYYY-MM-DD` string — full month name (folder tiles + day crumbs). */
 export function dayLabel(ymd: string): string {
   const dt = ymdToUtc(ymd);

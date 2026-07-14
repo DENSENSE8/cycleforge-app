@@ -1,6 +1,7 @@
 import { syncAllAccounts } from '@/lib/ebay/sync';
 import { syncOrderExceptionsToOrders } from '@/lib/orders-exceptions';
 import { formatPSTTimestamp } from '@/utils/date';
+import { logger } from '@/lib/observability/logger';
 
 export async function runEbaySync(options?: { reconcileExceptions?: boolean }) {
   const startedAt = Date.now();
@@ -8,7 +9,7 @@ export async function runEbaySync(options?: { reconcileExceptions?: boolean }) {
   const reconcileExceptions = options?.reconcileExceptions ?? true;
 
   try {
-    console.log(`[${runId}] eBay sync triggered. reconcileExceptions=${reconcileExceptions}`);
+    logger.info(`[${runId}] eBay sync triggered. reconcileExceptions=${reconcileExceptions}`);
     const results = await syncAllAccounts();
 
     const successCount = results.filter((r) => r.status === 'fulfilled').length;

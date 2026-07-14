@@ -37,7 +37,7 @@ export function LabelIdentifyButton({
   hideWhenUnavailable = true,
 }: LabelIdentifyButtonProps) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const { status, candidates, rawText, error, available, identify, reset } = useLabelIdentify();
+  const { status, candidates, rawText, error, available, identify } = useLabelIdentify();
 
   if (hideWhenUnavailable && !available) return null;
 

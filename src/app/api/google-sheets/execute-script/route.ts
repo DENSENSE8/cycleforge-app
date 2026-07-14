@@ -85,13 +85,6 @@ async function executeCheckShippedOrders(orgId: OrgId) {
     });
 }
 
-async function executeUpdateNonshippedOrders() {
-    return NextResponse.json({
-        success: false,
-        error: 'Google Sheets mutation support has been removed. Update non-shipped state directly in the database.',
-    }, { status: 410 });
-}
-
 async function executeSyncTechSerialNumbers(orgId: OrgId) {
     const auth = getGoogleAuth();
     const sheets = googleSheets({ version: 'v4', auth });

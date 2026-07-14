@@ -42,7 +42,6 @@ export function LineEditToolbar({
   mode = 'unbox',
   receivingId,
   zohoSyncing = false,
-  busy,
   copyingAll,
   pairing = false,
   handlers,

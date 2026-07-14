@@ -11,7 +11,7 @@ interface RepairAgreementProps {
   onSignatureChange: (data: SignatureData | null) => void;
 }
 
-export function RepairAgreement({ formData, signatureData, onSignatureChange }: RepairAgreementProps) {
+export function RepairAgreement({ formData, onSignatureChange }: RepairAgreementProps) {
   // On-screen preview — matches printed form letterhead from org settings.
   const letterhead = useOrgLetterhead();
   const today = new Date().toLocaleDateString('en-US', {

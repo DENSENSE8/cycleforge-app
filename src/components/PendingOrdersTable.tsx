@@ -200,7 +200,7 @@ export default function PendingOrdersTable({
     const handleAssignmentUpdated = (e: any) => {
       const {
         orderIds,
-        testerId, packerId, testerName, packerName,
+        testerId, packerId,
         deadlineAt, outOfStock, notes, itemNumber, condition,
       } = e?.detail || {};
       if (!Array.isArray(orderIds) || orderIds.length === 0) return;

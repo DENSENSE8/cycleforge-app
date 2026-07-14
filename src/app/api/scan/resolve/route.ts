@@ -227,22 +227,6 @@ async function lookupOrdersBySku(sku: string, organizationId: string): Promise<O
 
 // ─── URL helper enrichment ───────────────────────────────────────────────────
 
-async function resolveUnit(unitSerial: string, organizationId: string): Promise<{ id: number; sku: string | null } | null> {
-  try {
-    const { rows } = await tenantQuery<{ id: number; sku: string | null }>(
-      organizationId,
-      `SELECT id, sku FROM serial_units
-       WHERE normalized_serial = UPPER(TRIM($1))
-         AND organization_id = $2
-       LIMIT 1`,
-      [unitSerial, organizationId],
-    );
-    return rows[0] ?? null;
-  } catch {
-    return null;
-  }
-}
-
 async function resolveSkuByGtin(gtin: string, organizationId: string): Promise<string | null> {
   try {
     const cleaned = gtin.replace(/\D/g, '');

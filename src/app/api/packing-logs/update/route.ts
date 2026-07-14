@@ -44,14 +44,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // Server-trusted actor.
     const packedBy = ctx.staffId;
 
-    console.log('=== PACKER_LOGS UPDATE REQUEST ===');
-    console.log('Shipping Tracking Number:', shippingTrackingNumber);
-    console.log('Tracking Type:', trackingType);
-    console.log('Pack Date Time:', packDateTime);
-    console.log('Packed By:', packedBy);
-    console.log('Photos Count:', Array.isArray(packerPhotosUrl) ? packerPhotosUrl.length : 0);
-    console.log('Order ID:', orderId);
-
     // Validation
     if (!shippingTrackingNumber) {
       return NextResponse.json({ error: 'shippingTrackingNumber is required' }, { status: 400 });
@@ -74,11 +66,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const photoUrlList: string[] = Array.isArray(packerPhotosUrl)
       ? packerPhotosUrl.filter((u: any) => typeof u === 'string' && u.trim())
       : [];
-
-    console.log('=== DATABASE UPDATE ===');
-    console.log('Staff ID:', staffId);
-    console.log('Pack Date:', canonicalPackDate);
-    console.log('Photos Count:', photoUrlList.length);
 
     // Run the whole write inside the per-org GUC transaction (app.current_org)
     // so RLS isolates every tenant-table touch. withTenantTransaction owns
@@ -137,10 +124,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
       if (dupCheck.rows.length > 0) {
         const existingId = dupCheck.rows[0].id;
-        console.log(
-          '[packer_logs.update] duplicate finalize detected — returning existing id',
-          existingId,
-        );
         // No writes occurred; COMMIT of this read-only tx is harmless.
         return { deduplicated: true, existingId };
       }
@@ -159,7 +142,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       `, [resolvedShipmentId, resolvedScanRef, trackingType, canonicalPackDate, staffId, ctx.organizationId]);
 
       const packerLogId = insertResult.rows[0]?.id;
-      console.log('Inserted into packer_logs, ID:', packerLogId);
 
       if (packerLogId) {
         await mirrorLegacyPackToAllocations({
@@ -214,7 +196,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             idempotent: true,
           });
         }
-        console.log(`Inserted ${photoUrlList.length} photo(s) into photos table`);
       }
 
       // 3. Update orders table — mark status only; shipped state derived from stn carrier status
@@ -228,7 +209,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         RETURNING id, order_id
       `, [resolvedShipmentId, ctx.organizationId]);
 
-      console.log('=== UPDATE RESULT ===');
       if (updateResult.rows.length === 0) {
         // Fallback: match via shipping_tracking_numbers join for legacy unlinked rows
         const fallbackUpdate = await client.query<{ id: number; order_id: string | number | null }>(`
@@ -262,7 +242,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         }
         return { deduplicated: false, packerLogId, ledgerRows: [], updatedRows: fallbackUpdate.rows };
       } else {
-        console.log('✅ Updated orders table status = shipped');
         const targetOrderId = updateResult.rows[0].id;
         await client.query(`
           INSERT INTO work_assignments

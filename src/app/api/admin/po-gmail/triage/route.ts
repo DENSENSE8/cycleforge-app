@@ -20,8 +20,8 @@ import { errorResponse } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
-const PILES = ['inbox', 'upload', 'ignore', 'done'] as const;
-type Pile = (typeof PILES)[number];
+const _PILES = ['inbox', 'upload', 'ignore', 'done'] as const;
+type Pile = (typeof _PILES)[number];
 
 const MAX_PER_PILE = 100;
 

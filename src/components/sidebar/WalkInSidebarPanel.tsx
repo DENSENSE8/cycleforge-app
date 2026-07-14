@@ -11,7 +11,7 @@ interface WalkInSidebarPanelProps {
 
 type WalkInMode = 'repairs' | 'sales';
 
-export function WalkInSidebarPanel({ embedded = false, hideSectionHeader = false }: WalkInSidebarPanelProps) {
+export function WalkInSidebarPanel({ embedded = false }: WalkInSidebarPanelProps) {
   const searchParams = useSearchParams();
 
   // Repairs ↔ Sales is now switched from the master-nav mode rail (?mode=sales),

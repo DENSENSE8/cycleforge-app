@@ -71,7 +71,7 @@ export function useStationHistory({
                     try {
                         const logDateKey = toPSTDateKey(log.timestamp);
                         return !!logDateKey && logDateKey === today;
-                    } catch (e) {
+                    } catch {
                         return false;
                     }
                 }).length;

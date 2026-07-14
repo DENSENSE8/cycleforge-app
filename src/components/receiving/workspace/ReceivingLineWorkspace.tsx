@@ -58,11 +58,8 @@ interface Props {
 export function ReceivingLineWorkspace({
   row,
   staffId,
-  accordionBootstrap,
   nav,
   variant = 'unbox',
-  onPrev,
-  onNext,
   onClose,
 }: Props) {
   // Photos step reads the LIVE per-carton photo cache (same source as the camera

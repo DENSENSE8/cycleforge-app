@@ -155,7 +155,6 @@ export function useFbaPlanFlows({
         }
 
         let postShipmentId: number | null = null;
-        let postShipmentRef = '';
         const postAdded: LineHead[] = [];
         const postMerged: LineHead[] = [];
         const postMoved: LineHead[] = [];
@@ -180,7 +179,6 @@ export function useFbaPlanFlows({
             return;
           }
           postShipmentId = Number(data.shipment_id);
-          postShipmentRef = String(data.shipment_ref ?? data.plan_ref ?? '');
           if (Array.isArray(data.merged)) postMerged.push(...data.merged);
           if (Array.isArray(data.added)) postAdded.push(...data.added);
           if (Array.isArray(data.moved)) postMoved.push(...data.moved);
@@ -203,7 +201,6 @@ export function useFbaPlanFlows({
           return;
         }
 
-        const shipmentRef = postShipmentRef || snap.shipmentRef;
 
         setPlanPreviewLines(
           lineRows.map((h) => ({

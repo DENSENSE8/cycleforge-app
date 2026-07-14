@@ -22,7 +22,6 @@ export function useEcwidProductSearch({
   popoverMode,
   initialQuery = '',
   searchFieldOverride,
-  relaxRepairToAllOrders = false,
   initialOrderScope,
   onSelect,
 }: EcwidProductSearchPopoverProps) {

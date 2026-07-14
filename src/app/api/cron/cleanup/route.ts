@@ -4,6 +4,7 @@ import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { runIdempotencyCleanup } from '@/lib/jobs/idempotency-cleanup';
+import { logger } from '@/lib/observability/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, skipped: 'locked' });
     }
     const summary = locked.result!;
-    console.log('[cron.cleanup]', summary);
+    logger.info(summary, '[cron.cleanup]');
     return NextResponse.json({ success: true, ...summary });
   } catch (error: any) {
     console.error('[cron/cleanup]', error);

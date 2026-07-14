@@ -5,7 +5,8 @@ import { type OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { getCarrier } from '@/lib/tracking-format';
 import { formatPSTTimestamp } from '@/utils/date';
-import { createCacheLookupKey, getCachedJson, setCachedJson, invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { searchPurchaseOrdersByTracking, searchPurchaseReceivesByTracking } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
@@ -22,7 +23,7 @@ import { resolveReceivingTypeId } from '@/lib/catalog/org-catalog';
  * such as '2026-03-04T14:30:00'.  Used to target the exact Redis cache key that
  * ReceivingLogs uses when fetching by week.
  */
-function getPSTWeekRange(pstTimestamp: string): { startStr: string; endStr: string } {
+function _getPSTWeekRange(pstTimestamp: string): { startStr: string; endStr: string } {
     const dateKey = pstTimestamp.substring(0, 10); // 'YYYY-MM-DD'
     const [year, month, day] = dateKey.split('-').map(Number);
     const date = new Date(year, month - 1, day);
@@ -279,7 +280,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
                 // Invalidate cached receiving-logs so next fetch hits DB fresh.
                 // Avoids race where a quick delete could be overwritten by a
                 // stale surgical cache prepend.
-                await invalidateCacheTags(['receiving-logs', 'pending-unboxing']);
+                await invalidateReceivingViews(ctx.organizationId);
                 await publishReceivingLogChanged({
                     organizationId: ctx.organizationId,
                     action: 'insert',
