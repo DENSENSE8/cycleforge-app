@@ -24,7 +24,9 @@ export type PanelElevation = 'none' | 'sm' | 'md';
 
 const PADDING: Record<PanelPadding, string> = {
   none: 'p-0',
-  sm: 'p-4',
+  // `inset-card` = p-4 via the Tier-2 spacing intent (spacing plan Phase 3.2)
+  // — pixel-identical, but the panel body now shares the card-inset SoT.
+  sm: 'inset-card',
   md: 'p-5',
   lg: 'p-6',
 };

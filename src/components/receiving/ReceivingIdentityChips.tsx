@@ -61,7 +61,7 @@ export function FulfillmentPickupPill({
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded font-black uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 bg-emerald-50 ${
-        dense ? 'px-1 py-px text-[8.5px]' : 'px-1.5 py-0.5 text-role-eyebrow'
+        dense ? 'px-1 py-px text-[8.5px]' : 'inset-chip text-role-eyebrow'
       }`}
     >
       Pickup

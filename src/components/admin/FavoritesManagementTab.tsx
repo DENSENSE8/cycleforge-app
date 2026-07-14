@@ -432,7 +432,7 @@ export function FavoritesManagementTab() {
                   onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
                   placeholder="Optional"
                   rows={2}
-                  className="w-full border border-border-soft bg-surface-card px-3 py-2 text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis"
+                  className="w-full border border-border-soft bg-surface-card inset-field text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis"
                 />
               </label>
 

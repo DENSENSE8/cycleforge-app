@@ -1,12 +1,18 @@
 'use client';
 
 /**
- * Triage's own progress stepper — Scan → Classify → Stage → Pair → Ready.
+ * Triage's own progress stepper — Classify → Stage → Pair → Ready.
  *
  * Replaces the shared `ReceivingProgressStepper` (Scan→Photos→Condition→Serial→
  * Print) for `variant='triage'`. Triage and unbox are different stations with
  * different jobs (docs/receiving-triage-redesign-plan.md §3.2) — sharing one
  * stepper implied triage cares about photos/serial/print, which it never has.
+ *
+ * No "Scan" step: reaching this workspace *means* the carton was scanned, so its
+ * dot was always `done` and carried no signal — a ghost update that just added a
+ * checkmark and inflated every downstream step's number. Same reasoning that
+ * dropped Scan + Condition from the unbox `ReceivingProgressStepper`; every
+ * remaining dot reflects real, varying triage work.
  *
  * State is DERIVED from the row (never stored) except the terminal "Ready" step,
  * which mirrors `ReceivingProgressStepper`'s `labelPrinted` pattern: the real
@@ -22,10 +28,9 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { LinearWorkflowStepper, type LinearStepState } from './ReceivingProgressStepper';
 import { isTriageClassified, isTriageStaged, isTriagePaired } from '@/lib/receiving/triage-focus';
 
-type TriageStepKey = 'scan' | 'classify' | 'stage' | 'pair' | 'ready';
+type TriageStepKey = 'classify' | 'stage' | 'pair' | 'ready';
 
 const TRIAGE_STEPS: ReadonlyArray<{ key: TriageStepKey; label: string }> = [
-  { key: 'scan',     label: 'Scan' },
   { key: 'classify', label: 'Classify' },
   { key: 'stage',    label: 'Stage' },
   { key: 'pair',     label: 'Pair' },
@@ -72,7 +77,6 @@ export function TriageProgressStepper({ row }: { row: ReceivingLineRow }) {
   const isReady = row.triage_complete === true || locallyComplete;
 
   const flags: Record<TriageStepKey, boolean> = {
-    scan: true,
     classify: isTriageClassified(row),
     stage: isTriageStaged(row),
     pair: isTriagePaired(row),
@@ -80,7 +84,7 @@ export function TriageProgressStepper({ row }: { row: ReceivingLineRow }) {
   };
 
   const states: Record<TriageStepKey, LinearStepState> = {
-    scan: 'done', classify: 'pending', stage: 'pending', pair: 'pending', ready: 'pending',
+    classify: 'pending', stage: 'pending', pair: 'pending', ready: 'pending',
   };
   let activeAssigned = false;
   for (const { key } of TRIAGE_STEPS) {

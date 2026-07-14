@@ -12,7 +12,7 @@ import {
   getLast4,
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL } from '@/components/ui/ChipColumns';
-import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, META_COL, META_REST_COL, MetaFactSlot } from '@/components/ui/RowMetaColumns';
 import { CarrierStatusIcon } from '@/components/shipping/ShipmentStatusBadge';
 import { getOrderDisplayValues } from '@/utils/order-display';
 import { getOrderPlatformColor, getOrderPlatformBorderColor, isFbaOrder } from '@/utils/order-platform';
@@ -137,16 +137,32 @@ export function ShippedRecordRow({
           indent={selectMode ? `calc(${META_COL.indent} + 1.5rem)` : undefined}
           qty={<span className={(parseInt(String(record.quantity || '1'), 10) || 1) > 1 ? 'text-yellow-600' : 'text-text-soft'}>{parseInt(String(record.quantity || '1'), 10) || 1}</span>}
           condition={<span className={String(displayValues.condition || '').trim().toLowerCase() === 'new' ? 'text-yellow-600' : 'text-text-faint'}>{displayValues.condition || 'N/A'}</span>}
-          rest={<div className="flex items-center gap-2">
-            {techDisplay !== '---' ? <HoverTooltip label={`Tested by ${techDisplay}`}><StaffInitials staffId={techStaffId} name={techDisplay} /></HoverTooltip> : <StaffInitials staffId={techStaffId} name={techDisplay} />}
-            {packerDisplay !== '---' ? <HoverTooltip label={`Packed by ${packerDisplay}`}><StaffInitials staffId={packerStaffId} name={packerDisplay} /></HoverTooltip> : <StaffInitials staffId={packerStaffId} name={packerDisplay} />}
-            {stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel ? (
-              <HoverTooltip label={`${stageTimeLabel} ${stageTimeDisplay}`}>
-                <span className="tabular-nums normal-case tracking-normal text-text-faint">
-                  {stageTimeDisplay}
-                </span>
-              </HoverTooltip>
-            ) : null}
+          rest={<div className="flex items-center gap-0.5">
+            <MetaFactSlot width={META_REST_COL.staff}>
+              {techDisplay !== '---' ? (
+                <HoverTooltip label={`Tested by ${techDisplay}`}>
+                  <StaffInitials staffId={techStaffId} name={techDisplay} />
+                </HoverTooltip>
+              ) : (
+                <StaffInitials staffId={techStaffId} name={techDisplay} />
+              )}
+            </MetaFactSlot>
+            <MetaFactSlot width={META_REST_COL.staff}>
+              {packerDisplay !== '---' ? (
+                <HoverTooltip label={`Packed by ${packerDisplay}`}>
+                  <StaffInitials staffId={packerStaffId} name={packerDisplay} />
+                </HoverTooltip>
+              ) : (
+                <StaffInitials staffId={packerStaffId} name={packerDisplay} />
+              )}
+            </MetaFactSlot>
+            <MetaFactSlot width={META_REST_COL.stageTime} className="text-text-faint">
+              {stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel ? (
+                <HoverTooltip label={`${stageTimeLabel} ${stageTimeDisplay}`}>
+                  <span className="truncate">{stageTimeDisplay}</span>
+                </HoverTooltip>
+              ) : null}
+            </MetaFactSlot>
             <CarrierStatusIcon className="ml-1" carrier={record.carrier} category={record.latest_status_category} statusLabel={record.latest_status_label} description={record.latest_status_description} latestEventAt={record.latest_event_at} hasException={record.has_exception} isTerminal={record.is_terminal} />
           </div>}
         />

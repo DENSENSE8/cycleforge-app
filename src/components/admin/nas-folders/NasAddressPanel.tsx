@@ -47,7 +47,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
               value={servers[slot]}
               onChange={(e) => setServers((p) => ({ ...p, [slot]: e.target.value }))}
               placeholder="https://nas.example.com"
-              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
           </div>
         ))}

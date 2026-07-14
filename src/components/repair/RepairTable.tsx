@@ -15,7 +15,6 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useRepairsTable } from '@/hooks/useRepairs';
 import { formatPhoneNumber } from '@/utils/phone';
 import { toPSTDateKey } from '@/utils/date';
-import { mobileIconSize } from '@/design-system/tokens/touch';
 import { Button } from '@/design-system/primitives';
 
 interface RepairTableProps {
@@ -322,7 +321,7 @@ export function RepairTable({ filter }: RepairTableProps) {
                               className={`${rowActionButtonClass} hover:bg-blue-50 hover:text-blue-600`}
                               aria-label="View Repair Document"
                             >
-                              <PrinterAlt className={mobileIconSize.inline} />
+                              <PrinterAlt className="h-5 w-5" />
                             </button>
                           </HoverTooltip>
                           <HoverTooltip
@@ -350,7 +349,7 @@ export function RepairTable({ filter }: RepairTableProps) {
                                     : 'Create Square payment link (price fallback)'
                               }
                             >
-                              <DollarSign className={`${mobileIconSize.inline} ${payingRepairId === repair.id ? 'animate-pulse' : ''}`} />
+                              <DollarSign className={`h-5 w-5 ${payingRepairId === repair.id ? 'animate-pulse' : ''}`} />
                             </button>
                           </HoverTooltip>
                         </div>

@@ -38,7 +38,15 @@ import { LineEditToolbar } from './line-edit/LineEditToolbar';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { POUnboxingSection } from './line-edit/POUnboxingSection';
+import { LineChecklistTab } from './line-edit/LineChecklistTab';
+import { LinePoNoteCard } from './line-edit/LinePoNoteCard';
+import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
+import { CartonUnitsRollupBody } from './CartonUnitsRollup';
 import { LineEditModals } from './line-edit/LineEditModals';
+import { SectionTabsSlider, type SectionTab, WorkspaceCard } from '@/design-system/components';
+import { Barcode, ClipboardList, FileText, MapPin, PackageOpen, Pencil, Ticket } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { UnboxTrackingTab } from './line-edit/UnboxTrackingTab';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
@@ -48,6 +56,8 @@ import { activeReceivingStepKey } from './ReceivingProgressStepper';
 const LABEL_PRINTED_KEY = (lineId: number) => `receiving-label-printed:${lineId}`;
 
 import { RECEIVING_WORKSPACE_COLUMN } from './receiving-workspace-layout';
+
+type UnboxView = 'overview' | 'units' | 'checklist' | 'po-note' | 'tracking' | 'ticket';
 
 function readLabelPrinted(lineId: number): boolean {
   if (typeof window === 'undefined') return false;
@@ -72,6 +82,9 @@ export function LineEditPanel({
   // composition. See useUnboxLineController / useReceivingLineCore.
   const c = useUnboxLineController(row, staffId, { itemTotal });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
+  // Shared PO-note save (overwrite + push to inventory) — used by the notes
+  // composer's push button and the standalone "PO note" display tab.
+  const { saveOverallNote } = useSyncedPoNote(row, setActionFeedback);
   // Print step reads the durable `label_printed_at` stamp (receiving_line_testing)
   // OR the localStorage optimistic hint — so the step survives a refresh / other
   // device, while still flipping instantly on print before the refetch lands.
@@ -112,10 +125,70 @@ export function LineEditPanel({
       activeReceivingStepKey({
         photoCount,
         serialCount,
+        serialAbsent: !!row.serial_absent,
         quantityExpected: row.quantity_expected ?? 0,
         labelPrinted,
       }),
-    [photoCount, serialCount, row.quantity_expected, labelPrinted],
+    [photoCount, serialCount, row.serial_absent, row.quantity_expected, labelPrinted],
+  );
+
+  // The line detail (PO items + Notes + Label) is ONE display. The switcher only
+  // appears once a second contextual display exists — the Units-on-carton rollup,
+  // which becomes available as soon as a serial is scanned onto the carton. So an
+  // un-serialled carton looks exactly like the plain stacked display (no bar).
+  const [unboxView, setUnboxView] = useState<UnboxView>('overview');
+  const hasUnits = serialCount > 0;
+  // Tracking tab: only when the carton has a tracking# and a PO to key the
+  // carrier lookup on (matched cartons); the timeline reuses the Incoming
+  // shipment data + ShipmentTab, so nothing new is fetched or rendered.
+  const trackingNumber = String(row.tracking_number ?? '').trim();
+  const poIdForTracking = String(row.zoho_purchaseorder_id ?? '').trim();
+  const hasTrackingTab = trackingNumber.length > 0 && poIdForTracking.length > 0;
+  // Ticket tab: only when a support ticket is linked. Content is lazy-mounted
+  // (only when active) so the Zendesk bundle isn't fetched on every carton.
+  const linkedTicketId = c.providerTicketId;
+  const hasTicketTab = linkedTicketId != null;
+  // PO note tab: matched cartons only — an unfound carton has no PO to sync.
+  const hasPoNoteTab = !c.isUnfound && row.receiving_id != null;
+  const activeUnboxView: UnboxView =
+    unboxView === 'checklist' ||
+    (unboxView === 'po-note' && hasPoNoteTab) ||
+    (unboxView === 'units' && hasUnits) ||
+    (unboxView === 'tracking' && hasTrackingTab) ||
+    (unboxView === 'ticket' && hasTicketTab)
+      ? unboxView
+      : 'overview';
+
+  // Package Pairing state lifted here so its "Edit PO" pencil can live on the tab
+  // row (context slot) instead of the removed "PO items · N" header.
+  const [pairingOpen, setPairingOpen] = useState(false);
+  const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
+  // Match the tab pills exactly — same recessed track + pill, blue when active
+  // (pairing open) — so the right pencil reads as a sibling of the left tabs.
+  const editPoControl = (
+    <div className="inline-flex items-center rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft">
+      <HoverTooltip
+        label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
+        placement="below"
+        focusable={false}
+        asChild
+      >
+        {/* ds-raw-button: toggle pill styled identically to the SectionTabsSlider tab pills */}
+        <button
+          type="button"
+          aria-label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
+          aria-expanded={pairingOpen}
+          onClick={togglePairing}
+          className={`flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
+            pairingOpen
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
+              : 'text-text-muted hover:text-text-default'
+          }`}
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      </HoverTooltip>
+    </div>
   );
 
   useEffect(() => {
@@ -278,53 +351,140 @@ export function LineEditPanel({
               />
             </motion.div>
 
-            {/* Unified Unboxing / Package-Pairing wrapper — PO Items, auto-match
-                strip (unfound only), and Package Pairing share one card. */}
+            {/* One combined "Overview" display (PO items + Notes + Label) plus the
+                Units-on-carton rollup that slides in as a second tab on serial
+                scan. The slider owns the bar + content; with one tab it shows no
+                bar and reads as the plain stacked display. */}
             <motion.div variants={revealItem}>
-              <POUnboxingSection
-                row={row}
-                staffId={staffId}
-                poItems
-                matching
-                openInUnbox={false}
-                editLines
-                serialScan
-                c={c}
-                onItemDescFeedback={handleItemDescFeedback}
-                onItemDescSaved={handleItemDescSaved}
-                activeStep={activeStep}
-              />
-            </motion.div>
-
-            {/* Notes — tabbed: operator Notes · read-only Zoho Notes · Checklist
-                (future). The Zoho-import and operator notes are separate columns
-                now, so they no longer collide. Saves on blur. */}
-            <motion.div variants={revealItem}>
-              <WorkspaceNotesCard
-                row={row}
-                c={c}
-                onActionFeedback={setActionFeedback}
-                activeStep={activeStep}
-              />
-            </motion.div>
-
-            {/* Returned-serial closed loop: the resolved outbound order now
-                populates the top identity row's PO#/order chip (see
-                useReturnOrderLinkage + linkedOrderNumber) instead of a separate
-                LINKAGE section — one identity display for SKU- and serial-linked
-                returns alike. */}
-
-            {/* Label preview — you print at unbox. */}
-            <motion.div variants={revealItem}>
-              <LineLabelPreviewCard
-                scanValue={c.scanValue}
-                labelPayload={c.labelPayload}
-                sku={row.sku}
-                itemName={row.item_name}
-                serialNumber={c.serialInput.trim()}
-                labelDraftDefaults={c.labelDraftDefaults}
-                buildLabelPayload={c.buildLabelPayload}
-                onApplyAndPrint={c.applyAndPrintLabel}
+              <SectionTabsSlider
+                value={unboxView}
+                onChange={(id) => setUnboxView(id as UnboxView)}
+                ariaLabel="Unbox displays"
+                rightSlot={activeUnboxView === 'overview' ? editPoControl : undefined}
+                tabs={[
+                  {
+                    id: 'overview',
+                    label: 'Unbox',
+                    icon: PackageOpen,
+                    content: (
+                      <div className="space-y-4">
+                        {/* PO Items — accordion, auto-match strip (unfound only), Package Pairing.
+                            Header row is suppressed; the tab row owns the Edit-PO pencil. */}
+                        <POUnboxingSection
+                          row={row}
+                          staffId={staffId}
+                          poItems
+                          matching
+                          openInUnbox={false}
+                          editLines
+                          serialScan
+                          c={c}
+                          suppressItemsHeader
+                          pairingOpen={pairingOpen}
+                          onPairingToggle={togglePairing}
+                          onItemDescFeedback={handleItemDescFeedback}
+                          onItemDescSaved={handleItemDescSaved}
+                          activeStep={activeStep}
+                        />
+                        {/* Notes — operator Notes · read-only Zoho Notes · Checklist. */}
+                        <WorkspaceNotesCard
+                          row={row}
+                          c={c}
+                          onActionFeedback={setActionFeedback}
+                          activeStep={activeStep}
+                        />
+                        {/* Label preview — you print at unbox. */}
+                        <LineLabelPreviewCard
+                          scanValue={c.scanValue}
+                          labelPayload={c.labelPayload}
+                          sku={row.sku}
+                          itemName={row.item_name}
+                          serialNumber={c.serialInput.trim()}
+                          labelDraftDefaults={c.labelDraftDefaults}
+                          buildLabelPayload={c.buildLabelPayload}
+                          onApplyAndPrint={c.applyAndPrintLabel}
+                        />
+                      </div>
+                    ),
+                  },
+                  ...(hasPoNoteTab
+                    ? [
+                        {
+                          // Synced inventory (PO) note — carton-level, on the linked
+                          // purchase order. Full view / reload / overwrite; matched
+                          // cartons only. The composer's push button only APPENDS to it.
+                          id: 'po-note',
+                          label: 'Inventory notes',
+                          icon: FileText,
+                          content: (
+                            <LinePoNoteCard
+                              overallZohoNotes={row.receiving_zoho_notes ?? null}
+                              active={activeUnboxView === 'po-note'}
+                              onSaveOverallNote={saveOverallNote}
+                              onLoadZohoNotes={() => c.syncCartonFromZoho()}
+                            />
+                          ),
+                        } satisfies SectionTab,
+                      ]
+                    : []),
+                  {
+                    // Receiving checklist — a first-class carton display (peer of Unbox).
+                    id: 'checklist',
+                    label: 'Checklist',
+                    icon: ClipboardList,
+                    content: (
+                      <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+                        <LineChecklistTab lineId={row.id} sku={row.sku} />
+                      </WorkspaceCard>
+                    ),
+                  } satisfies SectionTab,
+                  ...(hasUnits
+                    ? [
+                        {
+                          id: 'units',
+                          label: `Units on carton · ${serialCount}`,
+                          icon: Barcode,
+                          content: (
+                            <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
+                              <CartonUnitsRollupBody
+                                receivingId={row.receiving_id ?? null}
+                                activeLineId={row.id ?? null}
+                                showEmpty
+                              />
+                            </WorkspaceCard>
+                          ),
+                        } satisfies SectionTab,
+                      ]
+                    : []),
+                  ...(hasTrackingTab
+                    ? [
+                        {
+                          id: 'tracking',
+                          label: 'Tracking',
+                          icon: MapPin,
+                          content: <UnboxTrackingTab poId={poIdForTracking} />,
+                        } satisfies SectionTab,
+                      ]
+                    : []),
+                  ...(hasTicketTab
+                    ? [
+                        {
+                          id: 'ticket',
+                          label: 'Ticket',
+                          icon: Ticket,
+                          // Lazy-mount the support console only while the tab is
+                          // active; it needs a bounded height for its own scroll +
+                          // sticky composer. Reuses the integrated SupportTicketDetail.
+                          content:
+                            activeUnboxView === 'ticket' && linkedTicketId != null ? (
+                              <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
+                                <SupportTicketDetail ticketId={linkedTicketId} />
+                              </div>
+                            ) : null,
+                        } satisfies SectionTab,
+                      ]
+                    : []),
+                ]}
               />
             </motion.div>
 

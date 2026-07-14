@@ -4,7 +4,8 @@ import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
+import { deferInvalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyReceiveResponse } from '../../ReceiveResponsePanel';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
@@ -228,6 +229,24 @@ export function useReceiveAction(
             setResponseExpanded(true);
             playScanFeedback('reject');
           } else {
+            // Optimistic status flip: the POST response ALREADY carries the
+            // updated rows (workflow_status → UNBOXED/DONE + quantity_received),
+            // so patch every touched line into the table / accordion / rail
+            // within a frame instead of waiting on the fire-and-forget
+            // /api/receiving-lines refetch below (which can run 10–30s under
+            // load). dispatchUnboxRailLineUpdated is sort-safe for the Unboxed
+            // rail (strips last_activity_at / null unboxed_at). The row's rail
+            // SEGMENT move (Queue→Unboxed) reconciles on the deferred refetch;
+            // the visible dot + qty change is instant.
+            const receivedRows = Array.isArray(markData?.receiving_lines)
+              ? (markData.receiving_lines as Array<Partial<ReceivingLineRow> & { id?: unknown }>)
+              : [];
+            for (const r of receivedRows) {
+              if (typeof r?.id === 'number' && r.id > 0) {
+                dispatchUnboxRailLineUpdated(r as Partial<ReceivingLineRow> & { id: number });
+              }
+            }
+
             // Reuse the panel's verdict taxonomy: emerald = a genuine success
             // (received / scanned / already-received) → animated checklist;
             // amber/rose (no-PO-link, cooldown, rate-limit, api error) → the
@@ -299,10 +318,13 @@ export function useReceiveAction(
             }
           }
 
-          // Refresh every receiving feed atomically via the shared helper.
-          // `app-refresh-data` stays for non-receiving listeners that also key
-          // off the global signal.
-          invalidateReceivingFeeds(queryClient);
+          // Reconcile every receiving feed — but DEFER it to idle now that the
+          // optimistic dispatch above already flipped the visible row. This
+          // moves the heavy 5-root refetch stampede off the critical path so
+          // the receive reads as instant; it still reconciles the rail SEGMENT
+          // move + tile counts a beat later. `app-refresh-data` stays for the
+          // non-receiving listeners that also key off the global signal.
+          deferInvalidateReceivingFeeds(queryClient);
           window.dispatchEvent(new CustomEvent('app-refresh-data'));
 
           // Fire-and-forget row refresh. The /api/receiving-lines query can run

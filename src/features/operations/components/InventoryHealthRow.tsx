@@ -68,7 +68,7 @@ export function InventoryHealthRow() {
                   <c.Icon className="w-4 h-4" />
                 </div>
                 {isAlert && (
-                  <span className="text-role-eyebrow uppercase tracking-[0.14em] bg-rose-50 text-rose-700 rounded-full px-1.5 py-0.5">
+                  <span className="text-role-eyebrow uppercase tracking-[0.14em] bg-rose-50 text-rose-700 rounded-full inset-chip">
                     Alert
                   </span>
                 )}

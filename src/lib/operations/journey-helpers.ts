@@ -5,6 +5,7 @@ import type {
   StationActivityRow,
   CarrierEvent,
   WarrantyEventRow,
+  ThreadMessageTimelineRow,
 } from '@/lib/timeline';
 
 /**
@@ -18,13 +19,14 @@ import type {
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type JourneySource = 'sal' | 'inventory' | 'audit' | 'carrier' | 'warranty';
+export type JourneySource = 'sal' | 'inventory' | 'audit' | 'carrier' | 'warranty' | 'thread';
 export const JOURNEY_SOURCES: readonly JourneySource[] = [
   'sal',
   'inventory',
   'audit',
   'carrier',
   'warranty',
+  'thread',
 ];
 
 export type JourneyDimension = 'order' | 'serial' | 'tracking';
@@ -44,7 +46,8 @@ export type JourneyRaw =
   | InventoryTimelineRow
   | StationActivityRow
   | CarrierEvent
-  | WarrantyEventRow;
+  | WarrantyEventRow
+  | ThreadMessageTimelineRow;
 
 export interface JourneyEvent {
   source: JourneySource;
@@ -125,6 +128,9 @@ export const SOURCE_PREFIX: Record<JourneySource, string> = {
   audit: 'audit',
   carrier: 'carrier',
   warranty: 'warranty',
+  // Conversation-thread messages (entity mode only — buildBrowseQuery has no
+  // thread arm; browse coverage rides the THREAD_MESSAGE ops_events emission).
+  thread: 'thread',
 };
 
 export const DEFAULT_LIMIT = 60;

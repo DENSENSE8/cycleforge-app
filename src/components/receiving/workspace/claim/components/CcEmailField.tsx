@@ -58,7 +58,7 @@ export function CcEmailField({
       {emails.map((email) => (
         <span
           key={email}
-          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+          className="inline-flex items-center gap-1 rounded bg-blue-50 inset-chip text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
         >
           {email}
           <IconButton

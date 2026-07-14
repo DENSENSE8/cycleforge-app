@@ -41,7 +41,7 @@ export function ResultRow({ item, showOrderMeta, isSubmitting, disabled, onSelec
         type="button"
         disabled={disabled || isSubmitting}
         onClick={() => onSelect(item)}
-        className="ds-raw-button flex w-full items-center gap-3 border-b border-border-hairline px-3 py-2 text-left transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="ds-raw-button flex w-full items-center gap-3 border-b border-border-hairline inset-field text-left transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {/* Thumbnail */}
         <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-border-hairline bg-surface-canvas">
@@ -78,7 +78,7 @@ export function ResultRow({ item, showOrderMeta, isSubmitting, disabled, onSelec
               platforms.slice(0, 4).map((p, i) => (
                 <span
                   key={`${p.platform}-${i}`}
-                  className={`${microBadge} rounded bg-surface-sunken px-1.5 py-0.5 text-text-muted`}
+                  className={`${microBadge} rounded bg-surface-sunken inset-chip text-text-muted`}
                 >
                   {p.platform}
                 </span>

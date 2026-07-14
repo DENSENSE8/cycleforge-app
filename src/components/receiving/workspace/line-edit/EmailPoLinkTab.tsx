@@ -137,7 +137,7 @@ export function EmailPoLinkTab({
           {candidates.map((em) => (
             <div
               key={em.id}
-              className="rounded-lg border border-border-soft bg-surface-card px-3 py-2"
+              className="rounded-lg border border-border-soft bg-surface-card inset-field"
             >
               <div className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 <Mail className="h-3 w-3 shrink-0 text-text-faint" />

@@ -81,10 +81,10 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
         hint={template.previewLoading ? 'updating…' : undefined}
       >
         <div className="overflow-hidden rounded-lg border border-border-soft">
-          <p className="border-b border-border-soft px-3 py-2 text-role-caption font-bold text-text-default">
+          <p className="border-b border-border-soft inset-field text-role-caption font-bold text-text-default">
             {subject || <span className="font-medium text-rose-500">No subject yet</span>}
           </p>
-          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap px-3 py-2 text-role-caption font-medium leading-5 text-text-muted">
+          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap inset-field text-role-caption font-medium leading-5 text-text-muted">
             {body || <span className="text-rose-500">No body yet</span>}
           </p>
         </div>
@@ -101,7 +101,7 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
               {c.ccEmails.map((email) => (
                 <span
                   key={email}
-                  className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
+                  className="inline-flex items-center rounded bg-blue-50 inset-chip text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
                 >
                   {email}
                 </span>

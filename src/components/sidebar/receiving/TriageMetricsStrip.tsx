@@ -35,7 +35,7 @@ export function TriageMetricsStrip() {
   return (
     <div className="flex shrink-0 items-center gap-1.5 border-b border-border-hairline bg-surface-card px-3 py-1.5">
       <HoverTooltip label="Share of cartons saved for unbox while still unpaired (B5)">
-        <span className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+        <span className="inline-flex items-center gap-1 rounded bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
           Saved unpaired {formatRate(data.save_without_pair_rate)}
         </span>
       </HoverTooltip>

@@ -70,7 +70,7 @@ export interface LabelEditDraft {
 
 const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
 
 // Label-face-only platform displays appended after the org's real platforms.
 const PLATFORM_SPECIALS = ['Unfound', 'Local pickup'];

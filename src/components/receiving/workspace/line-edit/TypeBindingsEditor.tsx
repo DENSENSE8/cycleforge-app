@@ -20,7 +20,7 @@ import type { TypeRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useWorkflowNodeOptions } from '@/hooks/useCatalog';
 
 const SELECT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
 
 export function TypeBindingsEditor({
   type,

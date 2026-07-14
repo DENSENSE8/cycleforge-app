@@ -38,7 +38,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
                     if (!draft.label.trim()) setDraft((prev) => ({ ...prev, label: product.name }));
                   }}
                   /* ds-raw-button: multi-line text-left product result row (name + price + sku, selection bg) — not a Button shape */
-                  className={`ds-raw-button flex w-full items-start gap-2 px-3 py-2 text-left transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-surface-hover'}`}
+                  className={`ds-raw-button flex w-full items-start gap-2 inset-field text-left transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-surface-hover'}`}
                 >
                   {isSelected && <Check className="mt-0.5 h-3 w-3 shrink-0 text-blue-600" />}
                   <div className="min-w-0 flex-1">
@@ -67,7 +67,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
 
       {/* Selected product — two rows */}
       {selectedProduct && (
-        <div className="rounded-xl border border-blue-200 bg-surface-card px-3 py-2">
+        <div className="rounded-xl border border-blue-200 bg-surface-card inset-field">
           <p className="text-role-caption font-black leading-snug text-blue-900">{selectedProduct.name}</p>
           <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
             <span className="shrink-0 text-role-micro font-bold tabular-nums text-emerald-600">

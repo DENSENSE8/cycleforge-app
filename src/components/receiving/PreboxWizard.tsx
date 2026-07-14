@@ -184,7 +184,7 @@ export function PreboxWizard({
         {/* Serial checklist */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
           {serials.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
+            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
               No serialized units to prebox.
             </div>
           ) : (

@@ -3,7 +3,7 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { DeleteOrderRowPayload } from '@/hooks/useDeleteOrderRow';
 import { getStaffName } from '@/utils/staff';
 import { toPSTDateKey } from '@/utils/date';
-import { resolveFulfillmentLane, hasLeftWarehouse } from '@/lib/order-lifecycle';
+import { resolveFulfillmentLane, hasLeftWarehouse, carrierHasCustody } from '@/lib/order-lifecycle';
 
 /**
  * Has this order shipped (left the warehouse)? The canonical "post-dock" test —
@@ -141,6 +141,122 @@ export function resolveDeleteRequest(shipped: ShippedOrder): DeleteOrderRowPaylo
     return { rowSource: 'packing_log', activityLogId, packerLogId };
   }
   return { rowSource: 'order', orderId: targetId };
+}
+
+// ─── Order pipeline (Tested → Packed → Scanned Out) ─────────────────────────
+
+export type OrderPipelineStageKey = 'tested' | 'packed' | 'scanned_out';
+export type OrderPipelineStageState = 'done' | 'active' | 'pending';
+
+const ORDER_PIPELINE_ORDER: readonly OrderPipelineStageKey[] = ['tested', 'packed', 'scanned_out'];
+
+/** A real timestamp — non-empty and not the legacy `'1'` sentinel. */
+function hasOrderStamp(value: string | null | undefined): boolean {
+  const trimmed = String(value ?? '').trim();
+  return trimmed !== '' && trimmed !== '1';
+}
+
+/** The stamp itself when real, else null — for feeding display rows. */
+export function orderStampOrNull(value: string | null | undefined): string | null {
+  return hasOrderStamp(value) ? String(value) : null;
+}
+
+/**
+ * Which lifecycle phase the panel body should present for. The panel keeps ONE
+ * skeleton (stepper + facts) but shifts emphasis by phase — an empty order is
+ * short and action-first; a shipped order is provenance + carrier tracking.
+ *   - `pending`     — nothing done yet; no milestone rows, just a next-step line.
+ *   - `in_progress` — 1–2 milestones stamped; show only the stamped rows.
+ *   - `shipped`     — left the warehouse (scan-out or carrier custody); carrier
+ *                     status becomes a first-class fact.
+ */
+export type OrderPipelinePhase = 'pending' | 'in_progress' | 'shipped';
+
+export interface OrderPipeline {
+  states: Record<OrderPipelineStageKey, OrderPipelineStageState>;
+  phase: OrderPipelinePhase;
+  /** One-line teaching callout — the operator's next action, or "Shipped". */
+  nextStep: string;
+  /** The package has left the building (scan-out or carrier custody). */
+  postDock: boolean;
+}
+
+export interface OrderPipelineInput {
+  testedAt: string | null | undefined;
+  packedAt: string | null | undefined;
+  scannedOutAt: string | null | undefined;
+  /** Carrier status-category (`shipping_tracking_numbers.latest_status_category`). */
+  latestStatusCategory?: string | null;
+  /** SAL SHIP_CONFIRM instant — an explicit internal scan-out. */
+  shipConfirmedAt?: string | null;
+}
+
+/**
+ * Derive the full order pipeline model — stepper states, presentation phase, the
+ * next-step callout, and post-dock — from the order's stamps + carrier signals.
+ * The single SoT the panel body reads (mirrors `deriveCartonReadiness` for the
+ * receiving carton pipeline); pure, no Date.now, safe on client and server.
+ */
+export function deriveOrderPipeline(input: OrderPipelineInput): OrderPipeline {
+  const states = deriveOrderPipelineStates(input);
+  const postDock = hasLeftWarehouse({
+    shipConfirmedAt: input.shipConfirmedAt ?? input.scannedOutAt ?? null,
+    latestStatusCategory: input.latestStatusCategory ?? null,
+  });
+
+  const anyDone =
+    states.tested === 'done' || states.packed === 'done' || states.scanned_out === 'done';
+  const phase: OrderPipelinePhase = postDock || states.scanned_out === 'done'
+    ? 'shipped'
+    : anyDone
+      ? 'in_progress'
+      : 'pending';
+
+  const nextStep =
+    states.tested === 'active'
+      ? 'Awaiting testing'
+      : states.packed === 'active'
+        ? 'Awaiting pack'
+        : states.scanned_out === 'active'
+          ? 'Awaiting scan-out'
+          : carrierHasCustody({ latestStatusCategory: input.latestStatusCategory ?? null })
+            ? 'In carrier custody'
+            : 'Shipped';
+
+  return { states, phase, nextStep, postDock };
+}
+
+/**
+ * Derive the Tested → Packed → Scanned Out stepper states from the three stage
+ * stamps. Completeness-checklist semantics (not a wizard): a stage is `done`
+ * the moment its own stamp exists, regardless of order; the first unstamped
+ * stage is `active` (the next job); later unstamped stages are `pending`.
+ * Stages are never folded — packing does not imply a test happened (prepacked
+ * orders legitimately skip it), so an unstamped Tested stays honest.
+ */
+export function deriveOrderPipelineStates(stamps: {
+  testedAt: string | null | undefined;
+  packedAt: string | null | undefined;
+  scannedOutAt: string | null | undefined;
+}): Record<OrderPipelineStageKey, OrderPipelineStageState> {
+  const done: Record<OrderPipelineStageKey, boolean> = {
+    tested: hasOrderStamp(stamps.testedAt),
+    packed: hasOrderStamp(stamps.packedAt),
+    scanned_out: hasOrderStamp(stamps.scannedOutAt),
+  };
+  const states = {} as Record<OrderPipelineStageKey, OrderPipelineStageState>;
+  let activeAssigned = false;
+  for (const key of ORDER_PIPELINE_ORDER) {
+    if (done[key]) {
+      states[key] = 'done';
+    } else if (!activeAssigned) {
+      states[key] = 'active';
+      activeAssigned = true;
+    } else {
+      states[key] = 'pending';
+    }
+  }
+  return states;
 }
 
 /** Format a date value to `MM-DD-YY` in PST, or '' when absent/unparseable. */

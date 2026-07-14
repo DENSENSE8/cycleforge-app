@@ -106,7 +106,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
               transition={softSpring}
               className="overflow-hidden"
             >
-              <div className="space-y-0.5 py-1 pl-[34px] pr-1">
+              <div className={/* ds-allow-spacing — indents under the 34px icon column */ "space-y-0.5 py-1 pl-[34px] pr-1"}>
                 {page.modes.map((mode, i) => {
                   const ModeIcon = mode.icon;
                   const isModeActive = isPageActive && mode.id === highlightedModeId;
@@ -124,7 +124,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
                         type="button"
                         onClick={() => onNavigate(page.id, mode.id)}
                         className={cn(
-                          'ds-raw-button flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-role-data font-medium transition-colors',
+                          'ds-raw-button flex w-full items-center gap-2.5 rounded-lg inset-cozy text-left text-role-data font-medium transition-colors',
                           isModeActive
                             ? 'bg-blue-600 text-white'
                             : 'text-text-default hover:bg-blue-600 hover:text-white',

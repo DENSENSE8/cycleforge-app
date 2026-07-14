@@ -1,7 +1,6 @@
 import { motionDurations, motionEasings } from '@/design-system/foundations/motion';
 import { designSystemCssVariables } from '@/design-system/tokens/css-variables';
 import { baseColors, semanticColors } from '@/design-system/tokens/colors';
-import { spacing } from '@/design-system/tokens/spacing';
 import { fontFamilies } from '@/design-system/tokens/typography/families';
 import { fontSizes } from '@/design-system/tokens/typography/sizes';
 import { fontWeights } from '@/design-system/tokens/typography/weights';
@@ -48,17 +47,9 @@ export const designTokens = {
     fontSemibold: String(fontWeights.semibold),
     fontBold: String(fontWeights.bold),
   },
-  spacing: {
-    space1: spacing[1],
-    space2: spacing[2],
-    space3: spacing[3],
-    space4: spacing[4],
-    space5: spacing[5],
-    space6: spacing[6],
-    space8: spacing[8],
-    space10: spacing[10],
-    space12: spacing[12],
-  },
+  // spacing intentionally absent: the density-aware scale (spacing.mjs) is
+  // consumed by Tailwind directly; the old --space-* var emission had zero
+  // readers and its values disagreed with the rendered Tailwind scale.
 } as const;
 
 export const designTokenCssVariables: Record<string, TokenValue> = {
@@ -98,15 +89,6 @@ export const designTokenCssVariables: Record<string, TokenValue> = {
   '--font-medium': designTokens.typography.fontMedium,
   '--font-semibold': designTokens.typography.fontSemibold,
   '--font-bold': designTokens.typography.fontBold,
-  '--space-1': designTokens.spacing.space1,
-  '--space-2': designTokens.spacing.space2,
-  '--space-3': designTokens.spacing.space3,
-  '--space-4': designTokens.spacing.space4,
-  '--space-5': designTokens.spacing.space5,
-  '--space-6': designTokens.spacing.space6,
-  '--space-8': designTokens.spacing.space8,
-  '--space-10': designTokens.spacing.space10,
-  '--space-12': designTokens.spacing.space12,
   '--ds-motion-fast': motionDurations.fast,
   '--ds-motion-normal': motionDurations.normal,
   '--ds-ease-standard': motionEasings.standard,

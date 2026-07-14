@@ -154,7 +154,7 @@ export function PhotoAnalysisProviderPanel() {
               <button
                 type="button"
                 onClick={() => setProvider(opt.value)}
-                className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left transition ${
+                className={`flex w-full items-start gap-3 rounded-lg border inset-field text-left transition ${
                   selected
                     ? 'border-blue-400 bg-blue-50 ring-1 ring-inset ring-blue-400'
                     : 'border-border-soft bg-surface-card hover:bg-surface-canvas'
@@ -169,7 +169,7 @@ export function PhotoAnalysisProviderPanel() {
                   <span className="flex items-center gap-2">
                     <span className="text-role-caption font-bold text-text-default">{opt.label}</span>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${
+                      className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${
                         PRIVACY_CHIP[opt.privacy]
                       }`}
                     >
@@ -194,7 +194,7 @@ export function PhotoAnalysisProviderPanel() {
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="https://vision.yourdomain.com"
-            className="w-full rounded-lg border border-border-default px-3 py-2 text-role-caption text-text-default focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className="w-full rounded-lg border border-border-default inset-field text-role-caption text-text-default focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
           />
           <p className="text-role-caption text-text-soft">
             The Cloudflare-tunnel hostname of your box. The analysis cron runs in the cloud and

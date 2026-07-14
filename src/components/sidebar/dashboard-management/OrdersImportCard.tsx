@@ -20,7 +20,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
         value={manualSheetName}
         onChange={(e) => setManualSheetName(e.target.value)}
         placeholder="e.g., Sheet_01_14_2026"
-        className="w-full px-3 py-2 bg-surface-card border border-border-soft rounded-xl text-role-caption font-mono text-text-default outline-none focus:border-blue-500 transition-all"
+        className="w-full inset-field bg-surface-card border border-border-soft rounded-xl text-role-caption font-mono text-text-default outline-none focus:border-blue-500 transition-all"
         disabled={isTransferring}
       />
 

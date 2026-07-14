@@ -73,7 +73,7 @@ function StatusChip({ status }: { status: NormalizedShipmentStatus | null }) {
   }
   const meta = STATUS_META[status] ?? STATUS_META.UNKNOWN;
   return (
-    <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-role-micro font-semibold ring-1 ring-inset ${meta.cls}`}>
+    <span className={`inline-flex items-center rounded-md inset-chip text-role-micro font-semibold ring-1 ring-inset ${meta.cls}`}>
       {meta.label}
     </span>
   );
@@ -86,7 +86,7 @@ function kindBadge(kind: CarrierSyncShipmentDetail['kind']) {
     unchanged: 'bg-surface-canvas text-text-soft ring-border-soft',
     error: 'bg-red-50 text-red-700 ring-red-200',
   };
-  return `inline-flex items-center rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
+  return `inline-flex items-center rounded-md inset-chip text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
 }
 
 function countByKind(rows: CarrierSyncShipmentDetail[], kind: CarrierSyncShipmentDetail['kind']) {
@@ -185,27 +185,27 @@ function ShipmentTable({ rows }: { rows: CarrierSyncShipmentDetail[] }) {
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
           <tr className="text-role-micro uppercase tracking-wide text-text-soft">
-            <th className="px-3 py-2 font-semibold">Tracking</th>
-            <th className="px-3 py-2 font-semibold">Was</th>
-            <th className="px-3 py-2 font-semibold">Now</th>
-            <th className="px-3 py-2 font-semibold text-right">New events</th>
-            <th className="px-3 py-2 font-semibold text-right">Result</th>
+            <th className="inset-field font-semibold">Tracking</th>
+            <th className="inset-field font-semibold">Was</th>
+            <th className="inset-field font-semibold">Now</th>
+            <th className="inset-field font-semibold text-right">New events</th>
+            <th className="inset-field font-semibold text-right">Result</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-hairline">
           {sorted.map((row) => (
             <tr key={row.shipmentId} className="hover:bg-surface-canvas/60">
-              <td className="px-3 py-2 align-top">
+              <td className="inset-field align-top">
                 {row.tracking ? (
                   <TrackingChip value={row.tracking} display={getLast4(row.tracking)} />
                 ) : (
                   <span className="font-mono text-xs text-text-faint">#{row.shipmentId}</span>
                 )}
               </td>
-              <td className="px-3 py-2 align-top">
+              <td className="inset-field align-top">
                 <StatusChip status={row.previousStatus} />
               </td>
-              <td className="px-3 py-2 align-top">
+              <td className="inset-field align-top">
                 {row.kind === 'error' ? (
                   <HoverTooltip label={row.error ?? ''} asChild>
                     <span className="text-role-caption text-red-600">
@@ -216,10 +216,10 @@ function ShipmentTable({ rows }: { rows: CarrierSyncShipmentDetail[] }) {
                   <StatusChip status={row.newStatus} />
                 )}
               </td>
-              <td className="px-3 py-2 text-right align-top tabular-nums text-text-muted">
+              <td className="inset-field text-right align-top tabular-nums text-text-muted">
                 {row.kind === 'error' ? '—' : row.eventsInserted || '—'}
               </td>
-              <td className="px-3 py-2 text-right align-top">
+              <td className="inset-field text-right align-top">
                 <span className={kindBadge(row.kind)}>{row.kind === 'unchanged' ? 'no change' : row.kind}</span>
               </td>
             </tr>
@@ -338,18 +338,18 @@ export function CarrierSyncDialog({
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 /* ds-raw-button: segmented tab with animated layoutId underline — not a Button shape */
-                className={`ds-raw-button relative flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-semibold transition ${
+                className={`ds-raw-button relative flex items-center gap-1.5 rounded-t-lg inset-field text-sm font-semibold transition ${
                   isActive ? 'text-text-default' : 'text-text-soft hover:text-text-muted'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span className="inline-flex h-4 w-4 items-center justify-center">{statusDot(meta.status)}</span>
                 {meta.count > 0 ? (
-                  <span className="ml-0.5 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-muted">
+                  <span className="ml-0.5 rounded bg-surface-sunken inset-chip text-role-micro font-bold tabular-nums text-text-muted">
                     {meta.count}
                   </span>
                 ) : total > 0 ? (
-                  <span className="ml-0.5 rounded bg-surface-canvas px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-text-faint">
+                  <span className="ml-0.5 rounded bg-surface-canvas inset-chip text-role-micro font-semibold tabular-nums text-text-faint">
                     {total}
                   </span>
                 ) : null}

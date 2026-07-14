@@ -378,9 +378,9 @@ export function readSelectLineDetail(
 // ── Form input class tokens ─────────────────────────────────────────────────
 
 export const SELECT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card px-1.5 py-0.5 text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
+  'w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
 export const INPUT_CLASS =
-  'w-full rounded-md border border-border-soft bg-surface-card px-1.5 py-0.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
+  'w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10';
 
 // ── Type scale (sidebar + workspace share this) ─────────────────────────────
 /**

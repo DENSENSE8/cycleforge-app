@@ -32,6 +32,7 @@ Each concern has one module — never inline or re-derive:
 | Dates (civil / instant / warehouse zone) | `src/utils/date.ts` |
 | Condition labels / tones | `src/lib/conditions.ts`, `src/lib/condition-tone.ts` |
 | Z-index | `src/design-system/tokens/z-index.ts` |
+| Spacing scale + intents | `src/design-system/tokens/spacing.mjs` |
 | Integrations / capabilities | `src/lib/integrations/**` |
 | Cross-entity search | `src/lib/search/hybrid-retrieval.ts` → `SearchHit` |
 | Full list | `.claude/rules/source-of-truth.md` |
@@ -42,6 +43,9 @@ House rules name **which pattern family** to use; they do not freeze primitives 
 **"Compose, don't invent" means don't invent *beside* the SoT — not "never improve the SoT."**
 The user prompt is a **floor, not a ceiling**: on any UI / styling / layout / component / motion touch,
 scan siblings + `@/design-system/**` + golden pages for a stronger *house* pattern before implementing.
+A genuinely different job / region contract earns a **new sibling that composes the shared primitive** —
+that's growth (Always), not a fork. The fork ban targets duplicating a primitive for the **same** job;
+it never blocks serving a new one. When jobs differ, add the sibling and share the primitive underneath.
 
 ### Always
 
@@ -68,8 +72,8 @@ scan siblings + `@/design-system/**` + golden pages for a stronger *house* patte
 
 ### Never
 
-- Fork a **page-local** parallel primitive (`function SectionCard`, second KPI shell, new search engine, raw status `UPDATE`).
-- Leave **two shapes for the same job** after a polish pass when unifying the single-consumer SoT is free.
+- Fork a **page-local** parallel primitive (`function SectionCard`, second KPI shell, new search engine, raw status `UPDATE`) — compose the shared one and grow it instead. *(A genuinely different job may add a **new sibling that composes the same primitive** — that's growth, not a fork.)*
+- Leave **two shapes for the same job** after a polish pass when unifying the single-consumer SoT is free — unify them. *(Two shapes for two genuinely **different** jobs / region contracts is correct — don't collapse them just to satisfy this line.)*
 - Encode a net-new architecture **only** in prose before it exists in code — build the better SoT, then document it.
 - Import a **foreign aesthetic** that fights Kinetic Ledger tokens / region contracts. "Better" = stronger *within* Cycle Forge's DS family, not a different product.
 

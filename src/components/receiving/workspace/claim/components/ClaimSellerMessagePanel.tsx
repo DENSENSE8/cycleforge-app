@@ -49,7 +49,7 @@ export function ClaimSellerMessagePanel({ seller, filedTicket }: Props) {
           onChange={(e) => setSellerMessage(e.target.value)}
           rows={12}
           placeholder="Seller-facing message will appear here…"
-          className="block w-full resize-y rounded-lg border border-border-default bg-surface-card px-3 py-2 text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
+          className="block w-full resize-y rounded-lg border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
         />
       )}
       <p className="text-role-micro font-medium text-text-faint">

@@ -32,7 +32,7 @@ export function TechRailSearchBar({
   }, [draft, value, onChange]);
 
   return (
-    <div className="shrink-0 border-t border-border-hairline bg-surface-card px-3 py-2">
+    <div className="shrink-0 border-t border-border-hairline bg-surface-card inset-field">
       <SearchBar
         value={draft}
         onChange={setDraft}

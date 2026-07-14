@@ -620,7 +620,7 @@ function RoiSection() {
                 Avg cycle time by stage
               </p>
               {roi.avgCycleHoursByStage.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-faint">
+                <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-faint">
                   No completed stage runs in the last 7 days.
                 </div>
               ) : (

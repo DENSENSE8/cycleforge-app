@@ -375,7 +375,7 @@ export function IncomingAttachTrackingPopover({
               ) : (
                 <>
                   {/* Selected PO header + change */}
-                  <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface-canvas px-2.5 py-1.5">
+                  <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface-canvas inset-cozy">
                     <span className="min-w-0 flex-1 truncate text-role-caption font-black text-text-default">
                       {selected.po_number || selected.po_id}
                     </span>
@@ -423,9 +423,9 @@ export function IncomingAttachTrackingPopover({
                         {shownBoxes.map((b) => (
                           <li
                             key={b.id}
-                            className="flex items-center gap-2 rounded-lg border border-border-hairline px-2.5 py-1.5"
+                            className="flex items-center gap-2 rounded-lg border border-border-hairline inset-cozy"
                           >
-                            <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-muted">
+                            <span className="shrink-0 rounded bg-surface-sunken inset-chip text-role-micro tabular-nums text-text-muted">
                               Box {b.box_seq}
                             </span>
                             <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-muted">

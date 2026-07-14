@@ -18,7 +18,7 @@ interface Props {
  */
 export function ReceivingLinePicker({ rows, onPick, onCancel }: Props) {
   return (
-    <div className="border-b border-blue-200 bg-blue-50/60 px-3 py-2">
+    <div className="border-b border-blue-200 bg-blue-50/60 inset-field">
       <div className="mb-1 flex items-center justify-between">
         <p className="text-role-eyebrow uppercase tracking-wider text-blue-700">
           Pick a line

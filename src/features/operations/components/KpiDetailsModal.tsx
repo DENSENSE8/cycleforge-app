@@ -117,7 +117,7 @@ function ActivityList({ rows, emptyHint }: { rows: ActivityRow[]; emptyHint: str
               <div className="flex items-center gap-2">
                 <span className="text-role-caption font-bold uppercase tracking-wide text-text-default">{label}</span>
                 {row.source ? (
-                  <span className="rounded-full bg-surface-card px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-text-muted">
+                  <span className="rounded-full bg-surface-card inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-text-muted">
                     {row.source}
                   </span>
                 ) : null}

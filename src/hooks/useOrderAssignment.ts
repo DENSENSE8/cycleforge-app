@@ -14,6 +14,8 @@ export type OrderAssignPayload = {
   shipByDate?: string | null;
   outOfStock?: string | null;
   notes?: string | null;
+  /** Operator urgent / expedited toggle (orders.is_urgent). */
+  isUrgent?: boolean;
   shippingTrackingNumber?: string | null;
   itemNumber?: string | null;
   condition?: string | null;
@@ -71,6 +73,10 @@ export function useOrderAssignment() {
       }
       if (payload.notes !== undefined) {
         next.notes = payload.notes;
+      }
+      if (payload.isUrgent !== undefined) {
+        next.is_urgent = payload.isUrgent;
+        next.isUrgent = payload.isUrgent;
       }
       if (payload.shippingTrackingNumber !== undefined) {
         next.shipping_tracking_number = payload.shippingTrackingNumber;
@@ -164,6 +170,7 @@ export function useOrderAssignment() {
             shipByDate: payload.shipByDate,
             outOfStock: payload.outOfStock,
             notes: payload.notes,
+            isUrgent: payload.isUrgent,
             shippingTrackingNumber: payload.shippingTrackingNumber,
             itemNumber: payload.itemNumber,
             condition: payload.condition,

@@ -66,7 +66,7 @@ export function SavedViewsControl({
       <AnchoredLayer open={open} onClose={() => setOpen(false)} anchorRef={triggerRef} placement="bottom-start" gap={6}>
         <div className="w-60 rounded-xl border border-border-soft bg-surface-card py-1.5 shadow-lg">
           {views.length === 0 ? (
-            <p className="px-3 py-2 text-xs italic text-text-faint">No saved views yet.</p>
+            <p className="inset-field text-xs italic text-text-faint">No saved views yet.</p>
           ) : (
             <ul className="max-h-64 overflow-y-auto py-0.5">
               {views.map((view) => {

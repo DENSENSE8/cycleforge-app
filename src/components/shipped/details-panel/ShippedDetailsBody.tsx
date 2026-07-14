@@ -43,6 +43,8 @@ export interface ShippedDetailsBodyProps {
   isFulfillmentPanel: boolean;
   isLabelsPanel: boolean;
   showDashboardExtras: boolean;
+  /** Slide-over: render Warranty/Customer quick-link rows instead of tabs. */
+  showQuickLinks?: boolean;
   activeSection: ShippedActiveSection;
   shipped: ShippedOrder;
   durationData: DetailsStackDurationData;
@@ -76,6 +78,7 @@ export function ShippedDetailsBody({
   isFulfillmentPanel,
   isLabelsPanel,
   showDashboardExtras,
+  showQuickLinks,
   activeSection,
   shipped,
   durationData,
@@ -164,6 +167,7 @@ export function ShippedDetailsBody({
           onUpdate={onUpdate}
           showShippingTimestamp={false}
           activeSection={activeSection}
+          showQuickLinks={showQuickLinks}
         />
       );
     }
@@ -179,6 +183,7 @@ export function ShippedDetailsBody({
           showShippingTimestamp={false}
           actionBar={stackActionBar}
           activeSection={activeSection}
+          showQuickLinks={showQuickLinks}
         />
       );
     }
@@ -194,6 +199,7 @@ export function ShippedDetailsBody({
           showShippingTimestamp={false}
           actionBar={stackActionBar}
           activeSection={activeSection}
+          showQuickLinks={showQuickLinks}
         />
       );
     }
@@ -228,6 +234,7 @@ export function ShippedDetailsBody({
               onShipByDateBlur: () => { void editableFields.onSaveShipByDate(editableFields.shipByDate); },
             }}
             showShippingTimestamp={false}
+            showQuickLinks={showQuickLinks}
           />
         </div>
       </div>

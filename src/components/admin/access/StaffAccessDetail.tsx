@@ -74,7 +74,7 @@ export function StaffAccessDetail({ staffId }: StaffAccessDetailProps) {
     return <div className="p-8 text-center text-sm text-text-soft">Loading staff…</div>;
   }
   if (detail.error) {
-    return <div className="m-6 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{detail.error.message}</div>;
+    return <div className="m-6 rounded-lg bg-red-50 inset-field text-sm text-red-700">{detail.error.message}</div>;
   }
   if (!env || !matrix) return null;
 
@@ -88,7 +88,7 @@ export function StaffAccessDetail({ staffId }: StaffAccessDetailProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-6 py-6">
       {actionError && (
-        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</div>
+        <div className="rounded-lg bg-red-50 inset-field text-sm text-red-700">{actionError}</div>
       )}
 
       <IdentityCard

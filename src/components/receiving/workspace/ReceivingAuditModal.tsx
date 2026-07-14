@@ -188,7 +188,7 @@ export function ReceivingAuditModal({ open, onClose, receivingId }: Props) {
           className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+      <div className="min-h-0 flex-1 overflow-y-auto inset-field">
         {loading ? (
           <p className="py-6 text-center text-role-caption text-text-soft">Loading activity…</p>
         ) : error ? (

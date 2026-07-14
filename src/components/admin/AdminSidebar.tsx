@@ -84,7 +84,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
             <button
               type="button"
               onClick={() => onSectionChange('overview')}
-              className="ds-raw-button group flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-text-muted hover:bg-surface-sunken transition-colors"
+              className="ds-raw-button group flex w-full items-center gap-3 rounded-md inset-field text-left text-sm font-medium text-text-muted hover:bg-surface-sunken transition-colors"
               aria-label="Back to admin overview"
             >
               <ShieldCheck className="h-5 w-5 text-blue-600" />

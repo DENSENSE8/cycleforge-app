@@ -17,6 +17,7 @@ export function TechDetailsStack({
   onUpdate,
   actionBar: _actionBar,
   activeSection,
+  showQuickLinks,
 }: DetailsStackProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -188,6 +189,7 @@ export function TechDetailsStack({
         }}
         showPackingPhotos={false}
         activeSection={activeSection}
+        showQuickLinks={showQuickLinks}
       />
       </div>
 

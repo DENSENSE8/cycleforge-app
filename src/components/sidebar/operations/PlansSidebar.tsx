@@ -135,7 +135,7 @@ export function PlansSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                     </p>
                     <span
                       className={cn(
-                        'shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+                        'shrink-0 rounded inset-chip text-role-micro uppercase tracking-widest ring-1 ring-inset',
                         PLAN_STATUS_TONE[plan.status] ?? PLAN_STATUS_TONE.draft,
                       )}
                     >

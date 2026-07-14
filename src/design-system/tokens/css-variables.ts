@@ -3,7 +3,6 @@ import { borderStyles, borderWidths } from './borders';
 import { baseColors, semanticColors } from './colors';
 import { radii } from './radii';
 import { shadows } from './shadows';
-import { spacing } from './spacing';
 import { fontFamilies } from './typography/families';
 import { fontSizes, letterSpacings, lineHeights } from './typography/sizes';
 import { fontWeights } from './typography/weights';
@@ -23,7 +22,9 @@ const designSystemTokenTree = {
     lineHeight: lineHeights,
     letterSpacing: letterSpacings,
   },
-  spacing,
+  // spacing intentionally absent: the density-aware scale lives in
+  // spacing.mjs and is consumed by Tailwind directly (theme.extend.spacing);
+  // the old --ds-spacing-* var emission had zero readers.
   radius: radii,
   border: {
     width: borderWidths,

@@ -49,7 +49,7 @@ export function IdentityCard({
           <div className="mt-1 flex items-center gap-2">
             <span className="text-role-caption text-text-faint">#{staff.id}</span>
             {isAdmin && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
+              <span className="inline-flex items-center rounded-full bg-amber-100 inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
                 All Access
               </span>
             )}

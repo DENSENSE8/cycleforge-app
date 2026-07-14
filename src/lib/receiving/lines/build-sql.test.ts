@@ -15,6 +15,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import {
+  UNBOX_OPENED_PREDICATE_SQL,
+  UNBOX_OPENED_PREDICATE_COLUMN_ONLY_SQL,
+} from '@/lib/receiving/unbox-scan-opened';
 import { parseReceivingLinesQuery } from './query';
 import {
   buildReceivingLinesListSql,
@@ -134,6 +138,46 @@ for (const combo of LIST_COMBOS) {
     assert.deepEqual(next.count.params, legacy.count.params, 'count params drifted from legacy');
   });
 }
+
+// Layer 1 (rail read-after-write): the `unboxRailColumnRead` flag swaps the
+// view=unbox_opened MEMBERSHIP predicate (the WHERE arm) — not the timestamp
+// join, which keeps reading ops_events for display. Off (default) = legacy
+// column ∪ ops_events OR-arm; on = committed-column-only, so a refetch right
+// after a mutation can't transiently miss the carton. Pin both branches against
+// the exact predicate constants (the timestamp join still mentions the event).
+test('unbox_opened membership: flag OFF uses the column ∪ ops_events OR-arm', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=unbox_opened')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+    // unboxRailColumnRead omitted → defaults false
+  });
+  assert.ok(
+    built.list.sql.includes(UNBOX_OPENED_PREDICATE_SQL),
+    'flag-off must use the OR-arm membership predicate',
+  );
+});
+
+test('unbox_opened membership: flag ON reads the committed column only', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=unbox_opened')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+    unboxRailColumnRead: true,
+  });
+  assert.ok(
+    built.list.sql.includes(UNBOX_OPENED_PREDICATE_COLUMN_ONLY_SQL),
+    'flag-on reads the committed receiving_unbox.opened_at column only',
+  );
+  assert.ok(
+    !built.list.sql.includes(UNBOX_OPENED_PREDICATE_SQL),
+    'flag-on must drop the OR-arm membership predicate',
+  );
+});
 
 // ── Single-row and by-receiving-id branches ───────────────────────────────────
 

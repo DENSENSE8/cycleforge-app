@@ -239,7 +239,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                     setEditTitle(e.target.value);
                     setIsEditing(true);
                   }}
-                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+                  className="w-full rounded-lg border border-border-soft bg-surface-card inset-field text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
                 />
               </FieldRow>
               <FieldRow label="ASIN">
@@ -250,7 +250,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                     setEditAsin(e.target.value);
                     setIsEditing(true);
                   }}
-                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+                  className="w-full rounded-lg border border-border-soft bg-surface-card inset-field font-mono text-role-caption outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
                 />
               </FieldRow>
               <FieldRow label="SKU">
@@ -261,7 +261,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                     setEditSku(e.target.value);
                     setIsEditing(true);
                   }}
-                  className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+                  className="w-full rounded-lg border border-border-soft bg-surface-card inset-field font-mono text-role-caption outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
                 />
               </FieldRow>
 
@@ -413,7 +413,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={productTitle}
                   onChange={(e) => setProductTitle(e.target.value)}
                   placeholder="Enter product title"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
               <Field label="ASIN">
@@ -422,7 +422,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={asin}
                   onChange={(e) => setAsin(e.target.value)}
                   placeholder="Enter ASIN"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
               <Field label="SKU">
@@ -431,7 +431,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   placeholder="Enter SKU"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
               <Field label="FNSKU">
@@ -440,7 +440,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   value={fnsku}
                   onChange={(e) => setFnsku(e.target.value.toUpperCase())}
                   placeholder="Enter FNSKU"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption outline-none focus:border-blue-500"
+                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
                 />
               </Field>
             </div>

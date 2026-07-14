@@ -19,7 +19,7 @@ export function PoSuggestBanner({ suggestions }: { suggestions: PoSuggestionsCon
 
   if (loading) {
     return (
-      <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+      <div className="mb-2 flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Checking for a tracking match…
       </div>
@@ -37,7 +37,7 @@ export function PoSuggestBanner({ suggestions }: { suggestions: PoSuggestionsCon
       {candidates.map((po) => (
         <div
           key={po.zoho_purchaseorder_id}
-          className="flex items-center gap-2 rounded-lg border border-emerald-200/70 bg-surface-card px-3 py-2"
+          className="flex items-center gap-2 rounded-lg border border-emerald-200/70 bg-surface-card inset-field"
         >
           <div className="min-w-0 flex-1">
             <p className="truncate text-role-caption font-bold text-text-default">

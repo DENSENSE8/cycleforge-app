@@ -174,7 +174,7 @@ export function VelocityAndDeadStock() {
                     <p className="text-role-micro font-medium text-text-muted font-mono truncate">{row.sku}</p>
                   </div>
                   {row.velocity_tier && (
-                    <span className={`text-role-eyebrow uppercase tracking-wider px-1.5 py-0.5 rounded-full ${velocityTierMeta(row.velocity_tier).ring} ${
+                    <span className={`text-role-eyebrow uppercase tracking-wider inset-chip rounded-full ${velocityTierMeta(row.velocity_tier).ring} ${
                       row.velocity_tier === 'A' ? 'text-emerald-700' :
                       row.velocity_tier === 'B' ? 'text-amber-700' :
                       row.velocity_tier === 'C' ? 'text-orange-700' : 'text-rose-700'

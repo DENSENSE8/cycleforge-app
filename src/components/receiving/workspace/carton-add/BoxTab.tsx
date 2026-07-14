@@ -172,7 +172,7 @@ export function BoxTab({
             <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
           </div>
         ) : error ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption text-amber-800">{error}</div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 inset-field text-role-caption text-amber-800">{error}</div>
         ) : openBoxes.length === 0 ? (
           <p className="px-1 py-2 text-role-caption text-text-faint">No open boxes yet.</p>
         ) : (
@@ -183,7 +183,7 @@ export function BoxTab({
                   type="button"
                   onClick={() => void assignExisting(b)}
                   disabled={busyId != null || noUnits}
-                  className="ds-raw-button flex w-full items-center gap-2 rounded-lg border border-border-soft px-3 py-2 text-left transition-colors hover:border-teal-300 hover:bg-teal-50/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ds-raw-button flex w-full items-center gap-2 rounded-lg border border-border-soft inset-field text-left transition-colors hover:border-teal-300 hover:bg-teal-50/60 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Package className="h-4 w-4 shrink-0 text-teal-600" />
                   <span className="flex-1 truncate text-role-caption font-bold text-text-default">{b.code}</span>

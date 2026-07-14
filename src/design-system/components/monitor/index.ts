@@ -11,7 +11,7 @@ export {
 export { SectionCard, type MonitorSectionCardProps } from './SectionCard';
 export { KpiTile, type KpiTileProps } from './KpiTile';
 export { KpiStrip, type KpiStripProps } from './KpiStrip';
-export { MetricTile, type MetricTileProps, type MetricIntent } from './MetricTile';
+export { MetricTile, metricIntentTextClass, type MetricTileProps, type MetricIntent } from './MetricTile';
 export { MetricRing } from './MetricRing';
 export { DeltaChip, type DeltaChipProps } from './DeltaChip';
 export { MonitorListBlock, MonitorListRow, type MonitorListBlockProps, type MonitorListRowProps } from './MonitorListBlock';

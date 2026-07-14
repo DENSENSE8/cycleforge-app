@@ -1,33 +1,23 @@
-export const spacing = {
-  0: '0',
-  px: '1px',
-  1: '0.2rem',
-  2: '0.4rem',
-  3: '0.6rem',
-  4: '0.9rem',
-  5: '1.2rem',
-  6: '1.6rem',
-  8: '2rem',
-  10: '2.4rem',
-  12: '2.8rem',
-  16: '3.6rem',
-  20: '4.4rem',
-  24: '5.2rem',
-  rhythmMajor: '0.9rem',
-  ledgerTight: '0.2rem',
-  ledgerCompact: '0.4rem',
-  ledgerComfort: '0.6rem',
-} as const;
+/**
+ * Density-aware spacing scale — the single source of truth for
+ * padding/margin/gap steps.
+ *
+ * Values live in `spacing.mjs` (Node-native ESM for tailwind.config — see
+ * `.claude/rules/build-gotchas.md`); this module re-exports them with
+ * TypeScript types for app code, mirroring `z-index.ts`.
+ *
+ * Usage:
+ *   - Tailwind: `p-3` / `gap-2` / `space-y-6` — the numeric scale itself is
+ *     density-aware (wired in tailwind.config.ts from spacing.mjs), so
+ *     existing utilities pick it up with no class rename.
+ *   - Inline style (rare): `style={{ padding: spacingScale[3] }}`.
+ *
+ * The old static `spacing`/`density` exports (a bespoke 0.2/0.4/0.6rem scale
+ * plus px/py preset maps) were retired when the scale was wired (spacing
+ * token-leakage plan Phase 1): nothing read the CSS vars they fed, and their
+ * values disagreed with the Tailwind scale the app actually renders with.
+ */
+export { spacingScale } from './spacing.mjs';
 
-/** Density presets — standard px/py/gap combos used across components */
-export const density = {
-  /** Table rows, compact data */
-  compact: { px: '0.5rem', py: '0.375rem', gap: '0.375rem' },
-  /** Sidebar rows, cards */
-  standard: { px: '0.75rem', py: '0.5rem', gap: '0.5rem' },
-  /** Form fields, panels */
-  spacious: { px: '1rem', py: '0.75rem', gap: '0.75rem' },
-} as const;
-
-export type Spacing = typeof spacing;
-export type Density = typeof density;
+export type SpacingScale = typeof import('./spacing.mjs').spacingScale;
+export type SpacingKey = keyof SpacingScale;

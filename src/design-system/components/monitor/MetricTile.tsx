@@ -17,6 +17,15 @@ const INTENT_TEXT: Record<MetricIntent, string> = {
   neutral: 'text-text-info',
 };
 
+/**
+ * The one intent→tone map, exported so sibling Monitor surfaces (the outbound
+ * attention strip) tone their heroes/dots from the SAME source — never a
+ * page-local fork of these four tokens.
+ */
+export function metricIntentTextClass(intent: MetricIntent): string {
+  return INTENT_TEXT[intent];
+}
+
 export type MetricTileProps = {
   label: string;
   /** The hero readout shown in the ring center — "96%", "3.2h", or a count. */

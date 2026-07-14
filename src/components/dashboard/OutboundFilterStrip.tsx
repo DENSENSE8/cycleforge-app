@@ -6,7 +6,7 @@
  * - {@link OutboundExactFilters} — ◀ + expanded status chips
  * - {@link OutboundAllFilterButton} — All N (only count on this control)
  *
- * Layout in header: … | [◀ filters…] [All N] | staff / table controls
+ * Layout in header: … | [Urgent] [filters…] [◀] [All N] | staff / table controls
  *
  * Keyboard (capture, To Ship only, when not typing):
  *   `A` = All · `1`/`2`/`3` = Pending/Tested/Blocked
@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft } from '@/components/Icons';
+import { ChevronLeft, Zap } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -38,7 +38,7 @@ type FilterMode = 'unshipped' | 'packed' | 'shipped';
 const UNSHIPPED_ITEMS: { state: UnshippedLegendKey; short: string }[] = [
   { state: 'PENDING', short: 'Pending' },
   { state: 'TESTED', short: 'Tested' },
-  { state: 'BLOCKED', short: 'Blocked' },
+  { state: 'BLOCKED', short: 'Out of stock' },
 ];
 
 const SHIPPED_ITEMS: { state: OutboundState; short: string; fold?: OutboundState }[] = [
@@ -71,8 +71,9 @@ function useToShipFilterActions() {
   const router = useRouter();
   const pathname = usePathname();
   const active = parseUstatus(searchParams.get('ustatus'));
-  const lateOnly = searchParams.get('late') === '1';
-  const attentionOnly =
+  // Wire param stays `attention` (deep-link / saved-pref stability); meaning is
+  // now "urgent only" — operator-flagged expedited rows (orders.is_urgent).
+  const urgentOnly =
     searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
 
   const replaceParams = useCallback(
@@ -110,18 +111,8 @@ function useToShipFilterActions() {
     [replaceParams],
   );
 
-  const toggleLateOnly = useCallback(() => {
-    replaceParams((p) => {
-      if (p.get('late') === '1') p.delete('late');
-      else {
-        p.set('late', '1');
-        p.delete('attention');
-      }
-    });
-  }, [replaceParams]);
-
-  /** Needs attention = blocked ∪ late (fire queue). */
-  const toggleAttention = useCallback(() => {
+  /** Urgent = operator-flagged expedited rows (orders.is_urgent). */
+  const toggleUrgent = useCallback(() => {
     replaceParams((p) => {
       if (p.get('attention') === '1' || p.get('attention') === 'true') {
         p.delete('attention');
@@ -134,11 +125,11 @@ function useToShipFilterActions() {
     });
   }, [replaceParams]);
 
-  return { active, lateOnly, attentionOnly, selectAll, toggle, toggleLateOnly, toggleAttention };
+  return { active, urgentOnly, selectAll, toggle, toggleUrgent };
 }
 
 export function useToShipFilterHotkeys(enabled: boolean) {
-  const { selectAll, toggle, toggleAttention } = useToShipFilterActions();
+  const { selectAll, toggle, toggleUrgent } = useToShipFilterActions();
 
   useEffect(() => {
     if (!enabled) return;
@@ -154,10 +145,10 @@ export function useToShipFilterHotkeys(enabled: boolean) {
         selectAll();
         return;
       }
-      if (code === 'Digit4' || code === 'Numpad4' || code === 'KeyE') {
+      if (code === 'Digit4' || code === 'Numpad4' || code === 'KeyU') {
         e.preventDefault();
         e.stopPropagation();
-        toggleAttention();
+        toggleUrgent();
         return;
       }
       const digitMap: Record<string, UnshippedLegendKey> = {
@@ -178,7 +169,7 @@ export function useToShipFilterHotkeys(enabled: boolean) {
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [enabled, selectAll, toggle, toggleAttention]);
+  }, [enabled, selectAll, toggle, toggleUrgent]);
 }
 
 function ExpandFiltersButton({
@@ -244,10 +235,9 @@ export function OutboundExactFilters({ mode }: { mode: FilterMode }) {
 }
 
 function ToShipExactFilters() {
-  const { active, lateOnly, attentionOnly, toggle, toggleLateOnly, toggleAttention } =
-    useToShipFilterActions();
+  const { active, urgentOnly, toggle, toggleUrgent } = useToShipFilterActions();
   const [expanded, setExpanded] = useState(false);
-  const hasExactFilter = lateOnly || attentionOnly || active != null;
+  const hasExactFilter = urgentOnly || active != null;
 
   useEffect(() => {
     if (hasExactFilter) setExpanded(true);
@@ -255,13 +245,17 @@ function ToShipExactFilters() {
 
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-      <ExpandFiltersButton
-        open={expanded}
-        onToggle={() => setExpanded((o) => !o)}
-        hot={hasExactFilter}
-        labelOpen="Hide filters"
-        labelClosed="Show filters · 1 Pending · 2 Tested · 3 Blocked · 4 Attention"
-      />
+      <HoverTooltip label="Operator-flagged urgent / expedited orders. Shortcut 4 / U" asChild>
+        <ToolbarButton
+          active={urgentOnly}
+          aria-pressed={urgentOnly}
+          onClick={toggleUrgent}
+          aria-label="Urgent"
+        >
+          <Zap className={cn('h-3.5 w-3.5 shrink-0 text-amber-500', urgentOnly && 'fill-current')} />
+          <span>Urgent</span>
+        </ToolbarButton>
+      </HoverTooltip>
       <ExpandedFiltersShell open={expanded}>
         {UNSHIPPED_ITEMS.map(({ state, short }) => {
           const isOn = active === state;
@@ -280,19 +274,14 @@ function ToShipExactFilters() {
             </HoverTooltip>
           );
         })}
-        <HoverTooltip label="Blocked or past deadline — fire queue. Shortcut 4 / E" asChild>
-          <ToolbarButton
-            active={attentionOnly}
-            aria-pressed={attentionOnly}
-            onClick={toggleAttention}
-          >
-            Needs attention
-          </ToolbarButton>
-        </HoverTooltip>
-        <ToolbarButton active={lateOnly} aria-pressed={lateOnly} onClick={toggleLateOnly}>
-          Late only
-        </ToolbarButton>
       </ExpandedFiltersShell>
+      <ExpandFiltersButton
+        open={expanded}
+        onToggle={() => setExpanded((o) => !o)}
+        hot={hasExactFilter}
+        labelOpen="Hide filters"
+        labelClosed="Show filters · 1 Pending · 2 Tested · 3 Blocked · 4 Urgent"
+      />
     </div>
   );
 }
@@ -346,7 +335,7 @@ export function OutboundAllFilterButton({ mode }: { mode: FilterMode }) {
 
 function ToShipAllButton() {
   const { data } = useQuery(unshippedQueueCountsQuery());
-  const { active, lateOnly, attentionOnly, selectAll } = useToShipFilterActions();
+  const { active, urgentOnly, selectAll } = useToShipFilterActions();
   const fromCombos = fulfillmentCountsFromCombos(data?.combos ?? []);
   const counts = useMemo(
     () => ({
@@ -357,7 +346,7 @@ function ToShipAllButton() {
     [fromCombos.PENDING, fromCombos.TESTED, fromCombos.BLOCKED, data?.byStage.pending, data?.byStage.tested],
   );
   const allCount = counts.PENDING + counts.TESTED + counts.BLOCKED;
-  const allActive = active == null && !lateOnly && !attentionOnly;
+  const allActive = active == null && !urgentOnly;
 
   return (
     <ToolbarButton

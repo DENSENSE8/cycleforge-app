@@ -144,6 +144,9 @@ export function AuthProvider({ initial = null, children }: ProviderProps) {
       // swallow — even if the server call fails, drop the local user
     }
     setUser(null);
+    // Rail first-paint seeds now live in Upstash keyed per org + viewer with a
+    // short TTL (see rail-snapshot-cache.ts) — no browser-side purge needed; a
+    // different login simply reads its own (or an empty) seed.
     if (typeof window !== 'undefined') {
       window.location.href = '/signin';
     }

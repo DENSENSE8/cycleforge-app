@@ -8,7 +8,7 @@ import type { EcwidProductSearchController } from './useEcwidProductSearch';
 export function EcwidSearchHeader({ c, onClose }: { c: EcwidProductSearchController; onClose: () => void }) {
   const { popoverMode, manualTitleMode, searchFieldOverride, searchField, orderScope } = c;
   return (
-    <div className="flex items-center justify-between border-b border-border-hairline px-3 py-2">
+    <div className="flex items-center justify-between border-b border-border-hairline inset-field">
       {popoverMode === 'search' && !manualTitleMode && searchFieldOverride ? (
         <span className={`${microBadge} text-text-muted`}>Search inventory catalog</span>
       ) : popoverMode === 'search' && !manualTitleMode ? (

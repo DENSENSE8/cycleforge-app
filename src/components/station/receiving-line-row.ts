@@ -218,6 +218,14 @@ export interface ReceivingLineRow {
   /** Server stamp when a receiving label was first printed for this line (Print step). */
   label_printed_at?: string | null;
   /**
+   * Operator waived the serial for this line (no serial available — cable / bulk
+   * part / return with none). Durable `receiving_line_testing.serial_absent`;
+   * completes the Unbox stepper's Serial step alongside a captured serial.
+   */
+  serial_absent?: boolean;
+  /** Class-D `serial_absent_reason` vocabulary code for the waiver; null when not waived. */
+  serial_absent_reason?: string | null;
+  /**
    * Rail fetcher stamp — line + distinct-SKU counts for adaptive title mode
    * (unbox Recent per-carton; door-scan per-PO). Set client-side only.
    */

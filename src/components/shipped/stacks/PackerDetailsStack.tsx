@@ -15,6 +15,7 @@ export function PackerDetailsStack({
   onUpdate,
   actionBar: _actionBar,
   activeSection,
+  showQuickLinks,
 }: DetailsStackProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteArmed, setIsDeleteArmed] = useState(false);
@@ -90,6 +91,7 @@ export function PackerDetailsStack({
         onCopyAll={onCopyAll}
         onUpdate={onUpdate}
         activeSection={activeSection}
+        showQuickLinks={showQuickLinks}
       />
       </div>
 

@@ -77,9 +77,9 @@ export function OutboundWorkspaceHeader({
         activeTab={active}
         onTabChange={(id) => onSelectView(id as DashboardOrderView)}
         className="w-auto shrink-0"
-        highContrast
+        variant="solid"
         countStyle="plain"
-        railClassName="rounded-full bg-surface-sunken p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]"
+        railClassName="rounded-full border border-border-default bg-surface-card p-1 shadow-sm"
       />
 
       <div className="min-w-0 flex-1" aria-hidden />

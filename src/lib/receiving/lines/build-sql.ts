@@ -22,7 +22,7 @@ import {
 } from '@/lib/receiving/delivered-unscanned';
 import { notInboundMirrorTerminalPredicate } from '@/lib/inbound/mirror';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
-import { UNBOX_OPENED_PREDICATE_SQL } from '@/lib/receiving/unbox-scan-opened';
+import { unboxOpenedPredicateSql } from '@/lib/receiving/unbox-scan-opened';
 import { priorityRankSql, laneRankSql } from '@/lib/receiving/display/precedence';
 import { receivingHistorySkipsUnmatchedPlaceholders } from '@/lib/receiving-history-search';
 import {
@@ -117,6 +117,8 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
                 rlt.condition_set_at                         AS condition_set_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                COALESCE(rlt.serial_absent, false)           AS serial_absent,
+                rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
                 rz.zoho_item_id                              AS zoho_item_id,
                 rz.zoho_line_item_id                         AS zoho_line_item_id,
@@ -274,6 +276,8 @@ export function buildReceivingLinesByReceivingIdSql(
                 COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
                 rlt.condition_set_at                         AS condition_set_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                COALESCE(rlt.serial_absent, false)           AS serial_absent,
+                rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
                 rz.zoho_item_id                              AS zoho_item_id,
                 rz.zoho_line_item_id                         AS zoho_line_item_id,
@@ -382,6 +386,13 @@ export interface ReceivingLinesListSqlInput {
   universalIncoming: boolean;
   /** `!isReceivingPhysicalStateFirst() || hideZohoReceived` (view=scanned). */
   applyScannedZohoExclusion: boolean;
+  /**
+   * `isUnboxRailColumnRead()` — when true, `view=unbox_opened` membership reads
+   * ONLY the committed `receiving_unbox.opened_at` column (read-after-write
+   * consistent), instead of the legacy column ∪ ops_events OR-arm. Optional /
+   * defaults false so the flag-off SQL stays byte-identical (build-sql.test.ts).
+   */
+  unboxRailColumnRead?: boolean;
 }
 
 /**
@@ -397,6 +408,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
   } = input.query;
   const { orgId, viewerStaffId, universalIncoming, applyScannedZohoExclusion } = input;
+  // view=unbox_opened membership predicate — column-only (read-after-write
+  // consistent) when the flag is on, else the legacy OR-arm. Defaulting the
+  // flag to false keeps the emitted SQL byte-identical (pinned by build-sql.test.ts).
+  const unboxOpenedPredicate = unboxOpenedPredicateSql(input.unboxRailColumnRead === true);
 
   // view=viewed only: the requesting operator, whose recently-opened lines
   // (receiving_line_views) this feed returns. `viewedParamIdx` is the $N of the
@@ -622,7 +637,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
               AND p.organization_id = rl.organization_id
          )
          -- Unbox-surface scans belong in view=unbox_opened only — never triage.
-         AND NOT ${UNBOX_OPENED_PREDICATE_SQL}`,
+         AND NOT ${unboxOpenedPredicate}`,
     );
     // Phase 2: only hide Zoho-received POs when the physical-state-first flag
     // is off OR the operator opted in via the "Hide Zoho-received" toggle
@@ -633,8 +648,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     }
   } else if (view === 'unbox_opened') {
     // Unbox sidebar work queue: every carton the operator scanned on the Unbox
-    // surface (ops_events UNBOX_SCAN_OPENED), found or unfound, unboxed or not.
-    conditions.push(UNBOX_OPENED_PREDICATE_SQL);
+    // surface, found or unfound, unboxed or not. Membership reads the committed
+    // opened_at column (column-only when the flag is on; see unboxOpenedPredicate).
+    conditions.push(unboxOpenedPredicate);
   } else if (view === 'testing') {
     // "Testing" = the recently-tested feed, backed by the testing_results
     // log. A line qualifies once it has at least one recorded verdict; when
@@ -1104,6 +1120,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 COALESCE(rlt.disposition_audit, '[]'::jsonb) AS disposition_audit,
                 rlt.condition_set_at                         AS condition_set_at,
                 rlt.label_printed_at                         AS label_printed_at,
+                COALESCE(rlt.serial_absent, false)           AS serial_absent,
+                rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
                 rz.zoho_item_id                              AS zoho_item_id,
                 rz.zoho_line_item_id                         AS zoho_line_item_id,
@@ -1429,7 +1447,12 @@ export function shouldIncludeUnboxOpenedPlaceholders(query: ReceivingLinesQuery)
 export function buildUnboxOpenedPlaceholdersSql(
   query: ReceivingLinesQuery,
   orgId: string,
+  // Column-only membership when the rail read flag is on — must match the main
+  // list query's predicate so a carton is in exactly one of (lined, placeholder).
+  // Defaults false so the flag-off SQL stays byte-identical (build-sql.test.ts).
+  unboxRailColumnRead = false,
 ): BuiltListSql {
+  const unboxOpenedPredicate = unboxOpenedPredicateSql(unboxRailColumnRead);
   const { search, searchField } = query;
   const unboxSearchVals: unknown[] = [orgId];
   let unboxSearchSql = '';
@@ -1506,7 +1529,7 @@ export function buildUnboxOpenedPlaceholdersSql(
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
            ) unbox_open ON TRUE
            WHERE r.organization_id = $1
-             AND ${UNBOX_OPENED_PREDICATE_SQL}
+             AND ${unboxOpenedPredicate}
              AND NOT EXISTS (
                SELECT 1 FROM receiving_line rl
                 WHERE rl.receiving_id = r.id
@@ -1525,7 +1548,7 @@ export function buildUnboxOpenedPlaceholdersSql(
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
              LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
             WHERE r.organization_id = $1
-              AND ${UNBOX_OPENED_PREDICATE_SQL}
+              AND ${unboxOpenedPredicate}
               AND NOT EXISTS (
                 SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id

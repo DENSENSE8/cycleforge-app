@@ -58,8 +58,13 @@ export function ReturnScanCard({
       }
       noSerialSlot={
         onSerialAbsentChange ? (
+          // fullWidth + hideClear: the committed bar fills the field (same width
+          // as the Serial input) and the SerialCard trailing green-check owns the
+          // on/off toggle — so "checked" and "acknowledged" stay the same width.
           <NoSerialControl
             absent
+            fullWidth
+            hideClear
             reason={serialAbsentReason ?? null}
             required={requireSerialConfirmation ?? false}
             onChange={onSerialAbsentChange}
@@ -71,7 +76,7 @@ export function ReturnScanCard({
         // the imported line row (and the bound PO# / platform chips) ARE the
         // result; no match band.
         isSubmitting ? (
-          <div className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption font-bold uppercase tracking-wider text-text-muted">
+          <div className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-canvas inset-field text-role-caption font-bold uppercase tracking-wider text-text-muted">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
             Recording serial…
           </div>

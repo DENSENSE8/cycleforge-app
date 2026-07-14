@@ -134,10 +134,7 @@ export function LinePoItemsSection({
         serialAbsent={c.serialAbsent}
         serialAbsentReason={c.serialAbsentReason}
         requireSerialConfirmation={c.requireSerialConfirmation}
-        onSerialAbsentChange={({ absent, reason }) => {
-          c.setSerialAbsent(absent);
-          c.setSerialAbsentReason(reason);
-        }}
+        onSerialAbsentChange={({ absent, reason }) => c.commitSerialAbsent({ absent, reason })}
         linkedOrderHint={{
           source: row.receiving_source ?? null,
           zoho_purchaseorder_id: row.zoho_purchaseorder_id ?? null,
@@ -226,10 +223,7 @@ export function LinePoItemsSection({
           serialAbsent={c.serialAbsent}
           serialAbsentReason={c.serialAbsentReason}
           requireSerialConfirmation={c.requireSerialConfirmation}
-          onSerialAbsentChange={({ absent, reason }) => {
-            c.setSerialAbsent(absent);
-            c.setSerialAbsentReason(reason);
-          }}
+          onSerialAbsentChange={({ absent, reason }) => c.commitSerialAbsent({ absent, reason })}
           serialStepActive={activeStep === 'serial'}
         />
       )}

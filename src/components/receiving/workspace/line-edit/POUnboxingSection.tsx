@@ -1,19 +1,19 @@
 'use client';
 
 /**
- * POUnboxingSection — the unified Unboxing / Package-Pairing wrapper.
+ * POUnboxingSection — the PO Items + Package-Pairing card.
  *
- * Unbox mode shows PO Items by default with an optional "Units on carton"
- * eyebrow link (not a full tab bar). Package Pairing collapses by default.
+ * Renders the PO-items accordion by default with the "Edit PO" pencil that
+ * reveals Package Pairing. Units-on-carton and Notes/Label are NO LONGER shown
+ * here — they are top-level tabs owned by {@link LineEditPanel}'s section
+ * switcher (`StationSectionTabs`). This card is just the "Items" tab body.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Package, Pencil } from '@/components/Icons';
+import { Pencil } from '@/components/Icons';
 import { WorkspaceCard } from '@/design-system/components';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CartonUnitsRollupBody } from '../CartonUnitsRollup';
 import { LinePoItemsSection } from './LinePoItemsSection';
 import { LineMatchingSection } from './LineMatchingSection';
 import { UnfoundMatchStrip } from './UnfoundMatchStrip';
@@ -21,16 +21,7 @@ import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable'
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
 import type { ReceivingStepKey } from '../derive-receiving-step-states';
-import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
-import { WorkspaceSectionTitle } from '../WorkspaceSectionLabel';
-
-type PoCartonView = 'po-items' | 'units';
-
-interface SiblingsResponse {
-  success: boolean;
-  receiving_lines: ReceivingLineRow[];
-}
 
 interface POUnboxingSectionProps {
   row: ReceivingLineRow;
@@ -45,6 +36,15 @@ interface POUnboxingSectionProps {
   onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   includeLinkedPoItems?: boolean;
   activeStep?: ReceivingStepKey | null;
+  /**
+   * Hide the "PO items · N" header + the internal Edit-PO pencil — the parent
+   * (the unbox tab row) owns them. Package Pairing is then controlled via
+   * `pairingOpen`/`onPairingToggle`. Triage omits this and keeps the header.
+   */
+  suppressItemsHeader?: boolean;
+  /** Controlled Package-Pairing open state; uncontrolled (internal) if omitted. */
+  pairingOpen?: boolean;
+  onPairingToggle?: () => void;
 }
 
 export function POUnboxingSection({
@@ -60,74 +60,41 @@ export function POUnboxingSection({
   onItemDescSaved,
   includeLinkedPoItems = true,
   activeStep = null,
+  suppressItemsHeader = false,
+  pairingOpen: pairingOpenProp,
+  onPairingToggle,
 }: POUnboxingSectionProps) {
   const receivingId = row.receiving_id ?? null;
   const linkedPo = !c.isUnfound && !shouldUseUnmatchedItemsSurface(row);
   const showPoItems = poItems || (includeLinkedPoItems && matching && linkedPo);
   const showPairing = matching;
-  const tabbedPoItems = poItems && showPoItems;
 
-  const [view, setView] = useState<PoCartonView>('po-items');
   // Package Pairing is collapsed by default for every carton (unfound included);
-  // the "Edit PO" pencil in the header opens it. Auto-match stays visible above.
-  const [pairingOpen, setPairingOpen] = useState(false);
+  // the "Edit PO" pencil opens it. Uncontrolled here for triage; the unbox tab
+  // row lifts the state up and drives it via props.
+  const [internalPairingOpen, setInternalPairingOpen] = useState(false);
+  const pairingIsOpen = pairingOpenProp ?? internalPairingOpen;
+  const togglePairing = onPairingToggle ?? (() => setInternalPairingOpen((v) => !v));
   const canCollapsePairing = showPoItems && showPairing;
-  const pairingCollapsed = canCollapsePairing ? !pairingOpen : false;
+  const pairingCollapsed = canCollapsePairing ? !pairingIsOpen : false;
   const showAutoMatch = c.isUnfound;
 
-  const siblingsEnabled = tabbedPoItems && typeof receivingId === 'number' && receivingId > 0;
-  const { data: siblingsData } = useQuery<SiblingsResponse>({
-    queryKey: receivingSiblingsQueryKey(receivingId ?? 0),
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
-      );
-      if (!res.ok) throw new Error('Failed to fetch carton siblings');
-      return res.json();
-    },
-    enabled: siblingsEnabled,
-    staleTime: 15_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const lineCount = siblingsData?.receiving_lines?.length ?? 0;
-  const totalSerials = (siblingsData?.receiving_lines ?? []).reduce(
-    (n, l) => n + (l.serials?.length ?? 0),
-    0,
-  );
-  const showUnitsLink = tabbedPoItems && totalSerials > 0 && totalSerials !== lineCount;
-
   const headerRight = useMemo(() => {
+    if (suppressItemsHeader) return undefined;
     const parts: ReactNode[] = [];
-    if (showUnitsLink) {
-      parts.push(
-        <button
-          key="units"
-          type="button"
-          aria-pressed={view === 'units'}
-          onClick={() => setView((v) => (v === 'units' ? 'po-items' : 'units'))}
-          className={`inline-flex shrink-0 items-center gap-1 text-role-eyebrow uppercase tracking-widest transition-colors ${
-            view === 'units' ? 'text-blue-600' : 'text-text-muted hover:text-text-default'
-          }`}
-        >
-          <Package className="h-3 w-3 shrink-0" aria-hidden />
-          Units on carton · {totalSerials}
-        </button>,
-      );
-    }
     if (canCollapsePairing) {
       parts.push(
         <div key="pairing" className="flex shrink-0 items-center gap-1">
           <span className="text-role-eyebrow uppercase leading-none tracking-widest text-text-faint">
             Edit PO
           </span>
-          <HoverTooltip label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'} asChild>
+          <HoverTooltip label={pairingIsOpen ? 'Hide package pairing' : 'Show package pairing'} asChild>
             <IconButton
               icon={<Pencil className="h-4 w-4" />}
-              ariaLabel={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
+              ariaLabel={pairingIsOpen ? 'Hide package pairing' : 'Show package pairing'}
               tone="accent"
-              aria-expanded={pairingOpen}
-              onClick={() => setPairingOpen((v) => !v)}
+              aria-expanded={pairingIsOpen}
+              onClick={togglePairing}
             />
           </HoverTooltip>
         </div>,
@@ -135,7 +102,7 @@ export function POUnboxingSection({
     }
     if (parts.length === 0) return undefined;
     return <div className="flex items-center gap-3">{parts}</div>;
-  }, [canCollapsePairing, pairingOpen, showUnitsLink, totalSerials, view]);
+  }, [suppressItemsHeader, canCollapsePairing, pairingIsOpen, togglePairing]);
 
   if (!showPoItems && !showPairing) return null;
 
@@ -149,6 +116,7 @@ export function POUnboxingSection({
       c={c}
       embedded
       headerRight={headerRight}
+      suppressHeader={suppressItemsHeader}
       onItemDescFeedback={onItemDescFeedback}
       onItemDescSaved={onItemDescSaved}
       activeStep={activeStep}
@@ -158,27 +126,7 @@ export function POUnboxingSection({
   return (
     <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
       <div>
-        {tabbedPoItems ? (
-          view === 'units' ? (
-            <>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <WorkspaceSectionTitle as="p">
-                  Units on carton · {totalSerials}
-                </WorkspaceSectionTitle>
-                {headerRight}
-              </div>
-              <CartonUnitsRollupBody
-                receivingId={receivingId}
-                activeLineId={row.id ?? null}
-                showEmpty
-              />
-            </>
-          ) : (
-            poItemsSection
-          )
-        ) : showPoItems ? (
-          poItemsSection
-        ) : null}
+        {showPoItems ? poItemsSection : null}
 
         {showAutoMatch ? (
           <UnfoundMatchStrip
@@ -190,7 +138,7 @@ export function POUnboxingSection({
             ticketNumber={c.supportTicket?.label ?? null}
             ticketUrl={c.supportTicket?.openUrl ?? null}
             onTicketChanged={() => void c.invalidateSupportTicket()}
-            showTopRule={showPoItems || tabbedPoItems}
+            showTopRule={showPoItems}
           />
         ) : null}
 

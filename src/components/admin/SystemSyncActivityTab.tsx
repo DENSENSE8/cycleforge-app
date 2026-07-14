@@ -192,12 +192,12 @@ function RunRow({ run }: { run: CronRunRow }) {
         onClick={() => hasDetail && setOpen((o) => !o)}
         className="flex w-full items-center gap-3 text-left"
       >
-        <span className={`rounded-full px-1.5 py-0.5 text-role-micro font-bold ${syncRunStatusChipClass(run.status)}`}>
+        <span className={`rounded-full inset-chip text-role-micro font-bold ${syncRunStatusChipClass(run.status)}`}>
           {run.status}
         </span>
         <span className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default">{run.job}</span>
         {run.trigger === 'manual' && (
-          <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold text-text-soft">manual</span>
+          <span className="shrink-0 rounded bg-surface-sunken inset-chip text-role-micro font-bold text-text-soft">manual</span>
         )}
         <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{dur(run.duration_ms)}</span>
         <span className="shrink-0 text-role-micro tabular-nums text-text-faint">{rel(run.started_at)}</span>

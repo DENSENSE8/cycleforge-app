@@ -5,6 +5,7 @@ import { toast } from '@/lib/toast';
 import {
   printReceivingLabel,
   markReceivingLabelPrinted,
+  markReceivingSerialAbsent,
   type ReceivingLabelPayload,
 } from '../../receiving-label-helpers';
 import { labelCornerTicketDigits } from '@/lib/print/printReceivingLabel';
@@ -61,15 +62,23 @@ export function useUnboxLineController(
   // Effective condition of the selected unit on a multi-qty line (reported up
   // from ReceivingUnitRows). Null on single-qty lines.
   const [unitLabelCondition, setUnitLabelCondition] = useState<string | null>(null);
-  const [notes, setNotes] = useState('');
-  /** Label-face composer — ephemeral per line; NOT hydrated from `row.notes`. */
-  const [labelNotes, setLabelNotes] = useState('');
+  /**
+   * Single durable note buffer for this line: hydrates from `receiving_lines.notes`,
+   * composes the printed label face, and auto-saves back on blur. Formerly a split
+   * ephemeral label buffer + a durable "internal" buffer — merged so the printed
+   * note is durable and a reprint carries the same note (see LineNotesCard).
+   */
+  const [labelNotes, setLabelNotes] = useState(row.notes ?? '');
   const [serialInput, setSerialInput] = useState('');
   // Explicit "no serial number" waiver for this line (mutually exclusive with a
   // captured serial). Carries an auditable reason code and satisfies the optional
-  // serial-confirmation gate (receiving.requireSerialConfirmation).
-  const [serialAbsent, setSerialAbsent] = useState(false);
-  const [serialAbsentReason, setSerialAbsentReason] = useState<string | null>(null);
+  // serial-confirmation gate (receiving.requireSerialConfirmation). Durable —
+  // seeded from the persisted `receiving_line_testing.serial_absent` on the row,
+  // committed via commitSerialAbsent (below), so it survives refresh / device.
+  const [serialAbsent, setSerialAbsent] = useState(!!row.serial_absent);
+  const [serialAbsentReason, setSerialAbsentReason] = useState<string | null>(
+    row.serial_absent_reason ?? null,
+  );
   // RETURN flow: on serial commit we check the serial against serial_units.
   const serialLookup = useSerialLookup();
   const [headerSerialEdit, setHeaderSerialEdit] = useState<{
@@ -93,13 +102,12 @@ export function useUnboxLineController(
     setUnitLabelCondition(null);
   }, [row.id, row.qa_status, row.disposition_code, row.condition_grade, row.receiving_source]);
 
+  // Hydrate the note buffer from the durable column on line change AND whenever the
+  // persisted value updates (own blur-save echo, another device, an external edit)
+  // so the composer and the printed label always reflect the saved note.
   useEffect(() => {
-    setNotes(row.notes ?? '');
+    setLabelNotes(row.notes ?? '');
   }, [row.id, row.notes]);
-
-  useEffect(() => {
-    setLabelNotes('');
-  }, [row.id]);
 
   // Track the previous line's label notes so the Label composer can offer a
   // "repeat previous" prefill on multi-line cartons. The workspace stays
@@ -125,11 +133,14 @@ export function useUnboxLineController(
     setSerialInput(latest);
   }, [row.id, row.serials]);
 
-  // Clear the no-serial waiver whenever the active line changes (it's per-line).
+  // Seed the no-serial waiver from the line's DURABLE value on line change AND
+  // whenever the persisted fact updates — a fresh open, a reload, another device,
+  // or the optimistic `receiving-line-updated` bus patch from commitSerialAbsent
+  // all reconcile here (it's a per-line fact now, not ephemeral per-mount state).
   useEffect(() => {
-    setSerialAbsent(false);
-    setSerialAbsentReason(null);
-  }, [row.id]);
+    setSerialAbsent(!!row.serial_absent);
+    setSerialAbsentReason(row.serial_absent_reason ?? null);
+  }, [row.id, row.serial_absent, row.serial_absent_reason]);
 
   // Quick-return hotkey: Escape re-focuses the serial scan input from anywhere
   // in the unbox panel, so the operator can resume scanning without reaching for
@@ -207,7 +218,9 @@ export function useUnboxLineController(
     qa,
     disp,
     cond,
-    notes,
+    // One note buffer feeds the receive payload too — what's on the label is what's
+    // received and what's saved.
+    notes: labelNotes,
     zendesk: core.zendesk,
     listingLink: core.listingLink,
     serialInput,
@@ -350,9 +363,9 @@ export function useUnboxLineController(
     if (didPrint) markLabelPrinted();
   }, [scanValue, labelPayload, row.sku, row.item_name, serialInput, markLabelPrinted]);
 
-  // Custom print (Edit label → Save & print): persist condition / reference /
-  // type where they have a home; label-face notes stay in the ephemeral
-  // labelNotes buffer only (receiving_lines.notes = Internal tab).
+  // Custom print (Edit label → Save & print): persist condition / reference / type
+  // where they have a home. Label notes ARE the durable line note now, so an
+  // edited-and-printed face persists too — a reprint carries the same note.
   const applyAndPrintLabel = useCallback(
     (draft: LabelEditDraft) => {
       const nextLabelNotes = draft.notes;
@@ -362,7 +375,10 @@ export function useUnboxLineController(
       const labelNotesChanged = nextLabelNotes !== labelNotes;
       const condChanged = nextCond !== cond;
 
-      if (labelNotesChanged) setLabelNotes(nextLabelNotes);
+      if (labelNotesChanged) {
+        setLabelNotes(nextLabelNotes);
+        void core.patch({ notes: nextLabelNotes });
+      }
       if (condChanged) {
         setCond(nextCond);
         void core.patch({ condition_grade: nextCond });
@@ -572,16 +588,30 @@ export function useUnboxLineController(
     ],
   );
 
+  // Single durable choke point for the green-check no-serial waiver. Updates the
+  // local controller state (the active-row control reflects instantly) AND
+  // persists via markReceivingSerialAbsent, which optimistically patches the
+  // shared bus so the Unbox stepper's Serial step flips on the same frame, then
+  // stamps receiving_line_testing so the waiver survives refresh / another device.
+  const commitSerialAbsent = useCallback(
+    ({ absent, reason }: { absent: boolean; reason: string | null }) => {
+      setSerialAbsent(absent);
+      setSerialAbsentReason(reason);
+      markReceivingSerialAbsent(row.id, { absent, reason });
+    },
+    [row.id],
+  );
+
   return {
     ...core,
     // condition / qa / disposition
     qa, setQa, disp, setDisp,
     cond, setCond, unitLabelCondition, setUnitLabelCondition, isMultiQtyLine,
-    // notes — internal (`receiving_lines.notes`) vs label-face composer
-    notes, setNotes, labelNotes, setLabelNotes, prevLineNotes,
+    // notes — one durable buffer: composes the label face AND is `receiving_lines.notes`
+    labelNotes, setLabelNotes, prevLineNotes,
     // serial scanning
     serialInput, setSerialInput, serialRef,
-    serialAbsent, setSerialAbsent, serialAbsentReason, setSerialAbsentReason,
+    serialAbsent, setSerialAbsent, serialAbsentReason, setSerialAbsentReason, commitSerialAbsent,
     headerSerialEdit, setHeaderSerialEdit,
     serialLookup,
     serialSubmitting, submitSerial, enqueueSerial, deleteSerialUnit, replaceSerialUnit, setUnitGrade,

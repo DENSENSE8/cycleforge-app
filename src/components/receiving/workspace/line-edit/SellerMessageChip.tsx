@@ -298,7 +298,7 @@ function SellerMessagePanel({
       aria-label="Seller message"
       className="flex max-h-[420px] w-[360px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl"
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border-hairline px-3 py-2">
+      <header className="flex items-center justify-between gap-2 border-b border-border-hairline inset-field">
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-blue-600" />
           <div className="min-w-0">
@@ -340,7 +340,7 @@ function SellerMessagePanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={10}
-            className="block w-full resize-y rounded-lg border border-blue-100 bg-surface-card px-3 py-2 text-role-data leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            className="block w-full resize-y rounded-lg border border-blue-100 bg-surface-card inset-field text-role-data leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
             placeholder="Seller-facing message…"
           />
         )}

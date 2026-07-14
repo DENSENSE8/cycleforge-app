@@ -187,7 +187,10 @@ export function usePoLineItemDescriptionEditor({
             note: data?.zoho?.patched ? undefined : zohoSkipNote(data?.zoho),
             at: Date.now(),
           });
-          queryClient.invalidateQueries({ queryKey });
+          // No invalidate here: the setQueryData patch above IS the SoT. A
+          // trailing invalidateQueries forced a full siblings refetch that
+          // re-rendered every row and could briefly overwrite the just-saved
+          // text when the server read lagged the write.
         } else {
           onItemDescFeedback?.({
             tone: 'amber',

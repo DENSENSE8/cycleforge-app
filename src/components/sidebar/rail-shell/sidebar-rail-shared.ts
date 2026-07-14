@@ -47,6 +47,30 @@ export interface SidebarRailShellProps<TRow> {
   /** Events that trigger a full query invalidation. */
   refreshEvents?: string[];
   /**
+   * Client-side subtractive DISPLAY filter — row ids hidden for THIS viewer
+   * (e.g. the staffer's rail-dismiss set). Applied AFTER fetch, so it is
+   * deliberately NOT part of the queryKey: loading it or changing it re-filters
+   * the already-fetched rows in place, instead of changing the queryKey and
+   * blanking the whole list to a skeleton on every load / dismiss. Empty (the
+   * default) = no filtering.
+   */
+  excludedIds?: ReadonlySet<number>;
+  /**
+   * Opt-in cold-reload continuity. Returns the viewer's last-known rows for this
+   * rail (or null) — on mount the rail seeds from it so a reload paints quickly
+   * instead of waiting the full (heavy) authoritative query, then reconciles
+   * over it. Seed-only; never the source of truth. Backed by Upstash via
+   * `/api/receiving/rail-snapshot` (see `rail-snapshot-client.ts`). Memoize it —
+   * the seed effect keys on its identity.
+   */
+  loadSnapshot?: () => Promise<TRow[] | null>;
+  /**
+   * Persist the rows the rail just rendered as the next reload's seed. Called
+   * with the settled authoritative rows; the provider debounces + fires the
+   * write. Pair with {@link loadSnapshot}; unset = no persistence.
+   */
+  persistSnapshot?: (rows: TRow[]) => void;
+  /**
    * When set, a CustomEvent<'prev' | 'next'> on this name steps the selection to
    * the adjacent rendered row and fires `onSelect` — the wiring behind a detail
    * pane's up/down header chevrons when there's no separate table to drive

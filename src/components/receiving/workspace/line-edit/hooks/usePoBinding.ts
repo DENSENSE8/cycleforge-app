@@ -15,13 +15,14 @@ function poValueOf(row: ReceivingLineRow): string {
  * value, and {@link persistPoNumber} which writes the typed PO# to the carton
  * AND fans out to every existing receiving_line for it.
  *
- * The editor defaults open for unmatched cartons or any row without a PO# yet
- * (the operator's most likely next action), and is re-armed on every row
- * switch for those same cases.
+ * The editor defaults open for matched rows without a PO# yet (the operator's
+ * most likely next action on a bound carton), and is re-armed on every row
+ * switch for those same cases. Unfound (unmatched) cartons stay collapsed —
+ * the operator opens the editor via the PO# chip when they want to link one.
  */
 export function usePoBinding(row: ReceivingLineRow) {
   const [poEditorOpen, setPoEditorOpen] = useState(
-    () => row.receiving_source === 'unmatched' || !poValueOf(row),
+    () => row.receiving_source !== 'unmatched' && !poValueOf(row),
   );
   const [poNumberEdit, setPoNumberEdit] = useState(() => poValueOf(row));
 
@@ -31,14 +32,15 @@ export function usePoBinding(row: ReceivingLineRow) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id, row.zoho_purchaseorder_number, row.zoho_purchaseorder_id]);
 
-  // Re-arm the PO# editor for unmatched / un-bound rows so the operator doesn't
+  // Re-arm the PO# editor for matched-but-un-bound rows so the operator doesn't
   // have to click the pencil after each switch — and COLLAPSE it once the row is
-  // filled/linked. A bound PO# reads in the carton header chip; the open search
-  // editor is only for finding/typing one, so it folds away when there's nothing
-  // left to bind (fires on row switch + when a link fills the PO#). The operator
-  // can still re-open it via the PO# edit affordance.
+  // filled/linked. Unfound cartons stay collapsed; the operator opts in via the
+  // PO# chip edit affordance. A bound PO# reads in the carton header chip; the
+  // open search editor is only for finding/typing one, so it folds away when
+  // there's nothing left to bind (fires on row switch + when a link fills the
+  // PO#).
   useEffect(() => {
-    setPoEditorOpen(row.receiving_source === 'unmatched' || !poValueOf(row));
+    setPoEditorOpen(row.receiving_source !== 'unmatched' && !poValueOf(row));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id, row.receiving_source, row.zoho_purchaseorder_number, row.zoho_purchaseorder_id]);
 

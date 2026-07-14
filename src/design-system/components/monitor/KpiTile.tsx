@@ -26,6 +26,9 @@ export type KpiTileProps = {
   size?: 'default' | 'wall';
   /** Optional click → filter / open details (Monitor filters only — no durable selection). */
   onOpen?: () => void;
+  /** Lit when this tile's Monitor filter is the active one (`?ostatus` on) — the
+   *  house selection affordance (bg + inset ring only, never a size shift). */
+  active?: boolean;
 };
 
 /**
@@ -43,13 +46,21 @@ export function KpiTile({
   className,
   size = 'default',
   onOpen,
+  active = false,
 }: KpiTileProps) {
   const clickable = Boolean(onOpen);
   const wall = size === 'wall';
 
   return (
     <div
-      className={cn(MONITOR_KPI_TILE_CLASS, wall && 'p-5', clickable && 'cursor-pointer hover:bg-surface-hover', className)}
+      className={cn(
+        MONITOR_KPI_TILE_CLASS,
+        wall && 'p-5',
+        clickable &&
+          'cursor-pointer transition-colors duration-150 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-blue-400',
+        active && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
+        className,
+      )}
       onClick={onOpen}
       onKeyDown={
         clickable

@@ -20,7 +20,7 @@ import type { PlatformAccountRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useInvalidateCatalog } from '@/hooks/useCatalog';
 
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
 
 const BASE = '/api/catalog/platform-accounts';
 
@@ -90,7 +90,7 @@ export function PlatformAccountsManager() {
 
   if (!editable) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-role-micro font-semibold text-amber-800">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 inset-field text-role-micro font-semibold text-amber-800">
         Apply migration <code>2026-06-13g</code> + <code>2026-06-14f</code> to seed and edit storefront accounts.
       </div>
     );
@@ -123,7 +123,7 @@ export function PlatformAccountsManager() {
 
             <ul className="space-y-1.5">
               {activeList.length === 0 && !isAdding ? (
-                <li className="rounded-lg border border-dashed border-border-soft bg-surface-canvas px-2.5 py-1.5 text-role-caption text-text-faint">
+                <li className="rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-cozy text-role-caption text-text-faint">
                   No accounts yet.
                 </li>
               ) : null}
@@ -134,7 +134,7 @@ export function PlatformAccountsManager() {
                 return (
                   <li
                     key={a.id}
-                    className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5"
+                    className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-cozy"
                   >
                     {isEditing ? (
                       <input
@@ -150,7 +150,7 @@ export function PlatformAccountsManager() {
                     ) : (
                       <span className="flex flex-1 items-center gap-2 truncate text-role-caption font-semibold text-text-default">
                         {a.label}
-                        <span className="shrink-0 rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-eyebrow text-text-soft">
+                        <span className="shrink-0 rounded bg-surface-sunken inset-chip font-mono text-role-eyebrow text-text-soft">
                           {a.slug}
                         </span>
                       </span>
@@ -228,7 +228,7 @@ export function PlatformAccountsManager() {
                 {hiddenList.map((a) => (
                   <li
                     key={a.id}
-                    className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas px-2.5 py-1.5"
+                    className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-cozy"
                   >
                     <span className="flex-1 truncate text-role-caption font-semibold text-text-faint line-through">{a.label}</span>
                     {busyId === a.id ? (

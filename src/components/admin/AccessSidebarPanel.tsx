@@ -183,7 +183,7 @@ export function AccessSidebarPanel({ basePath = '/settings/access' }: { basePath
       </div>
 
       {/* Status filter chips */}
-      <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-border-soft px-3 py-2">
+      <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-border-soft inset-field">
         {(['all', 'active', 'invited', 'disabled'] as const).map((s) => (
           // ds-raw-button: two-state segmented filter toggle with custom active fill (blue-600)
           <button
@@ -202,7 +202,7 @@ export function AccessSidebarPanel({ basePath = '/settings/access' }: { basePath
       </div>
 
       {/* Stats strip */}
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-border-soft px-3 py-2">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-b border-border-soft inset-field">
         <StatPill label="Total"   value={stats.total} />
         <StatPill label="Active"  value={stats.active}     tone="green" />
         <StatPill label="PIN"     value={stats.withPin}    tone="blue" />
@@ -223,11 +223,11 @@ export function AccessSidebarPanel({ basePath = '/settings/access' }: { basePath
       </div>
 
       {/* Staff list */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto inset-field">
         {loading ? (
           <div className="px-2 py-6 text-center text-xs text-text-faint">Loading staff…</div>
         ) : err ? (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>
+          <div className="rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>
         ) : filtered.length === 0 ? (
           <div className="px-2 py-6 text-center text-xs text-text-faint">No matches.</div>
         ) : reorderEnabled ? (

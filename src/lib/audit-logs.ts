@@ -105,6 +105,8 @@ export const AUDIT_ENTITY = {
   INTEGRATION: 'integration',
   STAFF_TODO: 'staff_todo',
   STAFF_MESSAGE: 'staff_message',
+  // Entity-anchored conversation thread (entity_threads)
+  ENTITY_THREAD: 'entity_thread',
   STAFF_PREFERENCE: 'staff_preference',
   // Settings Registry — per-page org/staff configurable behavior (docs/settings-registry.md)
   SETTINGS: 'settings',
@@ -276,6 +278,10 @@ export const AUDIT_ACTION = {
   USER_ISSUE_RESOLVE:      'user_issue.resolve',
   // Staff-to-staff messages (clipboard "send to staff")
   STAFF_MESSAGE_SEND:      'staff_message.send',
+  // Entity-anchored conversation threads (entity_threads / thread_messages)
+  THREAD_CREATE:           'thread.create',
+  THREAD_MESSAGE_POST:     'thread.message.post',
+  THREAD_TICKET_ATTACH:    'thread.ticket.attach',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',

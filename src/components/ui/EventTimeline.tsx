@@ -391,7 +391,7 @@ export function EventTimeline({
                 <div className="min-w-0 flex-1">{header}</div>
                 {!open ? <GroupLatestPeek items={g.items} richTime={richTime} /> : null}
               </div>
-              {open ? <div className="mt-1.5 pl-[18px]">{body}</div> : null}
+              {open ? <div className={/* ds-allow-spacing — aligns to the 18px rail column */ "mt-1.5 pl-[18px]"}>{body}</div> : null}
             </div>
           );
         })}

@@ -45,11 +45,11 @@ export function ReceivingReturnBanner({
   if (returns.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-1 border-b border-amber-200 bg-amber-50 px-3 py-2">
+    <div className="flex flex-col gap-1 border-b border-amber-200 bg-amber-50 inset-field">
       {returns.map((ret) => (
         <div
           key={ret.id}
-          className="flex items-start gap-2 rounded-lg border border-amber-300 bg-surface-card px-2.5 py-1.5"
+          className="flex items-start gap-2 rounded-lg border border-amber-300 bg-surface-card inset-cozy"
         >
           <div className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500" />
           <div className="min-w-0 flex-1">

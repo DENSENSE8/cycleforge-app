@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { LineEditPanel } from './LineEditPanel';
 import { TriagePanel } from '../triage/TriagePanel';
-import { ReceivingProgressStepper } from './ReceivingProgressStepper';
+import { ReceivingProgressStepper, UnfoundProgressStepper } from './ReceivingProgressStepper';
 import { TriageProgressStepper } from './TriageProgressStepper';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
+import { classifyLineSource } from '@/lib/receiving/intake-items-routing';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** Which de-coupled right-pane panel to render. */
@@ -106,6 +107,13 @@ export function ReceivingLineWorkspace({
     }).catch(() => {});
   }, [row.id, row.receiving_id]);
 
+  // Unbox splits again by source lane: an unfound carton's defining unknown is
+  // its identity, so it gets the Classify-first stepper; a matched PO carton
+  // (identity already resolved) gets the completeness stepper. Same primitive,
+  // different step vocabulary — picked here exactly like the triage fork below.
+  const UnboxStepper =
+    classifyLineSource(row) === 'unmatched' ? UnfoundProgressStepper : ReceivingProgressStepper;
+
   return (
     // Plain wrapper — NO per-line key/crossfade. Switching between sibling lines
     // of the same carton must be an in-place update, not a remount: the outer
@@ -127,14 +135,17 @@ export function ReceivingLineWorkspace({
           PO identity; this stepper + the action bar below it form the second
           and third rows. Triage and unbox are different stations with
           different jobs (docs/receiving-triage-redesign-plan.md §3.2) — each
-          gets its own stepper rather than sharing the unbox one. */}
+          gets its own stepper rather than sharing the unbox one. Unbox forks
+          once more: matched (Photos→Serial→Print) vs unfound
+          (Classify→Photos→Serial→Print), resolved into UnboxStepper above. */}
       {variant === 'triage' ? (
         <TriageProgressStepper row={row} />
       ) : (
-        <ReceivingProgressStepper
+        <UnboxStepper
           row={row}
           photoCount={photoCount}
           serialCount={Array.isArray(row.serials) ? row.serials.length : 0}
+          serialAbsent={!!row.serial_absent}
           labelPrinted={labelPrinted}
           siblingLineCount={nav?.total ?? 1}
         />

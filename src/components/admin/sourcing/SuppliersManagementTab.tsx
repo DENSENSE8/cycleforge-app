@@ -139,7 +139,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
   );
 }
 
-const inputCls = 'w-full rounded-md border border-border-default px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+const inputCls = 'w-full rounded-md border border-border-default inset-field text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (

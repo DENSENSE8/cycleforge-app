@@ -10,12 +10,19 @@ import {
   type LinearStepState,
   type ReceivingStepKey,
 } from './derive-receiving-step-states';
+import { UNFOUND_WORKFLOW_STEPS, deriveUnfoundStepStates } from './derive-unfound-step-states';
+import { isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
 import { RECEIVING_WORKSPACE_HEADER_COLUMN } from './receiving-workspace-layout';
 
 interface Props {
   row: ReceivingLineRow;
   photoCount: number;
   serialCount: number;
+  /**
+   * No-serial waiver on this line (cable / bulk / return with none). Completes
+   * the Serial step outright — durable, from `row.serial_absent`.
+   */
+  serialAbsent?: boolean;
   /** Receiving label has been printed for this line (client-tracked). */
   labelPrinted?: boolean;
   /** PO sibling count — shows scope hint when 2+. */
@@ -120,7 +127,44 @@ export function LinearWorkflowStepper({
 }
 
 /**
- * Three-dot horizontal stepper for the operator's actionable unbox work:
+ * Shared band shell for both receiving steppers — the sticky scan-band wrapper +
+ * the compact `LinearWorkflowStepper`. The matched and unfound flows differ ONLY
+ * in their step vocabulary (and the unfound Classify gate), never in chrome, so
+ * they compose this one band rather than each hand-rolling the wrapper.
+ */
+function ReceivingStepperBand({
+  steps,
+  states,
+  ariaDescription,
+}: {
+  steps: ReadonlyArray<LinearStep>;
+  states: Record<string, LinearStepState>;
+  ariaDescription?: string;
+}) {
+  return (
+    <div className={`${receivingScanBandClass} bg-surface-card`}>
+      <LinearWorkflowStepper
+        steps={steps}
+        states={states}
+        ariaLabel="Receiving progress"
+        ariaDescription={ariaDescription}
+        size="compact"
+        className={RECEIVING_WORKSPACE_HEADER_COLUMN}
+      />
+    </div>
+  );
+}
+
+/** Scope hint shown when the active line has siblings on the same PO / carton. */
+function progressScopeHint(siblingLineCount: number, scopeNoun: 'PO' | 'carton' = 'PO'): string | undefined {
+  return siblingLineCount > 1
+    ? `Progress for active line (${siblingLineCount} items on ${scopeNoun})`
+    : undefined;
+}
+
+/**
+ * Three-dot horizontal stepper for the operator's actionable unbox work on a
+ * MATCHED (PO) carton:
  *   Photos → Serial → Print
  *
  * No Scan or Condition step — both are always effectively done by the time the
@@ -132,35 +176,70 @@ export function LinearWorkflowStepper({
  * current source of truth. The "active" dot is the first step whose data gate
  * fails (the operator's next job); every other step shows done the moment its
  * own gate passes, regardless of order — a completeness checklist, not a wizard.
+ *
+ * Unfound cartons use {@link UnfoundProgressStepper} instead — same primitive,
+ * with a Classify step prepended.
  */
 export function ReceivingProgressStepper({
   row,
   photoCount,
   serialCount,
+  serialAbsent = false,
   labelPrinted = false,
   siblingLineCount = 1,
 }: Props) {
   const states = deriveReceivingStepStates({
     photoCount,
     serialCount,
+    serialAbsent,
     quantityExpected: row.quantity_expected ?? 0,
     labelPrinted,
   });
 
-  const scopeHint =
-    siblingLineCount > 1 ? `Progress for active line (${siblingLineCount} items on PO)` : undefined;
+  return (
+    <ReceivingStepperBand
+      steps={RECEIVING_WORKFLOW_STEPS}
+      states={states}
+      ariaDescription={progressScopeHint(siblingLineCount)}
+    />
+  );
+}
+
+/**
+ * Unfound-carton stepper — Classify → Photos → Serial → Print. The matched
+ * stepper with a Classify step prepended: an unfound carton's defining unknown
+ * is its identity, which a matched carton already has via its PO. Same band,
+ * same dot primitive, same completeness-checklist walk — only the step
+ * vocabulary differs (a sibling flow, not a fork).
+ *
+ * `classified` is derived from the row (`isIntakeClassified`), so the Classify
+ * dot and the door classify pill read from the same source and can never
+ * disagree. Picked over {@link ReceivingProgressStepper} by
+ * `ReceivingLineWorkspace` when `classifyLineSource(row) === 'unmatched'`.
+ */
+export function UnfoundProgressStepper({
+  row,
+  photoCount,
+  serialCount,
+  serialAbsent = false,
+  labelPrinted = false,
+  siblingLineCount = 1,
+}: Props) {
+  const states = deriveUnfoundStepStates({
+    photoCount,
+    serialCount,
+    serialAbsent,
+    quantityExpected: row.quantity_expected ?? 0,
+    labelPrinted,
+    classified: isIntakeClassified(row),
+  });
 
   return (
-    <div className={`${receivingScanBandClass} bg-surface-card`}>
-      <LinearWorkflowStepper
-        steps={RECEIVING_WORKFLOW_STEPS}
-        states={states}
-        ariaLabel="Receiving progress"
-        ariaDescription={scopeHint}
-        size="compact"
-        className={RECEIVING_WORKSPACE_HEADER_COLUMN}
-      />
-    </div>
+    <ReceivingStepperBand
+      steps={UNFOUND_WORKFLOW_STEPS}
+      states={states}
+      ariaDescription={progressScopeHint(siblingLineCount, 'carton')}
+    />
   );
 }
 

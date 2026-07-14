@@ -82,7 +82,7 @@ function AgentCard({ agent, index }: { agent: LocalAgentState; index: number }) 
               {meta.name}
             </p>
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${tone.chip}`}
+              className={`inline-flex items-center gap-1 rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${tone.chip}`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
               {tone.label}

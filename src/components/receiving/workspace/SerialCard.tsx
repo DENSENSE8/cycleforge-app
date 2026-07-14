@@ -399,10 +399,11 @@ export function SerialCard({
         </div>
 
         {/* Trailing action. While the waiver is ACTIVE the full-width no-serial bar
-            (rendered in the field slot above) owns the row and carries its own
-            clear (✕) — so no trailing control here, no redundant confirm. When the
-            field is empty, a QUIET no-serial offer affordance (secondary, not a
-            second green CTA). Otherwise the "+" add / Save submit. */}
+            (rendered in the field slot above) owns the whole row — it reads as a
+            "No serial · {reason}" dropdown and carries UNDO inside its reason
+            menu, so there is NO trailing control (no dark-green confirm check).
+            When the field is empty, a QUIET green-check no-serial OFFER. Otherwise
+            the "+" add / Save submit. */}
         {noSerialActive ? null : !scan.trim() && !editing && onMarkNoSerial ? (
           <HoverTooltip label="Mark this item as having no serial number" asChild>
             {/* ds-raw-button: green-check no-serial offer toggle, not a DS Button */}
@@ -410,6 +411,7 @@ export function SerialCard({
               type="button"
               onClick={onMarkNoSerial}
               aria-label="Mark this item as having no serial number"
+              aria-pressed={false}
               className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-600 shadow-sm transition-colors hover:bg-emerald-100"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5">
@@ -498,7 +500,7 @@ export function SerialCard({
             onBlur={onNotesBlur}
             rows={2}
             placeholder="PO-line notes (saved on off click)"
-            className="mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
       ) : null}

@@ -66,7 +66,7 @@ export function ClaimTicketReply({ reply, filedTicket, prefill }: Props) {
             : 'Internal note — not emailed to anyone…'
         }
         className={cn(
-          'block w-full resize-y rounded-lg border bg-surface-card px-3 py-2 text-role-caption font-medium leading-snug text-text-default outline-none focus:ring-2',
+          'block w-full resize-y rounded-lg border bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:ring-2',
           isPublic
             ? 'border-emerald-200 focus:border-emerald-400 focus:ring-emerald-500/20'
             : 'border-border-default focus:border-border-emphasis focus:ring-text-soft/20',

@@ -24,7 +24,7 @@ import {
   ToolbarSeparator,
   EmptyState,
 } from '@/design-system/primitives';
-import { StatusBadge, DataTable, type DataTableColumn } from '@/design-system/components';
+import { StatusBadge, DataTable, TabSwitch, type DataTableColumn } from '@/design-system/components';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import type { TimelineItem } from '@/lib/timeline/types';
 
@@ -76,6 +76,14 @@ export default function DesignShowcasePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const popoverAnchor = useRef<HTMLButtonElement>(null);
+  const [solidTab, setSolidTab] = useState('unshipped');
+  const [defaultTab, setDefaultTab] = useState('unshipped');
+
+  const LIFECYCLE_TABS = [
+    { id: 'unshipped', label: 'To Ship', count: 83, color: 'blue' as const },
+    { id: 'packed', label: 'Packed', color: 'orange' as const },
+    { id: 'shipped', label: 'Shipped', color: 'emerald' as const },
+  ];
 
   return (
     <div className="min-h-screen w-full bg-surface-canvas">
@@ -156,6 +164,37 @@ export default function DesignShowcasePage() {
                 ))}
               </div>
             </Popover>
+          </Panel>
+        </Bay>
+
+        {/* TabSwitch variants */}
+        <Bay title="TabSwitch" path="design-system/components/TabSwitch.tsx">
+          <Panel className="space-y-5">
+            <div className="space-y-1.5">
+              <p className="text-role-micro font-black uppercase tracking-widest text-text-muted">
+                variant=&quot;solid&quot; · headline lifecycle switcher (dark pill)
+              </p>
+              <TabSwitch
+                tabs={LIFECYCLE_TABS}
+                activeTab={solidTab}
+                onTabChange={setSolidTab}
+                className="w-auto"
+                variant="solid"
+                countStyle="plain"
+                railClassName="rounded-full border border-border-default bg-surface-card p-1 shadow-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-role-micro font-black uppercase tracking-widest text-text-muted">
+                variant=&quot;default&quot; · semantic tab-color text, sunken rail
+              </p>
+              <TabSwitch
+                tabs={LIFECYCLE_TABS}
+                activeTab={defaultTab}
+                onTabChange={setDefaultTab}
+                className="w-auto"
+              />
+            </div>
           </Panel>
         </Bay>
 

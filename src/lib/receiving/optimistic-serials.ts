@@ -93,6 +93,17 @@ export function removeSerialById(
   return (serials ?? []).filter((s) => s.id !== serialUnitId);
 }
 
+/** Optimistically stamp a per-unit condition grade onto one serial in place. */
+export function setSerialGrade(
+  serials: LineSerial[] | null | undefined,
+  serialUnitId: number,
+  grade: string,
+): LineSerial[] {
+  return (serials ?? []).map((s) =>
+    s.id === serialUnitId ? { ...s, condition_grade: grade } : s,
+  );
+}
+
 export function readOptimisticFlag(
   serial: { _optimistic?: OptimisticSerialFlag },
 ): OptimisticSerialFlag | undefined {

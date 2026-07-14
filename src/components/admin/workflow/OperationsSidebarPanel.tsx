@@ -139,7 +139,7 @@ function Dot({ color }: { color: string }) {
 }
 
 function Chip({ label, onClick, mono }: { label: string; onClick?: () => void; mono?: boolean }) {
-  const cls = `inline-block rounded-md border px-1.5 py-0.5 text-role-micro ${
+  const cls = `inline-block rounded-md border inset-chip text-role-micro ${
     mono ? 'font-mono' : 'font-medium'
   } ${onClick ? 'cursor-pointer border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' : 'border-border-soft bg-surface-canvas text-text-muted'}`;
   return onClick ? (

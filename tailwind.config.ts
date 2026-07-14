@@ -1,10 +1,13 @@
 import type { Config } from "tailwindcss";
-// NOTE: import the `.mjs` values module, not `.ts`. Tailwind's config loader
+import plugin from "tailwindcss/plugin";
+// NOTE: import `.mjs` values modules, not `.ts`. Tailwind's config loader
 // runs under Node; a `.ts` import with ESM syntax triggers
 // MODULE_TYPELESS_PACKAGE_JSON reparsing (performance overhead + build noise).
-// Turbopack dev also resolves `.mjs` from this config. Values + types SoT:
-// `src/design-system/tokens/z-index.mjs` + `z-index.ts`.
+// Turbopack dev also resolves `.mjs` from this config. Values + types SoT
+// pairs: `src/design-system/tokens/z-index.mjs` + `z-index.ts`,
+// `spacing.mjs` + `spacing.ts`.
 import { zIndex } from "./src/design-system/tokens/z-index.mjs";
+import { spacingScale } from "./src/design-system/tokens/spacing.mjs";
 
 // Expose the centralized z-index scale as semantic Tailwind utilities
 // (z-panel, z-modal, z-popover, z-toast, z-tooltip, …) so components stop
@@ -58,6 +61,18 @@ const config: Config = {
         'text-role-caption',
         'text-role-eyebrow',
         'text-role-micro',
+        // Spacing intents (spacing-token-leakage plan Phase 2.3) — same
+        // ship-before-adoption treatment as the type roles above.
+        'inset-chip',
+        'inset-field',
+        'inset-cozy',
+        'inset-card',
+        'inset-empty',
+        'stack-tight',
+        'stack-row',
+        'stack-section',
+        'row-gap',
+        'row-tight',
     ],
     theme: {
         extend: {
@@ -189,12 +204,43 @@ const config: Config = {
                 'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.08em', fontWeight: '600' }],
                 'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.04em', fontWeight: '600' }],
             },
+            // Density-aware spacing (spacing-token-leakage plan Phase 1) —
+            // the same calc(× --cf-density) treatment as the role-* type
+            // scale above. At the default density (1) every value is
+            // pixel-identical to Tailwind's stock scale, so this is purely
+            // additive; inside [data-density='compact'] padding/margin/gap
+            // tighten together with type. `extend` merges per key: keys in
+            // spacing.mjs become density-aware, unlisted keys stay stock.
+            spacing: spacingScale,
             borderRadius: {
                 station: '8px',
             },
             zIndex: zIndexScale,
         },
     },
-    plugins: [],
+    plugins: [
+        // Spacing INTENTS (spacing-token-leakage plan Phase 2) — one named
+        // utility per recurring padding/stack job, built from theme('spacing')
+        // so each inherits density-awareness. An intent is the WHOLE padding
+        // story for its element: never stack a raw p-*/px-* on top (cn() keeps
+        // both and the intent wins in CSS order — see the 'cf-*' groups in
+        // src/utils/_cn.ts). Registered in the safelist above; conflict groups
+        // in _cn.ts; both lists must stay in sync with this plugin.
+        plugin(({ addUtilities, theme }) => {
+            const s = theme("spacing") as Record<string, string>;
+            addUtilities({
+                ".inset-chip": { paddingInline: s["1.5"], paddingBlock: s["0.5"] },
+                ".inset-field": { paddingInline: s["3"], paddingBlock: s["2"] },
+                ".inset-cozy": { paddingInline: s["2.5"], paddingBlock: s["1.5"] },
+                ".inset-card": { padding: s["4"] },
+                ".inset-empty": { paddingInline: s["4"], paddingBlock: s["6"] },
+                ".stack-tight": { display: "flex", flexDirection: "column", gap: s["1.5"] },
+                ".stack-row": { display: "flex", flexDirection: "column", gap: s["2"] },
+                ".stack-section": { display: "flex", flexDirection: "column", gap: s["6"] },
+                ".row-gap": { display: "flex", alignItems: "center", gap: s["2"] },
+                ".row-tight": { display: "flex", alignItems: "center", gap: s["1.5"] },
+            });
+        }),
+    ],
 };
 export default config;

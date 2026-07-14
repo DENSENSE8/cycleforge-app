@@ -55,6 +55,27 @@ test('all gates pass: every step done', () => {
   assert.equal(activeReceivingStepKey(input), null);
 });
 
+test('no-serial waiver completes the Serial step with zero serials captured', () => {
+  const flags = deriveReceivingStepFlags({ ...base, serialCount: 0, serialAbsent: true });
+  assert.equal(flags.serial, true);
+});
+
+test('waiver flips Serial from active to done; the next gap becomes active', () => {
+  const withoutWaiver = deriveReceivingStepStates({ ...base, photoCount: 2, serialCount: 0 });
+  assert.equal(withoutWaiver.serial, 'active');
+
+  const withWaiver = deriveReceivingStepStates({
+    ...base,
+    photoCount: 2,
+    serialCount: 0,
+    serialAbsent: true,
+  });
+  assert.equal(withWaiver.serial, 'done');
+  // Print is now the first failing gate → the operator's next job.
+  assert.equal(withWaiver.print, 'active');
+  assert.equal(activeReceivingStepKey({ ...base, photoCount: 2, serialCount: 0, serialAbsent: true }), 'print');
+});
+
 test('no scan/condition steps: the stepper is exactly Photos → Serial → Print', () => {
   const states = deriveReceivingStepStates(base);
   assert.deepEqual(Object.keys(states).sort(), ['photos', 'print', 'serial']);

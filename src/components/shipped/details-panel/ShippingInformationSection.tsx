@@ -2,11 +2,9 @@
 
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getAccountSourceLabel, getOrderIdUrl } from '@/utils/order-links';
-import { ShipmentStatusBadge } from '@/components/shipping/ShipmentStatusBadge';
 import { formatDateTimePST } from '@/utils/date';
 import { Pencil, Copy, Check } from '@/components/Icons';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
-import { DateTimeValue } from '@/design-system/components/DateTimeValue';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { CopyActionIcon } from '@/design-system/components/CopyActionIcon';
 import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
@@ -39,12 +37,6 @@ interface ShippingInformationSectionProps {
   showShippingTimestamp?: boolean;
   editableShippingFields?: EditableShippingFields;
   prepackedSku?: PrepackedSkuInfo | null;
-  /**
-   * Lead the card with the packout provenance (Tested / Packed / Scanned Out)
-   * above the shipping fields — the rep "prove the packout" order-detail view.
-   * Default keeps the original order (Order ID first) for the dashboard slide-over.
-   */
-  provenanceFirst?: boolean;
 }
 
 export function ShippingInformationSection({
@@ -56,7 +48,6 @@ export function ShippingInformationSection({
   showShippingTimestamp = false,
   editableShippingFields,
   prepackedSku,
-  provenanceFirst = false,
 }: ShippingInformationSectionProps) {
   const accountSourceLabel = getAccountSourceLabel(shipped.order_id, shipped.account_source);
 
@@ -84,41 +75,12 @@ export function ShippingInformationSection({
   const {
     daysLate,
     packedAtSource,
-    isScannedOut,
-    scannedOutByDisplay,
-    packerNameDisplay,
-    techNameDisplay,
     returnsCopyText,
   } = deriveShippingDisplayMeta(shipped, serialNumberRows);
   const daysLateTone = daysLate > 1 ? 'danger' : daysLate === 1 ? 'warning' : 'soft';
+  // The Tested / Packed / Scanned Out milestones render in OrderPipelineSection
+  // (stepper + stage rows) above this card; here they only gate the copy icon.
   const showProvenance = Boolean(shipped.packed_at && shipped.packed_at !== '1');
-
-  const provenanceRows = showProvenance ? (
-    <>
-      <DetailsPanelRow label="Tested By">
-        <div className="flex items-center justify-between gap-3">
-          <LedgerValue value={techNameDisplay} truncate />
-          <DateTimeValue value={shipped.test_date_time} />
-        </div>
-      </DetailsPanelRow>
-      <DetailsPanelRow label="Packed By">
-        <div className="flex items-center justify-between gap-3">
-          <LedgerValue value={packerNameDisplay} truncate />
-          <DateTimeValue value={packedAtSource} />
-        </div>
-      </DetailsPanelRow>
-      <DetailsPanelRow label="Scanned Out">
-        {isScannedOut ? (
-          <div className="flex items-center justify-between gap-3">
-            <LedgerValue value={scannedOutByDisplay} truncate />
-            <DateTimeValue value={shipped.ship_confirmed_at} />
-          </div>
-        ) : (
-          <LedgerValue value={null} />
-        )}
-      </DetailsPanelRow>
-    </>
-  ) : null;
 
   return (
     <section className="space-y-3">
@@ -167,8 +129,6 @@ export function ShippingInformationSection({
       </div>
 
       <div className="space-y-0">
-        {provenanceFirst ? provenanceRows : null}
-
         {showShippingTimestamp ? (
           <DetailsPanelRow label="Shipped">
             <p className="text-sm font-bold text-text-default">
@@ -228,24 +188,9 @@ export function ShippingInformationSection({
           <TrackingNumberRow label="Tracking Number" value="" placeholder="No tracking number" />
         )}
 
-        {(shipped.latest_status_category || shipped.has_exception) && shipped.shipment_id != null ? (
-          <DetailsPanelRow label="Carrier Status">
-            <ShipmentStatusBadge
-              carrier={shipped.carrier ?? null}
-              category={shipped.latest_status_category ?? null}
-              description={shipped.latest_status_description ?? null}
-              latestEventAt={shipped.latest_event_at ?? null}
-              hasException={shipped.has_exception ?? null}
-              isTerminal={shipped.is_terminal ?? null}
-            />
-          </DetailsPanelRow>
-        ) : null}
-
         {showSerialNumber ? (
           <SerialNumbersRow serials={serialNumberRows} />
         ) : null}
-
-        {!provenanceFirst ? provenanceRows : null}
 
         {prepackedSku ? <PrepackedSkuRow sku={prepackedSku} /> : null}
 

@@ -180,7 +180,7 @@ export function SendPhotoNoteModal({
                 : 'Add an internal note for the team (private — not emailed to the customer)…'
             }
             className={cn(
-              'block w-full resize-y rounded-lg border bg-surface-card px-3 py-2 text-role-caption font-medium text-text-default outline-none focus:ring-2',
+              'block w-full resize-y rounded-lg border bg-surface-card inset-field text-role-caption font-medium text-text-default outline-none focus:ring-2',
               isPublic
                 ? 'border-blue-200 focus:border-blue-500 focus:ring-blue-500/20'
                 : 'border-border-soft focus:border-border-emphasis focus:ring-text-soft/20',

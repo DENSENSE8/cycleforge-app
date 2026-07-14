@@ -370,15 +370,15 @@ function QcSidebarPicker({ query }: { query: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
+        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
           Loading products…
         </div>
       ) : isError ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-red-500">
+        <div className="inset-empty text-center text-role-caption font-semibold text-red-500">
           Couldn't load products.
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
+        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
           {trimmedQuery ? 'No matches with a QC checklist.' : 'No products have a QC checklist yet.'}
         </div>
       ) : (
@@ -467,15 +467,15 @@ function KitPartsPicker({ query }: { query: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
+        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
           Loading products…
         </div>
       ) : isError ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-red-500">
+        <div className="inset-empty text-center text-role-caption font-semibold text-red-500">
           Couldn&apos;t load products.
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
+        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
           {trimmedQuery ? 'No matches.' : 'No products available.'}
         </div>
       ) : (
@@ -571,15 +571,15 @@ function ProductPickerList({ query, recents, onPick }: ProductPickerListProps) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
+        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
           Loading products…
         </div>
       ) : isError ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-red-500">
+        <div className="inset-empty text-center text-role-caption font-semibold text-red-500">
           Couldn't load products.
         </div>
       ) : items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-role-caption font-semibold text-text-faint">
+        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
           {trimmedQuery ? 'No matches.' : 'No products available.'}
         </div>
       ) : (

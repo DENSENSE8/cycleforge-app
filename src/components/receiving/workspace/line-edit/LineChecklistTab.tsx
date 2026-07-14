@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Fill-in receiving checklist — the Checklist tab inside {@link LineNotesTabbedCard}.
+ * Fill-in receiving checklist — the "Checklist" top-level display tab in the unbox
+ * workspace (a peer of Unbox / Units in {@link LineEditPanel}'s `SectionTabsSlider`).
  *
  * The checklist DEFINITION is org-wide and DB-backed: it reads the GLOBAL scope
  * of the polymorphic `checklist_templates` table via {@link useChecklist}, and
@@ -176,7 +177,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
 
   if (isError) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-medium text-rose-600">
+      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption font-medium text-rose-600">
         Couldn&apos;t load the checklist.
       </div>
     );
@@ -214,7 +215,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
           <p className="text-role-caption text-text-soft">No checklist steps yet.</p>
           <Button
             variant="primary"
@@ -340,7 +341,7 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
               if (e.key === 'Enter') void addStep(newLabel);
             }}
             placeholder="Add a checklist step…"
-            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-bold text-text-default placeholder:text-text-faint"
+            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption font-bold text-text-default placeholder:text-text-faint"
           />
           <Button
             variant="primary"

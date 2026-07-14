@@ -248,7 +248,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
                       type="button"
                       onClick={() => setSort(option.id)}
                       aria-pressed={active}
-                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg inset-cozy text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         active
                           ? 'bg-blue-600 text-white ring-blue-600'
                           : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
@@ -277,7 +277,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
                       type="button"
                       onClick={() => setScope(item.id)}
                       aria-pressed={active}
-                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg inset-cozy text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         active
                           ? 'bg-blue-600 text-white ring-blue-600'
                           : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
@@ -306,7 +306,7 @@ export function ReceivingHistorySearchSection({ onSwitchToReceiving }: Props) {
                       type="button"
                       onClick={() => setField(field.id)}
                       aria-pressed={active}
-                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                      className={`ds-raw-button inline-flex items-center gap-1.5 rounded-lg inset-cozy text-role-caption font-bold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         active
                           ? 'bg-blue-600 text-white ring-blue-600'
                           : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'

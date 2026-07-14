@@ -7,6 +7,8 @@ import { PhotoGallery } from './PhotoGallery';
 import { SECTION_CARD_CLASS } from './SectionCard';
 import { ShippingInformationSection, type EditableShippingFields, type PrepackedSkuInfo } from '@/components/shipped/details-panel/ShippingInformationSection';
 import { ProductDetailsSection } from '@/components/shipped/details-panel/ProductDetailsSection';
+import { OrderPipelineSection } from '@/components/shipped/details-panel/OrderPipelineSection';
+import { OrderQuickLinksSection } from '@/components/shipped/details-panel/OrderQuickLinksSection';
 
 interface DurationData {
   boxingDuration?: string;
@@ -26,8 +28,12 @@ interface ShippedDetailsPanelContentProps {
   showShippingTimestamp?: boolean;
   showSerialNumber?: boolean;
   productDetailsFirst?: boolean;
-  /** Lead the shipping card with packout provenance (rep order-detail view). */
-  provenanceFirst?: boolean;
+  /**
+   * Render the Warranty / Customer quick-link rows at the end of the shipping
+   * tab — the slide-over's replacement for the removed Customer/Warranty tabs.
+   * The full-page order view keeps the tabs and omits this.
+   */
+  showQuickLinks?: boolean;
   editableShippingFields?: EditableShippingFields;
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
@@ -49,7 +55,7 @@ export function ShippedDetailsPanelContent({
   showShippingTimestamp = false,
   showSerialNumber = true,
   productDetailsFirst = false,
-  provenanceFirst = false,
+  showQuickLinks = false,
   editableShippingFields,
   activeSection,
   variant = 'flat',
@@ -92,6 +98,8 @@ export function ShippedDetailsPanelContent({
 
   return (
     <div className={isCard ? 'space-y-5' : 'px-8 pb-8 pt-0 space-y-6'}>
+      {showShipping && wrapSection(<OrderPipelineSection shipped={shipped} />)}
+
       {showPackingPhotos && photosVisible && (
         <>
           {prepackedSku && Array.isArray(prepackedSku.photos) && prepackedSku.photos.length > 0 && wrapSection(
@@ -149,12 +157,13 @@ export function ShippedDetailsPanelContent({
               showSerialNumber={showSerialNumber}
               editableShippingFields={editableShippingFields}
               prepackedSku={prepackedSku}
-              provenanceFirst={provenanceFirst}
             />,
           )
         : null}
 
       {!productDetailsFirst && showProduct && wrapSection(productDetailsSection)}
+
+      {showQuickLinks && showShipping && wrapSection(<OrderQuickLinksSection shipped={shipped} />)}
     </div>
   );
 }

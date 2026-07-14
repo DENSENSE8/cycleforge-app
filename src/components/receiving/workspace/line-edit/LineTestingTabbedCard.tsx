@@ -26,8 +26,9 @@ const NOTES_TEXTAREA_FOCUS =
 
 /**
  * Tabbed notes · SKU pairing · testing checklist · manuals card for the testing
- * workspace — same `HorizontalButtonSlider` nav pills as {@link LineNotesTabbedCard}.
- * Checklist and manuals tabs appear when the line has a SKU.
+ * workspace — a `HorizontalButtonSlider` nav-pill tab stack. Checklist and manuals
+ * tabs appear when the line has a SKU. (Distinct from the unbox `LineNotesCard`,
+ * which is a single header-less, auto-saving note composer.)
  */
 export function LineTestingTabbedCard({
   notes,
@@ -118,7 +119,7 @@ export function LineTestingTabbedCard({
           value={notes}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
-          className={`w-full resize-none rounded-lg border border-border-soft px-3 py-2 text-role-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
+          className={`w-full resize-none rounded-lg border border-border-soft inset-field text-role-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
         />
       ) : null}
 

@@ -16,6 +16,13 @@ export interface DeriveReceivingStepStatesInput {
   serialCount: number;
   quantityExpected: number;
   labelPrinted: boolean;
+  /**
+   * Operator waived the serial for this line (no serial: cable / bulk / return
+   * with none). A first-class COMPLETION of the Serial step — not missing data —
+   * so it satisfies the gate exactly like a captured serial does. Durable, from
+   * `receiving_line_testing.serial_absent` via `row.serial_absent`.
+   */
+  serialAbsent?: boolean;
 }
 
 /**
@@ -44,13 +51,53 @@ export interface DeriveReceivingStepStatesInput {
  */
 export function deriveReceivingStepFlags(input: DeriveReceivingStepStatesInput): Record<ReceivingStepKey, boolean> {
   const expected = input.quantityExpected ?? 0;
-  const isSerialDone = expected > 0 ? input.serialCount >= expected : input.serialCount > 0;
+  // The no-serial waiver completes the step outright — a cable/bulk/return with
+  // no serial is DONE, not "0 serials, still pending". Otherwise gate on count.
+  const isSerialDone =
+    !!input.serialAbsent ||
+    (expected > 0 ? input.serialCount >= expected : input.serialCount > 0);
 
   return {
     photos: input.photoCount > 0,
     serial: isSerialDone,
     print: input.labelPrinted,
   };
+}
+
+/** One ordered step + its own completion gate — the input to {@link deriveLinearStepStates}. */
+export interface LinearStepFlag {
+  key: string;
+  done: boolean;
+}
+
+/**
+ * The shared completeness-checklist walk for EVERY receiving-family stepper
+ * (matched unbox, unfound). A step is `done` when its own gate passes; the FIRST
+ * incomplete step is `active` (the operator's next job); the rest are `pending`.
+ * Order matters only for which incomplete step wears the active marker — a later
+ * done step still reads done, never masked behind an incomplete prior.
+ *
+ * Compose this; never re-implement the walk per stepper. A new receiving flow
+ * grows its own step *vocabulary* (its `LinearStepFlag[]`) and feeds it here —
+ * that is a sibling flow over the shared primitive, not a forked stepper
+ * (AGENTS.md → Compose → grow the SoT → compound).
+ */
+export function deriveLinearStepStates(
+  flags: ReadonlyArray<LinearStepFlag>,
+): Record<string, LinearStepState> {
+  const states: Record<string, LinearStepState> = {};
+  let activeAssigned = false;
+  for (const { key, done } of flags) {
+    if (done) {
+      states[key] = 'done';
+    } else if (!activeAssigned) {
+      states[key] = 'active';
+      activeAssigned = true;
+    } else {
+      states[key] = 'pending';
+    }
+  }
+  return states;
 }
 
 /**
@@ -66,21 +113,9 @@ export function deriveReceivingStepStates(
   input: DeriveReceivingStepStatesInput,
 ): Record<ReceivingStepKey, LinearStepState> {
   const flags = deriveReceivingStepFlags(input);
-  const states = {} as Record<ReceivingStepKey, LinearStepState>;
-
-  let activeAssigned = false;
-  for (const { key } of RECEIVING_WORKFLOW_STEPS) {
-    if (flags[key]) {
-      states[key] = 'done';
-    } else if (!activeAssigned) {
-      states[key] = 'active';
-      activeAssigned = true;
-    } else {
-      states[key] = 'pending';
-    }
-  }
-
-  return states;
+  return deriveLinearStepStates(
+    RECEIVING_WORKFLOW_STEPS.map(({ key }) => ({ key, done: flags[key] })),
+  ) as Record<ReceivingStepKey, LinearStepState>;
 }
 
 /** First active step key — used for step-aware UI (notes focus, photo peek, serial autofocus). */

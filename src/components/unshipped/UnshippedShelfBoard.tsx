@@ -12,7 +12,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Clock, Layers, List } from '@/components/Icons';
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Clock, Layers, List, Zap } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import {
@@ -55,14 +55,32 @@ const LANE_ICON: Record<FulfillmentLaneIconKey, React.ComponentType<{ className?
   alert: AlertTriangle,
 };
 
-const UNSHIPPED_LANES: SwimlaneLaneDef<FulfillmentState>[] = FULFILLMENT_BOARD_LANES.map((lane) => ({
-  id: lane.id,
-  label: FULFILLMENT_STATE_META[lane.id].label,
-  dot: FULFILLMENT_STATE_META[lane.id].dot,
-  description: FULFILLMENT_STATE_META[lane.id].description,
-  icon: LANE_ICON[lane.iconKey],
-  iconClass: lane.iconClass,
-}));
+// Board-local lane key: the global FulfillmentState (PENDING/TESTED/BLOCKED) is
+// a wide SoT (counts, filters, deriveFulfillmentState); URGENT is an orthogonal
+// operator flag (orders.is_urgent) surfaced as its own board lane WITHOUT
+// widening that SoT. Urgent rows collect here and drop out of their status lane.
+type BoardLane = FulfillmentState | 'URGENT';
+
+const URGENT_LANE: SwimlaneLaneDef<BoardLane> = {
+  id: 'URGENT',
+  label: 'Urgent',
+  dot: 'bg-amber-500',
+  description: 'Operator-flagged urgent / expedited orders',
+  icon: Zap,
+  iconClass: 'text-amber-500',
+};
+
+const UNSHIPPED_LANES: SwimlaneLaneDef<BoardLane>[] = [
+  URGENT_LANE,
+  ...FULFILLMENT_BOARD_LANES.map((lane) => ({
+    id: lane.id,
+    label: FULFILLMENT_STATE_META[lane.id].label,
+    dot: FULFILLMENT_STATE_META[lane.id].dot,
+    description: FULFILLMENT_STATE_META[lane.id].description,
+    icon: LANE_ICON[lane.iconKey],
+    iconClass: lane.iconClass,
+  })),
+];
 
 const UNSHIPPED_SORT_OPTIONS: SwimlaneSortOption<OrdersQueueSort>[] = ORDERS_QUEUE_SORTS.map((s) => ({
   id: s,
@@ -72,10 +90,14 @@ const UNSHIPPED_SORT_OPTIONS: SwimlaneSortOption<OrdersQueueSort>[] = ORDERS_QUE
 type FulfillmentRow = ShippedOrder & {
   has_tech_scan?: boolean | null;
   out_of_stock?: string | null;
+  is_urgent?: boolean | null;
 };
 
-function rowState(row: ShippedOrder): FulfillmentState {
+function rowState(row: ShippedOrder): BoardLane {
   const r = row as FulfillmentRow;
+  // Urgent takes precedence — an urgent row lives in the Urgent lane, not its
+  // status lane, so the Urgent lane is its own table.
+  if (r.is_urgent) return 'URGENT';
   return deriveFulfillmentState({
     hasTechScan: Boolean(r.has_tech_scan),
     outOfStock: r.out_of_stock,
@@ -116,12 +138,11 @@ export function UnshippedShelfBoard({
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const focusLane = useMemo((): FulfillmentState | null => {
+  const focusLane = useMemo((): BoardLane | null => {
     const raw = String(searchParams.get('ustatus') || '').trim().toUpperCase();
-    if (raw === 'PENDING' || raw === 'TESTED' || raw === 'BLOCKED') return raw;
+    if (raw === 'PENDING' || raw === 'TESTED' || raw === 'BLOCKED' || raw === 'URGENT') return raw;
     return null;
   }, [searchParams]);
-  const lateOnly = searchParams.get('late') === '1';
   const surface: OutboundSurface = parseOutboundSurface(searchParams.get(SURFACE_PARAM));
   const visibleLanes = useMemo(
     () => (focusLane ? UNSHIPPED_LANES.filter((l) => l.id === focusLane) : UNSHIPPED_LANES),
@@ -139,13 +160,6 @@ export function UnshippedShelfBoard({
     },
     [pathname, router, searchParams],
   );
-
-  const toggleLateOnly = useCallback(() => {
-    replaceParam((params) => {
-      if (params.get('late') === '1') params.delete('late');
-      else params.set('late', '1');
-    });
-  }, [replaceParam]);
 
   const setSurface = useCallback(
     (next: OutboundSurface) => {
@@ -184,7 +198,7 @@ export function UnshippedShelfBoard({
       growToContent,
       scrollParentRef,
       collapse,
-    }: SwimlaneLaneBodyContext<ShippedOrder, FulfillmentState, OrdersQueueSort>) => {
+    }: SwimlaneLaneBodyContext<ShippedOrder, BoardLane, OrdersQueueSort>) => {
       const dateHeaderEndSlot =
         collapse && collapse.canToggle ? (
           <HoverTooltip
@@ -272,17 +286,6 @@ export function UnshippedShelfBoard({
             {surface === 'list' ? <Layers className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
           </ToolbarButton>
         </HoverTooltip>
-        <HoverTooltip label="Show late orders only" asChild>
-          <ToolbarButton
-            iconOnly
-            active={lateOnly}
-            onClick={toggleLateOnly}
-            aria-pressed={lateOnly}
-            aria-label="Show late orders only"
-          >
-            <Clock className="h-3.5 w-3.5" />
-          </ToolbarButton>
-        </HoverTooltip>
         <HoverTooltip label="Configure columns" asChild>
           <span className="inline-flex">
             <ColumnConfigButton variant="toolbar" />
@@ -302,7 +305,7 @@ export function UnshippedShelfBoard({
         </HoverTooltip>
       </div>
     ),
-    [selectMode, onToggleSelectMode, lateOnly, toggleLateOnly, surface, setSurface],
+    [selectMode, onToggleSelectMode, surface, setSurface],
   );
 
   return (
@@ -353,7 +356,7 @@ export function UnshippedShelfBoard({
             {footer}
           </div>
         ) : (
-          <SwimlaneBoard<ShippedOrder, FulfillmentState, OrdersQueueSort>
+          <SwimlaneBoard<ShippedOrder, BoardLane, OrdersQueueSort>
             key={focusLane ?? 'all-lanes'}
             prefsKey="unshippedBoard"
             lanes={visibleLanes}

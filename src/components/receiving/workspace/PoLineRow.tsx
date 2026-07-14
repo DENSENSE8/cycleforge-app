@@ -85,6 +85,14 @@ interface Props {
   activeRowSlot?: ActiveRowSlot;
   renderTitleActions?: (line: ReceivingLineRow) => React.ReactNode;
   desc: PoLineDescProps;
+  /**
+   * Enable framer `layout` position tracking. The accordion sets this false
+   * while it lives in a hidden tab panel (`display:none`) so the rows don't fly
+   * in from the origin when the panel is re-shown; the sibling-reorder layout
+   * animation runs only when the panel is actually visible. Defaults to true so
+   * standalone callers (testing) are unaffected.
+   */
+  animateLayout?: boolean;
 }
 
 /**
@@ -107,6 +115,7 @@ export function PoLineRow({
   activeRowSlot,
   renderTitleActions,
   desc,
+  animateLayout = true,
 }: Props) {
   const rowBodyCollapse = useMotionPresence(framerPresence.collapseHeight);
   const rowBodyTransition = useMotionTransition(PO_LINE_BODY_COLLAPSE);
@@ -117,7 +126,7 @@ export function PoLineRow({
 
   return (
     <motion.li
-      layout="position"
+      layout={animateLayout ? 'position' : false}
       transition={rowLayoutTransition}
       aria-current={isActive ? 'true' : undefined}
       className={`relative min-w-0 overflow-hidden rounded-xl border transition-colors ${
@@ -339,7 +348,7 @@ export function PoLineRow({
       {!readOnly && isActive && (activeRowSlot || descShown) ? (
         <motion.div
           initial={false}
-          layout="position"
+          layout={animateLayout ? 'position' : false}
           animate={
             activeCollapsed
               ? rowBodyCollapse.exit

@@ -127,7 +127,7 @@ export function PoMailboxTab() {
                 </p>
               )}
               {status.needsReconnect && status.needsReconnectReason && (
-                <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-role-caption text-amber-800">
+                <div className="flex items-start gap-2 rounded-md bg-amber-50 inset-field text-role-caption text-amber-800">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div>
                     <div className="font-medium">Refresh token rejected</div>

@@ -76,7 +76,7 @@ export function FavoritesDefaultView({ f }: { f: FavoritesWorkspaceController })
               {f.showForm && f.editingFavoriteId === null && <FavoriteForm f={f} />}
 
               {f.error && (
-                <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-3 py-2 text-red-700">
+                <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 inset-field text-red-700">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <p className={fieldLabel}>{f.error}</p>
                 </div>

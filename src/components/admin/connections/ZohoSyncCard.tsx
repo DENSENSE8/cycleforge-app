@@ -123,7 +123,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           value={purchaseReceiveId}
           onChange={(e) => setPurchaseReceiveId(e.target.value)}
           placeholder="Enter purchase receive ID"
-          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas px-3 py-2 text-role-micro font-bold uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
+          className="flex-1 rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-micro font-bold uppercase tracking-widest text-text-default outline-none focus:border-emerald-500"
         />
         <Button
           variant="primary"
