@@ -2,6 +2,7 @@ import { zohoClient } from '@/lib/zoho/ZohoInventoryClient';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import type { ZohoItem, ZohoWarehouse } from '@/lib/zoho/types';
 import { itemRepository } from '@/lib/repositories/itemRepository';
+import { logger } from '@/lib/observability/logger';
 import { syncCursorRepository } from '@/lib/repositories/syncCursorRepository';
 import { formatApiOffsetTimestamp } from '@/utils/date';
 
@@ -94,7 +95,7 @@ export class InventorySyncService {
 
     await this.syncLocations();
     await syncCursorRepository.upsert(this.organizationId, 'items', { lastSyncedAt: new Date(), fullSyncAt: new Date() });
-    console.info({ event: 'items.full_sync.complete', count, duration_ms: Date.now() - startTime });
+    logger.info({ count, duration_ms: Date.now() - startTime }, 'items.full_sync.complete');
     return { count };
   }
 

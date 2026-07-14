@@ -91,15 +91,6 @@ const TONE_BG: Record<StickyActionTone, string> = {
   gray: 'bg-surface-inverse hover:bg-surface-inverse-hover',
 };
 
-const TONE_HOVER_ONLY: Record<StickyActionTone, string> = {
-  blue: 'hover:bg-blue-700',
-  emerald: 'hover:bg-emerald-700',
-  orange: 'hover:bg-orange-700',
-  violet: 'hover:bg-violet-800',
-  red: 'hover:bg-rose-700',
-  gray: 'hover:bg-surface-inverse-hover',
-};
-
 /** Solid fill only — split track uses filter hover so chevron + label stay one tone. */
 const TONE_BG_SOLID: Record<StickyActionTone, string> = {
   blue: 'bg-blue-600',
@@ -145,9 +136,6 @@ export function StickyActionBar({
   const toneClass = primary.disabled
     ? 'cursor-not-allowed bg-surface-strong'
     : baseTone;
-  const hoverOnly = primary.toneClasses
-    ? primary.toneClasses.hover
-    : TONE_HOVER_ONLY[tone];
   const splitTrackBg = primary.disabled
     ? 'bg-surface-strong'
     : primary.toneClasses

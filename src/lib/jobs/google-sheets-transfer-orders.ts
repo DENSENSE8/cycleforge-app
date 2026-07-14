@@ -456,7 +456,6 @@ export async function runGoogleSheetsTransferOrders(
         if (ecwidRows.length > 0) {
           eligibleSourceRows = [...eligibleSourceRows, ...ecwidRows];
         }
-        console.log(`[transfer-orders] Fetched ${ecwidApiRows} Ecwid API rows (source=${source})`);
       } catch (err: any) {
         console.error('[transfer-orders] Ecwid API fetch failed (non-fatal):', err?.message);
       }
@@ -631,7 +630,7 @@ export async function runGoogleSheetsTransferOrders(
             .where(inArray(ordersTable.orderId, sourceOrderIds))
             .orderBy(desc(ordersTable.createdAt));
 
-    const sourceOrdersByShipmentId = sourceShipmentIds.length === 0
+    const _sourceOrdersByShipmentId = sourceShipmentIds.length === 0
       ? []
       : orgId
         ? await withTenantDrizzle(orgId, (tx) =>
@@ -650,7 +649,7 @@ export async function runGoogleSheetsTransferOrders(
             .where(inArray(ordersTable.shipmentId, sourceShipmentIds))
             .orderBy(desc(ordersTable.createdAt));
 
-    const sourceLegacyOrdersByTracking: OrderProjection[] = [];
+    const _sourceLegacyOrdersByTracking: OrderProjection[] = [];
 
     const customerProjectionCols = {
       id: customersTable.id,
@@ -1242,7 +1241,7 @@ export async function runGoogleSheetsTransferOrders(
     // Bust the server-side cache *before* signalling the client to refetch,
     // otherwise the client's GET /api/orders can race ahead and get a stale
     // cache hit. Sequence matters: invalidate → publishing event → publish.
-    await invalidateAllOrdersApiCaches();
+    await invalidateAllOrdersApiCaches([], effectiveOrgId);
     progress({ type: 'phase', phase: 'publishing' });
     if (uniqueProcessedIds.length > 0) {
       await publishOrderChanged({

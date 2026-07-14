@@ -15,7 +15,6 @@ interface FbaQtySplitPopoverProps {
 }
 
 export function FbaQtySplitPopover({
-  itemId,
   fnsku,
   maxQty,
   onConfirm,

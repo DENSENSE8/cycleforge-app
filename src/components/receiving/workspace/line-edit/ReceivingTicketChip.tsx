@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Archive, Clock, ExternalLink, Loader2, TicketHelp, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';

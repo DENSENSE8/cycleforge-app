@@ -17,6 +17,7 @@
  */
 
 import { isPlacementParityObserve } from '@/lib/feature-flags';
+import { logger } from '@/lib/observability/logger';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveDecision, type DecisionFacts, type DecisionRule } from './decision-eval';
 import {
@@ -71,7 +72,7 @@ function defaultLog(entry: PlacementParityLog): void {
       `${head} expectedBin=${entry.expectedBinId} resolvedBin=${entry.resolvedBinId} placement=${entry.placement} facts=${JSON.stringify(entry.facts)}`,
     );
   } else {
-    console.info(`${head} bin=${entry.resolvedBinId ?? entry.expectedBinId}`);
+    logger.info(`${head} bin=${entry.resolvedBinId ?? entry.expectedBinId}`);
   }
 }
 

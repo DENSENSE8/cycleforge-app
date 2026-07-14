@@ -21,7 +21,7 @@ interface SkuInputProps {
     onFillAndSearch: (value: string) => void;
 }
 
-export function SkuInput({ sku, uniqueSku, mode, skuInputRef, isActive, density = 'compact', onChange, onNext, onFillAndSearch }: SkuInputProps) {
+export function SkuInput({ sku, skuInputRef, isActive, density = 'compact', onChange, onNext, onFillAndSearch }: SkuInputProps) {
     const comfy = density === 'comfortable';
 
     const handlePaste = async () => {

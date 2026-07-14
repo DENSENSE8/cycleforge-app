@@ -577,7 +577,7 @@ export const receivingTasks = pgTable('receiving_tasks', {
 });
 
 // Source of truth tables - generic columns for all
-const genericColumns = {
+const _genericColumns = {
   col1: serial('col_1').primaryKey(),
   col2: text('col_2'),
   col3: text('col_3'),

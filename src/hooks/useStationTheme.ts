@@ -37,13 +37,6 @@ const dynamicThemeColors: StationThemeColors = {
   shadow: 'shadow-accent-shadow',
 };
 
-const dynamicInputTheme: StationInputThemeClasses = {
-  text: 'text-accent-text',
-  bg: 'bg-accent-bg',
-  ring: 'focus:ring-accent-bg/10',
-  border: 'focus:border-accent-bg',
-};
-
 /**
  * Single entry point for station theme resolution.
  *

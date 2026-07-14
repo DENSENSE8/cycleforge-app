@@ -31,6 +31,7 @@ import { withCronLock } from '@/lib/cron/lock';
 import { runReconcileDeliveredJob } from '@/lib/jobs/reconcile-delivered';
 import { runTrackingMatchReconcileJob } from '@/lib/jobs/tracking-match-reconcile';
 import { runWarrantyClockMaintenance } from '@/lib/warranty/clock-sweep';
+import { logger } from '@/lib/observability/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
     }
     const { delivered, match, warranty } = locked.result!;
 
-    console.log('[cron.shipping.reconcile-delivered]', {
+    logger.info({
       delivered: {
         deliveredReconciled: delivered.deliveredReconciled,
         scanDelivered: delivered.scanDelivered,
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
       },
       match,
       warranty,
-    });
+    }, '[cron.shipping.reconcile-delivered]');
     return NextResponse.json({ ok: true, delivered, match, warranty });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'reconcile threw';

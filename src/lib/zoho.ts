@@ -97,7 +97,7 @@ export interface ZohoPageContext {
   sort_order?: string;
 }
 
-export interface ZohoPagedResponse<T> {
+export interface ZohoPagedResponse<_T> {
   code: number;
   message?: string;
   page_context?: ZohoPageContext;

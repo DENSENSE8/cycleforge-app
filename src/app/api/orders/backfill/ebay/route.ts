@@ -10,13 +10,6 @@ function isBlank(value: unknown): boolean {
   return value === null || value === undefined || String(value).trim() === '';
 }
 
-function extractTrackingFromOrder(ebayOrder: any): string {
-  const fromInstructions =
-    ebayOrder?.fulfillmentStartInstructions?.[0]?.shippingStep?.shipmentTracking;
-  const list = Array.isArray(fromInstructions) ? fromInstructions : [];
-  return list.map((e: any) => String(e?.trackingNumber || '').trim()).filter(Boolean)[0] || '';
-}
-
 /**
  * POST /api/orders/backfill/ebay
  *
@@ -192,7 +185,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const condition = String(firstItem?.condition || firstItem?.conditionId || '').trim();
         const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '';
         const orderDate = ebayOrder?.creationDate ? new Date(ebayOrder.creationDate) : null;
-        const trackingNumber = extractTrackingFromOrder(ebayOrder);
         // Realized order total from the eBay Fulfillment order's pricingSummary.total (Amount: { value, currency }).
         const rawAmount = ebayOrder?.pricingSummary?.total?.value;
         const parsedAmount = rawAmount != null ? Number(rawAmount) : null;

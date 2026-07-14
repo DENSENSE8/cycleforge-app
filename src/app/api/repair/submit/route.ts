@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createRepair, updateRepairField } from '@/lib/neon/repair-service-queries';
 import { createAssignment } from '@/lib/neon/assignments-queries';
 import { addBusinessDays, createZendeskTicket } from '@/lib/zendesk';
+import { logger } from '@/lib/observability/logger';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
@@ -174,7 +175,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 price: normalizedPrice,
                 notes: normalizedNotes
             }, { idempotencyKey });
-            console.log('Zendesk ticket created:', zendeskTicketNumber ?? 'missing ticket number');
+            logger.info(`Zendesk ticket created: ${zendeskTicketNumber ?? 'missing ticket number'}`);
             if (zendeskTicketNumber) {
                 await updateRepairField(dbId, 'ticket_number', zendeskTicketNumber, orgId);
             }

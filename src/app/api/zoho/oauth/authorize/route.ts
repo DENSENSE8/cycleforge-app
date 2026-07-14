@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  * Required env vars: ZOHO_CLIENT_ID, NEXT_PUBLIC_APP_URL
  * Optional: ZOHO_DOMAIN (defaults to accounts.zoho.com)
  */
-export const GET = withAuth(async (request: NextRequest) => {
+export const GET = withAuth(async (_request: NextRequest) => {
   const clientId = normalizeEnvValue(process.env.ZOHO_CLIENT_ID);
   const domain = normalizeEnvValue(process.env.ZOHO_DOMAIN) || 'accounts.zoho.com';
   const appUrl = resolvePublicAppUrl();

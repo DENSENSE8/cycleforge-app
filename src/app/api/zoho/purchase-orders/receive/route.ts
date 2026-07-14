@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { logger } from '@/lib/observability/logger';
 import {
   createPurchaseReceive,
   getPurchaseOrderById,
@@ -26,7 +27,7 @@ import {
 } from '@/lib/receiving/facts/narrow';
 import type { FactsDeps } from '@/lib/receiving/facts/store';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
@@ -408,7 +409,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
 
       try {
-        await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+        await invalidateReceivingViews(ctx.organizationId);
       } catch { /* silent */ }
       try {
         await publishReceivingLogChanged({
@@ -425,9 +426,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const alreadyReceived =
         /already\s+created\s+a\s+receive\s+for\s+all\s+the\s+items/i.test(msg);
       if (alreadyReceived) {
-        console.log(
+        logger.info(
+          { purchaseOrderId },
           'zoho/purchase-orders/receive: PO already received in Zoho (background, treated as success)',
-          purchaseOrderId,
         );
       } else {
         console.error(

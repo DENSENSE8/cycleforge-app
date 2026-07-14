@@ -37,7 +37,7 @@ function resolvePackerStaffId(rawId: string | number | null | undefined): number
     return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
-function packTierFromCleanSize(cleanSize?: ScanClassification['cleanSize']): 'SMALL' | 'MEDIUM' | 'LARGE' | null {
+function _packTierFromCleanSize(cleanSize?: ScanClassification['cleanSize']): 'SMALL' | 'MEDIUM' | 'LARGE' | null {
     if (!cleanSize) return null;
     if (cleanSize === 'BIG') return 'LARGE';
     if (cleanSize === 'MEDIUM') return 'MEDIUM';
@@ -135,7 +135,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             trackingType: log.tracking_type || '',
         }));
 
-        await setCachedJson('api:packing-logs', cacheLookup, formattedLogs, 300, ['packing-logs', 'packing-logs']);
+        await setCachedJson('api:packing-logs', cacheLookup, formattedLogs, 300, ['packing-logs']);
         return NextResponse.json(formattedLogs, { headers: { 'x-cache': 'MISS' } });
     } catch (error: any) {
         console.error('Error fetching packing logs:', error);
@@ -154,12 +154,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             return NextResponse.json({ error: 'trackingNumber is required' }, { status: 400 });
         }
         
-        console.log('Received packing request:', {
-            trackingNumber,
-            photosCount: photos?.length,
-            packerId,
-            createdAt: createdAt ?? timestamp,
-        });
         const staffId = resolvePackerStaffId(packerId);
 
         if (!staffId) {
@@ -171,15 +165,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         
         const photoUrls: string[] = Array.isArray(photos) ? photos.filter((u: any) => typeof u === 'string' && u.trim()) : [];
 
-        console.log('=== PACKING UPDATE DEBUG ===');
-        console.log('Photos received:', photos);
-        console.log('Update parameters:', {
-            staffId,
-            packDateTime,
-            trackingNumber,
-            photosCount: photos?.length,
-            status: 'shipped'
-        });
         
         const classification = classifyScan(scanInput);
 

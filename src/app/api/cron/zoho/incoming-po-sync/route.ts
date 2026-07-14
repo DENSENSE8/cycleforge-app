@@ -32,10 +32,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { syncZohoPurchaseOrdersToReceiving, type BulkSyncSummary } from '@/lib/zoho-receiving-sync';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { forEachOrgWithProvider } from '@/lib/cron/for-each-org';
+import { logger } from '@/lib/observability/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -146,7 +147,7 @@ export async function GET(req: NextRequest) {
     // upserts on the next refetch without waiting for staleTime to expire.
     if (summary.created > 0 || summary.updated > 0) {
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+        await invalidateReceivingViews(null);
       } catch (err) {
         console.warn('incoming-po-sync: cache invalidate failed (non-fatal)', err);
       }
@@ -154,7 +155,7 @@ export async function GET(req: NextRequest) {
 
     // Single structured log line — Vercel/Datadog log scrapers key off this
     // prefix to plot run cadence + failure rate. Keep field names stable.
-    console.log('[cron.incoming-po-sync]', {
+    logger.info({
       ok: summary.failed === 0,
       po_date_floor: poDateFloor,
       orgs_swept: summary.orgs_swept,
@@ -168,7 +169,7 @@ export async function GET(req: NextRequest) {
       failed: summary.failed,
       first_errors: summary.errors.slice(0, 3),
       elapsedMs,
-    });
+    }, '[cron.incoming-po-sync]');
 
     return NextResponse.json({
       ok: summary.failed === 0,

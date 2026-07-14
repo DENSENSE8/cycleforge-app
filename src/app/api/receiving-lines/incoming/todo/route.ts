@@ -33,8 +33,6 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 export const dynamic = 'force-dynamic';
 
-/** Open piles surfaced as actionable to-dos (FIFO, oldest first). */
-const OPEN_PILES = ['inbox', 'upload'] as const;
 /** Hard cap per group — keeps payload + render bounded; UI shows "+N more". */
 const MAX_OPEN = 50;
 const MAX_DONE = 25;

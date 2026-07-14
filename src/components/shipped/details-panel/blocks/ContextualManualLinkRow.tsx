@@ -104,7 +104,7 @@ export function ContextualManualLinkRow({
       setGoogleInput(resolvedFileId);
       setSaveState('saved');
       onSaved?.(resolvedFileId);
-    } catch (_error) {
+    } catch {
       setSaveState('error');
     }
   };

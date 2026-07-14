@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
+import { logger } from '@/lib/observability/logger';
 import { runSourcingScanJob } from '@/lib/jobs/sourcing-scan';
 import {
   runSourcingDemandCollectorsJob,
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, skipped: 'locked' });
     }
     const result = locked.result!;
-    console.log('[cron.sourcing.scan]', JSON.stringify(result));
+    logger.info(result, '[cron.sourcing.scan]');
     return NextResponse.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Sourcing scan failed';

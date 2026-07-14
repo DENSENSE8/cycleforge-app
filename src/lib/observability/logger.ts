@@ -64,6 +64,7 @@ function emit(level: Level, base: Bindings, args: unknown[]): void {
     const line = `[${level.toUpperCase()}] ${msg}${ctx ? '  ' + ctx : ''}`;
     if (level === 'error') console.error(line);
     else if (level === 'warn') console.warn(line);
+    // eslint-disable-next-line no-console -- logger's own stdout sink: info/debug must go to stdout, not stderr
     else console.log(line);
     return;
   }
@@ -71,6 +72,7 @@ function emit(level: Level, base: Bindings, args: unknown[]): void {
   // Production: single-line JSON to stdout/stderr.
   const json = JSON.stringify(record);
   if (level === 'error') console.error(json);
+  // eslint-disable-next-line no-console -- logger's own stdout sink: info/debug must go to stdout, not stderr
   else console.log(json);
 }
 

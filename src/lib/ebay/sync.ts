@@ -6,6 +6,7 @@ import { EbayClient } from './client';
 import pool from '@/lib/db';
 import { EBAY_PLATFORM_PREDICATE } from './credentials';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
+import { logger } from '@/lib/observability/logger';
 import { formatApiInstant, normalizePSTTimestamp } from '@/utils/date';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 
@@ -247,7 +248,7 @@ async function createOrUpdateOrderFromEbayTracking(params: {
  * 5) Create/update orders rows and delete matched exceptions
  */
 export async function syncAccountOrders(accountName: string, orgId: string): Promise<SyncResult> {
-  console.log(`[${accountName}] Starting exceptions-first eBay sync`);
+  logger.info(`[${accountName}] Starting exceptions-first eBay sync`);
 
   const errors: string[] = [];
   let fetchedOrders = 0;
@@ -285,7 +286,7 @@ export async function syncAccountOrders(accountName: string, orgId: string): Pro
       };
     }
 
-    console.log(`[${accountName}] ${exceptionMap.size} exception tracking(s) to resolve`);
+    logger.info(`[${accountName}] ${exceptionMap.size} exception tracking(s) to resolve`);
 
     const limitPerPage = 200;
     const maxPages = 50;
@@ -394,7 +395,7 @@ export async function syncAccountOrders(accountName: string, orgId: string): Pro
       [accountName]
     );
 
-    console.log(
+    logger.info(
       `[${accountName}] Sync completed: fetched=${fetchedOrders}, matchedExceptions=${matchedExceptions}, createdOrders=${createdOrders}, deletedExceptions=${deletedExceptions}, remainingUnresolved=${exceptionMap.size}`
     );
 
@@ -435,11 +436,11 @@ export async function syncAllAccounts(): Promise<Array<{
   const accounts = accountsResult.rows;
 
   if (accounts.length === 0) {
-    console.log('No active eBay accounts found');
+    logger.info('No active eBay accounts found');
     return [];
   }
 
-  console.log(`Syncing ${accounts.length} accounts: ${accounts.map((a) => a.account_name).join(', ')}`);
+  logger.info(`Syncing ${accounts.length} accounts: ${accounts.map((a) => a.account_name).join(', ')}`);
 
   const results = await Promise.allSettled(
     accounts.map((a) => syncAccountOrders(a.account_name, a.organization_id)),

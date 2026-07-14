@@ -1,3 +1,5 @@
+import { logger } from '@/lib/observability/logger';
+
 export function logRouteMetric(params: {
   route: string;
   method: string;
@@ -15,8 +17,8 @@ export function logRouteMetric(params: {
   };
 
   if (params.ok) {
-    console.info(payload);
+    logger.info(payload, 'route.metric');
   } else {
-    console.error(payload);
+    logger.error(payload, 'route.metric');
   }
 }

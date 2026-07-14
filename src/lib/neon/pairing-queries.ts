@@ -92,19 +92,6 @@ export interface PairingSnapshot {
 
 // ─── account_source → platform inference (mirrors sku-catalog-queries.ts) ───
 
-function inferPlatformFromAccountSource(src: string | null | undefined): string | null {
-  const s = (src || '').trim().toLowerCase();
-  if (!s) return null;
-  if (s.startsWith('ebay')) return 'ebay';
-  if (s === 'ecwid') return 'ecwid';
-  if (s === 'fba' || s === 'amazon_fba') return 'fba';
-  if (s.startsWith('amazon') || s.startsWith('amz')) return 'amazon';
-  if (s.startsWith('walmart')) return 'walmart';
-  if (s.startsWith('mercari')) return 'mercari';
-  if (s.startsWith('shopify')) return 'shopify';
-  return null;
-}
-
 // ─── Suggestion query ───────────────────────────────────────────────────────
 
 /**

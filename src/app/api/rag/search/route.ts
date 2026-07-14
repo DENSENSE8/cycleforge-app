@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getEmbedding } from '@/lib/ai/gemini';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { logger } from '@/lib/observability/logger';
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -15,7 +16,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 20));
 
     // 1. Generate text embedding for search term using text-embedding-004
-    console.log(`[RAG/search] Generating embedding for query: "${query}"`);
+    logger.info(`[RAG/search] Generating embedding for query: "${query}"`);
     const queryEmbedding = await getEmbedding(query);
     const vectorStr = `[${queryEmbedding.join(',')}]`;
 

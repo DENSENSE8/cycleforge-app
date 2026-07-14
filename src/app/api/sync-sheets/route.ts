@@ -604,7 +604,7 @@ async function syncPackerSheets(params: {
     return results;
 }
 
-async function syncScanFbaInSheet(params: {
+async function _syncScanFbaInSheet(params: {
     client: any;
     sheets: any;
     spreadsheetId: string;

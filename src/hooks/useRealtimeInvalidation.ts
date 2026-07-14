@@ -259,7 +259,7 @@ export function useRealtimeInvalidation({
           }
           if (current === 'connected' && wasDisconnectedRef.current) {
             wasDisconnectedRef.current = false;
-            console.log('[ably] Reconnected after disconnect — invalidating dashboard caches');
+            console.warn('[ably] Reconnected after disconnect — invalidating dashboard caches');
             queryClient.invalidateQueries({ queryKey: ['dashboard-table'] });
             queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
             queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });

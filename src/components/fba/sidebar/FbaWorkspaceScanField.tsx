@@ -43,7 +43,6 @@ export interface FbaWorkspaceScanFieldProps {
 
 /** Sidebar: Welcome + FBA goal + scan, plus guarded plan pairing for the active print selection. */
 export function FbaWorkspaceScanField({
-  staffName,
   staffId = null,
   scanEnabled = true,
   showTrackingCard = true,

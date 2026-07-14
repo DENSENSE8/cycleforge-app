@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { ShippingRecentRail } from '@/components/sidebar/shipping/ShippingRecentRail';
 import { Barcode, Loader2, Package, MapPin, Settings } from '../Icons';
 import { StationScanBar } from './StationScanBar';
@@ -22,11 +21,6 @@ import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/use
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
 import { scannedUnitKey } from '@/lib/barcode-routing';
 import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
-
-const STATION_EASE_OUT = motionBezier.easeOut;
-const STATION_EASE_HEIGHT = [0.25, 0.1, 0.25, 1] as const;
-const stationTween = { duration: 0.26, ease: STATION_EASE_OUT };
-const stationLayoutTween = { layout: { duration: 0.32, ease: STATION_EASE_HEIGHT } };
 
 interface StationTestingProps {
   userId: string;

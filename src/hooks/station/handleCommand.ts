@@ -7,7 +7,7 @@ interface CommandCallbacks {
 export function handleCommand(
   input: string,
   ctx: ScanHandlerContext,
-  callbacks: CommandCallbacks = {},
+  _callbacks: CommandCallbacks = {},
 ): void {
   const command = input.toUpperCase();
   const activeOrder = ctx.getScanContextOrder();

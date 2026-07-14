@@ -34,6 +34,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isVercelCronOrigin } from '@/lib/cron/auth';
+import { logger } from '@/lib/observability/logger';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import {
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     // One structured log line — Vercel/Datadog scrapers key off the prefix
     // to plot run cadence + failure rate. Keep field names stable.
-    console.log('[cron.shipping.sync-due]', {
+    logger.info({
       ok: result.ok,
       limit: params.limit,
       concurrency: params.concurrency,
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest) {
       terminal: result.terminal,
       errors: result.errors,
       durationMs: result.durationMs,
-    });
+    }, '[cron.shipping.sync-due]');
 
     return NextResponse.json(result);
   } catch (error) {

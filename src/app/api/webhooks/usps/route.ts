@@ -32,6 +32,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { parseUSPSTrackingPayload } from '@/lib/shipping/providers/usps';
 import { getShipmentByTracking, updateShipmentSummary, upsertShipment, upsertTrackingEvents } from '@/lib/shipping/repository';
+import { logger } from '@/lib/observability/logger';
 import { publishShipmentStatusChange } from '@/lib/shipping/publish-on-status-change';
 import { resolveWebhookOrgByTracking } from '@/lib/shipping/webhook-org-resolver';
 import { checkRateLimitAsync } from '@/lib/api-guard';
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
     trackingNumbers.push(result.trackingNumberNormalized);
   }
 
-  console.log('[webhook.usps]', { received: notifications.length, processed, trackingNumbers });
+  logger.info({ received: notifications.length, processed, trackingNumbers }, '[webhook.usps]');
 
   return NextResponse.json({ ok: true, processed, trackingNumbers });
 }

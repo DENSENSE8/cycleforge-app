@@ -37,7 +37,6 @@ function ItemPhotoPageInner(
   });
 
   const item = data?.items.find((i) => i.id === itemId);
-  const photosBase = `/m/receiving/po/${encodeURIComponent(poId)}/item/${itemId}/photos`;
   const itemDetailHref = `/m/receiving/po/${encodeURIComponent(poId)}/item/${itemId}`;
   const headerLabel =
     `PO ${data?.header.po_number || data?.header.po_id} · ${item?.item_name || item?.sku || `Item ${itemId}`}`;

@@ -44,7 +44,6 @@ interface StoredField {
 }
 
 const LLM_FIELD_KEYS = ['vendor', 'po_date', 'total', 'currency', 'line_items_count', 'ship_to'] as const;
-type LlmFieldKey = (typeof LLM_FIELD_KEYS)[number];
 
 // Piles the model may suggest — excludes `done`, which is a Zoho-mirror
 // terminal state, not something to infer from an email body.

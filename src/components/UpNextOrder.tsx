@@ -32,12 +32,12 @@ export default function UpNextOrder({ techId, onStart, onMissingParts, onAllComp
   const {
     effectiveTab, visibleTabs, selectTab, rawTabCounts,
     searchText, setSearchText, quickFilter, setQuickFilter,
-    sortedOrders, filteredOrders, filteredStockOrders, filteredRepairs,
+    sortedOrders, filteredStockOrders, filteredRepairs,
     filteredFbaItems, filteredReceivingItems,
     nonStockOrders, stockOrders,
     loading,
     expandedItemKey, toggleExpandedItem,
-    lateCount, dueTodayCount, shouldShowStockSection, showNoCurrentOrdersBanner,
+    lateCount, dueTodayCount, shouldShowStockSection,
   } = ctrl;
   const tabCounts = rawTabCounts;
 

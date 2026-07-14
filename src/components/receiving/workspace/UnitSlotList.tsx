@@ -226,7 +226,6 @@ function ExpandedRow({
   onFocusRow,
   onAdvance,
   onAddSerial,
-  onDeleteSerial,
   onReplaceSerial,
 }: {
   index: number;

@@ -8,7 +8,7 @@ export interface ZohoPageContext {
   sort_order?: string;
 }
 
-export interface ZohoListResponse<T, TKey extends string = string> {
+export interface ZohoListResponse<_T, _TKey extends string = string> {
   code: number;
   message?: string;
   page_context?: ZohoPageContext;

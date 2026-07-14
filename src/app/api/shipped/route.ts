@@ -201,7 +201,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   let ok = false;
   try {
     const body = await req.json();
-    const { id, status, field, value } = body;
+    const { id, field, value } = body;
 
     if (!id) {
       return NextResponse.json(

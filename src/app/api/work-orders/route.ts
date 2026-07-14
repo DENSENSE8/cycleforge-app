@@ -11,6 +11,7 @@ import {
   getStaffNameMap,
 } from '@/lib/work-assignments/order-assignment-snapshot';
 import { withAuth } from '@/lib/auth/withAuth';
+import { invalidateFbaViews } from '@/lib/fba/invalidation';
 import { compareWorkOrderRows } from '@/lib/work-orders/ranking';
 import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { syncLinkProgressFromWorkAssignment } from '@/lib/ops-plans/task-links';
@@ -33,7 +34,7 @@ type WorkStatus = 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELED';
 type EntityType = 'ORDER' | 'REPAIR' | 'FBA_SHIPMENT' | 'RECEIVING' | 'SKU_STOCK';
 type WorkType = 'TEST' | 'PACK' | 'REPAIR' | 'QA' | 'STOCK_REPLENISH';
 
-interface WorkOrderRow {
+interface _WorkOrderRow {
   id: string;
   entityType: EntityType;
   entityId: number;
@@ -417,6 +418,12 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 
     if (!owned) {
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    }
+
+    if (entityType === 'FBA_SHIPMENT') {
+      // The assignment wrote fba_shipments.assigned_tech_id/packer_id, which the
+      // (now-cached) FBA dashboard board reads — bust the FBA read set org-scoped.
+      await invalidateFbaViews(ctx.organizationId);
     }
 
     try {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { chunkText, parseDocumentContent } from '@/lib/rag/parser';
 import { getEmbeddingsBatch } from '@/lib/ai/gemini';
+import { logger } from '@/lib/observability/logger';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -46,7 +47,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     // 3. Batch generate vector embeddings from Gemini (text-embedding-004)
-    console.log(`[RAG] Generating embeddings for ${chunks.length} chunks of document "${fileName}"...`);
+    logger.info(`[RAG] Generating embeddings for ${chunks.length} chunks of document "${fileName}"...`);
     const embeddings = await getEmbeddingsBatch(chunks);
 
     // 4. Insert both document and chunks inside a single tenant-isolated transaction

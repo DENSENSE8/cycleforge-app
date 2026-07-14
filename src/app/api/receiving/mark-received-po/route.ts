@@ -1,8 +1,9 @@
 import { NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { logger } from '@/lib/observability/logger';
 import { formatPSTTimestamp } from '@/utils/date';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 // Pure payload helpers only — every Zoho NETWORK call in this route goes
 // through the org's InventoryProvider facade (Integrations-as-SoT Wave B1).
@@ -963,9 +964,9 @@ export const POST = withAuth(async (request, ctx) => {
               });
               const receiveId = getPurchaseReceiveIdFromCreateResponse(receiveResp);
               poZohoReceiveSucceeded.set(zohoPoId, true);
-              console.log(
+              logger.info(
+                { zohoPoId, lineItems: lineItemsPosted, receiveId },
                 'mark-received-po: createPurchaseReceive ok (background)',
-                JSON.stringify({ zohoPoId, lineItems: lineItemsPosted, receiveId }),
               );
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err);
@@ -978,9 +979,9 @@ export const POST = withAuth(async (request, ctx) => {
               );
               if (alreadyReceived) {
                 poZohoReceiveSucceeded.set(zohoPoId, true);
-                console.log(
+                logger.info(
+                  { zohoPoId },
                   'mark-received-po: PO already received in Zoho (background, treated as success)',
-                  zohoPoId,
                 );
               } else {
                 poZohoReceiveSucceeded.set(zohoPoId, false);
@@ -1119,7 +1120,7 @@ export const POST = withAuth(async (request, ctx) => {
       }
 
       try {
-        await invalidateCacheTags(['receiving-logs', 'receiving-lines', 'serial-units']);
+        await invalidateReceivingViews(ctx.organizationId, ['serial-units']);
         for (const l of updatedLines) {
           // Terminal Zoho verdict for this line so the inline checklist can
           // confirm ('ok') or flip to a retryable failure ('failed'). Only

@@ -3,7 +3,7 @@
 import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { WorkspaceCard, InlineNotice } from '@/design-system/components';
+import { WorkspaceCard } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { ClaimTicketReply } from '@/components/receiving/workspace/claim/components/ClaimTicketReply';
 import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';

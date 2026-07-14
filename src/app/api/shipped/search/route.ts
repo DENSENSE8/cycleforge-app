@@ -52,12 +52,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 }, { permission: 'shipping.view' });
 
 // POST endpoint to save search history
-export const POST = withAuth(async (req: NextRequest, ctx) => {
+export const POST = withAuth(async (req: NextRequest, _ctx) => {
     const startedAt = Date.now();
     let ok = false;
     try {
-        const body = await req.json();
-        const { query, resultCount } = body;
+        await req.json();
 
         // Store in a simple search_history table (you may need to create this)
         // For now, we'll just return success

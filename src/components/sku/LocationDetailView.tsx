@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Plus } from '@/components/Icons';
@@ -155,15 +155,6 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
       return null;
     },
   });
-
-  const handleSkuClick = useCallback(
-    (sku: string) => {
-      const next = sku.trim();
-      if (!next) return;
-      router.push(`/inventory?sku=${encodeURIComponent(next)}`);
-    },
-    [router],
-  );
 
   // Realtime: refetch when any STOCK_DELTA fires for a SKU currently in this
   // bin (another tab, another staff, etc.). Publishers carry the SKU on

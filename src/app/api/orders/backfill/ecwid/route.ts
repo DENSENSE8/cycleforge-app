@@ -202,7 +202,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           values
         );
         updated++;
-      } catch (error) {
+      } catch {
         errors++;
       }
     }

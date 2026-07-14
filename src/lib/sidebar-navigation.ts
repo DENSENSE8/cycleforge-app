@@ -427,7 +427,6 @@ const TRIAGE = '/triage';
 const PICKUP = '/pickup';
 const RECEIVING_HISTORY = '/receiving/history';
 const INCOMING = '/incoming';
-const FBA = '/fba';
 const INVENTORY = '/inventory';
 const WAREHOUSE = '/warehouse';
 const SOURCING = '/sourcing';

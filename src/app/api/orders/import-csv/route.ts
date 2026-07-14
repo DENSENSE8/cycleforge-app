@@ -29,15 +29,6 @@ import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
  * this org, reporting them as `skipped` rather than inserting duplicates.
  */
 
-const CANONICAL_FIELDS = [
-  'order_number',
-  'sku',
-  'quantity',
-  'customer_name',
-  'tracking_number',
-  'platform',
-] as const;
-
 const bodySchema = z.object({
   rows: z.array(z.record(z.string(), z.string())).max(10_000),
   mapping: z.record(z.string(), z.string()),

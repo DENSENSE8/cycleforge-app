@@ -17,7 +17,6 @@ import type { PhotoGridViewProps } from './types';
  * not across — `items-start` keeps the natural-height cards top-aligned.)
  */
 export function PhotoFlatGrid({
-  view,
   gridDensity,
   photos,
   scope,

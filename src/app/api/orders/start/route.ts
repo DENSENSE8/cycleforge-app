@@ -10,10 +10,9 @@ import { withAuth } from '@/lib/auth/withAuth';
  * Techs are now implicitly assigned when they scan a tracking number.
  * Assignment is tracked in tech_serial_numbers.tested_by.
  */
-export const POST = withAuth(async (req: NextRequest, ctx) => {
+export const POST = withAuth(async (req: NextRequest, _ctx) => {
   try {
     const { orderId } = await req.json();
-    const techId = ctx.staffId;
 
     if (!orderId) {
       return NextResponse.json(
@@ -22,10 +21,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // No-op: Order assignment now happens when tech scans the tracking number
-    console.log(`Order start requested for orderId=${orderId}, techId=${techId} - assignment now implicit via scanning`);
-
-    return NextResponse.json({ 
+    // No-op: assignment now happens when a tech scans the tracking number.
+    return NextResponse.json({
       success: true,
       message: 'Order assignment now happens automatically when tech scans tracking number'
     });
