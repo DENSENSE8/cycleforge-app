@@ -169,7 +169,7 @@ export function ReceivingFeedRail({
       loadSnapshot={loadSnapshot}
       persistSnapshot={persistSnapshot}
       updateEvent="receiving-line-updated"
-      deleteEvent="receiving-line-deleted"
+      deleteEvent={feed.listenLineDelete === false ? undefined : 'receiving-line-deleted'}
       deleteGroupEvent="receiving-entry-deleted"
       refreshEvents={feed.refreshEvents}
       // Workspace header chevrons (`LineEditToolbar`) dispatch this channel —

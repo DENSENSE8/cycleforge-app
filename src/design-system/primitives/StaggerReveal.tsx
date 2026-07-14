@@ -52,7 +52,13 @@ export const staggerRevealItem: Variants = {
 export const staggerRevealSidebarItem: Variants = {
   hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: motionBezier.easeOut } },
-  exit: { opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.12, ease: motionBezier.easeOut } },
+  // Left-edge exit matches scan/dismiss CRUD presence (`framerPresence.sidebarRailRow`).
+  exit: {
+    opacity: 0,
+    x: -12,
+    pointerEvents: 'none' as const,
+    transition: { duration: 0.2, ease: motionBezier.easeOut },
+  },
 };
 
 /**

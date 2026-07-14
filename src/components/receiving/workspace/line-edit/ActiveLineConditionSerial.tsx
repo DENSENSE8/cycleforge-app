@@ -103,7 +103,7 @@ export function ActiveLineConditionSerial({
     ) : undefined;
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-2">
       {isMultiQty ? (
         // Multi-qty same-product line: split into one selectable row per
         // physical unit, each with its own condition grade and serial. The

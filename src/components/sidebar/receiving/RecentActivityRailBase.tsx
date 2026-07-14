@@ -29,6 +29,7 @@ import {
   receivingRailRowTitle,
   type ReceivingRailRowTitleMode,
 } from '@/lib/receiving/po-group-title';
+import { receivingRailReconcileId } from '@/lib/queries/receiving-queries';
 
 export interface ApiResponse {
   success: boolean;
@@ -143,11 +144,9 @@ function TicketRailFlag({ ticket }: { ticket: string }) {
 // where a `receiving-line-updated` event could be dropped). Hoisting pins the
 // identity so the effect subscribes once.
 const getRowId = (r: ReceivingLineRow) => r.id;
-// Durable render key: an optimistic "importing" stub carries a client_event_id
-// that survives its reconcile to the resolved row, so the rail updates the row
-// in place (no flicker) instead of remounting on the stub→real id change.
-// Server-fetched rows have no client_event_id and fall back to the numeric id.
-const getRowReconcileId = (r: ReceivingLineRow): string | number => r.client_event_id ?? r.id;
+// Durable render key: carton identity (`client_event_id` / `carton:{receiving_id}`)
+// survives stub→real swaps so AnimatePresence updates in place instead of remounting.
+const getRowReconcileId = (r: ReceivingLineRow): string | number => receivingRailReconcileId(r);
 const getRowGroupId = (r: ReceivingLineRow) => r.receiving_id ?? null;
 const getRowActivityAt = (r: ReceivingLineRow) => r.last_activity_at ?? r.created_at;
 const selectRow = (r: ReceivingLineRow) => dispatchSelectLine(r);

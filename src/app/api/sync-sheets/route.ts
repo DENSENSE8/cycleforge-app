@@ -382,7 +382,10 @@ async function syncTechSheets(params: {
                     skippedMissingTracking++;
                     continue;
                 }
-                const { shipmentId: tsnShipmentId, scanRef: tsnScanRef } = await resolveShipmentId(shippingTracking);
+                const { shipmentId: tsnShipmentId, scanRef: tsnScanRef } = await resolveShipmentId(
+                    shippingTracking,
+                    organizationId,
+                );
                 const existing = await client.query(
                     `SELECT id FROM tech_serial_numbers
                      WHERE (shipment_id IS NOT NULL AND shipment_id = $1)
@@ -525,7 +528,10 @@ async function syncPackerSheets(params: {
                     }
                 }
 
-                const { shipmentId: plShipmentId, scanRef: plScanRef } = await resolveShipmentId(scanInput);
+                const { shipmentId: plShipmentId, scanRef: plScanRef } = await resolveShipmentId(
+                    scanInput,
+                    organizationId,
+                );
                 const existing = await client.query(
                     `SELECT id FROM packer_logs
                      WHERE tracking_type = $1

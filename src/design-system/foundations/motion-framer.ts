@@ -29,6 +29,8 @@ export const framerDuration = {
   overlayScrim: 0.15,
   /** Table row enter/exit */
   tableRowMount: 0.22,
+  /** Sidebar rail CRUD enter/exit — small left slide (scan in / dismiss out) */
+  sidebarRailRowMount: 0.2,
   /** Workbench right-pane / detail crossfade */
   workbenchPaneMount: 0.18,
   /** Photo viewer details column — one symmetric drawer toggle (open == close reversed) */
@@ -187,6 +189,12 @@ export const framerTransition = {
   /** Table row enter/exit */
   tableRowMount: {
     duration: framerDuration.tableRowMount,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /** Sidebar recent-activity rail — scan-in / dismiss-out left slide */
+  sidebarRailRowMount: {
+    duration: framerDuration.sidebarRailRowMount,
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
@@ -398,6 +406,16 @@ export const framerPresence = {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
+  },
+  /**
+   * Sidebar rail CRUD presence — scan slides in from the left, dismiss slides
+   * back out to the left (`x: -12`, not −20, so overflow-x clip stays calm).
+   * Pair with `framerTransition.sidebarRailRowMount` + `useMotionPresence`.
+   */
+  sidebarRailRow: {
+    initial: { opacity: 0, x: -12 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -12 },
   },
   /** Dropdown panel — fade + slight slide from top */
   dropdownPanel: {

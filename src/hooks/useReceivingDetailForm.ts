@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import { removeReceivingRailByCarton } from '@/lib/queries/receiving-queries';
 
 type SaveState = 'idle' | 'saved' | 'error';
 
@@ -27,6 +29,7 @@ export function useReceivingDetailForm({
   onUpdated,
   onDeleted,
 }: UseReceivingDetailFormOptions): ReceivingDetailFormActions {
+  const queryClient = useQueryClient();
   const [tracking, setTracking] = useState(log.tracking || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -73,7 +76,11 @@ export function useReceivingDetailForm({
       const res = await fetch(`/api/receiving-logs?id=${encodeURIComponent(log.id)}`, { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok && res.status !== 404) throw new Error(data?.error || 'Failed to delete receiving log');
-      window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: log.id }));
+      const receivingId = Number(log.id);
+      if (Number.isFinite(receivingId)) {
+        removeReceivingRailByCarton(queryClient, receivingId);
+      }
+      window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: receivingId }));
       onDeleted(log.id);
     } catch (error) {
       console.error('Failed to delete receiving log:', error);

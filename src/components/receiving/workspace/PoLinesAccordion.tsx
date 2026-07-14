@@ -206,7 +206,6 @@ export function PoLinesAccordion({
                 draft: desc.draft,
                 savingLineId: desc.savingLineId,
                 inputRef: desc.inputRef,
-                open: desc.open,
                 toggle: desc.toggle,
                 setDraft: desc.setDraft,
                 save: desc.save,

@@ -24,6 +24,7 @@ import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize
 import { transitionalDogfoodOrgId, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { linkShipment, unlinkShipment, setPrimaryShipmentLink } from '@/lib/shipping/shipment-links';
+import { healShipmentOrganizationId } from '@/lib/shipping/repository';
 
 /** Minimal pg client surface the helpers need (a pool client mid-transaction). */
 type Tx = Pick<PoolClient, 'query'>;
@@ -145,14 +146,18 @@ export async function upsertOrderTracking(
     // Is the existing shipment owned by this order?
     if (currentShipmentIds.includes(existingId)) {
       // Already owned — just re-point orders.shipment_id to this shipment.
-      // No need to update the STN row; the tracking number is identical.
+      // Heal a NULL org stamp so tenant RLS can see the row on later reads.
       shipmentId = existingId;
+      await healShipmentOrganizationId(existingId, orgId);
     } else {
       throw new Error('Tracking number already exists on another shipment');
     }
   } else if (currentShipmentIds.length > 0) {
     // Tracking doesn't exist yet — update the first owned shipment row
     shipmentId = currentShipmentIds[0];
+    // Owner-pool heal first so the tenant-scoped UPDATE below can SEE the row
+    // when organization_id was NULL (FORCE RLS hides orphans from app_tenant).
+    await healShipmentOrganizationId(shipmentId, orgId);
     await client.query(
       `UPDATE shipping_tracking_numbers
        SET tracking_number_raw = $1,
@@ -183,6 +188,7 @@ export async function upsertOrderTracking(
              WHEN carrier = 'UNKNOWN' THEN NULL
              ELSE last_error_message
            END,
+           organization_id = COALESCE(organization_id, $7::uuid),
            updated_at = NOW()
        WHERE id = $6`,
       [
@@ -192,6 +198,7 @@ export async function upsertOrderTracking(
         isUnknownCarrier,
         unknownCarrierMessage,
         shipmentId,
+        orgId,
       ]
     );
   } else {
@@ -287,11 +294,9 @@ export async function updateShipmentTrackingById(
   shipmentId: number,
   shippingTrackingNumber: string,
   client: Tx,
-  // UPDATE-only (no INSERT here) — org is accepted for signature symmetry with
-  // the other helpers; there is no tenant-owned row created to stamp.
-  _organizationId?: OrgId,
+  organizationId?: OrgId,
 ): Promise<void> {
-  void _organizationId;
+  const orgId = organizationId ?? transitionalDogfoodOrgId();
   const rawTracking = String(shippingTrackingNumber || '').trim();
   if (!rawTracking) throw new Error('Tracking number is required');
 
@@ -355,6 +360,9 @@ export async function updateShipmentTrackingById(
   const unknownCarrierMessage =
     'Carrier detection unavailable for this tracking format; manual tracking only.';
 
+  // Heal orphan NULL org before the tenant-scoped UPDATE (FORCE RLS).
+  await healShipmentOrganizationId(shipmentId, orgId);
+
   await client.query(
     `UPDATE shipping_tracking_numbers
      SET tracking_number_raw = $1,
@@ -385,6 +393,7 @@ export async function updateShipmentTrackingById(
            WHEN carrier = 'UNKNOWN' THEN NULL
            ELSE last_error_message
          END,
+         organization_id = COALESCE(organization_id, $7::uuid),
          updated_at = NOW()
      WHERE id = $6`,
     [
@@ -394,6 +403,7 @@ export async function updateShipmentTrackingById(
       isUnknownCarrier,
       unknownCarrierMessage,
       shipmentId,
+      orgId,
     ],
   );
 }

@@ -12,7 +12,12 @@ export interface UnfoundLine {
   location_code: string | null;
   image_url?: string | null;
   /** `/api/receiving/[id]` populates this when the carton has serials saved against any line. */
-  serials?: Array<{ id: number; serial_number: string }>;
+  serials?: Array<{
+    id: number;
+    serial_number: string;
+    condition_grade?: string | null;
+    _optimistic?: 'adding' | 'removing';
+  }>;
 }
 
 /** Helpers passed to a custom {@link UnmatchedItemsSectionProps.renderLineActions}. */

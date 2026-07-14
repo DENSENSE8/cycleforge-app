@@ -252,7 +252,7 @@ export function NoSerialControl({
         placement="bottom-start"
         role="menu"
         aria-label="No-serial reason"
-        // Roomy fixed width so reason labels ("Not serialized", "Missing label")
+        // Roomy fixed width so reason labels ("No Serial", "Missing label")
         // never truncate — the committed bar can be narrow, but the menu is not
         // tied to it (no matchWidth).
         className="min-w-[248px] p-1"

@@ -20,11 +20,10 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import {
-  dispatchLineUpdated,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
-import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
+import { receivingSiblingsQueryKey, publishLineSerials } from '@/lib/queries/receiving-queries';
 import {
   appendOptimisticSerial,
   clearSerialRemoving,
@@ -61,41 +60,26 @@ export function useLineSerials({
   const [serialSubmitting, setSerialSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
-  interface SiblingsCache {
-    success: boolean;
-    receiving_lines: ReceivingLineRow[];
-  }
-
   const readLineSerials = useCallback(
     (lineId: number): LineSerial[] => {
       const receivingId = row.receiving_id;
       if (!receivingId) return [];
-      const cached = queryClient.getQueryData<SiblingsCache>(
-        receivingSiblingsQueryKey(receivingId),
-      );
+      const cached = queryClient.getQueryData<{
+        success: boolean;
+        receiving_lines: ReceivingLineRow[];
+      }>(receivingSiblingsQueryKey(receivingId));
       const hit = cached?.receiving_lines?.find((l) => l.id === lineId);
       return (hit?.serials ?? []) as LineSerial[];
     },
     [queryClient, row.receiving_id],
   );
 
-  const publishLineSerials = useCallback((lineId: number, serials: LineSerial[]) => {
-    const receivingId = row.receiving_id;
-    if (receivingId) {
-      const key = receivingSiblingsQueryKey(receivingId);
-      queryClient.setQueryData<SiblingsCache>(key, (prev) =>
-        prev?.receiving_lines
-          ? {
-              ...prev,
-              receiving_lines: prev.receiving_lines.map((r) =>
-                r.id === lineId ? ({ ...r, serials } as ReceivingLineRow) : r,
-              ),
-            }
-          : prev,
-      );
-    }
-    dispatchLineUpdated({ id: lineId, serials });
-  }, [queryClient, row.receiving_id]);
+  const publish = useCallback(
+    (lineId: number, serials: LineSerial[]) => {
+      publishLineSerials(queryClient, row.receiving_id, lineId, serials);
+    },
+    [queryClient, row.receiving_id],
+  );
 
   const refreshLineWithSerials = useCallback(async (lineId: number = row.id) => {
     try {
@@ -124,7 +108,7 @@ export function useLineSerials({
     if (!serial || !row.receiving_id || submittingRef.current) return;
     const tempId = mintOptimisticSerialId();
     const optimisticSerials = appendOptimisticSerial(readLineSerials(row.id), serial, tempId);
-    publishLineSerials(row.id, optimisticSerials);
+    publish(row.id, optimisticSerials);
 
     submittingRef.current = true;
     setSerialSubmitting(true);
@@ -164,14 +148,14 @@ export function useLineSerials({
 
       if (!res.ok || !data?.success) {
         toast.error(data?.error || `Scan failed (${res.status})`);
-        publishLineSerials(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
+        publish(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
         return;
       }
 
       // Same serial already on this line — friendly no-op.
       if (data.already_attached) {
         toast.info(`Already added — ${serial}`);
-        publishLineSerials(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
+        publish(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
         return;
       }
 
@@ -182,7 +166,7 @@ export function useLineSerials({
           tempId,
           data.serial_unit,
         );
-        publishLineSerials(data.line_state.id, confirmed);
+        publish(data.line_state.id, confirmed);
         // Return scan: the server resolved + persisted the originating order and
         // returns the exact row patch (type→RETURN / listing / carton source /
         // order# / status). Apply it optimistically so the workspace flips to
@@ -236,7 +220,7 @@ export function useLineSerials({
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error scanning serial');
-      publishLineSerials(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
+      publish(row.id, rollbackOptimisticSerial(readLineSerials(row.id), tempId));
     } finally {
       submittingRef.current = false;
       setSerialSubmitting(false);
@@ -251,7 +235,7 @@ export function useLineSerials({
     setSerialInput,
     serialInputRef,
     readLineSerials,
-    publishLineSerials,
+    publish,
   ]);
 
   // Keep a live ref to the latest submitSerial so the queue drainer always
@@ -303,7 +287,7 @@ export function useLineSerials({
     async (serialUnitId: number, lineId: number = row.id) => {
       if (serialUnitId == null) return;
       const current = readLineSerials(lineId);
-      publishLineSerials(lineId, markSerialRemoving(current, serialUnitId));
+      publish(lineId, markSerialRemoving(current, serialUnitId));
 
       const res = await fetch('/api/receiving/scan-serial', {
         method: 'DELETE',
@@ -316,13 +300,13 @@ export function useLineSerials({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         toast.error(data?.error || 'Could not remove serial');
-        publishLineSerials(lineId, clearSerialRemoving(readLineSerials(lineId), serialUnitId));
+        publish(lineId, clearSerialRemoving(readLineSerials(lineId), serialUnitId));
         return;
       }
       toast.success('Serial removed');
-      publishLineSerials(lineId, removeSerialById(readLineSerials(lineId), serialUnitId));
+      publish(lineId, removeSerialById(readLineSerials(lineId), serialUnitId));
     },
-    [row.id, readLineSerials, publishLineSerials],
+    [row.id, readLineSerials, publish],
   );
 
   // Replace a serial in place (typo fix): delete then re-scan, preserving the
@@ -335,7 +319,7 @@ export function useLineSerials({
       if (original.id == null) return;
       const next = (nextSerial ?? '').trim();
       if (!next || next === original.serial_number) return;
-      publishLineSerials(row.id, markSerialRemoving(readLineSerials(row.id), original.id));
+      publish(row.id, markSerialRemoving(readLineSerials(row.id), original.id));
       const res = await fetch('/api/receiving/scan-serial', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -347,15 +331,15 @@ export function useLineSerials({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         toast.error(data?.error || 'Could not replace serial');
-        publishLineSerials(row.id, clearSerialRemoving(readLineSerials(row.id), original.id));
+        publish(row.id, clearSerialRemoving(readLineSerials(row.id), original.id));
         return;
       }
       // Drop the removed serial from the cache, then let submitSerial append the
       // corrected one through its own optimistic path.
-      publishLineSerials(row.id, removeSerialById(readLineSerials(row.id), original.id));
+      publish(row.id, removeSerialById(readLineSerials(row.id), original.id));
       await submitSerial(next, original.condition_grade ?? null);
     },
-    [row.id, submitSerial, readLineSerials, publishLineSerials],
+    [row.id, submitSerial, readLineSerials, publish],
   );
 
   // Persist a per-unit condition grade on an already-scanned serial_unit via
@@ -367,7 +351,7 @@ export function useLineSerials({
       // immediately (mirrors add/delete), so the graded chip updates within a
       // frame instead of waiting on a full per-line refetch. Roll back on error.
       const prev = readLineSerials(row.id);
-      publishLineSerials(row.id, setSerialGrade(prev, serialUnitId, grade));
+      publish(row.id, setSerialGrade(prev, serialUnitId, grade));
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
@@ -379,15 +363,15 @@ export function useLineSerials({
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) {
           toast.error(data?.error || 'Could not set unit condition');
-          publishLineSerials(row.id, prev);
+          publish(row.id, prev);
           return;
         }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Condition save failed');
-        publishLineSerials(row.id, prev);
+        publish(row.id, prev);
       }
     },
-    [row.id, readLineSerials, publishLineSerials],
+    [row.id, readLineSerials, publish],
   );
 
   return {

@@ -67,7 +67,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // Server-trusted actor — body.packedBy is ignored.
         const packedBy = ctx.staffId;
 
-        const { shipmentId, scanRef } = await resolveShipmentId(body.shippingTrackingNumber || '');
+        const { shipmentId, scanRef } = await resolveShipmentId(
+          body.shippingTrackingNumber || '',
+          ctx.organizationId,
+        );
         const newLog = await db.insert(packerLogs).values({
             organizationId: ctx.organizationId,
             shipmentId: shipmentId ?? undefined,

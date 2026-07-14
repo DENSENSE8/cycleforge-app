@@ -21,6 +21,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { onToggleAll } from '@/lib/selection/table-selection';
+import {
+  removeReceivingRailByCarton,
+  removeReceivingRailByLine,
+} from '@/lib/queries/receiving-queries';
 
 /** table-selection scope for the rail edit-mode bulk action bar. */
 export const RAIL_EDIT_SCOPE = 'receiving-rail-edit';
@@ -132,8 +136,32 @@ export function useRailEditMode({
           // read filter keeps them hidden from THIS staffer on the next refetch,
           // so no global refresh is fired (which would un-hide them).
           for (const id of ids) {
-            if (id < 0) window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: -id }));
-            else window.dispatchEvent(new CustomEvent('receiving-line-deleted', { detail: { id } }));
+            if (id < 0) {
+              const receivingId = -id;
+              removeReceivingRailByCarton(queryClient, receivingId);
+              window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: receivingId }));
+            } else {
+              // Prefer carton-level remove + sticky group suppress so Unboxed
+              // (listenLineDelete: false) still exits the row via cache mirror.
+              let receivingId: number | null = null;
+              for (const [, rows] of queryClient.getQueriesData<{ id: number; receiving_id?: number | null }[]>({
+                queryKey: ['receiving-lines-table', 'rail'],
+              })) {
+                if (!Array.isArray(rows)) continue;
+                const hit = rows.find((r) => r.id === id);
+                if (hit?.receiving_id != null && Number.isFinite(hit.receiving_id)) {
+                  receivingId = hit.receiving_id;
+                  break;
+                }
+              }
+              if (receivingId != null) {
+                removeReceivingRailByCarton(queryClient, receivingId);
+                window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: receivingId }));
+              } else {
+                removeReceivingRailByLine(queryClient, id);
+              }
+              window.dispatchEvent(new CustomEvent('receiving-line-deleted', { detail: { id } }));
+            }
           }
           toast.success(ids.length === 1 ? 'Row dismissed' : `${ids.length} rows dismissed`);
           // Refresh the exclusion set so the rail's read filter (which rides the

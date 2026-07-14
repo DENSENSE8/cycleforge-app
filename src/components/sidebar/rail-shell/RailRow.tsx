@@ -3,7 +3,8 @@
 import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { Variants } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { Check, ChevronDown } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { railRelativeTime, type SidebarRailRowContext } from './sidebar-rail-shared';
@@ -27,7 +28,7 @@ export function RailRow<TRow>({
   showInlinePkgChip: boolean;
   /** True when this row is part of the first-load stagger cascade. */
   staggerCascade: boolean;
-  /** When set, rows enter with these variants (cascade or individually). */
+  /** When set, first-load cascade inherits these variants from the parent ul. */
   staggerItemVariants?: Variants;
   onToggleGroup?: () => void;
   getStatusDot: (row: TRow) => string;
@@ -50,6 +51,9 @@ export function RailRow<TRow>({
   const { isOpen: previewOpen, scheduleOpen, scheduleClose, dismiss } = useRailHoverPreview({
     enabled: Boolean(renderPopover) && !editActive && !isDisabled,
   });
+
+  const crudPresence = useMotionPresence(framerPresence.sidebarRailRow);
+  const crudTransition = useMotionTransition(framerTransition.sidebarRailRowMount);
 
   const pkgChip = showInlinePkgChip ? (
     <HoverTooltip label={`Expand — show ${groupSize - 1} more in this package`} asChild focusable={false}>
@@ -74,20 +78,24 @@ export function RailRow<TRow>({
 
   const activityAt = getActivityAt?.(row);
 
-  // Stagger mode: inherit the parent <ul>'s hidden→show timeline when part of the
-  // first-load cascade; otherwise play the same variants individually (e.g. a
-  // freshly-scanned row arriving after the cascade). Default: opacity-only.
-  const motionProps = staggerItemVariants
-    ? staggerCascade
-      ? { variants: staggerItemVariants }
-      : { initial: 'hidden' as const, animate: 'show' as const, variants: staggerItemVariants }
-    : { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 0, pointerEvents: 'none' as const }, transition: { duration: 0.12, ease: motionBezier.easeOut } };
+  // First-load cascade: inherit the parent <ul>'s hidden→show timeline.
+  // Post-cascade CRUD (scan in / dismiss out): left-slide presence so rows
+  // enter and exit by id without remounting the rail host.
+  const motionProps = staggerItemVariants && staggerCascade
+    ? { variants: staggerItemVariants }
+    : {
+        initial: crudPresence.initial,
+        animate: crudPresence.animate,
+        exit: { ...crudPresence.exit, pointerEvents: 'none' as const },
+        transition: crudTransition,
+      };
 
   return (
     <motion.li
       ref={rowRef}
       role="option"
       aria-selected={editActive ? isChecked : isSelected}
+      layout={!staggerCascade}
       {...motionProps}
       className="relative"
       onMouseEnter={scheduleOpen}

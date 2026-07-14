@@ -450,7 +450,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         to_char(test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
         to_char(next_test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS next_test_activity_at,
         test_duration.duration AS test_duration,
-        ''::text AS serial_number,
+        COALESCE((
+          SELECT STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at)
+          FROM tech_serial_numbers tsn
+          WHERE o.shipment_id IS NOT NULL
+            AND tsn.shipment_id = o.shipment_id
+            AND tsn.organization_id = o.organization_id
+            AND tsn.serial_number IS NOT NULL
+            AND BTRIM(tsn.serial_number) <> ''
+        ), '') AS serial_number,
         staff_test_assignee.name AS tester_name,
         staff_test_assignee.name AS tested_by_name,
         staff_pack_assignee.name AS packer_name,

@@ -24,6 +24,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
 import { stampCartonRailTitleContext, stampPoRailTitleContext } from '@/lib/receiving/po-group-title';
 import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
+import { receivingRailCartonKey } from '@/lib/queries/receiving-queries';
 import { getViewedAt, type RailStatusId } from './status';
 import type { RailQtyId } from './quantity';
 import {
@@ -84,6 +85,13 @@ export interface ReceivingRailFeed {
   rowTitleMode?: ReceivingRailRowTitleMode;
   /** Stamp `rail_title_context` after fetch (`po` = group by PO key). */
   stampRailTitleContext?: 'po';
+  /**
+   * When false, the rail ignores `receiving-line-deleted` and only exits on
+   * carton delete/dismiss (`receiving-entry-deleted` / cache remove). Used by
+   * Unboxed (one row per carton) so removing a line inside a carton retargets
+   * the same `carton:{id}` row instead of exit+enter.
+   */
+  listenLineDelete?: boolean;
   // OR a custom multi-source fetch (combined / unfound-queue):
   buildFetcher?: (rt: RailFetchRuntime) => () => Promise<ApiResponse>;
 }
@@ -316,7 +324,13 @@ export function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<A
       Array.from(bestByCarton.values())
         .sort((a, b) => scannedRecencyMs(b) - scannedRecencyMs(a))
         .slice(0, UNBOX_SIDEBAR_LIMIT),
-    );
+    ).map((r) => ({
+      ...r,
+      // Same durable carton identity as optimistic upserts + triage combined —
+      // without this, refetch flips React keys from `carton:N` → numeric id and
+      // AnimatePresence remounts the whole Unboxed rail.
+      client_event_id: receivingRailCartonKey(r.receiving_id as number),
+    }));
 
     return { success: true, receiving_lines: merged, total: merged.length };
   };
@@ -367,6 +381,8 @@ const FEEDS = {
     getActivityAt: (r) =>
       r.unboxed_at ?? r.unbox_opened_at ?? r.scanned_at ?? r.received_at ?? r.created_at ?? null,
     pinSelectedLead: false,
+    // One row per carton — line deletes retarget the carton row in place.
+    listenLineDelete: false,
     // Honors the shared `?staff=` header filter (P1-WORK-02): the server's
     // view=unbox_opened staff clause matches on the unbox actor (unbox_opened_by
     // / UNBOX_SCAN_OPENED). Absent param = ALL staff (unchanged default).

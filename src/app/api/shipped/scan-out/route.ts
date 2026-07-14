@@ -117,7 +117,7 @@ export const POST = withAuth(
 
     // Resolve the scan to an existing shipment (registers/syncs a recognized
     // carrier tracking the same way the pack station does).
-    let shipmentId = (await resolveShipmentId(raw)).shipmentId;
+    let shipmentId = (await resolveShipmentId(raw, ctx.organizationId)).shipmentId;
     // Registry miss → try the orders table + orders_exceptions hold-bucket
     // (legacy / non-carrier labels), self-healing a shipment when an order has none.
     if (shipmentId == null) {

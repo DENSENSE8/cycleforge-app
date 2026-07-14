@@ -319,6 +319,91 @@ export function writeReceivingSiblingLine<L extends { id: number }>(
 }
 
 /**
+ * Dual-write serials onto the siblings cache + `receiving-line-updated` bus —
+ * the shared choke point for matched (`useLineSerials`) and unfound
+ * (`useActiveUnfoundLineSerials`) optimistic serial CRUD. Maps an existing row;
+ * does not insert (use {@link writeReceivingSiblingLine} for new lines).
+ */
+export function publishLineSerials(
+  queryClient: QueryClient,
+  receivingId: number | null | undefined,
+  lineId: number,
+  serials: unknown[],
+): void {
+  if (receivingId != null && Number.isFinite(receivingId) && receivingId > 0) {
+    queryClient.setQueryData<ReceivingSiblingsCache>(
+      receivingSiblingsQueryKey(receivingId),
+      (prev) =>
+        prev?.receiving_lines
+          ? {
+              ...prev,
+              receiving_lines: prev.receiving_lines.map((r) =>
+                r.id === lineId ? { ...r, serials } : r,
+              ),
+            }
+          : prev,
+    );
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('receiving-line-updated', {
+        detail: { id: lineId, serials },
+      }),
+    );
+  }
+}
+
+/**
+ * Remap a temp (negative) line id → real server line id inside the siblings
+ * cache, preserving optimistic serials when the real row does not yet carry them.
+ */
+export function remapReceivingSiblingLineId<L extends { id: number; serials?: unknown }>(
+  queryClient: QueryClient,
+  receivingId: number,
+  tempLineId: number,
+  realLine: L,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  queryClient.setQueryData<ReceivingSiblingsCache<L>>(
+    receivingSiblingsQueryKey(receivingId),
+    (prev) => {
+      const base = prev?.receiving_lines ?? [];
+      const temp = base.find((r) => r.id === tempLineId);
+      const withoutTemp = base.filter((r) => r.id !== tempLineId);
+      const merged: L = {
+        ...realLine,
+        serials:
+          Array.isArray(realLine.serials) && (realLine.serials as unknown[]).length > 0
+            ? realLine.serials
+            : (temp?.serials ?? realLine.serials),
+      };
+      return upsertSiblingLine({ success: prev?.success ?? true, receiving_lines: withoutTemp }, merged);
+    },
+  );
+}
+
+/**
+ * Drop a temp optimistic line from the siblings cache (total create failure).
+ */
+export function removeReceivingSiblingLine(
+  queryClient: QueryClient,
+  receivingId: number,
+  lineId: number,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  queryClient.setQueryData<ReceivingSiblingsCache>(
+    receivingSiblingsQueryKey(receivingId),
+    (prev) =>
+      prev?.receiving_lines
+        ? {
+            ...prev,
+            receiving_lines: prev.receiving_lines.filter((r) => r.id !== lineId),
+          }
+        : prev,
+  );
+}
+
+/**
  * Seed the siblings cache from a lookup-po / optimistic stub response so
  * PoLinesAccordion and the workspace paint immediately before the hydration
  * fetch (with serials) lands.
@@ -355,6 +440,24 @@ export function deferInvalidateReceivingFeeds(queryClient: QueryClient): void {
 /** Stable React list key for one carton across stub → server reconcile. */
 export function receivingRailCartonKey(receivingId: number): string {
   return `carton:${receivingId}`;
+}
+
+/**
+ * Durable AnimatePresence / React list key for a receiving rail row.
+ * Prefer an explicit `client_event_id`, then `carton:{receiving_id}`, then line id.
+ * Never key carton-deduped feeds on line id alone — stub→real swaps would remount.
+ */
+export function receivingRailReconcileId(row: {
+  client_event_id?: string | null;
+  receiving_id?: number | null;
+  id: number;
+}): string | number {
+  if (typeof row.client_event_id === 'string' && row.client_event_id.length > 0) {
+    return row.client_event_id;
+  }
+  const rid = row.receiving_id;
+  if (rid != null && Number.isFinite(rid)) return receivingRailCartonKey(rid);
+  return row.id;
 }
 
 function normalizeRailRows(rows: ReceivingRailRow[]): ReceivingRailRow[] {
@@ -419,6 +522,126 @@ export function upsertUnboxQueueRows(
   rows: ReceivingRailRow[],
 ): void {
   upsertRailSegmentRows(queryClient, UNBOX_QUEUE_SEGMENT, rows);
+}
+
+function filterRailSegmentRows(
+  queryClient: QueryClient,
+  segment: string,
+  keep: (row: ReceivingRailRow) => boolean,
+): void {
+  queryClient.setQueriesData<ReceivingRailRow[]>(
+    { queryKey: ['receiving-lines-table', 'rail', segment] },
+    (old) => {
+      if (!Array.isArray(old)) return old;
+      const next = old.filter(keep);
+      return next.length === old.length ? old : next;
+    },
+  );
+}
+
+/**
+ * Drop a carton from Unbox rail caches (Unboxed + Queue) by `receiving_id`.
+ * Pair with `receiving-entry-deleted` so the list exits one keyed row instead of
+ * waiting for a refetch that might resurrect it.
+ */
+export function removeReceivingRailByCarton(
+  queryClient: QueryClient,
+  receivingId: number,
+): void {
+  if (!Number.isFinite(receivingId)) return;
+  const keep = (r: ReceivingRailRow) => r.receiving_id !== receivingId;
+  filterRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, keep);
+  filterRailSegmentRows(queryClient, UNBOX_QUEUE_SEGMENT, keep);
+}
+
+/**
+ * Drop a line-shaped rail row; when the cached row has a `receiving_id`, remove
+ * the whole carton (Unbox is one-row-per-carton).
+ */
+export function removeReceivingRailByLine(
+  queryClient: QueryClient,
+  lineId: number,
+): void {
+  if (!Number.isFinite(lineId)) return;
+  let receivingId: number | null = null;
+  for (const [, rows] of queryClient.getQueriesData<ReceivingRailRow[]>({
+    queryKey: ['receiving-lines-table', 'rail'],
+  })) {
+    if (!Array.isArray(rows)) continue;
+    const hit = rows.find((r) => r.id === lineId);
+    if (hit?.receiving_id != null && Number.isFinite(hit.receiving_id)) {
+      receivingId = hit.receiving_id;
+      break;
+    }
+  }
+  if (receivingId != null) {
+    removeReceivingRailByCarton(queryClient, receivingId);
+    return;
+  }
+  filterRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, (r) => r.id !== lineId);
+}
+
+/**
+ * After deleting a line inside an Unbox carton: keep the same `carton:{id}` row
+ * (in-place update), either as an unfound stub or retargeted at a remaining line.
+ * Prevents line-delete → carton exit+enter flicker on the Unboxed rail.
+ */
+export function reconcileUnboxRailAfterLineDelete(
+  queryClient: QueryClient,
+  receivingId: number,
+  next:
+    | { kind: 'stub'; tracking: string }
+    | { kind: 'line'; lineId: number },
+): void {
+  if (!Number.isFinite(receivingId)) return;
+  const cartonKey = receivingRailCartonKey(receivingId);
+  if (next.kind === 'stub') {
+    // Dynamic import avoided — stub builder lives next to sidebar shared shapes.
+    // Callers that already built a stub should prefer upsertReceivingRailRows;
+    // this path stamps the negative id + carton key onto the existing cache row.
+    queryClient.setQueriesData<ReceivingRailRow[]>(
+      { queryKey: ['receiving-lines-table', 'rail', UNBOX_RAIL_SEGMENT] },
+      (old) => {
+        if (!Array.isArray(old)) return old;
+        let found = false;
+        const mapped = old.map((r) => {
+          if (r.receiving_id !== receivingId) return r;
+          found = true;
+          const prev = r as ReceivingRailRow & { tracking_number?: string | null };
+          return {
+            ...r,
+            id: -receivingId,
+            client_event_id: cartonKey,
+            item_name: 'Unfound PO',
+            quantity_received: 0,
+            receiving_source: 'unmatched' as const,
+            tracking_number: next.tracking || prev.tracking_number || null,
+          };
+        });
+        if (found) return mapped;
+        return [
+          {
+            id: -receivingId,
+            receiving_id: receivingId,
+            client_event_id: cartonKey,
+          } as ReceivingRailRow,
+          ...mapped,
+        ];
+      },
+    );
+    return;
+  }
+  queryClient.setQueriesData<ReceivingRailRow[]>(
+    { queryKey: ['receiving-lines-table', 'rail', UNBOX_RAIL_SEGMENT] },
+    (old) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((r) =>
+        r.receiving_id === receivingId
+          ? { ...r, id: next.lineId, client_event_id: cartonKey }
+          : r,
+      );
+    },
+  );
 }
 
 /**

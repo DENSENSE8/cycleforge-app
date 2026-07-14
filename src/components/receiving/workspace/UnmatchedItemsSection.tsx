@@ -188,7 +188,6 @@ function UnmatchedItemsPerLineList(props: UnmatchedItemsSectionProps) {
             manual Add-item step. */}
         {showSerialScan ? (
           <ReturnScanCard
-            isSubmitting={c.returnScanBusy}
             condition={c.cartonScanCondition}
             onConditionChange={(next) => c.handleCartonConditionChange(next)}
             onAdd={(sn) => c.handleReturnSerialScan(sn)}

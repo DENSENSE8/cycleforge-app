@@ -1,7 +1,67 @@
 {
-  "generatedAt": "2026-07-13T15:39:24.502Z",
+  "generatedAt": "2026-07-14T15:37:17.852Z",
   "count": 196,
   "commits": [
+    {
+      "sha": "4f3c29b759e14f3709cda07dd620384a79e646cc",
+      "shortSha": "4f3c29b75",
+      "date": "2026-07-14T03:04:08-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: entity threads, spacing DS convergence, receiving workspace refactor",
+      "body": "Ship entity-anchored conversation (threads API, schema, UI), density-aware\nspacing tokens with Stack/Inset/Row primitives across major surfaces, and\nreceiving workspace notes/stepper/serial-absent improvements plus shipped\noutbound details and urgent-order support.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "entity threads, spacing DS convergence, receiving workspace refactor"
+    },
+    {
+      "sha": "232f7fd19a4ca5374eb32112ed7ec1b52b3cfebb",
+      "shortSha": "232f7fd19",
+      "date": "2026-07-13T16:48:47-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(receiving-claim): report exact NAS archive failure reason in `details`",
+      "body": "The 503 \"archive agent/mount unavailable\" returned no `details`, and an agent\nTHROW was flattened to a generic 500 — so the true cause (env-not-injected vs\nagent HTTP error vs claims-target lookup) was invisible in the toast.\n\nNow the archive step wraps the call, captures the precise reason\n(agent-not-configured-at-runtime with URL/token PRESENCE booleans — never the\nsecret value — or the agent's HTTP/error message, plus any org-settings\nclaims-target error), logs it, and returns it in `details`. The client already\nshows `details || error`, so the operator sees exactly which link failed.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01RLGheSBR9kuKVh1j2Nsrke",
+      "type": "fix",
+      "title": "report exact NAS archive failure reason in `details`"
+    },
+    {
+      "sha": "6bf6c8d87bd5d36e3639c399df1066c5d494bc0f",
+      "shortSha": "6bf6c8d87",
+      "date": "2026-07-13T14:15:53-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "chore: sync in-flight work — zendesk ticket bundle cache, support chat, receiving/unfound UI",
+      "body": "Batches the current working-tree changes so they deploy with the claim-archive\nvalidation fix: Zendesk ticket bundle loader + Redis cache + benches, support\nchat/ticket-detail, unfound queue/overview + unmatched surfaces, receiving\nclaim photo/review polish, print-label tweaks, z-index token .mjs, and e2e\nbundle-perf spec.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01RLGheSBR9kuKVh1j2Nsrke",
+      "type": "chore",
+      "title": "sync in-flight work — zendesk ticket bundle cache, support chat, receiving/unfound UI"
+    },
+    {
+      "sha": "2d6ec14ce7251f720781219f45840ceaa38347dc",
+      "shortSha": "2d6ec14ce",
+      "date": "2026-07-13T14:15:23-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(receiving-claim): surface real field error + bulletproof NAS archive validation",
+      "body": "The \"Back up to NAS\" form and the filed-ticket dropdown Archive button both\nPOST to /api/receiving/zendesk-claim/archive-only. Its Zod schema rejected the\nrequest and the client only showed `error` (\"Validation failed\"), swallowing\nthe `details` that name the actual field — so the failure was undiagnosable in\nprod.\n\nRoot cause on the carton/chip path: receiving/line ids arrive as bigint-\nserialized strings, and `z.coerce.number()` turns \"\" / null into 0, which then\nfails `.positive()` (nullable only catches real null). An empty lineId on a\ncarton-level archive tripped this.\n\n- archive-only route: safeParse (not .parse) → log the exact payload +\n  return field-level `details`; normalize every id shape (\"\", null, \"null\",\n  string, number) to a positive int or undefined via z.preprocess so an absent\n  lineId can never reject; truncate (never reject) the info-file text caps;\n  coerce ticketNumber from number|string.\n- Client (claim controller + ReceivingTicketChip): show\n  `details || error || fallback` so the toast names exactly what was rejected,\n  matching the house pattern used across admin/favorites callers.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01RLGheSBR9kuKVh1j2Nsrke",
+      "type": "fix",
+      "title": "surface real field error + bulletproof NAS archive validation"
+    },
+    {
+      "sha": "803293b924a38b3c067317af8e322d082838c9b8",
+      "shortSha": "803293b92",
+      "date": "2026-07-13T11:00:54-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(photos): resolve GCS bucket to usav-photos-prod for mobile uploads",
+      "body": "Production was falling back to usav-photos-dev when PHOTOS_GCS_BUCKET was\nunset or malformed, causing mobile unboxing uploads to fail with \"bucket does\nnot exist\". Centralize bucket resolution with env normalization and prod/preview\nfallbacks, tighten isGcsConfigured to require credentials, and add E2E coverage.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "resolve GCS bucket to usav-photos-prod for mobile uploads"
+    },
+    {
+      "sha": "66648ffbff9b56bd681f452083c49ef3426ac286",
+      "shortSha": "66648ffbf",
+      "date": "2026-07-13T08:40:33-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: receiving unification, time-format prefs, ops TV board, search/dense-UI refactor",
+      "body": "Broad dogfood-lane integration: receiving condition/serial unification,\nserial immediate-display projection, inline ticket editor, 12h/24h time\nformat preference, Operations TV board, typography role scale codemods,\nand supporting migrations.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "receiving unification, time-format prefs, ops TV board, search/dense-UI refactor"
+    },
     {
       "sha": "36926feb2374e93933a387ddff476de7dec35bf9",
       "shortSha": "36926feb2",
@@ -1901,66 +1961,6 @@
       "body": "Phase 4 (settings home) groundwork for the platform/type catalog.\n\n- CatalogManagerList: the CRUD list (add/rename/reorder/hide-restore/delete,\n  built-in protection) extracted from CatalogManagerPopover so it can be reused\n  outside the overlay\n- CatalogManagerPopover: now a thin RightPaneOverlay wrapper around the list\n- CatalogSection: a /settings \"Platforms & Types\" section rendering the list for\n  platforms + types\n\nSection registration (SettingsSidebarPanel + settings/page.tsx) is left in the\nworking tree — that panel is interleaved with separate in-progress work.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
       "type": "refactor",
       "title": "extract CatalogManagerList; add settings CatalogSection"
-    },
-    {
-      "sha": "8bb53a0d00d9e6c9ad64b7b7a0b171404900e87c",
-      "shortSha": "8bb53a0d0",
-      "date": "2026-06-14T12:25:44-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(catalog): catalog-aware platform reads + server cache layer",
-      "body": "Phase 1 cache layer + Phase 3 (platform reads) of the platform/type catalog\n(docs/platform-account-type-catalog-plan.md).\n\n- src/lib/catalog/org-catalog.ts: cached server read layer (getOrgPlatforms/\n  getOrgTypes, 5-min in-process cache, invalidateCatalogCache); invalidated\n  from all 6 catalog CRUD handlers\n- usePlatformMeta(): catalog-aware tone/label resolver (catalog label/tone\n  wins, falls back to sourcePlatformMeta; custom slug -> its label, not \"Unknown\")\n- CartonContextCard: pill options now catalog-driven (rename/hide/reorder/custom\n  propagate; order = catalog sort_order); listing chip uses the resolver\n- /api/receiving/[id] PATCH: source_platform + intake_type validated against\n  the org catalog UNION the hardcoded sets (custom accepted, never narrower)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "catalog-aware platform reads + server cache layer"
-    },
-    {
-      "sha": "2d0deb83e4bbc4091a658853dfe3898678bc0a1f",
-      "shortSha": "2d0deb83e",
-      "date": "2026-06-14T12:25:44-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(catalog): catalog-aware platform reads + server cache layer",
-      "body": "Phase 1 cache layer + Phase 3 (platform reads) of the platform/type catalog\n(docs/platform-account-type-catalog-plan.md).\n\n- src/lib/catalog/org-catalog.ts: cached server read layer (getOrgPlatforms/\n  getOrgTypes, 5-min in-process cache, invalidateCatalogCache); invalidated\n  from all 6 catalog CRUD handlers\n- usePlatformMeta(): catalog-aware tone/label resolver (catalog label/tone\n  wins, falls back to sourcePlatformMeta; custom slug -> its label, not \"Unknown\")\n- CartonContextCard: pill options now catalog-driven (rename/hide/reorder/custom\n  propagate; order = catalog sort_order); listing chip uses the resolver\n- /api/receiving/[id] PATCH: source_platform + intake_type validated against\n  the org catalog UNION the hardcoded sets (custom accepted, never narrower)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "catalog-aware platform reads + server cache layer"
-    },
-    {
-      "sha": "c358b77a2ec500c931a3b129d1680a27c4274790",
-      "shortSha": "c358b77a2",
-      "date": "2026-06-14T11:41:30-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(catalog): per-org editable platform/type catalog",
-      "body": "Promote the hardcoded SOURCE_PLATFORMS / RECEIVING_TYPE_OPTS lists into\norg-scoped, CRUD-able catalog tables (plan step 1, docs/platform-account-\ntype-catalog-plan.md) so each org can add / rename / reorder / hide /\ndelete its own platforms and receiving flow types without a code change.\n\n- migration 2026-06-13g: platforms / platform_accounts / types tables\n  (is_system flag; built-ins seeded per org, hide-only + immutable slug)\n- /api/catalog/{platforms,types} CRUD — withAuth + Zod + audit + idempotency,\n  soft-delete (reads receiving.view, writes admin.manage_features)\n- useCatalog hooks + query factory (built-in fallback until seeded)\n- CatalogManagerPopover: list + add/rename/reorder/hide-restore/delete,\n  opened by a pencil beside the label editor's Platform/Type dropdowns\n- carton-bar pills append custom entries\n- seedOrgCatalog() provisioning hook on org creation\n\nRead-side (catalog-aware resolvers, RLS, type_id FK) is a follow-up.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "per-org editable platform/type catalog"
-    },
-    {
-      "sha": "18659b21f8ffad4297e3e2d5a85a492457383994",
-      "shortSha": "18659b21f",
-      "date": "2026-06-14T11:41:30-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(catalog): per-org editable platform/type catalog",
-      "body": "Promote the hardcoded SOURCE_PLATFORMS / RECEIVING_TYPE_OPTS lists into\norg-scoped, CRUD-able catalog tables (plan step 1, docs/platform-account-\ntype-catalog-plan.md) so each org can add / rename / reorder / hide /\ndelete its own platforms and receiving flow types without a code change.\n\n- migration 2026-06-13g: platforms / platform_accounts / types tables\n  (is_system flag; built-ins seeded per org, hide-only + immutable slug)\n- /api/catalog/{platforms,types} CRUD — withAuth + Zod + audit + idempotency,\n  soft-delete (reads receiving.view, writes admin.manage_features)\n- useCatalog hooks + query factory (built-in fallback until seeded)\n- CatalogManagerPopover: list + add/rename/reorder/hide-restore/delete,\n  opened by a pencil beside the label editor's Platform/Type dropdowns\n- carton-bar pills append custom entries\n- seedOrgCatalog() provisioning hook on org creation\n\nRead-side (catalog-aware resolvers, RLS, type_id FK) is a follow-up.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "per-org editable platform/type catalog"
-    },
-    {
-      "sha": "8af1c3c430acd5f5dde006c12cff63dfe78e393c",
-      "shortSha": "8af1c3c43",
-      "date": "2026-06-13T18:49:17-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: gitignore local scratch script artifacts (studio verify runs + screenshots)",
-      "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "gitignore local scratch script artifacts (studio verify runs + screenshots)"
-    },
-    {
-      "sha": "99081db9e78fbb7ec4a33feb93be18a16d9ecc25",
-      "shortSha": "99081db9e",
-      "date": "2026-06-13T18:49:17-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: gitignore local scratch script artifacts (studio verify runs + screenshots)",
-      "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "gitignore local scratch script artifacts (studio verify runs + screenshots)"
     }
   ]
 }

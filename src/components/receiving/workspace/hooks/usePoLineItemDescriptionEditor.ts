@@ -59,8 +59,7 @@ export interface PoLineItemDescriptionEditor {
  * Inline Zoho item-description (line desc) editor for {@link PoLinesAccordion}.
  *
  * The notes icon toggles a line's meta display between the condition + serial
- * chips and the Zoho item description in the same slot; clicking the shown
- * description opens this inline editor, whose green check saves to
+ * chips and the Zoho item description in the same slot; the green check saves to
  * `receiving_lines.zoho_notes` and pushes the same text to the linked Zoho PO
  * line item description. Mirrors the narrow-editor shape of
  * {@link useCartonLabelEditor}: one editable surface, own state, delegates
@@ -85,7 +84,7 @@ export function usePoLineItemDescriptionEditor({
   const [savingLineId, setSavingLineId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Consume a title-click handoff queued before `dispatchSelectLine` re-seeded
+  // Consume a notes-icon handoff queued before `dispatchSelectLine` re-seeded
   // this accordion, so the editor opens on the newly active line instead of
   // being wiped with React state.
   useEffect(() => {

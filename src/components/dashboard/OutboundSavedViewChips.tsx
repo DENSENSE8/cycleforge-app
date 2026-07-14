@@ -5,8 +5,7 @@
  * re-open “late tested” / “my pending” without opening the sidebar.
  */
 
-import { useState } from 'react';
-import { Plus, Star, X } from '@/components/Icons';
+import { Star, X } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useSavedViews } from '@/hooks/useSavedViews';
@@ -36,24 +35,15 @@ function configFor(mode: Mode) {
 
 export function OutboundSavedViewChips({ mode }: { mode: Mode }) {
   const { storageKey, paramKeys } = configFor(mode);
-  const { views, activeView, hasActiveFilters, applyView, saveView, removeView } = useSavedViews({
+  const { views, activeView, applyView, removeView } = useSavedViews({
     storageKey,
     paramKeys,
   });
-  const [naming, setNaming] = useState(false);
-  const [draft, setDraft] = useState('');
 
   const visible = views.slice(0, MAX_CHIPS);
   const overflow = views.length - visible.length;
 
-  const commit = () => {
-    if (!draft.trim()) return;
-    saveView(draft);
-    setDraft('');
-    setNaming(false);
-  };
-
-  if (views.length === 0 && !hasActiveFilters) return null;
+  if (views.length === 0) return null;
 
   return (
     <div className="flex min-w-0 max-w-[min(40vw,28rem)] items-center gap-1" role="group" aria-label="Saved views">
@@ -89,47 +79,6 @@ export function OutboundSavedViewChips({ mode }: { mode: Mode }) {
       {overflow > 0 ? (
         <span className="px-1 text-role-eyebrow font-bold tabular-nums text-text-faint">+{overflow}</span>
       ) : null}
-
-      {naming ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            commit();
-          }}
-          className="flex items-center gap-1"
-        >
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={() => {
-              if (!draft.trim()) setNaming(false);
-            }}
-            placeholder="Name…"
-            className="w-24 rounded-md border border-border-soft bg-surface-card px-1.5 py-1 text-role-caption text-text-default outline-none focus:border-blue-400"
-          />
-        </form>
-      ) : (
-        <HoverTooltip
-          label={
-            !hasActiveFilters
-              ? 'Set a filter first'
-              : activeView
-                ? 'These filters are already saved'
-                : 'Save current filters as a view'
-          }
-          asChild
-        >
-          <ToolbarButton
-            iconOnly
-            disabled={!hasActiveFilters || Boolean(activeView)}
-            onClick={() => setNaming(true)}
-            aria-label="Save current view"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </ToolbarButton>
-        </HoverTooltip>
-      )}
     </div>
   );
 }

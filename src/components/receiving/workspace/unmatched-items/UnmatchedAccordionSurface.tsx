@@ -36,13 +36,25 @@ import { toast } from '@/lib/toast';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { LabelIdentifyButton } from '@/components/receiving/label-identify/LabelIdentifyButton';
 import {
-  receivingSiblingsSerialsQueryKey,
+  publishLineSerials,
+  receivingSiblingsQueryKey,
   writeReceivingSiblingLine,
 } from '@/lib/queries/receiving-queries';
+import {
+  appendOptimisticSerial,
+  clearSerialRemoving,
+  confirmOptimisticSerial,
+  markSerialRemoving,
+  mintOptimisticSerialId,
+  removeSerialById,
+  rollbackOptimisticSerial,
+  setSerialGrade,
+  type LineSerial,
+} from '@/lib/receiving/optimistic-serials';
 import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
-import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
+import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import { useUnmatchedItems } from './useUnmatchedItems';
 import { IntakeClassifyRow } from './IntakeClassifyRow';
 import { ReturnScanCard } from './ReturnScanCard';
@@ -52,7 +64,7 @@ import type { UnfoundLine, UnmatchedItemsSectionProps } from './unmatched-items-
  * Per-line serial handlers scoped to the active unfound line — the accordion's
  * active row attaches serials to THIS line (not a carton-level create). Mirrors
  * the matched carton's `useLineSerials` against the same scan-serial / grade
- * endpoints, kept local so the legacy path is untouched.
+ * endpoints via the shared optimistic-serials + publishLineSerials SoT.
  */
 function useActiveUnfoundLineSerials({
   receivingId,
@@ -60,23 +72,44 @@ function useActiveUnfoundLineSerials({
   lineCondition,
   staffId,
   isReturn,
-  refresh,
 }: {
   receivingId: number;
   lineId: number | null;
   lineCondition: string;
   staffId?: string;
   isReturn: boolean;
-  refresh: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [serialSubmitting, setSerialSubmitting] = useState(false);
   const [editingSerial, setEditingSerial] = useState<ActiveRowSerial | null>(null);
   const serialLookup = useSerialLookup();
+
+  const readLineSerials = useCallback(
+    (id: number): LineSerial[] => {
+      const cached = queryClient.getQueryData<{
+        success: boolean;
+        receiving_lines: Array<{ id: number; serials?: LineSerial[] }>;
+      }>(receivingSiblingsQueryKey(receivingId));
+      const hit = cached?.receiving_lines?.find((l) => l.id === id);
+      return (hit?.serials ?? []) as LineSerial[];
+    },
+    [queryClient, receivingId],
+  );
+
+  const publish = useCallback(
+    (id: number, serials: LineSerial[]) => {
+      publishLineSerials(queryClient, receivingId, id, serials);
+    },
+    [queryClient, receivingId],
+  );
 
   const submitSerial = useCallback(
     async (raw?: string, conditionGrade?: string | null) => {
       const serial = (raw ?? '').trim();
       if (!serial || lineId == null || serialSubmitting) return;
+      if (lineId <= 0) return; // still on optimistic temp line — wait for remap
+      const tempId = mintOptimisticSerialId();
+      publish(lineId, appendOptimisticSerial(readLineSerials(lineId), serial, tempId));
       setSerialSubmitting(true);
       try {
         if (isReturn) await serialLookup.check(serial);
@@ -94,27 +127,69 @@ function useActiveUnfoundLineSerials({
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.success) {
           toast.error(json?.error || 'Scan failed');
+          publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
           return;
         }
-        const su = json.serial_unit as { id?: number; serial_number?: string } | undefined;
-        const nextSerials =
-          su?.id != null
-            ? [{ id: su.id, serial_number: String(su.serial_number ?? serial) }]
-            : [{ id: -lineId, serial_number: serial }];
-        dispatchLineUpdated({ id: lineId, serials: nextSerials });
-        refresh();
+        if (json.already_attached) {
+          toast.info(`Already added — ${serial}`);
+          publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
+          return;
+        }
+        const confirmed = confirmOptimisticSerial(
+          readLineSerials(lineId),
+          tempId,
+          json.serial_unit,
+        );
+        publish(lineId, confirmed);
+        if (json.line_patch && typeof json.line_patch.id === 'number') {
+          dispatchUnboxRailLineUpdated(json.line_patch);
+        }
+        if (json.is_return) {
+          const su = json.serial_unit;
+          serialLookup.applyResult({
+            serial,
+            found: true,
+            is_return: true,
+            unit: su
+              ? {
+                  serial_number: String(su.serial_number ?? serial),
+                  sku: su.sku ?? null,
+                  current_status: String(su.current_status ?? 'RETURNED'),
+                  condition_grade: su.condition_grade ?? null,
+                  current_location: su.current_location ?? null,
+                  updated_at: su.updated_at ?? null,
+                  is_return: true,
+                }
+              : null,
+            matchedOrder: json.matched_order ?? null,
+          });
+        } else if (isReturn) {
+          serialLookup.applyResult({ serial, found: false });
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Scan failed');
+        publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
       } finally {
         setSerialSubmitting(false);
       }
     },
-    [isReturn, lineCondition, lineId, receivingId, refresh, serialLookup, serialSubmitting, staffId],
+    [
+      isReturn,
+      lineCondition,
+      lineId,
+      publish,
+      readLineSerials,
+      receivingId,
+      serialLookup,
+      serialSubmitting,
+      staffId,
+    ],
   );
 
   const deleteSerialUnit = useCallback(
     async (serialUnitId: number) => {
-      if (serialUnitId == null || lineId == null) return;
+      if (serialUnitId == null || lineId == null || serialUnitId <= 0) return;
+      publish(lineId, markSerialRemoving(readLineSerials(lineId), serialUnitId));
       try {
         const res = await fetch('/api/receiving/scan-serial', {
           method: 'DELETE',
@@ -124,15 +199,18 @@ function useActiveUnfoundLineSerials({
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.success) {
           toast.error(json?.error || 'Could not remove serial');
+          publish(lineId, clearSerialRemoving(readLineSerials(lineId), serialUnitId));
           return;
         }
         if (editingSerial?.id === serialUnitId) setEditingSerial(null);
-        refresh();
+        toast.success('Serial removed');
+        publish(lineId, removeSerialById(readLineSerials(lineId), serialUnitId));
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not remove serial');
+        publish(lineId, clearSerialRemoving(readLineSerials(lineId), serialUnitId));
       }
     },
-    [editingSerial?.id, lineId, refresh],
+    [editingSerial?.id, lineId, publish, readLineSerials],
   );
 
   const replaceSerialUnit = useCallback(
@@ -140,9 +218,10 @@ function useActiveUnfoundLineSerials({
       original: { id: number; serial_number: string; condition_grade?: string | null },
       nextSerial: string,
     ) => {
-      if (original.id == null || lineId == null) return;
+      if (original.id == null || lineId == null || original.id <= 0) return;
       const next = (nextSerial ?? '').trim();
       if (!next || next === original.serial_number) return;
+      publish(lineId, markSerialRemoving(readLineSerials(lineId), original.id));
       try {
         const res = await fetch('/api/receiving/scan-serial', {
           method: 'DELETE',
@@ -152,18 +231,24 @@ function useActiveUnfoundLineSerials({
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.success) {
           toast.error(json?.error || 'Could not replace serial');
+          publish(lineId, clearSerialRemoving(readLineSerials(lineId), original.id));
           return;
         }
+        publish(lineId, removeSerialById(readLineSerials(lineId), original.id));
         await submitSerial(next, original.condition_grade ?? null);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not replace serial');
+        publish(lineId, clearSerialRemoving(readLineSerials(lineId), original.id));
       }
     },
-    [lineId, submitSerial],
+    [lineId, publish, readLineSerials, submitSerial],
   );
 
   const setUnitGrade = useCallback(
     async (serialUnitId: number, grade: string) => {
+      if (lineId == null || serialUnitId <= 0) return;
+      const prev = readLineSerials(lineId);
+      publish(lineId, setSerialGrade(prev, serialUnitId, grade));
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
@@ -174,14 +259,15 @@ function useActiveUnfoundLineSerials({
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.ok) {
           toast.error(json?.error || 'Could not set unit condition');
+          publish(lineId, prev);
           return;
         }
-        refresh();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Condition save failed');
+        publish(lineId, prev);
       }
     },
-    [refresh],
+    [lineId, publish, readLineSerials],
   );
 
   return {
@@ -233,22 +319,6 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
 
   const c = useUnmatchedItems({ ...props, onLinked: wrappedOnLinked });
 
-  // Reconcile the active line's serials WITHOUT the heavy full-carton
-  // `GET /api/receiving/:id` refetch that `c.refreshLines` runs (it replaces
-  // `useUnmatchedItems`' local `lines` state → new active-row object identity →
-  // the whole active row re-renders and the serial input resets). The accordion
-  // already renders serials from its OWN query cache — patched instantly by
-  // `submitSerial`'s `dispatchLineUpdated` — so all we need is to invalidate the
-  // cheap serials-hydration query; `usePoLinesData` overlays the authoritative
-  // serials back onto that shared cache. This mirrors the matched-PO lane and
-  // keeps a serial add/delete an in-place patch, not a surface rebuild.
-  const reconcileActiveSerials = useCallback(() => {
-    if (!Number.isFinite(receivingId) || receivingId <= 0) return;
-    void queryClient.invalidateQueries({
-      queryKey: receivingSiblingsSerialsQueryKey(receivingId),
-    });
-  }, [queryClient, receivingId]);
-
   const isReturn = String(receivingTypeHint || '').toUpperCase() === 'RETURN';
   const hasLines = c.lines.length > 0;
 
@@ -266,7 +336,6 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     lineCondition: resolvedActiveLine?.condition_grade ?? 'USED_A',
     staffId,
     isReturn,
-    refresh: reconcileActiveSerials,
   });
 
   const headerActions = (
@@ -436,7 +505,6 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
         // Empty carton: the "scan the first return" active-row affordance. Shown
         // ONLY at 0 lines, so it never stands beside a line row (no double-row).
         <ReturnScanCard
-          isSubmitting={c.returnScanBusy}
           condition={c.cartonScanCondition}
           onConditionChange={(next) => c.handleCartonConditionChange(next)}
           onAdd={(sn) => c.handleReturnSerialScan(sn)}
