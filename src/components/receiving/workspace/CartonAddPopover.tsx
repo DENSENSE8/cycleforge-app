@@ -82,14 +82,14 @@ export function CartonAddPopover({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.18, ease: motionBezier.easeOut }}
-        className="pointer-events-none fixed inset-0 z-panelPopover flex items-start justify-center p-4 pt-[8vh] md:pl-[360px]"
+        className={/* ds-allow-spacing — offset clears the 360px sidebar */ "pointer-events-none fixed inset-0 z-panelPopover flex items-start justify-center p-4 pt-[8vh] md:pl-[360px]"}
       >
         <div
           onClick={(e) => e.stopPropagation()}
           className="pointer-events-auto flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl ring-1 ring-border-soft"
         >
           {/* Header: tab segment + close */}
-          <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-3 py-2">
+          <div className="flex items-center justify-between gap-2 border-b border-border-hairline inset-field">
             {tabs.length > 1 ? (
               <div className="flex gap-1">
                 {tabs.map((t) => {

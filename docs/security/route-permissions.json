@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-13T19:07:16Z",
-  "totalRoutes": 840,
+  "generatedAt": "2026-07-14T08:21:53Z",
+  "totalRoutes": 845,
   "summary": {
-    "permissionGated": 713,
-    "authenticatedNoPermission": 45,
+    "permissionGated": 717,
+    "authenticatedNoPermission": 46,
     "anonymousIntentional": 80,
     "serviceToService": 2,
     "ungatedRead": 0,
@@ -4790,6 +4790,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/lines/[id]/serial-absent/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/lines/[id]/status/route.ts",
       "methods": [
         "POST"
@@ -4921,6 +4930,16 @@
       "path": "/api/receiving/rail-exclusions/route.ts",
       "methods": [
         "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/rail-snapshot/route.ts",
+      "methods": [
         "GET",
         "POST"
       ],
@@ -7010,6 +7029,35 @@
       ],
       "gate": "withAuth",
       "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/attach-ticket/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/messages/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "support.thread.view",
       "exemptReason": null
     },
     {

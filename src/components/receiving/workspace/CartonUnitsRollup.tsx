@@ -101,11 +101,11 @@ export function CartonUnitsRollupBody({
                 <button
                   type="button"
                   onClick={() => setWizardOpen(true)}
-                  className="ds-raw-button -my-0.5 inline-flex items-center gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200 transition-colors hover:bg-violet-100"
+                  className="ds-raw-button -my-0.5 inline-flex items-center gap-1 rounded bg-violet-50 inset-chip text-role-eyebrow uppercase tracking-widest text-violet-700 ring-1 ring-inset ring-violet-200 transition-colors hover:bg-violet-100"
                 >
                   <Package className="h-3 w-3 shrink-0" /> Prebox
                 </button>
-                <span className="rounded bg-surface-canvas px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+                <span className="rounded bg-surface-canvas inset-chip text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
                   {totalSerials} unit{totalSerials === 1 ? '' : 's'}
                 </span>
               </div>
@@ -169,7 +169,7 @@ export function CartonUnitsRollup({
   if (!enabled || totalSerials === 0) return null;
 
   return (
-    <WorkspaceCard variant="glass" label="Units on this carton" bodyClassName="px-3 py-2">
+    <WorkspaceCard variant="glass" label="Units on this carton" bodyClassName="inset-field">
       <CartonUnitsRollupBody receivingId={receivingId} activeLineId={activeLineId} />
     </WorkspaceCard>
   );

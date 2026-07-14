@@ -19,6 +19,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` (do not invent status maps) |
 | Z-index | `src/design-system/tokens/z-index.ts` |
+| Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
 | Buttons | `src/design-system/primitives` `Button` |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
@@ -56,6 +57,18 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - Source: `src/design-system/tokens/z-index.ts`, wired into Tailwind as named utilities
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
+
+## Spacing (density-aware scale + intents)
+
+- Source: `src/design-system/tokens/spacing.mjs` → `theme.extend.spacing`; each step is
+  `calc(rem × var(--cf-density, 1))` (typed re-export: `spacing.ts`). `extend` merges per key —
+  a key not listed in `spacing.mjs` keeps Tailwind's static stock value; add new in-use keys there.
+- Recurring padding jobs resolve via the Tier-2 intents (`inset-chip/field/cozy/card/empty`,
+  `stack-tight/row/section`, `row-gap/tight` — tailwind.config.ts plugin + safelist + `cn()`
+  `cf-*` groups, all pinned by the keystone test) or the `Stack`/`Inset`/`Row` primitives.
+  An intent is the whole padding story for its element — never mix it with raw `p-*` there.
+- Never hardcode arbitrary-px spacing. Guard: `src/components/ui/spacing-tokens.guard.test.ts`
+  (escape: same-line `ds-allow-spacing`, reserved for safe-area / fixed-overlay geometry).
 
 ## Integrations: capability labels, gating, and tokens
 
@@ -95,6 +108,9 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 
 - Canonical `Button` (5 variants) lives in `src/design-system/primitives`. `PrimaryButton` is now a thin alias.
 - New code uses `Button`; don't hand-roll button class strings.
+- Icon-only actions use `IconButton` with a `size` (xs/sm/md/lg/touch) for the hit-box — never a hand-set
+  `h-N w-N` on the button (guard: `control-size-tokens.guard.test.ts`). `touch` = the 44px tap floor that
+  `tokens/touch.ts` used to own (retired).
 
 ## SKU identity (data-integrity)
 

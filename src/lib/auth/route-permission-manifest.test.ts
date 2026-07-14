@@ -128,6 +128,24 @@ test('regression: photos.share gates share pack creation', () => {
   assert.ok(paths.includes('/api/photos/share-packs/route.ts'), 'photos.share should gate share pack POST');
 });
 
+test('regression: support.thread.* gates the entity-thread routes', () => {
+  // Entity threads (docs/todo/entity-threads-conversation-plan.md, D7): a
+  // ticketless internal thread gates independently of the Zendesk integration.
+  const viewPaths = routesGatedBy('support.thread.view').map((r) => r.path);
+  const managePaths = routesGatedBy('support.thread.manage').map((r) => r.path);
+  // The manifest records the first-declared method's permission per file:
+  // /api/threads and /[id]/messages declare GET (view) first.
+  assert.ok(viewPaths.includes('/api/threads/route.ts'), 'support.thread.view should gate /api/threads');
+  assert.ok(
+    viewPaths.includes('/api/threads/[id]/messages/route.ts'),
+    'support.thread.view should gate the messages route',
+  );
+  assert.ok(
+    managePaths.includes('/api/threads/[id]/attach-ticket/route.ts'),
+    'support.thread.manage should gate attach-ticket',
+  );
+});
+
 test('regression: receiving.upload_photo gates photo reassignment', () => {
   const paths = routesGatedBy('receiving.upload_photo').map((r) => r.path);
   assert.ok(

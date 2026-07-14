@@ -75,7 +75,7 @@ test('resolveBrowseSources: audit spine is admin-only in browse (plan §3.2 Opti
   // Non-admin, no explicit sources → audit silently dropped, feed still served.
   assert.deepEqual(resolveBrowseSources(undefined, false), {
     forbidden: false,
-    sources: ['sal', 'inventory', 'carrier', 'warranty'],
+    sources: ['sal', 'inventory', 'carrier', 'warranty', 'thread'],
   });
 
   // Non-admin explicitly asking for the audit spine (alone or among others) → 403.
@@ -90,7 +90,7 @@ test('resolveBrowseSources: audit spine is admin-only in browse (plan §3.2 Opti
 
   // Dropping audit must not mutate the shared JOURNEY_SOURCES constant.
   resolveBrowseSources(undefined, false);
-  assert.deepEqual([...JOURNEY_SOURCES], ['sal', 'inventory', 'audit', 'carrier', 'warranty']);
+  assert.deepEqual([...JOURNEY_SOURCES], ['sal', 'inventory', 'audit', 'carrier', 'warranty', 'thread']);
 });
 
 test('redactAuditDiffs: nulls audit before_data for non-admins only, immutably', () => {

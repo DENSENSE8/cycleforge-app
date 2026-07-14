@@ -273,6 +273,7 @@ function OrderFullPageLoaded({
         actions={headerBarActions}
         showCustomerTab
         showDocumentsTab
+        showWarrantyTab
         activeSection={activeSection}
         onSectionChange={setActiveSection}
       />

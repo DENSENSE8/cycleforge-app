@@ -632,7 +632,7 @@ function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
             {t.deliveredEmails.map((sig, i) => (
               <div
                 key={`${sig.orderNumber}-${i}`}
-                className="flex items-center gap-2 rounded-lg bg-violet-50/60 px-2.5 py-1.5"
+                className="flex items-center gap-2 rounded-lg bg-violet-50/60 inset-cozy"
               >
                 <Mail className="h-3.5 w-3.5 shrink-0 text-violet-500" />
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-text-muted">

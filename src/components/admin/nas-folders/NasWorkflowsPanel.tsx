@@ -31,7 +31,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
                 value={targets[target.key].root}
                 onChange={(e) => setTarget(target.key, 'root', e.target.value)}
                 placeholder={target.rootPlaceholder}
-                className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-lg border border-border-soft bg-surface-card inset-field font-mono text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
               <div className="flex gap-2">
                 <input
@@ -39,7 +39,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
                   value={targets[target.key].folder}
                   onChange={(e) => setTarget(target.key, 'folder', e.target.value)}
                   placeholder={target.folderPlaceholder}
-                  className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
                 {target.key !== 'claims' && nasConfigured() ? (
                   <Button

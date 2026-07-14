@@ -21,7 +21,7 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
                 value={draft[s.key] ?? ''}
                 onChange={(e) => setFolder(s.key, e.target.value)}
                 placeholder="Root (no folder)"
-                className="w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
               {s.hint ? <p className="mt-1 text-role-micro text-text-faint">{s.hint}</p> : null}
             </div>

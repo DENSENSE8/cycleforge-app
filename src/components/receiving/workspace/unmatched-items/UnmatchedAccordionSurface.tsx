@@ -35,7 +35,10 @@ import { WorkspaceCard, InlineNotice } from '@/design-system/components';
 import { toast } from '@/lib/toast';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { LabelIdentifyButton } from '@/components/receiving/label-identify/LabelIdentifyButton';
-import { writeReceivingSiblingLine } from '@/lib/queries/receiving-queries';
+import {
+  receivingSiblingsSerialsQueryKey,
+  writeReceivingSiblingLine,
+} from '@/lib/queries/receiving-queries';
 import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
@@ -230,6 +233,22 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
 
   const c = useUnmatchedItems({ ...props, onLinked: wrappedOnLinked });
 
+  // Reconcile the active line's serials WITHOUT the heavy full-carton
+  // `GET /api/receiving/:id` refetch that `c.refreshLines` runs (it replaces
+  // `useUnmatchedItems`' local `lines` state → new active-row object identity →
+  // the whole active row re-renders and the serial input resets). The accordion
+  // already renders serials from its OWN query cache — patched instantly by
+  // `submitSerial`'s `dispatchLineUpdated` — so all we need is to invalidate the
+  // cheap serials-hydration query; `usePoLinesData` overlays the authoritative
+  // serials back onto that shared cache. This mirrors the matched-PO lane and
+  // keeps a serial add/delete an in-place patch, not a surface rebuild.
+  const reconcileActiveSerials = useCallback(() => {
+    if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+    void queryClient.invalidateQueries({
+      queryKey: receivingSiblingsSerialsQueryKey(receivingId),
+    });
+  }, [queryClient, receivingId]);
+
   const isReturn = String(receivingTypeHint || '').toUpperCase() === 'RETURN';
   const hasLines = c.lines.length > 0;
 
@@ -247,7 +266,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     lineCondition: resolvedActiveLine?.condition_grade ?? 'USED_A',
     staffId,
     isReturn,
-    refresh: c.refreshLines,
+    refresh: reconcileActiveSerials,
   });
 
   const headerActions = (

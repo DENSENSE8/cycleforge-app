@@ -85,7 +85,7 @@ export function WebTab({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {error ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption text-amber-800">{error}</div>
+          <div className="rounded-md border border-amber-200 bg-amber-50 inset-field text-role-caption text-amber-800">{error}</div>
         ) : hits.length > 0 ? (
           <ul className="flex flex-col gap-1">
             {hits.map((hit, idx) => (

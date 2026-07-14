@@ -87,7 +87,7 @@ export function AiChatSidebarPanel() {
                 key={e}
                 type="button"
                 onClick={() => emitAiChatPrompt(e)}
-                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card inset-field text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
               >
                 {e}
               </button>

@@ -70,25 +70,31 @@ export function DashboardOrdersView({
       <div
         className={
           showOutboundChrome
-            ? 'relative mx-auto flex h-full min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-6 pt-5 sm:px-6 lg:px-8'
+            ? 'relative mx-auto flex min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col overflow-hidden px-4 pb-8 pt-5 sm:px-6 lg:px-8'
             : 'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
         }
       >
         {showOutboundChrome ? (
-          <OutboundKpiStrip
-            mode={orderView === 'packed' ? 'shipped' : (orderView as 'unshipped' | 'shipped')}
-          />
+          <div className="mb-4 shrink-0">
+            <OutboundKpiStrip
+              mode={orderView === 'packed' ? 'shipped' : (orderView as 'unshipped' | 'shipped')}
+            />
+          </div>
         ) : null}
 
+        {/* `relative z-header` lifts the header above the later-in-DOM table so the
+            table's sticky group headers slide UNDER it instead of bleeding over the
+            seam; `mb-3` keeps a clear, intentional gap to the table top. */}
         {showOutboundChrome ? (
           <OutboundWorkspaceHeader
             orderView={orderView}
             onSelectView={onSelectView}
             controlsSlotRef={setOutboundControlsEl}
+            className="relative z-header mb-3"
           />
         ) : null}
 
-        <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <Suspense fallback={<div className="flex-1 bg-surface-canvas" aria-hidden />}>
             {orderView === 'shipped' ? (
               <DashboardShippedTable

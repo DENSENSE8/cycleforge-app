@@ -13,7 +13,7 @@
  */
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { effectiveIntakeKind } from '@/lib/receiving/kinds/registry';
+import { effectiveIntakeKind, isIntakeKind } from '@/lib/receiving/kinds/registry';
 
 /**
  * Composes off the effectiveIntakeKind SoT (line override wins unless it's
@@ -30,4 +30,31 @@ export function isReturnIntake(
   row: Pick<ReceivingLineRow, 'intake_type' | 'receiving_type' | 'carton_intake_type'>,
 ): boolean {
   return effectiveIntakeKind(row.intake_type || row.receiving_type, row.carton_intake_type) === 'RETURN';
+}
+
+/**
+ * Has a concrete intake kind been *explicitly assigned* to this line/carton?
+ *
+ * Distinct from {@link effectiveIntakeKind}, which collapses "no disposition
+ * yet" into its `'PO'` default and so cannot tell unclassified from PO. This
+ * asks whether ANY of the disposition fields the line row carries holds a
+ * recognized `IntakeKind` — `intake_type` has no DB default, so a fresh unfound
+ * carton reads all-null → `false`. Composes the `isIntakeKind` registry
+ * vocabulary (never a private kind set), reading the same three fields as
+ * `isReturnIntake`.
+ *
+ * Used as the unfound stepper's `Classify` gate (`derive-unfound-step-states`):
+ * `false` keeps Classify the active "you are here" dot until the door pick
+ * lands; a concrete kind flips it done.
+ *
+ * Known gap: `LOCAL_PICKUP` classified purely via carton *source* (the
+ * unmatched controller deliberately skips `intake_type` for PICKUP) leaves no
+ * kind on these fields and reads unclassified — rare for unfound intake; thread
+ * the controller's resolved classification if that ever becomes load-bearing.
+ */
+export function isIntakeClassified(
+  row: Pick<ReceivingLineRow, 'intake_type' | 'receiving_type' | 'carton_intake_type'>,
+): boolean {
+  const recognized = (v?: string | null): boolean => isIntakeKind((v ?? '').trim().toUpperCase());
+  return recognized(row.intake_type) || recognized(row.receiving_type) || recognized(row.carton_intake_type);
 }

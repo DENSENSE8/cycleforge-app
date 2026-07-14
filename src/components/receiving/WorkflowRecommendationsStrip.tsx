@@ -44,7 +44,7 @@ function RecommendationChip({ rec }: { rec: WorkflowRecommendation }) {
         : 'bg-surface-sunken text-text-muted ring-border-soft';
   return (
     <div
-      className={`rounded-lg px-3 py-2 text-xs ring-1 ring-inset ${toneClass}`}
+      className={`rounded-lg inset-field text-xs ring-1 ring-inset ${toneClass}`}
       role="note"
     >
       <p className="font-semibold">{rec.title}</p>

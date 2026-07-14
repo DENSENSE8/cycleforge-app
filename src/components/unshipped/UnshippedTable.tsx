@@ -14,7 +14,6 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
-import { getDaysLateNullable } from '@/utils/date';
 
 /**
  * To Ship fulfillment queue — the dashboard's default lifecycle tab.
@@ -108,10 +107,10 @@ export function UnshippedTable({
   // Click-to-filter from the status legend (`?ustatus`) — exact derived pre-dock
   // state. Composes on top of the coarse `?stage` facet.
   const statusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as FulfillmentState | '';
-  // Late-only board filter — past-deadline rows (`?late=1`).
-  const lateOnly = searchParams.get('late') === '1';
-  // Needs attention — blocked ∪ late (`?attention=1`).
-  const attentionOnly =
+  // Urgent-only board filter — operator-flagged expedited rows (orders.is_urgent).
+  // Wire param is still `attention` (kept for deep-link / saved-pref stability);
+  // its meaning is now "urgent only", not the legacy blocked ∪ late fire queue.
+  const urgentOnly =
     searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
   // Universal staff filter (P1-WORK-02): `?staff=` narrows to one staff's
   // assigned work. Absent = ALL staff (current behavior preserved).
@@ -123,7 +122,7 @@ export function UnshippedTable({
   const [rowLimit, setRowLimit] = useState(200);
   useEffect(() => {
     setRowLimit(200);
-  }, [stageFilter, staffId, searchQuery, statusFilter, lateOnly, attentionOnly]);
+  }, [stageFilter, staffId, searchQuery, statusFilter, urgentOnly]);
 
   const query = useQuery({
     ...unshippedOrdersQuery({
@@ -258,23 +257,16 @@ export function UnshippedTable({
   const allRecords = query.data || [];
   // `?stage` (pending/tested) is filtered SERVER-side now (Phase 1), so the query
   // data already reflects it. `?ustatus` stays a client filter — exact derived
-  // FulfillmentState (PENDING/TESTED/BLOCKED), Decision 8. `?late=1` keeps only
-  // past-deadline rows. `?attention=1` = blocked ∪ late (fire queue).
+  // FulfillmentState (PENDING/TESTED/BLOCKED), Decision 8. `?attention=1` now
+  // keeps only operator-flagged urgent rows (orders.is_urgent).
   const records = allRecords.filter((r) => {
-    const row = r as { has_tech_scan?: boolean; out_of_stock?: string | null; deadline_at?: string | null };
+    const row = r as { has_tech_scan?: boolean; out_of_stock?: string | null; is_urgent?: boolean };
     const state = deriveFulfillmentState({
       hasTechScan: Boolean(row.has_tech_scan),
       outOfStock: row.out_of_stock,
     });
     if (statusFilter && state !== statusFilter) return false;
-    if (attentionOnly) {
-      const days = getDaysLateNullable(row.deadline_at ?? null);
-      const isLate = days != null && days > 0;
-      if (state !== 'BLOCKED' && !isLate) return false;
-    } else if (lateOnly) {
-      const days = getDaysLateNullable(row.deadline_at ?? null);
-      if (days == null || days <= 0) return false;
-    }
+    if (urgentOnly && !row.is_urgent) return false;
     return true;
   });
 
@@ -287,8 +279,7 @@ export function UnshippedTable({
     allRecords.length === 0 &&
     !searchQuery &&
     !statusFilter &&
-    !lateOnly &&
-    !attentionOnly &&
+    !urgentOnly &&
     stageFilter === 'all' &&
     staffId === undefined;
 

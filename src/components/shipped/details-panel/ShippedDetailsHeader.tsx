@@ -35,6 +35,11 @@ export interface ShippedDetailsHeaderProps {
   showCustomerTab: boolean;
   /** Outbound documents (label + slip) get their own tab on labels/fulfillment/staged contexts. */
   showDocumentsTab: boolean;
+  /**
+   * Full-page order view keeps the coverage-first Warranty tab; the slide-over
+   * drops it in favor of the Warranty quick-link row (OrderQuickLinksSection).
+   */
+  showWarrantyTab: boolean;
   activeSection: ShippedActiveSection;
   onSectionChange: (section: ShippedActiveSection) => void;
   /** Opens the full-page order view (/o/[id]). Omitted → the expand control hides. */
@@ -52,6 +57,7 @@ export function ShippedDetailsHeader({
   onMoveDown,
   showCustomerTab,
   showDocumentsTab,
+  showWarrantyTab,
   activeSection,
   onSectionChange,
   onOpenFullPage,
@@ -123,8 +129,7 @@ export function ShippedDetailsHeader({
               ...(showDocumentsTab ? [{ value: 'documents' as const, label: 'Documents' }] : []),
               { value: 'timeline' as const, label: 'Timeline' },
               ...(showCustomerTab ? [{ value: 'customer' as const, label: 'Customer' }] : []),
-              // Coverage-first phone support — always available on order workbenches.
-              { value: 'warranty' as const, label: 'Warranty' },
+              ...(showWarrantyTab ? [{ value: 'warranty' as const, label: 'Warranty' }] : []),
             ]}
             value={activeSection}
             onChange={onSectionChange}

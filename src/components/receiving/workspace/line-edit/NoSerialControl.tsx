@@ -34,6 +34,13 @@ interface Props {
    * the field's current value should fill the field's width.
    */
   fullWidth?: boolean;
+  /**
+   * Drop the committed-state clear (✕) affordance — for when the PARENT owns the
+   * on/off toggle (e.g. the SerialCard trailing green-check), so the bar is just
+   * the "No serial · {reason}" label + reason picker and there's exactly one
+   * undo control. Offer state is unaffected.
+   */
+  hideClear?: boolean;
 }
 
 type Glyph = ComponentType<{ className?: string }>;
@@ -114,6 +121,7 @@ export function NoSerialControl({
   disabled = false,
   variant = 'pill',
   fullWidth = false,
+  hideClear = false,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   // Anchored to the whole token (not just the trigger button) so `matchWidth`
@@ -223,15 +231,18 @@ export function NoSerialControl({
             )}
           </button>
         </HoverTooltip>
-        {/* ds-raw-button: icon token clear affordance */}
-        <button
-          type="button"
-          onClick={clear}
-          aria-label="Clear no-serial waiver"
-          className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg transition-colors ${clearTone}`}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        {/* ds-raw-button: icon token clear affordance. Suppressed when the parent
+            owns the on/off toggle (hideClear) so there's exactly one undo. */}
+        {hideClear ? null : (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label="Clear no-serial waiver"
+            className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg transition-colors ${clearTone}`}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <Popover
@@ -239,10 +250,12 @@ export function NoSerialControl({
         onClose={() => setPickerOpen(false)}
         anchorRef={anchorRef}
         placement="bottom-start"
-        matchWidth={fullWidth}
         role="menu"
         aria-label="No-serial reason"
-        className={fullWidth ? 'p-1' : 'min-w-[208px] p-1'}
+        // Roomy fixed width so reason labels ("Not serialized", "Missing label")
+        // never truncate — the committed bar can be narrow, but the menu is not
+        // tied to it (no matchWidth).
+        className="min-w-[248px] p-1"
       >
         {reasons.map((r) => {
           const selected = r.code === reason;
@@ -267,6 +280,19 @@ export function NoSerialControl({
             </HoverTooltip>
           );
         })}
+        {/* Undo — the item DOES have a serial after all. This is the primary way
+            to clear the waiver when the parent hides the inline ✕ (fullWidth
+            SerialCard), so it lives in the menu itself. */}
+        <div className="my-1 border-t border-border-hairline" />
+        <button
+          type="button"
+          role="menuitem"
+          onClick={clear}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-role-caption font-bold text-rose-600 transition-colors hover:bg-rose-50"
+        >
+          <X className="h-4 w-4 shrink-0" />
+          <span className="flex-1 truncate">Undo — has a serial</span>
+        </button>
       </Popover>
     </>
   );

@@ -9,6 +9,7 @@ import type {
   StationActivityRow,
   CarrierEvent,
   WarrantyEventRow,
+  ThreadMessageTimelineRow,
 } from '@/lib/timeline';
 import {
   ENTITY_WINDOW_MS,
@@ -459,6 +460,54 @@ export async function readJourneyEntity(
         id: `warranty:${r.id}`,
         at: r.created_at,
         group: groupForAnchors(anchors, { serialNumber: r.serial_number, station: 'WARRANTY' }),
+        raw,
+      });
+    }
+  }
+
+  // 6) thread — conversation messages anchored to the order or its serial
+  //    units (entity_threads/thread_messages; indexed point lookup, org-gated).
+  if (want('thread') && (anchors.orderId != null || anchors.serialUnitIds.length > 0)) {
+    const thread = await client.query<{
+      id: number;
+      visibility: string;
+      provider: string;
+      body: string;
+      created_at: string | null;
+      author_name: string | null;
+      serial_number: string | null;
+    }>(
+      `SELECT tm.id, tm.visibility, tm.provider, tm.body, tm.created_at,
+              s.name AS author_name, su.serial_number
+         FROM thread_messages tm
+         JOIN entity_threads et ON et.id = tm.thread_id AND et.organization_id = tm.organization_id
+         LEFT JOIN staff s ON s.id = tm.author_staff_id AND s.organization_id = tm.organization_id
+         LEFT JOIN serial_units su
+                ON et.entity_type = 'SERIAL_UNIT' AND su.id = et.entity_id AND su.organization_id = et.organization_id
+        WHERE tm.organization_id = $1
+          AND (
+            ($2::bigint IS NOT NULL AND et.entity_type = 'ORDER' AND et.entity_id = $2::bigint)
+            OR (et.entity_type = 'SERIAL_UNIT' AND et.entity_id = ANY($3::bigint[]))
+          )
+          AND tm.created_at >= $4 AND tm.created_at < $5
+        ORDER BY tm.created_at DESC, tm.id DESC
+        LIMIT $6`,
+      [orgId, anchors.orderId, anchors.serialUnitIds, from, to, limit],
+    );
+    for (const r of thread.rows) {
+      const raw: ThreadMessageTimelineRow = {
+        id: r.id,
+        visibility: r.visibility,
+        provider: r.provider,
+        body: r.body,
+        createdAt: r.created_at,
+        authorName: r.author_name,
+      };
+      out.push({
+        source: 'thread',
+        id: `thread:${r.id}`,
+        at: r.created_at,
+        group: groupForAnchors(anchors, { serialNumber: r.serial_number, station: null }),
         raw,
       });
     }

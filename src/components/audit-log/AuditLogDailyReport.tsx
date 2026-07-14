@@ -154,7 +154,7 @@ export function AuditLogDailyReport({ section }: { section: Section }) {
         <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
           {/* Hourly distribution */}
           <Card title="Hourly distribution">
-            <div className="flex h-24 items-end gap-[2px]">
+            <div className="flex h-24 items-end gap-0.5">
               {data.by_hour.map((h) => (
                 <HoverTooltip key={h.hour} label={`${h.hour}:00 — ${fmtNumber(h.count)}`} asChild>
                   <div

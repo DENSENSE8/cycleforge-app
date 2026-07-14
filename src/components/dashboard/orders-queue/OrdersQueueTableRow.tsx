@@ -12,13 +12,20 @@ import {
   Truck,
   Trash2,
   X,
+  Zap,
 } from '@/components/Icons';
 import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RowInlineEditBubble } from './RowInlineEditBubble';
 import { RowFieldPreview } from './RowFieldPreview';
 import { StaffInitials } from '@/design-system/components/StaffBadge';
-import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
+import {
+  RowTitle,
+  RowMetaColumns,
+  META_COL,
+  META_REST_COL,
+  MetaFactSlot,
+} from '@/components/ui/RowMetaColumns';
 import {
   getOrderPlatformColor,
   getOrderPlatformBorderColor,
@@ -113,6 +120,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // Row-local "quick actions" expander: the chevron toggles the chip cluster out
   // and the Truck/OOS/Notes/Delete buttons in — in place, without opening the dock.
   const [actionsOpen, setActionsOpen] = useState(false);
+  // A chip hover-menu (platform / order / tracking) is open — keep the row's
+  // hover chrome (chevron + shifted chips) up even though the mouse is over the
+  // menu's body portal (outside the row, so :hover/:focus-within don't hold).
+  const [chipMenuOpen, setChipMenuOpen] = useState(false);
   // Notion-style inline editor: which field is open, anchored to its trigger button,
   // with a local draft. Notes + OOS both persist through `useOrderAssignment`.
   const [editorField, setEditorField] = useState<'oos' | 'notes' | null>(null);
@@ -141,6 +152,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   );
   const orderMarketplaceUrl = marketplaceOrderUrl(record.order_id, record.account_source);
   const salePrice = formatSalePrice(record.sale_amount, record.currency);
+  const isUrgent = Boolean((record as QueueRowRecord & { is_urgent?: unknown }).is_urgent);
   const showOpsStrip = queueMode === 'fulfillment' && !selectMode;
   const canShip = has('shipping.mark_shipped');
   const canOos = has('orders.create');
@@ -178,6 +190,23 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       onRowClick(record, e);
     },
     [onRowClick, record],
+  );
+
+  const onToggleUrgent = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      const next = !isUrgent;
+      assignOrder.mutate(
+        { orderId: id, isUrgent: next },
+        {
+          onSuccess: () => toast.success(next ? 'Marked urgent' : 'Urgent cleared'),
+          onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update urgent'),
+        },
+      );
+    },
+    [assignOrder, isUrgent, record.id],
   );
 
   // Open the inline bubble for a field, anchored to the clicked button.
@@ -259,10 +288,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     e.stopPropagation();
     setConfirmDelete(false);
   }, []);
-  // Staff only when assigned — Pending/Blocked rarely have a tester yet; ghost
-  // "---" placeholders misaligned the meta scan. TESTED shows initials when set.
   const hasTester = testerDisplay && testerDisplay !== '---';
   const hasPacker = packerDisplay && packerDisplay !== '---';
+  // Packed (staged) rows always show tester + packer slots so initials stay
+  // column-aligned; StaffInitials renders "--" when unassigned. Other queues
+  // hide the cluster entirely when neither role is set yet.
+  const showStaffCluster = queueMode === 'staged' || hasTester || hasPacker;
   const hasNotes = notesValue.trim().length > 0;
   // "done" dot, shown only once the timestamp is stamped.
   const labelPrintedAt = record.label_printed_at;
@@ -286,6 +317,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const laneAgeLabel = formatLaneAgeCompact(laneAgeSource);
   const laneAgeHours = getLaneAgeHours(laneAgeSource);
   const { classes: densityClasses } = useTableDensity();
+  const isStagedRow = queueMode === 'staged';
 
   // Presence (enter/exit) and layout (chip reflow / sibling shift) are independent:
   // virtualized skips both; dense Show more uses parent AnimatePresence for
@@ -315,8 +347,86 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       onPasteTracking={queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined}
       serialChip={serialChip}
       isMobile={isMobile}
+      onMenuOpenChange={showQuickActions ? setChipMenuOpen : undefined}
     />
   );
+
+  const notesFlagsNode =
+    hasNotes || hasOutOfStock ? (
+      <span className="inline-flex items-center gap-0.5">
+        {hasNotes ? (
+          showQuickActions ? (
+            <RowFieldPreview
+              label="Notes"
+              value={notesValue.trim()}
+              editable
+              onEdit={(e) => openEditor('notes', e)}
+            >
+              <span className="inline-flex items-center text-text-muted" aria-label="Order notes">
+                <FileText className="h-3.5 w-3.5" />
+              </span>
+            </RowFieldPreview>
+          ) : (
+            <HoverTooltip label={notesValue.trim()} focusable={false}>
+              <span className="inline-flex items-center text-text-muted" aria-label="Order notes">
+                <FileText className="h-3.5 w-3.5" />
+              </span>
+            </HoverTooltip>
+          )
+        ) : null}
+        {hasOutOfStock ? (
+          showQuickActions ? (
+            <RowFieldPreview
+              label="Out of stock"
+              value={outOfStockValue.trim()}
+              tone="danger"
+              editable
+              onEdit={(e) => openEditor('oos', e)}
+            >
+              <span className="inline-flex items-center text-red-600" aria-label="Out of stock">
+                <AlertTriangle className="h-3.5 w-3.5" />
+              </span>
+            </RowFieldPreview>
+          ) : (
+            <HoverTooltip label={outOfStockValue.trim()} focusable={false}>
+              <span className="inline-flex items-center text-red-600" aria-label="Out of stock">
+                <AlertTriangle className="h-3.5 w-3.5" />
+              </span>
+            </HoverTooltip>
+          )
+        ) : null}
+      </span>
+    ) : null;
+
+  const hasStageTime = Boolean(
+    stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel,
+  );
+
+  const stageTimeAndFlagsNode =
+    isStagedRow || hasStageTime || notesFlagsNode ? (
+      <span className="inline-flex shrink-0 items-center gap-0.5 normal-case tracking-normal">
+        {isStagedRow ? (
+          <MetaFactSlot width={META_REST_COL.stageTime} className="text-text-faint">
+            {hasStageTime ? (
+              <HoverTooltip
+                label={`${stageTimeLabel} ${stageTimeDisplay}`}
+                focusable={false}
+              >
+                <span className="truncate">{stageTimeDisplay}</span>
+              </HoverTooltip>
+            ) : null}
+          </MetaFactSlot>
+        ) : hasStageTime ? (
+          <HoverTooltip
+            label={`${stageTimeLabel} ${stageTimeDisplay}`}
+            focusable={false}
+          >
+            <span className="tabular-nums text-text-faint">{stageTimeDisplay}</span>
+          </HoverTooltip>
+        ) : null}
+        {notesFlagsNode}
+      </span>
+    ) : null;
 
   return (
     <motion.div
@@ -354,9 +464,21 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       className={cn(
         'group/row relative',
         dashboardOrderRowShellClass(isMobile),
-        'border-b border-border-hairline px-3 cursor-pointer hover:bg-surface-hover',
-        densityClasses.rowPadding,
-        isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : useAlternateStripe ? 'bg-surface-card' : 'bg-surface-canvas/40',
+        'border-b border-border-hairline cursor-pointer transition-colors',
+        isStagedRow
+          ? 'px-4 py-2 hover:bg-blue-50/50'
+          : cn('px-3 hover:bg-surface-hover', densityClasses.rowPadding),
+        isStagedRow
+          ? (selectMode ? isChecked : isSelected)
+            ? 'bg-blue-50/80'
+            : useAlternateStripe
+              ? 'bg-surface-canvas/40'
+              : 'bg-surface-card'
+          : (selectMode ? isChecked : isSelected)
+            ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
+            : useAlternateStripe
+              ? 'bg-surface-card'
+              : 'bg-surface-canvas/40',
       )}
     >
       <motion.div
@@ -398,7 +520,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           // tone (muted doc vs red alert) so they read as related but not identical.
           rest={
             <>
-              <span>{rowStatus.label}</span>
+              {/* Status word (Pending / Tested / Out of stock / …) is redundant in
+                  the row — each queue mode is its own table. The status still reads
+                  from the colored dot + its hover tooltip (dotTitle). Urgent is
+                  toggled from the quick-actions ⚡ button, not shown as a row icon. */}
               {salePrice ? (
                 <span className="normal-case tracking-normal text-text-success">{salePrice}</span>
               ) : null}
@@ -409,94 +534,83 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                   </span>
                 </HoverTooltip>
               ) : null}
-              {laneAgeLabel ? (
-                <HoverTooltip
-                  label={`In lane ${laneAgeLabel}${stageTimeLabel ? ` · last ${stageTimeLabel.toLowerCase()}` : ''}`}
-                  focusable={false}
-                >
-                  <span
+              {queueMode === 'staged' ? (
+                <span className="inline-flex items-center gap-0.5 normal-case tracking-normal">
+                  <MetaFactSlot
+                    width={META_REST_COL.laneAge}
                     className={cn(
-                      'tabular-nums normal-case tracking-normal',
-                      getLaneAgeTone(laneAgeHours),
                       densityClasses.metaText,
+                      laneAgeLabel ? getLaneAgeTone(laneAgeHours) : undefined,
                     )}
                   >
-                    {laneAgeLabel}
-                  </span>
-                </HoverTooltip>
-              ) : null}
-              {hasTester || hasPacker ? (
-                <span className="inline-flex items-center gap-1 normal-case tracking-normal">
-                  {hasTester ? (
-                    <HoverTooltip label={`Tested by ${testerDisplay}`} focusable={false}>
+                    {laneAgeLabel ? (
+                      <HoverTooltip
+                        label={`In lane ${laneAgeLabel}${stageTimeLabel ? ` · last ${stageTimeLabel.toLowerCase()}` : ''}`}
+                        focusable={false}
+                      >
+                        <span>{laneAgeLabel}</span>
+                      </HoverTooltip>
+                    ) : null}
+                  </MetaFactSlot>
+                  <MetaFactSlot width={META_REST_COL.staff}>
+                    {hasTester ? (
+                      <HoverTooltip label={`Tested by ${testerDisplay}`} focusable={false}>
+                        <StaffInitials staffId={testerId} name={testerDisplay} />
+                      </HoverTooltip>
+                    ) : (
                       <StaffInitials staffId={testerId} name={testerDisplay} />
-                    </HoverTooltip>
-                  ) : null}
-                  {hasPacker ? (
-                    <HoverTooltip label={`Packed by ${packerDisplay}`} focusable={false}>
+                    )}
+                  </MetaFactSlot>
+                  <MetaFactSlot width={META_REST_COL.staff}>
+                    {hasPacker ? (
+                      <HoverTooltip label={`Packed by ${packerDisplay}`} focusable={false}>
+                        <StaffInitials staffId={packerId} name={packerDisplay} />
+                      </HoverTooltip>
+                    ) : (
                       <StaffInitials staffId={packerId} name={packerDisplay} />
+                    )}
+                  </MetaFactSlot>
+                  {stageTimeAndFlagsNode}
+                </span>
+              ) : (
+                <>
+                  {laneAgeLabel ? (
+                    <HoverTooltip
+                      label={`In lane ${laneAgeLabel}${stageTimeLabel ? ` · last ${stageTimeLabel.toLowerCase()}` : ''}`}
+                      focusable={false}
+                    >
+                      <span
+                        className={cn(
+                          'tabular-nums normal-case tracking-normal',
+                          getLaneAgeTone(laneAgeHours),
+                          densityClasses.metaText,
+                        )}
+                      >
+                        {laneAgeLabel}
+                      </span>
                     </HoverTooltip>
                   ) : null}
-                </span>
-              ) : null}
-              {stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel ? (
-                <HoverTooltip
-                  label={`${stageTimeLabel} ${stageTimeDisplay}`}
-                  focusable={false}
-                >
-                  <span className="tabular-nums normal-case tracking-normal text-text-faint">
-                    {stageTimeDisplay}
-                  </span>
-                </HoverTooltip>
-              ) : null}
-              {hasNotes || hasOutOfStock ? (
-                <span className="inline-flex items-center gap-1 normal-case tracking-normal">
-                  {hasNotes ? (
-                    // Filled → light preview-below popover; editable rows click to edit
-                    // in place. Non-editable surfaces keep the plain help tooltip.
-                    showQuickActions ? (
-                      <RowFieldPreview
-                        label="Notes"
-                        value={notesValue.trim()}
-                        editable
-                        onEdit={(e) => openEditor('notes', e)}
-                      >
-                        <span className="inline-flex items-center text-text-muted" aria-label="Order notes">
-                          <FileText className="h-3.5 w-3.5" />
-                        </span>
-                      </RowFieldPreview>
-                    ) : (
-                      <HoverTooltip label={notesValue.trim()} focusable={false}>
-                        <span className="inline-flex items-center text-text-muted" aria-label="Order notes">
-                          <FileText className="h-3.5 w-3.5" />
-                        </span>
-                      </HoverTooltip>
-                    )
+                  {showStaffCluster ? (
+                    <span className="inline-flex items-center gap-1 normal-case tracking-normal">
+                      {hasTester ? (
+                        <HoverTooltip label={`Tested by ${testerDisplay}`} focusable={false}>
+                          <StaffInitials staffId={testerId} name={testerDisplay} />
+                        </HoverTooltip>
+                      ) : (
+                        <StaffInitials staffId={testerId} name={testerDisplay} />
+                      )}
+                      {hasPacker ? (
+                        <HoverTooltip label={`Packed by ${packerDisplay}`} focusable={false}>
+                          <StaffInitials staffId={packerId} name={packerDisplay} />
+                        </HoverTooltip>
+                      ) : (
+                        <StaffInitials staffId={packerId} name={packerDisplay} />
+                      )}
+                    </span>
                   ) : null}
-                  {hasOutOfStock ? (
-                    showQuickActions ? (
-                      <RowFieldPreview
-                        label="Out of stock"
-                        value={outOfStockValue.trim()}
-                        tone="danger"
-                        editable
-                        onEdit={(e) => openEditor('oos', e)}
-                      >
-                        {/* Raw red-600 (not text-danger): matches pipeline BLOCKED red. */}
-                        <span className="inline-flex items-center text-red-600" aria-label="Out of stock">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                        </span>
-                      </RowFieldPreview>
-                    ) : (
-                      <HoverTooltip label={outOfStockValue.trim()} focusable={false}>
-                        <span className="inline-flex items-center text-red-600" aria-label="Out of stock">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                        </span>
-                      </HoverTooltip>
-                    )
-                  ) : null}
-                </span>
-              ) : null}
+                  {stageTimeAndFlagsNode}
+                </>
+              )}
               {labelPrintedAt ? (
                 <HoverTooltip label="Label printed" focusable={false}>
                   <span className="flex items-center gap-1 text-text-success">
@@ -522,7 +636,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               'min-w-0 transition-transform duration-150 ease-out',
               actionsOpen
                 ? 'pointer-events-none'
-                : 'group-hover/row:-translate-x-8 group-focus-within/row:-translate-x-8',
+                : chipMenuOpen
+                  ? '-translate-x-8'
+                  : 'group-hover/row:-translate-x-8 group-focus-within/row:-translate-x-8',
             )}
           >
             {chipsNode}
@@ -540,6 +656,25 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 className="absolute inset-y-0 right-8 flex items-center justify-end gap-0.5"
                 onClick={(e) => e.stopPropagation()}
               >
+                {canOos ? (
+                  <motion.div layout="position" transition={layoutTransition} className="flex items-center">
+                    <HoverTooltip label={isUrgent ? 'Clear urgent' : 'Mark urgent'} asChild>
+                      <button
+                        type="button"
+                        onClick={onToggleUrgent}
+                        disabled={assignOrder.isPending}
+                        aria-label={isUrgent ? 'Clear urgent' : 'Mark urgent'}
+                        aria-pressed={isUrgent}
+                        className={cn(
+                          'ds-raw-button inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 disabled:opacity-60',
+                          isUrgent ? 'bg-amber-100' : 'hover:bg-amber-50',
+                        )}
+                      >
+                        <Zap className={cn('h-3.5 w-3.5', isUrgent && 'fill-current')} />
+                      </button>
+                    </HoverTooltip>
+                  </motion.div>
+                ) : null}
                 {canOos ? (
                   <motion.div layout="position" transition={layoutTransition} className="flex items-center">
                     <HoverTooltip label={hasNotes ? 'Edit notes' : 'Add notes'} asChild>
@@ -673,8 +808,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               aria-label={actionsOpen ? 'Hide quick actions' : 'Show quick actions'}
               className={cn(
                 'ds-raw-button absolute right-0 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition duration-150 hover:bg-surface-hover hover:text-text-default',
-                actionsOpen
-                  ? 'opacity-100 translate-x-0'
+                actionsOpen || chipMenuOpen
+                  ? 'opacity-100 translate-x-0 pointer-events-auto'
                   : 'opacity-0 translate-x-1 pointer-events-none group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:translate-x-0 group-focus-within/row:pointer-events-auto',
               )}
             >
@@ -728,6 +863,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // value, not the freshly-created `serialChip` node (which would defeat memo).
   if (prev.record.serial_number !== next.record.serial_number) return false;
   if (prev.record.sale_amount !== next.record.sale_amount) return false;
+  if (
+    (prev.record as { is_urgent?: unknown }).is_urgent !==
+    (next.record as { is_urgent?: unknown }).is_urgent
+  )
+    return false;
   if (prev.record.currency !== next.record.currency) return false;
   if (prev.record.label_printed_at !== next.record.label_printed_at) return false;
   return true;

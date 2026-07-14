@@ -31,10 +31,20 @@ const CUSTOM_FONT_SIZES = [
   'role-micro',
 ] as const;
 
-const twMerge = extendTailwindMerge({
+const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
   extend: {
     classGroups: {
       'font-size': [{ text: [...CUSTOM_FONT_SIZES] }],
+      // Spacing intents (tailwind.config.ts plugin — spacing plan Phase 2).
+      // Own groups so two intents of one kind conflict-resolve (last wins);
+      // unregistered, twMerge would treat them as unknown classes and keep
+      // both, letting stylesheet order pick silently. Cross-axis (intent +
+      // raw p-*/px-*) is deliberately NOT a conflict: both classes survive
+      // and the intent wins in CSS order — don't mix them on one element.
+      // Keep in sync with the plugin + safelist in tailwind.config.ts.
+      'cf-inset': ['inset-chip', 'inset-field', 'inset-cozy', 'inset-card', 'inset-empty'],
+      'cf-stack': ['stack-tight', 'stack-row', 'stack-section'],
+      'cf-row': ['row-gap', 'row-tight'],
     },
   },
 });

@@ -33,6 +33,7 @@ import {
   mintOptimisticSerialId,
   removeSerialById,
   rollbackOptimisticSerial,
+  setSerialGrade,
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
 import type { useSerialLookup } from '../../SerialMatchResult';
@@ -325,12 +326,16 @@ export function useLineSerials({
   );
 
   // Replace a serial in place (typo fix): delete then re-scan, preserving the
-  // unit's condition grade so the corrected serial keeps its grade.
+  // unit's condition grade so the corrected serial keeps its grade. The delete
+  // leg is marked optimistically (parity with deleteSerialUnit) so the old chip
+  // greys out immediately instead of sitting fully-rendered through the DELETE
+  // round-trip, then swapping — the stale-then-swap gap the audit flagged.
   const replaceSerialUnit = useCallback(
     async (original: { id: number; serial_number: string; condition_grade?: string | null }, nextSerial: string) => {
       if (original.id == null) return;
       const next = (nextSerial ?? '').trim();
       if (!next || next === original.serial_number) return;
+      publishLineSerials(row.id, markSerialRemoving(readLineSerials(row.id), original.id));
       const res = await fetch('/api/receiving/scan-serial', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -342,11 +347,15 @@ export function useLineSerials({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         toast.error(data?.error || 'Could not replace serial');
+        publishLineSerials(row.id, clearSerialRemoving(readLineSerials(row.id), original.id));
         return;
       }
+      // Drop the removed serial from the cache, then let submitSerial append the
+      // corrected one through its own optimistic path.
+      publishLineSerials(row.id, removeSerialById(readLineSerials(row.id), original.id));
       await submitSerial(next, original.condition_grade ?? null);
     },
-    [row.id, submitSerial],
+    [row.id, submitSerial, readLineSerials, publishLineSerials],
   );
 
   // Persist a per-unit condition grade on an already-scanned serial_unit via
@@ -354,24 +363,31 @@ export function useLineSerials({
   // GRADED audit). 409 means "no change" — silently ignored.
   const setUnitGrade = useCallback(
     async (serialUnitId: number, grade: string) => {
+      // Optimistic: stamp the new grade onto the chip in the siblings cache
+      // immediately (mirrors add/delete), so the graded chip updates within a
+      // frame instead of waiting on a full per-line refetch. Roll back on error.
+      const prev = readLineSerials(row.id);
+      publishLineSerials(row.id, setSerialGrade(prev, serialUnitId, grade));
       try {
         const res = await fetch(`/api/serial-units/${serialUnitId}/grade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ new_grade: grade }),
         });
+        // 409 = "no change" — the optimistic value already equals the server's.
         if (res.status === 409) return;
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) {
           toast.error(data?.error || 'Could not set unit condition');
+          publishLineSerials(row.id, prev);
           return;
         }
-        await refreshLineWithSerials();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Condition save failed');
+        publishLineSerials(row.id, prev);
       }
     },
-    [refreshLineWithSerials],
+    [row.id, readLineSerials, publishLineSerials],
   );
 
   return {

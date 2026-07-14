@@ -83,7 +83,7 @@ function PhaseSection({ phase }: { phase: PhaseWithTasks }) {
     <section className="space-y-2">
       <div className="flex items-center gap-2 border-t border-border-hairline pt-3">
         <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">{phase.title}</p>
-        <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+        <span className="rounded bg-surface-sunken inset-chip text-role-micro uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
           {phase.station}
         </span>
         <ProgressBar percent={pct} className="w-24" />
@@ -207,7 +207,7 @@ export function OperationsPlansView() {
             </motion.div>
           ) : isError || !data ? (
             <motion.div key={`error-${planId}`} {...presence} transition={transition}>
-              <div className="mt-16 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
+              <div className="mt-16 rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-700">
                 {error instanceof Error ? error.message : 'Could not load this plan.'}
               </div>
             </motion.div>
@@ -231,7 +231,7 @@ export function OperationsPlansView() {
                   </div>
                   <span
                     className={cn(
-                      'shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+                      'shrink-0 rounded inset-chip text-role-micro uppercase tracking-widest ring-1 ring-inset',
                       PLAN_STATUS_TONE[data.plan.status] ?? PLAN_STATUS_TONE.draft,
                     )}
                   >

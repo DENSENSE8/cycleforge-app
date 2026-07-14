@@ -40,6 +40,9 @@ export interface ActiveOrder {
   deadline_at?: string | null;
   ship_by_date?: string | null;
   out_of_stock: string | null;
+  /** Operator urgent / expedited toggle (orders.is_urgent). Populated by the
+   *  active-orders queue; other surfaces may omit it. */
+  is_urgent?: boolean;
   created_at: string | null;
   tester_id: number | null;
   packer_id: number | null;
@@ -1259,6 +1262,7 @@ export async function getActiveOrders(options?: {
        o.sku,
        o.account_source,
        o.notes,
+       o.is_urgent,
        o.sale_amount,
        o.currency,
        o.status_history,
@@ -1306,6 +1310,7 @@ export async function getActiveOrders(options?: {
      WHERE ${conditions.join(' AND ')}
      GROUP BY o.id, o.shipment_id, wa_deadline.deadline_at, o.order_id, o.product_title, o.quantity,
               o.condition, o.item_number, stn.tracking_number_raw, o.sku, o.out_of_stock,
+              o.is_urgent,
               o.account_source, o.notes, o.sale_amount, o.currency, o.status_history,
               stn.is_carrier_accepted, stn.is_in_transit, stn.is_out_for_delivery, stn.is_delivered,
               stn.latest_status_category, stn.carrier,

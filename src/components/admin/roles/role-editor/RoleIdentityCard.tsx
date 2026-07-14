@@ -37,10 +37,10 @@ export function RoleIdentityCard({
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <code className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-mono text-text-muted">{role.key}</code>
             {role.is_system && (
-              <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-text-soft">System</span>
+              <span className="rounded-full bg-surface-sunken inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-text-soft">System</span>
             )}
             {isAdminRole && (
-              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">All Access</span>
+              <span className="rounded-full bg-amber-100 inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">All Access</span>
             )}
             <span className="text-role-caption text-text-faint">position {role.position}</span>
             <span className="text-role-caption text-text-faint">· {role.member_count} member{role.member_count === 1 ? '' : 's'}</span>

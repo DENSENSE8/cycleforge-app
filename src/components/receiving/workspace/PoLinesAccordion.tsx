@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { LayoutGroup } from 'framer-motion';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LayoutGroup, useInView } from 'framer-motion';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
@@ -137,6 +137,16 @@ export function PoLinesAccordion({
   }, [activeLineId]);
   const expandActiveRow = useCallback(() => setActiveCollapsed(false), []);
 
+  // Tab-panel visibility gate for framer `layout`. When this accordion sits in a
+  // hidden tab (`display:none`, e.g. the Units display is active), its rows
+  // measure as a zero-box at the origin; re-enabling `layout` on show would fly
+  // them in from the top-left. `useInView` is false while display:none (the ref
+  // has no box → never intersects) and flips true once the panel is displayed,
+  // so framer captures the baseline at the correct position — no fly-in — while
+  // the in-tab sibling-reorder animation still runs when the panel is visible.
+  const listRef = useRef<HTMLUListElement>(null);
+  const layoutActive = useInView(listRef, { margin: '600px' });
+
   const desc = usePoLineItemDescriptionEditor({
     queryKey,
     activeLineId,
@@ -176,13 +186,14 @@ export function PoLinesAccordion({
         </div>
       )}
       <LayoutGroup id={`po-lines-${receivingId}`}>
-        <ul className="flex min-w-0 flex-col gap-1">
+        <ul ref={listRef} className="flex min-w-0 flex-col gap-1">
           {rows.map((line) => (
             <PoLineRow
               key={line.id}
               line={line}
               isActive={line.id === activeLineId}
               readOnly={readOnly}
+              animateLayout={layoutActive}
               serialsLoading={serialsLoading}
               activeCollapsed={activeCollapsed}
               onToggleCollapsed={() => setActiveCollapsed((v) => !v)}

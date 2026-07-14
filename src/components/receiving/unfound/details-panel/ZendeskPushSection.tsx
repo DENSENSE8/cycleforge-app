@@ -120,7 +120,7 @@ export function ZendeskPushSection({
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          className="block w-full rounded-md border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="block w-full rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption font-semibold text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
       </div>
       <div>
@@ -131,7 +131,7 @@ export function ZendeskPushSection({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={8}
-          className="block w-full resize-y rounded-md border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-role-micro leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="block w-full resize-y rounded-md border border-border-soft bg-surface-card inset-cozy font-mono text-role-micro leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">

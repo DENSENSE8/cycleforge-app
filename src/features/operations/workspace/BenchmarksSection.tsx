@@ -123,7 +123,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
 
   if (query.isError || !query.data?.success) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
+      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center">
         <p className="text-role-caption font-bold text-rose-700">Could not load benchmarks.</p>
         <div className="mt-2">
           <Button variant="ghost" size="sm" onClick={() => query.refetch()}>
@@ -139,7 +139,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
 
   if (!seeded) {
     return (
-      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
         <p className="text-role-caption font-bold text-text-muted">No benchmarks seeded yet</p>
         <p className="mt-1 text-role-micro leading-5 text-text-soft">
           Apply the insight_links seed migration to compare your numbers against the vertical.
@@ -166,7 +166,7 @@ export function BenchmarksSection({ rangeDays }: { rangeDays: number }) {
             </p>
             <span
               className={cn(
-                'rounded-full px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+                'rounded-full inset-chip text-role-micro uppercase tracking-widest ring-1 ring-inset',
                 VERDICT_CHIP[row.verdict].cls,
               )}
             >

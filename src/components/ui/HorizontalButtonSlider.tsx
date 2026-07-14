@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useCallback, useId, useRef, type RefObject, type WheelEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
@@ -110,6 +110,14 @@ export type HorizontalButtonSliderProps = {
    */
   navIconOnly?: boolean;
   /**
+   * Opt-in (default off): fade/scale each `segmented` tab in on mount. React only
+   * mounts a newly-appended item, so a tab added at runtime (e.g. a Units tab that
+   * appears once serials are scanned) animates in on its own while the existing
+   * tabs stay put. Reduced-motion collapses it to a plain fade. Ignored by other
+   * variants; zero change for existing callers.
+   */
+  animateItemMount?: boolean;
+  /**
    * Square, edge-to-edge segmented track for full-bleed sidebar bands (e.g.
    * master-nav `ModeRail`). Drops outer radius, inset padding, and the track
    * ring so the gray fill meets the panel edges.
@@ -136,10 +144,19 @@ export function HorizontalButtonSlider({
   navIconOnly = false,
   segmentedFlush = false,
   overlay = false,
+  animateItemMount = false,
   'aria-label': ariaLabel,
 }: HorizontalButtonSliderProps) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const onWheel = useHorizontalWheelScroll(scrollerRef);
+  const prefersReducedMotion = useReducedMotion();
+  // Mount motion (opt-in) for `segmented` / `nav` tabs — React only mounts a
+  // newly-appended item, so a tab added at runtime animates itself in.
+  const mountInitial = animateItemMount
+    ? prefersReducedMotion
+      ? { opacity: 0 }
+      : { opacity: 0, scale: 0.6 }
+    : false;
   // Stable per-instance id so each `segmented` slider animates its own indicator
   // (sharing a layoutId across instances would make pills teleport between them).
   const indicatorId = useId();
@@ -225,6 +242,8 @@ export function HorizontalButtonSlider({
                   role="tab"
                   aria-selected={isActive}
                   aria-label={item.label}
+                  initial={mountInitial}
+                  animate={animateItemMount ? { opacity: 1, scale: 1 } : undefined}
                   whileTap={{ scale: 0.94 }}
                   transition={framerTransition.sliderIndicator}
                   onClick={() => onChange(item.id)}
@@ -284,7 +303,11 @@ export function HorizontalButtonSlider({
                   aria-label={isDisabled ? `${item.label} (coming soon)` : item.label}
                   title={isDisabled ? `${item.label} (coming soon)` : item.label}
                   disabled={isDisabled}
-                  animate={{ scale: isActive && !isDisabled && !dense ? 1.04 : 1 }}
+                  initial={mountInitial}
+                  animate={{
+                    scale: isActive && !isDisabled && !dense ? 1.04 : 1,
+                    ...(animateItemMount ? { opacity: 1 } : {}),
+                  }}
                   transition={framerTransition.sliderIndicator}
                   whileTap={isDisabled ? undefined : { scale: 0.96 }}
                   onClick={isDisabled ? undefined : () => onChange(item.id)}

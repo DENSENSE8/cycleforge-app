@@ -176,8 +176,12 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
               compact
               libraryHref={`/ops/photos?receivingId=${receivingId}`}
               onPhotoDeleted={(photoId) => refresh(photoId)}
-              onPhotoReassigned={(photoId) => refresh(photoId)}
-              onPhotoUploaded={(photoId) => refresh(photoId)}
+              // Reassign/upload are NOT deletes — passing the photo id as
+              // `deletedPhotoId` filtered the just-added photo straight back OUT
+              // of the gallery cache (only the trailing refetch hid the bug).
+              // Refresh with no id so the cache reconciles to include it.
+              onPhotoReassigned={() => refresh()}
+              onPhotoUploaded={() => refresh()}
             />
           </div>
         </div>

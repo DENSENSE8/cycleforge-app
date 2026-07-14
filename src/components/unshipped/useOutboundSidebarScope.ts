@@ -213,20 +213,12 @@ export function useOutboundSidebarScope() {
     if (attentionOnly) {
       out.push({
         id: 'attention',
-        label: 'Needs attention',
+        // Wire id/param stays `attention`; the filter now means "urgent only"
+        // (orders.is_urgent), so the chip reads Urgent.
+        label: 'Urgent',
         onRemove: () =>
           replaceParams((p) => {
             p.delete('attention');
-          }),
-      });
-    }
-    if (lateOnly) {
-      out.push({
-        id: 'late',
-        label: 'Late only',
-        onRemove: () =>
-          replaceParams((p) => {
-            p.delete('late');
           }),
       });
     }

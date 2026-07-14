@@ -152,9 +152,16 @@ export function useUnmatchedItems({
     [receivingId],
   );
 
+  // Load the carton's lines on mount and whenever the carton changes
+  // (`refreshLines` is keyed on `receivingId`). Do NOT depend on
+  // `onActiveConditionChange` here: the parent passes it as a fresh inline arrow
+  // every render, so listing it re-fired this full `GET /api/receiving/:id`
+  // refetch + `setLines` on EVERY render — a refetch storm that re-rendered the
+  // whole active row (and reset the serial input) on each serial add. Carton
+  // reconciliation still flows through the `app-refresh-data` / feed paths.
   useEffect(() => {
     void refreshLines();
-  }, [onActiveConditionChange, refreshLines]);
+  }, [refreshLines]);
 
   useEffect(() => {
     if (linkedOrderHint) setCartonHeader(linkedOrderHint);

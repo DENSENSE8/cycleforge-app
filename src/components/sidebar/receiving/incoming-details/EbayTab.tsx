@@ -128,7 +128,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
       <div className="space-y-2 border-t border-border-soft pt-3">
         <p className="text-role-micro uppercase tracking-widest text-text-soft">Purchase order</p>
         {zohoLinked ? (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 inset-field">
             <Check className="h-3.5 w-3.5 text-emerald-600" />
             {inbound.zoho_purchaseorder_id ? (
               <PoChip value={inbound.zoho_purchaseorder_id} display={getLast4(inbound.zoho_purchaseorder_id)} />
@@ -163,7 +163,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 {candidates.map((po) => (
                   <div
                     key={po.zoho_purchaseorder_id}
-                    className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-3 py-2 hover:bg-surface-hover"
+                    className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-field hover:bg-surface-hover"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-role-caption font-bold text-text-default">

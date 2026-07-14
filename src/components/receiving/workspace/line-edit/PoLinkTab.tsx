@@ -141,7 +141,7 @@ export function PoLinkTab({
           here. This tab is purely the search-and-(re)link surface. */}
 
       {isInboundMerge ? (
-        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700">
+        <p className="rounded-lg border border-blue-200 bg-blue-50 inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700">
           {`${(row.inbound_source_type || 'eBay')} order · pick its Zoho PO to merge`}
         </p>
       ) : null}
@@ -183,7 +183,7 @@ export function PoLinkTab({
             return (
               <div
                 key={po.zoho_purchaseorder_id}
-                className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-3 py-2 hover:bg-surface-hover"
+                className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-field hover:bg-surface-hover"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-role-caption font-bold text-text-default">

@@ -159,7 +159,7 @@ export function SerialMatchResult({
         <span className="flex items-center gap-2">
           Match found
           {isReturn ? (
-            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-role-micro uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-inset ring-emerald-500/25">
+            <span className="inline-flex items-center rounded-full bg-emerald-500/15 inset-chip text-role-micro uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-inset ring-emerald-500/25">
               Returned item
             </span>
           ) : null}

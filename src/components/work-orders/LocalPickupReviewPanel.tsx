@@ -404,7 +404,7 @@ function ReviewShell({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.18, ease: motionBezier.easeOut }}
-        className="pointer-events-none fixed inset-0 z-panelPopover flex items-start justify-center p-4 pt-[6vh] md:pl-[360px]"
+        className={/* ds-allow-spacing — offset clears the 360px sidebar */ "pointer-events-none fixed inset-0 z-panelPopover flex items-start justify-center p-4 pt-[6vh] md:pl-[360px]"}
       >
         <div
           onClick={(e) => e.stopPropagation()}

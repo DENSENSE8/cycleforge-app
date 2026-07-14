@@ -27,4 +27,6 @@ export interface DetailsStackProps {
   actionBar?: PanelActionBarConfig;
   /** Optional tab gating from ShippedDetailsPanel. Undefined keeps the legacy single-scroll layout. */
   activeSection?: ShippedActiveSection;
+  /** Render the Warranty / Customer quick-link rows (slide-over tab replacement). */
+  showQuickLinks?: boolean;
 }

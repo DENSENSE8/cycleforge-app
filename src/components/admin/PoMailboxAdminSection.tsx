@@ -29,7 +29,7 @@ function PoMailboxAdminSectionInner() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-border-soft bg-surface-card px-3 py-2">
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-border-soft bg-surface-card inset-field">
         <SubTab active={view === 'queue'} onClick={() => setView('queue')}>Queue</SubTab>
         <SubTab active={view === 'connection'} onClick={() => setView('connection')}>Connection</SubTab>
       </div>

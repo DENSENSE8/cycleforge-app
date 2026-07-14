@@ -70,14 +70,14 @@ export function LabelIdentifyButton({
       )}
 
       {status === 'identifying' && (
-        <div className="inline-flex items-center gap-2 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-muted">
+        <div className="inline-flex items-center gap-2 rounded-lg border border-border-soft bg-surface-canvas inset-field text-sm text-text-muted">
           <Loader2 className="h-4 w-4 animate-spin" />
           Reading label…
         </div>
       )}
 
       {status === 'error' && error && (
-        <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 inset-field text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>

@@ -9,6 +9,29 @@ import {
   receivingPrependMatchesRail,
 } from '@/lib/queries/receiving-queries';
 
+/** Stable empty exclusion set — a fresh `new Set()` each render would defeat memo identity. */
+const EMPTY_EXCLUDED: ReadonlySet<number> = new Set();
+
+/**
+ * How long to wait before re-checking an ESTABLISHED list that just refetched
+ * empty. A mutation's broad `app-refresh-data` invalidate often fires before the
+ * write's `after()` side-effects settle, so the reconciling refetch returns a
+ * transient empty; this delay lets the write settle before the confirming
+ * re-check decides whether the emptiness is real. Long enough to clear a typical
+ * settle, short enough that a genuine emptying still resolves promptly.
+ */
+const RAIL_EMPTY_RECHECK_DELAY_MS = 700;
+
+/**
+ * Debounce/defer window for the reconciling refetch triggered by refresh events.
+ * A single mutation often fires a BURST of broad `app-refresh-data` events, and
+ * firing the invalidate eagerly races the write's `after()` side-effects
+ * (returning a transient empty). Coalesce the burst and let the write settle,
+ * then refetch once. Optimistic prepend/update/delete events already gave the
+ * instant feedback; this path is only reconciliation, so a small delay is free.
+ */
+const RAIL_REFRESH_DEBOUNCE_MS = 350;
+
 /**
  * Owns the generic sidebar-rail engine: data fetch + local mirror, optimistic
  * update/delete/group-delete event listeners, refresh-event invalidation,
@@ -18,6 +41,7 @@ import {
  */
 export function useSidebarRail<TRow>({
   queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, navigateEvent,
+  excludedIds = EMPTY_EXCLUDED, loadSnapshot, persistSnapshot,
   selectedId, selectedRow = null, leadingRow = null, limit = 25,
   autoSelectFirstWhenEmpty = false,
   canAutoSelectFirst,
@@ -44,7 +68,7 @@ export function useSidebarRail<TRow>({
   const editAnchorIdRef = useRef<number | null>(null);
   useEffect(() => { editAnchorIdRef.current = null; }, [editMode.active]);
 
-  const { data, isPending, isFetching } = useQuery<TRow[]>({
+  const { data, isPending, isFetching, isPlaceholderData, dataUpdatedAt } = useQuery<TRow[]>({
     queryKey,
     queryFn: fetchFn,
     staleTime: 20_000,
@@ -71,20 +95,79 @@ export function useSidebarRail<TRow>({
   // on background refetch — that remount kills stagger + hover popovers and
   // reads as a loading↔loaded flash.
   const hadRowsForKeyRef = useRef(false);
+  // Set once we've held an empty result back for a re-check (see the guard
+  // below), so the CONFIRMING empty is allowed through instead of looping.
+  const emptyGraceRef = useRef(false);
   useEffect(() => {
     const keyChanged = prevKeySigRef.current !== queryKeySig;
     if (keyChanged) {
       prevKeySigRef.current = queryKeySig;
       hadRowsForKeyRef.current = false;
+      emptyGraceRef.current = false;
     }
     if (Array.isArray(data)) {
-      setLocalRows(sortRowsByActivity(data));
+      const sorted = sortRowsByActivity(data);
+      // Never-self-blank invariant. An ESTABLISHED list must not blank on the
+      // FIRST empty refetch: a mutation's broad `app-refresh-data` invalidate
+      // frequently fires before the write's `after()` side-effects settle, so the
+      // reconciling refetch returns a TRANSIENT empty that would wipe the rail
+      // until reload. Keep the prior rows and re-check once after a settle delay;
+      // only a CONFIRMING second empty fetch (a fresh `dataUpdatedAt`) actually
+      // blanks. Genuine removals never depend on this path — they arrive through
+      // the explicit delete / group-delete events, which remove specific rows.
+      if (
+        sorted.length === 0
+        && !keyChanged
+        && hadRowsForKeyRef.current
+        && !emptyGraceRef.current
+      ) {
+        emptyGraceRef.current = true;
+        const timer = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey });
+        }, RAIL_EMPTY_RECHECK_DELAY_MS);
+        return () => clearTimeout(timer);
+      }
+      if (sorted.length > 0) emptyGraceRef.current = false;
+      setLocalRows(sorted);
+      // Persist the freshest settled rows as the next reload's first-paint seed.
+      // Skip placeholder data: during a key change `keepPreviousData` briefly
+      // returns the PREVIOUS feed's rows, which must not be saved for this feed.
+      if (persistSnapshot && !isPlaceholderData) persistSnapshot(sorted);
       return;
     }
     if (keyChanged) {
       setLocalRows(null);
     }
-  }, [data, sortRowsByActivity, queryKeySig]);
+  }, [
+    data, dataUpdatedAt, isPlaceholderData, sortRowsByActivity, queryKeySig,
+    persistSnapshot, queryClient, queryKey,
+  ]);
+
+  // First-mount cold-reload seed. Fetches the viewer's last-known rows (a fast
+  // server read) and paints them while the heavy authoritative query resolves —
+  // so a reload fills in quickly instead of waiting the full round-trip. Async
+  // (unlike the old localStorage seed), so a cold reload shows a brief skeleton
+  // then the seed, then reconciles. One-shot: once live data or a key change
+  // arrives, the mirror effect above owns `localRows`.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !loadSnapshot) return;
+    seededRef.current = true;
+    if (Array.isArray(data)) return; // authoritative rows already present
+    let cancelled = false;
+    void loadSnapshot().then((snap) => {
+      if (cancelled || !snap || snap.length === 0) return;
+      setLocalRows((prev) => {
+        if (prev != null) return prev; // authoritative already won the paint
+        hadRowsForKeyRef.current = true;
+        return sortRowsByActivity(snap);
+      });
+    });
+    return () => { cancelled = true; };
+    // Keyed on loadSnapshot identity only (memoized by the provider); data is
+    // read fresh inside and the one-shot guard prevents a re-seed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadSnapshot]);
 
   useEffect(() => {
     if (!updateEvent) return;
@@ -190,9 +273,24 @@ export function useSidebarRail<TRow>({
 
   useEffect(() => {
     if (!refreshEvents || refreshEvents.length === 0) return;
-    const handler = () => { queryClient.invalidateQueries({ queryKey }); };
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const handler = () => {
+      // Debounce + defer the reconciling refetch (see RAIL_REFRESH_DEBOUNCE_MS):
+      // coalesce a mutation's burst of refresh events and let its write settle,
+      // so the refetch reads committed state instead of racing to a transient
+      // empty. The optimistic delete/group-delete handlers still fire eagerly, so
+      // real removals are instant; only the full reconciliation is deferred.
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        queryClient.invalidateQueries({ queryKey });
+      }, RAIL_REFRESH_DEBOUNCE_MS);
+    };
     refreshEvents.forEach((ev) => window.addEventListener(ev, handler));
-    return () => { refreshEvents.forEach((ev) => window.removeEventListener(ev, handler)); };
+    return () => {
+      if (timer) clearTimeout(timer);
+      refreshEvents.forEach((ev) => window.removeEventListener(ev, handler));
+    };
   }, [queryClient, queryKey, refreshEvents]);
 
   // Defensive: a queryKey collision (another useQuery caching a different shape
@@ -209,8 +307,12 @@ export function useSidebarRail<TRow>({
     },
     [deletedIds, deletedGroupIds, getId, getGroupId],
   );
+  // Drop deleted rows AND this viewer's dismissed rows (excludedIds). The
+  // dismiss set is filtered HERE, not in the queryKey/fetch, so loading it or
+  // changing it (a dismiss) re-filters in place instead of forcing a queryKey
+  // change that would blank the whole list to a skeleton.
   const baseRows = (Array.isArray(localRows) ? localRows : []).filter(
-    (r) => !isRowDeleted(r),
+    (r) => !isRowDeleted(r) && !excludedIds.has(getId(r)),
   );
   // An optimistic leading row (e.g. the triage "importing" stub) renders at the
   // very top through the SAME row component. It is KEPT (not dropped) once the

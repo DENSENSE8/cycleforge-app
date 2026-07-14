@@ -88,4 +88,4 @@ export const NOTE_SERIAL_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-emerald-600
 export const NOTE_UNIT_PRICE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-amber-600 transition hover:bg-amber-100/60 hover:text-amber-700 hover:shadow-sm hover:ring-1 hover:ring-amber-200/80`;
 
 export const NOTE_CLEAR_BTN =
-  'ds-raw-button rounded px-1.5 py-0.5 text-role-micro font-semibold text-text-faint transition hover:bg-surface-sunken/80 hover:text-text-muted';
+  'ds-raw-button rounded inset-chip text-role-micro font-semibold text-text-faint transition hover:bg-surface-sunken/80 hover:text-text-muted';

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isReturnIntake } from './triage-intake-kind';
+import { isReturnIntake, isIntakeClassified } from './triage-intake-kind';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** isReturnIntake only reads intake_type/receiving_type/carton_intake_type. */
@@ -39,4 +39,22 @@ test('isReturnIntake: regression — an explicit non-RETURN line override beats 
   // per effectiveIntakeKind's documented precedence.
   assert.equal(isReturnIntake(row({ intake_type: 'TRADE_IN', carton_intake_type: 'RETURN' })), false);
   assert.equal(isReturnIntake(row({ intake_type: 'PICKUP', carton_intake_type: 'RETURN' })), false);
+});
+
+test('isIntakeClassified: fresh unfound carton (all disposition fields null) → false', () => {
+  // A fresh unfound carton is unclassified — intake_type has no DB default — so
+  // the unfound stepper's Classify dot must read active, not done.
+  assert.equal(isIntakeClassified(row({})), false);
+});
+
+test('isIntakeClassified: a concrete kind on any disposition field → true', () => {
+  assert.equal(isIntakeClassified(row({ intake_type: 'return' })), true); // case-insensitive
+  assert.equal(isIntakeClassified(row({ receiving_type: 'PO' })), true);
+  assert.equal(isIntakeClassified(row({ carton_intake_type: 'TRADE_IN' })), true);
+  assert.equal(isIntakeClassified(row({ carton_intake_type: 'PICKUP' })), true);
+});
+
+test('isIntakeClassified: an unrecognized disposition string does not count as classified', () => {
+  assert.equal(isIntakeClassified(row({ intake_type: 'UNKNOWN' })), false);
+  assert.equal(isIntakeClassified(row({ receiving_type: '' })), false);
 });

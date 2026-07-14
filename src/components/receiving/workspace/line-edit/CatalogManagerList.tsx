@@ -36,7 +36,7 @@ const API_BASE: Record<CatalogKind, string> = {
 };
 
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
 
 interface Entry {
   id: number;
@@ -144,14 +144,14 @@ export function CatalogManagerList({
     <div>
       {!editable ? (
         <>
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-role-micro font-semibold text-amber-800">
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 inset-field text-role-micro font-semibold text-amber-800">
             Showing built-in defaults. Apply migration <code>2026-06-13g</code> to add or edit your own.
           </div>
           <ul className="space-y-1.5">
             {fallbackLabels.map((label) => (
               <li
                 key={label}
-                className="rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption font-semibold text-text-faint"
+                className="rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption font-semibold text-text-faint"
               >
                 {label}
               </li>
@@ -166,7 +166,7 @@ export function CatalogManagerList({
             const expanded = bindingsOn && expandedId === e.id;
             return (
               <li key={e.id} className="rounded-lg border border-border-soft bg-surface-card">
-              <div className="flex items-center gap-2 px-2.5 py-1.5">
+              <div className="flex items-center gap-2 inset-cozy">
                 <div className="flex flex-col">
                   <IconButton
                     type="button"
@@ -201,7 +201,7 @@ export function CatalogManagerList({
                   <span className="flex flex-1 items-center gap-2 truncate text-role-caption font-semibold text-text-default">
                     {e.label}
                     {e.isSystem ? (
-                      <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
+                      <span className="shrink-0 rounded-full bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-wider text-text-soft">
                         Default
                       </span>
                     ) : null}
@@ -281,7 +281,7 @@ export function CatalogManagerList({
             {hidden.map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas px-2.5 py-1.5"
+                className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-cozy"
               >
                 <span className="flex-1 truncate text-role-caption font-semibold text-text-faint line-through">{e.label}</span>
                 {busyId === e.id ? (

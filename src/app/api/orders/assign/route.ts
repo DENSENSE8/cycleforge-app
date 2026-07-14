@@ -146,6 +146,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       shipByDate,
       outOfStock,
       notes,
+      isUrgent,
       shippingTrackingNumber,
       trackingLinkEdits,
       trackingLinkCreates,
@@ -314,6 +315,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         updates.push(`notes = $${paramCount++}`);
         values.push(notes);
       }
+      if (isUrgent !== undefined) {
+        updates.push(`is_urgent = $${paramCount++}`);
+        values.push(Boolean(isUrgent));
+      }
       if (itemNumber !== undefined) {
         updates.push(`item_number = $${paramCount++}`);
         values.push(itemNumber || null);
@@ -353,6 +358,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (shipByDate !== undefined) changedFields.shipByDate = shipByDate;
       if (outOfStock !== undefined) changedFields.outOfStock = outOfStock;
       if (notes !== undefined) changedFields.notes = notes;
+      if (isUrgent !== undefined) changedFields.isUrgent = Boolean(isUrgent);
       if (shippingTrackingNumber !== undefined) changedFields.shippingTrackingNumber = shippingTrackingNumber;
       if (Array.isArray(trackingLinkEdits) && trackingLinkEdits.length > 0) changedFields.trackingLinkEdits = trackingLinkEdits;
       if (Array.isArray(trackingLinkCreates) && trackingLinkCreates.length > 0) changedFields.trackingLinkCreates = trackingLinkCreates;

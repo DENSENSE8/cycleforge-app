@@ -242,7 +242,7 @@ export function UnfoundQueueSidebarToolbar() {
             variant={kind === k ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => onKind(k)}
-            className={`justify-start rounded-md px-2.5 py-1.5 text-left text-role-caption font-semibold ${
+            className={`justify-start rounded-md inset-cozy text-left text-role-caption font-semibold ${
               kind === k
                 ? 'bg-blue-600 text-white'
                 : 'border border-border-soft bg-surface-card text-text-muted hover:border-border-default'

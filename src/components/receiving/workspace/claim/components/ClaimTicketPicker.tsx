@@ -30,7 +30,7 @@ export function ClaimTicketPicker({ search, onSelect }: Props) {
           onChange={(e) => setTicketQuery(e.target.value)}
           placeholder="Search by subject, or paste a ticket # (e.g. #12345)"
           autoFocus
-          className="block w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-role-caption font-medium text-text-default outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+          className="block w-full rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption font-medium text-text-default outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
         />
       </div>
 
@@ -59,7 +59,7 @@ export function ClaimTicketPicker({ search, onSelect }: Props) {
                   >
                     <span className="shrink-0 font-mono text-role-caption font-bold text-text-default">#{t.id}</span>
                     <span
-                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider ${badge.className}`}
+                      className={`shrink-0 rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${badge.className}`}
                     >
                       {badge.label}
                     </span>

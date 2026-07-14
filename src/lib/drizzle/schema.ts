@@ -962,6 +962,9 @@ export const orders = pgTable('orders', {
   shipmentId: bigint('shipment_id', { mode: 'number' }),
   outOfStock: text('out_of_stock'),
   notes: text('notes'),
+  /** Operator-toggled urgent / expedited flag (dashboard queue quick-actions Zap).
+   *  Tier-0 semantics for the future "Expedited" filter. Migration 2026-07-14. */
+  isUrgent: boolean('is_urgent').notNull().default(false),
   /** Marketplace buyer checkout note (eBay buyerCheckoutNotes), mirrored raw
    *  by the sync; projected into entity_signals by buyer-note-derivation.
    *  Migration 2026-07-03p. */
@@ -1380,6 +1383,20 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
    * the LineSerial type in src/lib/receiving/serial-projection.ts.)
    */
   serialProjection: jsonb('serial_projection').notNull().default([]),
+  /**
+   * Operator waived the serial for this line (no serial available — cable / bulk
+   * part / return with none). Completes the Unbox stepper's Serial step alongside
+   * a captured serial. Migration 2026-07-14. Writer: POST
+   * /api/receiving/lines/[id]/serial-absent.
+   */
+  serialAbsent: boolean('serial_absent').notNull().default(false),
+  /**
+   * Class-D `serial_absent_reason` vocabulary code for the waiver
+   * (NOT_SERIALIZED / UNREADABLE / MISSING_LABEL / BULK / org-custom). NULL when
+   * `serialAbsent` is false. App-layer validated (org-customizable), so no DB
+   * CHECK — mirrors `returnReason` on receiving_line_return.
+   */
+  serialAbsentReason: text('serial_absent_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -4084,6 +4101,61 @@ export const opsEvents = pgTable('ops_events', {
   entityTimeIdx: index('idx_ops_events_org_entity_time').on(table.organizationId, table.entityType, table.entityId, table.occurredAt.desc(), table.id.desc()),
   typeTimeIdx: index('idx_ops_events_org_type_time').on(table.organizationId, table.eventType, table.occurredAt.desc(), table.id.desc()),
   nodeTimeIdx: index('idx_ops_events_org_node_time').on(table.organizationId, table.workflowNodeId, table.occurredAt.desc()).where(sql`workflow_node_id IS NOT NULL`),
+}));
+
+/**
+ * entity_threads — ticket-optional conversation anchored to a canonical
+ * entity (migration 2026-07-14_entity_threads.sql;
+ * docs/todo/entity-threads-conversation-plan.md). One thread per
+ * (org, entity_type, entity_id) in v1. support_ticket_id is the later
+ * Zendesk/internal attach seam (D6) — soft-typed here because
+ * support_tickets is not yet modeled in Drizzle (real FK ON DELETE SET NULL
+ * in the migration). Writers: src/lib/threads/ only.
+ */
+export const entityThreads = pgTable('entity_threads', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** CHECK entity_threads_entity_type_chk: RECEIVING | RECEIVING_LINE | SERIAL_UNIT | ORDER | FBA_SHIPMENT | REPAIR | WARRANTY_CLAIM */
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** CHECK entity_threads_status_chk: open | snoozed | resolved */
+  status: text('status').notNull().default('open'),
+  /** FK → support_tickets(id) ON DELETE SET NULL (SQL-side; table unmodeled in Drizzle). NULL = ticketless. */
+  supportTicketId: bigint('support_ticket_id', { mode: 'number' }),
+  /** Denormalized by postThreadMessage for rail sort. */
+  lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+  createdBy: integer('created_by').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  naturalIdx: uniqueIndex('ux_entity_threads_natural').on(table.organizationId, table.entityType, table.entityId),
+  lastMessageIdx: index('idx_entity_threads_org_last_message').on(table.organizationId, table.lastMessageAt.desc(), table.id.desc()),
+  supportTicketIdx: index('idx_entity_threads_support_ticket').on(table.supportTicketId).where(sql`support_ticket_id IS NOT NULL`),
+}));
+
+/**
+ * thread_messages — provider-agnostic bodies for entity_threads. Every insert
+ * also emits an ops_events row (event_type='THREAD_MESSAGE') via
+ * postThreadMessage (src/lib/threads/). Idempotent on (org, client_event_id).
+ */
+export const threadMessages = pgTable('thread_messages', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  threadId: bigint('thread_id', { mode: 'number' }).notNull().references(() => entityThreads.id, { onDelete: 'cascade' }),
+  /** NULL = provider-mirrored / system message. */
+  authorStaffId: integer('author_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  /** CHECK thread_messages_provider_chk: internal | zendesk | system */
+  provider: text('provider').notNull().default('internal'),
+  /** CHECK thread_messages_visibility_chk: internal | public (Zendesk note vs reply parity). */
+  visibility: text('visibility').notNull().default('internal'),
+  /** CHECK thread_messages_body_chk: length(btrim(body)) > 0 */
+  body: text('body').notNull(),
+  clientEventId: text('client_event_id'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  clientEventIdx: uniqueIndex('ux_thread_messages_client_event').on(table.organizationId, table.clientEventId).where(sql`client_event_id IS NOT NULL`),
+  threadIdx: index('idx_thread_messages_thread').on(table.threadId, table.createdAt.desc(), table.id.desc()),
 }));
 
 /**

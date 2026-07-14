@@ -142,7 +142,19 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 
 ## Tab Switcher Rules
 
-**Hard rule: all tab-like UI must use `TabSwitch` from `src/components/ui/TabSwitch.tsx`.** Custom pill buttons or ad-hoc toggle rows are not permitted. Wrap the switcher in `SidebarTabSwitchChrome` when it sits in a sidebar header row.
+**Hard rule: all tab-like UI must use `TabSwitch` from `src/design-system/components/TabSwitch.tsx`** (barrel: `@/design-system/components`). Custom pill buttons or ad-hoc toggle rows are not permitted. Wrap the switcher in `SidebarTabSwitchChrome` when it sits in a sidebar header row.
+
+**`variant` (the visual treatment — one sliding pill, always):**
+
+| `variant` | Rail | Active pill | Active text | Labels | Use for |
+|---|---|---|---|---|---|
+| `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | uppercase, `font-black`, tracked | most in-app tab rows |
+| `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-bold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control |
+| `upNext` | tinted station rail (`bg-surface-strong`) | light pill + station outline | semantic hue | uppercase | station up-next queue |
+
+- `countStyle`: `badge` (mini pill bubble, default) or `plain` (inline, same size as label — preferred for dense ops headers).
+- `solid` labels come from the source string as-is (no CSS uppercasing) — store them title-case. All treatments are token-only (inverse surface/text, not black hex) so they flip under `data-theme` dark mode.
+- Don't hand-set pill/rail colors at the call site — pick a `variant` and, if a genuinely new treatment is needed, **add a variant to the primitive** rather than forking chrome via `railClassName`.
 
 ## Functional Color Mapping (the color story)
 

@@ -331,7 +331,7 @@ const TAG_STYLE: Record<EmailTriageTag, { chip: string; label: string }> = {
 };
 
 const CHIP_CLASS =
-  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase leading-none tracking-widest ring-1 ring-inset';
+  'inline-flex items-center gap-1 rounded inset-chip text-role-eyebrow uppercase leading-none tracking-widest ring-1 ring-inset';
 
 const ROW_ACTION_CLASS =
   'flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50';
@@ -597,7 +597,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
         <div className="flex items-center gap-2">
           <Mail className="h-3.5 w-3.5 text-amber-500" />
           <h2 className="text-role-eyebrow uppercase tracking-widest text-text-soft">Email triage</h2>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-role-micro tabular-nums text-amber-700">
+          <span className="rounded bg-amber-100 inset-chip text-role-micro tabular-nums text-amber-700">
             {openCount}
           </span>
           <span className="ml-auto text-role-micro font-semibold text-text-faint">
@@ -622,7 +622,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
           </p>
         ) : isError ? (
           <div className="px-3 py-4">
-            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-600">
+            <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-600">
               Could not load the email triage list.
             </div>
           </div>
@@ -640,7 +640,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
           </div>
         ) : (
           <ScrollPane className="flex-1">
-            <div className="space-y-3 px-3 py-2">
+            <div className="space-y-3 inset-field">
               {/* Open worklist */}
               <motion.ul
                 className="space-y-1"
@@ -695,7 +695,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
 
         {/* Bulk action bar — appears only with a selection (live mode). */}
         {selected.size > 0 && !isControlled ? (
-          <div className="flex shrink-0 items-center gap-2 border-t border-border-soft bg-surface-card px-3 py-2">
+          <div className="flex shrink-0 items-center gap-2 border-t border-border-soft bg-surface-card inset-field">
             <span className="text-role-caption font-bold text-text-muted">{selected.size} selected</span>
             <Button
               type="button"

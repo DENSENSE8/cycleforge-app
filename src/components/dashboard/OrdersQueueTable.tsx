@@ -120,6 +120,11 @@ export interface OrdersQueueTableProps {
    * Defaults to `'top-0'`.
    */
   stickyTopClass?: string;
+  /**
+   * `monitor` — flat day-banded list inside {@link MONITOR_SECTION_CARD_CLASS}
+   * (Dashboard · Packed / Shipped). Parent owns scroll; body gets `px-2 pb-6`.
+   */
+  listShell?: 'default' | 'monitor';
 }
 
 export function OrdersQueueTable({
@@ -159,6 +164,7 @@ export function OrdersQueueTable({
   virtualized = false,
   dateHeaderEndSlot,
   stickyTopClass = 'top-0',
+  listShell = 'default',
   // `scrollParentRef` is still accepted (SwimlaneBoard lane-body contract) but no
   // longer consumed: stacked lanes render all rows instead of windowing against the
   // shared ancestor scroll (see the render branch below), so nothing to wire here.
@@ -174,24 +180,32 @@ export function OrdersQueueTable({
 
   // `autoHeight`: the body sizes to content, capped by a max-height (px wins over
   // class), so short tables leave no trailing whitespace and tall ones scroll.
-  const rootClass = autoHeight
-    ? 'flex min-w-0 w-full bg-surface-card relative'
-    : 'flex h-full min-w-0 flex-1 bg-surface-card relative';
-  const columnClass = autoHeight
-    ? 'flex flex-col w-full min-w-0'
-    : 'flex-1 flex flex-col overflow-hidden';
+  const monitorShell = listShell === 'monitor';
+  const rootClass = monitorShell
+    ? 'relative flex w-full min-w-0 flex-col'
+    : autoHeight
+      ? 'flex min-w-0 w-full bg-surface-card relative'
+      : 'flex h-full min-w-0 flex-1 bg-surface-card relative';
+  const columnClass = monitorShell
+    ? 'flex w-full min-w-0 flex-col'
+    : autoHeight
+      ? 'flex flex-col w-full min-w-0'
+      : 'flex-1 flex flex-col overflow-hidden';
   const xScroll = noHorizontalScroll ? 'overflow-x-hidden' : 'overflow-x-auto';
   // `growToContent` (stacked lanes): no internal vertical scroll / cap — the body
   // grows to content and an ancestor scroll region owns the wheel. Otherwise the
   // body scrolls internally, capped by the px (drag) or class (preset) height.
-  const bodyScrollClass = autoHeight
-    ? growToContent
-      // `overflow-x-clip` (NOT hidden): clips horizontally without becoming a
-      // scroll container, so it doesn't trap the sticky DateGroupHeader — the
-      // header promotes to the board's scroll region and docks at the top.
-      ? 'overflow-x-clip w-full'
-      : `${xScroll} overflow-y-auto no-scrollbar w-full ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}`
-    : `flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`;
+  const bodyScrollClass = monitorShell
+    ? 'w-full'
+    : autoHeight
+      ? growToContent
+        // `overflow-x-clip` (NOT hidden): clips horizontally without becoming a
+        // scroll container, so it doesn't trap the sticky DateGroupHeader — the
+        // header promotes to the board's scroll region and docks at the top.
+        ? 'overflow-x-clip w-full'
+        : `${xScroll} overflow-y-auto no-scrollbar w-full ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}`
+      : `flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`;
+  const listBodyClass = monitorShell ? 'flex w-full flex-col px-2 pb-6' : 'flex w-full flex-col';
   const bodyScrollStyle =
     autoHeight && !growToContent && maxBodyHeightPx != null ? { maxHeight: maxBodyHeightPx } : undefined;
   const emptyPadClass = autoHeight ? 'py-10' : 'py-40';
@@ -292,7 +306,15 @@ export function OrdersQueueTable({
 
   if (loading) {
     return wrapColumnConfig(
-      <div className={autoHeight ? 'flex flex-col bg-surface-canvas' : 'flex-1 flex flex-col bg-surface-canvas overflow-hidden'}>
+      <div
+        className={
+          monitorShell
+            ? 'w-full px-2 pb-6'
+            : autoHeight
+              ? 'flex flex-col bg-surface-canvas'
+              : 'flex-1 flex flex-col bg-surface-canvas overflow-hidden'
+        }
+      >
         {hideHeader ? null : bannerTitle ? (
           <QueueTableBanner
             title={bannerTitle}
@@ -317,7 +339,7 @@ export function OrdersQueueTable({
   return wrapColumnConfig(
     <div className={rootClass}>
       <div className={columnClass}>
-        {hideHeader ? null : bannerTitle ? (
+        {hideHeader || monitorShell ? null : bannerTitle ? (
           <QueueTableBanner
             title={bannerTitle}
             subtitle={bannerSubtitle}
@@ -342,7 +364,7 @@ export function OrdersQueueTable({
 
         <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
           {orderGroupsByDate.length === 0 ? (
-            <div className={`flex flex-col items-center justify-center ${emptyPadClass} text-center`}>
+            <div className={`flex flex-col items-center justify-center ${monitorShell ? 'py-10' : emptyPadClass} text-center`}>
               {searchValue ? (
                 <OrderSearchEmptyState
                   query={searchValue}
@@ -397,7 +419,7 @@ export function OrdersQueueTable({
                   renderRow={renderRow}
                 />
               ) : (
-                <div className="flex w-full flex-col">
+                <div className={listBodyClass}>
                   {!virtualized ? (
                     <AnimatePresence initial={false} mode="popLayout">
                       {orderGroupsByDate.map(([date, groups]) => (

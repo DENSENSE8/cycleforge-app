@@ -286,12 +286,12 @@ function StationTile({ station }: { station: TvBoardStation }) {
       </p>
       <div className="mt-2 flex min-h-[1.25rem] flex-wrap items-center gap-1.5">
         {hasOverdue ? (
-          <span className="rounded border border-border-danger bg-surface-danger px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-danger">
+          <span className="rounded border border-border-danger bg-surface-danger inset-chip text-role-micro uppercase tracking-widest text-text-danger">
             {station.overdue} overdue
           </span>
         ) : null}
         {station.inProgress > 0 ? (
-          <span className="rounded border border-border-warning bg-surface-warning px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-warning">
+          <span className="rounded border border-border-warning bg-surface-warning inset-chip text-role-micro uppercase tracking-widest text-text-warning">
             {station.inProgress} active
           </span>
         ) : null}

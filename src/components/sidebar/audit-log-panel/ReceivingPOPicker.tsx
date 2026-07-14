@@ -53,7 +53,7 @@ export function ReceivingPOPicker({
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
         {error ? (
-          <div className="m-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <div className="m-3 rounded-lg border border-rose-200 bg-rose-50 inset-field text-xs text-rose-700">
             {error}
           </div>
         ) : loading ? (

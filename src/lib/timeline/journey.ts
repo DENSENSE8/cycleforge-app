@@ -6,12 +6,14 @@ import {
   orderAuditToTimeline,
   carrierEventsToTimeline,
   warrantyEventsToTimeline,
+  threadMessagesToTimeline,
   collapseTimeline,
   type InventoryTimelineRow,
   type StationActivityRow,
   type OrderAuditRow,
   type CarrierEvent,
   type WarrantyEventRow,
+  type ThreadMessageTimelineRow,
 } from './index';
 
 /**
@@ -28,7 +30,7 @@ import {
  * imports the `server-only` domain module.
  */
 
-export type JourneySource = 'sal' | 'inventory' | 'audit' | 'carrier' | 'warranty';
+export type JourneySource = 'sal' | 'inventory' | 'audit' | 'carrier' | 'warranty' | 'thread';
 export type JourneyDimension = 'order' | 'serial' | 'tracking';
 
 export interface JourneyGroupKeys {
@@ -65,6 +67,7 @@ export function mergeJourney(events: JourneyEvent[]): MergedJourney {
   const audit: OrderAuditRow[] = [];
   const carrier: CarrierEvent[] = [];
   const warranty: WarrantyEventRow[] = [];
+  const thread: ThreadMessageTimelineRow[] = [];
 
   for (const ev of events) {
     groupOf.set(ev.id, ev.group);
@@ -84,6 +87,9 @@ export function mergeJourney(events: JourneyEvent[]): MergedJourney {
       case 'warranty':
         warranty.push(ev.raw as WarrantyEventRow);
         break;
+      case 'thread':
+        thread.push(ev.raw as ThreadMessageTimelineRow);
+        break;
     }
   }
 
@@ -96,6 +102,7 @@ export function mergeJourney(events: JourneyEvent[]): MergedJourney {
     ...orderAuditToTimeline(audit).map((it) => ({ ...it, id: `audit:${it.id}` })),
     ...carrierEventsToTimeline(carrier).map((it) => ({ ...it, id: `carrier:${it.id}` })),
     ...warrantyEventsToTimeline(warranty),
+    ...threadMessagesToTimeline(thread),
   ];
 
   merged.sort((a, b) => {

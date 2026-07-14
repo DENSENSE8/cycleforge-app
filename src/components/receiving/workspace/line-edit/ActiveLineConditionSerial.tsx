@@ -176,6 +176,7 @@ export function ActiveLineConditionSerial({
             <NoSerialControl
               absent
               fullWidth
+              hideClear
               reason={serialAbsentReason}
               required={requireSerialConfirmation}
               disabled={!receivingId}

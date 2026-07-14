@@ -26,7 +26,7 @@ These conventions recur across rails, triage panels, inspectors, boards, tables,
 | `rollup` | Analytics / goals | More air; KPI heroes; named SectionCard zones (grid OK) |
 | `studio` | Graph authoring | Spatial canvas; inspector secondary |
 
-Map spacing to design-system density tokens when available (`src/design-system/tokens/spacing.ts`).
+Spacing is density-aware by construction — see **Spacing from the density-aware scale** below.
 
 ## Compose rails; never rebuild rail infrastructure
 
@@ -123,6 +123,11 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - Import from `@/components/Icons`. Always pair an icon with text (e.g. `<Check className="h-3.5 w-3.5"/> Resolve`),
   except the status dot.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
+- **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
+  `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a
+  bare glyph-button where the glyph is the whole hit target. The 44px mobile tap floor is `size="touch"` (the old
+  `tokens/touch.ts`, retired). Guard: `control-size-tokens.guard.test.ts` (`npm run test:control-size-guard`),
+  ratcheting the hand-set-box call sites down; genuinely bespoke geometry carries `ds-allow-control-size`.
 
 ## Color only from semantic tokens
 
@@ -131,6 +136,21 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - Status dots/tones derive from the lifecycle registry (`workflowStageDot(status)`), not ad-hoc choices.
 - Pick `gray-` **or** `slate-` per feature and stay consistent (studio panels use `slate-`).
 - Functional hue story (repair orange, logistics blue, …): `DESIGN_SYSTEM.md`.
+
+## Spacing from the density-aware scale
+
+- The numeric spacing scale (`p-3`, `gap-2`, …) is **density-aware**: values live in
+  `src/design-system/tokens/spacing.mjs` (`theme.extend.spacing`), each `calc(rem × var(--cf-density, 1))`,
+  so padding/gap tighten with `data-density` exactly like the `role-*` type scale.
+- Recurring padding jobs use a **Tier-2 intent**, never another hand-picked `px-N py-M` pair:
+  `inset-chip` (badge) · `inset-field` (control / header band) · `inset-cozy` (compact row) ·
+  `inset-card` (card body) · `inset-empty` (dashed empty/error box) · `stack-tight/row/section`
+  (column rhythm) · `row-gap/tight` (inline groups) — or compose the `Stack`/`Inset`/`Row` primitives.
+- **An intent is the whole padding story for its element** — never stack a raw `p-*`/`px-*` on top:
+  both survive `cn()` and the intent wins in CSS order.
+- **Never** hardcode arbitrary-px spacing (`p-[6px]`-style). Guard: `spacing-tokens.guard.test.ts`
+  (`npm run test:spacing-guard`); genuine safe-area / fixed-overlay geometry carries a same-line
+  `ds-allow-spacing` comment. Pair→intent codemod: `scripts/codemods/spacing-intents.mjs`.
 
 ## Async / empty / error states
 

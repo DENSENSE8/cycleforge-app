@@ -182,7 +182,7 @@ function TicketThreadPanel({
       aria-label="Ticket history"
       className="flex max-h-[460px] w-[360px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl"
     >
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border-hairline px-3 py-2">
+      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border-hairline inset-field">
         <div className="flex min-w-0 flex-1 items-start gap-2">
           <TicketHelp className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
           <div className="min-w-0">
@@ -235,7 +235,7 @@ function TicketThreadPanel({
               <li
                 key={c.id}
                 className={cn(
-                  'rounded-lg border px-3 py-2',
+                  'rounded-lg border inset-field',
                   c.public ? 'border-blue-100 bg-blue-50/60' : 'border-amber-100 bg-amber-50/60',
                 )}
               >

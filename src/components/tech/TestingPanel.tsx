@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Printer } from '@/components/Icons';
+import { ClipboardList, FileText, Printer, Tag, Ticket } from '@/components/Icons';
 import { deriveColorFromTitle, resolveTestingLineTitle } from '@/lib/print/printProductLabel';
 import { receivingPayloadToFace } from '@/lib/print/printReceivingLabel';
 import { FloatingButton } from '@/design-system/primitives';
+import { StationSectionTabs } from '@/design-system/components';
 import { LineEditToolbar } from '@/components/receiving/workspace/line-edit/LineEditToolbar';
 import { LabelEditPopover, type LabelEditDraft } from '@/components/receiving/workspace/line-edit/LabelEditPopover';
 import { LineTestingTabbedCard, TESTING_OPEN_SKU_PAIRING_EVENT } from '@/components/receiving/workspace/line-edit/LineTestingTabbedCard';
@@ -28,6 +29,8 @@ import { TestingPanelModals } from './testing-panel/TestingPanelModals';
  * Thin composition layer — all logic lives in `useTestingLineController`; the
  * header / active rows / modals / primary action live under `./testing-panel/`.
  */
+type TestingSection = 'items' | 'notes' | 'claim' | 'label';
+
 export function TestingPanel({ row, staffId }: { row: ReceivingLineRow; staffId: string }) {
   const rowTitle = resolveTestingLineTitle(row);
   const [colorOverride, setColorOverride] = useState<string | null>(null);
@@ -65,6 +68,23 @@ export function TestingPanel({ row, staffId }: { row: ReceivingLineRow; staffId:
     [c.cartonLabelPayload],
   );
 
+  // Section tabs in the seam under the carton header — collapse the long testing
+  // scroll into Items · Notes · Claim · Label. Cards stay mounted (`hidden`), so
+  // label popovers / in-progress edits survive tab switches. The Label tab only
+  // shows when a label is available; a stranded selection falls back to Items.
+  const hasLabel = labelOptions.length > 0;
+  const [section, setSection] = useState<TestingSection>('items');
+  const effectiveSection: TestingSection = section === 'label' && !hasLabel ? 'items' : section;
+  const sectionTabs = useMemo(
+    () => [
+      { id: 'items', label: 'Items', icon: ClipboardList },
+      { id: 'notes', label: 'Notes', icon: FileText },
+      { id: 'claim', label: 'Claim', icon: Ticket },
+      ...(hasLabel ? [{ id: 'label', label: 'Label', icon: Tag }] : []),
+    ],
+    [hasLabel],
+  );
+
   return (
     <>
       <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -90,32 +110,46 @@ export function TestingPanel({ row, staffId }: { row: ReceivingLineRow; staffId:
           <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 pb-32 sm:px-6">
             <TestingCartonHeader c={c} row={row} staffId={staffId} />
 
-            <TestingPoUnboxingSection c={c} row={row} staffId={staffId} />
-
-            <LineTestingTabbedCard
-              notes={c.notes}
-              onChange={c.setNotes}
-              onBlur={() => {
-                const next = c.notes.trim();
-                if (next !== (row.notes || '')) c.patch({ notes: next || null });
-              }}
-              skuCatalogId={row.sku_catalog_id ?? null}
-              headerTitle={productTitle}
-              receivingLineId={row.id}
-              sku={row.sku}
-              serialUnitId={c.activeSerial?.id ?? null}
+            <StationSectionTabs
+              items={sectionTabs}
+              value={effectiveSection}
+              onChange={(id) => setSection(id as TestingSection)}
+              ariaLabel="Testing sections"
             />
 
-            <TestingTicketReplyCard
-              ticketId={c.providerTicketId ?? null}
-              ticketNumber={c.providerTicketId ? `#${c.providerTicketId}` : undefined}
-              ticketUrl={c.zendeskHref}
-              failed={c.deriveLineVerdict(row.serials ?? []) === 'TESTING_FAILED'}
-              onFileClaim={() => c.setClaimOpen(true)}
-            />
+            {/* Cards stay mounted (`hidden`) so popover/edit state survives switches. */}
+            <div hidden={effectiveSection !== 'items'}>
+              <TestingPoUnboxingSection c={c} row={row} staffId={staffId} />
+            </div>
 
-            {labelOptions.length > 0 ? (
-              <>
+            <div hidden={effectiveSection !== 'notes'}>
+              <LineTestingTabbedCard
+                notes={c.notes}
+                onChange={c.setNotes}
+                onBlur={() => {
+                  const next = c.notes.trim();
+                  if (next !== (row.notes || '')) c.patch({ notes: next || null });
+                }}
+                skuCatalogId={row.sku_catalog_id ?? null}
+                headerTitle={productTitle}
+                receivingLineId={row.id}
+                sku={row.sku}
+                serialUnitId={c.activeSerial?.id ?? null}
+              />
+            </div>
+
+            <div hidden={effectiveSection !== 'claim'}>
+              <TestingTicketReplyCard
+                ticketId={c.providerTicketId ?? null}
+                ticketNumber={c.providerTicketId ? `#${c.providerTicketId}` : undefined}
+                ticketUrl={c.zendeskHref}
+                failed={c.deriveLineVerdict(row.serials ?? []) === 'TESTING_FAILED'}
+                onFileClaim={() => c.setClaimOpen(true)}
+              />
+            </div>
+
+            {hasLabel ? (
+              <div hidden={effectiveSection !== 'label'}>
                 <LabelPreviewCard
                   sku={c.activeAllocation?.unitId || row.sku || ''}
                   title={productTitle}
@@ -158,7 +192,7 @@ export function TestingPanel({ row, staffId }: { row: ReceivingLineRow; staffId:
                     onClose={() => setCartonEditorOpen(false)}
                   />
                 ) : null}
-              </>
+              </div>
             ) : null}
           </div>
         </div>

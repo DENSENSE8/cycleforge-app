@@ -60,7 +60,7 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-              className="mt-1 w-full rounded-md border border-border-default px-2.5 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
             />
           </label>
           <label className="block">
@@ -69,12 +69,12 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40))}
               placeholder="shift_lead"
-              className="mt-1 w-full rounded-md border border-border-default px-2.5 py-1.5 text-sm font-mono outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm font-mono outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
             />
           </label>
         </div>
 
-        {err && <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>}
+        {err && <div className="mt-3 rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>}
 
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose} disabled={busy}>Cancel</Button>

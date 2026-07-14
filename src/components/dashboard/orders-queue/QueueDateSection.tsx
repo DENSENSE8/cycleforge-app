@@ -86,7 +86,7 @@ export function QueueDateSection({
   return (
     <motion.div
       layout={animateRows}
-      className="flex flex-col"
+      className="flex flex-col gap-1"
       transition={animateRows ? { layout: layoutTransition } : undefined}
     >
       <DateGroupHeader date={date} total={dayTotal} animate={animateRows} stickyTopClass={stickyTopClass} />

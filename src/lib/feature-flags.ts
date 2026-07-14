@@ -150,6 +150,19 @@ export function isReceivingPhysicalStateFirst(): boolean {
 }
 
 /**
+ * Read the Unbox "Unboxed" rail's `view=unbox_opened` membership from the
+ * committed `receiving_unbox.opened_at` street column ONLY, dropping the
+ * eventually-written ops_events OR-arm. The column is committed by the same
+ * request that opens/matches a carton, so a refetch fired right after a
+ * mutation reflects committed state and the rail can't transiently blank
+ * (Layer 1 of the rail read-after-write fix). Default OFF during rollout; flip
+ * to true after the 2026-07-14 backfill migration applies and proves parity.
+ */
+export function isUnboxRailColumnRead(): boolean {
+  return readBoolEnv('RECEIVING_UNBOX_RAIL_COLUMN_READ');
+}
+
+/**
  * Unified inbound model (receiving-triage streamline Phase 3). When ON,
  * incoming-po-sync registers a shipment per incoming PO and stamps
  * receiving_lines.shipment_id, the delivered-unscanned surface joins line-level

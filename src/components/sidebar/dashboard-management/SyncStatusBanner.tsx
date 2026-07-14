@@ -78,7 +78,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                 </div>
 
                 {(status.details.exceptionsResolved ?? 0) > 0 ? (
-                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50/80 border border-blue-100/60">
+                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex items-center gap-2 inset-field rounded-xl bg-blue-50/80 border border-blue-100/60">
                     <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                     <p className={`${fieldLabel} text-blue-700`}>
                       <span className="font-black">{status.details.exceptionsResolved}</span> exception{status.details.exceptionsResolved === 1 ? '' : 's'} auto-resolved
@@ -87,7 +87,7 @@ export function SyncStatusBanner({ status, onDismiss }: { status: ImportStatus |
                 ) : null}
 
                 {(status.details.unresolvedTracking ?? 0) > 0 ? (
-                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50/80 border border-amber-200/60">
+                  <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="flex items-center gap-2 inset-field rounded-xl bg-amber-50/80 border border-amber-200/60">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                     <p className={`${fieldLabel} text-amber-700`}>
                       <span className="font-black">{status.details.unresolvedTracking}</span> tracking number{status.details.unresolvedTracking === 1 ? '' : 's'} not recognized — check the sheet for malformed or doubled values

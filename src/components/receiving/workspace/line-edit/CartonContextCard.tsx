@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Barcode, ExternalLink, Plus, Reply, SlidersHorizontal, X } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
@@ -53,6 +53,7 @@ export function CartonContextCard({
   receivingId,
   staffId,
   isUnmatched,
+  classifyPending = false,
   onMakeClaim,
   showStaffPhotoRow = true,
   listingLink,
@@ -99,6 +100,12 @@ export function CartonContextCard({
   receivingId: number | null;
   staffId: string;
   isUnmatched: boolean;
+  /**
+   * The carton still needs its intake kind (unbox stepper's Classify dot is
+   * active) — auto-expand the classify pills so this header IS the classify
+   * surface, expanded. Set only for unclassified unfound cartons.
+   */
+  classifyPending?: boolean;
   /** Opens the claim modal. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
@@ -176,7 +183,15 @@ export function CartonContextCard({
   const listingRef = useRef<HTMLInputElement>(null);
   const poInputRef = useRef<HTMLInputElement>(null);
 
-  const [classifyOpen, setClassifyOpen] = useState(false);
+  const [classifyOpen, setClassifyOpen] = useState(classifyPending);
+
+  // An unclassified unfound carton auto-expands the classify pills — this exact
+  // header, expanded, IS the classify surface (no separate control). Opens the
+  // moment classification is pending; never force-closes, so the operator can
+  // still collapse back to the condensed one-row default after classifying.
+  useEffect(() => {
+    if (classifyPending) setClassifyOpen(true);
+  }, [classifyPending]);
 
   // One picker open at a time. Opening any pill unrenders the trailing chip
   // cluster (the options fill the freed row); selecting / dismissing collapses

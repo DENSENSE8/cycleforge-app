@@ -156,7 +156,10 @@ export function ShippedDetailsPanel({
           actions={headerBarActions}
           onMoveUp={stackActionBar.onMoveUp}
           onMoveDown={stackActionBar.onMoveDown}
-          showCustomerTab={showDashboardExtras}
+          // Slide-over drops the Customer/Warranty tabs — both render as
+          // quick-link rows (OrderQuickLinksSection); the full-page view keeps them.
+          showCustomerTab={false}
+          showWarrantyTab={false}
           showDocumentsTab={showDocumentsTab}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
@@ -168,6 +171,7 @@ export function ShippedDetailsPanel({
           isFulfillmentPanel={isFulfillmentPanel}
           isLabelsPanel={isLabelsPanel}
           showDashboardExtras={showDashboardExtras}
+          showQuickLinks
           activeSection={activeSection}
           shipped={shipped}
           durationData={durationData}

@@ -85,6 +85,12 @@ export interface ShippingDisplayMeta {
   daysLate: number;
   /** Packed timestamp source (pack-activity preferred over packed_at), or null. */
   packedAtSource: string | null;
+  /**
+   * Tested timestamp source — the serial-scan time (`test_date_time`), falling
+   * back to the test station-activity / event stamps for orders tested without
+   * a serial scan (mirrors `packedAtSource`'s activity fallback). Null = untested.
+   */
+  testedAtSource: string | null;
   shippedAtDisplay: string;
   testedAtDateTimeDisplay: string;
   isScannedOut: boolean;
@@ -112,9 +118,16 @@ export function deriveShippingDisplayMeta(
     (shipped.pack_activity_at && shipped.pack_activity_at !== '1' ? shipped.pack_activity_at : null)
     ?? (shipped.packed_at && shipped.packed_at !== '1' ? shipped.packed_at : null);
   const shippedAtDisplay = packedAtSource ? formatDateTimePST(packedAtSource) : 'N/A';
-  const testedAtDateTimeDisplay = shipped.test_date_time
-    ? formatDateTimePST(shipped.test_date_time)
-    : 'N/A';
+  // An order can be tested via serial scans (test_date_time = MIN scan time) OR
+  // via a test station-activity/event with no serial rows. Fall through all
+  // three so a tested order always resolves a stamp (fixes the missing "Tested"
+  // milestone for serial-less test scans). Ignore the legacy '1' sentinel.
+  const s = (v: string | null | undefined) => (v && String(v).trim() !== '' && v !== '1' ? String(v) : null);
+  const testedAtSource =
+    s(shipped.test_date_time)
+    ?? s((shipped as { test_activity_at?: string | null }).test_activity_at)
+    ?? s((shipped as { test_event_at?: string | null }).test_event_at);
+  const testedAtDateTimeDisplay = testedAtSource ? formatDateTimePST(testedAtSource) : 'N/A';
 
   const isScannedOut = Boolean(shipped.ship_confirmed_at && shipped.ship_confirmed_at !== '1');
   const scannedOutDisplay = isScannedOut
@@ -152,6 +165,7 @@ export function deriveShippingDisplayMeta(
   return {
     daysLate,
     packedAtSource,
+    testedAtSource,
     shippedAtDisplay,
     testedAtDateTimeDisplay,
     isScannedOut,

@@ -228,7 +228,7 @@ export function ManifestWorkbenchPanel({
                 }
               }}
               placeholder="Scan a serial to add to the kit…"
-              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 font-mono text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy font-mono text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
             />
             {busy === 'add' ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-muted" /> : null}
           </div>
@@ -242,11 +242,11 @@ export function ManifestWorkbenchPanel({
             <Loader2 className="h-4 w-4 animate-spin" /> Loading manifest…
           </div>
         ) : isError ? (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
+          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-700">
             {error instanceof Error ? error.message : 'Could not load this manifest.'}
           </div>
         ) : !manifest || items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
+          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
             No units in this kit yet. Scan a serial above to add one.
           </div>
         ) : (
@@ -264,7 +264,7 @@ export function ManifestWorkbenchPanel({
                         …{getLast4(u.serial_number)}
                       </span>
                       <span
-                        className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
+                        className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${unitStatusBadgeTone(u.current_status)}`}
                       >
                         {u.current_status}
                       </span>

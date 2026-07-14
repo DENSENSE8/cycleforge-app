@@ -67,7 +67,7 @@ export const LABEL_DEFAULTS: Record<LabelKind, Record<string, LabelPresentation>
     PENDING: { label: 'Pending', description: 'Labeled and queued — waiting for test/pack.', tone: 'yellow' },
     TESTED: { label: 'Tested', description: 'Passed the tech scan — ready to pack.', tone: 'teal' },
     PACKED_STAGED: { label: 'Packed · Staged', description: 'Packed and staged at the dock — awaiting scan‑out.', tone: 'amber' },
-    BLOCKED: { label: 'Blocked', description: 'Out of stock / can’t fulfill — needs attention.', tone: 'red' },
+    BLOCKED: { label: 'Out of stock', description: 'Can’t fulfill until restocked — needs attention.', tone: 'red' },
   },
   outbound: {
     PACKED_STAGED: { label: 'In Staging', description: 'Packed and waiting at the dock — not scanned out yet.', tone: 'amber' },

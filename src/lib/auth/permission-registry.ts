@@ -175,6 +175,10 @@ export const PERMISSIONS = [
   // from studio.manage (author your OWN org's graphs) — this blesses another
   // org's submission for every tenant, so it's a platform-curator privilege.
   { id: 'studio.catalog.review',    category: 'ops', label: 'Review & curate submitted workflow templates' },
+  // Entity-anchored conversation threads (ticket-optional; independent of the
+  // Zendesk integration gate — a thread exists before any provider ticket).
+  { id: 'support.thread.view',      category: 'ops', label: 'View entity conversation threads' },
+  { id: 'support.thread.manage',    category: 'ops', label: 'Post & manage entity conversation threads' },
   { id: 'reports.view',             category: 'ops', label: 'View reports' },
   { id: 'reports.export',           category: 'ops', label: 'Export reports' },
   { id: 'print.label',              category: 'ops', label: 'Print labels' },

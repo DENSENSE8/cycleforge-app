@@ -58,3 +58,26 @@ test('deriveShippingDisplayMeta: copy text includes serials joined, "N/A" when e
   assert.match(noSerials.returnsCopyText, /Order ID: N\/A/);
   assert.match(noSerials.returnsCopyText, /Serials: N\/A/);
 });
+
+test('deriveShippingDisplayMeta: testedAtSource falls back through activity/event (serial-less test scan)', () => {
+  // Serial scans present → test_date_time wins.
+  assert.equal(
+    deriveShippingDisplayMeta(makeShipped({ test_date_time: '2026-07-13T10:00:00Z', test_activity_at: '2026-07-13T11:00:00Z' }), []).testedAtSource,
+    '2026-07-13T10:00:00Z',
+  );
+  // No serial scan (test_date_time null) but a test station-activity stamp → use it.
+  assert.equal(
+    deriveShippingDisplayMeta(makeShipped({ test_date_time: null, test_activity_at: '2026-07-13T11:00:00Z' }), []).testedAtSource,
+    '2026-07-13T11:00:00Z',
+  );
+  // Then the event stamp.
+  assert.equal(
+    deriveShippingDisplayMeta(makeShipped({ test_date_time: null, test_activity_at: null, test_event_at: '2026-07-13T12:00:00Z' }), []).testedAtSource,
+    '2026-07-13T12:00:00Z',
+  );
+  // Legacy '1' sentinel and blanks are not stamps.
+  assert.equal(
+    deriveShippingDisplayMeta(makeShipped({ test_date_time: '1', test_activity_at: '', test_event_at: null }), []).testedAtSource,
+    null,
+  );
+});

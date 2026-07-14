@@ -71,7 +71,7 @@ export function CredentialsCard({
           ) : (
             <ul className="mt-2 divide-y divide-border-hairline rounded-lg border border-border-hairline">
               {passkeys.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                <li key={p.id} className="flex items-center justify-between gap-3 inset-field">
                   <div className="min-w-0">
                     <div className="truncate text-xs font-semibold text-text-default">{p.device_label || 'Unlabeled device'}</div>
                     <div className="truncate text-role-micro text-text-soft">
@@ -146,10 +146,10 @@ export function CredentialsCard({
           ) : (
             <ul className="mt-2 divide-y divide-border-hairline rounded-lg border border-border-hairline">
               {sessions.map((s) => (
-                <li key={s.sid} className="flex items-center justify-between gap-3 px-3 py-2">
+                <li key={s.sid} className="flex items-center justify-between gap-3 inset-field">
                   <div className="min-w-0">
                     <div className="truncate text-xs font-semibold text-text-default">
-                      <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-text-muted mr-1.5">{s.device_kind}</span>
+                      <span className="rounded-full bg-surface-sunken inset-chip text-role-eyebrow font-bold uppercase tracking-wider text-text-muted mr-1.5">{s.device_kind}</span>
                       {s.device_label || 'Unlabeled'}
                     </div>
                     <div className="truncate text-role-micro text-text-soft">

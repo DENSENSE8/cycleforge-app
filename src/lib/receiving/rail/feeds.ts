@@ -88,16 +88,20 @@ export interface ReceivingRailFeed {
   buildFetcher?: (rt: RailFetchRuntime) => () => Promise<ApiResponse>;
 }
 
+// NOTE: `receiving-entry-deleted` is deliberately NOT a refresh event. The rail
+// already binds it as `deleteGroupEvent` (ReceivingFeedRail) — which SURGICALLY
+// drops just the deleted carton's rows and sticky-suppresses its id so a later
+// fetch can't resurrect it. Listing it here too made a delete ALSO trigger a
+// full-list refetch, which needlessly re-rendered (and could race to empty) the
+// whole rail. A delete must only remove that id, never refresh the entire list.
 const TRIAGE_REFRESH: string[] = [
   'receiving-triage-refresh',
   'receiving-entry-added',
-  'receiving-entry-deleted',
   'app-refresh-data',
 ];
 
 const UNBOX_REFRESH: string[] = [
   'receiving-unbox-refresh',
-  'receiving-entry-deleted',
   'app-refresh-data',
 ];
 

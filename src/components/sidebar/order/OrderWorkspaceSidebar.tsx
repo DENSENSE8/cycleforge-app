@@ -229,7 +229,7 @@ function RecentOrdersList({
 }) {
   if (entries.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
         <Box className="mx-auto mb-2 h-5 w-5 text-text-faint" />
         <p className="text-role-caption font-semibold text-text-muted">No recently opened orders</p>
         <p className="mt-1 text-role-micro font-medium text-text-faint">
@@ -312,7 +312,7 @@ function SearchOrdersBody({
   if (!trimmed) {
     return (
       <div className="space-y-3">
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
           <Search className="mx-auto mb-2 h-5 w-5 text-text-faint" />
           <p className="text-role-caption font-semibold text-text-muted">Find a customer&apos;s order</p>
           <p className="mt-1 text-role-micro font-medium text-text-faint">
@@ -339,7 +339,7 @@ function SearchOrdersBody({
         activeId={activeHitId}
       />
       {!searching && hits.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+        <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
           <p className="text-role-caption font-semibold text-text-muted">No matching orders</p>
           <p className="mt-1 text-role-micro font-medium text-text-faint">
             Try a different order #, tracking, or serial.

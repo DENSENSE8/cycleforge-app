@@ -58,7 +58,7 @@ function badge(kind: 'inserted' | 'updated' | 'deleted' | 'unknown' | 'resolved'
     resolved: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     open: 'bg-red-50 text-red-700 ring-red-200',
   };
-  return `inline-flex items-center rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
+  return `inline-flex items-center rounded-md inset-chip text-role-micro font-semibold uppercase tracking-wide ring-1 ring-inset ${map[kind]}`;
 }
 
 function TransferTab({ tab, label }: { tab: TransferTabState; label: string }) {
@@ -244,11 +244,11 @@ function DetailTable({
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
           <tr className="text-role-micro uppercase tracking-wide text-text-soft">
-            <th className="px-3 py-2 font-semibold">Order</th>
-            <th className="px-3 py-2 font-semibold">Product</th>
-            <th className="px-3 py-2 font-semibold">SKU</th>
-            <th className="px-3 py-2 font-semibold">Tracking</th>
-            <th className="px-3 py-2 font-semibold text-right">Kind</th>
+            <th className="inset-field font-semibold">Order</th>
+            <th className="inset-field font-semibold">Product</th>
+            <th className="inset-field font-semibold">SKU</th>
+            <th className="inset-field font-semibold">Tracking</th>
+            <th className="inset-field font-semibold text-right">Kind</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-hairline">
@@ -256,7 +256,7 @@ function DetailTable({
             const provenance = kind !== 'inserted' ? formatExistingProvenance(row) : null;
             return (
               <tr key={`${kind}:${row.orderId}:${i}`} className="hover:bg-surface-canvas/60">
-                <td className="px-3 py-2 align-top">
+                <td className="inset-field align-top">
                   {row.orderId ? (
                     <OrderIdChip value={row.orderId} display={getLast4(row.orderId)} />
                   ) : (
@@ -266,7 +266,7 @@ function DetailTable({
                     <div className="mt-0.5 pl-1.5 text-role-micro font-normal text-text-faint">{provenance}</div>
                   ) : null}
                 </td>
-                <td className="px-3 py-2 text-text-muted align-top">
+                <td className="inset-field text-text-muted align-top">
                   {row.productTitle || (
                     <span className="text-amber-700">Unknown Product</span>
                   )}
@@ -276,7 +276,7 @@ function DetailTable({
                     </span>
                   ) : null}
                 </td>
-                <td className="px-3 py-2 align-top">
+                <td className="inset-field align-top">
                   {row.sku || row.itemNumber ? (
                     <SkuScanRefChip
                       value={(row.sku || row.itemNumber) as string}
@@ -286,14 +286,14 @@ function DetailTable({
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 align-top">
+                <td className="inset-field align-top">
                   {row.tracking ? (
                     <TrackingChip value={row.tracking} display={getLast4(row.tracking)} />
                   ) : (
                     <span className="font-mono text-xs text-text-faint">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right align-top">
+                <td className="inset-field text-right align-top">
                   <span className={badge(kind)}>{kind}</span>
                 </td>
               </tr>
@@ -321,23 +321,23 @@ function ExceptionTable({
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-surface-canvas text-left shadow-[0_1px_0_0_rgb(229_231_235)]">
           <tr className="text-role-micro uppercase tracking-wide text-text-soft">
-            <th className="px-3 py-2 font-semibold">Exception</th>
-            <th className="px-3 py-2 font-semibold">Tracking</th>
-            <th className="px-3 py-2 font-semibold">Source</th>
-            <th className="px-3 py-2 font-semibold">Matched order</th>
-            <th className="px-3 py-2 font-semibold text-right">Status</th>
+            <th className="inset-field font-semibold">Exception</th>
+            <th className="inset-field font-semibold">Tracking</th>
+            <th className="inset-field font-semibold">Source</th>
+            <th className="inset-field font-semibold">Matched order</th>
+            <th className="inset-field font-semibold text-right">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border-hairline">
           {rows.map(({ kind, row }) => (
             <tr key={`${kind}:${row.exceptionId}`} className="hover:bg-surface-canvas/60">
-              <td className="px-3 py-2 font-mono text-xs text-text-default">#{row.exceptionId}</td>
-              <td className="px-3 py-2 font-mono text-xs text-text-muted">{row.tracking || '—'}</td>
-              <td className="px-3 py-2 text-xs text-text-muted">{row.sourceStation || '—'}</td>
-              <td className="px-3 py-2 font-mono text-xs text-text-muted">
+              <td className="inset-field font-mono text-xs text-text-default">#{row.exceptionId}</td>
+              <td className="inset-field font-mono text-xs text-text-muted">{row.tracking || '—'}</td>
+              <td className="inset-field text-xs text-text-muted">{row.sourceStation || '—'}</td>
+              <td className="inset-field font-mono text-xs text-text-muted">
                 {row.matchedOrderId != null ? `#${row.matchedOrderId}` : '—'}
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="inset-field text-right">
                 <span className={badge(kind)}>{kind === 'resolved' ? 'resolved' : 'still open'}</span>
               </td>
             </tr>
@@ -461,7 +461,7 @@ export function OrderSyncDialog({
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
                     /* ds-raw-button: segmented tab with animated layoutId underline — not a Button shape */
-                    className={`ds-raw-button relative flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-semibold transition ${
+                    className={`ds-raw-button relative flex items-center gap-1.5 rounded-t-lg inset-field text-sm font-semibold transition ${
                       isActive ? 'text-text-default' : 'text-text-soft hover:text-text-muted'
                     }`}
                   >
@@ -470,7 +470,7 @@ export function OrderSyncDialog({
                       {statusDot(meta.status)}
                     </span>
                     {meta.count > 0 ? (
-                      <span className="ml-0.5 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-text-muted">
+                      <span className="ml-0.5 rounded bg-surface-sunken inset-chip text-role-micro font-bold tabular-nums text-text-muted">
                         {meta.count}
                       </span>
                     ) : null}

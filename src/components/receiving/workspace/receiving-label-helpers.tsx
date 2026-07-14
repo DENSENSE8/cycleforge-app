@@ -1,5 +1,6 @@
 'use client';
 
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { buildLabelHtml } from '@/lib/print/printLabel';
 import { buildFaceInfoHtml } from '@/lib/print/labelFace';
 import {
@@ -109,4 +110,38 @@ export function markReceivingLabelPrinted(lineId: number): void {
     new CustomEvent('receiving-label-printed', { detail: { line_id: lineId } }),
   );
   void fetch(`/api/receiving/lines/${lineId}/label-printed`, { method: 'POST' }).catch(() => {});
+}
+
+/**
+ * Record the no-serial waiver for a receiving line — the single choke point for
+ * the green-check "no serial" toggle (NoSerialControl), so every caller persists
+ * the SAME durable fact and the stepper can never disagree with the control.
+ *
+ * Two effects, in order of latency (mirrors {@link markReceivingLabelPrinted}):
+ *   1. `dispatchLineUpdated` → the shared `receiving-line-updated` bus patches
+ *      `selectedLine.serial_absent`, so the Unbox stepper's Serial step (which
+ *      derives from `row.serial_absent`) flips the instant the operator toggles —
+ *      the SAME optimistic path a scanned serial already rides.
+ *   2. POST /api/receiving/lines/[id]/serial-absent → the DURABLE stamp
+ *      (`receiving_line_testing.serial_absent`) that survives refresh / another
+ *      device. Fire-and-forget; a toggle writes the exact value (set or clear).
+ *
+ * A stub/unfound line (id ≤ 0) is skipped — there's no persisted line to stamp
+ * yet; the local controller state still reflects the waiver until the line lands.
+ */
+export function markReceivingSerialAbsent(
+  lineId: number,
+  { absent, reason }: { absent: boolean; reason: string | null },
+): void {
+  if (typeof window === 'undefined' || !(lineId > 0)) return;
+  dispatchLineUpdated({
+    id: lineId,
+    serial_absent: absent,
+    serial_absent_reason: reason,
+  });
+  void fetch(`/api/receiving/lines/${lineId}/serial-absent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ absent, reason }),
+  }).catch(() => {});
 }

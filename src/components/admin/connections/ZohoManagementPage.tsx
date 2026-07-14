@@ -23,7 +23,7 @@ export function ZohoManagementPage() {
           </div>
           <Link
             href={integrationsHubHref('zoho')}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-role-eyebrow uppercase tracking-widest text-text-default transition-colors hover:bg-surface-sunken"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas inset-field text-role-eyebrow uppercase tracking-widest text-text-default transition-colors hover:bg-surface-sunken"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Manage connection in Settings → Integrations

@@ -121,11 +121,11 @@ export function RolesSidebarPanel({ basePath = '/settings/roles' }: { basePath?:
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto inset-field">
         {loading ? (
           <div className="px-2 py-6 text-center text-xs text-text-faint">Loading roles…</div>
         ) : err ? (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{err}</div>
+          <div className="rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>
         ) : rows.length === 0 ? (
           <div className="px-2 py-6 text-center text-xs text-text-faint">No roles yet.</div>
         ) : (
@@ -204,7 +204,7 @@ function SortableRoleRow({ role, selected, onPick }: SortableRoleRowProps) {
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-text-default">{role.label}</span>
             {role.is_system && (
-              <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-soft">
+              <span className="rounded-full bg-surface-sunken inset-chip text-role-micro font-bold uppercase tracking-wider text-text-soft">
                 System
               </span>
             )}
@@ -215,7 +215,7 @@ function SortableRoleRow({ role, selected, onPick }: SortableRoleRowProps) {
         </button>
 
         <HoverTooltip label={`${role.member_count} member${role.member_count === 1 ? '' : 's'}`} asChild>
-          <span className="flex-shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold tabular-nums text-text-muted">
+          <span className="flex-shrink-0 rounded-full bg-surface-sunken inset-chip text-role-micro font-semibold tabular-nums text-text-muted">
             {role.member_count}
           </span>
         </HoverTooltip>

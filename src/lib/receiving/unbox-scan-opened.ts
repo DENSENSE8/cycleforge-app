@@ -41,6 +41,31 @@ export const UNBOX_ONLY_INTAKE_PREDICATE_SQL = `EXISTS (
     AND ru_ui.intake_path = 'unbox_only'
 )`;
 
+/**
+ * Column-only membership — reads ONLY the committed receiving_unbox.opened_at
+ * street column, dropping the derived ops_events OR-arm. Because opened_at is
+ * written (committed) by the same request that opens/matches a carton, a refetch
+ * fired right after a mutation can never transiently miss it — which the OR-arm
+ * (a best-effort, separately-written log) and the lined/lineless split otherwise
+ * allow, blanking the whole rail until reload. Selected via
+ * `RECEIVING_UNBOX_RAIL_COLUMN_READ` once the backfill migration proves parity.
+ */
+export const UNBOX_OPENED_PREDICATE_COLUMN_ONLY_SQL = `EXISTS (
+  SELECT 1 FROM receiving_unbox ru_uo
+  WHERE ru_uo.receiving_id = r.id
+    AND ru_uo.organization_id = r.organization_id
+    AND ru_uo.opened_at IS NOT NULL
+)`;
+
+/**
+ * Pick the `view=unbox_opened` membership predicate. `columnOnly` (the flag on)
+ * = the read-after-write-consistent column read; otherwise the legacy
+ * OR-arm (column ∪ ops_events) for a backward-compatible, revertible rollout.
+ */
+export function unboxOpenedPredicateSql(columnOnly: boolean): string {
+  return columnOnly ? UNBOX_OPENED_PREDICATE_COLUMN_ONLY_SQL : UNBOX_OPENED_PREDICATE_SQL;
+}
+
 /** @deprecated Use UNBOX_OPENED_PREDICATE_SQL */
 export const UNBOX_SCAN_OPENED_EXISTS_SQL = UNBOX_OPENED_PREDICATE_SQL;
 

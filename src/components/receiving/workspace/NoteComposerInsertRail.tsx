@@ -68,7 +68,7 @@ export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInser
                 action.onClick();
                 setMenuOpen(false);
               }}
-              className="ds-raw-button flex w-full items-center gap-2 px-3 py-2 text-left text-role-caption font-medium text-text-default transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-50"
+              className="ds-raw-button flex w-full items-center gap-2 inset-field text-left text-role-caption font-medium text-text-default transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center text-text-muted">
                 {action.loading ? (

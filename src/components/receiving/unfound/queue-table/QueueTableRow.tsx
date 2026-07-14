@@ -58,7 +58,7 @@ export function QueueTableRow({
         row.checked ? 'bg-surface-canvas/60 text-text-soft' : 'text-text-default'
       }`}
     >
-      <td className="px-3 py-2 font-mono text-role-caption">
+      <td className="inset-field font-mono text-role-caption">
         <input
           type="text"
           defaultValue={row.zendesk_ticket_id ?? ''}
@@ -72,7 +72,7 @@ export function QueueTableRow({
           className="w-20 border-b border-transparent bg-transparent px-1 py-0.5 outline-none focus:border-blue-500"
         />
       </td>
-      <td className="px-3 py-2 font-semibold">
+      <td className="inset-field font-semibold">
         {(() => {
           // Email-PO rows: subject as the title (top), chips as the
           // identifier below — same shape as tracking-chip rows below.
@@ -127,7 +127,7 @@ export function QueueTableRow({
           );
         })()}
       </td>
-      <td className="px-3 py-2">
+      <td className="inset-field">
         <textarea
           rows={1}
           defaultValue={row.usa_team_note ?? ''}
@@ -138,7 +138,7 @@ export function QueueTableRow({
           className="w-full resize-none border-b border-transparent bg-transparent px-1 py-0.5 text-role-caption outline-none focus:border-blue-500"
         />
       </td>
-      <td className="px-3 py-2">
+      <td className="inset-field">
         <textarea
           rows={1}
           defaultValue={row.vietnam_team_note ?? ''}
@@ -149,7 +149,7 @@ export function QueueTableRow({
           className="w-full resize-none border-b border-transparent bg-transparent px-1 py-0.5 text-role-caption outline-none focus:border-blue-500"
         />
       </td>
-      <td className="px-3 py-2 text-center">
+      <td className="inset-field text-center">
         <div className="flex items-center justify-center gap-1.5">
           <input
             type="checkbox"
@@ -164,7 +164,7 @@ export function QueueTableRow({
           ) : null}
         </div>
       </td>
-      <td className="px-3 py-2 text-right">
+      <td className="inset-field text-right">
         {row.zendesk_ticket_id ? (
           <span className="text-role-micro font-bold uppercase tracking-wider text-emerald-600">
             Synced

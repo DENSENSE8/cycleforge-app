@@ -85,7 +85,7 @@ export function TraceSerialPicker({ query }: { query: string }) {
           </div>
         </>
       ) : (
-        <div className="px-4 py-6 text-center text-role-caption text-text-faint">
+        <div className="inset-empty text-center text-role-caption text-text-faint">
           Scan or type a serial above, then press Trace.
         </div>
       )}

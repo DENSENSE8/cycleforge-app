@@ -73,17 +73,27 @@ export interface OutboundMetricCtx {
   roi: OperationsRoiData | null;
 }
 
-/** A metric resolved for render — consumed 1:1 by `MetricTile`. */
+/** A metric resolved for render — consumed 1:1 by the attention strip. */
 export interface ComputedMetric {
   id: string;
   label: string;
   value: string;
-  /** 0..1 gauge fill. */
+  /** 0..1 gauge fill. Retained for legacy gauge consumers; the attention strip
+   *  ignores it (a fill is a decorative claim — see the OutboundKpiStrip redesign). */
   fraction: number;
   intent: MetricIntent;
   status?: string;
   delta?: number;
   deltaInvert?: boolean;
+  /**
+   * Attention rank — how loudly this wants a human RIGHT NOW. `0` = not an
+   * attention item (pure status/trend; the strip shows it only if it carries an
+   * honest week-over-week `delta`, else drops it). `1` = focus/pressure (a
+   * backlog to work down), `2` = warn, `3` = critical (check immediately). The
+   * strip sorts the attention zone by this descending, so the most urgent fact
+   * sits leftmost — reading order = priority.
+   */
+  severity: number;
   /** One-line HoverTooltip definition (with numerator/denominator where it clarifies). */
   tooltip?: string;
   /**
@@ -132,6 +142,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         // A volume count is not a health state — the calm neutral value reads as
         // "this is how much", and the DeltaChip alone carries the up/down trend.
         intent: 'neutral',
+        // Pure trend, never an alarm: severity 0 so it lands in the trend zone,
+        // carried by its honest week-over-week delta.
+        severity: 0,
         delta: roi.pctChange,
         tooltip: `Units packed this week (${roi.unitsThisWeek.toLocaleString()}) vs last week (${roi.unitsLastWeek.toLocaleString()}).`,
       };
@@ -151,6 +164,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: `${pct}%`,
         fraction: rate,
         intent: pct >= 95 ? 'good' : pct >= 85 ? 'warn' : 'bad',
+        // Healthy on-time is not something to "focus on" — it drops (sev 0); only
+        // a slipping rate surfaces, louder the further it falls.
+        severity: pct >= 95 ? 0 : pct >= 85 ? 2 : 3,
         status: pct >= 95 ? 'On track' : pct >= 85 ? 'Watch' : 'At risk',
         tooltip: `On-time ships ÷ ships with a deadline · ${shipped.onTime}/${shipped.onTimeCoverage}.`,
       };
@@ -170,6 +186,8 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: fmtHours(h),
         fraction: clamp01(1 - h / 24),
         intent: h <= 4 ? 'good' : h <= 24 ? 'warn' : 'bad',
+        // Fast staging drops; a slow dock is a bottleneck to work down.
+        severity: h <= 4 ? 0 : h <= 24 ? 1 : 3,
         status: h <= 4 ? 'Fast' : h <= 24 ? 'Watch' : 'Slow',
         tooltip: `Median pack→dock staging time, over ${shipped.dwellCoverage} scanned-out ${shipped.dwellCoverage === 1 ? 'package' : 'packages'}.`,
       };
@@ -187,6 +205,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: shipped.delivered.toLocaleString(),
         fraction: share(shipped.delivered, total),
         intent: 'good',
+        // Delivered is a good-news status, not an action — dropped from the
+        // attention strip (distribution lives on the board legend).
+        severity: 0,
         status: `${Math.round(share(shipped.delivered, total) * 100)}% of week`,
         tooltip: `Delivered ÷ shipped this week · ${shipped.delivered}/${total}. Click to filter the board.`,
         filterState: 'DELIVERED',
@@ -205,6 +226,8 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: shipped.inTransit.toLocaleString(),
         fraction: share(shipped.inTransit, total),
         intent: 'neutral',
+        // In-carrier is neutral status, not an action — dropped from the strip.
+        severity: 0,
         status: 'With carrier',
         tooltip: `In carrier custody ÷ shipped this week · ${shipped.inTransit}/${total}. Click to filter the board.`,
         filterState: 'IN_CUSTODY',
@@ -223,7 +246,10 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         label: 'Exceptions',
         value: shipped.exceptions.toLocaleString(),
         fraction: rate,
-        intent: rate > 0.05 ? 'bad' : rate > 0.02 ? 'warn' : 'good',
+        // An exception is never "good" — any nonzero count is worth a look, louder
+        // as the rate climbs.
+        intent: rate > 0.05 ? 'bad' : 'warn',
+        severity: rate > 0.05 ? 3 : rate > 0.02 ? 2 : 1,
         status: `${Math.round(rate * 100)}% of week`,
         tooltip: `Exceptions ÷ shipped this week · ${shipped.exceptions}/${total}. Click to filter the board.`,
         filterState: 'EXCEPTION',
@@ -243,6 +269,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: unshipped.tested.toLocaleString(),
         fraction: share(unshipped.tested, denom),
         intent: 'good',
+        // Ready-to-pack is available good work, not a problem — dropped from the
+        // attention strip (the board's Tested lane already surfaces it).
+        severity: 0,
         status: 'Tested',
         tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}.`,
       };
@@ -261,6 +290,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: unshipped.pending.toLocaleString(),
         fraction: share(unshipped.pending, denom),
         intent: 'neutral',
+        // The test bottleneck — the pile to work down. A focus item (sev 1), calm
+        // tone: it's pressure, not a failure.
+        severity: 1,
         status: 'In queue',
         tooltip: `Awaiting test ÷ open queue · ${unshipped.pending}/${denom}.`,
       };
@@ -278,6 +310,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: unshipped.blocked.toLocaleString(),
         fraction: share(unshipped.blocked, unshipped.total),
         intent: 'bad',
+        // Check immediately — even 1 blocked unit needs a human, so it always
+        // sorts to the front regardless of its tiny share.
+        severity: 3,
         status: 'Needs attention',
         tooltip: `Blocked ÷ open queue · ${unshipped.blocked}/${unshipped.total}.`,
       };
@@ -295,6 +330,7 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         value: roi.unitsStuck.toLocaleString(),
         fraction: 1,
         intent: 'warn',
+        severity: 2,
         status: 'Blocked / error',
         tooltip: `Units currently stuck in a blocked or error state across the workflow.`,
       };
@@ -302,10 +338,45 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
   },
 ];
 
-/** Resolve the tiles to show for a mode: first N populated, in registry order. */
-export function resolveOutboundMetrics(ctx: OutboundMetricCtx, limit = 4): ComputedMetric[] {
+/** Every populated metric for a mode, in registry order (no zoning applied). */
+export function resolveOutboundMetrics(ctx: OutboundMetricCtx): ComputedMetric[] {
   return OUTBOUND_METRICS.filter((d) => d.modes.includes(ctx.mode))
     .map((d) => d.compute(ctx))
-    .filter((m): m is ComputedMetric => m != null)
-    .slice(0, limit);
+    .filter((m): m is ComputedMetric => m != null);
+}
+
+/**
+ * The attention view over the resolved metrics — the shape the redesigned
+ * OutboundKpiStrip renders. Two honest zones, and nothing else:
+ *
+ *   • `attention` — `severity > 0`, sorted by severity DESC then value DESC, so
+ *     "check immediately" (blocked, exceptions) sits leftmost and pressure
+ *     (backlog, slow dock) follows. Capped so the header stays scannable.
+ *   • `trend` — `severity === 0` metrics that carry an honest week-over-week
+ *     `delta` ("what's down from previous weeks"). Today only throughput has a
+ *     real baseline; more join once the ROI endpoint returns prior-period values.
+ *
+ * Pure status with neither severity nor delta (delivered, in-transit, ready) is
+ * dropped — it's not "what needs you", it lives on the board. When BOTH zones are
+ * empty the strip shows an all-clear.
+ */
+export interface OutboundAttention {
+  attention: ComputedMetric[];
+  trend: ComputedMetric[];
+}
+
+export function splitOutboundAttention(
+  metrics: ComputedMetric[],
+  attentionLimit = 4,
+): OutboundAttention {
+  const parseValue = (m: ComputedMetric) => {
+    const n = Number.parseFloat(m.value.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const attention = metrics
+    .filter((m) => m.severity > 0)
+    .sort((a, b) => b.severity - a.severity || parseValue(b) - parseValue(a))
+    .slice(0, attentionLimit);
+  const trend = metrics.filter((m) => m.severity === 0 && m.delta !== undefined);
+  return { attention, trend };
 }

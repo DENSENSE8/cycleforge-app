@@ -73,6 +73,10 @@ export const CACHE_NS = {
   staffOverrides: 'staff-ovr',
   opsDashboard: 'ops-dashboard',
   catalog: 'catalog',
+  /** Per-viewer receiving sidebar-rail first-paint seed (localStorage → Redis).
+   *  Seed-only: written client-side from the rows a rail just rendered, read to
+   *  paint the next reload before the authoritative query resolves. */
+  receivingRail: 'receiving-rail',
 } as const;
 
 export type CacheNamespace = (typeof CACHE_NS)[keyof typeof CACHE_NS];

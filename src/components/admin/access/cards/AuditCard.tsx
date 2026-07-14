@@ -62,7 +62,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
         className={`flex w-full flex-wrap items-center gap-3 px-5 py-2 text-left ${hasDetail ? 'hover:bg-surface-hover' : 'cursor-default'}`}
       >
         <span className="font-mono text-text-muted">{entry.event}</span>
-        <span className={`rounded-full px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider ring-1 ring-inset ${
+        <span className={`rounded-full inset-chip text-role-eyebrow font-bold uppercase tracking-wider ring-1 ring-inset ${
           entry.result === 'ok' ? 'bg-green-100 text-green-800 ring-green-200'
           : entry.result === 'denied' ? 'bg-amber-100 text-amber-800 ring-amber-200'
           : 'bg-red-100 text-red-800 ring-red-200'

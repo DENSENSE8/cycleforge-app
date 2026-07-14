@@ -2,13 +2,14 @@
 
 Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). Summarized in root `CLAUDE.md`.
 
-## tailwind.config.ts must import the z-index token from `z-index.mjs`
+## tailwind.config.ts must import values modules as `.mjs` (z-index, spacing)
 
-- `tailwind.config.ts` imports the z-index scale from `src/design-system/tokens/z-index.mjs`.
-- Use the explicit `.mjs` extension — do **not** import `z-index.ts` here. Node loads
+- `tailwind.config.ts` imports the z-index and spacing scales from
+  `src/design-system/tokens/z-index.mjs` / `spacing.mjs`.
+- Use the explicit `.mjs` extension — do **not** import the `.ts` twins here. Node loads
   Tailwind config directly; a `.ts` ESM import triggers `MODULE_TYPELESS_PACKAGE_JSON`
-  reparsing (build noise + overhead). App code keeps importing `@/design-system/tokens/z-index`.
-- Values live in `z-index.mjs`; `z-index.ts` re-exports with types.
+  reparsing (build noise + overhead). App code keeps importing `@/design-system/tokens/*`.
+- Values live in the `.mjs` module; the `.ts` twin re-exports with types.
 - A bare extensionless import can also fail under Turbopack dev (silent missing `z-*` utilities).
 
 ## Tailwind content globs: a class used only in an un-scanned file renders invisible

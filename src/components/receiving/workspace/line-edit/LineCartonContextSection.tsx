@@ -10,6 +10,8 @@
 import { CartonContextCard } from './CartonContextCard';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
+import { classifyLineSource } from '@/lib/receiving/intake-items-routing';
+import { isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineCartonContextSectionProps {
@@ -42,11 +44,19 @@ export function LineCartonContextSection({
   onToggleTicketView,
   ticketViewActive = false,
 }: LineCartonContextSectionProps) {
+  // An unfound carton whose intake kind isn't set yet: the unbox stepper's
+  // Classify dot is active, so surface the classify pills (platform + type)
+  // right here in the header — expanded — instead of hiding them behind the
+  // sliders toggle. Matched cartons (identity resolved by their PO) and
+  // already-classified unfound cartons keep the condensed one-row default.
+  const classifyPending = classifyLineSource(row) === 'unmatched' && !isIntakeClassified(row);
+
   return (
     <CartonContextCard
       receivingId={row.receiving_id ?? null}
       staffId={staffId}
       isUnmatched={row.receiving_source === 'unmatched'}
+      classifyPending={classifyPending}
       showStaffPhotoRow
       onMakeClaim={() => c.setClaimModalOpen(true)}
       listingLink={c.listingLink}

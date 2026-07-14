@@ -323,7 +323,7 @@ function SkuSearchField({ value, onSelect, onClear }: { value: string; onSelect:
 
   if (value) {
     return (
-      <div className="flex items-center justify-between rounded-md border border-border-soft bg-surface-canvas px-3 py-2">
+      <div className="flex items-center justify-between rounded-md border border-border-soft bg-surface-canvas inset-field">
         <span className="truncate text-sm text-text-default">{value}</span>
         <Button variant="ghost" size="sm" type="button" onClick={onClear}>Change</Button>
       </div>
@@ -347,7 +347,7 @@ function SkuSearchField({ value, onSelect, onClear }: { value: string; onSelect:
               <button
                 type="button"
                 onClick={() => { onSelect(s); setOpen(false); setTerm(''); }}
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                className="block w-full inset-field text-left text-sm hover:bg-blue-50"
               >
                 <span className="font-semibold text-text-default">{s.product_title}</span>
                 <span className="ml-1 text-role-caption text-text-soft">{s.sku}</span>
@@ -362,7 +362,7 @@ function SkuSearchField({ value, onSelect, onClear }: { value: string; onSelect:
 
 // ─── Small presentational bits ──────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-md border border-border-default px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+const inputCls = 'w-full rounded-md border border-border-default inset-field text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
 const selectCls = 'rounded-md border border-border-default px-2 py-1.5 text-role-caption focus:border-blue-500 focus:outline-none';
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {

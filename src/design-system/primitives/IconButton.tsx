@@ -1,8 +1,38 @@
 'use client';
 
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
+import { cn } from '@/utils/_cn';
 
 type IconButtonTone = 'neutral' | 'accent';
+
+/**
+ * Box-size contract (control-size axis). Opt-in: without `size` the button
+ * stays the legacy bare glyph-button (the glyph is the hit target). With
+ * `size` the button owns a fixed square hit-box + centering; the glyph keeps
+ * its own canonical size — pair them as: xs/sm → `h-3.5 w-3.5` glyph ·
+ * md/lg → `h-4 w-4` · touch → `h-5 w-5`. Values rhyme with `Button`
+ * (sm h-8 / md h-9) and `touch` is the 44px iOS-HIG tap floor (the old
+ * `tokens/touch.ts` job, folded in here). The scale is density-aware for
+ * free (h-* and w-* resolve through spacing.mjs).
+ *
+ * Never re-invent the box via className `h-*`/`w-*` — the control-size guard
+ * ratchets those call sites (escape: `ds-allow-control-size` for genuinely
+ * bespoke geometry).
+ */
+export type IconButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'touch';
+
+const sizeClassName: Record<IconButtonSize, string> = {
+  /** 24px — dense rail rows. */
+  xs: 'h-6 w-6',
+  /** 28px — compact toolbars. */
+  sm: 'h-7 w-7',
+  /** 32px — default chrome actions (rhymes Button sm). */
+  md: 'h-8 w-8',
+  /** 36px — headers / prominent actions (rhymes Button md). */
+  lg: 'h-9 w-9',
+  /** 44px — mobile tap floor (iOS HIG). */
+  touch: 'h-11 w-11',
+};
 
 const toneClassName: Record<IconButtonTone, string> = {
   neutral: 'text-text-soft hover:text-text-default',
@@ -17,6 +47,8 @@ export interface IconButtonProps
   ariaLabel: string;
   title?: string;
   tone?: IconButtonTone;
+  /** Fixed square hit-box from the control-size scale. Omit = legacy bare glyph-button. */
+  size?: IconButtonSize;
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
@@ -27,6 +59,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     ariaLabel,
     title,
     tone = 'neutral',
+    size,
     disabled = false,
     type = 'button',
     ...rest
@@ -41,11 +74,13 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       disabled={disabled}
       aria-label={ariaLabel}
       title={title}
-      className={[
+      className={cn(
         'transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+        size && 'inline-flex shrink-0 items-center justify-center',
+        size && sizeClassName[size],
         toneClassName[tone],
         className,
-      ].join(' ').trim()}
+      )}
       {...rest}
     >
       {icon}

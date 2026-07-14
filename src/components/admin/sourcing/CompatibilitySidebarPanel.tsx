@@ -83,7 +83,7 @@ export function CompatibilitySidebarPanel() {
                 title={row.model_name}
                 subtitle={row.model_number}
                 trailing={
-                  <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted">
+                  <span className="rounded-full bg-surface-sunken inset-chip text-role-micro font-semibold text-text-muted">
                     {row.compat_count}
                   </span>
                 }

@@ -14,7 +14,7 @@ import { sortSerialUnitToParts } from '@/lib/inventory/parts-sort';
 import { isTestingApiView } from '@/lib/surface-isolation';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
 import { isIncomingUniversal } from '@/lib/feature-flags';
-import { isReceivingPhysicalStateFirst } from '@/lib/feature-flags';
+import { isReceivingPhysicalStateFirst, isUnboxRailColumnRead } from '@/lib/feature-flags';
 import {
   parseReceivingLinesQuery,
   QA_STATUSES,
@@ -115,6 +115,9 @@ export async function handleReceivingLinesGet(
     // old behaviour (always hide Zoho-received) is preserved. Scoped to scanned —
     // Incoming still clears received POs by design.
     const applyScannedZohoExclusion = !isReceivingPhysicalStateFirst() || hideZohoReceived;
+    // Layer 1 (rail read-after-write): read view=unbox_opened membership from the
+    // committed receiving_unbox.opened_at column only. Flag-gated, default off.
+    const unboxRailColumnRead = isUnboxRailColumnRead();
 
     const orgId = ctx.organizationId as OrgId;
 
@@ -212,6 +215,7 @@ export async function handleReceivingLinesGet(
       viewerStaffId,
       universalIncoming,
       applyScannedZohoExclusion,
+      unboxRailColumnRead,
     });
     const [rowsRes, countRes] = await withTenantConnection(orgId, (client) => Promise.all([
       client.query(built.list.sql, built.list.params),
@@ -284,7 +288,7 @@ export async function handleReceivingLinesGet(
     // zoho_po rows after the operator typed a PO#) never appear in the lines
     // query above; append them as placeholders keyed on UNBOX_SCAN_OPENED.
     if (shouldIncludeUnboxOpenedPlaceholders(query)) {
-      const placeholders = buildUnboxOpenedPlaceholdersSql(query, orgId);
+      const placeholders = buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead);
       const [unboxPkgsRes, unboxCntRes] = await withTenantConnection(orgId, (client) => Promise.all([
         client.query(placeholders.list.sql, placeholders.list.params),
         client.query(placeholders.count.sql, placeholders.count.params),

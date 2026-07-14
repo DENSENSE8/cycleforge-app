@@ -229,7 +229,7 @@ export function SettingsSidebar() {
         <button
           type="button"
           onClick={() => router.replace('/settings')}
-          className="ds-raw-button group flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-text-muted hover:bg-surface-sunken transition-colors"
+          className="ds-raw-button group flex w-full items-center gap-3 rounded-md inset-field text-left text-sm font-medium text-text-muted hover:bg-surface-sunken transition-colors"
           aria-label="Back to settings overview"
         >
           <SettingsIcon className="h-5 w-5 text-blue-600" />

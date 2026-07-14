@@ -72,7 +72,7 @@ export function OperationsFlowsDisplay() {
           <div key={section.group}>
             <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-faint">
               {section.group}
-              <span className="rounded-full bg-surface-strong px-1.5 py-0.5 text-role-micro font-semibold text-text-soft">
+              <span className="rounded-full bg-surface-strong inset-chip text-role-micro font-semibold text-text-soft">
                 {section.flows.length}
               </span>
             </h3>
@@ -97,7 +97,7 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
           <h3 className="text-sm font-bold text-text-default">{flow.label}</h3>
           <div className="flex flex-wrap justify-end gap-1">
             {flow.stations.map((s) => (
-              <span key={s} className="rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold text-text-muted">
+              <span key={s} className="rounded-md bg-surface-sunken inset-chip text-role-micro font-semibold text-text-muted">
                 {s}
               </span>
             ))}
@@ -106,12 +106,12 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
         <p className="mt-1 text-xs text-text-soft">{flow.blurb}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1">
           <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">Source</span>
-          <span className="rounded border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-role-micro text-text-muted">{flow.source}</span>
+          <span className="rounded border border-border-soft bg-surface-canvas inset-chip font-mono text-role-micro text-text-muted">{flow.source}</span>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">Implemented in</span>
           {flow.code.map((c) => (
-            <span key={c} className="rounded border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-role-micro text-text-muted">
+            <span key={c} className="rounded border border-border-soft bg-surface-canvas inset-chip font-mono text-role-micro text-text-muted">
               {c}
             </span>
           ))}
@@ -146,13 +146,13 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
                     {step.stage}
                   </span>
                   {step.key && step.key !== step.stage && (
-                    <span className="rounded border border-border-soft bg-surface-card px-1.5 py-0.5 font-mono text-role-micro text-text-faint">
+                    <span className="rounded border border-border-soft bg-surface-card inset-chip font-mono text-role-micro text-text-faint">
                       {step.key}
                     </span>
                   )}
                   <span className="text-role-caption font-semibold text-text-soft">{step.station}</span>
                   {step.signal && (
-                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro text-text-soft">
+                    <span className="rounded bg-surface-sunken inset-chip font-mono text-role-micro text-text-soft">
                       {step.signal}
                     </span>
                   )}
@@ -181,7 +181,7 @@ function FlowCard({ flow, occupancy }: { flow: OpsFlow; occupancy: Occupancy }) 
           <ul className="space-y-1">
             {flow.offPath.map((b) => (
               <li key={b.stage} className="flex items-baseline gap-2 text-role-caption">
-                <span className="shrink-0 rounded bg-surface-strong/70 px-1.5 py-0.5 font-semibold text-text-muted">{b.stage}</span>
+                <span className="shrink-0 rounded bg-surface-strong/70 inset-chip font-semibold text-text-muted">{b.stage}</span>
                 <span className="text-text-soft">{b.note}</span>
               </li>
             ))}

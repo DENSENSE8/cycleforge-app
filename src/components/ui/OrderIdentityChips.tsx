@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useRef } from 'react';
 import { Clipboard, Copy, ExternalLink } from '@/components/Icons';
 import {
   OrderIdChip,
@@ -20,9 +21,9 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  * order-row tables (unshipped queue, shipped, packer, tech).
  *
  * Hover menus (unbox IdentityLinkChip pattern via {@link CopyChipHoverMenu}):
- *   • Platform — primary **copy listing URL**; hover: Open listing · Copy
- *   • Order id — primary **copy**; hover: Copy · Open on platform
- *   • Tracking filled — primary **copy**; hover: Copy · Open tracking
+ *   • Platform — primary **open listing** (new tab); hover: Copy listing link
+ *   • Order id — primary **copy**; hover: Open on platform
+ *   • Tracking filled — primary **copy**; hover: Open tracking page
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
  */
 export interface OrderIdentityChipsProps {
@@ -49,6 +50,9 @@ export interface OrderIdentityChipsProps {
   /** Optional 4th column — serial chip on station (Tech) rows. */
   serialChip?: React.ReactNode;
   isMobile: boolean;
+  /** Fires when any chip's hover menu opens/closes — lets the row keep its
+   *  hover-expanded chrome (chevron + shifted chips) while a menu is up. */
+  onMenuOpenChange?: (open: boolean) => void;
 }
 
 function openExternal(href: string | null | undefined) {
@@ -77,11 +81,25 @@ export function OrderIdentityChips({
   onPasteTracking,
   serialChip,
   isMobile,
+  onMenuOpenChange,
 }: OrderIdentityChipsProps) {
   const history = useClipboardHistory();
   const lastTracking = history.find((e) => e.kind === 'tracking' && e.value.trim());
   const trackingUrl = tracking ? getTrackingUrl(tracking) : null;
 
+  // Aggregate open/close across the chip menus (only one is realistically open at
+  // a time, but hover hand-off briefly overlaps) → bubble a single boolean up.
+  const openCount = useRef(0);
+  const handleMenuOpenChange = useCallback(
+    (open: boolean) => {
+      openCount.current = Math.max(0, openCount.current + (open ? 1 : -1));
+      onMenuOpenChange?.(openCount.current > 0);
+    },
+    [onMenuOpenChange],
+  );
+
+  // Clicking the platform chip opens the listing in a new tab (primary); the menu
+  // carries the secondary "copy listing link".
   const platformItems: CopyChipHoverMenuItem[] = [];
   if (productPageUrl) {
     platformItems.push({
@@ -90,23 +108,13 @@ export function OrderIdentityChips({
       icon: <Copy />,
       onSelect: () => copyValue(productPageUrl, 'listing', platformLabel),
     });
-    platformItems.push({
-      id: 'open-listing',
-      label: 'Open listing',
-      icon: <ExternalLink />,
-      tone: 'accent',
-      onSelect: () => openExternal(productPageUrl),
-    });
   }
 
-  const orderItems: CopyChipHoverMenuItem[] = [
-    {
-      id: 'copy-order',
-      label: 'Copy order number',
-      icon: <Copy />,
-      onSelect: () => copyValue(orderId, 'id', getLast4(orderId)),
-    },
-  ];
+  // Clicking the chip already copies the order number (OrderIdChip → handleCopy),
+  // so the menu carries only the secondary "open on platform" action. When there
+  // is no marketplace URL the menu is empty → CopyChipHoverMenu disables itself
+  // and the chip is a plain copy-on-click.
+  const orderItems: CopyChipHoverMenuItem[] = [];
   if (marketplaceOrderUrl) {
     orderItems.push({
       id: 'open-order',
@@ -117,27 +125,20 @@ export function OrderIdentityChips({
     });
   }
 
-  const trackingItems: CopyChipHoverMenuItem[] = tracking
-    ? [
-        {
-          id: 'copy-trk',
-          label: 'Copy tracking',
-          icon: <Copy />,
-          onSelect: () => copyValue(tracking, 'tracking', getLast4(tracking)),
-        },
-        ...(trackingUrl
-          ? [
-              {
-                id: 'open-trk',
-                label: 'Open tracking page',
-                icon: <ExternalLink />,
-                tone: 'accent' as const,
-                onSelect: () => openExternal(trackingUrl),
-              },
-            ]
-          : []),
-      ]
-    : [];
+  // Clicking the tracking chip already copies (TrackingOrSkuScanChip → handleCopy),
+  // so the menu carries only "Open tracking page".
+  const trackingItems: CopyChipHoverMenuItem[] =
+    tracking && trackingUrl
+      ? [
+          {
+            id: 'open-trk',
+            label: 'Open tracking page',
+            icon: <ExternalLink />,
+            tone: 'accent',
+            onSelect: () => openExternal(trackingUrl),
+          },
+        ]
+      : [];
 
   const emptyTrackingNode = (() => {
     if (tracking) return null;
@@ -146,6 +147,7 @@ export function OrderIdentityChips({
       return (
         <CopyChipHoverMenu
           menuLabel="Tracking actions"
+          onOpenChange={handleMenuOpenChange}
           items={[
             {
               id: 'paste-trk',
@@ -178,14 +180,14 @@ export function OrderIdentityChips({
       key: 'platform',
       width: CHIP_COL.platform,
       node: !isFba ? (
-        <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems}>
+        <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems} onOpenChange={handleMenuOpenChange}>
           <PlatformChip
             label={platformLabel}
             underlineClass={platformBorderClass}
             iconClass={platformIconClass}
-            tooltipValue={productPageUrl ? 'Copy listing link' : 'No listing link'}
+            tooltipValue={productPageUrl ? 'Open listing' : 'No listing link'}
             onClick={() => {
-              if (productPageUrl) copyValue(productPageUrl, 'listing', platformLabel);
+              if (productPageUrl) openExternal(productPageUrl);
             }}
           />
         </CopyChipHoverMenu>
@@ -197,7 +199,7 @@ export function OrderIdentityChips({
       node: hideOrderId ? (
         <OrderIdChipPlaceholder />
       ) : (
-        <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems}>
+        <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
           <OrderIdChip value={orderId} display={getLast4(orderId)} />
         </CopyChipHoverMenu>
       ),
@@ -206,7 +208,7 @@ export function OrderIdentityChips({
       key: 'tracking',
       width: CHIP_COL.tracking,
       node: tracking ? (
-        <CopyChipHoverMenu menuLabel="Tracking actions" items={trackingItems}>
+        <CopyChipHoverMenu menuLabel="Tracking actions" items={trackingItems} onOpenChange={handleMenuOpenChange}>
           <TrackingOrSkuScanChip value={tracking} />
         </CopyChipHoverMenu>
       ) : (

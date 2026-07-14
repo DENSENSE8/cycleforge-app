@@ -202,7 +202,7 @@ export function IncomingSyncDialog({
                     <AlertTriangle className="h-3.5 w-3.5" />
                     <p className={microBadge}>Errors</p>
                   </div>
-                  <ul className="max-h-40 space-y-1 overflow-y-auto px-3 py-2">
+                  <ul className="max-h-40 space-y-1 overflow-y-auto inset-field">
                     {result.errors.map((e, i) => (
                       <li key={i} className="text-role-caption font-medium text-red-700">{e}</li>
                     ))}

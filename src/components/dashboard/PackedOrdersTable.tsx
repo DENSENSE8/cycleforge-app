@@ -22,6 +22,8 @@ import { TableDensityProvider } from '@/components/ui/table-density/TableDensity
 import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { createPortal } from 'react-dom';
+import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { cn } from '@/utils/_cn';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
@@ -131,37 +133,50 @@ export function PackedOrdersTable({
   return (
     <TableColumnConfigProvider tableId="orders">
       <TableDensityProvider tableId="orders" urlSync={false}>
-        {toolbarPortalTarget ? createPortal(toolbar, toolbarPortalTarget) : (
-          <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-soft px-3 py-1.5">
-            {toolbar}
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+          {toolbarPortalTarget ? createPortal(toolbar, toolbarPortalTarget) : (
+            <div className="flex h-[40px] shrink-0 items-center justify-end gap-2 border-b border-border-default px-3">
+              {toolbar}
+            </div>
+          )}
+          <div
+            className={cn(
+              'min-h-0 flex-1 overflow-x-auto overflow-y-auto scrollbar-hide',
+              toolbarPortalTarget ? 'py-1' : 'p-4',
+            )}
+          >
+            <div className={cn(MONITOR_SECTION_CARD_CLASS, 'overflow-hidden')}>
+              <OrdersQueueTable
+                records={records as ShippedOrder[]}
+                loading={query.isLoading}
+                isRefreshing={query.isFetching && !query.isLoading}
+                searchValue={searchQuery}
+                onClearSearch={clearSearch}
+                emptyMessage="No packed orders"
+                firstRunEmpty={idleEmpty}
+                searchEmptyTitle="No packed orders found"
+                searchResultLabel="packed orders"
+                clearSearchLabel="Show All Packed Orders"
+                queueMode="staged"
+                sort="newest"
+                selectMode={selectMode}
+                selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+                onOpenRecord={(record) => {
+                  setSelectedId(Number(record.id));
+                  dispatchOpenShippedDetails(record, 'queue');
+                }}
+                onCloseRecord={() => {
+                  setSelectedId(null);
+                  dispatchCloseShippedDetails();
+                }}
+                hideHeader
+                inheritColumnConfig
+                listShell="monitor"
+                noHorizontalScroll
+              />
+            </div>
           </div>
-        )}
-        <OrdersQueueTable
-          records={records as ShippedOrder[]}
-          loading={query.isLoading}
-          isRefreshing={query.isFetching && !query.isLoading}
-          searchValue={searchQuery}
-          onClearSearch={clearSearch}
-          emptyMessage="No packed orders"
-          firstRunEmpty={idleEmpty}
-          searchEmptyTitle="No packed orders found"
-          searchResultLabel="packed orders"
-          clearSearchLabel="Show All Packed Orders"
-          queueMode="staged"
-          sort="newest"
-          selectMode={selectMode}
-          selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-          onOpenRecord={(record) => {
-            setSelectedId(Number(record.id));
-            dispatchOpenShippedDetails(record, 'queue');
-          }}
-          onCloseRecord={() => {
-            setSelectedId(null);
-            dispatchCloseShippedDetails();
-          }}
-          hideHeader={Boolean(toolbarPortalTarget)}
-          noHorizontalScroll
-        />
+        </div>
       </TableDensityProvider>
     </TableColumnConfigProvider>
   );

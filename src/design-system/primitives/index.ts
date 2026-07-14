@@ -27,3 +27,6 @@ export * from './EmptyState';
 export * from './ProgressBar';
 export * from './StaggerReveal';
 export * from './ScrollPane';
+export * from './Stack';
+export * from './Inset';
+export * from './Row';

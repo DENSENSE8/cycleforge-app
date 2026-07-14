@@ -50,6 +50,18 @@ export interface RecentActivityRailBaseProps {
 
   queryKey: ReadonlyArray<unknown>;
   fetchFn: () => Promise<ApiResponse>;
+  /**
+   * This staffer's dismissed row ids — hidden as a pure display filter (not a
+   * queryKey discriminator), so loading/changing it re-filters in place instead
+   * of blanking the rail. See {@link SidebarRailShellProps.excludedIds}.
+   */
+  excludedIds?: ReadonlySet<number>;
+  /**
+   * Cold-reload first-paint seed (Upstash-backed). See
+   * {@link SidebarRailShellProps.loadSnapshot} / `persistSnapshot`. Unset = off.
+   */
+  loadSnapshot?: () => Promise<ReceivingLineRow[] | null>;
+  persistSnapshot?: (rows: ReceivingLineRow[]) => void;
   updateEvent: string;
   /** Optimistic delete event ({ id }); drops the row from the rail immediately. */
   deleteEvent?: string;
@@ -179,6 +191,9 @@ export function RecentActivityRailBase({
   limit = 25,
   queryKey,
   fetchFn,
+  excludedIds,
+  loadSnapshot,
+  persistSnapshot,
   updateEvent,
   deleteEvent,
   deleteGroupEvent,
@@ -209,6 +224,9 @@ export function RecentActivityRailBase({
     <SidebarRailShell<ReceivingLineRow>
       queryKey={queryKey}
       fetchFn={async () => (await fetchFn()).receiving_lines ?? []}
+      excludedIds={excludedIds}
+      loadSnapshot={loadSnapshot}
+      persistSnapshot={persistSnapshot}
       updateEvent={updateEvent}
       deleteEvent={deleteEvent}
       deleteGroupEvent={deleteGroupEvent}

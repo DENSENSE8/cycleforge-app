@@ -79,6 +79,52 @@ export const META_COL = {
   priceCol: 'max-content',
 } as const;
 
+/**
+ * Fixed tracks inside the meta `rest` cluster — in-lane age, staff initials, stage
+ * stamp. Same rigid-column idea as `META_COL` qty/condition; keeps packed/staged
+ * rows vertically scannable when optional facts (price, days late) vary by row.
+ */
+export const META_REST_COL = {
+  /** In-lane age compact label (<1m … 999d). */
+  laneAge: 'w-[1.5rem]',
+  /** Single tester or packer initials slot (2 chars or `--`). */
+  staff: 'w-[1.25rem] justify-center',
+  /** Stage stamp (12:16 PM / 3m ago). */
+  stageTime: 'w-[4.5rem]',
+} as const;
+
+/** Fixed-width meta fact cell — renders muted `--` when empty and `reserve` is true. */
+export function MetaFactSlot({
+  width,
+  children,
+  className,
+  reserve = true,
+}: {
+  width: string;
+  children?: ReactNode;
+  className?: string;
+  reserve?: boolean;
+}) {
+  const hasContent = children != null && children !== false;
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center tabular-nums normal-case tracking-normal',
+        width,
+        className,
+      )}
+    >
+      {hasContent ? (
+        children
+      ) : reserve ? (
+        <span className="text-text-faint" aria-hidden>
+          --
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export function RowTitle({
   dot,
   dotTitle,
@@ -201,7 +247,7 @@ export function RowMetaColumns({
       {showQty ? <span data-col="qty" className="truncate">{qty}</span> : null}
       {showCondition ? <span data-col="condition" className="truncate">{condition}</span> : null}
       {showRest ? (
-        <span data-col="rest" className="flex min-w-0 items-center gap-2 truncate">{rest}</span>
+        <span data-col="rest" className="flex min-w-0 items-center gap-1 truncate">{rest}</span>
       ) : null}
     </div>
   );

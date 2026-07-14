@@ -57,7 +57,7 @@ export function FolderPickerModal({
         </div>
 
         {dir ? (
-          <div className="border-b border-border-hairline px-3 py-2">
+          <div className="border-b border-border-hairline inset-field">
             <NasBreadcrumb dir={dir} onNavigate={setDir} rootLabel="Root" />
           </div>
         ) : null}

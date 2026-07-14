@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { resolveOutboundMetrics, OUTBOUND_METRICS, ZERO_OUTBOUND_METRICS, type OutboundMetricCtx } from './outbound-metrics';
+import {
+  resolveOutboundMetrics,
+  splitOutboundAttention,
+  OUTBOUND_METRICS,
+  ZERO_OUTBOUND_METRICS,
+  type OutboundMetricCtx,
+} from './outbound-metrics';
 import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
 
 const roi = (over: Partial<OperationsRoiData> = {}): OperationsRoiData => ({
@@ -62,7 +68,7 @@ test('level metrics carry a board filter; rate/trend metrics do not', () => {
     shipped: { ...ZERO_OUTBOUND_METRICS, delivered: 20, exceptions: 15, onTime: 70, onTimeCoverage: 100 },
     roi: roi(),
   });
-  const byId = Object.fromEntries(resolveOutboundMetrics(ctx, 6).map((m) => [m.id, m]));
+  const byId = Object.fromEntries(resolveOutboundMetrics(ctx).map((m) => [m.id, m]));
   assert.equal(byId.delivered?.filterState, 'DELIVERED');
   assert.equal(byId.exceptions?.filterState, 'EXCEPTION');
   // packed / on-time have no honest ?ostatus state → tooltip-only, no filter.
@@ -72,20 +78,76 @@ test('level metrics carry a board filter; rate/trend metrics do not', () => {
   for (const m of Object.values(byId)) assert.ok(m.tooltip, `${m.id} needs a tooltip`);
 });
 
-test('mode filters the registry + caps at the limit', () => {
+test('mode filters the registry (no unshipped ids leak into shipped)', () => {
   const shipped = resolveOutboundMetrics(
     baseCtx({ shipped: { ...ZERO_OUTBOUND_METRICS, delivered: 20, inTransit: 5, exceptions: 15 }, roi: roi() }),
-    4,
   );
-  assert.ok(shipped.length <= 4);
-  // Unshipped-only ids never leak into shipped mode.
   assert.equal(shipped.find((m) => m.id === 'ready'), undefined);
+  assert.equal(shipped.find((m) => m.id === 'blocked'), undefined);
 
   const unshipped = resolveOutboundMetrics(
     baseCtx({ mode: 'unshipped', unshipped: { total: 33, pending: 12, tested: 21, blocked: 3 }, roi: roi() }),
   );
   assert.ok(unshipped.some((m) => m.id === 'ready'));
   assert.equal(unshipped.find((m) => m.id === 'ontime'), undefined);
+});
+
+test('splitOutboundAttention: severity-ranked attention, delta-only trend, status dropped', () => {
+  const ctx = baseCtx({
+    total: 100,
+    shipped: {
+      ...ZERO_OUTBOUND_METRICS,
+      delivered: 20,
+      inTransit: 5,
+      exceptions: 15,
+      onTime: 70,
+      onTimeCoverage: 100,
+      dwellMedianHours: 30,
+      dwellCoverage: 4,
+    },
+    roi: roi({ pctChange: -13 }),
+  });
+  const { attention, trend } = splitOutboundAttention(resolveOutboundMetrics(ctx));
+
+  // Attention = problems only, sorted by severity descending.
+  const attnIds = attention.map((m) => m.id);
+  assert.ok(attnIds.includes('exceptions'));
+  assert.ok(attnIds.includes('ontime'));
+  assert.ok(attnIds.includes('stuck'));
+  for (let i = 1; i < attention.length; i++) {
+    assert.ok(attention[i - 1].severity >= attention[i].severity, 'attention must be severity-sorted');
+  }
+
+  // Trend = the one metric with an honest week-over-week delta (throughput).
+  assert.deepEqual(trend.map((m) => m.id), ['packed']);
+
+  // Pure status (delivered / in-transit) appears in NEITHER zone.
+  const shown = new Set([...attention, ...trend].map((m) => m.id));
+  assert.ok(!shown.has('delivered'));
+  assert.ok(!shown.has('intransit'));
+});
+
+test('splitOutboundAttention caps the attention zone', () => {
+  const ctx = baseCtx({
+    total: 100,
+    shipped: {
+      ...ZERO_OUTBOUND_METRICS,
+      exceptions: 15,
+      onTime: 70,
+      onTimeCoverage: 100,
+      dwellMedianHours: 30,
+      dwellCoverage: 4,
+    },
+    roi: roi(),
+  });
+  assert.equal(splitOutboundAttention(resolveOutboundMetrics(ctx), 2).attention.length, 2);
+});
+
+test('blocked always sorts to the front despite a tiny share', () => {
+  const ctx = baseCtx({ mode: 'unshipped', unshipped: { total: 200, pending: 120, tested: 79, blocked: 1 } });
+  const { attention } = splitOutboundAttention(resolveOutboundMetrics(ctx));
+  // severity 3 (blocked) outranks the severity-1 backlog even though its share is 1/200.
+  assert.equal(attention[0].id, 'blocked');
 });
 
 test('every registry entry returns null on empty context (zero-safe)', () => {

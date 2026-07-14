@@ -57,6 +57,12 @@ Legend: ☐ = to do · 🔑 needs credentials/external account · 🧠 needs you
 5. **☐ 🔑 Create Google OAuth Web client** (+ optional Microsoft) and set Vercel/local secrets — until then the button stays hidden. → §J4
 6. **☐ Commit the org-login-gate tree** via GitHub Desktop once reviewed (no agent commit/push).
 
+### Entity threads (2026-07-14 — conversation feature)
+
+- **☐ 🚀 Apply `2026-07-14_entity_threads.sql`** (`npm run db:migrate`) — `entity_threads` + `thread_messages`
+  (ticket-optional entity-anchored conversations; docs/todo/entity-threads-conversation-plan.md). **UNAPPLIED.**
+  Thread create/message API routes will error until applied. After apply: `npm run tenancy:coverage`.
+
 ### Still high leverage (pre-existing)
 
 7. **☐ 🔑 Stripe go-live** — the one thing blocking "can charge money" (tier0). ~30 min. → §A1

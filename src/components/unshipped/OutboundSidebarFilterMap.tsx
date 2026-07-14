@@ -57,9 +57,6 @@ function UnshippedSegments() {
 
   const rows: SegmentRow[] = useMemo(() => {
     const total = scopedCounts?.total ?? null;
-    // Needs attention count ≈ blocked lane (late rows are a subset of the board
-    // client filter; blocked is the SQL-cheap fire signal for the rail).
-    const attentionCount = lanes.BLOCKED;
     const list: SegmentRow[] = [
       { id: 'all', label: 'All open', count: total, icon: Inbox },
       {
@@ -71,12 +68,13 @@ function UnshippedSegments() {
         tooltip: myStaffId == null ? 'Sign in as staff to scope your queue' : undefined,
       },
       {
+        // Wire id/param stays `attention`; the filter now means "urgent only"
+        // (orders.is_urgent). No is_urgent count in the combos yet → no number.
         id: 'attention',
-        label: 'Needs attention',
-        count: attentionCount,
+        label: 'Urgent',
+        count: null,
         icon: Zap,
-        toneClass: attentionCount > 0 ? 'text-amber-700' : undefined,
-        tooltip: 'Blocked or past deadline — fire queue',
+        tooltip: 'Operator-flagged urgent / expedited orders',
       },
     ];
     const laneIcon: Record<FulfillmentState, ComponentType<{ className?: string }>> = {

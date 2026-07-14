@@ -235,7 +235,7 @@ function ShiftAvatarPill({
         </span>
         <span className="truncate text-role-caption font-semibold text-text-default">{shift.staff_name.split(/\s+/)[0]}</span>
         {isCovering && (
-          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-amber-800">
+          <span className="rounded-full bg-amber-100 inset-chip text-[8.5px] font-bold uppercase tracking-wide text-amber-800">
             Cover
           </span>
         )}

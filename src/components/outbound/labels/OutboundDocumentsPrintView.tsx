@@ -104,7 +104,7 @@ export function OutboundDocumentsPrintView({ orderId }: OutboundDocumentsPrintVi
   return (
     // pr matches ShippedDetailsPanel's fixed w-[420px] overlay (always open
     // alongside this pane) so the header/print button never renders under it.
-    <div className="flex h-full min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-surface-card p-6 pr-[456px]">
+    <div className={/* ds-allow-spacing — clears the fixed 420px details overlay */ "flex h-full min-w-0 flex-1 flex-col gap-4 overflow-y-auto bg-surface-card p-6 pr-[456px]"}>
       <div className="flex shrink-0 items-center justify-between gap-3">
         <div>
           <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">Order #</p>

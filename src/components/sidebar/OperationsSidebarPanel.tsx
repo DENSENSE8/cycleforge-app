@@ -273,7 +273,7 @@ function AnalyticsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                   onClick={() => setParam('section', s.id)}
                   /* ds-raw-button: jump-to nav row (icon + label, selection ring) — not a Button shape */
                   className={cn(
-                    'ds-raw-button flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors',
+                    'ds-raw-button flex w-full items-center gap-2 rounded-lg inset-cozy text-left text-role-caption font-semibold transition-colors',
                     activeSection === s.id
                       ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
                       : 'text-text-muted hover:bg-surface-hover',
@@ -341,7 +341,7 @@ function InsightsSidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
                 type="button"
                 onClick={() => emitAiChatPrompt(p)}
                 /* ds-raw-button: multi-line text-left prompt suggestion card — not a Button shape */
-                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
+                className="ds-raw-button rounded-lg border border-border-soft bg-surface-card inset-field text-left text-role-caption leading-5 text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-text-default"
               >
                 {p}
               </button>

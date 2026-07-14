@@ -81,7 +81,7 @@ export function MatchCard({ candidate, onLink, linking, anyLinking }: MatchCardP
           {/* Meta row: status + age */}
           <div className="mt-1 flex items-center gap-2">
             <span
-              className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${tone.bg} ${tone.text} ${tone.ring}`}
+              className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${tone.bg} ${tone.text} ${tone.ring}`}
             >
               {tone.label}
             </span>

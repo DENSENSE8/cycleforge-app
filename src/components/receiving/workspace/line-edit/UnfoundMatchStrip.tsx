@@ -52,6 +52,8 @@ import { ListingUrlChip, OrderIdChip, SerialChip } from '@/components/ui/CopyChi
 import { getLast4 } from '@/lib/copy-chip-format';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   useUnfoundRefetchActions,
   type RefetchState,
@@ -311,16 +313,29 @@ function OrderSearchRow({
           }),
         });
         const data = (await res.json().catch(() => null)) as
-          | { success?: boolean; imported?: boolean; error?: string; matched_order?: { order_id?: string } }
+          | {
+              success?: boolean;
+              imported?: boolean;
+              error?: string;
+              matched_order?: { order_id?: string };
+              line_patch?: (Partial<ReceivingLineRow> & { id: number }) | null;
+            }
           | null;
         if (!res.ok || !data?.success || !data.imported) {
           toast.error(data?.error || `No shipped order “${orderId}” to link`);
           return;
         }
         toast.success(`Linked order ${data.matched_order?.order_id ?? orderId} as a return`);
-        // Reflect the import (type→RETURN, listing, off Unfound) on every surface.
+        // The server returns the exact row patch (type→RETURN, listing, carton
+        // source, order#, status). Apply it optimistically so the accordion /
+        // table / rail flip within a frame — the old field-less
+        // `receiving-line-updated {id}` was a no-op that left everything waiting
+        // on the app-refresh-data refetch. Keep app-refresh-data for the
+        // cross-feed reconcile (the carton also leaves the Unfound queue).
+        if (data.line_patch?.id) {
+          dispatchUnboxRailLineUpdated(data.line_patch);
+        }
         window.dispatchEvent(new CustomEvent('app-refresh-data'));
-        window.dispatchEvent(new CustomEvent('receiving-line-updated', { detail: { id: lineId } }));
         onLinked();
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Network error');
@@ -348,14 +363,8 @@ function OrderSearchRow({
 
   return (
     <div className="space-y-2">
-      {trimmedSerial ? (
-        <div className="flex items-center gap-2 px-0.5">
-          <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">
-            Scanned
-          </span>
-          <SerialChip value={trimmedSerial} width="w-fit max-w-full" dense />
-        </div>
-      ) : null}
+      {/* The scanned serial already shows in the PO-lines accordion row above;
+          it isn't re-displayed here. `receivedSerial` still drives the compare. */}
       <form
         className="flex min-w-0 items-center gap-2"
         onSubmit={(e) => {

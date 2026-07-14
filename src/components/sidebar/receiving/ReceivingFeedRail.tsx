@@ -17,6 +17,8 @@
 import { useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { railSnapshotFeedParam } from '@/lib/receiving/rail/rail-snapshot-cache';
+import { fetchRailSnapshot, persistRailSnapshot } from '@/lib/receiving/rail/rail-snapshot-client';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
@@ -77,19 +79,20 @@ export function ReceivingFeedRail({
   const q = filterText.trim().toLowerCase();
 
   // Phase 4 read filter: this staffer's dismissed rows for the feed
-  // (staff_rail_exclusions, keyed by rail id = row.id). A stable signature of the
-  // set rides the queryKey so a change (fresh load, a new dismiss) forces a
-  // filtered refetch instead of serving stale unfiltered cache.
+  // (staff_rail_exclusions, keyed by rail id = row.id). Applied as a client-side
+  // DISPLAY filter (`excludedIds` on the rail), NOT baked into the queryKey —
+  // baking it in meant that when the async exclusion fetch resolved (or a dismiss
+  // invalidated it), the signature changed, the queryKey changed, and the rail
+  // blanked to a skeleton then refetched. Filtering in place keeps the list up.
   const exclusionFeedKey = railExclusionFeedKey(feedId, scope);
   const excluded = useRailExclusions(exclusionFeedKey);
-  const excludedSig = useMemo(() => Array.from(excluded).sort((a, b) => a - b).join(','), [excluded]);
 
-  // Distinct, isolated cache entry per feed/scope/staff/query/exclusion-set —
-  // still under the ['receiving-lines-table'] prefix so broad invalidations refresh it.
+  // Distinct, isolated cache entry per feed/scope/staff/query — still under the
+  // ['receiving-lines-table'] prefix so broad invalidations refresh it.
   const queryKey = useMemo(
     () =>
-      ['receiving-lines-table', 'rail', feed.segment, scope ?? 'default', q, staffId ?? 'all', excludedSig] as const,
-    [feed.segment, scope, q, staffId, excludedSig],
+      ['receiving-lines-table', 'rail', feed.segment, scope ?? 'default', q, staffId ?? 'all'] as const,
+    [feed.segment, scope, q, staffId],
   );
 
   const rt: RailFetchRuntime = { staffId, query: q };
@@ -101,25 +104,40 @@ export function ReceivingFeedRail({
           rt,
         );
 
-  // Strictly additive — an empty exclusion set returns the fetched rows untouched.
+  // Fetch is exclusion-agnostic now (dismissed rows are dropped at display time,
+  // see `excluded` → `excludedIds` below). This only layers PO-level adaptive
+  // title context onto the fetched rows when the feed opts in.
   const fetchFn = useMemo<() => Promise<ApiResponse>>(() => {
-    const applyTitleContext = (data: ApiResponse): ApiResponse => {
-      if (feed.stampRailTitleContext !== 'po') return data;
+    if (feed.stampRailTitleContext !== 'po') return baseFetchFn;
+    return async () => {
+      const data = await baseFetchFn();
       const rows = stampPoRailTitleContext(data.receiving_lines ?? []);
       return { ...data, receiving_lines: rows, total: rows.length };
     };
-    if (excluded.size === 0) {
-      return async () => applyTitleContext(await baseFetchFn());
-    }
-    return async () => {
-      const data = await baseFetchFn();
-      const rows = (data.receiving_lines ?? []).filter((r) => !excluded.has(r.id));
-      return applyTitleContext({ ...data, receiving_lines: rows, total: rows.length });
-    };
     // baseFetchFn is rebuilt each render from rt (staffId/query); the stable
-    // inputs (+ excludedSig) below track a real fetch-shape change (baseFetchFn
-    // itself is intentionally omitted — it has a new identity every render).
-  }, [excluded, excludedSig, feed.segment, feed.stampRailTitleContext, scope, q, staffId]);
+    // inputs below track a real fetch-shape change (baseFetchFn itself is
+    // intentionally omitted — it has a new identity every render).
+  }, [feed.segment, feed.stampRailTitleContext, scope, q, staffId]);
+
+  // Cold-reload continuity: seed this rail's first paint from its last-known
+  // rows in Upstash (org + viewer scoped server-side), and persist the rows it
+  // renders for next time. Seed-only — the authoritative fetch reconciles over
+  // it. Only the UNFILTERED view seeds/persists (a searched rail is transient).
+  // feedParam is fully client-composed so read/write keys can't drift.
+  const snapshotFeedParam = useMemo(
+    () => (q === '' ? railSnapshotFeedParam({ feedId, scope, staffFilterId: staffId }) : null),
+    [q, feedId, scope, staffId],
+  );
+  const loadSnapshot = useMemo(
+    () => (snapshotFeedParam ? () => fetchRailSnapshot(snapshotFeedParam) : undefined),
+    [snapshotFeedParam],
+  );
+  const persistSnapshot = useMemo(
+    () => (snapshotFeedParam
+      ? (rows: ReceivingLineRow[]) => persistRailSnapshot(snapshotFeedParam, rows)
+      : undefined),
+    [snapshotFeedParam],
+  );
 
   const qty = RAIL_QTY[feed.qty];
   const dot = RAIL_STATUS[feed.status];
@@ -147,6 +165,9 @@ export function ReceivingFeedRail({
       limit={feed.limit ?? 25}
       queryKey={queryKey}
       fetchFn={fetchFn}
+      excludedIds={excluded}
+      loadSnapshot={loadSnapshot}
+      persistSnapshot={persistSnapshot}
       updateEvent="receiving-line-updated"
       deleteEvent="receiving-line-deleted"
       deleteGroupEvent="receiving-entry-deleted"

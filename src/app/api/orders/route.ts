@@ -421,6 +421,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.out_of_stock,
         o.status,
         o.notes,
+        o.is_urgent,
         o.sale_amount,
         o.currency,
         ${replenishmentSelect}

@@ -134,7 +134,7 @@ export function AuditLogSidebarPanel() {
           </p>
         </div>
       ) : (
-        <div className="px-4 py-6 text-center text-xs text-text-faint">
+        <div className="inset-empty text-center text-xs text-text-faint">
           Select a section above.
         </div>
       )}

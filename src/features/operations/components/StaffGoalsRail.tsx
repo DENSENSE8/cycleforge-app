@@ -84,7 +84,7 @@ function StaffGoalCard({ row, index }: {
           <span className="text-role-caption font-semibold text-text-muted tabular-nums">
             {row.current} / {row.goal}
           </span>
-          <span className={`text-role-eyebrow uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tone.chip}`}>
+          <span className={`text-role-eyebrow uppercase tracking-wider inset-chip rounded-full ${tone.chip}`}>
             {tone.label}
           </span>
         </div>

@@ -22,8 +22,12 @@ interface TabSwitchProps {
   scrollable?: boolean;
   /** Light gray rail only (no outer chrome); stronger inactive legibility for bright / glare-heavy screens. */
   highContrast?: boolean;
-  /** Station up-next queue: tinted rail, semantic tab label hues; outline from `stationChromeOutlineClassName` only. */
-  variant?: 'default' | 'upNext';
+  /**
+   * `default` — light pill, semantic tab-color text.
+   * `upNext` — station queue: tinted rail, semantic label hues; outline from `stationChromeOutlineClassName`.
+   * `solid` — Linear-style dark pill (inverse surface) + white active text, title-case labels on a light rail.
+   */
+  variant?: 'default' | 'upNext' | 'solid';
   /** When `variant` is `upNext`, 1px outline on rail + sliding pill (e.g. `getTechStationLightChromeOutlineClass`). */
   stationChromeOutlineClassName?: string;
   /**
@@ -79,12 +83,15 @@ export function TabSwitch({
   countStyle = 'badge',
 }: TabSwitchProps) {
   const upNext = variant === 'upNext';
+  const solid = variant === 'solid';
   const upNextOutline = stationChromeOutlineClassName ?? 'border border-border-default';
   const defaultRailClass = upNext
     ? `${upNextRailBaseClass} ${upNextOutline}`
-    : highContrast
-      ? 'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
-      : 'bg-surface-sunken rounded-xl p-1';
+    : solid
+      ? 'rounded-full border border-border-default bg-surface-card p-1 shadow-sm'
+      : highContrast
+        ? 'rounded-xl bg-surface-strong p-1.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.08)]'
+        : 'bg-surface-sunken rounded-xl p-1';
   const railCombined = railClassName ?? defaultRailClass;
   const railRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -141,7 +148,9 @@ export function TabSwitch({
   const activeShadow = (colorTextMap[activeTabColor] ?? colorTextMap.blue).shadow;
   const pillShadow = upNext
     ? '0 1px 4px 0 rgb(0 0 0 / 0.16), 0 0.5px 2px 0 rgb(0 0 0 / 0.08)'
-    : activeShadow;
+    : solid
+      ? '0 1px 3px 0 rgb(0 0 0 / 0.22), 0 1px 2px 0 rgb(0 0 0 / 0.10)'
+      : activeShadow;
   const pillTransition = prefersReducedMotion
     ? { duration: 0.01 }
     : { type: 'spring' as const, stiffness: 400, damping: 36, mass: 0.78 };
@@ -157,9 +166,9 @@ export function TabSwitch({
       >
         <motion.div
           aria-hidden
-          className={`pointer-events-none absolute z-0 rounded-full bg-surface-card ${
-            upNext ? upNextOutline : ''
-          }`}
+          className={`pointer-events-none absolute z-0 rounded-full ${
+            solid ? 'bg-surface-inverse' : 'bg-surface-card'
+          } ${upNext ? upNextOutline : solid ? '' : 'ring-1 ring-inset ring-border-soft'}`}
           style={{
             top: 0,
             bottom: 0,
@@ -185,25 +194,35 @@ export function TabSwitch({
                 buttonRefs.current[tab.id] = node;
               }}
               onClick={() => onTabChange(tab.id)}
-              className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-full font-black uppercase tracking-widest transition-colors duration-150 ${
-                upNext || highContrast ? 'px-3 py-2 text-role-caption' : 'px-3 py-1.5 text-role-micro'
+              className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
+                solid ? 'font-bold' : 'font-black uppercase tracking-widest'
+              } ${
+                upNext
+                  ? 'px-3 py-2 text-role-caption'
+                  : solid || highContrast
+                    ? 'px-4 py-2 text-role-caption'
+                    : 'px-3 py-1.5 text-role-micro'
               } ${
                 upNext
                   ? isActive
                     ? upNextLabels.active
                     : upNextLabels.inactive
-                  : isActive
-                    ? colors.active
-                    : highContrast
-                      ? 'text-text-default'
-                      : 'text-text-soft hover:text-text-muted'
+                  : solid
+                    ? isActive
+                      ? 'text-text-inverse'
+                      : 'text-text-soft hover:text-text-default'
+                    : isActive
+                      ? colors.active
+                      : highContrast
+                        ? 'text-text-default'
+                        : 'text-text-soft hover:text-text-muted'
               }`}
             >
               <motion.span
                 className="relative z-10 flex items-center justify-center gap-1"
                 animate={{
-                  scale: isActive ? 1 : upNext || highContrast ? 0.98 : 0.93,
-                  opacity: isActive ? 1 : upNext ? 1 : highContrast ? 0.9 : 0.52,
+                  scale: isActive ? 1 : solid ? 1 : upNext || highContrast ? 0.98 : 0.93,
+                  opacity: isActive ? 1 : solid || upNext ? 1 : highContrast ? 0.9 : 0.52,
                 }}
                 transition={{ duration: 0.18, ease: motionBezier.easeOut }}
               >
@@ -222,7 +241,7 @@ export function TabSwitch({
                       initial={{ scale: 0.7, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                      className={`inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-role-micro tabular-nums leading-none ${
+                      className={/* ds-allow-spacing — 14px count bubble, deliberate 3px inset */ `inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-role-micro tabular-nums leading-none ${
                         upNext
                           ? 'bg-current/[0.14] text-current'
                           : isActive
