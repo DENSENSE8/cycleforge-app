@@ -146,9 +146,14 @@ export function SerialCard({
    *  same value overrides the guard (some units genuinely carry
    *  tracking-shaped serials). Any input change re-arms the guard. */
   const [trackingOverride, setTrackingOverride] = useState<string | null>(null);
-  // Condition picker expand/collapse — starts expanded for selection, collapses
-  // to the chosen pill once a grade is picked or while a serial is being edited.
-  const [condExpanded, setCondExpanded] = useState(true);
+  // Condition picker expand/collapse — expand only when no grade is chosen yet
+  // (operator needs the full row). When a grade is already set (e.g. unfound
+  // return scan defaults USED_A, or a remount after optimistic create), start
+  // collapsed so the serial field + green-check aren't squeezed beside a full
+  // pill strip, and the row doesn't read as empty tall chrome under the pills.
+  const [condExpanded, setCondExpanded] = useState(
+    !String(condition || '').trim(),
+  );
   /** Avoid flashing “Saving…” on fast round-trips; only shown if submit hangs ~400ms+ */
   const [showSavingLabel, setShowSavingLabel] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);

@@ -50,3 +50,20 @@ test('scan-serial route routes through the sidecar, not the stock writer', () =>
     'scan-serial must use the decoupled serial CRUD helpers',
   );
 });
+
+test('serial-attach exports both attach and detach (full CRUD)', () => {
+  ok(/export async function attachSerialToLine/.test(attachSrc), 'must export attachSerialToLine');
+  ok(/export async function detachSerialFromLine/.test(attachSrc), 'must export detachSerialFromLine');
+  ok(
+    /serial_unit_provenance|serial_units/.test(attachSrc),
+    'attach/detach must touch serial_units / provenance',
+  );
+});
+
+test('detach deletes the serial_unit scoped to the line (not a soft flag)', () => {
+  ok(
+    /DELETE|delete\s+from\s+serial_units/i.test(attachSrc) ||
+      /deps\.deleteSerialUnit|deleteSerialUnit/.test(attachSrc),
+    'detachSerialFromLine must delete the serial_units row',
+  );
+});

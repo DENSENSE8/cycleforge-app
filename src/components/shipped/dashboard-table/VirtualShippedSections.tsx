@@ -7,6 +7,7 @@ import { useAncestorScrollMargin } from '@/hooks/useAncestorScrollMargin';
 import { ShippedRecordRow } from '@/components/shipped/ShippedRecordRow';
 import { getDetailId } from '@/components/shipped/shipped-record-mappers';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
+import { cn } from '@/utils/_cn';
 
 /** One day band: `[dateKey, records]` — matches `useShippedTableGrouping`. */
 type ShippedDaySection = [string, DerivedPackerRecord[]];
@@ -141,9 +142,11 @@ export function VirtualShippedSections({
             ref={virtualizer.measureElement}
             // The active header pins via position:sticky (top:0); every other item
             // is absolutely positioned by the virtualizer transform. No full-bleed
-            // background — the pill inside DateGroupHeader is the only chrome (same
-            // as ReceivingGroupedList / other day-banded tables).
-            className={`left-0 top-0 w-full ${pinned ? 'z-20' : header ? 'z-10' : 'z-0'}`}
+            // background — the pill inside DateGroupHeader is the only chrome.
+            className={cn(
+              'left-0 top-0 w-full',
+              pinned ? 'z-sticky' : header ? 'z-raised' : 'z-base',
+            )}
             style={
               pinned
                 ? { position: 'sticky', top: 0 }

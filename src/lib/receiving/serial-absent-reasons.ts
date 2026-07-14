@@ -30,7 +30,7 @@ export interface SerialAbsentReasonMeta {
 export const SERIAL_ABSENT_REASONS: readonly SerialAbsentReasonMeta[] = [
   {
     code: 'NOT_SERIALIZED',
-    label: 'Not serialized',
+    label: 'No Serial',
     hint: 'This product class has no serial number — cables, accessories, bulk parts.',
     severity: 'routine',
   },

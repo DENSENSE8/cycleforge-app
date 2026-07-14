@@ -1,7 +1,7 @@
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { detectCarrier, normalizeTrackingNumber } from './normalize';
-import { getShipmentByTracking } from './repository';
+import { getShipmentByTracking, healShipmentOrganizationId } from './repository';
 import { registerAndSyncShipment } from './sync-shipment';
 
 /**
@@ -34,6 +34,22 @@ export async function lookupShipmentId(
     // ignore lookup error; fall through to scanRef
   }
   return { shipmentId: null, scanRef: trimmed };
+}
+
+/**
+ * After resolving a shipment under a known tenant, heal a NULL organization_id
+ * so FORCE RLS can see the row on subsequent tenant-scoped reads.
+ */
+async function maybeHealResolvedShipment(
+  shipmentId: number | null,
+  orgId?: OrgId,
+): Promise<void> {
+  if (orgId == null || shipmentId == null || shipmentId <= 0) return;
+  try {
+    await healShipmentOrganizationId(shipmentId, orgId);
+  } catch {
+    // Best-effort — never fail a resolve over a heal miss.
+  }
 }
 
 /**
@@ -81,7 +97,10 @@ export async function resolveShipmentId(
         orgId != null
           ? await getShipmentByTracking(normalized, orgId)
           : await getShipmentByTracking(normalized);
-      if (existing) return { shipmentId: existing.id, scanRef: null };
+      if (existing) {
+        await maybeHealResolvedShipment(existing.id, orgId);
+        return { shipmentId: existing.id, scanRef: null };
+      }
     } catch {
       // ignore lookup error; fall through to scanRef
     }
@@ -104,6 +123,7 @@ export async function resolveShipmentId(
             carrier,
             sourceSystem: 'scan',
           });
+    await maybeHealResolvedShipment(shipment.id, orgId);
     return { shipmentId: shipment.id, scanRef: null };
   } catch {
     // Registration/sync failed — try a plain DB lookup as fallback
@@ -112,7 +132,10 @@ export async function resolveShipmentId(
         orgId != null
           ? await getShipmentByTracking(normalized, orgId)
           : await getShipmentByTracking(normalized);
-      if (existing) return { shipmentId: existing.id, scanRef: null };
+      if (existing) {
+        await maybeHealResolvedShipment(existing.id, orgId);
+        return { shipmentId: existing.id, scanRef: null };
+      }
     } catch {
       // ignore
     }

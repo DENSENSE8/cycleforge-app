@@ -107,70 +107,80 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
         <div className={`space-y-1 ${SIDEBAR_GUTTER} py-2`}>
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 w-full animate-pulse rounded-md bg-surface-sunken" />)}
         </div>
-      ) : rows.length === 0 ? (
-        <p className={`${SIDEBAR_GUTTER} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
       ) : (
-        <motion.ul
-          ref={listRef}
-          className={`${SIDEBAR_GUTTER} py-1 outline-none ${isFetching ? 'opacity-90' : ''}`}
-          role="listbox"
-          aria-label={`${eyebrowTitle} activity`}
-          aria-busy={isFetching || undefined}
-          tabIndex={0}
-          onKeyDown={handleKeyDown}
-          {...(staggerActive
-            ? { initial: 'hidden' as const, animate: 'show' as const, variants: staggerContainerVariants }
-            : {})}
-        >
-          {/* `initial` enabled only for the reveal so the first-load cascade plays;
-              otherwise AnimatePresence suppresses the initial mount animation. */}
-          <AnimatePresence initial={staggerActive}>
-            {rows.flatMap((row, idx) => {
-              const g = grouped[idx];
-              const isCollapsed = g.groupId != null && collapsedGroups.has(g.groupId);
-              if (isCollapsed && g.groupIndex > 0) return [];
-              const isLeaderOfMulti = g.groupSize > 1 && g.groupIndex === 0 && g.groupId != null;
-              const showExpandedHeader = isLeaderOfMulti && !isCollapsed;
-              const nodes: React.ReactElement[] = [];
-              if (showExpandedHeader) {
+        <>
+          {/*
+            Keep motion.ul + AnimatePresence mounted even when empty so the last
+            carton can finish its exit slide. Replacing the ul with empty <p>
+            unmounts presence and pops the whole rail. Empty copy sits under the
+            list host (only when there are no live rows).
+          */}
+          <motion.ul
+            ref={listRef}
+            className={`${SIDEBAR_GUTTER} overflow-x-clip py-1 outline-none ${isFetching ? 'opacity-90' : ''}`}
+            role="listbox"
+            aria-label={`${eyebrowTitle} activity`}
+            aria-busy={isFetching || undefined}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            {...(staggerActive
+              ? { initial: 'hidden' as const, animate: 'show' as const, variants: staggerContainerVariants }
+              : {})}
+          >
+            {/* `initial` enabled only for the reveal so the first-load cascade plays;
+                otherwise AnimatePresence suppresses the initial mount animation.
+                popLayout lets siblings reflow while a dismissed row slides out. */}
+            <AnimatePresence initial={staggerActive} mode="popLayout">
+              {rows.flatMap((row, idx) => {
+                const g = grouped[idx];
+                const isCollapsed = g.groupId != null && collapsedGroups.has(g.groupId);
+                if (isCollapsed && g.groupIndex > 0) return [];
+                const isLeaderOfMulti = g.groupSize > 1 && g.groupIndex === 0 && g.groupId != null;
+                const showExpandedHeader = isLeaderOfMulti && !isCollapsed;
+                const nodes: React.ReactElement[] = [];
+                if (showExpandedHeader) {
+                  nodes.push(
+                    <PkgGroupHeader key={`pkg-${g.groupId}`} groupSize={g.groupSize} isCollapsed={false} staggerCascade={staggerActive} staggerItemVariants={staggerItemVariants} onToggle={() => toggleGroup(g.groupId as number)} />,
+                  );
+                }
                 nodes.push(
-                  <PkgGroupHeader key={`pkg-${g.groupId}`} groupSize={g.groupSize} isCollapsed={false} staggerCascade={staggerActive} staggerItemVariants={staggerItemVariants} onToggle={() => toggleGroup(g.groupId as number)} />,
+                  <RailRow
+                    key={rowKey(row)}
+                    row={row}
+                    index={idx}
+                    staggerCascade={staggerActive}
+                    staggerItemVariants={staggerItemVariants}
+                    isDisabled={getRowDisabled?.(row) ?? false}
+                    isSelected={getId(row) === selectedId}
+                    isFocused={idx === focusIndex}
+                    editActive={editMode.active}
+                    isChecked={editMode.active && editMode.selectedIds.has(getId(row))}
+                    groupSize={g.groupSize}
+                    groupIndex={g.groupIndex}
+                    isCollapsed={isCollapsed}
+                    showInlinePkgChip={isLeaderOfMulti && isCollapsed}
+                    onToggleGroup={isLeaderOfMulti ? () => toggleGroup(g.groupId as number) : undefined}
+                    getStatusDot={getStatusDot}
+                    getStatusDotLabel={getStatusDotLabel}
+                    getActivityAt={getActivityAt}
+                    renderRowMain={renderRowMain}
+                    renderPopover={renderPopover}
+                    onClick={(e) => {
+                      if (getRowDisabled?.(row)) return;
+                      setFocusIndex(idx);
+                      if (editMode.active) handleEditClick(idx, e?.shiftKey ?? false);
+                      else onSelect(row);
+                    }}
+                  />,
                 );
-              }
-              nodes.push(
-                <RailRow
-                  key={rowKey(row)}
-                  row={row}
-                  index={idx}
-                  staggerCascade={staggerActive}
-                  staggerItemVariants={staggerItemVariants}
-                  isDisabled={getRowDisabled?.(row) ?? false}
-                  isSelected={getId(row) === selectedId}
-                  isFocused={idx === focusIndex}
-                  editActive={editMode.active}
-                  isChecked={editMode.active && editMode.selectedIds.has(getId(row))}
-                  groupSize={g.groupSize}
-                  groupIndex={g.groupIndex}
-                  isCollapsed={isCollapsed}
-                  showInlinePkgChip={isLeaderOfMulti && isCollapsed}
-                  onToggleGroup={isLeaderOfMulti ? () => toggleGroup(g.groupId as number) : undefined}
-                  getStatusDot={getStatusDot}
-                  getStatusDotLabel={getStatusDotLabel}
-                  getActivityAt={getActivityAt}
-                  renderRowMain={renderRowMain}
-                  renderPopover={renderPopover}
-                  onClick={(e) => {
-                    if (getRowDisabled?.(row)) return;
-                    setFocusIndex(idx);
-                    if (editMode.active) handleEditClick(idx, e?.shiftKey ?? false);
-                    else onSelect(row);
-                  }}
-                />,
-              );
-              return nodes;
-            })}
-          </AnimatePresence>
-        </motion.ul>
+                return nodes;
+              })}
+            </AnimatePresence>
+          </motion.ul>
+          {rows.length === 0 ? (
+            <p className={`${SIDEBAR_GUTTER} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
+          ) : null}
+        </>
       )}
     </section>
   );

@@ -208,7 +208,10 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
                     skippedMissingTrackingForSheet++;
                     continue;
                 }
-                const { shipmentId: tsnShipmentId, scanRef: tsnScanRef } = await resolveShipmentId(shippingTrackingNumber);
+                const { shipmentId: tsnShipmentId, scanRef: tsnScanRef } = await resolveShipmentId(
+                    shippingTrackingNumber,
+                    orgId,
+                );
                 const existingTrackingResult = await client.query(
                     `SELECT id FROM tech_serial_numbers
                      WHERE ((shipment_id IS NOT NULL AND shipment_id = $1)
@@ -331,7 +334,10 @@ async function executeSyncPackerLogs(orgId: OrgId) {
                     exceptionsLoggedForSheet++;
                 }
 
-                const { shipmentId: plShipmentId, scanRef: plScanRef } = await resolveShipmentId(shippingTrackingNumber);
+                const { shipmentId: plShipmentId, scanRef: plScanRef } = await resolveShipmentId(
+                    shippingTrackingNumber,
+                    orgId,
+                );
                 const existingTrackingResult = await client.query(
                     `SELECT id FROM packer_logs
                      WHERE ((shipment_id IS NOT NULL AND shipment_id = $1)

@@ -26,11 +26,7 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
  */
 
 /** Sticky row wrapper — left-aligned, holds the floating date+qty pill. */
-export const dayGroupChipRowClass = 'flex items-center px-3 py-2';
-
-/** Sticky dock chrome — opaque strip so scrolling rows do not bleed through. */
-export const dayGroupStickyRowClass =
-  'sticky z-sticky isolate bg-surface-card/95 backdrop-blur-sm border-b border-border-hairline/80';
+export const dayGroupChipRowClass = 'flex items-center px-3 py-1.5';
 
 /** The date + qty pill — matches the DateRangeHeader period pill. */
 export const dayGroupChipClass =
@@ -107,11 +103,7 @@ export function DateGroupHeader({
     return (
       <div
         data-date={date}
-        className={cn(
-          sticky && [dayGroupStickyRowClass, stickyTopClass],
-          dayGroupChipRowClass,
-          className,
-        )}
+        className={cn(sticky && ['sticky z-raised', stickyTopClass], dayGroupChipRowClass, className)}
       >
         <span className={dayGroupChipClass}>{labelEl}</span>
       </div>
@@ -124,11 +116,7 @@ export function DateGroupHeader({
       layout
       layoutScroll
       transition={{ layout: layoutTransition }}
-      className={cn(
-        sticky && [dayGroupStickyRowClass, stickyTopClass],
-        dayGroupChipRowClass,
-        className,
-      )}
+      className={cn(sticky && ['sticky z-raised', stickyTopClass], dayGroupChipRowClass, className)}
     >
       <motion.span
         layout

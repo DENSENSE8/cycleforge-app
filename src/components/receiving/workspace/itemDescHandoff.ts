@@ -1,8 +1,8 @@
 /**
  * Cross-remount handoff for "Open item description from a non-active accordion row".
  *
- * Clicking the product title on a collapsed PO-item row activates that line via
- * `dispatchSelectLine`. In the receiving flow the workspace remounts on the line
+ * Opening the item-description editor from a non-active row activates that line
+ * via `dispatchSelectLine`. In the receiving flow the workspace remounts on the line
  * switch (`ReceivingLineWorkspace` keys its body by `row.id`), so React state for
  * `descShown` would be wiped before it could apply. This module-scoped flag
  * survives the remount: the accordion stashes the target here, and the freshly

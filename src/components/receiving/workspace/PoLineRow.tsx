@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/CopyChip';
 import { SerialChipWithMenu } from '@/components/receiving/workspace/SerialCard';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, TextField } from '@/design-system/primitives';
 import { META_COL } from '@/components/ui/RowMetaColumns';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { cn } from '@/utils/_cn';
@@ -66,7 +66,6 @@ export interface PoLineDescProps {
   draft: string;
   savingLineId: number | null;
   inputRef: React.RefObject<HTMLInputElement>;
-  open: (line: ReceivingLineRow) => void;
   toggle: (line: ReceivingLineRow) => void;
   setDraft: (value: string) => void;
   save: (lineId: number) => void;
@@ -151,7 +150,7 @@ export function PoLineRow({
             dispatchSelectLine(line);
           }
         }}
-        className={`w-full min-w-0 px-3 pb-2 pt-1 text-left ${
+        className={`w-full min-w-0 px-3 pb-1 pt-1 text-left ${
           !readOnly && !isActive ? 'cursor-pointer' : ''
         }`}
       >
@@ -196,22 +195,11 @@ export function PoLineRow({
             </span>
           ) : null}
           {/* Title is sourced from the listing/PO line — not editable as
-              text. Click focuses the line (with expand motion) and opens
-              the Zoho item-description editor. ds-allow-title: native
-              tooltip shows full value when truncated. */}
+              text. ds-allow-title: native tooltip shows full value when
+              truncated. Item description opens only via the notes icon. */}
           <p
-            className={`min-w-0 flex-1 truncate text-role-caption font-bold text-text-default ${
-              !readOnly ? 'cursor-pointer hover:text-blue-700' : ''
-            }`}
+            className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default"
             title={line.item_name ?? undefined}
-            onClick={
-              !readOnly
-                ? (e) => {
-                    e.stopPropagation();
-                    desc.open(line);
-                  }
-                : undefined
-            }
           >
             {line.item_name || line.sku || `Line #${line.id}`}
           </p>
@@ -358,33 +346,29 @@ export function PoLineRow({
           className="min-w-0 overflow-hidden border-t border-blue-200/60"
           aria-hidden={activeCollapsed}
         >
-          <div className="min-w-0 px-3 pb-2 pt-1">
+          <div className="min-w-0 px-3 pb-1.5 pt-1">
             {descShown ? (
-              <div className="space-y-1">
-                <p className="text-role-micro font-bold uppercase tracking-widest text-text-soft">
-                  Item description
-                </p>
-                <div className="flex h-10 items-stretch gap-2">
-                  <input
-                    ref={desc.inputRef}
-                    value={desc.draft}
-                    onChange={(e) => desc.setDraft(e.target.value)}
-                    placeholder="Item description (synced)"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') desc.save(line.id);
-                    }}
-                    className="h-10 min-w-0 flex-1 rounded-xl border border-border-default bg-surface-card px-3 text-role-caption normal-case tracking-normal text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              <div className="flex items-center gap-2">
+                <TextField
+                  ref={desc.inputRef}
+                  label="Item description"
+                  value={desc.draft}
+                  onChange={desc.setDraft}
+                  tone="blue"
+                  className="min-w-0 flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') desc.save(line.id);
+                  }}
+                />
+                <HoverTooltip label="Save item description" asChild>
+                  <IconButton
+                    ariaLabel="Save item description"
+                    onClick={() => desc.save(line.id)}
+                    disabled={desc.savingLineId === line.id}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white ring-1 ring-inset ring-emerald-700 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    icon={<Check className="h-4 w-4" aria-hidden />}
                   />
-                  <HoverTooltip label="Save item description" asChild>
-                    <IconButton
-                      ariaLabel="Save item description"
-                      onClick={() => desc.save(line.id)}
-                      disabled={desc.savingLineId === line.id}
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white ring-1 ring-inset ring-emerald-700 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-                      icon={<Check className="h-4 w-4" aria-hidden />}
-                    />
-                  </HoverTooltip>
-                </div>
+                </HoverTooltip>
               </div>
             ) : typeof activeRowSlot === 'function'
               ? activeRowSlot({ serials: line.serials ?? [] })

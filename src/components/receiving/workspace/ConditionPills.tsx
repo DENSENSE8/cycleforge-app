@@ -145,7 +145,7 @@ export function ConditionPills({
       ref={scrollerRef}
       role="radiogroup"
       aria-label="Condition grade"
-      className="-mx-1 flex w-full min-w-0 max-w-full items-center gap-1.5 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className="-mx-1 flex w-max max-w-full min-w-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain px-1 py-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
     >
       {GRADES.map((g) => (
         <HoverTooltip key={g.value} label={conditionDescription(g.value)} asChild focusable={false}>

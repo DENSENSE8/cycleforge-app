@@ -51,7 +51,6 @@ import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
-import { cn } from '@/utils/_cn';
 import type { BoardLanePref, BoardPrefs, BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 import type { StaffPreferencesPutBody } from '@/lib/schemas/staff-preferences';
 
@@ -401,16 +400,11 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
         stacked ? 'overflow-clip' : 'overflow-hidden'
       }`}
     >
-      {/* Lane chrome — sticky to the board scroll region in 1-up stack mode.
-          Square top + opaque bg when stacked so scrolling rows never bleed through
-          rounded corners; grid lanes keep the frosted rounded cap. */}
+      {/* Lane chrome — sticky to the board scroll region in 1-up stack mode. */}
       <div
-        className={cn(
-          'relative isolate flex items-center gap-2 border-b border-t border-border-hairline px-2.5 py-1.5',
-          stacked
-            ? 'sticky top-0 z-header bg-surface-card'
-            : 'rounded-t-xl bg-surface-card/95 backdrop-blur-sm',
-        )}
+        className={`flex items-center gap-2 border-b border-t border-border-hairline bg-surface-card/95 px-2.5 py-1.5 backdrop-blur-sm rounded-t-xl ${
+          stacked ? 'sticky top-0 z-sticky' : ''
+        }`}
       >
         {/* ds-raw-button: dnd-kit drag handle (spreads listeners; active:scale would fight drag) */}
         <button

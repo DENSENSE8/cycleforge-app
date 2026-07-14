@@ -14,7 +14,7 @@ import { AlertTriangle, Clock, Loader2, MapPin, Package, PackageCheck, Send, Tru
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { OUTBOUND_BOARD_LANES, type OutboundLaneIconKey } from '@/lib/order-lifecycle';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
-import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { useShippedTableFilters } from '@/components/shipped/dashboard-table/useShippedTableFilters';
 import { useShippedTableRecords } from '@/components/shipped/dashboard-table/useShippedTableRecords';
 import { useShippedTableGrouping } from '@/components/shipped/dashboard-table/useShippedTableGrouping';
@@ -270,7 +270,7 @@ export function DashboardShippedTable({
               toolbarPortalTarget ? 'py-1' : 'p-4',
             )}
           >
-            <div className={cn(MONITOR_SECTION_CARD_CLASS, 'overflow-hidden')}>
+            <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>
               {showResultsHeader ? (
                 <PaneHeader
                   className="shrink-0 border-b-0"

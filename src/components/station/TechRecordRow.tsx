@@ -39,7 +39,7 @@ export function TechRecordRow({ record, index, onOpen }: TechRecordRowProps) {
     ? !rawCondition || /^fba\s*scan$/i.test(rawCondition)
       ? 'N/A'
       : rawCondition
-    : displayValues.condition || 'No Condition';
+    : displayValues.condition || 'N/A';
   const fnskuValue = String(record.fnsku || '').trim();
   const isFnskuRow = Boolean(fnskuValue);
   const { dotType, isSku } = resolveStationSource({

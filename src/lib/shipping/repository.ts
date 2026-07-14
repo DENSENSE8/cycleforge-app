@@ -90,6 +90,26 @@ export async function upsertShipment(params: {
   }
 }
 
+/**
+ * Stamp organization_id on an orphan STN row (NULL → orgId). Uses the owner
+ * pool (BYPASSRLS): under FORCE RLS, app_tenant cannot SEE NULL-org rows, so a
+ * tenant-scoped UPDATE would be a no-op. Never overwrites a non-null org.
+ */
+export async function healShipmentOrganizationId(
+  shipmentId: number,
+  orgId: OrgId,
+): Promise<void> {
+  if (!Number.isFinite(shipmentId) || shipmentId <= 0) return;
+  await pool.query(
+    `UPDATE shipping_tracking_numbers
+        SET organization_id = $2::uuid,
+            updated_at = now()
+      WHERE id = $1
+        AND organization_id IS NULL`,
+    [shipmentId, orgId],
+  );
+}
+
 // ─── Lookups ──────────────────────────────────────────────────────────────────
 
 export async function getShipmentById(id: number, orgId?: OrgId): Promise<ShipmentRow | null> {

@@ -12,6 +12,7 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
+import { SerialChip } from '@/components/ui/CopyChip';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -121,8 +122,9 @@ export interface OrdersQueueTableProps {
    */
   stickyTopClass?: string;
   /**
-   * `monitor` — flat day-banded list inside {@link MONITOR_SECTION_CARD_CLASS}
-   * (Dashboard · Packed / Shipped). Parent owns scroll; body gets `px-2 pb-6`.
+   * `monitor` — flat day-banded list inside {@link MONITOR_SECTION_CARD_SCROLL_CLASS}
+   * (Dashboard · Packed). Table owns the scrollport so sticky date headers dock
+   * like To Ship; body gets `px-2 pb-6`.
    */
   listShell?: 'default' | 'monitor';
 }
@@ -180,14 +182,16 @@ export function OrdersQueueTable({
 
   // `autoHeight`: the body sizes to content, capped by a max-height (px wins over
   // class), so short tables leave no trailing whitespace and tall ones scroll.
+  // `monitor`: table owns the scrollport (like the default shell / To Ship) so
+  // sticky DateGroupHeaders dock correctly inside the monitor card.
   const monitorShell = listShell === 'monitor';
   const rootClass = monitorShell
-    ? 'relative flex w-full min-w-0 flex-col'
+    ? 'relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col'
     : autoHeight
       ? 'flex min-w-0 w-full bg-surface-card relative'
       : 'flex h-full min-w-0 flex-1 bg-surface-card relative';
   const columnClass = monitorShell
-    ? 'flex w-full min-w-0 flex-col'
+    ? 'flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden'
     : autoHeight
       ? 'flex flex-col w-full min-w-0'
       : 'flex-1 flex flex-col overflow-hidden';
@@ -196,7 +200,7 @@ export function OrdersQueueTable({
   // grows to content and an ancestor scroll region owns the wheel. Otherwise the
   // body scrolls internally, capped by the px (drag) or class (preset) height.
   const bodyScrollClass = monitorShell
-    ? 'w-full'
+    ? `min-h-0 flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`
     : autoHeight
       ? growToContent
         // `overflow-x-clip` (NOT hidden): clips horizontally without becoming a
@@ -208,7 +212,7 @@ export function OrdersQueueTable({
   const listBodyClass = monitorShell ? 'flex w-full flex-col px-2 pb-6' : 'flex w-full flex-col';
   const bodyScrollStyle =
     autoHeight && !growToContent && maxBodyHeightPx != null ? { maxHeight: maxBodyHeightPx } : undefined;
-  const emptyPadClass = autoHeight ? 'py-10' : 'py-40';
+  const emptyPadClass = autoHeight || monitorShell ? 'py-10' : 'py-40';
 
   const { visibleRecords, orderGroupsByDate, displayedRecords, totalCount } = useOrdersQueueRows({
     records,
@@ -287,6 +291,11 @@ export function OrdersQueueTable({
           packerId={useWaForDisplay ? (r.packer_id as number | null) : (r.packed_by as number | null) ?? (r.packer_id as number | null)}
           rowStatus={rowStatus}
           trackingAction={queueMode === 'labels' ? <AddTrackingPopover record={record} /> : undefined}
+          serialChip={
+            queueMode === 'staged' ? (
+              <SerialChip value={String(r.serial_number || '').trim()} width="w-fit max-w-full" />
+            ) : undefined
+          }
           hasOutOfStock={outOfStockValue !== ''}
           outOfStockValue={outOfStockValue}
           notesValue={notesValue}
@@ -309,13 +318,13 @@ export function OrdersQueueTable({
       <div
         className={
           monitorShell
-            ? 'w-full px-2 pb-6'
+            ? 'relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col'
             : autoHeight
               ? 'flex flex-col bg-surface-canvas'
               : 'flex-1 flex flex-col bg-surface-canvas overflow-hidden'
         }
       >
-        {hideHeader ? null : bannerTitle ? (
+        {hideHeader || monitorShell ? null : bannerTitle ? (
           <QueueTableBanner
             title={bannerTitle}
             subtitle={bannerSubtitle}
@@ -327,10 +336,14 @@ export function OrdersQueueTable({
           </div>
         )}
         <div
-          className={autoHeight ? `overflow-y-auto no-scrollbar ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}` : 'flex-1 overflow-y-auto no-scrollbar'}
+          className={
+            monitorShell || !autoHeight
+              ? 'min-h-0 flex-1 overflow-y-auto no-scrollbar'
+              : `overflow-y-auto no-scrollbar ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}`
+          }
           style={bodyScrollStyle}
         >
-          <SkeletonList count={autoHeight ? 6 : 12} />
+          <SkeletonList count={autoHeight || monitorShell ? 6 : 12} />
         </div>
       </div>,
     );

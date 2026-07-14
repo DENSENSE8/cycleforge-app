@@ -5,9 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   receivingSiblingsQueryKey,
   receivingSiblingsSerialsQueryKey,
+  upsertSiblingLine,
 } from '@/lib/queries/receiving-queries';
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
+import { shouldPreserveCachedSerials } from '@/lib/receiving/optimistic-return-line';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { LineSerial } from '@/lib/receiving/optimistic-serials';
 
 export interface ApiResponse {
   success: boolean;
@@ -18,6 +21,12 @@ export interface ApiResponse {
 // reference while loading — prevents the `useMemo`/`layout` deps from churning
 // on every render before the first fetch resolves.
 const EMPTY_ROWS: ReceivingLineRow[] = [];
+
+function hasInFlightSerial(row: ReceivingLineRow): boolean {
+  return (row.serials ?? []).some(
+    (s) => readOptimisticFlag(s as { _optimistic?: 'adding' | 'removing' }) != null,
+  );
+}
 
 interface Args {
   receivingId: number;
@@ -116,11 +125,20 @@ export function usePoLinesData({
         if (r.serials != null) prevSerials.set(r.id, r.serials); // main wins (holds in-flight optimistic)
       }
       if (prevSerials.size > 0) {
-        fresh.receiving_lines = fresh.receiving_lines.map((r) =>
-          r.serials == null && prevSerials.has(r.id)
-            ? ({ ...r, serials: prevSerials.get(r.id) } as ReceivingLineRow)
-            : r,
-        );
+        fresh.receiving_lines = fresh.receiving_lines.map((r) => {
+          const cached = prevSerials.get(r.id);
+          // Empty `[]` from an unpopulated serial_projection is NOT authoritative
+          // — treat it like null so optimistic / hydrated chips survive refetch.
+          if (
+            shouldPreserveCachedSerials(
+              r.serials as LineSerial[] | null | undefined,
+              cached as LineSerial[] | undefined,
+            )
+          ) {
+            return { ...r, serials: cached } as ReceivingLineRow;
+          }
+          return r;
+        });
       }
       return fresh;
     },
@@ -188,21 +206,35 @@ export function usePoLinesData({
 
   // Optimistic `receiving-line-updated` patches go straight into the QUERY
   // CACHE, so the render derives from a SINGLE source of truth (`data`). See
-  // the hook docblock for why a `localRows` mirror flickers.
+  // the hook docblock for why a `localRows` mirror flickers. Upserts when the
+  // patch id is new (return-scan creates a line) so we don't wait for refetch.
   useEffect(() => {
     const handler = (event: Event) => {
       const patch = (event as CustomEvent<Partial<ReceivingLineRow>>).detail;
       if (!patch || typeof patch.id !== 'number') return;
-      queryClient.setQueryData<ApiResponse>(queryKey, (prev) =>
-        prev?.receiving_lines
-          ? {
-              ...prev,
-              receiving_lines: prev.receiving_lines.map((r) =>
-                r.id === patch.id ? ({ ...r, ...patch } as ReceivingLineRow) : r,
-              ),
-            }
-          : prev,
-      );
+      queryClient.setQueryData<ApiResponse>(queryKey, (prev) => {
+        const base = prev?.receiving_lines ?? [];
+        const existing = base.find((r) => r.id === patch.id);
+        // In-flight optimistic serials: the scan path owns the row until confirm.
+        if (existing && hasInFlightSerial(existing) && patch.serials != null) {
+          const patchWithoutSerials = { ...patch };
+          delete patchWithoutSerials.serials;
+          if (Object.keys(patchWithoutSerials).length <= 1) return prev; // id only
+          return {
+            success: prev?.success ?? true,
+            receiving_lines: base.map((r) =>
+              r.id === patch.id
+                ? ({ ...r, ...patchWithoutSerials, serials: r.serials } as ReceivingLineRow)
+                : r,
+            ),
+          };
+        }
+        return upsertSiblingLine(prev, {
+          ...(existing ?? {}),
+          ...patch,
+          id: patch.id,
+        } as ReceivingLineRow);
+      });
     };
     window.addEventListener('receiving-line-updated', handler);
     return () => window.removeEventListener('receiving-line-updated', handler);

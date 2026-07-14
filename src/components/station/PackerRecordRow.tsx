@@ -68,7 +68,7 @@ export function PackerRecordRow({ record, index, onOpen }: PackerRecordRowProps)
       dotType={dotType}
       title={record.product_title || record.item_number || record.sku || 'Unknown Product'}
       quantity={parseInt(String(record.quantity || '1'), 10) || 1}
-      condition={displayValues.condition || 'No Condition'}
+      condition={displayValues.condition || 'N/A'}
       chipGrid={chipGrid}
       index={index}
       onClick={() => onOpen(record)}

@@ -28,7 +28,7 @@ export function PoLineMetaGrid({
   return (
     <div
       className={cn(
-        'mt-0.5 grid min-w-0 items-center gap-x-1.5 text-role-eyebrow font-bold uppercase tracking-widest',
+        'mt-0.5 grid min-w-0 items-center gap-x-1.5 leading-none text-role-eyebrow font-bold uppercase tracking-widest',
         className,
       )}
       style={{

@@ -22,7 +22,7 @@ import { TableDensityProvider } from '@/components/ui/table-density/TableDensity
 import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { createPortal } from 'react-dom';
-import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { cn } from '@/utils/_cn';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -141,11 +141,11 @@ export function PackedOrdersTable({
           )}
           <div
             className={cn(
-              'min-h-0 flex-1 overflow-x-auto overflow-y-auto scrollbar-hide',
+              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
               toolbarPortalTarget ? 'py-1' : 'p-4',
             )}
           >
-            <div className={cn(MONITOR_SECTION_CARD_CLASS, 'overflow-hidden')}>
+            <div className={cn(MONITOR_SECTION_CARD_SCROLL_CLASS, 'flex min-h-0 min-w-0 flex-1 flex-col')}>
               <OrdersQueueTable
                 records={records as ShippedOrder[]}
                 loading={query.isLoading}

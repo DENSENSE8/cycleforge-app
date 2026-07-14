@@ -116,7 +116,7 @@ test.describe('receiving — Zoho overall notes + unit price', () => {
     await notesIcon.click();
 
     // Editor swaps in: an item-description input + a save (check) action.
-    await expect(page.getByPlaceholder(/Item description/i)).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByRole('textbox', { name: /Item description/i })).toBeVisible({ timeout: 8_000 });
     await expect(page.getByRole('button', { name: /Save item description/i })).toBeVisible();
 
     await page.screenshot({ path: 'test-results/receiving-po-row-item-desc.png' });
