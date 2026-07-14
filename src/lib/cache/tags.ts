@@ -77,6 +77,47 @@ export const CACHE_NS = {
    *  Seed-only: written client-side from the rows a rail just rendered, read to
    *  paint the next reload before the authoritative query resolves. */
   receivingRail: 'receiving-rail',
+
+  // ── Phase 2 hot-path read wraps (B2–B5) ───────────────────────────────────
+  // Registered now so the tag/namespace SoT is complete before the reads are
+  // wired. Each read model these name is currently uncached; when a read is
+  // wrapped in `getOrSet`, add its namespace to the prod REDIS_CACHE_NS allowlist
+  // if that env is in use. The tags they carry (receivingLines / fbaStageCounts /
+  // fbaBoard / fbaToday / skuCatalog) are ALREADY invalidated by existing writers.
+  /** `/api/fba/stage-counts` — GROUP BY status over fba_shipment_items (120s poll). */
+  fbaStageCounts: 'fba-stage-counts',
+  /** `/api/dashboard/fba-shipments` — shipments rollup (60s poll). */
+  fbaDashboard: 'fba-dashboard',
+  /** `/api/sku-catalog/search` — reference catalog search (debounced per-keystroke). */
+  skuCatalogSearch: 'sku-catalog-search',
+  /** `/api/receiving-lines/incoming/summary` — receiving KPI aggregate (30s poll). */
+  receivingIncomingSummary: 'receiving-incoming-summary',
+  /** `/api/receiving-lines/incoming/details` — per-line drill (60s poll per drawer). */
+  receivingIncomingDetails: 'receiving-incoming-details',
+  /** `/api/receiving-lines/counts` — GROUP BY day counts (60s poll). */
+  receivingLinesCounts: 'receiving-lines-counts',
+  /** `/api/receiving-lines/incoming/delivered-*` lanes (60s poll each). */
+  receivingIncomingLanes: 'receiving-incoming-lanes',
 } as const;
 
 export type CacheNamespace = (typeof CACHE_NS)[keyof typeof CACHE_NS];
+
+/**
+ * TTL policy by volatility class (seconds). Pick the class, not an ad-hoc number,
+ * when passing `ttlSeconds` to `getOrSet`/`setCachedJson`. These mirror the values
+ * already in use (org-catalog 300s, reason-codes 600s, ops-dashboard 45s,
+ * order-detail 20s, rail-snapshot 60s) — keep new callers inside the band.
+ *
+ *   reference   300–600s : stable lookups (catalog, manuals, reason codes, FNSKU)
+ *   rollup       45–120s : dashboard/analytics aggregates (ops, kpi, fba dashboard)
+ *   stationRead  15–60s  : live station read models (orders-next, receiving-incoming,
+ *                          stage-counts, order-detail, inventory-events)
+ *   seed             60s : first-paint seeds reconciled by the authoritative query
+ *                          (receiving-rail) — seed-only, no tag invalidation
+ */
+export const CACHE_TTL = {
+  reference: 600,
+  rollup: 90,
+  stationRead: 30,
+  seed: 60,
+} as const;
