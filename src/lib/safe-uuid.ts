@@ -20,6 +20,7 @@
 export function safeRandomUUID(): string {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      // eslint-disable-next-line no-restricted-syntax -- this IS the SoT wrapper; the ban routes everyone here
       return crypto.randomUUID();
     }
     if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {

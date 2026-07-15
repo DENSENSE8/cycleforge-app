@@ -27,6 +27,7 @@ import pool from '@/lib/db';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { sendEmailBestEffort } from '@/lib/email/send';
 import { BetaApplySchema, buildPaymentLinkUrl, isHoneypotTripped, type BetaApply } from '@/lib/beta/apply-schema';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 // ── CORS (same shape as /api/beta/waitlist) ─────────────────────────────────
 function allowedOrigins(): string[] {
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         ok: true,
-        applicationId: crypto.randomUUID(),
+        applicationId: safeRandomUUID(),
         status: 'RECEIVED',
         paymentLinkUrl: null,
       },

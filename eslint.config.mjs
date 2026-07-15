@@ -191,6 +191,12 @@ export default [
           message:
             'Hardcoded USAV product brand is banned. Use PRODUCT_NAME / PRODUCT_NAME_AI from src/lib/branding/constants.ts, or organizations.name from the DB. See docs/cycle-forge-branding-spec.md.',
         },
+        {
+          selector:
+            "CallExpression[callee.object.name='crypto'][callee.property.name='randomUUID']",
+          message:
+            'crypto.randomUUID() is undefined in insecure contexts (LAN-HTTP phone, older Safari) and throws. Use safeRandomUUID() from @/lib/safe-uuid — the crash-safe SoT.',
+        },
       ],
     },
   },

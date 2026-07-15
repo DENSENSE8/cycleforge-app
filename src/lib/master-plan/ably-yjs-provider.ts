@@ -10,6 +10,7 @@
  */
 
 import * as Y from 'yjs';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /** Event names on the `org:{uuid}:forge:master-plan` channel. */
 export const MASTER_PLAN_EVENTS = {
@@ -49,7 +50,7 @@ export function base64ToU8(b64: string): Uint8Array {
 
 function randomTag(): string {
   try {
-    return crypto.randomUUID();
+    return safeRandomUUID();
   } catch {
     return `tag-${Math.random().toString(36).slice(2)}-${Date.now().toString(36)}`;
   }

@@ -1,5 +1,6 @@
 import { normalizeUPSStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 // UPS uses one host for both production and the CIE sandbox swap (wwwcie.ups.com).
 // Existing behaviour is production-only; expose the base so the subscription
@@ -205,7 +206,7 @@ export function parseUPSTrackingPayload(payload: any): CarrierTrackingResult | n
 }
 
 async function callUpsTrack(normalized: string, token: string): Promise<Response> {
-  const transId = crypto.randomUUID();
+  const transId = safeRandomUUID();
   return fetch(`${UPS_TRACK_URL}/${encodeURIComponent(normalized)}?locale=en_US&returnSignature=false`, {
     headers: {
       Authorization: `Bearer ${token}`,

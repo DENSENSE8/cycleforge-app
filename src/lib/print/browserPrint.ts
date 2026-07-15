@@ -18,6 +18,8 @@
  *     WebUSB; callers fall back to the HTML iframe + `window.print()` dialog.
  */
 
+import { safeRandomUUID } from '@/lib/safe-uuid';
+
 const PROFILES_KEY = 'cf.printerProfiles';
 const LEGACY_SINGLE_KEY = 'cf.browserPrinter';
 
@@ -148,7 +150,7 @@ function hex(n: number | undefined): string {
 
 function newId(): string {
   try {
-    return crypto.randomUUID();
+    return safeRandomUUID();
   } catch {
     // Fallback for older engines — uniqueness is per-device, low collision risk.
     return `p_${Math.abs(Math.floor(Math.random() * 1e9))}`;
