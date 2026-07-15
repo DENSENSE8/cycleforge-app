@@ -1,4 +1,5 @@
 /**
+ * GET  /api/user-issues — tenant-scoped reported-issues list (UIC-1).
  * POST /api/user-issues — in-app feedback intake (ALP-5.2 dual-write).
  *
  * Neon (`user_reported_issues`, tenant-scoped) is the PRIMARY record; the
@@ -18,11 +19,19 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import pool from '@/lib/db';
+import { parseBody } from '@/lib/schemas/parse';
+import {
+  ListUserIssuesQuery,
+  decodeIssueCursor,
+  encodeIssueCursor,
+} from '@/lib/schemas/user-issues';
 import {
   createReportedIssue,
   attachGithubIssue,
+  listReportedIssues,
   USER_ISSUE_TYPES,
   type UserIssueType,
+  type UserIssueStatus,
   type UserIssuesDeps,
 } from '@/lib/user-issues/issues';
 
@@ -47,6 +56,59 @@ const TYPE_LABEL: Record<UserIssueType, string> = {
 const dbDeps: UserIssuesDeps = {
   query: (orgId, sql, params) => tenantQuery(orgId, sql, params),
 };
+
+/**
+ * GET /api/user-issues?status=&type=&reporter=&q=&cursor=&limit=
+ * Keyset-paginated list for the Reported-Issues Workbench.
+ */
+export const GET = withAuth(async (request: NextRequest, ctx) => {
+  try {
+    const { searchParams } = new URL(request.url);
+    const raw = {
+      status: searchParams.get('status') ?? undefined,
+      type: searchParams.get('type') ?? undefined,
+      reporter: searchParams.get('reporter') ?? undefined,
+      q: searchParams.get('q') ?? undefined,
+      cursor: searchParams.get('cursor') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+    };
+    const parsed = parseBody(ListUserIssuesQuery, raw);
+    if (parsed instanceof NextResponse) return parsed;
+
+    const cursor = parsed.cursor ? decodeIssueCursor(parsed.cursor) : null;
+    if (parsed.cursor && !cursor) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid cursor' },
+        { status: 400 },
+      );
+    }
+
+    const result = await listReportedIssues(
+      ctx.organizationId,
+      {
+        status: (parsed.status as UserIssueStatus | undefined) ?? null,
+        type: (parsed.type as UserIssueType | undefined) ?? null,
+        reporterId: parsed.reporter ?? null,
+        q: parsed.q ?? null,
+        cursor,
+        limit: parsed.limit,
+      },
+      dbDeps,
+    );
+
+    return NextResponse.json({
+      success: true,
+      issues: result.issues,
+      nextCursor: result.nextCursor ? encodeIssueCursor(result.nextCursor) : null,
+    });
+  } catch (error: unknown) {
+    console.error('Error in GET /api/user-issues:', error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : 'Failed to list issues' },
+      { status: 500 },
+    );
+  }
+}, { permission: 'support.issues.view' });
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {

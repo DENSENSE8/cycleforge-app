@@ -72,6 +72,12 @@ export interface ReceivingRailFeed {
   autoSelectFirstWhenEmpty?: boolean;
   /** false ONLY for the unbox Recent feed (strict unboxed_at order, no pin bounce). */
   pinSelectedLead?: boolean;
+  /**
+   * First-load stagger motion for the rail shell. Unboxed uses `slide` so new
+   * rows enter from the left (matches CRUD `sidebarRailRow` presence).
+   * Defaults to the shell's `sidebar` (opacity + y settle) when omitted.
+   */
+  staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
   /** Whether the feed reads the `?staff=` param. */
   usesStaffFilter?: boolean;
   limit?: number;
@@ -381,6 +387,8 @@ const FEEDS = {
     getActivityAt: (r) =>
       r.unboxed_at ?? r.unbox_opened_at ?? r.scanned_at ?? r.received_at ?? r.created_at ?? null,
     pinSelectedLead: false,
+    // Left-slide first-load + CRUD entrance — matches framerPresence.sidebarRailRow.
+    staggerRevealMotion: 'slide',
     // One row per carton — line deletes retarget the carton row in place.
     listenLineDelete: false,
     // Honors the shared `?staff=` header filter (P1-WORK-02): the server's

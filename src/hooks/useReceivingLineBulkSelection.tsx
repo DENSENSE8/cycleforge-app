@@ -3,7 +3,7 @@
 /**
  * Shared bulk-selection for the receiving-line history feeds (the global-header
  * pencil + contextual action bar). Both the Receiving dashboard's History /
- * Incoming list and the Tech dashboard's testing-history list select
+ * Incoming list and the Tech dashboard's testing browse list select
  * `ReceivingLineRow`s with the IDENTICAL action set — Copy / Print / Create
  * support ticket / Send to staff / Send to phone — and the same single-line
  * claim modal. They differ only in the selection scope, which surface gates the

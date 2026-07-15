@@ -12,6 +12,19 @@ export type UserIssueType = 'bug' | 'suggestion' | 'question';
 export type UserIssueStatus = 'pending' | 'in-progress' | 'deployed';
 
 export const USER_ISSUE_TYPES: readonly UserIssueType[] = ['bug', 'suggestion', 'question'];
+export const USER_ISSUE_STATUSES: readonly UserIssueStatus[] = [
+  'pending',
+  'in-progress',
+  'deployed',
+];
+
+export function isUserIssueType(value: unknown): value is UserIssueType {
+  return typeof value === 'string' && (USER_ISSUE_TYPES as readonly string[]).includes(value);
+}
+
+export function isUserIssueStatus(value: unknown): value is UserIssueStatus {
+  return typeof value === 'string' && (USER_ISSUE_STATUSES as readonly string[]).includes(value);
+}
 
 export interface UserIssuesDeps {
   /** Tenant-scoped query (real impl: tenantQuery(orgId, sql, params)). */
@@ -20,6 +33,167 @@ export interface UserIssuesDeps {
     sql: string,
     params: unknown[],
   ) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
+}
+
+/** Wire shape for list + detail (LEFT JOIN staff for reporter name). */
+export interface ReportedIssue {
+  id: number;
+  reporterStaffId: number | null;
+  reporterName: string | null;
+  issueType: UserIssueType;
+  title: string;
+  description: string;
+  pagePath: string | null;
+  githubIssueNumber: number | null;
+  githubIssueUrl: string | null;
+  status: UserIssueStatus;
+  resolutionCommit: string | null;
+  resolvedAt: string | null;
+  clientEventId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListReportedIssuesFilters {
+  status?: UserIssueStatus | null;
+  type?: UserIssueType | null;
+  reporterId?: number | null;
+  q?: string | null;
+  /** Keyset: last row's (created_at, id) from the previous page. */
+  cursor?: { createdAt: string; id: number } | null;
+  limit?: number;
+}
+
+export interface ListReportedIssuesResult {
+  issues: ReportedIssue[];
+  nextCursor: { createdAt: string; id: number } | null;
+}
+
+const ISSUE_SELECT = `
+  uri.id,
+  uri.reporter_staff_id,
+  s.name AS reporter_name,
+  uri.issue_type,
+  uri.title,
+  uri.description,
+  uri.page_path,
+  uri.github_issue_number,
+  uri.github_issue_url,
+  uri.status,
+  uri.resolution_commit,
+  uri.resolved_at,
+  uri.client_event_id,
+  uri.created_at,
+  uri.updated_at
+`;
+
+function toIso(v: unknown): string {
+  return v instanceof Date ? v.toISOString() : String(v);
+}
+
+function mapIssue(row: Record<string, unknown>): ReportedIssue {
+  return {
+    id: Number(row.id),
+    reporterStaffId: row.reporter_staff_id == null ? null : Number(row.reporter_staff_id),
+    reporterName: row.reporter_name == null ? null : String(row.reporter_name),
+    issueType: String(row.issue_type) as UserIssueType,
+    title: String(row.title),
+    description: String(row.description ?? ''),
+    pagePath: row.page_path == null ? null : String(row.page_path),
+    githubIssueNumber: row.github_issue_number == null ? null : Number(row.github_issue_number),
+    githubIssueUrl: row.github_issue_url == null ? null : String(row.github_issue_url),
+    status: String(row.status) as UserIssueStatus,
+    resolutionCommit: row.resolution_commit == null ? null : String(row.resolution_commit),
+    resolvedAt: row.resolved_at == null ? null : toIso(row.resolved_at),
+    clientEventId: row.client_event_id == null ? null : String(row.client_event_id),
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  };
+}
+
+/** Escape ILIKE wildcards so a pathological `q` can't backtrack. */
+function escapeLike(raw: string): string {
+  return raw.replace(/[\\%_]/g, '\\$&');
+}
+
+/**
+ * Tenant-scoped issue list. Keyset-paginated on (created_at, id) DESC.
+ * Soft-delete filter (`deleted_at IS NULL`) lands with UIC-4 — column does
+ * not exist yet, so omit here.
+ */
+export async function listReportedIssues(
+  orgId: string,
+  filters: ListReportedIssuesFilters,
+  deps: UserIssuesDeps,
+): Promise<ListReportedIssuesResult> {
+  const limit = Math.min(Math.max(filters.limit ?? 50, 1), 100);
+  const status = filters.status ?? null;
+  const type = filters.type ?? null;
+  const reporterId =
+    typeof filters.reporterId === 'number' && Number.isFinite(filters.reporterId) && filters.reporterId > 0
+      ? Math.floor(filters.reporterId)
+      : null;
+  const rawQ = filters.q?.trim() ? filters.q.trim().slice(0, 200) : null;
+  const q = rawQ ? `%${escapeLike(rawQ)}%` : null;
+  const cursorAt = filters.cursor?.createdAt ?? null;
+  const cursorId =
+    filters.cursor && Number.isFinite(filters.cursor.id) && filters.cursor.id > 0
+      ? filters.cursor.id
+      : null;
+
+  const result = await deps.query(
+    orgId,
+    `SELECT ${ISSUE_SELECT}
+       FROM user_reported_issues uri
+       LEFT JOIN staff s
+         ON s.id = uri.reporter_staff_id
+        AND s.organization_id = uri.organization_id
+      WHERE uri.organization_id = $1::uuid
+        AND ($2::text IS NULL OR uri.status = $2)
+        AND ($3::text IS NULL OR uri.issue_type = $3)
+        AND ($4::int IS NULL OR uri.reporter_staff_id = $4)
+        AND ($5::text IS NULL OR (
+              uri.title ILIKE $5 ESCAPE '\\'
+           OR uri.description ILIKE $5 ESCAPE '\\'
+           OR COALESCE(uri.page_path, '') ILIKE $5 ESCAPE '\\'
+        ))
+        AND ($6::timestamptz IS NULL
+             OR (uri.created_at, uri.id) < ($6::timestamptz, $7::bigint))
+      ORDER BY uri.created_at DESC, uri.id DESC
+      LIMIT $8`,
+    [orgId, status, type, reporterId, q, cursorAt, cursorId, limit + 1],
+  );
+
+  const rows = result.rows;
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const issues = page.map(mapIssue);
+  const last = issues[issues.length - 1];
+  return {
+    issues,
+    nextCursor: hasMore && last ? { createdAt: last.createdAt, id: last.id } : null,
+  };
+}
+
+export async function getReportedIssue(
+  orgId: string,
+  id: number,
+  deps: UserIssuesDeps,
+): Promise<ReportedIssue | null> {
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const result = await deps.query(
+    orgId,
+    `SELECT ${ISSUE_SELECT}
+       FROM user_reported_issues uri
+       LEFT JOIN staff s
+         ON s.id = uri.reporter_staff_id
+        AND s.organization_id = uri.organization_id
+      WHERE uri.organization_id = $1::uuid AND uri.id = $2
+      LIMIT 1`,
+    [orgId, id],
+  );
+  const row = result.rows[0];
+  return row ? mapIssue(row) : null;
 }
 
 export interface CreateIssueInput {

@@ -12,9 +12,8 @@ export interface LabelTypeOption {
 /**
  * Compact header dropdown that selects which label is queued for printing
  * (e.g. Unit label / Carton label) on the testing display's label preview.
- * Styled as the card's top-left eyebrow so it reads as the preview's title —
- * with a chevron affordance when there's more than one option. Falls back to a
- * static eyebrow label when only one label is available.
+ * Typography matches the "Edit label" secondary button (sentence case,
+ * text-role-caption + font-semibold) — not the uppercase eyebrow style.
  */
 export function LabelTypeSelect({
   value,
@@ -29,10 +28,11 @@ export function LabelTypeSelect({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const selected = options.find((o) => o.key === value) ?? options[0];
 
-  const eyebrow = 'text-left text-xs font-semibold uppercase tracking-[0.14em]';
+  // Match Button size="sm" secondary label: caption + semibold, sentence case.
+  const labelType = 'text-left text-role-caption font-semibold';
 
   if (options.length <= 1) {
-    return <span className={`${eyebrow} text-text-soft`}>{selected?.name ?? 'Live preview'}</span>;
+    return <span className={`${labelType} text-text-default`}>{selected?.name ?? 'Live preview'}</span>;
   }
 
   return (
@@ -43,7 +43,7 @@ export function LabelTypeSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className={`ds-raw-button -my-1 -ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 ${eyebrow} text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default`}
+        className={`ds-raw-button -my-1 -ml-1 inline-flex items-center gap-1 rounded-md px-1 py-1 ${labelType} text-text-default transition-colors hover:bg-surface-hover`}
       >
         <span className="truncate">{selected?.name}</span>
         <ChevronDown
@@ -74,7 +74,7 @@ export function LabelTypeSelect({
                     setOpen(false);
                     triggerRef.current?.focus();
                   }}
-                  className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-bold transition-colors hover:bg-surface-hover ${
+                  className={`flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors hover:bg-surface-hover ${
                     active ? 'text-text-default' : 'text-text-soft'
                   }`}
                 >

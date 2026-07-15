@@ -9,13 +9,14 @@ import { SupportTicketQueue } from '@/components/support/zendesk/queue/SupportTi
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
 import { CallLogSidebar } from '@/components/support/voice/CallLogSidebar';
 import { WarrantyLoggerSidebar } from '@/components/warranty/WarrantyLoggerSidebar';
+import { IssuesQueue } from '@/components/support/issues/IssuesQueue';
 import { SupportModeToggle } from '@/components/sidebar/support/SupportModeToggle';
 import type { SupportMode } from '@/components/sidebar/support/support-sidebar-shared';
 import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
 
 /**
- * Contextual sidebar for /support. Four modes (the house sidebar-mode
- * contract, `?mode=` is the single source of truth):
+ * Contextual sidebar for /support. Modes (the house sidebar-mode contract,
+ * `?mode=` is the single source of truth):
  *
  * - tickets   → Zendesk ticket queue → conversation (Workbench; the default).
  * - voicemail → voicemail / missed-call follow-up to-do list (Workbench);
@@ -23,6 +24,7 @@ import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
  * - calls     → org call log filter rail (Monitor); the stream lives in the body.
  * - warranty  → Warranty Logger claim picker + search (Workbench); body shows
  *   coverage card + claims table + claim detail (`?open=`).
+ * - issues    → Reported-Issues list (Workbench); selecting one sets `?issueId=`.
  *
  * The mode rail is suppressed when the master-nav drives mode switching
  * (`support` is in MASTER_NAV_RAIL_PAGES) — same gate Operations uses.
@@ -38,6 +40,7 @@ export function SupportSidebarPanel() {
 
   const canTickets = !isLoaded || has('integrations.zendesk');
   const canWarranty = !isLoaded || has('warranty.view');
+  const canIssues = !isLoaded || has('support.issues.view');
 
   // Other surfaces still fire 'support-refresh' to invalidate the caches.
   useEffect(() => {
@@ -47,6 +50,7 @@ export function SupportSidebarPanel() {
       void queryClient.invalidateQueries({ queryKey: ['call-events'] });
       void queryClient.invalidateQueries({ queryKey: ['warranty-claims'] });
       void queryClient.invalidateQueries({ queryKey: ['warranty-coverage'] });
+      void queryClient.invalidateQueries({ queryKey: ['user-issues'] });
     };
     window.addEventListener('support-refresh', onRefresh);
     return () => window.removeEventListener('support-refresh', onRefresh);
@@ -67,21 +71,22 @@ export function SupportSidebarPanel() {
     [pathname, router, searchParams],
   );
 
-  if (isLoaded && !canTickets && !canWarranty) {
+  if (isLoaded && !canTickets && !canWarranty && !canIssues) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
-        Requires support tickets or warranty access.
+        Requires support tickets, warranty, or reported-issues access.
       </div>
     );
   }
 
-  // Warranty-only staff land on warranty mode when they hit bare /support.
+  // Non-ticket staff land on the first mode they can open when they hit bare /support.
   useEffect(() => {
     if (!isLoaded) return;
-    if (mode === 'tickets' && !canTickets && canWarranty) {
-      updateMode('warranty');
+    if (mode === 'tickets' && !canTickets) {
+      if (canIssues) updateMode('issues');
+      else if (canWarranty) updateMode('warranty');
     }
-  }, [canTickets, canWarranty, isLoaded, mode, updateMode]);
+  }, [canTickets, canWarranty, canIssues, isLoaded, mode, updateMode]);
 
   const modeToggle = masterNavEnabled ? null : (
     <SupportModeToggle value={mode} onChange={(id) => updateMode(id as SupportMode)} />
@@ -99,6 +104,14 @@ export function SupportSidebarPanel() {
         ) : (
           <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
             Requires the “View warranty claims” permission.
+          </div>
+        )
+      ) : mode === 'issues' ? (
+        canIssues ? (
+          <IssuesQueue modeToggle={modeToggle} />
+        ) : (
+          <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
+            Requires the “View reported issues console” permission.
           </div>
         )
       ) : mode === 'voicemail' ? (

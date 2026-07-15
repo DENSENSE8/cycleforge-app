@@ -16,34 +16,48 @@ import { TestingPoItemsSection } from './TestingPoItemsSection';
 
 /**
  * Testing workspace analogue of {@link POUnboxingSection}: one card with PO items
- * on top and the Package Pairing dropdown below. The header pencil toggles the
- * pairing section (same as unbox) — it replaces the old CartonAddPopover modal
- * (Item · Web · Box) that lived on the standalone PO-items accordion.
+ * on top and the Package Pairing dropdown below.
  *
- * For an unfound (unmatched-surface) carton this also mirrors unbox's two extra
- * affordances so testing isn't a dead end for a lineless box: an "Open in unbox"
- * jump (photos / receive) beside the pencil, and the {@link UnfoundMatchStrip}
- * auto-match row (Zoho / Amazon return) between PO items and Package Pairing.
+ * When `suppressItemsHeader` is set (testing tab row owns the pencil), the PO
+ * items eyebrow + internal Edit-PO pencil are hidden and pairing is controlled
+ * via `pairingOpen` / `onPairingToggle`.
  */
 export function TestingPoUnboxingSection({
   row,
   staffId,
   c,
+  suppressItemsHeader = false,
+  pairingOpen: pairingOpenProp,
+  onPairingToggle,
 }: {
   row: ReceivingLineRow;
   staffId: string;
   c: TestingController;
+  /** Hide "PO items · N" + internal pencil — parent tab row owns them. */
+  suppressItemsHeader?: boolean;
+  /** Controlled Package-Pairing open state; uncontrolled if omitted. */
+  pairingOpen?: boolean;
+  onPairingToggle?: () => void;
 }) {
   const router = useRouter();
-  const [pairingOpen, setPairingOpen] = useState(true);
+  const [internalPairingOpen, setInternalPairingOpen] = useState(false);
+  const pairingOpen = pairingOpenProp ?? internalPairingOpen;
+  const togglePairing =
+    onPairingToggle ?? (() => setInternalPairingOpen((v) => !v));
 
   if (row.receiving_id == null) {
     // No carton yet — render only the PO-items block, which now supports serial
     // entry for a carton-less real line (attach-by-line-id). Package pairing +
     // the unfound auto-match strip both need a carton, so they're omitted here.
     return (
-      <WorkspaceCard overflow="visible">
-        <TestingPoItemsSection row={row} staffId={staffId} c={c} embedded />
+      <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
+        <TestingPoItemsSection
+          row={row}
+          staffId={staffId}
+          c={c}
+          embedded
+          suppressHeader={suppressItemsHeader}
+        />
       </WorkspaceCard>
     );
   }
@@ -55,7 +69,7 @@ export function TestingPoUnboxingSection({
   const unfoundSurface = shouldUseUnmatchedItemsSurface(row);
 
   const pairingToggleLabel = pairingOpen ? 'Hide package pairing' : 'Show package pairing';
-  const headerRight = (
+  const headerRight = suppressItemsHeader ? undefined : (
     <div className="flex shrink-0 items-center gap-1.5">
       {unfoundSurface ? (
         <HoverTooltip
@@ -81,13 +95,13 @@ export function TestingPoUnboxingSection({
         title={pairingToggleLabel}
         tone="accent"
         aria-expanded={pairingOpen}
-        onClick={() => setPairingOpen((v) => !v)}
+        onClick={togglePairing}
       />
     </div>
   );
 
   return (
-    <WorkspaceCard overflow="visible">
+    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
       <div>
         <TestingPoItemsSection
           row={row}
@@ -95,6 +109,7 @@ export function TestingPoUnboxingSection({
           c={c}
           embedded
           headerRight={headerRight}
+          suppressHeader={suppressItemsHeader}
         />
         {unfoundSurface ? (
           <UnfoundMatchStrip
@@ -112,6 +127,7 @@ export function TestingPoUnboxingSection({
           // The auto-match strip already draws the divider above pairing when it's
           // shown; only draw our own top rule when there's no strip between them.
           showTopRule={!unfoundSurface}
+          hideTicketLinkRow
         />
       </div>
     </WorkspaceCard>

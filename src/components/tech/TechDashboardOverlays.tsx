@@ -4,7 +4,7 @@
  * Page-level overlays for the tech dashboard: the receiving details stack (when
  * an inbound log is selected), the repair details panel + its loading veil (from
  * repair-card clicks), and the single-line support-claim modal (from the
- * testing-history bulk bar). Pure presentational; state + handlers come from the
+ * testing browse bulk bar). Pure presentational; state + handlers come from the
  * dashboard's hooks. Extracted from TechDashboard; behaviour is unchanged.
  */
 

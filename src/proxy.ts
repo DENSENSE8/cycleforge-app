@@ -250,14 +250,30 @@ function resolvePackSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['n
  * Test-surface redirect (operator-surfaces refactor Phase 8). The testing station
  * graduated from `/tech` to the first-class `/test` route, so the address bar
  * names the operator's job. `/tech` (and `/tech/`) normalize to `/test`,
- * preserving the `?view=testing` / `?view=testing-history` sub-mode params (they
- * ride along unchanged — the Shipping/Testing/History top-mode is param-based).
+ * preserving `?view=testing` (and rewriting legacy `?view=testing-history` →
+ * `?view=testing` — history browse now lives inside Testing mode).
  * Exact path only — the `/tech/*` sub-routes (none today) keep their URLs.
  */
 function resolveTestSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/tech' && url.pathname !== '/tech/') return null;
   const next = url.clone();
   next.pathname = '/test';
+  if (next.searchParams.get('view') === 'testing-history') {
+    next.searchParams.set('view', 'testing');
+  }
+  return next;
+}
+
+/**
+ * Legacy top-level History mode (`?view=testing-history`) now redirects to
+ * Testing mode — the tested-lines browse surface is the empty state of
+ * TestingLineWorkspace when no line is selected.
+ */
+function resolveTestingHistoryViewRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/test' && url.pathname !== '/test/') return null;
+  if (url.searchParams.get('view') !== 'testing-history') return null;
+  const next = url.clone();
+  next.searchParams.set('view', 'testing');
   return next;
 }
 
@@ -426,7 +442,8 @@ export function proxy(req: NextRequest): NextResponse {
       resolveAuditLogRedirect(req.nextUrl) ??
       resolveReceivingSurfaceRedirect(req.nextUrl) ??
       resolvePackSurfaceRedirect(req.nextUrl) ??
-      resolveTestSurfaceRedirect(req.nextUrl);
+      resolveTestSurfaceRedirect(req.nextUrl) ??
+      resolveTestingHistoryViewRedirect(req.nextUrl);
     if (surfaceRedirect) {
       return applySecurityHeaders(NextResponse.redirect(surfaceRedirect));
     }

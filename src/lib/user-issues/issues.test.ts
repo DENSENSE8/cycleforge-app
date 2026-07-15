@@ -5,10 +5,50 @@ import {
   createReportedIssue,
   attachGithubIssue,
   resolveReportedIssue,
+  listReportedIssues,
+  getReportedIssue,
   type UserIssuesDeps,
+  type ReportedIssue,
 } from './issues';
+import { encodeIssueCursor, decodeIssueCursor } from '@/lib/schemas/user-issues';
 
 const ORG = '11111111-2222-3333-4444-555555555555';
+
+const SAMPLE_ROW: Record<string, unknown> = {
+  id: 101,
+  reporter_staff_id: 7,
+  reporter_name: 'Ada',
+  issue_type: 'bug',
+  title: 'Broken thing',
+  description: 'It broke',
+  page_path: '/forge',
+  github_issue_number: 42,
+  github_issue_url: 'https://github.com/x/y/issues/42',
+  status: 'pending',
+  resolution_commit: null,
+  resolved_at: null,
+  client_event_id: 'evt-1',
+  created_at: '2026-07-15T12:00:00.000Z',
+  updated_at: '2026-07-15T12:00:00.000Z',
+};
+
+const SAMPLE_ISSUE: ReportedIssue = {
+  id: 101,
+  reporterStaffId: 7,
+  reporterName: 'Ada',
+  issueType: 'bug',
+  title: 'Broken thing',
+  description: 'It broke',
+  pagePath: '/forge',
+  githubIssueNumber: 42,
+  githubIssueUrl: 'https://github.com/x/y/issues/42',
+  status: 'pending',
+  resolutionCommit: null,
+  resolvedAt: null,
+  clientEventId: 'evt-1',
+  createdAt: '2026-07-15T12:00:00.000Z',
+  updatedAt: '2026-07-15T12:00:00.000Z',
+};
 
 function fakes(rows: Record<string, Array<Record<string, unknown>>> = {}) {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
@@ -24,6 +64,12 @@ function fakes(rows: Record<string, Array<Record<string, unknown>>> = {}) {
       }
       if (/SELECT id, reporter_staff_id, title, status/.test(sql)) {
         return { rows: rows.found ?? [], rowCount: (rows.found ?? []).length };
+      }
+      if (/LEFT JOIN staff/.test(sql) && /uri\.id = \$2/.test(sql)) {
+        return { rows: rows.detail ?? [], rowCount: (rows.detail ?? []).length };
+      }
+      if (/LEFT JOIN staff/.test(sql) && /ORDER BY uri\.created_at DESC/.test(sql)) {
+        return { rows: rows.list ?? [], rowCount: (rows.list ?? []).length };
       }
       return { rows: [], rowCount: 1 };
     },
@@ -109,4 +155,75 @@ test('resolveReportedIssue: not_found and bad_input surface as typed errors', as
   assert.deepEqual(await resolveReportedIssue(ORG, { issueId: 999 }, deps), { ok: false, error: 'not_found' });
   assert.deepEqual(await resolveReportedIssue(ORG, {}, deps), { ok: false, error: 'bad_input' });
   assert.deepEqual(await resolveReportedIssue(ORG, { issueId: -1 }, deps), { ok: false, error: 'bad_input' });
+});
+
+test('listReportedIssues maps staff join, filters, and keyset cursor', async () => {
+  const { deps, calls } = fakes({ list: [SAMPLE_ROW] });
+  const result = await listReportedIssues(
+    ORG,
+    {
+      status: 'pending',
+      type: 'bug',
+      reporterId: 7,
+      q: 'Broken',
+      cursor: { createdAt: '2026-07-16T00:00:00.000Z', id: 200 },
+      limit: 25,
+    },
+    deps,
+  );
+  assert.deepEqual(result.issues, [SAMPLE_ISSUE]);
+  assert.equal(result.nextCursor, null, 'page size not exceeded → no next cursor');
+  const call = calls[0];
+  assert.match(call.sql, /LEFT JOIN staff/);
+  assert.match(call.sql, /\(uri\.created_at, uri\.id\) </);
+  assert.match(call.sql, /ORDER BY uri\.created_at DESC, uri\.id DESC/);
+  assert.equal(call.params[0], ORG);
+  assert.equal(call.params[1], 'pending');
+  assert.equal(call.params[2], 'bug');
+  assert.equal(call.params[3], 7);
+  assert.equal(call.params[4], '%Broken%');
+  assert.equal(call.params[5], '2026-07-16T00:00:00.000Z');
+  assert.equal(call.params[6], 200);
+  assert.equal(call.params[7], 26, 'limit+1 for hasMore probe');
+});
+
+test('listReportedIssues returns nextCursor when limit+1 rows come back', async () => {
+  const row2 = {
+    ...SAMPLE_ROW,
+    id: 100,
+    created_at: '2026-07-14T12:00:00.000Z',
+    updated_at: '2026-07-14T12:00:00.000Z',
+  };
+  const { deps } = fakes({ list: [SAMPLE_ROW, row2] });
+  const result = await listReportedIssues(ORG, { limit: 1 }, deps);
+  assert.equal(result.issues.length, 1);
+  assert.deepEqual(result.nextCursor, { createdAt: SAMPLE_ISSUE.createdAt, id: SAMPLE_ISSUE.id });
+});
+
+test('listReportedIssues escapes ILIKE wildcards in q', async () => {
+  const { deps, calls } = fakes({ list: [] });
+  await listReportedIssues(ORG, { q: '100%_done' }, deps);
+  assert.equal(calls[0].params[4], '%100\\%\\_done%');
+});
+
+test('getReportedIssue returns the mapped row or null', async () => {
+  const found = fakes({ detail: [SAMPLE_ROW] });
+  assert.deepEqual(await getReportedIssue(ORG, 101, found.deps), SAMPLE_ISSUE);
+  assert.match(found.calls[0].sql, /uri\.id = \$2/);
+
+  const missing = fakes({ detail: [] });
+  assert.equal(await getReportedIssue(ORG, 999, missing.deps), null);
+  assert.equal(missing.calls.length, 1, 'valid missing id still queries');
+
+  const invalid = fakes({ detail: [] });
+  assert.equal(await getReportedIssue(ORG, -1, invalid.deps), null);
+  assert.equal(invalid.calls.length, 0, 'invalid id short-circuits before query');
+});
+
+test('encode/decodeIssueCursor round-trips; rejects garbage', () => {
+  const encoded = encodeIssueCursor({ createdAt: '2026-07-15T12:00:00.000Z', id: 101 });
+  assert.deepEqual(decodeIssueCursor(encoded), { createdAt: '2026-07-15T12:00:00.000Z', id: 101 });
+  assert.equal(decodeIssueCursor('not-a-cursor'), null);
+  assert.equal(decodeIssueCursor('garbage~1'), null);
+  assert.equal(decodeIssueCursor('2026-07-15T12:00:00.000Z~-1'), null);
 });

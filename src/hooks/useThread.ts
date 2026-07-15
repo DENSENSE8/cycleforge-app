@@ -17,7 +17,24 @@ import type { EntityThread, ThreadMessage, ThreadMessageVisibility } from '@/lib
 export const threadKeys = {
   thread: (entityType: string, entityId: number) => ['entity-thread', entityType, entityId] as const,
   messages: (threadId: number) => ['entity-thread-messages', threadId] as const,
+  connections: (threadId: number) => ['entity-thread-connections', threadId] as const,
 };
+
+export interface ThreadConnectionRow {
+  entityType: string;
+  entityId: number | null;
+  label: string;
+  origin: 'derived' | 'link';
+  href?: string | null;
+  hint?: string | null;
+}
+
+export interface ThreadAssignmentRow {
+  threadId: number;
+  assignedStaffId: number;
+  assignedStaffName?: string | null;
+  assignedBy: number | null;
+}
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -122,6 +139,130 @@ export function useThread(entityType: string, entityId: number | null | undefine
     },
   });
 
+  // Connections ("connecting dots") + current owner — resolved once a thread exists.
+  const connectionsQuery = useQuery({
+    queryKey: threadKeys.connections(threadId ?? 0),
+    enabled: threadId != null,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const data = await fetchJson<{
+        connections: ThreadConnectionRow[];
+        assignment: ThreadAssignmentRow | null;
+      }>(`/api/threads/${threadId}/connections`);
+      return data;
+    },
+  });
+
+  const invalidateThread = () => {
+    void queryClient.invalidateQueries({ queryKey: threadKeys.thread(entityType, entityId ?? 0) });
+    if (threadId != null) {
+      void queryClient.invalidateQueries({ queryKey: threadKeys.connections(threadId) });
+    }
+  };
+
+  /** PATCH thread status (open | snoozed | resolved). */
+  const setStatus = useMutation({
+    mutationFn: async (status: 'open' | 'snoozed' | 'resolved') => {
+      const thread = await ensureThread();
+      return fetchJson<{ thread: EntityThread }>(`/api/threads/${thread.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    },
+    onSuccess: (data) =>
+      queryClient.setQueryData(threadKeys.thread(entityType, entityId ?? 0), data.thread),
+  });
+
+  /** Assign / reassign the thread owner. */
+  const assign = useMutation({
+    mutationFn: async (assignedStaffId: number) => {
+      const thread = await ensureThread();
+      return fetchJson(`/api/threads/${thread.id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedStaffId }),
+      });
+    },
+    onSuccess: invalidateThread,
+  });
+
+  const unassign = useMutation({
+    mutationFn: async () => {
+      if (threadId == null) return null;
+      return fetchJson(`/api/threads/${threadId}/assign`, { method: 'DELETE' });
+    },
+    onSuccess: invalidateThread,
+  });
+
+  /** Edit a message body. */
+  const editMessage = useMutation({
+    mutationFn: async ({ messageId, body }: { messageId: number; body: string }) => {
+      if (threadId == null) throw new Error('no thread');
+      return fetchJson(`/api/threads/${threadId}/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      });
+    },
+    onSuccess: () => {
+      if (threadId != null) void queryClient.invalidateQueries({ queryKey: threadKeys.messages(threadId) });
+    },
+  });
+
+  /** Soft-delete a message (optimistic removal). */
+  const deleteMessage = useMutation({
+    mutationFn: async (messageId: number) => {
+      if (threadId == null) throw new Error('no thread');
+      return fetchJson(`/api/threads/${threadId}/messages/${messageId}`, { method: 'DELETE' });
+    },
+    onMutate: async (messageId) => {
+      if (threadId == null) return { snapshot: null as ThreadMessage[] | null };
+      const key = threadKeys.messages(threadId);
+      await queryClient.cancelQueries({ queryKey: key });
+      const snapshot = queryClient.getQueryData<ThreadMessage[]>(key) ?? null;
+      queryClient.setQueryData<ThreadMessage[]>(key, (snapshot ?? []).filter((m) => m.id !== messageId));
+      return { snapshot };
+    },
+    onError: (_e, _id, ctx) => {
+      if (threadId != null && ctx?.snapshot) queryClient.setQueryData(threadKeys.messages(threadId), ctx.snapshot);
+    },
+    onSettled: () => {
+      if (threadId != null) void queryClient.invalidateQueries({ queryKey: threadKeys.messages(threadId) });
+    },
+  });
+
+  /** Curate / remove a cross-entity link. */
+  const addLink = useMutation({
+    mutationFn: async (input: { entityType: string; entityId: number; linkRole?: string }) => {
+      const thread = await ensureThread();
+      return fetchJson(`/api/threads/${thread.id}/links`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+    },
+    onSuccess: invalidateThread,
+  });
+
+  /** Escalate the thread to a ticket (internal or zendesk); D6 attach seam. */
+  const escalate = useMutation({
+    mutationFn: async (mode: 'internal' | 'zendesk') => {
+      const thread = await ensureThread();
+      return fetchJson<{ thread: EntityThread; supportTicketId: number; created: boolean }>(
+        `/api/threads/${thread.id}/escalate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode }),
+        },
+      );
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(threadKeys.thread(entityType, entityId ?? 0), data.thread);
+    },
+  });
+
   return {
     thread: threadQuery.data ?? null,
     threadLoading: enabled && threadQuery.isLoading,
@@ -130,5 +271,15 @@ export function useThread(entityType: string, entityId: number | null | undefine
     messagesLoading: threadId != null && messagesQuery.isLoading,
     messagesError: messagesQuery.error as Error | null,
     postMessage,
+    escalate,
+    connections: connectionsQuery.data?.connections ?? [],
+    assignment: connectionsQuery.data?.assignment ?? null,
+    connectionsLoading: threadId != null && connectionsQuery.isLoading,
+    setStatus,
+    assign,
+    unassign,
+    editMessage,
+    deleteMessage,
+    addLink,
   };
 }

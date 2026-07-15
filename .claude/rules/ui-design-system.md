@@ -49,6 +49,12 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Random card soup** — decorative grids of nested cards for ordinary collections.
 - **Nested cards-as-rows** — e.g. `SectionCard` inside a list of `SectionCard`s.
 - **Second visual language** beside Kinetic Ledger tokens.
+- **Hand-rolling the card shell** — never re-type `rounded-2xl border border-border-soft
+  bg-surface-card shadow-sm`. Compose **`Panel`** (generic static surface — its default *is* that
+  shell; props: `padding`/`radius`/`elevation`/`borderless`), **`SectionCard`** (`@/design-system/
+  components/monitor` — Monitor rollup zones), or **`CardShell`** (selectable/animated list rows).
+  Guard: `surface-box-tokens.guard.test.ts` (`npm run test:surface-box-guard`) ratchets hand-rolled
+  shells down; a true one-off carries a same-line `ds-allow-box` comment.
 
 ### Allow by surface
 
@@ -151,6 +157,20 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - **Never** hardcode arbitrary-px spacing (`p-[6px]`-style). Guard: `spacing-tokens.guard.test.ts`
   (`npm run test:spacing-guard`); genuine safe-area / fixed-overlay geometry carries a same-line
   `ds-allow-spacing` comment. Pair→intent codemod: `scripts/codemods/spacing-intents.mjs`.
+
+## Focus affordance from the SoT
+
+- Focus styling comes from **`focusRing(archetype, tone)`** (`src/design-system/tokens/focus-ring.ts`),
+  composed via `cn()` — never a hand-rolled `focus:ring-*` recipe. It collapses the ~670 drifted
+  recipes to one canonical form per archetype × semantic tone.
+- Three archetypes by how the element takes focus: **`field`** (`:focus`, the input itself — ring +
+  border shift) · **`control`** (`:focus-visible`, a button — ring + offset, so a mouse click never
+  flashes it) · **`wrapper`** (`:focus-within`, a frame around a child input — border shift).
+- Tones are **semantic** (`accent` default · `danger` · `warning` · `success` · `neutral`), not raw
+  shades; ring opacity is canonical per archetype (field /20, control /40). `Button`/`IconButton`
+  consume `focusRing('control', 'accent')`; new inputs use `focusRing('field', …)`.
+- Guard: `control` sibling `focus-ring-tokens.guard.test.ts` (`npm run test:focus-ring-guard`) ratchets
+  raw `focus:ring-*` down; a genuine one-off carries a same-line `ds-allow-focus` comment.
 
 ## Async / empty / error states
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { Clipboard, Copy, ExternalLink } from '@/components/Icons';
+import { Clipboard, Copy, ExternalLink, RefreshCw } from '@/components/Icons';
 import {
   OrderIdChip,
   OrderIdChipPlaceholder,
@@ -23,7 +23,7 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  * Hover menus (unbox IdentityLinkChip pattern via {@link CopyChipHoverMenu}):
  *   • Platform — primary **open listing** (new tab); hover: Copy listing link
  *   • Order id — primary **copy**; hover: Open on platform
- *   • Tracking filled — primary **copy**; hover: Open tracking page
+ *   • Tracking filled — primary **copy**; hover: Open tracking page · Replace tracking
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
  */
 export interface OrderIdentityChipsProps {
@@ -47,6 +47,9 @@ export interface OrderIdentityChipsProps {
   trackingAction?: React.ReactNode;
   /** Optional callback when operator pastes clipboard tracking into empty slot. */
   onPasteTracking?: (tracking: string) => void;
+  /** Optional callback to replace an EXISTING tracking number (from the chip
+   *  menu → "Replace tracking", reads the OS clipboard). */
+  onReplaceTracking?: (tracking: string) => void;
   /** Optional 4th column — serial chip on station (Tech) rows. */
   serialChip?: React.ReactNode;
   isMobile: boolean;
@@ -79,6 +82,7 @@ export function OrderIdentityChips({
   tracking,
   trackingAction,
   onPasteTracking,
+  onReplaceTracking,
   serialChip,
   isMobile,
   onMenuOpenChange,
@@ -126,19 +130,32 @@ export function OrderIdentityChips({
   }
 
   // Clicking the tracking chip already copies (TrackingOrSkuScanChip → handleCopy),
-  // so the menu carries only "Open tracking page".
-  const trackingItems: CopyChipHoverMenuItem[] =
-    tracking && trackingUrl
-      ? [
-          {
-            id: 'open-trk',
-            label: 'Open tracking page',
-            icon: <ExternalLink />,
-            tone: 'accent',
-            onSelect: () => openExternal(trackingUrl),
-          },
-        ]
-      : [];
+  // so the menu carries the secondary "Open tracking page" + "Replace tracking"
+  // (paste a new number from the OS clipboard, overwriting the existing one).
+  const trackingItems: CopyChipHoverMenuItem[] = [];
+  if (tracking && trackingUrl) {
+    trackingItems.push({
+      id: 'open-trk',
+      label: 'Open tracking page',
+      icon: <ExternalLink />,
+      tone: 'accent',
+      onSelect: () => openExternal(trackingUrl),
+    });
+  }
+  if (tracking && onReplaceTracking) {
+    trackingItems.push({
+      id: 'replace-trk',
+      label: 'Replace tracking',
+      icon: <RefreshCw />,
+      onSelect: async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          const next = String(text || '').trim();
+          if (next) onReplaceTracking(next);
+        } catch {}
+      },
+    });
+  }
 
   const emptyTrackingNode = (() => {
     if (tracking) return null;

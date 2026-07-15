@@ -1,44 +1,63 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import * as Popover from '@radix-ui/react-popover';
 import { Check, ChevronDown, User } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 
 /**
  * `StaffFilterButton` — the ONE shared all-staff ↔ single-staff header control
  * (P1-WORK-02). A {@link ToolbarButton} pill that opens a body-portal popover of
  * active staff and writes the canonical `?staff=` URL param via
  * {@link useStaffFilter}. Absent param = ALL staff (every surface's default);
- * picking the active staff again clears back to ALL.
- *
- * This is the same pattern the dashboard tables use (the unshipped board's
- * staff pill and the ⋮ TableOptionsMenu staff rows) promoted to a reusable
- * control, so Receiving / Packing / Unboxed stay consistent with them. Mount it
- * in a header/mode band; the surface's queries read `?staff=` themselves.
+ * picking the active staff again clears back to ALL — unless {@link allToken}
+ * is set (absent = Me default for the caller; token = explicit all).
  */
 export function StaffFilterButton({
   iconOnly = false,
   align = 'end',
   allLabel = 'All staff',
+  allToken,
+  meLabel,
   className,
 }: {
   /** Square icon-only trigger for tight bands (label lives in the tooltip). */
   iconOnly?: boolean;
   align?: 'start' | 'end';
-  /** Trigger + reset-row label when no staff is picked (param absent). */
+  /** Trigger + reset-row label when All is selected. */
   allLabel?: string;
+  /**
+   * When set (e.g. `'all'`), "All" writes `?staff=<token>` and absent param
+   * means the caller's Me default — pass {@link meLabel} for the absent-state
+   * trigger text.
+   */
+  allToken?: string;
+  /** Trigger label when param is absent and {@link allToken} is set (Me default). */
+  meLabel?: string;
   className?: string;
 }) {
-  const { staffId, options, selectedName, setStaff } = useStaffFilter();
+  const { staffId, options, selectedName, setStaff } = useStaffFilter(
+    allToken ? { allToken } : undefined,
+  );
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
+  const token = allToken?.trim().toLowerCase() || null;
+  const rawStaff = searchParams.get(STAFF_FILTER_PARAM);
+  const isExplicitAll =
+    token != null && String(rawStaff || '').trim().toLowerCase() === token;
   const active = staffId != null;
-  const label = active ? selectedName || `#${staffId}` : allLabel;
+  const label = active
+    ? selectedName || `#${staffId}`
+    : isExplicitAll || !token
+      ? allLabel
+      : (meLabel ?? allLabel);
 
   const Row = ({ id, name }: { id: number | null; name: string }) => {
-    const isActive = id === staffId || (id == null && !active);
+    const isActive =
+      id === staffId || (id == null && (token ? isExplicitAll : !active));
     return (
       <button
         type="button"
@@ -61,7 +80,7 @@ export function StaffFilterButton({
       <Popover.Trigger asChild>
         {iconOnly ? (
           <ToolbarButton
-            active={active}
+            active={active || (!!token && !isExplicitAll)}
             iconOnly
             aria-label={`Filter by staff: ${label}`}
             className={className}
@@ -72,7 +91,7 @@ export function StaffFilterButton({
           </ToolbarButton>
         ) : (
           <ToolbarButton
-            active={active}
+            active={active || (!!token && !isExplicitAll)}
             aria-label={`Filter by staff: ${label}`}
             className={`max-w-[160px] ${className ?? ''}`}
           >

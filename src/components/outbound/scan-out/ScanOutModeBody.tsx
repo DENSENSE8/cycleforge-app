@@ -75,7 +75,7 @@ export function ScanOutModeBody() {
       }
     >
       <div className={`${SIDEBAR_GUTTER} text-sm text-text-soft`}>
-        Scan a label below or pick a staged package from the queue.
+        Scan a label below to ship out, or pick a staged package from the queue.
       </div>
     </SidebarShell>
   );

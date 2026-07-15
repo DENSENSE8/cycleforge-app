@@ -9,6 +9,7 @@ import type { PhotoGridTileRatio } from '@/lib/photos/photo-grid-density';
 import { photoHeroLayoutId } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PhotoThumb } from '../PhotoThumb';
 import { PhotoLabelChips } from '../PhotoLabelChips';
 import { SelectionMark } from './SelectionMark';
@@ -71,7 +72,10 @@ export function PhotoCard({
       <button
         type="button"
         data-testid={isDocument ? 'document-tile' : 'photo-tile'}
-        className="ds-raw-button block w-full text-left"
+        // Roving-focus target for grid arrow-key nav (usePhotoGridKeyboardNav).
+        data-photo-tile=""
+        data-photo-id={photo.id}
+        className={cn('ds-raw-button block w-full rounded-lg text-left', focusRing('control', 'accent'))}
         onClick={(e) => {
           if (clickSelectsInstead(e, selectionActive)) {
             e.preventDefault();

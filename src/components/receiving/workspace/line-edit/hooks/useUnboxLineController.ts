@@ -444,6 +444,8 @@ export function useUnboxLineController(
       : !serialConfirmed
         ? 'Scan a serial — or mark “No serial” with a reason — to receive'
         : null;
+  // itemTotal is PO-scoped (workspace nav / useReceivingWorkspaceBridge) so
+  // "Receive all" never claims lines from a different PO on a mixed carton.
   const isSinglePoItem = itemTotal === 1;
   const receiveMenuLabel = isSinglePoItem ? 'Receive' : 'Receive all';
   const printReceivePrimaryLabel = isUnfound ? 'Receive locally' : receiveMenuLabel;

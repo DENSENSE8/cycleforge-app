@@ -11,6 +11,7 @@ import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
 import { shouldPreserveCachedSerials } from '@/lib/receiving/optimistic-return-line';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { LineSerial } from '@/lib/receiving/optimistic-serials';
+import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 
 export interface ApiResponse {
   success: boolean;
@@ -250,10 +251,20 @@ export function usePoLinesData({
 
   // Single source of truth = the query cache. Original API order is preserved so
   // clicking a sibling feels like a local expand/collapse, not a "row jumps to
-  // the bottom" switch. In the testing workspace, no-test lines (cables toggled
-  // off) are hidden — but the active line is always kept so a mid-flow toggle
-  // never blanks the workspace.
-  const allRows = data?.receiving_lines ?? EMPTY_ROWS;
+  // the bottom" switch. Filter to the active line's PO group so mixed-PO cartons
+  // (one receiving_id, multiple Zoho POs) don't leak foreign lines into the
+  // accordion. In the testing workspace, no-test lines (cables toggled off) are
+  // hidden — but the active line is always kept so a mid-flow toggle never
+  // blanks the workspace.
+  const cartonRows = data?.receiving_lines ?? EMPTY_ROWS;
+  const allRows = useMemo(() => {
+    const anchor =
+      cartonRows.find((r) => r.id === activeLineId) ??
+      (placeholderActiveRow && placeholderActiveRow.id === activeLineId
+        ? placeholderActiveRow
+        : null);
+    return anchor ? filterLinesByPoGroup(cartonRows, anchor) : cartonRows;
+  }, [cartonRows, activeLineId, placeholderActiveRow]);
   const rows = hideNoTestLines
     ? allRows.filter((r) => r.id === activeLineId || r.needs_test !== false)
     : allRows;

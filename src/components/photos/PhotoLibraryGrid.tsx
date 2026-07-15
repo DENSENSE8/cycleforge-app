@@ -7,6 +7,7 @@ import type { PhotoLibrarySourceScope, PhotoLibraryViewMode } from '@/lib/photos
 import type { PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { PhotoEmptyState, PhotoGridSkeleton } from './photo-library-grid/PhotoGridStates';
 import { usePhotoGridLightbox } from './photo-library-grid/usePhotoGridLightbox';
+import { usePhotoGridKeyboardNav } from './photo-library-grid/usePhotoGridKeyboardNav';
 import { PhotoListView } from './photo-library-grid/PhotoListView';
 import { PhotoTicketGrid } from './photo-library-grid/PhotoTicketGrid';
 import { PhotoFlatGrid } from './photo-library-grid/PhotoFlatGrid';
@@ -65,6 +66,9 @@ export function PhotoLibraryGrid({
   error,
 }: PhotoLibraryGridProps) {
   const { openAt, lightbox } = usePhotoGridLightbox({ photos, sourceScope, onPhotoDeleted });
+  // Roving arrow-key navigation across tiles (←/→/↑/↓/Home/End + Space to select).
+  // Attached per-view below so it only fires while focus is inside the grid.
+  const onGridKeyDown = usePhotoGridKeyboardNav({ onSelect: onSelectTile });
 
   if (isLoading) {
     return <PhotoGridSkeleton />;
@@ -87,7 +91,7 @@ export function PhotoLibraryGrid({
 
   if (view === 'list') {
     return (
-      <>
+      <div onKeyDown={onGridKeyDown} className="outline-none">
         <PhotoListView
           photos={photos}
           scope={sourceScope}
@@ -99,7 +103,7 @@ export function PhotoLibraryGrid({
           openAt={openAt}
         />
         {lightbox}
-      </>
+      </div>
     );
   }
 
@@ -125,7 +129,7 @@ export function PhotoLibraryGrid({
 
   if (view === 'grid-ticket') {
     return (
-      <>
+      <div onKeyDown={onGridKeyDown} className="outline-none">
         <PhotoTicketGrid
           photos={photos}
           scope={sourceScope}
@@ -137,12 +141,12 @@ export function PhotoLibraryGrid({
           openAt={openAt}
         />
         {lightbox}
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div onKeyDown={onGridKeyDown} className="outline-none">
       <PhotoFlatGrid
         view={view}
         gridDensity={gridDensity}
@@ -155,6 +159,6 @@ export function PhotoLibraryGrid({
         openAt={openAt}
       />
       {lightbox}
-    </>
+    </div>
   );
 }

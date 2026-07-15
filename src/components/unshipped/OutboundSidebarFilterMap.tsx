@@ -69,11 +69,12 @@ function UnshippedSegments() {
       },
       {
         // Wire id/param stays `attention`; the filter now means "urgent only"
-        // (orders.is_urgent). No is_urgent count in the combos yet → no number.
+        // (orders.is_urgent). Count comes from the queue-counts `urgent` tally.
         id: 'attention',
         label: 'Urgent',
-        count: null,
+        count: scopedCounts?.urgent ?? null,
         icon: Zap,
+        toneClass: (scopedCounts?.urgent ?? 0) > 0 ? 'text-amber-700' : undefined,
         tooltip: 'Operator-flagged urgent / expedited orders',
       },
     ];

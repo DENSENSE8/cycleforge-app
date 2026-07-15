@@ -70,6 +70,9 @@ export function PhotoListView({
                   <li key={photo.id} className="group relative">
                     <button
                       type="button"
+                      // Roving-focus target for grid arrow-key nav (usePhotoGridKeyboardNav).
+                      data-photo-tile=""
+                      data-photo-id={photo.id}
                       onClick={(e) => {
                         if (clickSelectsInstead(e, selectionActive)) {
                           e.preventDefault();
@@ -81,6 +84,7 @@ export function PhotoListView({
                       onContextMenu={(e) => onPhotoContextMenu?.(photo, e)}
                       className={cn(
                         'ds-raw-button flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-surface-hover',
+                        'focus-visible:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-blue-400', // ds-allow-focus: inset row focus — an offset control ring clips inside the overflow-hidden list group
                         isSelected && 'bg-blue-50/50',
                       )}
                     >

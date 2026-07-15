@@ -31,9 +31,9 @@ import {
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
 import { toast } from '@/lib/toast';
-import { PackageCheck, Check } from '@/components/Icons';
-import { FloatingButton } from '@/design-system/primitives';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
+import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
@@ -176,6 +176,23 @@ export function TriagePanel({
   // split, PO vs Return layouts inside triage itself.
   const Template = isReturnIntake(row) ? ReturnTriageTemplate : PoTriageTemplate;
 
+  const buildTerminal = useCallback(
+    (kind: string) =>
+      resolveTriageTerminal(kind, {
+        triageSaved,
+        savingTriage,
+        onSaveForUnbox: handleSaveForUnbox,
+      }),
+    [triageSaved, savingTriage, handleSaveForUnbox],
+  );
+
+  const terminalVm = useStationTerminalAction({
+    surface: 'triage',
+    mode: 'triage',
+    tabId: null,
+    build: buildTerminal,
+  });
+
   return (
     <>
       <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -235,23 +252,7 @@ export function TriagePanel({
         {/* Terminal action — classification / PO# / pairing already persist on
             change, so this just confirms the carton is identified and hands it to
             the unbox queue (clears selection → the rail auto-selects the next). */}
-        <FloatingButton
-          label={triageSaved ? 'Saved ✓' : 'Save for unbox'}
-          title={triageSaved ? undefined : 'Shortcut: ⌘/Ctrl + Enter'}
-          onClick={() => void handleSaveForUnbox()}
-          icon={
-            triageSaved ? (
-              <Check className="h-4 w-4 shrink-0" />
-            ) : (
-              <PackageCheck className="h-4 w-4 shrink-0" />
-            )
-          }
-          loading={savingTriage}
-          disabled={triageSaved}
-          tone={triageSaved ? 'emerald' : 'blue'}
-          maxWidth="max-w-[45rem]"
-          fullWidth
-        />
+        <StationTerminalDock vm={terminalVm} />
 
         {/* Live photo peek — right-edge fanned preview of the carton's captures,
             updating in real time over Ably. Needs a linked carton for the query. */}

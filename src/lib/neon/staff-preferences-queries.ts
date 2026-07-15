@@ -68,6 +68,13 @@ export interface StaffPreferences {
    */
   timeFormat?: string | null;
   /**
+   * Operator accent chrome: when true (default / absent), `staff.color_hex`
+   * drives `theme-*` on `<html>`. When false, `accentHex` is used instead.
+   */
+  useStaffAccent?: boolean | null;
+  /** Custom `#RRGGBB` accent when `useStaffAccent` is false. */
+  accentHex?: string | null;
+  /**
    * "Skip for now" on the dashboard Getting-Started checklist. `true` hides the
    * card; absent/`null` shows it while activation steps remain incomplete.
    */

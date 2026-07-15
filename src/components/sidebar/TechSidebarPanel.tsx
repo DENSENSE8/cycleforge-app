@@ -9,7 +9,6 @@ import { TestingSidebarPanel } from '@/components/sidebar/TestingSidebarPanel';
 import { ShippingSidebarPanel } from '@/components/sidebar/ShippingSidebarPanel';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { useTechLogs } from '@/hooks/useTechLogs';
-import { History } from '@/components/Icons';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { useActiveStaffDirectory } from './hooks';
@@ -53,30 +52,30 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
   const basePath = pathname || '/test';
   const staffDirectory = useActiveStaffDirectory();
   // When the master nav owns mode switching, its L2 rail replaces this panel's
-  // own Shipping/Testing pills (avoids a double switcher).
+  // own Testing/Shipping pills (avoids a double switcher).
   const masterNavEnabled = useMasterNavEnabled();
 
   const techMember = staffDirectory.find((m) => String(m.id) === String(techId));
   const techName = techMember?.name || 'Technician';
   const viewParam = searchParams.get('view');
   /**
-   * `view=testing` flips the sidebar (and right pane) into the Testing
-   * top-mode; `view=testing-history` into the History feed; everything else
-   * stays in Shipping, whose right pane is fixed to the shipping History feed.
+   * `view=testing` (and legacy `view=testing-history`) flips the sidebar into
+   * Testing top-mode; everything else stays in Shipping.
    */
   const topMode: TechSidebarTopMode =
-    viewParam === 'testing'
-      ? 'testing'
-      : viewParam === 'testing-history'
-        ? 'history'
-        : 'shipping';
+    viewParam === 'testing' || viewParam === 'testing-history' ? 'testing' : 'shipping';
 
   // Normalize legacy / removed query values on `view`.
+  // `testing-history` → `testing` (history browse now lives inside Testing mode).
   useEffect(() => {
     const v = searchParams.get('view');
-    if (v !== 'manual' && v !== 'update-manuals') return;
+    if (v !== 'manual' && v !== 'update-manuals' && v !== 'testing-history') return;
     const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete('view');
+    if (v === 'testing-history') {
+      nextParams.set('view', 'testing');
+    } else {
+      nextParams.delete('view');
+    }
     nextParams.set('staffId', techId);
     const nextSearch = nextParams.toString();
     router.replace(nextSearch ? `${basePath}?${nextSearch}` : basePath);
@@ -88,9 +87,8 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
   const { data: records = [], isLoading } = useTechLogs(parseInt(techId, 10), { weekOffset: 0, weekRange });
 
   /**
-   * Switch the top-level mode. `shipping` clears `view` and falls back to the
-   * shipping History feed; `testing` sets `view=testing`; `history` sets
-   * `view=testing-history` — the same params `TechDashboard` branches on.
+   * Switch the top-level mode. `shipping` clears `view`; `testing` sets
+   * `view=testing` — the same params `TechDashboard` branches on.
    */
   const updateTopMode = (next: TechSidebarTopMode) => {
     const nextParams = stripCrossSurfaceParams(
@@ -98,12 +96,12 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
       new URLSearchParams(searchParams.toString()),
     );
     nextParams.set('staffId', techId);
-    if (next === 'testing' || next === 'history') {
-      nextParams.set('view', next === 'testing' ? 'testing' : 'testing-history');
+    if (next === 'testing') {
+      nextParams.set('view', 'testing');
       nextParams.delete('search');
       nextParams.delete('searchOpen');
     } else {
-      // Drop the testing `view` so Shipping reasserts its History feed.
+      // Drop the testing `view` so Shipping reasserts its workspace.
       const v = nextParams.get('view');
       if (v === 'testing' || v === 'testing-history') nextParams.delete('view');
     }
@@ -140,8 +138,7 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
-      {/* Band 2: top mode pills [Shipping | Testing]. Mirrors the receiving
-  ...
+      {/* Band 2: top mode pills [Testing | Shipping]. Mirrors the receiving
           sidebar's mode-row above the scan bar so the tech's primary mode
           switch lives in the exact same visual location as receiving's. */}
       {!masterNavEnabled && (
@@ -161,15 +158,7 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
       {/* Body — Shipping and Testing use dedicated sidebar panels that share
           the same shell (scan band, rail, bottom filter) but different rails. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {topMode === 'history' ? (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-            <History className="h-6 w-6 text-text-faint" />
-            <p className="text-sm font-semibold text-text-soft">Browsing your tested lines</p>
-            <p className="text-role-caption text-text-faint">
-              Use <span className="font-bold text-text-muted">Select</span> in the top bar to pick lines and act on them.
-            </p>
-          </div>
-        ) : topMode === 'shipping' ? (
+        {topMode === 'shipping' ? (
           <ShippingSidebarPanel
             techId={techId}
             techName={techName}

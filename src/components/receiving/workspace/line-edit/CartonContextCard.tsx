@@ -29,9 +29,14 @@ import {
 
 
 /**
- * Carton-level context card: staff dropdown + photo strip, the listing /
- * Zendesk / PO# / tracking chip row, the matching below-row inline editors,
- * and the source-platform + receiving-type pickers.
+ * Carton-level context card — **station entity-context header (SoT)**.
+ *
+ * Public import for all stations:
+ *   `import { CartonContextCard } from '@/components/station/entity-context'`
+ *
+ * Staff dropdown + photo strip, the listing / Zendesk / PO# / tracking chip
+ * row, the matching below-row inline editors, and the source-platform +
+ * receiving-type pickers.
  *
  * DENSITY CONTRACT: this is an operations-heavy surface — everything stays on
  * ONE condensed row (pills + chips + actions), with editors sliding in below
@@ -48,6 +53,8 @@ import {
  *    below-row drawer; the condensed top row stays chips + hover menus only.
  *
  * Purely presentational/controlled — all state lives in the parent.
+ * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `classifyPending`, …)
+ * to hide that affordance for a given station adapter.
  */
 export function CartonContextCard({
   receivingId,

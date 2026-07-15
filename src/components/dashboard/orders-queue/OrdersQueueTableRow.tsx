@@ -183,6 +183,24 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     [assignOrder, record.id],
   );
 
+  // Overwrite an existing tracking number (chip menu → "Replace tracking").
+  const onReplaceTracking = useCallback(
+    (value: string) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      const next = String(value || '').trim();
+      if (!next) return;
+      assignOrder.mutate(
+        { orderId: id, shippingTrackingNumber: next },
+        {
+          onSuccess: () => toast.success('Tracking replaced'),
+          onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to replace tracking'),
+        },
+      );
+    },
+    [assignOrder, record.id],
+  );
+
   const onMarkShipped = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -345,6 +363,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       tracking={trackingRaw}
       trackingAction={trackingAction}
       onPasteTracking={queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined}
+      onReplaceTracking={queueMode === 'fulfillment' || queueMode === 'labels' ? onReplaceTracking : undefined}
       serialChip={serialChip}
       isMobile={isMobile}
       onMenuOpenChange={showQuickActions ? setChipMenuOpen : undefined}

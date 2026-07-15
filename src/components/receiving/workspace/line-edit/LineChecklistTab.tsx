@@ -23,10 +23,27 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { useChecklist, checklistQueryKey } from '@/hooks/useChecklist';
 import { GLOBAL_RECEIVING_CHECKLIST } from '@/lib/receiving/global-checklist';
+import type { ChecklistTabBridge } from './terminal/unbox-tab-bridges';
 
 const storageKey = (lineId: number) => `receiving-checklist:${lineId}`;
 
-export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | null }) {
+function persistChecked(lineId: number, next: Record<string, boolean>) {
+  try {
+    window.localStorage.setItem(storageKey(lineId), JSON.stringify(next));
+  } catch {
+    /* private-mode / quota — non-fatal */
+  }
+}
+
+export function LineChecklistTab({
+  lineId,
+  onBridgeChange,
+}: {
+  lineId: number;
+  sku?: string | null;
+  /** Register Check all / Uncheck all with the panel terminal dock. */
+  onBridgeChange?: (bridge: ChecklistTabBridge | null) => void;
+}) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useChecklist('GLOBAL');
   const items = data?.items ?? [];
@@ -52,16 +69,26 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
     (id: number) => {
       setChecked((prev) => {
         const next = { ...prev, [id]: !prev[id] };
-        try {
-          window.localStorage.setItem(storageKey(lineId), JSON.stringify(next));
-        } catch {
-          /* private-mode / quota — non-fatal */
-        }
+        persistChecked(lineId, next);
         return next;
       });
     },
     [lineId],
   );
+
+  const checkAll = useCallback(() => {
+    const next: Record<string, boolean> = {};
+    for (const it of items) next[it.id] = true;
+    setChecked(next);
+    persistChecked(lineId, next);
+  }, [items, lineId]);
+
+  const uncheckAll = useCallback(() => {
+    const next: Record<string, boolean> = {};
+    for (const it of items) next[it.id] = false;
+    setChecked(next);
+    persistChecked(lineId, next);
+  }, [items, lineId]);
 
   const refresh = useCallback(
     () => queryClient.invalidateQueries({ queryKey: checklistQueryKey('GLOBAL') }),
@@ -166,6 +193,17 @@ export function LineChecklistTab({ lineId }: { lineId: number; sku?: string | nu
 
   const doneCount = items.reduce((n, it) => n + (checked[it.id] ? 1 : 0), 0);
   const allDone = items.length > 0 && doneCount === items.length;
+
+  useEffect(() => {
+    if (!onBridgeChange) return;
+    onBridgeChange({
+      allDone,
+      itemCount: items.length,
+      checkAll,
+      uncheckAll,
+    });
+    return () => onBridgeChange(null);
+  }, [onBridgeChange, allDone, items.length, checkAll, uncheckAll]);
 
   if (isLoading) {
     return (

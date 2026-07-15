@@ -41,6 +41,13 @@ interface TabSwitchProps {
    * `plain` = same size/weight as the label (no bubble) — preferred for dense ops headers.
    */
   countStyle?: 'badge' | 'plain';
+  /**
+   * `solid` variant only — active-pill fill. `inverse` (default) keeps the
+   * Linear-style dark inverse pill; `accent` uses the design-system accent
+   * (`bg-accent-bg`, blue) surface. Active label stays `text-text-inverse`
+   * (the accent-surface pairing); inactive/hover text is unchanged.
+   */
+  solidTone?: 'inverse' | 'accent';
 }
 
 const colorTextMap: Record<string, { active: string; shadow: string }> = {
@@ -87,9 +94,11 @@ export function TabSwitch({
   variant = 'default',
   stationChromeOutlineClassName,
   countStyle = 'badge',
+  solidTone = 'inverse',
 }: TabSwitchProps) {
   const upNext = variant === 'upNext';
   const solid = variant === 'solid';
+  const solidAccent = solid && solidTone === 'accent';
   const upNextOutline = stationChromeOutlineClassName ?? 'border border-border-default';
   const defaultRailClass = upNext
     ? `${upNextRailBaseClass} ${upNextOutline}`
@@ -173,7 +182,7 @@ export function TabSwitch({
         <motion.div
           aria-hidden
           className={`pointer-events-none absolute z-0 rounded-full ${
-            solid ? 'bg-surface-inverse' : 'bg-surface-card'
+            solid ? (solidAccent ? 'bg-accent-bg' : 'bg-surface-inverse') : 'bg-surface-card'
           } ${upNext ? upNextOutline : solid ? '' : 'ring-1 ring-inset ring-border-soft'}`}
           style={{
             top: 0,
@@ -211,9 +220,11 @@ export function TabSwitch({
                 } ${
                   upNext
                     ? 'px-3 py-2 text-role-caption'
-                    : solid || highContrast
-                      ? 'px-4 py-2 text-role-caption'
-                      : 'px-3 py-1.5 text-role-micro'
+                    : solid
+                      ? 'px-5 py-2.5 text-role-caption'
+                      : highContrast
+                        ? 'px-4 py-2 text-role-caption'
+                        : 'px-3 py-1.5 text-role-micro'
                 } ${
                   upNext
                     ? isActive

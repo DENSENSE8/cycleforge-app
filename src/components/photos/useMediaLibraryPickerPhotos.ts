@@ -19,7 +19,10 @@ interface UseMediaLibraryPickerPhotosArgs {
   enabled: boolean;
   mediaType: MediaTypeSelection | null;
   ticketTab: boolean;
+  /** Carton-scoped tab — filters by receivingId. */
+  cartonTab: boolean;
   ticketId?: number;
+  receivingId?: number;
   dateNav: PhotoDateNav;
   search?: string;
 }
@@ -37,7 +40,9 @@ function rootFetchDateRange(): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateT
 function buildPickerFilters({
   mediaType,
   ticketTab,
+  cartonTab,
   ticketId,
+  receivingId,
   dateNav,
   search,
 }: Omit<UseMediaLibraryPickerPhotosArgs, 'enabled'>): PhotoLibraryFilterState | null {
@@ -51,6 +56,19 @@ function buildPickerFilters({
       base.dateFrom = dateNav.dateFrom;
       base.dateTo = dateNav.dateTo;
     }
+    return base;
+  }
+
+  if (cartonTab) {
+    if (!receivingId) return null;
+    const base: PhotoLibraryFilterState = {
+      receivingId: String(receivingId),
+    };
+    if (dateNav.dateFrom && dateNav.dateTo) {
+      base.dateFrom = dateNav.dateFrom;
+      base.dateTo = dateNav.dateTo;
+    }
+    if (dateNav.poRef) base.poRef = dateNav.poRef;
     return base;
   }
 
@@ -86,7 +104,15 @@ function buildPickerFilters({
 export function useMediaLibraryPickerPhotos(args: UseMediaLibraryPickerPhotosArgs) {
   const filters = useMemo(
     () => buildPickerFilters(args),
-    [args.mediaType, args.ticketTab, args.ticketId, args.dateNav, args.search],
+    [
+      args.mediaType,
+      args.ticketTab,
+      args.cartonTab,
+      args.ticketId,
+      args.receivingId,
+      args.dateNav,
+      args.search,
+    ],
   );
 
   const query = useQuery({

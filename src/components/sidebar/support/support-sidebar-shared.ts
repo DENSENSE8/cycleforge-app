@@ -16,6 +16,7 @@ import {
   Inbox,
   Layers,
   Lock,
+  MessageSquare,
   Phone,
   PhoneIncoming,
   PhoneMissed,
@@ -28,7 +29,7 @@ import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlide
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type SupportMode = 'tickets' | 'voicemail' | 'calls' | 'warranty';
+export type SupportMode = 'tickets' | 'voicemail' | 'calls' | 'warranty' | 'issues';
 
 /**
  * - tickets   → Zendesk ticket queue → conversation (Workbench, the existing
@@ -39,18 +40,26 @@ export type SupportMode = 'tickets' | 'voicemail' | 'calls' | 'warranty';
  *   newest-first, filter-only, no durable selection.
  * - warranty  → Warranty Logger (Workbench): coverage lookup + claims queue +
  *   claim detail (`?open=`). Phone-support home for “is this still covered?”.
+ * - issues    → Reported-Issues console (Workbench + Monitor KPI rollup):
+ *   pick an in-app feedback row → fact stack (`?issueId=`).
  */
 export const SUPPORT_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'tickets', label: 'Tickets', icon: TicketHelp },
   { id: 'voicemail', label: 'Voicemail', icon: Voicemail },
   { id: 'calls', label: 'Calls', icon: Phone },
   { id: 'warranty', label: 'Warranty', icon: ShieldCheck },
+  { id: 'issues', label: 'Issues', icon: MessageSquare },
 ];
 
 export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 
 export function parseSupportMode(raw: string | null | undefined): SupportMode {
-  return raw === 'voicemail' || raw === 'calls' || raw === 'warranty' ? raw : 'tickets';
+  return raw === 'voicemail' ||
+    raw === 'calls' ||
+    raw === 'warranty' ||
+    raw === 'issues'
+    ? raw
+    : 'tickets';
 }
 
 /**
@@ -60,8 +69,8 @@ export function parseSupportMode(raw: string | null | undefined): SupportMode {
 export const SUPPORT_MODE_SCOPED_PARAMS = [
   'ticket', // tickets: selected Zendesk ticket
   'vm', // voicemail: selected voicemail (durable, deep-linkable)
-  'q', // search query (voicemail / calls)
-  'status', // voicemail follow-up status filter
+  'q', // search query (voicemail / calls / issues)
+  'status', // voicemail follow-up OR issues status filter
   'assignee', // voicemail assignee filter
   'direction', // calls: inbound | outbound | missed
   'range', // calls: time window
@@ -69,6 +78,9 @@ export const SUPPORT_MODE_SCOPED_PARAMS = [
   'open', // warranty: open claim id
   'wstatus', // warranty: claim status filter
   'wexp', // warranty: expiring-soon filter
+  'issueId', // issues: selected reported issue
+  'type', // issues: bug | suggestion | question
+  'reporter', // issues: reporter staff id
 ] as const;
 
 // ── Tickets mode — Zendesk status filter ────────────────────────────────────

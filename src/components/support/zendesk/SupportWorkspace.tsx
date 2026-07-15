@@ -15,6 +15,7 @@ import { parseSupportMode } from '@/components/sidebar/support/support-sidebar-s
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
 import { VoicemailDetail } from '@/components/support/voice/VoicemailDetail';
 import { CallLogView } from '@/components/support/voice/CallLogView';
+import { IssuesWorkspace } from '@/components/support/issues/IssuesWorkspace';
 import { SupportTicketDetail } from './chat/SupportTicketDetail';
 import { SupportTicketQueue } from './queue/SupportTicketQueue';
 
@@ -35,9 +36,10 @@ const WarrantyWorkspace = dynamic(
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
  * - calls     → the org call-log Monitor stream (read-only).
  * - warranty  → Warranty Logger (coverage + claims table + claim detail).
+ * - issues    → Reported-Issues console (KPI strip + fact stack, `?issueId=`).
  *
  * Below md the contextual sidebar isn't shown, so the mode's list falls back to
- * rendering here (full-screen list ⇄ detail swap) for tickets/voicemail.
+ * rendering here (full-screen list ⇄ detail swap) for tickets/voicemail/issues.
  */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
@@ -49,16 +51,17 @@ export function SupportWorkspace() {
 
   const canTickets = !isLoaded || has('integrations.zendesk');
   const canWarranty = !isLoaded || has('warranty.view');
+  const canIssues = !isLoaded || has('support.issues.view');
 
   const paneMotion = useMotionPresence(framerPresence.workbenchPane);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
 
-  if (isLoaded && !canTickets && !canWarranty) {
+  if (isLoaded && !canTickets && !canWarranty && !canIssues) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to Support"
-          description="You need Zendesk ticket access or warranty permissions to use the support console."
+          description="You need Zendesk ticket access, warranty, or reported-issues permissions to use the support console."
         />
       </div>
     );
@@ -70,6 +73,25 @@ export function SupportWorkspace() {
     const qs = sp.toString();
     router.push(qs ? `/support?${qs}` : '/support');
   };
+
+  // ── Issues — Workbench + Monitor KPI rollup ────────────────────────────────
+  if (mode === 'issues') {
+    if (isLoaded && !canIssues) {
+      return (
+        <div className="flex h-full items-center justify-center p-6">
+          <EmptyState
+            title="No access to Issues"
+            description="You need the “View reported issues console” permission."
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-full min-h-0 w-full bg-surface-canvas">
+        <IssuesWorkspace />
+      </div>
+    );
+  }
 
   // ── Warranty — Workbench (coverage lookup + claims + detail) ───────────────
   if (mode === 'warranty') {
@@ -145,13 +167,13 @@ export function SupportWorkspace() {
     );
   }
 
-  // Tickets require Zendesk — warranty-only users should not see the empty queue.
+  // Tickets require Zendesk — warranty/issues-only users should not see the empty queue.
   if (isLoaded && !canTickets) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to tickets"
-          description="Switch to Warranty in the mode rail, or ask for Zendesk ticket permission."
+          description="Switch to Issues or Warranty in the mode rail, or ask for Zendesk ticket permission."
         />
       </div>
     );

@@ -6,7 +6,7 @@
  * Renders the PO-items accordion by default with the "Edit PO" pencil that
  * reveals Package Pairing. Units-on-carton and Notes/Label are NO LONGER shown
  * here — they are top-level tabs owned by {@link LineEditPanel}'s section
- * switcher (`StationSectionTabs`). This card is just the "Items" tab body.
+ * switcher (`SectionTabsSlider`). This card is just the "Items" tab body.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';

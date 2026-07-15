@@ -225,6 +225,7 @@ export function LinePoItemsSection({
           requireSerialConfirmation={c.requireSerialConfirmation}
           onSerialAbsentChange={({ absent, reason }) => c.commitSerialAbsent({ absent, reason })}
           serialStepActive={activeStep === 'serial'}
+          serialInputRef={c.serialRef}
         />
       )}
     />

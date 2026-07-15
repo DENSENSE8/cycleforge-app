@@ -271,12 +271,15 @@ export interface QueueCountsCombo {
 export interface UnshippedQueueCounts {
   total: number;
   byStage: { all: number; pending: number; tested: number };
+  /** Operator-flagged urgent tally (orders.is_urgent) for the "Urgent" segment. */
+  urgent: number;
   combos: QueueCountsCombo[];
 }
 
 const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
   total: 0,
   byStage: { all: 0, pending: 0, tested: 0 },
+  urgent: 0,
   combos: [],
 };
 
@@ -298,6 +301,7 @@ export async function fetchUnshippedQueueCounts({
   return {
     total: data.total,
     byStage: data.byStage ?? ZERO_QUEUE_COUNTS.byStage,
+    urgent: typeof data.urgent === 'number' ? data.urgent : 0,
     combos: Array.isArray(data.combos) ? data.combos : [],
   };
 }

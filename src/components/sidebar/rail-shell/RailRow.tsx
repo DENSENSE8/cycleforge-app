@@ -106,8 +106,8 @@ export function RailRow<TRow>({
           aria-hidden
           className={`pointer-events-none absolute left-0 z-10 w-[2px] bg-indigo-300 ${
             railIsFirst
-              ? railIsLast ? 'top-1.5 bottom-1.5 rounded-full' : 'top-1.5 bottom-0 rounded-t-full'
-              : railIsLast ? 'top-0 bottom-1.5 rounded-b-full' : 'inset-y-0'
+              ? railIsLast ? 'top-1 bottom-1 rounded-full' : 'top-1 bottom-0 rounded-t-full'
+              : railIsLast ? 'top-0 bottom-1 rounded-b-full' : 'inset-y-0'
           }`}
         />
       ) : null}
@@ -126,8 +126,8 @@ export function RailRow<TRow>({
           isDisabled ? 'cursor-wait opacity-80' : ''
         } ${
           (editActive ? isChecked : isSelected)
-            ? 'items-center rounded-md bg-blue-50 ring-1 ring-inset ring-blue-400 py-1.5'
-            : `items-center rounded-md py-1.5 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`
+            ? 'items-center rounded-md bg-blue-50 ring-1 ring-inset ring-blue-400 py-1'
+            : `items-center rounded-md py-1 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`
         }`}
       >
         {editActive ? (

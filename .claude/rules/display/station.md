@@ -38,6 +38,7 @@ Top-to-bottom, a station is four parts and nothing more:
 | Part | Module | Rule |
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
+| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` via `@/components/station/entity-context` | Condensed one-row identity (listing · PO/order · tracking · claim · photos). Unbox golden; Triage/Testing/Shipping compose via thin adapters. Never fork. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down banner** (singleton, app root) | `OfflineBanner` (`src/components/layout/OfflineBanner.tsx`) | First-class, non-blocking, mounted once. |
@@ -47,6 +48,11 @@ Top-to-bottom, a station is four parts and nothing more:
   Domain benches (tech, testing, receiving, pack, FBA) wrap `ThemedStationScanBar`, which layers the staff-theme border
   + focus ring + right-rail inset onto the core `StationScanBar`. *Rationale: one geometry SoT keeps every bench
   identical and keeps the focus affordance inside the input box so sidebar bands never clip it.*
+- **Compose the entity-context header, never fork it.** Inbound carton benches (Unbox, Triage, Testing)
+  and `/test` Shipping active-order chrome import `CartonContextCard` from
+  `@/components/station/entity-context`. Thin adapters map controller bags → props; omit optional
+  props to hide claim / photos / classify. *Rationale: the condensed one-row identity bar is the
+  Unbox golden — a second header grammar splits operator muscle memory across stations.*
 - **The card region uses `flex-1 overflow-y-auto`; the scan bar stays pinned above it.** See `StationPacking` — scan
   bar in the header band, results in the scroll body. *Rationale: the bar must never scroll out from under a working
   operator.*

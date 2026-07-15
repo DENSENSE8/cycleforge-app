@@ -1,6 +1,7 @@
 import type { ScanHandlerContext } from './types';
 import { FBA_FNSKU_STATION_SCANNED } from '@/lib/fba/events';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
+import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 
 interface FnskuCallbacks {
   onFnskuOrderLoaded?: (() => void) | null;
@@ -42,6 +43,10 @@ export async function handleFnskuScan(
       tracking: data.order.tracking ?? fnsku,
       serialNumbers: data.order.serialNumbers || [],
       scannedSkuCodes: Array.isArray(data.order.scannedSkuCodes) ? data.order.scannedSkuCodes : [],
+      skuSerialGroups: initSkuSerialGroups(
+        data.order.sku ?? 'N/A',
+        data.order.serialNumbers || [],
+      ),
       testDateTime: data.order.testDateTime,
       testedBy: data.order.testedBy,
       quantity: parseInt(String(data.order.quantity || 1), 10) || 1,

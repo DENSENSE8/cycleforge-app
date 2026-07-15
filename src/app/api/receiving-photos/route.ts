@@ -14,6 +14,7 @@ import {
 import { resolvePoRef } from '@/lib/photos/resolve-po-ref';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { attachPhotoWithLegacyUrl, deletePhoto } from '@/lib/photos/service';
+import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { publishReceivingPhotoChanged } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
@@ -243,6 +244,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
       throw err;
     }
+
+    // If this carton/line is under a claim, also link the photo to that claim
+    // (best-effort) so a photo taken AFTER the claim was filed still lands under
+    // the claim umbrella — not the PO only.
+    await linkReceivingPhotoToClaim({
+      organizationId: ctx.organizationId,
+      photoId: attached.id,
+      entityType,
+      entityId,
+    });
 
     const photo: PhotoRow = {
       id: attached.id,

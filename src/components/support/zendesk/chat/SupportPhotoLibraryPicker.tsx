@@ -6,6 +6,7 @@ import { MediaLibraryPickerModal } from '@/components/photos/MediaLibraryPickerM
 
 interface SupportPhotoLibraryPickerProps {
   ticketId: number;
+  receivingId?: number;
   open: boolean;
   onClose: () => void;
   excludePhotoIds?: Set<number>;
@@ -18,6 +19,7 @@ interface SupportPhotoLibraryPickerProps {
  */
 export function SupportPhotoLibraryPicker({
   ticketId,
+  receivingId,
   open,
   onClose,
   excludePhotoIds,
@@ -28,13 +30,15 @@ export function SupportPhotoLibraryPicker({
   useEffect(() => {
     if (!open) return;
     setSelected([]);
-  }, [open, ticketId]);
+  }, [open, ticketId, receivingId]);
 
   return (
     <MediaLibraryPickerModal
       open={open}
       onClose={onClose}
       ticketId={ticketId}
+      receivingId={receivingId}
+      defaultTab="ticket"
       subtitle={`Link photos to ticket #${ticketId} and attach on your next reply`}
       selected={selected}
       onSelectedChange={setSelected}

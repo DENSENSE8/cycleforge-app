@@ -1,5 +1,6 @@
 import { Archive, FileText, Image as ImageIcon, Loader2, Mail, Tag } from '@/components/Icons';
 import { CLAIM_TYPE_OPTIONS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { claimThumb } from '../claim-helpers';
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 
@@ -84,8 +85,8 @@ export function ClaimReviewStep({ c }: { c: ReceivingClaimController }) {
           <p className="border-b border-border-soft inset-field text-role-caption font-bold text-text-default">
             {subject || <span className="font-medium text-rose-500">No subject yet</span>}
           </p>
-          <p className="max-h-40 overflow-y-auto whitespace-pre-wrap inset-field text-role-caption font-medium leading-5 text-text-muted">
-            {body || <span className="text-rose-500">No body yet</span>}
+          <p className="max-h-40 overflow-y-auto break-words inset-field text-role-caption font-medium leading-5 text-text-muted">
+            {body ? renderInlineMarkdown(body) : <span className="text-rose-500">No body yet</span>}
           </p>
         </div>
       </ReviewBlock>

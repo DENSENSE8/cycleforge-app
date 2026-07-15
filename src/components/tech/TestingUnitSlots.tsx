@@ -18,6 +18,9 @@ export interface UnitSlotSerial {
   condition_grade?: string | null;
 }
 
+/** Which of the two pill columns is currently expanded — never both. */
+type ExpandedPicker = 'condition' | 'verdict' | null;
+
 interface Props {
   /** Receiving line being tested. The verdict + serials both bind to it. */
   lineId: number;
@@ -68,6 +71,69 @@ interface Props {
    */
   editingSerial?: UnitSlotSerial | null;
   onEditingSerialChange?: (serial: UnitSlotSerial | null) => void;
+  /**
+   * @deprecated Always one-row now (unbox parity). Kept for call-site compat.
+   */
+  oneRow?: boolean;
+}
+
+/**
+ * Columns: Condition (left, collapsed + pencil) · Verdict · Serial.
+ * Only one of condition / verdict is expanded at a time.
+ */
+function ConditionVerdictColumns({
+  condition,
+  onConditionChange,
+  showCondition,
+  verdict,
+  onVerdictChange,
+  verdictDisabled,
+  conditionLocked,
+}: {
+  condition: string | null | undefined;
+  onConditionChange?: (next: string) => void;
+  showCondition: boolean;
+  verdict: TestingVerdict | null;
+  onVerdictChange: (next: TestingVerdict) => void;
+  verdictDisabled: boolean;
+  conditionLocked: boolean;
+}) {
+  // Condition arrives pre-selected from receiving/unbox → start collapsed.
+  // Open verdict for picking when none is set yet.
+  const [expanded, setExpanded] = useState<ExpandedPicker>(
+    () => (verdict == null ? 'verdict' : null),
+  );
+
+  return (
+    <div className="flex min-w-0 shrink-0 items-center gap-2">
+      {showCondition && onConditionChange ? (
+        <>
+          <StationConditionEditor
+            condition={condition}
+            onChange={onConditionChange}
+            isLocked={conditionLocked}
+            collapsible
+            collapsedLabel
+            expanded={expanded === 'condition'}
+            onExpandedChange={(next) => setExpanded(next ? 'condition' : null)}
+          />
+          <div className="h-8 w-px shrink-0 bg-surface-sunken" />
+        </>
+      ) : null}
+      <TestingStatusPills
+        value={verdict}
+        onChange={(next) => {
+          onVerdictChange(next);
+          setExpanded(null);
+        }}
+        disabled={verdictDisabled}
+        collapsible
+        collapsedLabel
+        expanded={expanded === 'verdict'}
+        onExpandedChange={(next) => setExpanded(next ? 'verdict' : null)}
+      />
+    </div>
+  );
 }
 
 /**
@@ -75,17 +141,12 @@ interface Props {
  * row of {@link PoLinesAccordion} (matched cartons) or each line of
  * {@link UnmatchedItemsSection}.
  *
- * A multi-quantity line (expected > 1) renders exactly like the receiving
- * display: one selectable row per physical unit. The selected unit expands to
- * its testing verdict pills + serial entry; the rest collapse to a single line
- * (`n/N` + verdict + serial last-4). This lets a tech record an individual
- * pass / test-again / fail per PO item, since each unit's verdict binds to its
- * own `serial_units` row.
+ * Single-quantity: condition · verdict · serial on ONE flex row (collapsible
+ * pill + pencil per segment). Condition starts closed (grade from unbox);
+ * only condition or verdict expands at once.
  *
- * A single-quantity line keeps the compact layout: line-wide verdict pills on
- * top, then one {@link InlineSerialAdder}.
- *
- * No nested card — the host accordion row's border is the only container.
+ * Multi-quantity: one selectable row per physical unit via {@link UnitSlotList}
+ * `singleRowExpanded` — same column order per unit.
  */
 export function TestingLinePanel({
   lineId,
@@ -110,7 +171,6 @@ export function TestingLinePanel({
 }: Props) {
   const total = Math.max(expected ?? 0, saved.length, 1);
 
-  // Multi-qty lines list each unit as its own row (receiving parity).
   if (total > 1) {
     return (
       <TestingUnitRows
@@ -135,25 +195,21 @@ export function TestingLinePanel({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-4 items-start flex-wrap">
-        <TestingStatusPills
-          value={verdict}
-          onChange={onSetVerdict}
-          disabled={disabled || isMutating || saved.length === 0}
-        />
-        {saved[0]?.id != null && onSetUnitCondition != null ? (
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-px bg-surface-sunken" />
-            <StationConditionEditor
-              condition={saved[0].condition_grade}
-              onChange={(next) => onSetUnitCondition(saved[0], next)}
-              isLocked={disabled || isMutating}
-              collapsible
-            />
-          </div>
-        ) : null}
-      </div>
+    <div className="flex min-w-0 items-center gap-2">
+      <ConditionVerdictColumns
+        condition={saved[0]?.condition_grade}
+        onConditionChange={
+          saved[0]?.id != null && onSetUnitCondition
+            ? (next) => onSetUnitCondition(saved[0], next)
+            : undefined
+        }
+        showCondition={saved[0]?.id != null && onSetUnitCondition != null}
+        verdict={verdict}
+        onVerdictChange={onSetVerdict}
+        verdictDisabled={disabled || isMutating || saved.length === 0}
+        conditionLocked={disabled || isMutating}
+      />
+      <div className="h-8 w-px shrink-0 bg-surface-sunken" />
       <InlineSerialAdder
         key={`tech-adder-${lineId}`}
         lineId={lineId}
@@ -246,26 +302,21 @@ function TestingUnitRows({
       // focus to the next unit so a lot is scanned in one fast pass.
       singleRowExpanded
       renderExpandedMeta={(serial) => (
-        <div className="flex min-w-0 items-center gap-2 pr-1">
-          <TestingStatusPills
-            value={unitStatusToVerdict(serial?.current_status)}
-            onChange={(next) => {
-              if (serial) onSetUnitVerdict(serial as UnitSlotSerial, next);
-            }}
-            disabled={disabled || isMutating || serial == null}
-          />
-          {serial?.id != null && onSetUnitCondition != null ? (
-            <>
-              <div className="h-8 w-px bg-surface-sunken shrink-0" />
-              <StationConditionEditor
-                condition={serial.condition_grade}
-                onChange={(next) => onSetUnitCondition(serial as UnitSlotSerial, next)}
-                isLocked={disabled || isMutating}
-                collapsible
-              />
-            </>
-          ) : null}
-        </div>
+        <ConditionVerdictColumns
+          condition={serial?.condition_grade}
+          onConditionChange={
+            serial?.id != null && onSetUnitCondition
+              ? (next) => onSetUnitCondition(serial as UnitSlotSerial, next)
+              : undefined
+          }
+          showCondition={serial?.id != null && onSetUnitCondition != null}
+          verdict={unitStatusToVerdict(serial?.current_status)}
+          onVerdictChange={(next) => {
+            if (serial) onSetUnitVerdict(serial as UnitSlotSerial, next);
+          }}
+          verdictDisabled={disabled || isMutating || serial == null}
+          conditionLocked={disabled || isMutating}
+        />
       )}
       renderCollapsedMeta={(serial) => (
         <div className="flex items-center gap-2">

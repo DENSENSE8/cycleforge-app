@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { ChevronDown, ChevronRight, MessageSquare } from '@/components/Icons';
+import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { useSerialUnitDetail } from './types';
 import { UnitDetailHeader } from './UnitDetailHeader';
 import { UnitQualityPanel } from './UnitQualityPanel';
@@ -70,6 +73,7 @@ export function UnitDetailWorkspace() {
             photos={data.photos ?? []}
             onPhotoChanged={() => void refetch()}
           />
+          <ConversationCard serialUnitId={unit.id} />
           {UNIT_SCAN_PHOTOS && <SerialUnitTimelineSection serialUnitId={unit.id} />}
           {allocations.length > 0 && <AllocationsCard rows={allocations} />}
           {(data.conditions?.length ?? 0) > 0 && <ConditionsCard rows={data.conditions ?? []} />}
@@ -77,5 +81,35 @@ export function UnitDetailWorkspace() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Collapsible entity-conversation card — the SERIAL_UNIT anchor's ThreadPanel. */
+function ConversationCard({ serialUnitId }: { serialUnitId: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+      {/* ds-raw-button: full-width card-header disclosure toggle, not a Button action */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 text-left"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2 text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">
+          <MessageSquare className="h-3.5 w-3.5" /> Conversation
+        </span>
+        {open ? (
+          <ChevronDown className="h-4 w-4 text-text-faint" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-text-faint" />
+        )}
+      </button>
+      {open ? (
+        <div className="border-t border-border-hairline">
+          <ThreadPanel entityType="SERIAL_UNIT" entityId={serialUnitId} dense className="max-h-[26rem]" />
+        </div>
+      ) : null}
+    </section>
   );
 }

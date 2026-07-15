@@ -11,6 +11,7 @@ import { WarrantyQuotesSection } from '@/components/warranty/WarrantyQuotesSecti
 import { SourceThisButton } from '@/components/sourcing/SourceThisButton';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { IconButton } from '@/design-system/primitives';
 import { warrantyEventsToTimeline } from '@/lib/timeline';
 import { formatDateTimePST } from '@/utils/date';
@@ -245,11 +246,14 @@ function DetailBody({ claim }: { claim: WarrantyClaimDetail }) {
         />
       </Section>
 
-      {claim.notes && (
-        <Section title="Notes">
-          <p className="whitespace-pre-wrap text-sm text-text-muted">{claim.notes}</p>
-        </Section>
-      )}
+      <Section title="Conversation">
+        {claim.notes && (
+          <p className="mb-3 whitespace-pre-wrap rounded-lg border border-border-hairline bg-surface-sunken px-3 py-2 text-role-caption text-text-muted">
+            {claim.notes}
+          </p>
+        )}
+        <ThreadPanel entityType="WARRANTY_CLAIM" entityId={claim.id} dense className="max-h-[28rem]" />
+      </Section>
     </>
   );
 }

@@ -149,14 +149,20 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_delete_entity_threads_on_receiving_delete ON receiving;
+-- `receiving` / `receiving_lines` are compatibility VIEWS (security_invoker) over
+-- the real base tables `receiving_carton` / `receiving_line` (2026-07-11 compat-
+-- view cutover). A row-level AFTER DELETE trigger can only live on a base table,
+-- so the RECEIVING / RECEIVING_LINE parent-delete triggers attach to the base
+-- tables. The registry parentTable stays the view name — app-side existence
+-- reads (getOrCreateThread) query the view fine; only the DDL needs the base.
+DROP TRIGGER IF EXISTS trg_delete_entity_threads_on_receiving_delete ON receiving_carton;
 CREATE TRIGGER trg_delete_entity_threads_on_receiving_delete
-AFTER DELETE ON receiving
+AFTER DELETE ON receiving_carton
 FOR EACH ROW EXECUTE FUNCTION fn_delete_entity_threads_on_parent_delete('RECEIVING');
 
-DROP TRIGGER IF EXISTS trg_delete_entity_threads_on_receiving_line_delete ON receiving_lines;
+DROP TRIGGER IF EXISTS trg_delete_entity_threads_on_receiving_line_delete ON receiving_line;
 CREATE TRIGGER trg_delete_entity_threads_on_receiving_line_delete
-AFTER DELETE ON receiving_lines
+AFTER DELETE ON receiving_line
 FOR EACH ROW EXECUTE FUNCTION fn_delete_entity_threads_on_parent_delete('RECEIVING_LINE');
 
 DROP TRIGGER IF EXISTS trg_delete_entity_threads_on_serial_unit_delete ON serial_units;

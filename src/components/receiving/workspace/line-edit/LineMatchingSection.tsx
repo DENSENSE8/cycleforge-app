@@ -79,6 +79,7 @@ export function LineMatchingSection({
   embedded = false,
   collapsed = false,
   showTopRule = false,
+  hideTicketLinkRow = false,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -101,6 +102,11 @@ export function LineMatchingSection({
    * sits above it in the wrapper). Animates in/out with the collapse.
    */
   showTopRule?: boolean;
+  /**
+   * Hide the purple "Claim ticket · Unlink" strip — testing already surfaces
+   * the ticket in CartonContextCard + the Claim tab. Unbox/triage keep it.
+   */
+  hideTicketLinkRow?: boolean;
 }) {
   const pkg = toTriagePackage(row);
 
@@ -138,6 +144,7 @@ export function LineMatchingSection({
       embedded={embedded}
       collapsed={collapsed}
       showTopRule={showTopRule}
+      hideTicketLinkRow={hideTicketLinkRow}
     />
   );
 }
@@ -155,6 +162,7 @@ function TriageMatchingCard({
   embedded,
   collapsed,
   showTopRule,
+  hideTicketLinkRow,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -163,6 +171,7 @@ function TriageMatchingCard({
   embedded: boolean;
   collapsed: boolean;
   showTopRule: boolean;
+  hideTicketLinkRow: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -467,8 +476,10 @@ function TriageMatchingCard({
   // the carton header chip + the PO# card (and the PO-items accordion in unbox),
   // NOT a "linked" summary here. So Package Pairing collapses to a minimal action
   // strip (Change / add · Unlink); we don't repeat the PO as a green badge.
-  // A Zendesk ticket has no other home in this surface, so it keeps its own row.
-  const ticketLinkRow = hasTicket ? (
+  // A Zendesk ticket has no other home in this surface (unbox/triage), so it
+  // keeps its own row — unless the parent already shows it elsewhere (testing).
+  const ticketLinkRow =
+    hasTicket && !hideTicketLinkRow ? (
     <div className="flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700">
         <Ticket className="h-4 w-4" />

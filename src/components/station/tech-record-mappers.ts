@@ -16,6 +16,8 @@ export function techRecordToDetail(record: TechRecord) {
     ? String(record.ship_by_date).split('T')[0]
     : '';
 
+  const testedAt = record.created_at || null;
+
   return {
     id: record.order_db_id ?? record.id,
     ship_by_date: shipByDate,
@@ -28,9 +30,10 @@ export function techRecordToDetail(record: TechRecord) {
     tracking_number_rows: record.tracking_number_rows || [],
     serial_number: record.serial_number || '',
     sku: record.sku || '',
-    tester_id: null,
+    tester_id: record.tested_by || null,
     tested_by: record.tested_by || null,
-    test_date_time: record.created_at || null,
+    test_date_time: testedAt,
+    test_activity_at: testedAt,
     packer_id: null,
     packed_by: null,
     packed_at: null,
@@ -40,12 +43,13 @@ export function techRecordToDetail(record: TechRecord) {
     notes: record.notes || '',
     status_history: record.status_history || [],
     is_shipped: !!record.is_shipped,
+    latest_status_category: record.shipment_status ?? null,
     created_at: record.created_at || null,
     quantity: record.quantity || '1',
     shipment_id: record.shipment_id ?? null,
     status: record.status ?? null,
     tech_serial_id: record.tech_serial_id ?? (record.source_kind === 'tech_serial' ? record.id : undefined),
-    source_row_id: record.source_row_id ?? null,
+    source_row_id: record.source_row_id ?? record.id,
     source_kind: record.source_kind ?? null,
     fnsku: record.fnsku || null,
     fnsku_log_id: record.fnsku_log_id ?? null,

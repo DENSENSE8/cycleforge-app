@@ -193,6 +193,21 @@ export function PhotoLibraryPage() {
     clear();
   }, [clear]);
 
+  // Reset selection when the BROWSE SCOPE changes — a folder drill, breadcrumb
+  // jump, source-scope switch, or search. Selection is keyed by id and (by
+  // design) survives paging, but a scope change swaps `photos` out from under it,
+  // leaving stale ids from the previous folder in the set: the count desyncs and
+  // bulk delete/share/copy silently operate on photos the user can no longer see.
+  // Keyed on `filters` (the folder/breadcrumb/source/search identity), NOT on
+  // `photos`, so loading more pages within one folder still keeps the selection.
+  const scopeKey = useMemo(() => JSON.stringify(filters), [filters]);
+  const prevScopeKey = useRef(scopeKey);
+  useEffect(() => {
+    if (prevScopeKey.current === scopeKey) return;
+    prevScopeKey.current = scopeKey;
+    exitSelectMode();
+  }, [scopeKey, exitSelectMode]);
+
   // "Select all matching filters" — fetch every matching photo id (capped) for
   // the current filter set and select them, so a bulk share/ZIP/delete spans the
   // whole result, not just the loaded page.

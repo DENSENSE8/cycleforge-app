@@ -14,13 +14,21 @@ import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { setTimeFormat } from '@/lib/time-format/store';
 import { TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences';
 import { formatTime12hPST } from '@/utils/date';
-import { applyTheme, type ThemeName } from '@/lib/theme/theme';
+import { applyTheme, applyAccentTheme, type ThemeName } from '@/lib/theme/theme';
 import {
   THEME_NAMES,
   THEME_PALETTES,
   resolveTheme,
   type ThemePalette,
 } from '@/design-system/themes/registry';
+import { useAuth } from '@/contexts/AuthContext';
+import { RoleColorPicker } from '@/components/admin/roles/RoleColorPicker';
+import { getStaffColorHex, themeFromHex } from '@/utils/staff-colors';
+import {
+  DEFAULT_CUSTOM_ACCENT_HEX,
+  resolveOperatorAccentTheme,
+  resolvesUseStaffAccent,
+} from '@/utils/operator-accent';
 
 /**
  * True palette miniature — a tiny "app" rendered from the theme's actual
@@ -79,6 +87,44 @@ const TIME_FORMAT_HINTS: Record<TimeFormat, string> = {
   '24h': '00:00–23:59',
 };
 
+function AccentToggleRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4">
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-text-default">{label}</span>
+        {description ? (
+          <span className="mt-0.5 block text-role-caption text-text-soft">{description}</span>
+        ) : null}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`ds-raw-button relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+          checked ? 'bg-blue-600' : 'bg-surface-strong'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${
+            checked ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </label>
+  );
+}
+
 export function AppearanceSection() {
   const [settings, setSettings] = useState<AppearanceSettings>({
     density: 'cozy',
@@ -88,9 +134,15 @@ export function AppearanceSection() {
   useEffect(() => { setSettings(getAppearance()); }, []);
 
   const { prefs, update } = useStaffPreferences();
+  const { user } = useAuth();
   // Unknown/stale stored names resolve to light, so the switcher never shows
   // an impossible selection.
   const currentTheme: ThemeName = resolveTheme(prefs?.theme).name;
+  const useStaffAccent = resolvesUseStaffAccent(prefs);
+  const staffColorHex = user?.staffId
+    ? getStaffColorHex({ id: user.staffId })
+    : DEFAULT_CUSTOM_ACCENT_HEX;
+  const customAccentHex = prefs?.accentHex ?? staffColorHex;
 
   // Live clock-format preference (12h/24h). The store handles the instant local
   // flip + localStorage cache; <TimeFormatSync/> mirrors it to the server.
@@ -111,6 +163,23 @@ export function AppearanceSection() {
 
   function updateFontScale(s: number) {
     setSettings(setAppearance({ fontScale: s }));
+  }
+
+  function updateUseStaffAccent(next: boolean) {
+    if (!user?.staffId) {
+      update({ useStaffAccent: next });
+      return;
+    }
+    const patch = next
+      ? { useStaffAccent: true as const }
+      : { useStaffAccent: false as const, accentHex: prefs?.accentHex ?? staffColorHex };
+    applyAccentTheme(resolveOperatorAccentTheme({ ...prefs, ...patch }, user.staffId));
+    update(patch);
+  }
+
+  function updateAccentHex(hex: string) {
+    applyAccentTheme(themeFromHex(hex));
+    update({ accentHex: hex, useStaffAccent: false });
   }
 
   return (
@@ -204,6 +273,44 @@ export function AppearanceSection() {
         </div>
         <p className="mt-3 text-role-caption text-text-soft">
           Applies to every timestamp across the app. Saved to your account — follows you across devices.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-text-default">Accent color</h3>
+        <p className="mb-4 text-role-caption text-text-soft">
+          Highlights action buttons, section tabs, and other operator chrome — the same tint as
+          dashboard tabs and station floating actions.
+        </p>
+
+        <AccentToggleRow
+          label="Use my staff color"
+          description="Follows your identity color set in Staff settings. Recommended."
+          checked={useStaffAccent}
+          onChange={updateUseStaffAccent}
+        />
+
+        {useStaffAccent ? (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3">
+            <span
+              aria-hidden
+              className="h-8 w-8 shrink-0 rounded-full ring-2 ring-white ring-offset-2 ring-offset-surface-canvas"
+              style={{ backgroundColor: staffColorHex }}
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-text-default">Staff identity color</p>
+              <p className="text-role-caption font-mono text-text-soft">{staffColorHex}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3 rounded-xl border border-border-soft bg-surface-canvas px-4 py-3">
+            <p className="text-sm font-semibold text-text-default">Custom accent</p>
+            <RoleColorPicker value={customAccentHex} onChange={updateAccentHex} />
+          </div>
+        )}
+
+        <p className="mt-3 text-role-caption text-text-soft">
+          Saved to your account — follows you across devices.
         </p>
       </div>
 

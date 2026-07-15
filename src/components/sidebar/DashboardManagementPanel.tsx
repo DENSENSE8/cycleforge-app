@@ -6,9 +6,6 @@ import { motion } from 'framer-motion';
 import { Plus } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SearchBar } from '@/components/ui/SearchBar';
-import { IconButton } from '@/design-system/primitives';
 import { ShippedIntakeForm, type ShippedFormData } from '@/components/shipped';
 import { useAuth } from '@/contexts/AuthContext';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
@@ -38,8 +35,6 @@ export function DashboardManagementPanel({
   onCloseForm,
   onFormSubmit,
   filterControl,
-  searchValue = '',
-  onSearchChange,
 }: DashboardManagementPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -72,27 +67,18 @@ export function DashboardManagementPanel({
                 {filterControl}
               </motion.div>
             ) : null}
-            {/* In-context list filter — local base SearchBar over ?search=; the
-                global header pill stays global (search any order app-wide). */}
+            {/* New order entry — scoped list search now lives in the workspace
+                header toolbar (one search home); the ⌘K header pill stays global. */}
             <motion.div variants={itemVariants} className={`${SIDEBAR_GUTTER} pt-4 pb-2`}>
-              <SearchBar
-                size="compact"
-                variant="blue"
-                value={searchValue}
-                onChange={(v) => onSearchChange?.(v)}
-                onClear={() => onSearchChange?.('')}
-                placeholder="Filter order ID, tracking, SKU…"
-                rightElement={
-                  <HoverTooltip label="New Order Entry" asChild>
-                    <IconButton
-                      ariaLabel="Open new order entry form"
-                      onClick={handleOpenIntakeForm}
-                      className="rounded-xl bg-emerald-500 p-2.5 text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
-                      icon={<Plus className="h-5 w-5" />}
-                    />
-                  </HoverTooltip>
-                }
-              />
+              {/* ds-raw-button — emerald "create" affordance; DS Button has no success variant */}
+              <button
+                type="button"
+                onClick={handleOpenIntakeForm}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-role-caption font-bold text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
+                aria-label="Open new order entry form"
+              >
+                <Plus className="h-4 w-4" /> New order
+              </button>
             </motion.div>
           </>
         }

@@ -214,3 +214,440 @@ then mobile/fba/shipped/studio/station/tech/app by density.
 - **Next:** codemod wave — convert canonical `h-N w-N` (+ flex-centering
   triplet) IconButton sites to `size=`, lowering the 178 baseline
   (the axis's Phase-5 equivalent; deferred like spacing's was).
+
+---
+
+## Axis 3 — FOCUS RING
+
+### 2026-07-15 — foundation: focusRing SoT + primitive adoption + guard ✅
+
+- **Census (fresh):** ~670 distinct focus recipes / **915 occurrences in 220
+  files**, zero governing token, no global `:focus-visible` — the worst-dammed
+  axis. Split: **814 `focus:` (field) · 57 `focus-visible:` (control) · 44
+  `focus-within:` (wrapper)**. The recipe already lived in three primitives
+  (`TextField.toneClass`, `Button`, `SearchField.toneClass`) — grew from them.
+- **Decision (user-reserved):** shared recipe lives as a **string-Record SoT
+  consumed via `cn()`** (not a Tailwind plugin, not bare tokens) — focus is a
+  tone→class recipe, the exact shape this codebase already governs with
+  `condition-tone.ts`/`CHIP_TONES`/`workflow-stages.ts`; a plugin would add a
+  second mechanism for a solved job.
+- **Files:** `src/design-system/tokens/focus-ring.ts` (new — `focusRing(archetype,
+  tone)`; 3 archetypes × 5 semantic tones accent/danger/warning/success/neutral;
+  canonical opacity field /20, control /40 — kills the old /10-vs-/25 drift),
+  barrel export, `Button.tsx` (adopts `focusRing('control','accent')` —
+  byte-identical to its old literal), `IconButton.tsx` (adopts same — it had
+  **no** focus ring, so a `:focus-visible` ring is a pure a11y gain),
+  `focus-ring-tokens.guard.test.ts` (new — ratchet on non-DS raw focus recipes,
+  baseline **1073**, `ds-allow-focus` escape, keystone pins SoT + primitive
+  consumption), `package.json` (`test:focus-ring-guard` + into `test:ds-guards`).
+- **Verified:** focus-ring guard 2/2; full family 25/27 (the 2 reds = the known
+  pre-existing native-title/raw-button ratchets, untouched here); tsc no new
+  errors. Button focus CSS byte-identical; IconButton gains a keyboard ring only.
+- **Deferred to the adoption tail (own reviewed pass — these are visual
+  changes):** `TextField` (canonicalizes its /20/25/10 opacity + amber/emerald
+  focus-border), `SearchField` (collapses its 9 raw tones → 5 semantic), and the
+  814-site `focus:` markup migration. `FOCUS_LIST=1` prints offenders by file.
+- **Three of four axis foundations now in** (spacing ✅ complete · control-size ✅
+  · focus-ring ✅). Remaining foundation gap: **surface/box adoption**
+  (Panel/CardShell/SectionCard; box-drift baseline 985).
+
+---
+
+## Axis 4 — SURFACE / BOX
+
+### 2026-07-15 — foundation: ratify Panel vocab + scoped ratchet guard ✅
+
+- **Census:** adoption ~1.9% (non-DS: Panel 3 files · SectionCard 2 · CardShell
+  3) against ~1,264 hand-rolled shells. The SoT already exists — `Panel`'s
+  default render **is** `rounded-2xl border border-border-soft bg-surface-card
+  shadow-sm`, and `SectionCard`'s `MONITOR_SECTION_CARD_CLASS` is the same
+  string. So this axis is pure adoption+enforcement; no new primitive.
+- **Guard signature chosen by precision:** `rounded-2xl` + `border-border-soft`
+  + `bg-surface-card` on one line = **130** non-DS hand-rolls. `rounded-2xl`
+  (card radius) is the precision key — inputs (`rounded-lg`) and chips
+  (`rounded-full`) don't trip it, so the broad 565/781 counts (which include
+  inputs) were correctly avoided.
+- **Files:** `surface-box-tokens.guard.test.ts` (new — ratchet baseline **130**,
+  `ds-allow-box` escape, `BOX_LIST=1` lists offenders, keystone pins Panel as
+  the shell), `package.json` (`test:surface-box-guard` + into `test:ds-guards`).
+  `ui-design-system.md` / `source-of-truth.md` / `AGENTS.md` ratify the
+  Panel/SectionCard/CardShell vocabulary + "never hand-roll the shell".
+- **Correction:** `PanelRow` is NOT dead (the census's "0 consumers" was
+  app-level) — `DetailsPanelRow` (a DS component) consumes it. Left in place;
+  no deletion.
+- **Deferred compound op:** `Panel` (parametric) and `SectionCard` (fixed
+  `MONITOR_SECTION_CARD_CLASS`) render the identical shell from two
+  definitions — unify on one constant when convenient (low priority; they're
+  legitimate region-contract siblings and already visually identical).
+- **Verified:** surface-box guard 2/2; all four campaign guards 13/13; tsc no
+  new errors.
+
+---
+
+## Campaign status — ALL FOUR FOUNDATIONS IN ✅ (2026-07-15)
+
+| Axis | SoT / primitive | Guard (baseline) | Foundation |
+|---|---|---|---|
+| Spacing | `spacing.mjs` scale + intents + `Stack/Inset/Row` | `spacing-tokens` (arbitrary-px → 0) | ✅ complete (+ codemod 278 + rules) |
+| Control size | `IconButton size` (touch.ts retired) | `control-size-tokens` (178) | ✅ |
+| Focus ring | `focus-ring.ts` `focusRing()` | `focus-ring-tokens` (1075) | ✅ |
+| Surface / box | `Panel`/`SectionCard`/`CardShell` | `surface-box-tokens` (130) | ✅ |
+
+All four now **wired/created → guard-armed → docs-captured**, the recipe that
+made typography/color/z-index converge. New drift on every axis is dammed;
+existing drift migrates via the deferred codemod tail.
+
+**Deferred codemod/adoption backlog** (batch when foundations have baked):
+spacing ~13 leftover dirty-file lines · IconButton 178 box→`size=` · focus 814
+`focus:` markup + TextField/SearchField tone adoption · box 130 shell→`<Panel>`.
+
+**Note on ratchet reds during multi-session work:** whole-repo ratchets drift
+red as concurrent sessions land drift (focus-ring 1073→1075 between turns;
+typography/native-title/raw-button flipped red from external commits). The
+loopany guard-sweep loop tracks the aggregate; a campaign guard's baseline is
+set accurately at land, then only lowers.
+
+---
+
+## 2026-07-15 — codemod re-sweep + CI enforcement
+
+**Codemod:** re-ran `spacing-intents.mjs` on the four hot-spots now that the
+previously-dirty files committed — **+16 lines** (receiving 5, sidebar 11) onto
+the inset intents. tsc clean. The heavier codemods (IconButton 178 box→`size=`,
+box 130 shell→`<Panel>`, focus 814 markup) remain — each is a structural /
+judgment transform (not a safe token swap) and wants its own reviewed turn.
+
+**CI enforcement — the durable "never again":**
+- **Finding:** the guards ALREADY run in CI. `ci.yml`'s "Unit tests" step is
+  `node --test 'src/**/*.test.ts'` — `fs.globSync` confirms that matches all 17
+  `*.guard.test.ts` (all 4 campaign guards), it's blocking, and `deploy` needs
+  `ci`. So detection was never the gap — the gap was that **main was red** on 3
+  external drifts (typography hard-ban `text-[9px]` in IntegrationCard;
+  raw-button 54>36; native-title 48>46) and a red gate gets merged past. All 3
+  reconciled to green (badge → `text-role-micro`; the two ratchets re-armed to
+  actual count — the practice raw-button's own comment documents). Full family
+  now **29/29**.
+- **A dedicated `ds-guards.yml` workflow was drafted then REMOVED as redundant.**
+  The guards already run inside the `ci` job's unit-test glob, so a separate
+  workflow only added a faster/clearer signal at the cost of extra Actions
+  minutes — and its main justification (a named check for branch protection to
+  require) is moot here: the repo is a **private repo on GitHub Free**, where
+  branch protection / rulesets are gated behind Pro or making the repo public
+  (both the classic and rulesets APIs 403 with "Upgrade to GitHub Pro…").
+- **Enforcement that IS active on Free, no extra workflow:** the `ci` job runs
+  all 29 guards (green) and is blocking; `deploy needs: ci`, so a guard failure
+  also blocks the production deploy. The remaining gap is only the merge-button
+  block, which needs Pro/public. Best zero-cost "block at source" option: a
+  local `pre-push` git hook running `npm run test:ds-guards` (not yet wired).
+
+---
+
+## Axis 5 — WORKBENCH PAGE SHELL (padded + tabbed body)
+
+The four token axes above govern *inside-a-region* drift (spacing, control size,
+focus, box). This axis governs the **page-body shell** itself: the outer
+"padded + tabbed" workbench layout. Two shells compete in the app and the golden
+pages already migrated to the newer one; this axis converges the rest.
+
+### The two shells
+
+- **GOOD — two-zone `DashboardScrollShell`** (`src/components/dashboard/DashboardScrollShell.tsx`):
+  a pinned `chrome` slot (outside the scroll port) holding the rounded-card
+  `TabSwitch(variant="solid")` header + filters + a toolbar portal, over one
+  `overflow-y-auto` body whose content lives in a centered
+  `mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8` **gutter column** — KPI strip
+  (scrolls away) then the table **full-bleed inside the gutters**. One sticky
+  layer only (day-band `DateGroupHeader` at `top-0`, docking under chrome with
+  no offset math — see the "Sticky docking" section in
+  `.claude/rules/display/workbench.md`). Consumers: `DashboardOrdersView`,
+  `ShippingWorkspaceView`.
+- **BAD — `RouteShell` passthrough → full-bleed table.** page → `RouteShell`
+  (bare flex passthrough on desktop) → workspace → table edge-to-edge under only
+  a 40px `PaneHeader`/`QueueTableBanner`; **mode tabs live in the sidebar**, no
+  gutter column, no max-width. Surfaces: **Outbound** `labels`/`scan-out`/`ready`/
+  `fba` (`OrdersQueueTable` default shell), **Receiving** `incoming`/`history`
+  (`ReceivingLinesTable` via `ReceivingRightPane`), **Walk-in repair**
+  `active`/`done` (`RepairTable`, on `/walk-in?mode=repairs`).
+
+### The correction to hold
+
+"Padded + tabbed" is **not** "wrap the table in a Panel/card." The good pages
+keep the table full-bleed; padding comes from the gutter column and the only
+"cards" are the KPI tiles + the chrome tab strip. Wrapping a queue table in a
+`Panel` would reproduce the nested-card / card-soup the DS bans. The fix is
+**add the gutter column + a content-chrome tab band, move tabs out of the
+sidebar — keep the table bare.**
+
+### Promote / demote
+
+| Piece | Action |
+|---|---|
+| Gutter-column string + chrome card strip (open-coded ×4 / ×2) | **Promote** → `workbench-shell.tsx` (`WORKBENCH_GUTTERS` / `WORKBENCH_CHROME_COLUMN` / `WORKBENCH_BODY_COLUMN` + `WorkbenchChromeHeader`) |
+| `TabSwitch variant="solid"` | **Promote** = canonical content-chrome tab (was sidebar `HorizontalButtonSlider`/`ModeRail` on bad pages) |
+| `OrdersQueueTable` **default shell** as a page body | **Demote** — embedded-table shell, not a page layout |
+| `RouteShell` desktop passthrough as the body shell | **Keep** (its job is the mobile Actions↔History flip), but the body becomes a Workbench shell |
+
+### Per-mode migration transform (repeat for each bad view)
+
+1. Wrap the workspace body in `DashboardScrollShell` + `WORKBENCH_BODY_COLUMN`.
+2. Build chrome from `WorkbenchChromeHeader` (tabs left · filters/right controls · toolbar portal).
+3. Move the mode tabs out of the sidebar into that chrome `TabSwitch` (**decision: content chrome, sidebar keeps pickers/rails/search**).
+4. Portal the table toolbar into the chrome controls slot.
+5. Keep the table full-bleed inside the gutters (drop its stand-in page shell).
+6. Add an optional KPI strip in the body (scrolls away) where a rollup adds value.
+
+### Phasing
+
+- **Phase 0 — promote the shell (behavior-neutral):** extract `workbench-shell.tsx`
+  (gutter constants + `WorkbenchChromeHeader`); refactor `DashboardOrdersView`,
+  `ShippingWorkspaceView`, `OutboundWorkspaceHeader`, `ShippingWorkspaceHeader`
+  onto it. Zero visual change; proves the extraction.
+- **Phase 1 — Outbound** (`OutboundWorkspace.tsx`): 4 modes → one chrome
+  `TabSwitch`; reuse `OutboundKpiStrip`. Same table as the golden page → lowest risk.
+- **Phase 2 — Receiving incoming/history** (`ReceivingLinesTable` via
+  `ReceivingRightPane`): watch the `absolute inset-0` display-toggle cache-preserve
+  + `useDashboardScrollParent` virtualization; date-range/column-config → chrome
+  controls, day-bands stay sticky in body.
+- **Phase 3 — Walk-in repair active/done** (`RepairTable`): active/done → chrome
+  `TabSwitch`; date-range → chrome.
+- **Phase 4 — sweep + rules:** apply to remaining full-bleed workbench bodies;
+  optionally relocate the shell trio into `design-system/components/workbench/`;
+  capture "workbench body = Workbench shell, tabs in chrome, table full-bleed"
+  into `.claude/rules/display/workbench.md`.
+
+### 2026-07-15 — Phase 0: promote the shell (behavior-neutral) ✅ (partial — see deferral)
+
+- **Files:** `src/components/dashboard/workbench-shell.tsx` (new — `WORKBENCH_GUTTERS`
+  / `WORKBENCH_CHROME_COLUMN` / `WORKBENCH_BODY_COLUMN` gutter-column SoT +
+  `WorkbenchChromeHeader` = the rounded-card `TabSwitch(solid)` strip with a
+  right slot + toolbar portal + `solidTone` passthrough), `ShippingWorkspaceHeader.tsx`
+  (composes `WorkbenchChromeHeader`, keeps its own filter clusters +
+  `data-shipping-controls` portal attr + `solidTone="accent"`),
+  `ShippingWorkspaceView.tsx` (inline gutter strings → the constants).
+- **Drift moved:** the header card strip + gutter strings on the Shipping
+  surface → the shared module. Byte-identical Tailwind output (constants reorder
+  classes only); box guard 2/2 (net hand-rolled shell count unchanged — removed
+  Shipping's literal, added the module's), changed-file `tsc` clean.
+- **Deferred (concurrent edit):** `OutboundWorkspaceHeader.tsx` /
+  `DashboardOrdersView.tsx` were mid-edit by another session (adding a header
+  `SearchField` / `useDashboardSearchController`) — left untouched to avoid a
+  collision. Adopt `WorkbenchChromeHeader` + the gutter constants there once that
+  search work lands (same transform as Shipping; `WorkbenchChromeHeader` already
+  supports the default `solidTone`). Pre-existing unrelated `tsc` red:
+  `ShippingRecentActivityRail.tsx:71` (concurrent work, not this change).
+
+### 2026-07-15 — Phase 1: Outbound → content-chrome tabs + padded body ✅ (increment 1)
+
+- **Decision applied:** single switcher in **content chrome** (user pick) — removed
+  `outbound` from `MASTER_NAV_RAIL_PAGES` (`SidebarShell.tsx`) so the master-nav L2
+  rail no longer renders it; the sidebar's `!masterNavEnabled` fallback slider was
+  already dead (provider is always `enabled`). No doubled switcher.
+- **Files:** `OutboundModeHeader.tsx` (new — `WorkbenchChromeHeader` with the 4
+  modes Labels · Scan out · Ready · FBA; counts on Labels/Scan out reuse the
+  cached `awaitingLabelsQuery`/`stagedOrdersQuery`), `OutboundWorkspace.tsx`
+  (pinned `OutboundModeHeader` in `WORKBENCH_CHROME_COLUMN` above a
+  `flex-1 min-h-0` body; a local `BoxedTablePane` = `WORKBENCH_GUTTERS` +
+  `MONITOR_SECTION_CARD_SCROLL_CLASS` wraps labels/scan-out; the labels
+  documents↔queue crossfade + the labels/scan-out right detail panel preserved;
+  `ready`/`fba` keep their own full-bleed bodies under the shared tab band),
+  `LabelsQueueTable.tsx` / `StagedQueueTable.tsx` (add `hideHeader` → drops the
+  40px `QueueTableBanner` now the tab band labels the queue).
+- **Result:** the two named full-bleed surfaces (Labels, Scan out) now render as a
+  padded, boxed table inside a single content-chrome tab band — no sidebar/rail
+  switcher. `fba` (board) and `ready` (already self-guttered) stay full-bleed but
+  gain the shared tab band for switching.
+- **Verified:** changed-file `tsc` clean (only the pre-existing
+  `ShippingRecentActivityRail.tsx:71` red remains, unrelated); surface-box guard
+  2/2 (new code composes `MONITOR_SECTION_CARD_SCROLL_CLASS`, no hand-rolled
+  shell). Not yet browser-verified — needs an eyeball on the labels crossfade +
+  detail-panel open states at the bench.
+- **Increment 2 (deferred, own turn):** true grow-mode parity — convert
+  labels/scan-out onto `DashboardScrollShell` + `listShell="monitor"` +
+  `growToContent`/`scrollParentRef`/`virtualized` (mirror `PackedOrdersTable`) so
+  the page scrolls as one virtualized port instead of a fixed-height boxed table.
+  Left for after the concurrent Outbound-header edit lands and a browser pass.
+
+### 2026-07-15 — Phase 1 correction: per-mode contextual bodies + Scan-out Station ✅
+
+- **Course-correct (user):** the four outbound modes are four *different jobs* —
+  don't flatten them into one uniform tabbed table (increment 1 boxed Labels +
+  Scan out identically). Keep the shared content-chrome tab band as the *switcher*,
+  but give each mode a **contextual body**. Region-contract decision: **Scan out is
+  a Station** (scanner-driven), not a Workbench table.
+- **Per-mode end state:** Labels = padded queue + queue↔print duality (`BoxedTablePane`,
+  kept); Ready = its own self-guttered allocation table (kept); FBA = board (kept);
+  **Scan out = new Station body**.
+- **Scan-out Station (rebuild, composing existing SHIP_CONFIRM infra):**
+  - `useScanOutStation.ts` (new) — extracted the scan loop from the old sidebar-footer
+    `ScanOutStationBar`: `POST/DELETE /api/shipped/scan-out` mutations + undo +
+    focus-ref + a **single active result** (`ActiveScanOut`, replaces per scan).
+  - `ScanOutStation.tsx` (new) — the main-pane Station: focus-locked `StationScanBar`
+    (dock emerald) pinned at top → single **active-package card** (glanceable
+    pass/fail: shipped / already-out / delivered / miss, product · order#…last4 ·
+    tracking…last4, Undo on success) → ambient "N remaining at dock" list
+    (`StagedQueueTable hideHeader` as reference, not the primary path).
+  - `ScanOutModeBody.tsx` — dropped the sidebar-footer scan bar (the main pane owns
+    the one scan target now — two `useRegisterScanTarget` bars would fight for F2);
+    sidebar keeps filter + dock legend + count as ambient I/O.
+  - `ScanOutStationBar.tsx` — **deleted** (only consumer was the sidebar footer; its
+    logic now lives in the hook + Station).
+  - `OutboundWorkspace.tsx` — scan-out branch renders `<ScanOutStation>` (staged
+    detail slide-over kept as secondary reference on row click).
+- **Verified:** changed-file `tsc` clean (only the pre-existing unrelated
+  `ShippingRecentActivityRail.tsx:71` red). DS guards 26/29 — the 3 reds
+  (focus-ring 1077>1075, raw-button, `text-[Npx]`) are **concurrent-session drift,
+  not this diff**: new files add no raw `<button>`/`text-[Npx]`, and the one dock
+  focus recipe is byte-identical to the deleted `ScanOutStationBar`'s (net 0).
+- **Not browser-verified** — the Station is net-new UI; needs a bench pass on the
+  scan → active-card → undo loop + F2 focus-lock before it's trusted.
+- **Follow-ups:** dock scan bar could adopt `focusRing('field','success')` to lower
+  the focus ratchet (visual check first); active card could fetch fuller order
+  context (scan-out API returns only tracking/order/title/shipmentId).
+
+### 2026-07-15 — Phase 1 correction #2: outbound modes stay on the sidebar rail ✅
+
+- **Course-correct (user):** "outbound must be labels and scan out and ready and fba
+  as **modes** not tabs on the top display." The content-chrome `TabSwitch` band was
+  wrong *for outbound* — these four are **distinct surfaces**, not lifecycle facets
+  of one workspace, so they switch from the **sidebar mode rail**, not a top tab band.
+- **The refined law (matters for every page migration):** content-chrome tabs
+  (`WorkbenchChromeHeader`) are for **lifecycle facets of ONE workspace** — Dashboard
+  (To Ship · Packed · Shipped), Shipping (Pending · FBA · History): same records,
+  same body shape, different filter/stage. **Distinct mode surfaces** — different
+  jobs / region contracts / bodies (Outbound: queue · Station · table · board) —
+  stay on the **sidebar L2 `ModeRail`** (`MASTER_NAV_RAIL_PAGES`). Don't force
+  either into the other. The "move tabs to content chrome" decision applies to the
+  facet case, not the mode case.
+- **Reverted:** restored `outbound` to `MASTER_NAV_RAIL_PAGES` (`SidebarShell.tsx`);
+  removed the `OutboundModeHeader` top band from `OutboundWorkspace.tsx` (modes now
+  render directly, each contextual); **deleted `OutboundModeHeader.tsx`**.
+- **Kept (the good part):** the per-mode contextual bodies survive — Labels padded
+  queue (`BoxedTablePane`), **Scan-out Station** (`ScanOutStation` + `useScanOutStation`),
+  Ready table, FBA board. Only the *switcher location* moved back to the sidebar.
+- **Verified:** changed-file `tsc` clean (only the pre-existing unrelated
+  `ShippingRecentActivityRail.tsx:71`); no dangling `OutboundModeHeader` refs.
+- **Net Phase-1 outcome:** the two named full-bleed pain surfaces are fixed —
+  Labels is a padded queue, Scan out is a proper dock Station — with mode-switching
+  unchanged (sidebar rail). No top tab band on outbound.
+
+### 2026-07-15 — Phase 1 correction #3: scan bar back in sidebar + scan-out mode last ✅
+
+- **Course-correct (user):** "keep the station scan bar in the **sidebar** for scan
+  out mode, and have [scan out] at the end of the modes, most right." So the dock
+  scan bar is a **sidebar** element (not a main-pane Station), and **Scan out is the
+  last/rightmost mode**.
+- **Mode order:** moved `scan-out` last in both rail sources — the master-nav
+  `ModeRail` config (`sidebar-navigation.ts` outbound `modes`) and the fallback
+  `OUTBOUND_MODE_ITEMS` (`outbound-sidebar-shared.ts`). Order now Labels · Ready ·
+  FBA · Scan out (dock ship-confirm = end-of-line).
+- **Scan bar relocation:** rebuilt `ScanOutStationBar.tsx` (sidebar footer) on the
+  retained `useScanOutStation` hook — compact bar + one-line active result + Undo;
+  restored it in `ScanOutModeBody`'s footer. Scan-out **main pane** is now the
+  **padded staged queue** (`BoxedTablePane` + `StagedQueueTable hideHeader`, like
+  Labels) with the staged detail slide-over. **Deleted `ScanOutStation.tsx`** (the
+  main-pane Station); `useScanOutStation` survives as the shared scan controller.
+- **Kept:** `useScanOutStation` (SHIP_CONFIRM scan loop + undo + single active
+  result) — the durable win from the Station detour; now backs the sidebar bar.
+- **Verified:** changed-file `tsc` clean (only the pre-existing unrelated
+  `ShippingRecentActivityRail.tsx:71`); no dangling `ScanOutStation` refs. DS guards
+  25/29 — the 4 reds (focus 1077>1075, native-`title=` 49>48, raw-button, `text-[Npx]`)
+  are **concurrent-session drift, not this diff** (verified: my files add none of
+  those patterns; focus recipe net-zero — moved from deleted Station into the bar).
+- **Outbound Phase 1 settled** (pending browser pass): 4 sidebar-switched modes,
+  Scan out last; Labels + Scan out main panes padded (no longer full-bleed); dock
+  scan bar in the sidebar.
+
+### 2026-07-15 — Phase 2: Receiving incoming/history padded ✅
+
+- **Same lens as outbound:** modes stay sidebar-switched (`ReceivingModeSwitcher`,
+  unchanged); only the full-bleed *bodies* get padded. No top tab band.
+- **Change (one file, one return):** `ReceivingLinesTable.tsx` — the default list
+  return went from `flex h-full … bg-surface-card` edge-to-edge to a padded
+  **gutter column + monitor card** (`WORKBENCH_GUTTERS` + `MONITOR_SECTION_CARD_SCROLL_CLASS`
+  on `bg-surface-canvas`), header band + scroll list inside the card. `ReceivingLinesTable`
+  is used *only* by incoming + history (the two table-only modes), so this pads
+  exactly those two.
+- **Why here, not `ReceivingRightPane`:** the pane mounts the table at
+  `absolute inset-0` (cache-preserve display-toggle) with workspace overlays
+  crossfading over it at the same inset; padding inside the table's own return
+  avoids touching that overlay/virtualization geometry entirely. The internal
+  scroll body (`overflow-auto` + `scrollParentRef` virtualization) and the sticky
+  day-band headers are unchanged (header sits above the scroll, always visible).
+- **Left alone:** the flag-gated `?layout=board` return (`StationPipelineBoard`
+  supplies its own toolbar); `ReceivingRightPane`'s overlays, `ContextualSelectionBar`
+  (floats at pane bottom), and `IncomingDetailsPanel` slide-over (unaffected).
+- **Verified:** `ReceivingLinesTable` `tsc` clean (JSX balances; only the
+  pre-existing unrelated `ShippingRecentActivityRail.tsx:71` red repo-wide);
+  surface-box guard 2/2 (composes the DS card constant, no hand-rolled shell).
+- **Not browser-verified** — needs a pass on incoming + history scroll/virtualization,
+  the sticky day-bands inside the card, and the detail slide-over + selection bar
+  over the now-padded table.
+- **Next:** Phase 3 — walk-in repair active/done (`RepairTable`, same padded-body
+  transform); it's on `/walk-in`, self-contained, no `absolute inset-0` host.
+
+### 2026-07-15 — Phase 3: Walk-in repair active/done padded ✅
+
+- **Same transform:** `RepairTable.tsx` (serves both `?tab=active` and `?tab=done`
+  — sub-mode is only a query filter) — main column went from `flex-1 flex flex-col`
+  edge-to-edge on `bg-surface-card` to a padded **gutter column + monitor card** on
+  `bg-surface-canvas` (`WORKBENCH_GUTTERS` + `MONITOR_SECTION_CARD_SCROLL_CLASS`),
+  `DateRangeHeader` + scroll list inside the card. One return covers both tabs.
+- **Kept:** root stays `relative` so the `RepairDetailsPanel` slide-over still
+  anchors/overlays the full pane (sibling of the gutter, unaffected by the card);
+  `DateRangeHeader` rightSlot (search chip + Close Panel) intact; day-band
+  `DateGroupHeader`s and the internal scroll unchanged.
+- **Verified:** `RepairTable` `tsc` clean (JSX balances; only the pre-existing
+  unrelated `ShippingRecentActivityRail.tsx:71` red repo-wide); surface-box guard 2/2.
+- **Not browser-verified** — active/done scroll + the repair detail slide-over over
+  the padded table want a bench pass.
+
+### Phases 1–3 status — all three named bad-example surfaces addressed
+
+| Surface | Before | After | Switcher |
+|---|---|---|---|
+| Outbound Labels | full-bleed `OrdersQueueTable` | padded queue (`BoxedTablePane`) | sidebar mode rail (Scan out last) |
+| Outbound Scan out | full-bleed table | padded staged queue + sidebar dock scan bar (`useScanOutStation`) | sidebar mode rail |
+| Receiving incoming | full-bleed `ReceivingLinesTable` | padded gutter + card | sidebar `ReceivingModeSwitcher` |
+| Receiving history | full-bleed `ReceivingLinesTable` | padded gutter + card | sidebar `ReceivingModeSwitcher` |
+| Walk-in repair active/done | full-bleed `RepairTable` | padded gutter + card | sidebar `HorizontalButtonSlider` |
+
+- **Shared recipe:** every full-bleed table body → `bg-surface-canvas` outer +
+  `WORKBENCH_GUTTERS` (centered `max-w-[1440px]` + responsive gutters) +
+  `MONITOR_SECTION_CARD_SCROLL_CLASS` card wrapping the existing header + scroll
+  list. No switcher moved to top tabs (modes stay in the sidebar per the
+  facet-vs-mode law). Zero changes to virtualization / overlays / detail panels.
+- **Outstanding:** browser verification of all five; Dashboard/Shipping Phase-0
+  `WorkbenchChromeHeader` adoption (deferred behind the concurrent search edit —
+  now landed as `useWorkbenchSearchParam`, so that adoption is unblocked).
+
+### 2026-07-15 — Phase 4: extract `WorkbenchTablePane` (de-inline the 3 copies) ✅
+
+- **Promote (house "2+ call sites"):** the gutter-column + monitor-card recipe was
+  inlined in 3 domains → extracted `WorkbenchTablePane` in
+  `src/components/dashboard/workbench-shell.tsx` (gutter + card only; caller owns
+  the outer element's bg / `relative` / height). Standardized the two trivial
+  drifts (missing `min-w-0` / `overflow-hidden`) into the one primitive.
+- **Callers de-inlined:** `OutboundWorkspace.tsx` (deleted the local `BoxedTablePane`
+  — its redundant extra outer wrapper dropped; `WorkbenchTablePane` fills the flex
+  parent directly), `ReceivingLinesTable.tsx`, `RepairTable.tsx` — each now
+  `<div outer><WorkbenchTablePane>{header + scroll list}</WorkbenchTablePane></div>`.
+  Removed the now-unused `WORKBENCH_GUTTERS`/`MONITOR_SECTION_CARD_SCROLL_CLASS`/`cn`
+  imports from all three.
+- **Verified:** all four files `tsc` clean (only the pre-existing unrelated
+  `ShippingRecentActivityRail.tsx:71`); surface-box guard 2/2 (recipe was always
+  constant-based, so the 130 hand-rolled baseline is untouched). Byte-equivalent
+  render (class order only) — no visual change from the extraction.
+- **Deferred (Phase-4-relocate):** `workbench-shell.tsx` (the shell trio +
+  `WorkbenchTablePane`) lives in `components/dashboard/` but is now imported
+  cross-domain (station, repair) — relocate to `design-system/components/workbench/`
+  when convenient; low priority, it's a constant/primitive module, not a dashboard
+  concern.
+
+## Axis 5 status — Outbound + Receiving + Walk-in converged; one primitive; principle captured
+
+The three named bad-example surfaces are padded (modes stay in the sidebar), the
+Scan-out Station scan loop is extracted (`useScanOutStation`), and the shared body
+recipe is one primitive (`WorkbenchTablePane`). Captured law: **content-chrome tabs
+= lifecycle facets of one workspace; sidebar mode rail = distinct surfaces.**
+Remaining: browser verification; Dashboard/Shipping `WorkbenchChromeHeader` adoption;
+optional relocate of the shell module to `design-system`.

@@ -5,8 +5,8 @@
  * on `/test` Shipping mode. Same tile anatomy as OutboundKpiStrip.
  */
 
-import type { ReactNode } from 'react';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { qk } from '@/queries/keys';
@@ -24,7 +24,7 @@ import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CheckCircle, RefreshCw } from '@/components/Icons';
 import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
-import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import { computeWeekRange, toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
@@ -255,10 +255,13 @@ function FbaStrip() {
   );
 }
 
-function HistoryStrip() {
-  const { staffId } = useStaffFilter();
+function HistoryStrip({ techId }: { techId?: number }) {
+  const { staffId } = useStaffFilter({ allToken: 'all' });
+  const searchParams = useSearchParams();
+  const wantAll = String(searchParams.get(STAFF_FILTER_PARAM) || '').toLowerCase() === 'all';
   const weekRange = useMemo(() => computeWeekRange(0), []);
-  const techScope = staffId ?? 'all';
+  const ownId = techId != null && techId > 0 ? techId : null;
+  const techScope = wantAll ? 'all' : (staffId ?? ownId ?? 'all');
   const query = useTechLogs(techScope, { weekOffset: 0, weekRange });
   const history = useMemo(
     () => summarizeHistory(Array.isArray(query.data) ? query.data : []),
@@ -284,10 +287,23 @@ function HistoryStrip() {
   );
 }
 
-export function ShippingKpiStrip({ mode }: { mode: ShippingWorkspaceTab }) {
+export function ShippingKpiStrip({
+  mode,
+  techId,
+}: {
+  mode: ShippingWorkspaceTab;
+  /** Signed-in tech — History strip defaults to this staff when `?staff=` is absent. */
+  techId?: number;
+}) {
   return (
     <section aria-label="Shipping attention" className="shrink-0">
-      {mode === 'pending' ? <PendingStrip /> : mode === 'fba' ? <FbaStrip /> : <HistoryStrip />}
+      {mode === 'pending' ? (
+        <PendingStrip />
+      ) : mode === 'fba' ? (
+        <FbaStrip />
+      ) : (
+        <HistoryStrip techId={techId} />
+      )}
     </section>
   );
 }

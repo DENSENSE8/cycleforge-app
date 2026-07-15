@@ -33,7 +33,7 @@ import { sourceScopeFromFilters } from '@/lib/photos/library-filter-state';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
-export type MediaLibraryPickerTab = 'browse' | 'ticket';
+export type MediaLibraryPickerTab = 'browse' | 'ticket' | 'carton';
 
 type IconCmp = typeof Package;
 
@@ -61,10 +61,14 @@ interface MediaTypeSelection {
 export interface MediaLibraryPickerContentProps {
   /** When set, enables the “This ticket” tab. */
   ticketId?: number;
+  /** When set, enables the “Current carton” tab (receivingId scope). */
+  receivingId?: number;
+  /** Initial tab — defaults to ticket → carton → browse by context. */
+  defaultTab?: MediaLibraryPickerTab;
   selected: ClaimPhotoInput[];
   onSelectedChange: (photos: ClaimPhotoInput[]) => void;
   excludePhotoIds?: Set<number>;
-  /** Hide the browse / ticket tab toggle (browse-only when no ticket context). */
+  /** Hide the browse / ticket / carton tab toggle. */
   showScopeToggle?: boolean;
 }
 
@@ -80,39 +84,72 @@ function toClaimPhotoInput(photo: LibraryPhoto): ClaimPhotoInput {
 
 const EMPTY_DATE_NAV: PhotoDateNav = {};
 
+function initialTab(opts: {
+  defaultTab?: MediaLibraryPickerTab;
+  ticketId?: number;
+  receivingId?: number;
+}): MediaLibraryPickerTab {
+  if (opts.defaultTab) return opts.defaultTab;
+  if (opts.ticketId) return 'ticket';
+  if (opts.receivingId) return 'carton';
+  return 'browse';
+}
+
+function seedNavForTab(
+  tab: MediaLibraryPickerTab,
+  ticketId?: number,
+  receivingId?: number,
+): PhotoDateNav {
+  if (tab === 'ticket' && ticketId) return { ticketId: String(ticketId) };
+  // Carton tab uses forceLeaf — no date seed needed; receivingId filters the API.
+  if (tab === 'carton' && receivingId) return EMPTY_DATE_NAV;
+  return EMPTY_DATE_NAV;
+}
+
 /**
  * Media-selection form — pick a media type, drill Year → Month → Week → Day, then
  * select photos. Scoped API reads keep each fetch bounded to the active folder.
  */
 export function MediaLibraryPickerContent({
   ticketId,
+  receivingId,
+  defaultTab,
   selected,
   onSelectedChange,
   excludePhotoIds,
   showScopeToggle,
 }: MediaLibraryPickerContentProps) {
-  const scopeToggleVisible = showScopeToggle ?? Boolean(ticketId);
+  const hasTicketTab = Boolean(ticketId);
+  const hasCartonTab = Boolean(receivingId);
+  const scopeToggleVisible = showScopeToggle ?? (hasTicketTab || hasCartonTab);
   const { builtIn, custom, isLoading: typesLoading } = useImageTypes();
   const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
   const today = getCurrentPSTDateKey();
 
-  const [tab, setTab] = useState<MediaLibraryPickerTab>('browse');
+  const [tab, setTab] = useState<MediaLibraryPickerTab>(() =>
+    initialTab({ defaultTab, ticketId, receivingId }),
+  );
   const [mediaType, setMediaType] = useState<MediaTypeSelection | null>(null);
-  const [dateNav, setDateNav] = useState<PhotoDateNav>(EMPTY_DATE_NAV);
+  const [dateNav, setDateNav] = useState<PhotoDateNav>(() =>
+    seedNavForTab(initialTab({ defaultTab, ticketId, receivingId }), ticketId, receivingId),
+  );
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
 
   const selectedIds = useMemo(() => new Set(selected.map((p) => p.id)), [selected]);
   const onTicketTab = tab === 'ticket';
+  const onCartonTab = tab === 'carton';
   const onTypeList = tab === 'browse' && mediaType === null;
-  const browseActive = onTicketTab || (tab === 'browse' && mediaType !== null);
-  const searchActive = Boolean(debounced) && tab === 'browse' && !onTicketTab;
+  const browseActive = onTicketTab || onCartonTab || (tab === 'browse' && mediaType !== null);
+  const searchActive = Boolean(debounced) && tab === 'browse' && !onTicketTab && !onCartonTab;
 
   const { photos, query: photosQuery, filters } = useMediaLibraryPickerPhotos({
     enabled: browseActive,
     mediaType,
     ticketTab: onTicketTab,
+    cartonTab: onCartonTab,
     ticketId,
+    receivingId,
     dateNav,
     search: searchActive ? debounced : undefined,
   });
@@ -128,13 +165,15 @@ export function MediaLibraryPickerContent({
     return () => clearTimeout(h);
   }, [query]);
 
+  // Reset when ticket / carton context changes (e.g. switching tickets).
   useEffect(() => {
-    setTab('browse');
+    const next = initialTab({ defaultTab, ticketId, receivingId });
+    setTab(next);
     setMediaType(null);
-    setDateNav(EMPTY_DATE_NAV);
+    setDateNav(seedNavForTab(next, ticketId, receivingId));
     setQuery('');
     setDebounced('');
-  }, [ticketId]);
+  }, [ticketId, receivingId, defaultTab]);
 
   const toggle = (photo: LibraryPhoto) => {
     const input = toClaimPhotoInput(photo);
@@ -169,23 +208,40 @@ export function MediaLibraryPickerContent({
   const switchTab = (next: MediaLibraryPickerTab) => {
     setTab(next);
     setMediaType(null);
-    setDateNav(EMPTY_DATE_NAV);
+    setDateNav(seedNavForTab(next, ticketId, receivingId));
     setQuery('');
     setDebounced('');
   };
+
+  const resolvedPickerTicketId =
+    dateNav.ticketId ?? (onTicketTab && ticketId ? String(ticketId) : undefined);
+
+  const cartonPoRef = useMemo(() => {
+    if (!onCartonTab || photos.length === 0) return undefined;
+    const refs = new Set(photos.map((p) => p.poRef ?? '').filter(Boolean));
+    return refs.size === 1 ? [...refs][0] : undefined;
+  }, [onCartonTab, photos]);
+
+  const resolvedPickerPoRef = dateNav.poRef ?? cartonPoRef;
 
   const breadcrumbFilters = useMemo(
     () => ({
       dateFrom: dateNav.dateFrom,
       dateTo: dateNav.dateTo,
-      poRef: dateNav.poRef,
-      ticketId: dateNav.ticketId,
+      poRef: resolvedPickerPoRef,
+      ticketId: resolvedPickerTicketId,
     }),
-    [dateNav],
+    [dateNav.dateFrom, dateNav.dateTo, resolvedPickerPoRef, resolvedPickerTicketId],
   );
 
   const onBreadcrumbNavigate = ({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string }) => {
-    setDateNav({ dateFrom, dateTo });
+    // Keep contextual leaf ids when navigating dates on ticket/carton tabs.
+    setDateNav({
+      dateFrom,
+      dateTo,
+      ...(resolvedPickerTicketId ? { ticketId: resolvedPickerTicketId } : {}),
+      ...(resolvedPickerPoRef ? { poRef: resolvedPickerPoRef } : {}),
+    });
   };
 
   const visibleSearchPhotos = useMemo(() => {
@@ -193,28 +249,27 @@ export function MediaLibraryPickerContent({
     return photos.filter((p) => !excludePhotoIds?.has(p.id));
   }, [searchActive, photos, excludePhotoIds]);
 
-  const resolvedPickerTicketId =
-    dateNav.ticketId ?? (onTicketTab && ticketId ? String(ticketId) : undefined);
-
   const folderIsLeaf = useMemo(() => {
     if (!browseActive || onTypeList || searchActive) return false;
+    if (onCartonTab) return true;
     return resolveFolderBrowseState({
       photos,
       scope,
       dateFrom: dateNav.dateFrom,
       dateTo: dateNav.dateTo,
-      poRef: dateNav.poRef,
+      poRef: resolvedPickerPoRef,
       ticketId: resolvedPickerTicketId,
     }).isLeaf;
   }, [
     browseActive,
     onTypeList,
     searchActive,
+    onCartonTab,
     photos,
     scope,
     dateNav.dateFrom,
     dateNav.dateTo,
-    dateNav.poRef,
+    resolvedPickerPoRef,
     resolvedPickerTicketId,
   ]);
 
@@ -226,21 +281,24 @@ export function MediaLibraryPickerContent({
 
   const folderLeafLabel = useMemo(() => {
     if (!folderIsLeaf) return undefined;
+    if (onCartonTab && receivingId) return `Carton #${receivingId}`;
     return resolveFolderBrowseState({
       photos,
       scope,
       dateFrom: dateNav.dateFrom,
       dateTo: dateNav.dateTo,
-      poRef: dateNav.poRef,
+      poRef: resolvedPickerPoRef,
       ticketId: resolvedPickerTicketId,
     }).leafTitle;
   }, [
     folderIsLeaf,
+    onCartonTab,
+    receivingId,
     photos,
     scope,
     dateNav.dateFrom,
     dateNav.dateTo,
-    dateNav.poRef,
+    resolvedPickerPoRef,
     resolvedPickerTicketId,
   ]);
 
@@ -248,7 +306,7 @@ export function MediaLibraryPickerContent({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-2.5 border-b border-border-hairline px-4 py-3">
         {scopeToggleVisible ? (
-          <div className="inline-flex rounded-lg bg-surface-sunken p-0.5">
+          <div className="inline-flex flex-wrap rounded-lg bg-surface-sunken p-0.5">
             {/* ds-raw-button */}
             <button
               type="button"
@@ -260,17 +318,32 @@ export function MediaLibraryPickerContent({
             >
               Media types
             </button>
-            {/* ds-raw-button */}
-            <button
-              type="button"
-              onClick={() => switchTab('ticket')}
-              className={cn(
-                'rounded-md px-3 py-1 text-role-caption font-bold transition',
-                tab === 'ticket' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
-              )}
-            >
-              This ticket
-            </button>
+            {hasTicketTab ? (
+              /* ds-raw-button */
+              <button
+                type="button"
+                onClick={() => switchTab('ticket')}
+                className={cn(
+                  'rounded-md px-3 py-1 text-role-caption font-bold transition',
+                  tab === 'ticket' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
+                )}
+              >
+                This ticket
+              </button>
+            ) : null}
+            {hasCartonTab ? (
+              /* ds-raw-button */
+              <button
+                type="button"
+                onClick={() => switchTab('carton')}
+                className={cn(
+                  'rounded-md px-3 py-1 text-role-caption font-bold transition',
+                  tab === 'carton' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
+                )}
+              >
+                Current carton
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -288,7 +361,7 @@ export function MediaLibraryPickerContent({
           </div>
         ) : null}
 
-        {browseActive && !onTicketTab && mediaType ? (
+        {browseActive && tab === 'browse' && mediaType ? (
           <SearchBar
             value={query}
             onChange={setQuery}
@@ -416,6 +489,9 @@ export function MediaLibraryPickerContent({
             selectedIds={selectedIds}
             onToggle={toggle}
             excludePhotoIds={excludePhotoIds}
+            resolvedTicketId={resolvedPickerTicketId}
+            resolvedPoRef={resolvedPickerPoRef}
+            forceLeaf={onCartonTab}
           />
         )}
       </div>

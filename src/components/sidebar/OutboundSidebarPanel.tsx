@@ -32,7 +32,7 @@ export function OutboundSidebarPanel() {
               variant="nav"
               dense
               className="w-full"
-              aria-label="Outbound mode"
+              aria-label="Shipping mode"
             />
           </div>
         )}
@@ -56,7 +56,7 @@ export function OutboundSidebarPanel() {
             variant="nav"
             dense
             className="w-full"
-            aria-label="Outbound mode"
+            aria-label="Shipping mode"
           />
         </div>
       )}

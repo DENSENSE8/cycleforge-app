@@ -10,7 +10,7 @@
  * mental model as “Undo send” trailing a message.
  *
  * **Orders_exceptions** sessions share the normal SAL + `tech.serial` undo path;
- * we label them “Exception · …tracking tail…” and style distinctly from
+ * we label them “Exception · …last-4 tracking chip…” and style distinctly from
  * matched orders (`sourceType` + `orderFound`).
  */
 
@@ -28,10 +28,8 @@ import {
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { framerGesture, framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
-import { getOrderIdLast4 } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
-import { normalizeTrackingCanonical } from '@/lib/tracking-format';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { CopyChip, getLast4 } from '@/components/ui/CopyChip';
 
 type Variant = 'order' | 'fba' | 'repair' | 'exception';
 
@@ -48,57 +46,92 @@ function inferVariant(order: ActiveStationOrder): Variant {
   return 'order';
 }
 
-/** Readable tail for unscanned barcode / USPS strings (no fabricated “last4”). */
-function trackingTail(tracking: string, maxChars = 6): string {
-  const c = normalizeTrackingCanonical(String(tracking || ''));
-  if (!c.length) return '—';
-  if (c.length <= maxChars) return c;
-  return `…${c.slice(-maxChars)}`;
-}
-
-function displayIdentifier(activeOrder: ActiveStationOrder, variant: Variant): string {
-  if (variant === 'fba') {
-    return (activeOrder.fnsku || activeOrder.tracking || '').slice(-4) || '—';
-  }
-  if (variant === 'exception') {
-    return trackingTail(activeOrder.tracking || '', 6);
-  }
+function IdentifierChip({
+  activeOrder,
+  variant,
+}: {
+  activeOrder: ActiveStationOrder;
+  variant: Variant;
+}) {
+  const tracking = String(activeOrder.tracking || '').trim();
   const oid = String(activeOrder.orderId || '').trim();
   const orderIdUnavailable = !oid || /^n\/a$/i.test(oid);
-  if (orderIdUnavailable) return trackingTail(activeOrder.tracking || '', 6);
-  return getOrderIdLast4(oid);
+
+  if (variant === 'fba') {
+    const value = String(activeOrder.fnsku || activeOrder.tracking || '').trim();
+    if (!value) return <span className="text-role-caption font-black text-text-muted">—</span>;
+    return (
+      <CopyChip
+        value={value}
+        display={getLast4(value)}
+        tone="fnsku"
+        icon={null}
+        dense
+        fitDisplayWidth
+        outerPad="flush"
+      />
+    );
+  }
+
+  if (variant === 'exception' || (variant === 'order' && orderIdUnavailable)) {
+    if (!tracking) return <span className="text-role-caption font-black text-text-muted">—</span>;
+    return (
+      <CopyChip
+        value={tracking}
+        display={getLast4(tracking)}
+        tone="tracking"
+        icon={null}
+        dense
+        fitDisplayWidth
+        outerPad="flush"
+      />
+    );
+  }
+
+  if (!oid) return <span className="text-role-caption font-black text-text-muted">—</span>;
+  return (
+    <CopyChip
+      value={oid}
+      display={getLast4(oid)}
+      tone="id"
+      icon={null}
+      dense
+      fitDisplayWidth
+      outerPad="flush"
+    />
+  );
 }
 
 const VARIANTS: Record<
   Variant,
-  { Icon: typeof MapPin; label: string; tint: string; ring: string; bar: string }
+  { Icon: typeof MapPin; label: string; tint: string; border: string; bar: string }
 > = {
   order: {
     Icon: MapPin,
     label: 'Order',
     tint: 'text-blue-600',
-    ring: 'ring-blue-200/70',
+    border: 'border-blue-200/70',
     bar: 'bg-blue-500',
   },
   fba: {
     Icon: Package,
     label: 'FBA',
     tint: 'text-purple-600',
-    ring: 'ring-purple-200/70',
+    border: 'border-purple-200/70',
     bar: 'bg-purple-500',
   },
   repair: {
     Icon: Settings,
     label: 'Repair',
     tint: 'text-amber-600',
-    ring: 'ring-amber-200/70',
+    border: 'border-amber-200/70',
     bar: 'bg-amber-500',
   },
   exception: {
     Icon: AlertTriangle,
     label: 'Exception',
     tint: 'text-amber-700',
-    ring: 'ring-amber-200/80',
+    border: 'border-amber-200/80',
     bar: 'bg-amber-500',
   },
 };
@@ -210,11 +243,10 @@ function FeedbackBody({
 }) {
   const [undoBusy, setUndoBusy] = useState(false);
   const variant = inferVariant(activeOrder);
-  const { Icon, label, tint, ring, bar } = VARIANTS[variant];
+  const { Icon, label, tint, border, bar } = VARIANTS[variant];
   const qty = Math.max(1, Number(activeOrder.quantity) || 1);
   const scanned = activeOrder.serialNumbers.length;
   const remaining = Math.max(0, qty - scanned);
-  const identifier = displayIdentifier(activeOrder, variant);
   const progressPct = Math.min(100, Math.round((scanned / qty) * 100));
   const trackingKey = String(activeOrder.tracking || '').trim();
   const salId =
@@ -257,23 +289,16 @@ function FeedbackBody({
         initial={framerPresence.stationCard.initial}
         animate={framerPresence.stationCard.animate}
         transition={framerTransition.stationCardMount}
-        whileHover={framerGesture.cardHover}
-        className={`rounded-xl bg-surface-card px-3 py-2.5 shadow-sm ring-1 max-sm:mb-0.5 ${ring}`}
+        className={`min-w-0 rounded-xl border bg-surface-card px-3 py-2.5 shadow-sm max-sm:mb-0.5 ${border}`}
       >
         {/* Row 1 — identity + status (primary). Undo is separated to footer (Material / HIG). */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <Icon className={`h-3.5 w-3.5 shrink-0 ${tint}`} />
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</span>
-            <HoverTooltip label={activeOrder.tracking ?? ''} asChild>
-              <span className="truncate text-role-caption font-black tracking-tight text-text-default">
-                {variant === 'exception' ? (
-                  <span className="font-mono tabular-nums">{identifier}</span>
-                ) : (
-                  <span>#{identifier}</span>
-                )}
-              </span>
-            </HoverTooltip>
+            <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-faint">{label}</span>
+            <div className="min-w-0">
+              <IdentifierChip activeOrder={activeOrder} variant={variant} />
+            </div>
           </div>
           <motion.span
             layout
@@ -324,10 +349,12 @@ function FeedbackBody({
               transition={framerTransition.stationSerialRow}
               className="overflow-hidden"
             >
-              <div className="mt-2 flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 ring-1 ring-inset ring-emerald-200">
+              <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1">
                 <Barcode className="h-3 w-3 shrink-0 text-emerald-600" />
-                <span className="text-role-eyebrow uppercase tracking-widest text-emerald-600">Last</span>
-                <span className="truncate font-mono text-role-micro font-bold text-emerald-900">{lastSerial}</span>
+                <span className="shrink-0 text-role-eyebrow uppercase tracking-widest text-emerald-600">Last</span>
+                <span className="min-w-0 font-mono text-role-micro font-bold leading-tight text-emerald-900 [overflow-wrap:anywhere]">
+                  {lastSerial}
+                </span>
               </div>
             </motion.div>
           ) : null}

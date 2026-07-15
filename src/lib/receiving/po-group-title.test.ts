@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
+  filterLinesByPoGroup,
   getReceivingPoGroupTitle,
   isReceivingPoGroupTitleRow,
   receivingAdaptiveRailTitle,
+  receivingPoGroupKey,
   receivingRailRowTitle,
   stampPoRailTitleContext,
 } from './po-group-title';
@@ -150,4 +152,80 @@ test('receivingAdaptiveRailTitle — eBay single order shows product title', () 
     }),
   ]);
   assert.equal(receivingAdaptiveRailTitle(stamped, (p) => (p === 'ebay' ? 'eBay' : p)), 'Vintage amp');
+});
+
+test('filterLinesByPoGroup — same PO number keeps siblings on mixed carton', () => {
+  const a = row({
+    id: 1,
+    receiving_id: 100,
+    zoho_purchaseorder_number: 'PO-111',
+    zoho_purchaseorder_id: 'zpo-111',
+  });
+  const b = row({
+    id: 2,
+    receiving_id: 100,
+    zoho_purchaseorder_number: 'PO-111',
+    zoho_purchaseorder_id: 'zpo-111',
+  });
+  const c = row({
+    id: 3,
+    receiving_id: 100,
+    zoho_purchaseorder_number: 'PO-222',
+    zoho_purchaseorder_id: 'zpo-222',
+  });
+  const filtered = filterLinesByPoGroup([a, b, c], a);
+  assert.deepEqual(
+    filtered.map((r) => r.id),
+    [1, 2],
+  );
+});
+
+test('filterLinesByPoGroup — PO id only matches when numbers absent', () => {
+  const a = row({
+    id: 1,
+    receiving_id: 100,
+    zoho_purchaseorder_number: null,
+    zoho_purchaseorder_id: 'zpo-aaa',
+  });
+  const b = row({
+    id: 2,
+    receiving_id: 100,
+    zoho_purchaseorder_number: null,
+    zoho_purchaseorder_id: 'zpo-aaa',
+  });
+  const c = row({
+    id: 3,
+    receiving_id: 100,
+    zoho_purchaseorder_number: null,
+    zoho_purchaseorder_id: 'zpo-bbb',
+  });
+  assert.equal(receivingPoGroupKey(a), 'po:zpo-aaa');
+  assert.deepEqual(
+    filterLinesByPoGroup([a, b, c], a).map((r) => r.id),
+    [1, 2],
+  );
+});
+
+test('filterLinesByPoGroup — unmatched stub isolates by line id', () => {
+  const stub = row({
+    id: 9,
+    receiving_id: 50,
+    zoho_purchaseorder_number: null,
+    zoho_purchaseorder_id: null,
+    item_name: 'Unfound PO',
+    receiving_source: 'unmatched',
+  });
+  const other = row({
+    id: 10,
+    receiving_id: 50,
+    zoho_purchaseorder_number: null,
+    zoho_purchaseorder_id: null,
+    item_name: 'Other stub',
+    receiving_source: 'unmatched',
+  });
+  assert.equal(receivingPoGroupKey(stub), 'line:9');
+  assert.deepEqual(
+    filterLinesByPoGroup([stub, other], stub).map((r) => r.id),
+    [9],
+  );
 });

@@ -9,7 +9,8 @@ import { getCurrentUser } from '@/lib/auth/current-user';
  * Shared Testing-surface page shell — mounted by BOTH `/tech` (legacy) and
  * `/test` (the first-class Test surface, Studio-driven operator surfaces refactor
  * Phase 8). The URL names the operator's job ("Testing"); the legacy `/tech`
- * (incl. `?view=testing` / `?view=testing-history`) redirects here via the proxy.
+ * (incl. `?view=testing`; legacy `?view=testing-history` → `?view=testing`)
+ * redirects here via the proxy.
  *
  * Wrapped in `SurfaceGate surfaceKey="test"`: when the org has published a
  * composition AND enabled the `surface_composed_render` flag, the data-driven

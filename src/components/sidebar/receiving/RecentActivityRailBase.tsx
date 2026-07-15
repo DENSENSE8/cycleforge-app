@@ -14,9 +14,8 @@ import {
 } from '@/components/ui/CopyChip';
 import { dispatchSelectLine } from '@/components/station/ReceivingLinesTable';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import {
-  SidebarRailShell, railRelativeTime, type SidebarRailRowContext,
-} from '@/components/sidebar/SidebarRailShell';
+import { railRelativeTime, type SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
+import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
@@ -83,6 +82,8 @@ export interface RecentActivityRailBaseProps {
    * back). Defaults to true (preserve the pin) for every other rail.
    */
   pinSelectedLead?: boolean;
+  /** First-load stagger motion — forwarded to SidebarRailShell. */
+  staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
 
   /**
    * Timestamp the row's relative-time label reads. MUST match the feed's sort
@@ -127,11 +128,15 @@ function railTicketNumber(row: ReceivingLineRow): string | null {
   return t.startsWith('#') ? t : `#${t}`;
 }
 
-/** Compact ticket flag on the meta row — right of the qty (0/0) readout. */
+/**
+ * Compact ticket flag on the TITLE row (same line as the PO/order id) — never
+ * on the meta line. A padded chip on the meta row made ticket-flagged rows
+ * taller than their neighbors on selection.
+ */
 function TicketRailFlag({ ticket }: { ticket: string }) {
   return (
     <HoverTooltip label={`Claim ticket ${ticket} filed`} asChild focusable={false}>
-      <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-orange-50 px-1 py-0.5 text-[8.5px] font-black uppercase leading-none tracking-widest text-orange-700 ring-1 ring-inset ring-orange-200">
+      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-orange-700">
         <Ticket className="h-3 w-3" />
       </span>
     </HoverTooltip>
@@ -203,6 +208,7 @@ export function RecentActivityRailBase({
   eyebrowAction,
   autoSelectFirstWhenEmpty = false,
   pinSelectedLead = true,
+  staggerRevealMotion,
   getActivityAt = getRowActivityAt,
   getStatusDot,
   getStatusDotLabel,
@@ -220,7 +226,7 @@ export function RecentActivityRailBase({
     receivingRailRowTitle(row, rowTitleMode, resolvePlatformLabel);
 
   return (
-    <SidebarRailShell<ReceivingLineRow>
+    <SidebarRecentRailBase<ReceivingLineRow>
       queryKey={queryKey}
       fetchFn={async () => (await fetchFn()).receiving_lines ?? []}
       excludedIds={excludedIds}
@@ -237,6 +243,7 @@ export function RecentActivityRailBase({
       getRowDisabled={getRowDisabled}
       limit={limit}
       pinSelectedLead={pinSelectedLead}
+      staggerRevealMotion={staggerRevealMotion}
       eyebrowTitle={eyebrowTitle}
       eyebrowSuffix={eyebrowSuffix}
       eyebrowAction={eyebrowAction}
@@ -244,7 +251,6 @@ export function RecentActivityRailBase({
       canAutoSelectFirst={
         autoSelectFirstWhenEmpty ? canAutoSelectReceivingRailFirst : undefined
       }
-      staggerReveal
       getId={getRowId}
       getReconcileId={getRowReconcileId}
       getGroupId={getRowGroupId}
@@ -304,14 +310,20 @@ function ReceivingRowMain({
       vm={{
         title,
         titleAttr: title,
-        titleAccessory: ctx.pkgChip,
+        // Ticket flag shares the title row with PKG chip so meta height stays
+        // identical to non-ticket rows (same width / rhythm as every other display).
+        titleAccessory: (
+          <>
+            {ticket ? <TicketRailFlag ticket={ticket} /> : null}
+            {ctx.pkgChip}
+          </>
+        ),
         meta: (
           <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
             {renderQuantity(row)}
             {techId ? <span className={`ml-1 ${techColor}`}>· {getStaffName(techId)}</span> : null}
           </span>
         ),
-        metaTrailing: ticket ? <TicketRailFlag ticket={ticket} /> : undefined,
       }}
     />
   );
@@ -375,18 +387,18 @@ function ReceivingPopoverContent({
         <div className="flex items-start gap-2">
           <p className="flex-1 text-sm font-black leading-snug text-text-default">{title}</p>
           {groupSize > 1 ? (
-            <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
+            <span className="shrink-0 rounded bg-indigo-100 inset-chip text-[8.5px] font-black uppercase tracking-widest text-indigo-700">PKG · {groupSize}</span>
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
-          <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${workflowTone}`}>{workflowLabel}</span>
+          <span className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
+          <span className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${workflowTone}`}>{workflowLabel}</span>
           {/* Unfound cartons have no Zoho PO — their RECEIVED state is local-only
               (no Zoho receive). The "No PO" tag marks that the website↔Zoho gap
               is intentional, not a failed sync. */}
           {row.receiving_source === 'unmatched' ? (
             <HoverTooltip label="No matching PO — received locally only" asChild>
-              <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
+              <span className="rounded bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
             </HoverTooltip>
           ) : null}
           {/* Phase 2: a physically-present box whose Zoho PO already reads
@@ -396,14 +408,14 @@ function ReceivingPopoverContent({
             String(row.zoho_status || '').toLowerCase(),
           ) ? (
             <HoverTooltip label={`The inventory system marks this PO "${row.zoho_status}" — already received/closed upstream, but the box is still here to unbox`} asChild>
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
+              <span className="rounded bg-amber-100 inset-chip text-role-eyebrow uppercase tracking-widest text-amber-700 ring-1 ring-inset ring-amber-200">PO: {String(row.zoho_status)}</span>
             </HoverTooltip>
           ) : null}
           {row.needs_test ? (
-            <span className="rounded bg-orange-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-orange-700">Test</span>
+            <span className="rounded bg-orange-100 inset-chip text-role-eyebrow uppercase tracking-widest text-orange-700">Test</span>
           ) : null}
           {pickupLabel ? (
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
+            <span className="rounded bg-emerald-50 inset-chip text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
               {pickupLabel}
             </span>
           ) : null}
@@ -412,7 +424,7 @@ function ReceivingPopoverContent({
             asChild
           >
             <span
-              className={`ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${
+              className={`ml-auto inline-flex items-center gap-1 rounded inset-chip text-role-eyebrow uppercase tracking-widest ${
                 (row.photo_count ?? 0) > 0 ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200' : 'bg-surface-canvas text-text-faint ring-1 ring-inset ring-border-soft'
               }`}
             >

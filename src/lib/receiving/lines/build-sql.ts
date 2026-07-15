@@ -26,6 +26,12 @@ import { unboxOpenedPredicateSql } from '@/lib/receiving/unbox-scan-opened';
 import { priorityRankSql, laneRankSql } from '@/lib/receiving/display/precedence';
 import { receivingHistorySkipsUnmatchedPlaceholders } from '@/lib/receiving-history-search';
 import {
+  sqlCartonLinkedSupportTicketLateralJoin,
+  sqlLinkedSupportTicketLateralJoin,
+  sqlReceivingCartonZendeskTicketColumn,
+  sqlReceivingZendeskTicketColumn,
+} from './sql-receiving-ticket';
+import {
   QA_STATUSES,
   DISPOSITIONS,
   WORKFLOW_STATUSES,
@@ -177,9 +183,8 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
-                -- Package-level claims land on receiving_carton; line-level on
-                -- receiving_line — coalesce so the unbox rail flag reads both.
-                NULLIF(TRIM(COALESCE(rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket
+                -- ticket_links (authoritative) → denormalized columns fallback.
+                ${sqlReceivingZendeskTicketColumn()}
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
@@ -208,6 +213,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                      r.id DESC
             LIMIT 1
          ) r ON TRUE
+         ${sqlLinkedSupportTicketLateralJoin()}
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN LATERAL (
@@ -336,9 +342,10 @@ export function buildReceivingLinesByReceivingIdSql(
                   LIMIT 1)                   AS zoho_item_title,
                   sc.id                        AS sku_catalog_id,
                   ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
-                  NULLIF(TRIM(COALESCE(rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket
+                  ${sqlReceivingZendeskTicketColumn()}
            FROM receiving_line rl
            LEFT JOIN receiving_carton r                   ON r.id  = rl.receiving_id AND r.organization_id = rl.organization_id
+           ${sqlLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
            LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
@@ -1184,9 +1191,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
-                -- Package-level claims land on receiving_carton; line-level on
-                -- receiving_line — coalesce so the unbox rail flag reads both.
-                NULLIF(TRIM(COALESCE(rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket
+                -- ticket_links (authoritative) → denormalized columns fallback.
+                ${sqlReceivingZendeskTicketColumn()}
                 ${lastScanSelect}
                 ${testedAggSelect}
                 ${needsTestSelect}
@@ -1221,6 +1227,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                      r.id DESC
             LIMIT 1
          ) r ON TRUE
+         ${sqlLinkedSupportTicketLateralJoin()}
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
@@ -1371,9 +1378,11 @@ export function buildUnmatchedPlaceholdersSql(
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ops_scan.last_scanned_at, rs_agg.last_scan)::text       AS last_scan_at,
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
-                ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count
+                ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count,
+                ${sqlReceivingCartonZendeskTicketColumn()}
            FROM receiving_carton r
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+           ${sqlCartonLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (
@@ -1505,9 +1514,11 @@ export function buildUnboxOpenedPlaceholdersSql(
                   stn.delivered_at::text       AS shipment_delivered_at,
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
-                  ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count
+                  ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count,
+                  ${sqlReceivingCartonZendeskTicketColumn()}
            FROM receiving_carton r
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+           ${sqlCartonLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
            LEFT JOIN LATERAL (

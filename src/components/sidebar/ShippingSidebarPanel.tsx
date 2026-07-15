@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useState } from 'react';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
-import { ShippingRecentRail } from '@/components/sidebar/shipping/ShippingRecentRail';
+import { ShippingStaffShippedRail } from '@/components/sidebar/shipping/ShippingStaffShippedRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useIsMobile } from '@/hooks';
 
@@ -16,10 +16,10 @@ interface Props {
 }
 
 /**
- * Tech sidebar for Shipping mode — order / FNSKU scan band plus the Up Next
- * order queue rail. Shares the same shell anatomy as {@link TestingSidebarPanel}
- * (scan band, scrollable rail, bottom filter) but uses shipping-specific rails
- * and scan behavior instead of receiving-line testing feeds.
+ * Tech sidebar for Shipping mode — order / FNSKU scan band plus the signed-in
+ * staffer's last 50 personal ship-outs (dense Testing-parity rail). Pick one
+ * to reopen Shipping preview. Shares the shell anatomy of
+ * {@link TestingSidebarPanel} (scan band, scrollable rail, bottom filter).
  */
 export function ShippingSidebarPanel({
   techId,
@@ -29,23 +29,12 @@ export function ShippingSidebarPanel({
 }: Props) {
   const isMobile = useIsMobile();
   const [railFilter, setRailFilter] = useState('');
-  const startOrderRef = useRef<(tracking: string) => void>(() => {});
-
-  const handleStartReady = useCallback((start: (tracking: string) => void) => {
-    startOrderRef.current = start;
-  }, []);
-
-  const handleMissingParts = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('app-refresh-data'));
-    onComplete?.();
-  }, [onComplete]);
 
   const scanBandProps = {
     userId: techId,
     userName: techName,
     staffId: staffId ?? techId,
     onComplete,
-    onStartHandlerReady: handleStartReady,
   };
 
   return (
@@ -53,19 +42,13 @@ export function ShippingSidebarPanel({
       {!isMobile ? <ShippingScanBand {...scanBandProps} /> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <ShippingRecentRail
-          techId={techId}
-          filterText={railFilter}
-          onStart={(tracking) => startOrderRef.current(tracking)}
-          onMissingParts={handleMissingParts}
-          onAllCompleted={onComplete}
-        />
+        <ShippingStaffShippedRail techId={techId} filterText={railFilter} />
       </div>
 
       <TechRailSearchBar
         value={railFilter}
         onChange={setRailFilter}
-        placeholder="Filter orders…"
+        placeholder="Filter your ship-outs…"
       />
 
       {isMobile ? (

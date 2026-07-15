@@ -24,6 +24,15 @@ interface MediaLibraryPickerFoldersProps {
   selectedIds: Set<number>;
   onToggle: (photo: LibraryPhoto) => void;
   excludePhotoIds?: Set<number>;
+  /**
+   * Contextual leaf ids from the picker host (ticket / carton tab). Prefer these
+   * over `dateNav` so "This ticket" / "Current carton" open the photo grid
+   * immediately instead of the year drill.
+   */
+  resolvedTicketId?: string;
+  resolvedPoRef?: string;
+  /** Skip the date folder drill and show the photo grid (e.g. carton receivingId tab). */
+  forceLeaf?: boolean;
 }
 
 /**
@@ -39,29 +48,42 @@ export function MediaLibraryPickerFolders({
   selectedIds,
   onToggle,
   excludePhotoIds,
+  resolvedTicketId,
+  resolvedPoRef,
+  forceLeaf = false,
 }: MediaLibraryPickerFoldersProps) {
   const visible = excludePhotoIds?.size
     ? photos.filter((p) => !excludePhotoIds.has(p.id))
     : photos;
 
-  const { isLeaf, leafPhotos, tiles, onOpen } = useDateFolders({
+  const ticketId = resolvedTicketId ?? dateNav.ticketId;
+  const poRef = resolvedPoRef ?? dateNav.poRef;
+
+  const folders = useDateFolders({
     photos: visible,
     scope,
     dateFrom: dateNav.dateFrom,
     dateTo: dateNav.dateTo,
-    poRef: dateNav.poRef,
-    ticketId: dateNav.ticketId,
+    poRef,
+    ticketId,
     onNavigate: onDateNav,
   });
 
-  const header = describeFolderBrowseHeader({
-    photos: visible,
-    scope,
-    dateFrom: dateNav.dateFrom,
-    dateTo: dateNav.dateTo,
-    poRef: dateNav.poRef,
-    ticketId: dateNav.ticketId,
-  });
+  const isLeaf = forceLeaf || folders.isLeaf;
+  const leafPhotos = forceLeaf ? visible : folders.leafPhotos;
+  const tiles = folders.tiles;
+  const onOpen = folders.onOpen;
+
+  const header = forceLeaf
+    ? { title: 'Photos', count: visible.length }
+    : describeFolderBrowseHeader({
+        photos: visible,
+        scope,
+        dateFrom: dateNav.dateFrom,
+        dateTo: dateNav.dateTo,
+        poRef,
+        ticketId,
+      });
 
   const leafVisible = excludePhotoIds?.size
     ? leafPhotos.filter((p) => !excludePhotoIds.has(p.id))

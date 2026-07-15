@@ -1,15 +1,14 @@
 'use client';
 
 /**
- * Testing-history bulk selection for the tech dashboard. A thin wrapper over the
+ * Testing browse bulk selection for the tech dashboard. A thin wrapper over the
  * shared {@link useReceivingLineBulkSelection} (Copy / Print / Ticket / Send +
  * claim modal + header pencil) — this layer only supplies the tech-specific
- * scope, copy format, and the row-click → Testing-workspace navigation.
+ * scope and copy format. Active when Testing mode is showing the history list
+ * (no line selected).
  */
 
 import { useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { stripCrossSurfaceParams } from '@/lib/surface-isolation';
 import { TESTING_SELECTION_SCOPE } from '@/components/tech/TestingHistoryList';
 import {
   useReceivingLineBulkSelection,
@@ -36,32 +35,25 @@ export interface TechTestingSelection {
   testingClaimRow: ReceivingLineRow | null;
   setTestingClaimRow: ReceivingLineBulkSelection['setClaimRow'];
   exitTestingSelect: () => void;
-  /** Open the clicked history row in the Testing (Recent) workspace. */
+  /** History row already opens via `dispatchSelectLine`; no URL hop needed. */
   openTestingLine: () => void;
   testingBulkActions: ReceivingLineBulkSelection['bulkActions'];
 }
 
-export function useTechTestingSelection(isTestingHistory: boolean): TechTestingSelection {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+export function useTechTestingSelection(
+  /** True when Testing top-mode is active and no line panel is open. */
+  browseActive: boolean,
+): TechTestingSelection {
   const { selectMode, selectedRows, claimRow, setClaimRow, exitSelectMode, bulkActions } =
     useReceivingLineBulkSelection({
       scope: TESTING_SELECTION_SCOPE,
-      active: isTestingHistory,
+      active: browseActive,
       formatCopyRow: formatTestingCopyRow,
     });
 
   const openTestingLine = useCallback(() => {
-    const params = stripCrossSurfaceParams(
-      pathname || '/test',
-      new URLSearchParams(searchParams.toString()),
-    );
-    params.set('view', 'testing');
-    const qs = params.toString();
-    router.replace(qs ? `${pathname || '/test'}?${qs}` : pathname || '/test');
-  }, [router, pathname, searchParams]);
+    // Row click in TestingHistoryList already dispatches `receiving-select-line`.
+  }, []);
 
   return {
     testingSelectMode: selectMode,

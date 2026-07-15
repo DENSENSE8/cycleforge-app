@@ -3,18 +3,19 @@
 /**
  * Resolves the tech dashboard's right-pane mode from the `?view=` URL param.
  * Shipping mode's right pane is the Shipping workspace (Pending · FBA | History
- * via `?ship=`); `testing-history` is the tested-lines browse feed; anything
- * unrecognised falls through to the shipping workspace.
- * Extracted from TechDashboard; behaviour is unchanged.
+ * via `?ship=`); `view=testing` is the Testing workspace (history browse when
+ * no line is selected); anything unrecognised falls through to shipping.
+ * Legacy `view=testing-history` is treated as testing (proxy redirects to
+ * `view=testing`).
  */
 
 import { useSearchParams } from 'next/navigation';
 
-export type TechRightViewMode = 'receiving' | 'testing' | 'testing-history' | 'history';
+export type TechRightViewMode = 'receiving' | 'testing' | 'history';
 
 export interface TechRightView {
   rightViewMode: TechRightViewMode;
-  isTestingHistory: boolean;
+  isTestingMode: boolean;
 }
 
 export function useTechRightView(): TechRightView {
@@ -23,10 +24,8 @@ export function useTechRightView(): TechRightView {
   const rightViewMode: TechRightViewMode =
     rawView === 'receiving'
       ? 'receiving'
-      : rawView === 'testing'
+      : rawView === 'testing' || rawView === 'testing-history'
         ? 'testing'
-        : rawView === 'testing-history'
-          ? 'testing-history'
-          : 'history';
-  return { rightViewMode, isTestingHistory: rightViewMode === 'testing-history' };
+        : 'history';
+  return { rightViewMode, isTestingMode: rightViewMode === 'testing' };
 }

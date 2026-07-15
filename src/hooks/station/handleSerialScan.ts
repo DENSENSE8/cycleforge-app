@@ -1,5 +1,6 @@
 import confetti from 'canvas-confetti';
 import { classifyInput, findSerialInCatalog, looksLikeFnsku } from '@/lib/scan-resolver';
+import { appendSerialToSkuGroups, initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ScanHandlerContext } from './types';
 
 export async function handleSerialScan(input: string, ctx: ScanHandlerContext): Promise<void> {
@@ -28,29 +29,36 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
         return;
       }
 
-      ctx.syncActiveOrderState({
-        id: data.order.id ?? null,
-        orderId: data.order.orderId,
-        productTitle: data.order.productTitle,
-        itemNumber: data.order.itemNumber ?? null,
-        sku: data.order.sku,
-        condition: data.order.condition,
-        notes: data.order.notes,
-        tracking: data.order.tracking,
-        serialNumbers: data.serialNumbers,
-        testDateTime: null,
-        testedBy: null,
-        quantity: data.order.quantity || 1,
-        shipByDate: data.order.shipByDate ?? null,
-        createdAt: data.order.createdAt ?? null,
-        orderFound: data.order.orderFound !== false,
-        scanSessionId:
-          typeof data.scanSessionId === 'string'
-            ? data.scanSessionId
-            : ctx.scanSessionIdRef.current,
-      });
+      const restoredSerials = Array.isArray(data.serialNumbers) ? data.serialNumbers : [];
+      // The serial is persisted server-side regardless; only card restoration
+      // depends on the resolved `order`. Degrade-not-block if it's absent.
+      const order = data.order;
+      if (order) {
+        ctx.syncActiveOrderState({
+          id: order.id ?? null,
+          orderId: order.orderId,
+          productTitle: order.productTitle,
+          itemNumber: order.itemNumber ?? null,
+          sku: order.sku,
+          condition: order.condition,
+          notes: order.notes,
+          tracking: order.tracking,
+          serialNumbers: restoredSerials,
+          skuSerialGroups: initSkuSerialGroups(order.sku, restoredSerials),
+          testDateTime: null,
+          testedBy: null,
+          quantity: order.quantity || 1,
+          shipByDate: order.shipByDate ?? null,
+          createdAt: order.createdAt ?? null,
+          orderFound: order.orderFound !== false,
+          scanSessionId:
+            typeof data.scanSessionId === 'string'
+              ? data.scanSessionId
+              : ctx.scanSessionIdRef.current,
+        });
+      }
 
-      ctx.setSuccessMessage(`Serial ${input.toUpperCase()} added ✓ (${data.serialNumbers.length} total)`);
+      ctx.setSuccessMessage(`Serial ${input.toUpperCase()} added ✓ (${restoredSerials.length} total)`);
       // Fire-and-forget: if the raw scan is a printed unit label, request phone
       // photos for that unit. Gated + resolved by the host; no-op otherwise.
       ctx.onUnitLabelScanned?.(input);
@@ -115,9 +123,15 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
       return;
     }
 
+    const nextSerials = Array.isArray(data.serialNumbers) ? data.serialNumbers : contextOrder.serialNumbers;
     const nextOrder = {
       ...contextOrder,
-      serialNumbers: data.serialNumbers,
+      serialNumbers: nextSerials,
+      skuSerialGroups: appendSerialToSkuGroups(
+        contextOrder.skuSerialGroups,
+        contextOrder.sku,
+        finalSerial,
+      ),
       scanSessionId:
         typeof data.scanSessionId === 'string'
           ? data.scanSessionId

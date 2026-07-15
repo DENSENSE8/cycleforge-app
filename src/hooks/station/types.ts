@@ -1,5 +1,8 @@
 import type React from 'react';
 import type { QueryClient } from '@tanstack/react-query';
+import type { SkuSerialGroup } from '@/lib/tech/sku-serial-groups';
+
+export type { SkuSerialGroup };
 
 export interface ActiveStationOrder {
   id: number | null;
@@ -30,6 +33,8 @@ export interface ActiveStationOrder {
   inlineMicrocopy?: string | null;
   /** Storage SKU codes scanned during this session (e.g. "1809:A03"). Shown in the details panel. */
   scannedSkuCodes?: string[];
+  /** SKU ↔ serial pairings for the shipping workspace ship tab. */
+  skuSerialGroups?: SkuSerialGroup[];
 }
 
 export interface ResolvedProductManual {

@@ -22,9 +22,10 @@ export const OUTBOUND_MODE_SCOPED_PARAMS = [
 
 export const OUTBOUND_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'labels', label: 'Labels', icon: Printer },
-  { id: 'scan-out', label: 'Scan out', icon: Barcode },
   { id: 'ready', label: 'Ready', icon: ClipboardList },
   { id: 'fba', label: 'FBA', icon: Boxes },
+  // Scan out sits last (rightmost) — dock ship-confirm, the end-of-line action.
+  { id: 'scan-out', label: 'Scan out', icon: Barcode },
 ];
 
 export type OutboundSort = 'priority' | 'newest';

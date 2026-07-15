@@ -51,10 +51,11 @@ export function SupportDetailsStack({ ticket }: { ticket: ZendeskTicket }) {
           aria-label="Ticket details"
           aria-expanded={open}
           className={cn(
-            'ds-raw-button relative mt-0.5 shrink-0 rounded-lg border p-1.5 transition',
+            // Inline with the title row — no mt that would stack/tall the header.
+            'ds-raw-button relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition',
             open
               ? 'border-blue-300 bg-blue-50 text-blue-700'
-              : 'border-border-soft text-text-soft hover:bg-surface-hover hover:text-text-muted',
+              : 'border-border-soft bg-surface-card text-text-soft hover:bg-surface-hover hover:text-text-muted',
           )}
         >
           <Layers className="h-3.5 w-3.5" />

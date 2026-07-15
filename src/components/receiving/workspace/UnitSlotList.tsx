@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
 import { X } from '@/components/Icons';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -46,6 +46,8 @@ interface Props {
   onReplaceSerial: (original: UnitLike, next: string) => void;
   /** Edit from PO header {@link SerialChipWithMenu} → expanded unit scan input. */
   serialEditTarget?: UnitLike | null;
+  /** Mirrors the first empty slot (or row 0) for dock → scan handoff. */
+  primaryInputRef?: RefObject<HTMLInputElement | null>;
 }
 
 function last4(sn: string): string {
@@ -76,6 +78,7 @@ export function UnitSlotList({
   onDeleteSerial,
   onReplaceSerial,
   serialEditTarget = null,
+  primaryInputRef,
 }: Props) {
   const count = Math.max(total, saved.length, 1);
   const rows = Array.from({ length: count }, (_, i) => ({ index: i, serial: saved[i] ?? null }));
@@ -93,6 +96,19 @@ export function UnitSlotList({
   };
   // First not-yet-scanned slot — autofocused on mount in all-expanded mode.
   const firstEmptyIndex = saved.length < count ? saved.length : -1;
+  const primaryIndex = firstEmptyIndex >= 0 ? firstEmptyIndex : 0;
+
+  const syncPrimaryInputRef = (index: number, el: HTMLInputElement | null) => {
+    inputRefs.current[index] = el;
+    if (primaryInputRef && singleRowExpanded && index === primaryIndex) {
+      primaryInputRef.current = el;
+    }
+  };
+
+  useEffect(() => {
+    if (!primaryInputRef || !singleRowExpanded) return;
+    primaryInputRef.current = inputRefs.current[primaryIndex] ?? null;
+  }, [primaryIndex, primaryInputRef, saved.length, singleRowExpanded]);
 
   return (
     <div className="flex min-w-0 flex-col divide-y divide-border-soft">
@@ -117,7 +133,7 @@ export function UnitSlotList({
             inputRef={
               singleRowExpanded
                 ? (el) => {
-                    inputRefs.current[index] = el;
+                    syncPrimaryInputRef(index, el);
                   }
                 : undefined
             }
@@ -323,9 +339,10 @@ function ExpandedRow({
           <TextField
             ref={inputRef}
             label="Serial"
+            data-unbox-serial-input
             value={scan}
             onChange={setScan}
-            tone={editing ? 'amber' : 'blue'}
+            tone="blue"
             mono
             // Single-row (fast-scan) mode keeps the input live during submit so
             // the auto-advanced field accepts the next scan without waiting for
@@ -376,9 +393,7 @@ function ExpandedRow({
                 <path d="M12 5v14M5 12h14" strokeLinecap="round" />
               </svg>
             }
-            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm disabled:cursor-not-allowed disabled:bg-surface-strong ${
-              editing ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-surface-strong"
           />
         </HoverTooltip>
       </div>

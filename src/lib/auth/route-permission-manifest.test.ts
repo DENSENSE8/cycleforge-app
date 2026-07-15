@@ -146,6 +146,17 @@ test('regression: support.thread.* gates the entity-thread routes', () => {
   );
 });
 
+test('regression: support.issues.view gates the reported-issues read routes', () => {
+  // UIC-1 — Reported-Issues console read API. Manifest records the first-
+  // declared method's permission per file (GET before POST on the collection).
+  const paths = routesGatedBy('support.issues.view').map((r) => r.path);
+  assert.ok(paths.includes('/api/user-issues/route.ts'), 'support.issues.view should gate /api/user-issues');
+  assert.ok(
+    paths.includes('/api/user-issues/[id]/route.ts'),
+    'support.issues.view should gate /api/user-issues/[id]',
+  );
+});
+
 test('regression: receiving.upload_photo gates photo reassignment', () => {
   const paths = routesGatedBy('receiving.upload_photo').map((r) => r.path);
   assert.ok(
@@ -533,4 +544,16 @@ test('regression: forge master-plan sync is machine-gated (allowAnonymous + forg
     r.gate.includes('allowAnonymous') || r.gate.includes('withAuth'),
     `expected withAuth/allowAnonymous gate, got ${r.gate}`,
   );
+});
+
+test('regression: orders-exceptions/[id] PATCH is orders.create (tracking-only exception edit)', () => {
+  const paths = routesGatedBy('orders.create').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/orders-exceptions/[id]/route.ts'),
+    'orders.create should gate PATCH /api/orders-exceptions/[id]',
+  );
+  const r = routeByPath('/api/orders-exceptions/[id]/route.ts');
+  assert.ok(r, 'orders-exceptions/[id] should be in the manifest');
+  assert.equal(r.permission, 'orders.create');
+  assert.ok(r.methods.includes('PATCH'), 'expected PATCH method');
 });

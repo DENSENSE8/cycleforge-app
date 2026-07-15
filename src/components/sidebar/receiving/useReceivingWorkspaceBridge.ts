@@ -15,7 +15,7 @@
  * Extracted from ReceivingSidebarPanel; behaviour is unchanged.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   dispatchReceivingWorkspaceOpen,
   dispatchReceivingWorkspaceClose,
@@ -23,6 +23,7 @@ import {
 } from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 
 interface UseReceivingWorkspaceBridgeArgs {
   /** Active sidebar mode — table-only modes must not dispatch workspace-open. */
@@ -48,6 +49,14 @@ export function useReceivingWorkspaceBridge({
 }: UseReceivingWorkspaceBridgeArgs): void {
   const isTableOnlyMode = mode === 'history' || mode === 'incoming';
 
+  // PO-scoped count for "Line N of M" / Receive-all — mixed-PO cartons must not
+  // advertise sibling lines from a different PO.
+  const poScopedTotal = useMemo(() => {
+    if (!selectedLine) return scanMatchedRows.length;
+    const scoped = filterLinesByPoGroup(scanMatchedRows, selectedLine);
+    return scoped.length > 0 ? scoped.length : scanMatchedRows.length;
+  }, [selectedLine, scanMatchedRows]);
+
   // Open / close: dispatch whenever the selected line, scan-driven flag, or
   // bootstrap mode changes. Null clears the workspace pane. History/Incoming
   // are table-only — never push workspace-open while those modes are active.
@@ -69,9 +78,9 @@ export function useReceivingWorkspaceBridge({
     if (!selectedLine) return;
     dispatchReceivingWorkspaceNavState({
       currentIndex,
-      total: scanMatchedRows.length,
+      total: poScopedTotal,
       canPrev,
       canNext,
     });
-  }, [selectedLine, currentIndex, scanMatchedRows.length, canPrev, canNext]);
+  }, [selectedLine, currentIndex, poScopedTotal, canPrev, canNext]);
 }

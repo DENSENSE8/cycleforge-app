@@ -154,7 +154,39 @@ export async function GET(
         )
       : [];
 
-    return NextResponse.json({ success: true, events: result.rows, lifecycle, stationEvents: stationEvents.rows });
+    // Thread spine — entity-anchored conversation messages (THREAD_MESSAGE) for
+    // this order surface as read rows on the merged history (D4). Guarded: the
+    // `entity_threads` / `thread_messages` pair may be UNAPPLIED in a given
+    // environment, so a missing-relation error degrades this sub-resource to []
+    // rather than 500-ing the whole (pre-existing) order timeline.
+    let threadMessages: any[] = [];
+    try {
+      const threads = await withTenantTransaction(orgId, (client) =>
+        client.query(
+          `SELECT tm.id, tm.created_at AS "createdAt", tm.body, tm.visibility, tm.provider,
+                  s.name AS "authorName"
+             FROM thread_messages tm
+             JOIN entity_threads et ON et.id = tm.thread_id
+             LEFT JOIN staff s ON s.id = tm.author_staff_id
+            WHERE et.organization_id = $1
+              AND et.entity_type = 'ORDER'
+              AND et.entity_id = $2
+              AND tm.organization_id = $1
+            ORDER BY tm.created_at DESC
+            LIMIT 200`,
+          [orgId, id],
+        ),
+      );
+      threadMessages = threads.rows;
+    } catch (threadErr: any) {
+      // 42P01 = undefined_table (migration not yet applied); anything else we
+      // also swallow so conversation never takes down the record's timeline.
+      if (threadErr?.code !== '42P01') {
+        console.warn('[GET /api/orders/[id]/timeline] thread spine degraded:', threadErr?.message);
+      }
+    }
+
+    return NextResponse.json({ success: true, events: result.rows, lifecycle, stationEvents: stationEvents.rows, threadMessages });
   } catch (error: any) {
     console.error('[GET /api/orders/[id]/timeline] error:', error);
     return NextResponse.json(

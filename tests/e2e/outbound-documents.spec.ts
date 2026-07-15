@@ -143,7 +143,7 @@ test.describe('Outbound documents', () => {
 
   test('outbound deep link shows scope and document-type chips', async ({ page }) => {
     await page.goto('/ops/photos?sourceScope=outbound');
-    await expect(page.getByText('Outbound').first()).toBeVisible();
+    await expect(page.getByText('Shipping').first()).toBeVisible();
     await expect(page.getByText('Document type')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Shipping labels' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Packing slips' })).toBeVisible();

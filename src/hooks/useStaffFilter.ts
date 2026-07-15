@@ -28,21 +28,34 @@ export interface UseStaffFilterResult {
   setStaff: (id: number | null) => void;
 }
 
+export interface UseStaffFilterOptions {
+  roleFilter?: (staff: StaffMember) => boolean;
+  /**
+   * When set (e.g. `'all'`), choosing "All staff" writes `?staff=<token>`
+   * instead of deleting the param. Surfaces that default to Me when the param
+   * is absent (Shipping History) use this so "All" stays an explicit opt-in.
+   */
+  allToken?: string;
+}
+
 /**
  * Shared all-staff ↔ single-staff filter state, threaded through the URL
  * (`?staff=`) so it survives refresh, deep-links, and is consistent across
  * every mode. Defaults to ALL staff (param absent), so every mode keeps its
- * current behavior until a staff is explicitly selected.
+ * current behavior until a staff is explicitly selected — unless
+ * {@link UseStaffFilterOptions.allToken} is set (then absent = caller default,
+ * token = explicit all).
  *
  * Optionally scope the picker options to a role (e.g. only show techs in the
  * Tech mode, only packers in Packing) — purely a display narrowing; it never
  * changes the URL convention.
  */
-export function useStaffFilter(options?: { roleFilter?: (staff: StaffMember) => boolean }): UseStaffFilterResult {
+export function useStaffFilter(options?: UseStaffFilterOptions): UseStaffFilterResult {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const roleFilter = options?.roleFilter;
+  const allToken = options?.allToken?.trim().toLowerCase() || null;
 
   const [staff, setStaffList] = useState<StaffMember[]>([]);
   useEffect(() => {
@@ -59,7 +72,10 @@ export function useStaffFilter(options?: { roleFilter?: (staff: StaffMember) => 
     };
   }, []);
 
-  const staffId = parseStaffParam(searchParams.get(STAFF_FILTER_PARAM));
+  const rawStaff = searchParams.get(STAFF_FILTER_PARAM);
+  const isAllToken =
+    allToken != null && String(rawStaff || '').trim().toLowerCase() === allToken;
+  const staffId = isAllToken ? null : parseStaffParam(rawStaff);
 
   const pickerStaff = useMemo(
     () => (roleFilter ? staff.filter(roleFilter) : staff),
@@ -79,12 +95,17 @@ export function useStaffFilter(options?: { roleFilter?: (staff: StaffMember) => 
   const setStaff = useCallback(
     (id: number | null) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (id != null && id > 0) params.set(STAFF_FILTER_PARAM, String(id));
-      else params.delete(STAFF_FILTER_PARAM);
+      if (id != null && id > 0) {
+        params.set(STAFF_FILTER_PARAM, String(id));
+      } else if (allToken) {
+        params.set(STAFF_FILTER_PARAM, allToken);
+      } else {
+        params.delete(STAFF_FILTER_PARAM);
+      }
       const qs = params.toString();
       router.replace(qs ? `${pathname || '/'}?${qs}` : pathname || '/', { scroll: false });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, allToken],
   );
 
   return { staffId, options: pickerOptions, selectedName, setStaff };

@@ -1,11 +1,13 @@
-import { CartonContextCard } from '@/components/receiving/workspace/line-edit/CartonContextCard';
+import { CartonContextCard } from '@/components/station/entity-context';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import type { TestingController } from './testing-panel-types';
 
 /**
- * The shared CartonContextCard header, wired to the testing-line controller —
- * PO / tracking / listing / platform / type / priority editors + claim CTA.
+ * Testing adapter for the station entity-context header SoT
+ * (`CartonContextCard` via `@/components/station/entity-context`) —
+ * wires the testing-line controller to PO / tracking / listing / platform /
+ * type / priority editors + claim CTA.
  */
 export function TestingCartonHeader({
   c,

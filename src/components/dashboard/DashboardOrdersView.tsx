@@ -14,12 +14,15 @@ import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
 import { OutboundKpiStrip } from '@/components/dashboard/OutboundKpiStrip';
 import { OutboundWorkspaceHeader } from '@/components/dashboard/OutboundWorkspaceHeader';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
+import {
+  WORKBENCH_BODY_COLUMN,
+  WORKBENCH_CHROME_COLUMN,
+} from '@/components/dashboard/workbench-shell';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 import type { DashSelectableRow } from '@/hooks/useDashboardBulkSelection';
-import { cn } from '@/utils/_cn';
 
 // Phase 4 (bundle deferral): non-default order views are code-split so their
 // chunks load only when the user switches tabs — the default To Ship view
@@ -63,36 +66,32 @@ export function DashboardOrdersView({
   const [outboundControlsEl, setOutboundControlsEl] = useState<HTMLDivElement | null>(null);
 
   return (
-    <DashboardScrollShell>
-      {/* One content column for the whole outbound surface — KPI strip, header
-          bar, and list share the same max-width + horizontal gutter. */}
-      <div
-        className={
-          showOutboundChrome
-            ? 'relative mx-auto flex w-full max-w-[1440px] min-w-0 flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8'
-            : 'relative flex min-w-0 flex-col'
-        }
-      >
+    <DashboardScrollShell
+      // The lifecycle tabs + filters are the one always-pinned top bar. They
+      // live in the shell's chrome slot (outside the scroll port), so day-band
+      // headers dock at top-0 of the body directly beneath them — no offset
+      // math, no second sticky band competing for the same top.
+      chrome={
+        showOutboundChrome ? (
+          <div className={WORKBENCH_CHROME_COLUMN}>
+            <OutboundWorkspaceHeader
+              orderView={orderView}
+              onSelectView={onSelectView}
+              controlsSlotRef={setOutboundControlsEl}
+            />
+          </div>
+        ) : undefined
+      }
+    >
+      {/* Scroll body: KPI strip scrolls away above the list; the list's day
+          headers are the only sticky layer left inside the port. */}
+      <div className={showOutboundChrome ? WORKBENCH_BODY_COLUMN : 'relative flex min-w-0 flex-col'}>
         {showOutboundChrome ? (
-          <div
-            className={cn(
-              'sticky top-0 z-header -mx-4 mb-4 bg-surface-canvas/95 px-4 pb-1 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
-            )}
-          >
+          <div className="mb-4">
             <OutboundKpiStrip
               mode={orderView === 'packed' ? 'shipped' : (orderView as 'unshipped' | 'shipped')}
             />
           </div>
-        ) : null}
-
-        {/* Sticky below KPI — table date headers slide under this seam. */}
-        {showOutboundChrome ? (
-          <OutboundWorkspaceHeader
-            orderView={orderView}
-            onSelectView={onSelectView}
-            controlsSlotRef={setOutboundControlsEl}
-            className="sticky top-[var(--dashboard-kpi-height,72px)] z-header mb-3 bg-surface-canvas/95 backdrop-blur-sm"
-          />
         ) : null}
 
         <div className="relative flex min-w-0 flex-col">

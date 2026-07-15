@@ -8,21 +8,22 @@
 import { useMemo, type Ref } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
   OutboundAllFilterButton,
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
 import { OutboundSavedViewChips } from '@/components/dashboard/OutboundSavedViewChips';
+import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
+import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import {
   SHIPPING_WORKSPACE_TAB_LABEL,
   type ShippingWorkspaceTab,
 } from '@/utils/shipping-workspace-state';
 import { ChevronRight } from '@/components/Icons';
-import { cn } from '@/utils/_cn';
 
 const TABS: ShippingWorkspaceTab[] = ['pending', 'fba', 'history'];
 
@@ -40,6 +41,7 @@ export function ShippingWorkspaceHeader({
   className,
 }: ShippingWorkspaceHeaderProps) {
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
+  const { searchQuery, setSearch } = useWorkbenchSearchParam();
   useToShipFilterHotkeys(tab === 'pending');
 
   const tabs = useMemo(
@@ -58,51 +60,59 @@ export function ShippingWorkspaceHeader({
   );
 
   return (
-    <div
-      className={cn(
-        'flex min-w-0 shrink-0 items-center gap-3 rounded-2xl border border-border-soft bg-surface-card px-2.5 py-1.5 shadow-sm',
-        className,
-      )}
-    >
-      <TabSwitch
-        tabs={tabs}
-        activeTab={tab}
-        onTabChange={(id) => onSelectTab(id as ShippingWorkspaceTab)}
-        className="w-auto shrink-0"
-        variant="solid"
-        countStyle="plain"
-        railClassName="rounded-full border border-border-default bg-surface-card p-1 shadow-sm"
-      />
+    <WorkbenchChromeHeader
+      tabs={tabs}
+      activeTab={tab}
+      onTabChange={(id) => onSelectTab(id as ShippingWorkspaceTab)}
+      solidTone="accent"
+      controlsSlotRef={controlsSlotRef}
+      controlsSlotProps={{ 'data-shipping-controls': '' }}
+      className={className}
+      // Scoped list filter over ?search= (pending list reads it directly);
+      // only shown where the tab's list actually filters on it.
+      search={
+        tab === 'pending' ? (
+          <SearchField
+            value={searchQuery}
+            onChange={setSearch}
+            onClear={() => setSearch('')}
+            placeholder="Filter orders…"
+            tone="blue"
+            size="compact"
+            className="w-40 shrink-0 lg:w-56"
+          />
+        ) : undefined
+      }
+      right={
+        <>
+          {tab === 'pending' ? (
+            <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+              <OutboundExactFilters mode="unshipped" />
+              <OutboundAllFilterButton mode="unshipped" />
+              <OutboundSavedViewChips mode="unshipped" />
+            </div>
+          ) : null}
 
-      <div className="min-w-0 flex-1" aria-hidden />
+          {tab === 'fba' ? (
+            <Link
+              href="/outbound?mode=fba"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
+            >
+              FBA station
+              <ChevronRight className="h-3.5 w-3.5 opacity-70" />
+            </Link>
+          ) : null}
 
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
-        {tab === 'pending' ? (
-          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-            <OutboundExactFilters mode="unshipped" />
-            <OutboundAllFilterButton mode="unshipped" />
-            <OutboundSavedViewChips mode="unshipped" />
-          </div>
-        ) : null}
-
-        {tab === 'fba' ? (
-          <Link
-            href="/outbound?mode=fba"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
-          >
-            FBA station
-            <ChevronRight className="h-3.5 w-3.5 opacity-70" />
-          </Link>
-        ) : null}
-
-        {tab === 'history' ? <StaffFilterButton align="start" allLabel="All technicians" /> : null}
-
-        <div
-          ref={controlsSlotRef}
-          className="flex shrink-0 items-center gap-2"
-          data-shipping-controls
-        />
-      </div>
-    </div>
+          {tab === 'history' ? (
+            <StaffFilterButton
+              align="start"
+              allLabel="All technicians"
+              allToken="all"
+              meLabel="You"
+            />
+          ) : null}
+        </>
+      }
+    />
   );
 }

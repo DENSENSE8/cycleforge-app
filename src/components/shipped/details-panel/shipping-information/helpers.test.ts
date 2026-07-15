@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { deriveShippingDisplayMeta } from './helpers';
+import { deriveShippingDisplayMeta, findDuplicateTrackingInDraft } from './helpers';
 
 function makeShipped(overrides: Record<string, unknown>): ShippedOrder {
   return { id: 1, ...overrides } as unknown as ShippedOrder;
@@ -57,6 +57,25 @@ test('deriveShippingDisplayMeta: copy text includes serials joined, "N/A" when e
   const noSerials = deriveShippingDisplayMeta(makeShipped({ order_id: '' }), []);
   assert.match(noSerials.returnsCopyText, /Order ID: N\/A/);
   assert.match(noSerials.returnsCopyText, /Serials: N\/A/);
+});
+
+test('findDuplicateTrackingInDraft: null when unique or blank', () => {
+  assert.equal(findDuplicateTrackingInDraft(['1ZAAA', '1ZBBB']), null);
+  assert.equal(findDuplicateTrackingInDraft([{ tracking: '1ZAAA' }, { tracking: '' }]), null);
+  assert.equal(findDuplicateTrackingInDraft([]), null);
+});
+
+test('findDuplicateTrackingInDraft: case-insensitive duplicate', () => {
+  assert.equal(findDuplicateTrackingInDraft(['1Zaaa111', '1ZAAA111']), '1ZAAA111');
+});
+
+test('findDuplicateTrackingInDraft: punctuation-normalized key collision', () => {
+  // Same canonical key after strip — hyphenated vs continuous.
+  const dup = findDuplicateTrackingInDraft([
+    { tracking: '1Z72304672306723076' },
+    { tracking: '1Z-723046-72306723076' },
+  ]);
+  assert.ok(dup);
 });
 
 test('deriveShippingDisplayMeta: testedAtSource falls back through activity/event (serial-less test scan)', () => {

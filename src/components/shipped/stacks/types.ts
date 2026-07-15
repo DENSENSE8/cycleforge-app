@@ -7,7 +7,8 @@ export type ShippedActiveSection =
   | 'timeline'
   | 'customer'
   | 'documents'
-  | 'warranty';
+  | 'warranty'
+  | 'conversation';
 export type ShippedActiveInput = 'none' | 'mark_shipped' | 'out_of_stock' | 'notes';
 
 export interface DetailsStackDurationData {

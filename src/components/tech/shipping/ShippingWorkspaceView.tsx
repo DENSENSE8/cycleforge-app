@@ -12,8 +12,11 @@ import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { ShippingKpiStrip } from '@/components/tech/shipping/ShippingKpiStrip';
 import { ShippingWorkspaceHeader } from '@/components/tech/shipping/ShippingWorkspaceHeader';
+import {
+  WORKBENCH_BODY_COLUMN,
+  WORKBENCH_CHROME_COLUMN,
+} from '@/components/dashboard/workbench-shell';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
-import { cn } from '@/utils/_cn';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
@@ -40,22 +43,28 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const parsedTechId = parseInt(techId, 10);
 
   return (
-    <DashboardScrollShell className="h-full">
-      <div className="relative mx-auto flex w-full max-w-[1440px] min-w-0 flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8">
-        <div
-          className={cn(
-            'sticky top-0 z-header -mx-4 mb-4 bg-surface-canvas/95 px-4 pb-1 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
-          )}
-        >
-          <ShippingKpiStrip mode={shipTab} />
+    <DashboardScrollShell
+      className="h-full"
+      // Pinned chrome (outside the scroll port) is the one top bar; the KPI
+      // strip in the body scrolls away and day headers dock at top-0 beneath
+      // the chrome. Mirrors DashboardOrdersView's two-zone shell.
+      chrome={
+        <div className={WORKBENCH_CHROME_COLUMN}>
+          <ShippingWorkspaceHeader
+            tab={shipTab}
+            onSelectTab={setShipTab}
+            controlsSlotRef={setControlsEl}
+          />
         </div>
-
-        <ShippingWorkspaceHeader
-          tab={shipTab}
-          onSelectTab={setShipTab}
-          controlsSlotRef={setControlsEl}
-          className="sticky top-[var(--dashboard-kpi-height,72px)] z-header mb-3 bg-surface-canvas/95 backdrop-blur-sm"
-        />
+      }
+    >
+      <div className={WORKBENCH_BODY_COLUMN}>
+        <div className="mb-4">
+          <ShippingKpiStrip
+            mode={shipTab}
+            techId={Number.isFinite(parsedTechId) ? parsedTechId : undefined}
+          />
+        </div>
 
         <div className="relative flex min-w-0 flex-col">
           <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
@@ -70,7 +79,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
             ) : shipTab === 'history' ? (
               <TechTable
                 testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
-                staffScope="url"
+                staffScope="url-or-self"
                 toolbarPortalTarget={controlsEl}
               />
             ) : (

@@ -12,6 +12,10 @@ interface ShortcutRow {
 
 /** Grid/page shortcuts (useMediaLibraryShortcuts). */
 const GRID_SHORTCUTS: ShortcutRow[] = [
+  { keys: ['←', '→', '↑', '↓'], label: 'Move between photos' },
+  { keys: ['Enter'], label: 'Open focused photo' },
+  { keys: ['Space'], label: 'Select / deselect focused photo' },
+  { keys: ['Home', 'End'], label: 'First / last photo' },
   { keys: ['1'], label: 'List' },
   { keys: ['⌘', 'A'], label: 'Select all loaded (while selecting)' },
   { keys: ['Esc'], label: 'Exit selection' },

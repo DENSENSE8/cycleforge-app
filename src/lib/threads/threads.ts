@@ -52,6 +52,7 @@ const defaultDeps: ThreadsDeps = {
 import {
   THREAD_MESSAGE_PROVIDERS,
   THREAD_MESSAGE_VISIBILITIES,
+  THREAD_STATUSES,
   type EntityThread,
   type ThreadMessage,
   type ThreadMessageProvider,
@@ -116,8 +117,27 @@ export async function resolveThreadForEntity(
   return deps.runQuery(input.orgId, async (client) => {
     const res = await client.query(
       `SELECT ${THREAD_COLS} FROM entity_threads
-        WHERE organization_id = $1::uuid AND entity_type = $2 AND entity_id = $3::bigint`,
+        WHERE organization_id = $1::uuid AND entity_type = $2 AND entity_id = $3::bigint
+          AND deleted_at IS NULL`,
       [input.orgId, input.entityType, input.entityId],
+    );
+    return res.rows.length ? mapThread(res.rows[0]) : null;
+  });
+}
+
+// ─── getThread (by id) ───────────────────────────────────────────────────────
+
+export async function getThread(
+  orgId: OrgId,
+  threadId: number,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<EntityThread | null> {
+  if (!Number.isSafeInteger(threadId) || threadId <= 0) return null;
+  return deps.runQuery(orgId, async (client) => {
+    const res = await client.query(
+      `SELECT ${THREAD_COLS} FROM entity_threads
+        WHERE id = $1::bigint AND organization_id = $2::uuid AND deleted_at IS NULL`,
+      [threadId, orgId],
     );
     return res.rows.length ? mapThread(res.rows[0]) : null;
   });
@@ -167,11 +187,15 @@ export async function getOrCreateThread(
 
     // Upsert on the natural key; the no-op DO UPDATE makes RETURNING yield the
     // existing row on conflict. xmax = 0 discriminates fresh inserts.
+    // On conflict the thread already exists; revive it if it was soft-deleted
+    // (re-opening an entity's conversation un-tombstones it) and return the row.
     const res = await client.query(
       `INSERT INTO entity_threads (organization_id, entity_type, entity_id, created_by)
        VALUES ($1::uuid, $2, $3::bigint, $4::int)
        ON CONFLICT (organization_id, entity_type, entity_id)
-         DO UPDATE SET updated_at = entity_threads.updated_at
+         DO UPDATE SET deleted_at = NULL,
+                       updated_at = CASE WHEN entity_threads.deleted_at IS NOT NULL
+                                         THEN now() ELSE entity_threads.updated_at END
        RETURNING ${THREAD_COLS}, (xmax = 0) AS inserted`,
       [input.orgId, entityType, input.entityId, input.createdBy ?? null],
     );
@@ -336,6 +360,7 @@ export async function listThreadMessages(
          FROM thread_messages tm
          LEFT JOIN staff s ON s.id = tm.author_staff_id AND s.organization_id = tm.organization_id
         WHERE tm.thread_id = $1::bigint AND tm.organization_id = $2::uuid
+          AND tm.deleted_at IS NULL
           AND ($3::bigint IS NULL OR (tm.created_at, tm.id) < (
             SELECT created_at, id FROM thread_messages
              WHERE id = $3::bigint AND organization_id = $2::uuid))
@@ -408,5 +433,164 @@ export async function attachSupportTicket(
       [input.threadId, input.orgId, input.supportTicketId],
     );
     return { ok: true as const, thread: mapThread(updated.rows[0]), idempotent: false };
+  });
+}
+
+// ─── updateThreadStatus ──────────────────────────────────────────────────────
+
+export interface UpdateThreadStatusInput {
+  orgId: OrgId;
+  threadId: number;
+  status: ThreadStatus;
+}
+
+export type UpdateThreadStatusResult =
+  | { ok: true; thread: EntityThread }
+  | { ok: false; status: 400 | 404; error: string };
+
+export async function updateThreadStatus(
+  input: UpdateThreadStatusInput,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<UpdateThreadStatusResult> {
+  if (!THREAD_STATUSES.includes(input.status)) {
+    return { ok: false, status: 400, error: `unknown status "${input.status}"` };
+  }
+  return deps.runTransaction(input.orgId, async (client) => {
+    const res = await client.query(
+      `UPDATE entity_threads
+          SET status = $3, updated_at = now()
+        WHERE id = $1::bigint AND organization_id = $2::uuid AND deleted_at IS NULL
+        RETURNING ${THREAD_COLS}`,
+      [input.threadId, input.orgId, input.status],
+    );
+    if (res.rows.length === 0) {
+      return { ok: false as const, status: 404 as const, error: `thread ${input.threadId} not found` };
+    }
+    return { ok: true as const, thread: mapThread(res.rows[0]) };
+  });
+}
+
+// ─── softDeleteThread ────────────────────────────────────────────────────────
+
+export type SoftDeleteThreadResult =
+  | { ok: true; idempotent: boolean }
+  | { ok: false; status: 404; error: string };
+
+export async function softDeleteThread(
+  orgId: OrgId,
+  threadId: number,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<SoftDeleteThreadResult> {
+  return deps.runTransaction(orgId, async (client) => {
+    const res = await client.query(
+      `UPDATE entity_threads
+          SET deleted_at = now(), updated_at = now()
+        WHERE id = $1::bigint AND organization_id = $2::uuid AND deleted_at IS NULL
+        RETURNING id`,
+      [threadId, orgId],
+    );
+    if (res.rows.length === 0) {
+      // Either absent or already soft-deleted — distinguish for a clean 404.
+      const exists = await client.query(
+        `SELECT 1 FROM entity_threads WHERE id = $1::bigint AND organization_id = $2::uuid`,
+        [threadId, orgId],
+      );
+      if (exists.rows.length === 0) {
+        return { ok: false as const, status: 404 as const, error: `thread ${threadId} not found` };
+      }
+      return { ok: true as const, idempotent: true };
+    }
+    return { ok: true as const, idempotent: false };
+  });
+}
+
+// ─── editThreadMessage / deleteThreadMessage ─────────────────────────────────
+
+export interface EditThreadMessageInput {
+  orgId: OrgId;
+  threadId: number;
+  messageId: number;
+  body: string;
+  /** Acting staff; a non-manager may edit only their own message. */
+  actorStaffId?: number | null;
+  /** True when the caller holds a manage-all grant (bypasses author check). */
+  canManageAll?: boolean;
+}
+
+export type EditThreadMessageResult =
+  | { ok: true; message: ThreadMessage }
+  | { ok: false; status: 400 | 403 | 404; error: string };
+
+export async function editThreadMessage(
+  input: EditThreadMessageInput,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<EditThreadMessageResult> {
+  const body = input.body ?? '';
+  if (body.trim().length === 0) {
+    return { ok: false, status: 400, error: 'body must not be empty' };
+  }
+  return deps.runTransaction(input.orgId, async (client) => {
+    const row = await client.query(
+      `SELECT author_staff_id, provider FROM thread_messages
+        WHERE id = $1::bigint AND thread_id = $2::bigint AND organization_id = $3::uuid
+          AND deleted_at IS NULL`,
+      [input.messageId, input.threadId, input.orgId],
+    );
+    if (row.rows.length === 0) {
+      return { ok: false as const, status: 404 as const, error: `message ${input.messageId} not found` };
+    }
+    const authorStaffId = row.rows[0].author_staff_id == null ? null : Number(row.rows[0].author_staff_id);
+    if (!input.canManageAll && authorStaffId !== (input.actorStaffId ?? null)) {
+      return { ok: false as const, status: 403 as const, error: 'not the message author' };
+    }
+    const updated = await client.query(
+      `UPDATE thread_messages
+          SET body = $4, meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object('editedAt', now())
+        WHERE id = $1::bigint AND thread_id = $2::bigint AND organization_id = $3::uuid
+        RETURNING ${MESSAGE_COLS}`,
+      [input.messageId, input.threadId, input.orgId, body],
+    );
+    return { ok: true as const, message: mapMessage(updated.rows[0]) };
+  });
+}
+
+export interface DeleteThreadMessageInput {
+  orgId: OrgId;
+  threadId: number;
+  messageId: number;
+  actorStaffId?: number | null;
+  canManageAll?: boolean;
+}
+
+export type DeleteThreadMessageResult =
+  | { ok: true; idempotent: boolean }
+  | { ok: false; status: 403 | 404; error: string };
+
+export async function deleteThreadMessage(
+  input: DeleteThreadMessageInput,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<DeleteThreadMessageResult> {
+  return deps.runTransaction(input.orgId, async (client) => {
+    const row = await client.query(
+      `SELECT author_staff_id, deleted_at FROM thread_messages
+        WHERE id = $1::bigint AND thread_id = $2::bigint AND organization_id = $3::uuid`,
+      [input.messageId, input.threadId, input.orgId],
+    );
+    if (row.rows.length === 0) {
+      return { ok: false as const, status: 404 as const, error: `message ${input.messageId} not found` };
+    }
+    if (row.rows[0].deleted_at != null) {
+      return { ok: true as const, idempotent: true };
+    }
+    const authorStaffId = row.rows[0].author_staff_id == null ? null : Number(row.rows[0].author_staff_id);
+    if (!input.canManageAll && authorStaffId !== (input.actorStaffId ?? null)) {
+      return { ok: false as const, status: 403 as const, error: 'not the message author' };
+    }
+    await client.query(
+      `UPDATE thread_messages SET deleted_at = now()
+        WHERE id = $1::bigint AND thread_id = $2::bigint AND organization_id = $3::uuid`,
+      [input.messageId, input.threadId, input.orgId],
+    );
+    return { ok: true as const, idempotent: false };
   });
 }

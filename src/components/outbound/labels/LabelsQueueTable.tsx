@@ -14,6 +14,8 @@ interface LabelsQueueTableProps {
   sort: OutboundSort;
   onOpenOrder: (order: ShippedOrder) => void;
   onCloseOrder: () => void;
+  /** Hide the built-in banner when the mode tab band already labels the queue. */
+  hideHeader?: boolean;
 }
 
 export function LabelsQueueTable({
@@ -21,6 +23,7 @@ export function LabelsQueueTable({
   sort,
   onOpenOrder,
   onCloseOrder,
+  hideHeader = false,
 }: LabelsQueueTableProps) {
   const query = useQuery(awaitingLabelsQuery({ searchQuery, sort }));
 
@@ -68,6 +71,7 @@ export function LabelsQueueTable({
         clearSearchLabel="Show all awaiting labels"
         bannerTitle="Awaiting label"
         bannerSubtitle={`${records.length} order${records.length === 1 ? '' : 's'} need a carrier label`}
+        hideHeader={hideHeader}
         sort={sort}
         onOpenRecord={(record) => onOpenOrder(record)}
         onCloseRecord={() => onCloseOrder()}

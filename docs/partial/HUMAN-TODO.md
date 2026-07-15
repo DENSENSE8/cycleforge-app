@@ -59,9 +59,22 @@ Legend: ☐ = to do · 🔑 needs credentials/external account · 🧠 needs you
 
 ### Entity threads (2026-07-14 — conversation feature)
 
-- **☐ 🚀 Apply `2026-07-14_entity_threads.sql`** (`npm run db:migrate`) — `entity_threads` + `thread_messages`
-  (ticket-optional entity-anchored conversations; docs/todo/entity-threads-conversation-plan.md). **UNAPPLIED.**
-  Thread create/message API routes will error until applied. After apply: `npm run tenancy:coverage`.
+- **✅ APPLIED 2026-07-15 — `2026-07-14_entity_threads.sql` + `2026-07-15_thread_crud_connections.sql`** (both via
+  `npm run db:migrate`). Entity Threads is LIVE: `entity_threads` + `thread_messages` + `thread_assignments` +
+  `thread_links`, all FORCE RLS. (Base migration needed a one-line fix first — the RECEIVING/RECEIVING_LINE
+  parent-delete triggers target the base tables `receiving_carton`/`receiving_line`, since `receiving`/
+  `receiving_lines` are compat VIEWS and a row trigger can't sit on a view.) **Recommended next: `npm run
+  tenancy:coverage`** to refresh the ground-truth for the two new tables, then smoke-test in the app:
+  the Conversation panel + **status pill** (open/snoozed/resolved), **assignee chip**, **Linked strip**
+  (connected order/tracking/serial/SKU), **per-message edit/delete**, and **Escalate → Internal / Support
+  ticket** on an Order / Receiving line / Unit / Warranty claim.
+- **Phase 7 decisions (resolved 2026-07-15):** (a) RLS parity was **already done** — `ticket_links` (wave4) +
+  `support_ticket_assignments` (wave2) are already FORCE-enforced; no migration needed. (b) `ticket_links`
+  ticket-optional — **not doing** (recommended against: nullable `entity_threads.support_ticket_id` +
+  `provider='internal'` already give ticketless→ticket; relaxing the NOT NULL forks a redundant linkage axis).
+  (c) Home → Collab stays a teaching panel (no new `ops_plan_task` discriminator). (d) Read-folds (legacy
+  warranty/claim/staff notes → read rows in the panel) + note-editor deprecation are **deferred until the
+  migration is applied**, so folded rows can be verified against real thread rows. (e) Case/Journey root — deferred.
 
 ### Still high leverage (pre-existing)
 

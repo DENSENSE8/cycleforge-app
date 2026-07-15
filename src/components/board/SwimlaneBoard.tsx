@@ -143,6 +143,9 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
    *  board staff filter). Unlike `headerEndSlot` it is never hidden by
    *  `collapsibleControls` — it is the one primary filter that stays on the bar. */
   headerPersistentEndSlot?: ReactNode;
+  /** Always-visible trailing slot rendered AFTER the disclosure cluster (e.g.
+   *  Select rows). Never tucked behind `collapsibleControls`. */
+  headerTrailingSlot?: ReactNode;
   /** When true, the layout cluster (column-count slider + `headerEndSlot`) is
    *  tucked behind a `ToolbarControlsDisclosure` gear that slides them in/out —
    *  so the resting toolbar is just start-slot + persistent filter + the gear. */
@@ -292,6 +295,9 @@ interface SwimlaneBubbleProps<Row, LaneId extends string, SortId extends string>
   /** The board's shared scroll region — handed to the body ctx in stacked mode
    *  so a virtualized lane windows against it. */
   boardScrollRef: RefObject<HTMLElement | null>;
+  /** When true, the dashboard page scroll owns vertical scroll — lane chrome
+   *  must NOT stick (sticky would detach from the rounded card shell). */
+  pageScroll?: boolean;
   onSortChange: (sort: SortId) => void;
   onRangeChange: (range: DateRange | undefined) => void;
   onToggleExpanded: () => void;
@@ -313,6 +319,7 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
   showDateFilter,
   laneHeaderSlot,
   boardScrollRef,
+  pageScroll = false,
   onSortChange,
   onRangeChange,
   onToggleExpanded,
@@ -396,17 +403,19 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
       className="min-w-0 w-full"
     >
     <section
-      // Stacked: overflow-clip so sticky lane chrome can pin to the board
-      // scroll parent, while preventing rows from bleeding outside the rounded
-      // corners or overflowing horizontally. Grid lanes keep overflow-hidden.
+      // Stacked: overflow-clip prevents rows from bleeding outside the rounded
+      // corners. Grid lanes keep overflow-hidden. Full radius on the card so
+      // top + bottom corners stay rounded while the page scrolls.
       className={`flex w-full min-w-0 flex-col rounded-xl border border-border-soft bg-surface-card ${
         stacked ? 'overflow-clip' : 'overflow-hidden'
       }`}
     >
-      {/* Lane chrome — sticky to the board scroll region in 1-up stack mode. */}
+      {/* Lane chrome — sticky only when the board owns its own scroll port.
+          With dashboard pageScroll, sticky would pin to the page while the
+          rounded card scrolls away (corners appear square). */}
       <div
         className={`flex items-center gap-2 border-b border-t border-border-hairline bg-surface-card/95 px-2.5 py-1.5 backdrop-blur-sm rounded-t-xl ${
-          stacked ? 'sticky top-0 z-sticky' : ''
+          stacked && !pageScroll ? 'sticky top-0 z-sticky' : ''
         }`}
       >
         {/* ds-raw-button: dnd-kit drag handle (spreads listeners; active:scale would fight drag) */}
@@ -526,6 +535,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   headerStartSlot,
   headerEndSlot,
   headerPersistentEndSlot,
+  headerTrailingSlot,
   collapsibleControls = false,
   footerSlot,
   laneHeaderSlot,
@@ -706,7 +716,8 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   );
 
   /** The right cluster: the always-on persistent filter, then the layout controls —
-   *  optionally tucked behind the slide-in disclosure so the bar stays quiet. */
+   *  optionally tucked behind the slide-in disclosure so the bar stays quiet —
+   *  then the always-visible trailing slot (e.g. Select). */
   const headerEndCluster = (
     <>
       {headerPersistentEndSlot}
@@ -715,6 +726,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
       ) : (
         headerControls
       )}
+      {headerTrailingSlot}
     </>
   );
 
@@ -789,6 +801,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
                     showDateFilter={Boolean(getRowDate)}
                     laneHeaderSlot={laneHeaderSlot}
                     boardScrollRef={ancestorScrollRef}
+                    pageScroll={pageScroll}
                     onSortChange={(s) => mutateLane(id, { sort: s })}
                     onRangeChange={(r) => mutateLane(id, { range: r })}
                     // Snapping to a preset clears any drag-resized height.

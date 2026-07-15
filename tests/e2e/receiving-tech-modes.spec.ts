@@ -79,8 +79,34 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     // CartonContextCard Platform pill + the unbox terminal action.
     await expect(page.getByRole('button', { name: /Platform/i }).first()).toBeVisible({ timeout: PANEL_TIMEOUT });
     await expect(
-      page.getByRole('button', { name: /^Receive(\s+all)?$/i }),
+      page.getByRole('button', { name: /^Receive(\s+all)?$|^Receive locally$/i }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
+
+    // Tab-aware terminal dock: Inventory notes replaces Print · Receive with
+    // Save to inventory, and the in-card footer row is gone.
+    const inventoryNotesTab = page.getByRole('tab', { name: /Inventory notes/i });
+    const hasPoNoteTab = await inventoryNotesTab
+      .first()
+      .waitFor({ state: 'visible', timeout: 3_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasPoNoteTab) {
+      await inventoryNotesTab.first().click();
+      await expect(
+        page.getByRole('button', { name: /Save to inventory|Saving/i }),
+      ).toBeVisible({ timeout: PANEL_TIMEOUT });
+      // Mode-default receive CTA is replaced (not stacked) on this tab.
+      await expect(
+        page.getByRole('button', { name: /^Receive(\s+all)?$|^Receive locally$/i }),
+      ).toHaveCount(0);
+      // Inline card footer removed — Sync lives in the dock split menu, not in-card.
+      await expect(
+        page.getByRole('button', { name: /Sync from inventory/i }),
+      ).toHaveCount(0);
+    } else {
+      console.log('[unbox] No Inventory notes tab (unfound/unmatched carton) — dock swap skipped.');
+    }
   });
 
   // ── 2. TRIAGE MODE (/triage) ──────────────────────────────────────────────
@@ -121,7 +147,7 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
   });
 
   // ── 3. TESTING MODE (/test?view=testing) ─────────────────────────────────
-  test('testing mode — page loads, toolbar shows audit/pair actions, and Pass · button is present when a line is open', async ({
+  test('testing mode — page loads onto history browse; toolbar + Pass appear when a line is open', async ({
     page,
   }) => {
     await page.goto('/test?view=testing');
@@ -134,17 +160,8 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
     await expect(page.getByText('Application error')).toHaveCount(0);
 
-    // The testing toolbar (LineEditToolbar mode="testing") exposes "View audit
-    // log" and "Open SKU pairing" — assert at least one is reachable as soon
-    // as the testing view activates (these live in the toolbar, not the panel).
-    // We use a broad OR: the toolbar may render disabled but is always mounted.
-    const auditBtn = page.getByRole('button', { name: 'View audit log' });
-    const pairBtn = page.getByRole('button', { name: 'Open SKU pairing' });
-    const copyBtn = page.getByRole('button', { name: 'Copy all testing details' });
-
-    // At least one of the three testing-mode toolbar icons must be present.
-    const anyToolbarIcon = auditBtn.or(pairBtn).or(copyBtn);
-    await expect(anyToolbarIcon.first()).toBeVisible({ timeout: PANEL_TIMEOUT });
+    // Testing mode lands on the tested-lines browse (no cold restore).
+    await expect(page.getByText('Your tested lines')).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // Try to open the first item in the testing rail.
     const railButtons = aside.locator('button');
@@ -156,6 +173,18 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     }
 
     await railButtons.first().click();
+
+    // The testing toolbar (LineEditToolbar mode="testing") mounts with the panel.
+    const auditBtn = page.getByRole('button', { name: 'View audit log' });
+    const pairBtn = page.getByRole('button', { name: 'Open SKU pairing' });
+    const copyBtn = page.getByRole('button', { name: 'Copy all testing details' });
+    const anyToolbarIcon = auditBtn.or(pairBtn).or(copyBtn);
+    await expect(anyToolbarIcon.first()).toBeVisible({ timeout: PANEL_TIMEOUT });
+
+    // Back-to-browse affordance on the testing toolbar.
+    await expect(
+      page.getByRole('button', { name: 'Back to all tested lines' }),
+    ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // The CartonContextCard is shared with receiving — Platform pill should
     // render once the TestingPanel mounts.
@@ -169,11 +198,10 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
   });
 
   // ── 4. TESTING MODE — deterministic deep check of the rewrite ──────────────
-  // Seeds the restore key with a REAL testing line so TestingLineWorkspace
-  // auto-mounts TestingPanel (no flaky rail-clicking), then asserts the
-  // rewritten panel composes the SHARED CartonContextCard (Platform pill) + the
-  // Pass · Print StickyActionBar — i.e. the fork rewrite renders end to end.
-  test('testing mode — restored line renders the rewritten TestingPanel chrome', async ({
+  // Fetches a REAL testing line, clicks it from the history browse (or via
+  // receiving-select-line), then asserts the rewritten panel composes the
+  // SHARED CartonContextCard (Platform pill) + the Pass · Print StickyActionBar.
+  test('testing mode — opening a history line renders the rewritten TestingPanel chrome', async ({
     page,
     request,
   }) => {
@@ -183,21 +211,18 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     const line = (data.receiving_lines || [])[0];
     test.skip(!line || line.receiving_id == null, 'no openable testing line in this environment');
 
-    // TestingLineWorkspace restores from this localStorage key on mount.
-    await page.addInitScript((id) => {
-      try {
-        window.localStorage.setItem('usav:testing:last-line-id', String(id));
-      } catch {
-        /* private mode — non-fatal */
-      }
-    }, line.id);
-
     await page.goto('/test?view=testing');
 
     await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
+    await expect(page.getByText('Your tested lines')).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // The testing toolbar only exists inside a mounted TestingPanel, so this
-    // proves the restored row mounted the rewritten panel.
+    // Open the line via the same event the history list / rail use (deterministic;
+    // avoids flaky clicks on virtualized rows).
+    await page.evaluate((row) => {
+      window.dispatchEvent(new CustomEvent('receiving-select-line', { detail: row }));
+    }, line);
+
+    // The testing toolbar only exists inside a mounted TestingPanel.
     await expect(
       page
         .getByRole('button', { name: 'Open SKU pairing' })
@@ -222,5 +247,29 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(
       page.getByRole('button', { name: /^Pass\s*[·•]|^Printing/i }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
+  });
+
+  // ── 5. SHIPPING MODE (/test default) — personal ship-out rail ───────────────
+  test('shipping mode — personal ship-out rail is present; stays off testing view', async ({
+    page,
+  }) => {
+    await page.goto('/test');
+
+    const aside = page.locator('aside').first();
+    await expect(aside).toBeVisible({ timeout: BOOT_TIMEOUT });
+    await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
+
+    await expect(page).not.toHaveURL(/view=testing/);
+
+    await expect(aside.getByText(/Recently Shipped/i)).toBeVisible({ timeout: PANEL_TIMEOUT });
+
+    const railRows = aside.locator('[data-rail-row]');
+    const count = await railRows.count();
+    if (count === 0) {
+      console.log('[shipping] No ship-out rail rows — skipping preview assert.');
+      return;
+    }
+    await railRows.first().click();
+    await expect(page).not.toHaveURL(/view=testing/);
   });
 });

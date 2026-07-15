@@ -33,28 +33,34 @@ export function isReturnIntake(
 }
 
 /**
- * Has a concrete intake kind been *explicitly assigned* to this line/carton?
+ * Has a concrete intake kind been *deliberately assigned* to this carton?
  *
- * Distinct from {@link effectiveIntakeKind}, which collapses "no disposition
- * yet" into its `'PO'` default and so cannot tell unclassified from PO. This
- * asks whether ANY of the disposition fields the line row carries holds a
- * recognized `IntakeKind` — `intake_type` has no DB default, so a fresh unfound
- * carton reads all-null → `false`. Composes the `isIntakeKind` registry
- * vocabulary (never a private kind set), reading the same three fields as
- * `isReturnIntake`.
+ * The door/header classify pills persist the carton disposition to the CARTON
+ * `intake_type` (`receiving.intake_type` → `carton_intake_type`), and the
+ * unmatched line-classify picker sets the LINE `intake_type` — both have no DB
+ * default, so a fresh / 0-line unfound carton reads null on both → `false`.
  *
- * Used as the unfound stepper's `Classify` gate (`derive-unfound-step-states`):
- * `false` keeps Classify the active "you are here" dot until the door pick
+ * Deliberately does NOT read the line `receiving_type`: that field defaults to
+ * `'PO'` on an unfound line/stub (the "Unfound – PO" you see before any pick),
+ * so counting it would falsely read an unclassified carton as classified — which
+ * it did, showing Classify ✓ and suppressing the header auto-expand on cartons
+ * whose carton `intake_type` was still null. This mirrors the controller, which
+ * resolves classification from the CARTON columns (null → `UNKNOWN`), not the
+ * line default. Composes the `isIntakeKind` registry vocabulary.
+ *
+ * Used as the unfound stepper's `Classify` gate (`derive-unfound-step-states`)
+ * and the header `classifyPending` auto-expand: `false` keeps Classify the
+ * active "you are here" dot (and expands the classify pills) until the door pick
  * lands; a concrete kind flips it done.
  *
- * Known gap: `LOCAL_PICKUP` classified purely via carton *source* (the
- * unmatched controller deliberately skips `intake_type` for PICKUP) leaves no
- * kind on these fields and reads unclassified — rare for unfound intake; thread
- * the controller's resolved classification if that ever becomes load-bearing.
+ * Known gap: `LOCAL_PICKUP` classified purely via carton *source* (the unmatched
+ * controller deliberately skips `intake_type` for PICKUP) leaves no kind on
+ * these fields and reads unclassified — rare for unfound intake; thread the
+ * controller's resolved classification if that ever becomes load-bearing.
  */
 export function isIntakeClassified(
-  row: Pick<ReceivingLineRow, 'intake_type' | 'receiving_type' | 'carton_intake_type'>,
+  row: Pick<ReceivingLineRow, 'intake_type' | 'carton_intake_type'>,
 ): boolean {
   const recognized = (v?: string | null): boolean => isIntakeKind((v ?? '').trim().toUpperCase());
-  return recognized(row.intake_type) || recognized(row.receiving_type) || recognized(row.carton_intake_type);
+  return recognized(row.intake_type) || recognized(row.carton_intake_type);
 }

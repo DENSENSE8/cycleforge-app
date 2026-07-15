@@ -4,6 +4,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '../tokens/focus-ring';
 import { useUIModeOptional } from '../providers/UIModeProvider';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -132,8 +133,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       transition={spring}
       className={cn(
         'inline-flex select-none items-center justify-center font-semibold',
-        'transition-colors duration-150 ease-out outline-none',
-        'focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1',
+        'transition-colors duration-150 ease-out',
+        // Focus affordance from the SoT (byte-identical to the old literal).
+        focusRing('control', 'accent'),
         'disabled:cursor-not-allowed disabled:opacity-60',
         variantClasses[variant],
         sizeClass,

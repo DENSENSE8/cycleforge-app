@@ -36,6 +36,9 @@ Each concern has one module — never inline or re-derive:
 | Condition labels / tones | `src/lib/conditions.ts`, `src/lib/condition-tone.ts` |
 | Z-index | `src/design-system/tokens/z-index.ts` |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` |
+| Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing`) |
+| Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
+| Station entity-context header | `@/components/station/entity-context` (`CartonContextCard`) — Unbox/Triage/Testing/Shipping |
 | Integrations / capabilities | `src/lib/integrations/**` |
 | Cross-entity search | `src/lib/search/hybrid-retrieval.ts` → `SearchHit` |
 | Full list | `.claude/rules/source-of-truth.md` |

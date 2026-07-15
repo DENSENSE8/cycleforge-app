@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-15T10:40:38Z",
-  "totalRoutes": 846,
+  "generatedAt": "2026-07-15T14:59:23Z",
+  "totalRoutes": 856,
   "summary": {
-    "permissionGated": 718,
-    "authenticatedNoPermission": 46,
+    "permissionGated": 728,
+    "authenticatedNoPermission": 45,
     "anonymousIntentional": 80,
     "serviceToService": 2,
-    "ungatedRead": 0,
+    "ungatedRead": 1,
     "ungatedWrite": 0
   },
   "routes": [
@@ -3318,6 +3318,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders-exceptions/[id]/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders-exceptions/delete/route.ts",
       "methods": [
         "POST"
@@ -3870,6 +3879,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "photos.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/photos/[id]/context/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "NONE",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -7041,9 +7059,66 @@
       "exemptReason": null
     },
     {
+      "path": "/api/threads/[id]/assign/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
       "path": "/api/threads/[id]/attach-ticket/route.ts",
       "methods": [
         "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/connections/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/escalate/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/links/[linkId]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/links/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/messages/[messageId]/route.ts",
+      "methods": [
+        "DELETE",
+        "PATCH"
       ],
       "gate": "requireRoutePerm",
       "permission": "support.thread.manage",
@@ -7057,6 +7132,16 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/threads/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
       "exemptReason": null
     },
     {
@@ -7135,6 +7220,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/user-issues/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "support.issues.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/user-issues/resolve/route.ts",
       "methods": [
         "POST"
@@ -7146,10 +7240,11 @@
     {
       "path": "/api/user-issues/route.ts",
       "methods": [
+        "GET",
         "POST"
       ],
-      "gate": "withAuth (no permission)",
-      "permission": null,
+      "gate": "withAuth",
+      "permission": "support.issues.view",
       "exemptReason": null
     },
     {

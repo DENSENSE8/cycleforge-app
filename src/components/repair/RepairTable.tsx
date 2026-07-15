@@ -16,6 +16,7 @@ import { useRepairsTable } from '@/hooks/useRepairs';
 import { formatPhoneNumber } from '@/utils/phone';
 import { toPSTDateKey } from '@/utils/date';
 import { Button } from '@/design-system/primitives';
+import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
 
 interface RepairTableProps {
   filter: RepairTab;
@@ -181,8 +182,8 @@ export function RepairTable({ filter }: RepairTableProps) {
     'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-transparent bg-surface-canvas text-text-faint transition-colors hover:border-border-soft disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
-    <div className="flex h-full w-full bg-surface-card relative">
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-full w-full bg-surface-canvas relative">
+      <WorkbenchTablePane>
         <DateRangeHeader
           count={filteredRepairs.length}
           rightSlot={
@@ -360,7 +361,7 @@ export function RepairTable({ filter }: RepairTableProps) {
             </div>
           )}
         </div>
-      </div>
+      </WorkbenchTablePane>
 
       <AnimatePresence>
         {selectedRepair && (

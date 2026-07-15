@@ -26,8 +26,9 @@ import { techRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { formatTechCopyRow, TECH_COPY_HEADER } from '@/lib/station/format-station-copy-row';
 import { TECH_HISTORY_SELECTION_SCOPE } from '@/lib/selection/station-scopes';
 import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
-import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { useStaffFilter, STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
+import { useSearchParams } from 'next/navigation';
 
 const TECH_LANE_ICON: Record<TechLaneIconKey, React.ComponentType<{ className?: string }>> = {
   clock: Clock,
@@ -51,8 +52,10 @@ interface TechTableProps {
   /**
    * `'self'` — always this tech (legacy TechTable callers).
    * `'url'` — org-wide by default; `?staff=` narrows via useStaffFilter.
+   * `'url-or-self'` — logged-in tech by default (absent param); `?staff=N`
+   * narrows; `?staff=all` is explicit org-wide (Shipping History).
    */
-  staffScope?: 'self' | 'url';
+  staffScope?: 'self' | 'url' | 'url-or-self';
   /** Portal column / board controls into the shipping workspace header. */
   toolbarPortalTarget?: HTMLElement | null;
 }
@@ -67,9 +70,20 @@ export function TechTable({
   staffScope = 'self',
   toolbarPortalTarget = null,
 }: TechTableProps) {
-  const { staffId: urlStaffId } = useStaffFilter();
-  const staffId =
-    staffScope === 'url' ? (urlStaffId ?? 'all') : testedBy;
+  const { staffId: urlStaffId } = useStaffFilter(
+    staffScope === 'url-or-self' ? { allToken: 'all' } : undefined,
+  );
+  const searchParams = useSearchParams();
+  const rawStaff = searchParams.get(STAFF_FILTER_PARAM);
+  const wantAllExplicit = String(rawStaff || '').trim().toLowerCase() === 'all';
+  const staffId: number | 'all' =
+    staffScope === 'self'
+      ? testedBy
+      : staffScope === 'url-or-self'
+        ? wantAllExplicit
+          ? 'all'
+          : (urlStaffId ?? testedBy)
+        : (urlStaffId ?? 'all');
 
   const {
     weekOffset, setWeekOffset, weekRange,

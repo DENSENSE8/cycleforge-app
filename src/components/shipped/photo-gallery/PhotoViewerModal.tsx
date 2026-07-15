@@ -3,7 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { useFocusTrap } from '@/design-system/hooks';
-import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import {
   X, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
   AlertCircle, Trash2, Info, RotateCcw, RefreshCw, ExternalLink, Package, MoreVertical,
@@ -12,7 +11,7 @@ import {
 import { PhotoContextPanel } from './PhotoContextPanel';
 import { MovePhotoToPoPanel } from './MovePhotoToPoPanel';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, Layer } from '@/design-system/primitives';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { photoHeroLayoutId } from './photo-gallery-utils';
 import type { PhotoGalleryController } from './usePhotoGallery';
@@ -95,7 +94,11 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const isHeroFrame = !reduceMotion && !heroSpentRef.current && currentIndex === heroIndexRef.current;
   const heroLayoutId = isHeroFrame ? photoHeroLayoutId(photoItems[currentIndex]?.id) : undefined;
 
+  // Portal via Layer so the lightbox escapes <main>'s stacking context —
+  // without this, GlobalHeader (z-header sibling of main) paints above the
+  // viewer even when the modal token is higher.
   return (
+    <Layer level="modal" className="fixed inset-0">
     <motion.div
       ref={trapRef}
       data-testid="photo-lightbox"
@@ -107,8 +110,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       animate={{ opacity: 1, pointerEvents: 'auto' }}
       exit={{ opacity: 0, pointerEvents: 'none' }}
       transition={scrimTransition}
-      className="fixed inset-0 flex bg-scrim/95 outline-none backdrop-blur-md"
-      style={{ zIndex: zLayer.modal }}
+      className="absolute inset-0 flex bg-scrim/95 outline-none backdrop-blur-md"
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       {...(g.canUpload ? dz.rootProps : {})}
@@ -591,5 +593,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         ) : null}
       </AnimatePresence>
     </motion.div>
+    </Layer>
   );
 }

@@ -13,6 +13,7 @@ import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection'
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { OrderWarrantySection } from '@/components/shipped/details-panel/OrderWarrantySection';
+import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { DeleteOrderControl } from '@/components/shipped/stacks/DeleteOrderControl';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 
@@ -136,6 +137,14 @@ export function ShippedDetailsBody({
       return (
         <div className="px-6">
           <OrderWarrantySection order={shipped} />
+        </div>
+      );
+    }
+
+    if (activeSection === 'conversation' && shipped?.id) {
+      return (
+        <div className="flex h-full min-h-0 flex-col">
+          <ThreadPanel entityType="ORDER" entityId={Number(shipped.id)} />
         </div>
       );
     }
