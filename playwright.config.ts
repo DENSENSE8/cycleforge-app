@@ -1,4 +1,5 @@
 import path from 'path';
+import { execSync } from 'child_process';
 import dotenv from 'dotenv';
 import { defineConfig, devices } from '@playwright/test';
 
@@ -6,7 +7,21 @@ import { defineConfig, devices } from '@playwright/test';
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
-const BASE_URL = process.env.PW_BASE_URL || 'http://localhost:3000';
+// Default to THIS worktree's dev port so E2E in a lane (e.g. cycleforge-fba:3020)
+// hits its own dev server, not main's :3000. Reuse the SoT resolver via its CLI
+// (Playwright transpiles this config to CJS and can't require the ESM .mjs).
+// PW_BASE_URL still overrides everything.
+function worktreePort(): string {
+  try {
+    return execSync('node scripts/dev-worktree-port.mjs', {
+      cwd: __dirname,
+      encoding: 'utf8',
+    }).trim() || '3000';
+  } catch {
+    return '3000';
+  }
+}
+const BASE_URL = process.env.PW_BASE_URL || `http://localhost:${worktreePort()}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
