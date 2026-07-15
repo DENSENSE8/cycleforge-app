@@ -83,6 +83,11 @@ export const POST = withAuth(
     }
     const key = railSnapshotCacheKey(parsed.data.feed, ctx.staffId);
     const rows = parsed.data.rows.slice(0, RAIL_SNAPSHOT_MAX_ROWS) as unknown as ReceivingLineRow[];
+    // Never overwrite a good per-viewer seed with []. Transient empty rail
+    // refetches must not poison the next reload's first paint.
+    if (rows.length === 0) {
+      return NextResponse.json({ success: true, stored: 0 });
+    }
     // Belt-and-suspenders on the actual payload (content-length can be absent or
     // spoofed): the row objects are `.passthrough()`, so cap the serialized size.
     const serialized = JSON.stringify(rows);

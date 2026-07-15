@@ -210,6 +210,14 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
       page.getByRole('button', { name: /Platform/i }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
+    // SectionTabsSlider — unbox-style display switcher under the carton header.
+    await expect(
+      page.getByRole('tablist', { name: 'Testing displays' }),
+    ).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(page.getByRole('tab', { name: 'Testing' })).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(page.getByRole('tab', { name: 'SKU Pairing' })).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(page.getByRole('tab', { name: 'Claim' })).toBeVisible({ timeout: PANEL_TIMEOUT });
+
     // The Pass · Print FloatingButton — the testing terminal action.
     await expect(
       page.getByRole('button', { name: /^Pass\s*[·•]|^Printing/i }),

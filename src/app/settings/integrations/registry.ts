@@ -157,10 +157,10 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
   },
 
   // ── AI ──
-  { key: 'ollama', label: 'Self-hosted AI (Ollama / custom)', description: 'Any OpenAI-compatible endpoint you run (Ollama, LM Studio, vLLM). Payload: {"baseUrl","model","embedModel"?,"apiKey"?}.', category: 'AI', connect: 'vault', badge: 'bg-surface-strong text-text-muted' },
-  { key: 'ai_gateway', label: 'Vercel AI Gateway', description: 'One key, every model — powers AI search + Ask AI. Payload: {"apiKey","chatModel"?,"embedModel"?}.', category: 'AI', connect: 'vault', badge: 'bg-surface-inverse text-white' },
-  { key: 'openai', label: 'OpenAI', description: 'Direct key for AI-search embeddings + Ask AI. Payload: {"apiKey","chatModel"?,"embedModel"?}.', category: 'AI', connect: 'vault', badge: 'bg-emerald-100 text-emerald-700' },
-  { key: 'anthropic', label: 'Anthropic', description: 'Claude for Ask AI (chat only — embeddings need another provider). Payload: {"apiKey","chatModel"?}.', category: 'AI', connect: 'vault', badge: 'bg-amber-100 text-amber-700' },
+  { key: 'ollama', label: 'Self-hosted AI (Ollama / custom)', description: 'Any OpenAI-compatible endpoint you run (Ollama, LM Studio, vLLM) for AI search and Ask AI.', category: 'AI', connect: 'vault', badge: 'bg-surface-strong text-text-muted' },
+  { key: 'ai_gateway', label: 'Vercel AI Gateway', description: 'One key, every model — powers AI search + Ask AI.', category: 'AI', connect: 'vault', badge: 'bg-surface-inverse text-white' },
+  { key: 'openai', label: 'OpenAI', description: 'Direct key for AI-search embeddings + Ask AI.', category: 'AI', connect: 'vault', badge: 'bg-emerald-100 text-emerald-700' },
+  { key: 'anthropic', label: 'Anthropic', description: 'Claude for Ask AI (chat only — embeddings need another provider).', category: 'AI', connect: 'vault', badge: 'bg-amber-100 text-amber-700' },
 ];
 
 // ── Shared status shapes (server-computed, passed to the client cards) ──
@@ -172,6 +172,8 @@ export interface AccountSummary {
   label: string;
   status: 'active' | 'error' | 'expiring' | 'revoked' | 'unknown';
   detail?: string;
+  /** eBay only: linked eBay username / user id when known. */
+  ebayUserId?: string | null;
   /** eBay only: 'seller' (outbound) vs 'buyer' (purchasing → Universal Incoming). */
   role?: 'seller' | 'buyer';
 }

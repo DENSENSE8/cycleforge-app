@@ -655,7 +655,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Testing ───────────────────────────────────────────────────────────────
   // Top-mode switch — Shipping / Testing / History (matches TECH_TOP_MODE_ITEMS).
   // `?view=testing` → Testing; `?view=testing-history` → the tested-lines feed;
-  // everything else is Shipping (whose right pane is the shipping History feed).
+  // everything else is Shipping (right pane = Pending · FBA | History workspace).
   {
     id: 'tech', label: 'Testing', href: TECH, icon: Wrench, kind: 'station', requires: 'tech.view',
     modes: [

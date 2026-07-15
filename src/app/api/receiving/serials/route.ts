@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { syncTsnToSerialUnit } from '@/lib/neon/serial-units-queries';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -131,11 +131,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    await invalidateCacheTags([
-      'receiving-lines',
-      'receiving-logs',
-      'pending-unboxing',
-    ]);
+    await invalidateReceivingViews(ctx.organizationId);
     if (lineReceivingId != null) {
       await publishReceivingLogChanged({
         organizationId: ctx.organizationId,
@@ -222,11 +218,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    await invalidateCacheTags([
-      'receiving-lines',
-      'receiving-logs',
-      'pending-unboxing',
-    ]);
+    await invalidateReceivingViews(ctx.organizationId);
     if (deleted.rows[0]?.receiving_id != null) {
       await publishReceivingLogChanged({
         organizationId: ctx.organizationId,

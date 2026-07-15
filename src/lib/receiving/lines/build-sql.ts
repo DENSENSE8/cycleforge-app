@@ -176,7 +176,10 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
-                ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count
+                ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
+                -- Package-level claims land on receiving_carton; line-level on
+                -- receiving_line — coalesce so the unbox rail flag reads both.
+                NULLIF(TRIM(COALESCE(rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
          LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
@@ -332,7 +335,8 @@ export function buildReceivingLinesByReceivingIdSql(
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                   sc.id                        AS sku_catalog_id,
-                  ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count
+                  ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
+                  NULLIF(TRIM(COALESCE(rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket
            FROM receiving_line rl
            LEFT JOIN receiving_carton r                   ON r.id  = rl.receiving_id AND r.organization_id = rl.organization_id
            LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
@@ -1179,7 +1183,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
-                ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count
+                ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
+                -- Package-level claims land on receiving_carton; line-level on
+                -- receiving_line — coalesce so the unbox rail flag reads both.
+                NULLIF(TRIM(COALESCE(rl.zendesk_ticket, r.zendesk_ticket)), '') AS zendesk_ticket
                 ${lastScanSelect}
                 ${testedAggSelect}
                 ${needsTestSelect}

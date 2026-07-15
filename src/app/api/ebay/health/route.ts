@@ -1,53 +1,89 @@
+/**
+ * GET /api/ebay/health
+ * Live-checks each active eBay account for the current org.
+ */
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { EbayClient } from '@/lib/ebay/client';
 import { getEbayAppCreds, listActiveEbayAccounts } from '@/lib/ebay/credentials';
 import { ebayIdentityEndpoint } from '@/lib/ebay/oauth-config';
 
-/**
- * GET /api/ebay/health
- * Live-checks each active eBay account for the current org. getValidAccessToken()
- * refreshes a near-expiry token (so a dead refresh token surfaces here), then a
- * light identity probe confirms the token is still accepted by eBay (401/403 =>
- * needs re-consent). Mirrors /api/amazon/health's response shape.
- */
 export const GET = withAuth(async (_req, ctx) => {
   const accounts = await listActiveEbayAccounts(ctx.organizationId);
+
+  if (accounts.length === 0) {
+    return NextResponse.json({
+      ok: false,
+      connected: false,
+      accounts: [],
+      error: 'No eBay accounts connected yet. Add a selling or purchasing account first.',
+    });
+  }
+
   const creds = await getEbayAppCreds(ctx.organizationId);
-  const identityUrl = creds ? ebayIdentityEndpoint(creds.environment) : null;
+  if (!creds) {
+    return NextResponse.json({
+      ok: false,
+      connected: true,
+      accounts: accounts.map((a) => ({
+        accountName: a.accountName,
+        role: a.accountRole,
+        ok: false,
+        error: 'eBay app credentials are not configured on the server.',
+      })),
+      error: 'eBay app credentials are not configured on the server.',
+    });
+  }
+
+  const identityUrl = ebayIdentityEndpoint(creds.environment);
 
   const results = await Promise.all(
     accounts.map(async (acct) => {
       try {
         const client = new EbayClient(acct.accountName, ctx.organizationId);
-        const { accessToken } = await client.getValidAccessToken(); // throws if refresh is dead
-        if (identityUrl) {
-          const resp = await fetch(identityUrl, {
-            headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
-          });
-          if (resp.status === 401 || resp.status === 403) {
-            return {
-              accountName: acct.accountName,
-              ok: false,
-              error: 'Re-authorization required (token rejected by eBay).',
-            };
-          }
+        const { accessToken } = await client.getValidAccessToken();
+        const resp = await fetch(identityUrl, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+        });
+        if (resp.status === 401 || resp.status === 403) {
+          return {
+            accountName: acct.accountName,
+            role: acct.accountRole,
+            ok: false,
+            error: 'Re-authorization required (token rejected by eBay).',
+          };
+        }
+        if (!resp.ok) {
+          return {
+            accountName: acct.accountName,
+            role: acct.accountRole,
+            ok: false,
+            error: `eBay identity check failed (HTTP ${resp.status}).`,
+          };
         }
         return {
           accountName: acct.accountName,
+          role: acct.accountRole,
           ok: true,
           ebayUserId: acct.ebayUserId,
           tokenExpiresAt: acct.tokenExpiresAt,
         };
-      } catch (err: any) {
-        return { accountName: acct.accountName, ok: false, error: err?.message || String(err) };
+      } catch (err: unknown) {
+        return {
+          accountName: acct.accountName,
+          role: acct.accountRole,
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
       }
     }),
   );
 
+  const failed = results.filter((r) => !r.ok);
   return NextResponse.json({
-    ok: results.length > 0 && results.every((r) => r.ok),
-    connected: results.length > 0,
+    ok: results.every((r) => r.ok),
+    connected: true,
     accounts: results,
+    error: failed.length === 1 ? failed[0].error : failed.length > 1 ? `${failed.length} accounts need attention` : undefined,
   });
 }, { permission: 'integrations.ebay' });

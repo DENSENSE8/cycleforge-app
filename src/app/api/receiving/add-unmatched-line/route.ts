@@ -31,7 +31,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction, type tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -463,12 +463,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   if (result.payload.success === true && !result.cached) {
     after(async () => {
       try {
-        await invalidateCacheTags([
-          'receiving-lines',
-          'receiving-logs',
-          'pending-unboxing',
-          'unfound-queue',
-        ]);
+        await invalidateReceivingViews(ctx.organizationId, ['unfound-queue']);
         await publishReceivingLogChanged({
           organizationId: ctx.organizationId,
           action: 'update',

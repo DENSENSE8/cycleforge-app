@@ -8,7 +8,8 @@ import { isTestTrackingShortcutAllowed } from '@/lib/tenancy/test-tracking';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { formatPSTTimestamp } from '@/utils/date';
 import { getCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
-import { getOrSet, invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { getOrSet } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 import { publishReceivingLogChanged, publishPriorityUnbox } from '@/lib/realtime/publish';
 import { searchPurchaseOrdersByTracking, searchPurchaseReceivesByTracking, findPurchaseOrderByNumber } from '@/lib/zoho';
@@ -1101,7 +1102,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
       after(async () => {
         try {
-          await invalidateCacheTags(['receiving-logs', 'receiving-lines', 'pending-unboxing']);
+          await invalidateReceivingViews(ctx.organizationId);
         } catch (err) {
           console.warn('[lookup-po.order] cache invalidation failed', errMessage(err));
         }
@@ -1271,7 +1272,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
       after(async () => {
         try {
-          await invalidateCacheTags(['receiving-logs', 'receiving-lines', 'pending-unboxing']);
+          await invalidateReceivingViews(ctx.organizationId);
         } catch (err) {
           console.warn('[lookup-po.test] cache invalidation failed', errMessage(err));
         }
@@ -1578,13 +1579,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           });
         }
         try {
-          await invalidateCacheTags([
-            'receiving-logs',
-            'receiving-lines',
-            'pending-unboxing',
-            'sku-catalog',
-            'tracking-exceptions',
-          ]);
+          await invalidateReceivingViews(ctx.organizationId, ['sku-catalog', 'tracking-exceptions']);
         } catch (err) {
           // Cache invalidation failure → stale UI until TTL expires (60s).
           // Visible but recoverable; WARN.
@@ -1737,12 +1732,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     after(async () => {
       try {
-        await invalidateCacheTags([
-          'receiving-logs',
-          'receiving-lines',
-          'pending-unboxing',
-          'tracking-exceptions',
-        ]);
+        await invalidateReceivingViews(ctx.organizationId, ['tracking-exceptions']);
       } catch (err) {
         console.warn('[lookup-po.after.unmatched] cache invalidation failed', {
           receiving_id: unmatchedReceivingId,

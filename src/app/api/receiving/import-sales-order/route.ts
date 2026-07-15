@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { importSalesOrderByNumber } from '@/lib/receiving/returned-serial-link';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 
 /**
@@ -51,7 +51,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     if (result.imported && receivingId != null) {
       after(async () => {
         try {
-          await invalidateCacheTags(['receiving-lines', 'receiving-logs', 'pending-unboxing']);
+          await invalidateReceivingViews(ctx.organizationId);
           await publishReceivingLogChanged({
             organizationId: ctx.organizationId,
             action: 'update',

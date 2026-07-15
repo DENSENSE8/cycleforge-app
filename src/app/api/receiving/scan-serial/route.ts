@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { enrichSerialUnitCatalog } from '@/lib/neon/serial-units-queries';
 import { attachSerialToLine, detachSerialFromLine } from '@/lib/receiving/serial-attach';
@@ -294,11 +294,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       await refreshLineSerialProjectionSafe(ctx.organizationId, tapReceivingLineId);
 
       try {
-        await invalidateCacheTags([
-          'receiving-lines',
-          'receiving-logs',
-          'pending-unboxing',
-        ]);
+        await invalidateReceivingViews(ctx.organizationId);
         if (receivingIdForEvent != null) {
           await publishReceivingLogChanged({
             organizationId: ctx.organizationId,
@@ -429,11 +425,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
 
       try {
-        await invalidateCacheTags([
-          'receiving-lines',
-          'receiving-logs',
-          'pending-unboxing',
-        ]);
+        await invalidateReceivingViews(ctx.organizationId);
         await publishReceivingLogChanged({
           organizationId: ctx.organizationId,
           action: 'update',

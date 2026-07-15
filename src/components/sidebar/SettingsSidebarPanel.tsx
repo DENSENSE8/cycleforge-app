@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 import { sidebarHeaderBandClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { ChevronDown, Settings as SettingsIcon } from '@/components/Icons';
+import { ChevronDown, PackageOpen, Settings as SettingsIcon } from '@/components/Icons';
 import { SidebarSectionList, type SidebarSection } from '@/components/sidebar/SidebarSectionList';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -48,6 +48,8 @@ function sectionIcon(id: SettingsSection) {
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
         </svg>
       );
+    case 'receiving':
+      return <PackageOpen className={ICON_CLS} />;
     case 'security':
       return (
         <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

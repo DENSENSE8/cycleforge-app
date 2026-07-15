@@ -127,7 +127,7 @@ function railTicketNumber(row: ReceivingLineRow): string | null {
   return t.startsWith('#') ? t : `#${t}`;
 }
 
-/** Compact ticket flag for the collapsed rail row's title accessory. */
+/** Compact ticket flag on the meta row — right of the qty (0/0) readout. */
 function TicketRailFlag({ ticket }: { ticket: string }) {
   return (
     <HoverTooltip label={`Claim ticket ${ticket} filed`} asChild focusable={false}>
@@ -304,18 +304,14 @@ function ReceivingRowMain({
       vm={{
         title,
         titleAttr: title,
-        titleAccessory: (
-          <>
-            {ctx.pkgChip}
-            {ticket ? <TicketRailFlag ticket={ticket} /> : null}
-          </>
-        ),
+        titleAccessory: ctx.pkgChip,
         meta: (
           <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
             {renderQuantity(row)}
             {techId ? <span className={`ml-1 ${techColor}`}>· {getStaffName(techId)}</span> : null}
           </span>
         ),
+        metaTrailing: ticket ? <TicketRailFlag ticket={ticket} /> : undefined,
       }}
     />
   );

@@ -10,23 +10,35 @@ import { withAuth } from '@/lib/auth/withAuth';
  * GET /api/tech/logs?weekStart=2026-03-24&weekEnd=2026-03-28
  *   — defaults to the signed-in staff's logs.
  *   — admin.view_logs holders can pass ?techId=N to view another tech.
+ *   — tech.view holders can pass ?techId=all for org-wide TECH scan history
+ *     (Shipping workspace History tab).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
-  const techIdParam = Number(searchParams.get('techId'));
-  const isAdminFilter = Number.isFinite(techIdParam) && techIdParam > 0 && ctx.permissions.has('admin.view_logs');
-  const techId = isAdminFilter ? techIdParam : ctx.staffId;
+  const techIdRaw = String(searchParams.get('techId') || '').trim().toLowerCase();
+  const wantAll = techIdRaw === 'all';
+  const techIdParam = Number(techIdRaw);
+  const isAdminFilter =
+    !wantAll && Number.isFinite(techIdParam) && techIdParam > 0 && ctx.permissions.has('admin.view_logs');
+  const techId = wantAll ? null : isAdminFilter ? techIdParam : ctx.staffId;
   const orgId = ctx.organizationId;
   const weekStart = searchParams.get('weekStart') || '';
   const weekEnd = searchParams.get('weekEnd') || '';
   const limit = Math.min(Number(searchParams.get('limit')) || 500, 2000);
   const offset = Number(searchParams.get('offset')) || 0;
 
-  if (!techId) {
+  if (!wantAll && !techId) {
     return NextResponse.json({ error: 'techId is required' }, { status: 400 });
   }
 
-  const cacheKey = createCacheLookupKey({ orgId, techId, weekStart, weekEnd, limit, offset });
+  const cacheKey = createCacheLookupKey({
+    orgId,
+    techId: wantAll ? 'all' : techId,
+    weekStart,
+    weekEnd,
+    limit,
+    offset,
+  });
   const isCurrentWeek = !weekStart; // no weekStart means current week
   const cacheTtl = isCurrentWeek ? 60 : 3600; // 30s current week, 1hr historical
 
@@ -38,10 +50,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     // Date range: add 1-day buffer on each side for UTC/PST edge cases
     const dateConditions: string[] = [];
-    const params: (string | number)[] = [techId];
+    const params: (string | number)[] = [];
 
-    // Tenant scope — appended before the dynamic date/limit/offset params so its
-    // placeholder index is stable ($2); later pushes auto-index via params.length.
+    // Staff scope — $1 when filtering one tech; omitted for org-wide `techId=all`.
+    let staffClause = '';
+    if (!wantAll && techId != null) {
+      params.push(techId);
+      staffClause = `AND sal.staff_id = $1`;
+    }
+
+    // Tenant scope — placeholder index is stable after staff (or $1 when all).
     params.push(orgId);
     const orgIdx = params.length;
 
@@ -208,7 +226,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
       WHERE sal.station = 'TECH'
         AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
-        AND sal.staff_id = $1
+        ${staffClause}
         AND sal.organization_id = $${orgIdx}
         ${dateWhere}
 

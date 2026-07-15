@@ -9,7 +9,7 @@ import {
 } from '@/lib/neon/orders-queries';
 import { parseBody } from '@/lib/schemas/parse';
 import { OrderUpdateBody } from '@/lib/schemas/orders';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
@@ -87,7 +87,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    await invalidateCacheTags(['orders', 'shipped', 'packing-logs']);
+    await invalidateAllOrdersApiCaches(['shipped', 'packing-logs'], gate.ctx.organizationId);
     await publishOrderChanged({ organizationId: gate.ctx.organizationId, orderIds: [id], source: 'orders.update' });
 
     await recordAudit(pool, gate.ctx, req, {
@@ -146,7 +146,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    await invalidateCacheTags(['orders', 'shipped', 'packing-logs']);
+    await invalidateAllOrdersApiCaches(['shipped', 'packing-logs'], gate.ctx.organizationId);
     await publishOrderChanged({ organizationId: gate.ctx.organizationId, orderIds: [id], source: 'orders.delete' });
 
     await recordAudit(pool, gate.ctx, req, {

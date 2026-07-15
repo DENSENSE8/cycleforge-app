@@ -14,6 +14,8 @@
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
+import Link from 'next/link';
+import { PageHeader } from '@/components/ui/pane-header';
 import { getIntegrationCredentials, type IntegrationProvider } from '@/lib/integrations/credentials';
 import { isNangoConfigured } from '@/lib/integrations/nango';
 import { getConnector } from '@/lib/integrations/connectors/registry';
@@ -37,13 +39,14 @@ interface OrgRow {
   scope: string | null;
   updated_at: Date | null;
   last_used_at: Date | null;
+  last_synced_at: Date | null;
 }
 interface AmazonRow {
   id: number; account_name: string; seller_id: string | null; region: string | null;
   status: string | null; last_error: string | null; last_sync_at: Date | null;
 }
 interface EbayRow {
-  id: number; account_name: string; token_expires_at: Date | null; is_active: boolean | null; last_sync_date: Date | null; account_role: string | null;
+  id: number; account_name: string; ebay_user_id: string | null; token_expires_at: Date | null; is_active: boolean | null; last_sync_date: Date | null; account_role: string | null;
 }
 
 function relTime(d: Date | null): string | null {
@@ -71,7 +74,7 @@ export default async function IntegrationsPage({
 
   const [orgRowsR, amazonR, ebayR] = await Promise.all([
     pool.query<OrgRow>(
-      `SELECT provider, status, display_label, last_error, scope, updated_at, last_used_at
+      `SELECT provider, status, display_label, last_error, scope, updated_at, last_used_at, last_synced_at
          FROM organization_integrations
         WHERE organization_id = $1
         ORDER BY provider ASC, scope NULLS FIRST`,
@@ -83,7 +86,7 @@ export default async function IntegrationsPage({
       [orgId],
     ),
     pool.query<EbayRow>(
-      `SELECT id, account_name, token_expires_at, is_active, last_sync_date, account_role
+      `SELECT id, account_name, ebay_user_id, token_expires_at, is_active, last_sync_date, account_role
          FROM ebay_accounts
         WHERE organization_id = $1 AND (platform = 'EBAY' OR platform IS NULL)
         ORDER BY account_role DESC, account_name`,
@@ -127,7 +130,7 @@ export default async function IntegrationsPage({
         const status: AccountSummary['status'] = e.is_active === false ? 'revoked' : minutesLeft != null && minutesLeft < 60 ? 'expiring' : 'active';
         const detail = e.is_active === false ? 'inactive' : minutesLeft == null ? undefined : minutesLeft <= 0 ? 'token expired' : `token ${minutesLeft}m left`;
         const role: AccountSummary['role'] = e.account_role === 'buyer' ? 'buyer' : 'seller';
-        return { id: e.id, label: e.account_name, status, detail, role };
+        return { id: e.id, label: e.account_name, status, detail, role, ebayUserId: e.ebay_user_id };
       });
       const status: ProviderState['status'] = accounts.length === 0
         ? 'not_connected'
@@ -160,6 +163,7 @@ export default async function IntegrationsPage({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas antialiased">
+      <PageHeader title="Integrations" maxWidth="5xl" />
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -167,6 +171,12 @@ export default async function IntegrationsPage({
             Connect this workspace to the marketplaces and services it runs on. Credentials are encrypted at rest in the workspace vault.
           </p>
           <div className="flex items-center gap-2">
+            <Link
+              href="/settings/integrations/diagnostics"
+              className="text-role-caption font-semibold text-blue-600 hover:underline"
+            >
+              Connection diagnostics →
+            </Link>
             {!limit.unlimited && (
               <span className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ${limit.atLimit ? 'bg-amber-100 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
                 {limit.used} / {limit.max} integrations{limit.atLimit ? ' · upgrade to add more' : ''}
@@ -189,13 +199,15 @@ export default async function IntegrationsPage({
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {providers.map((def) => {
                   const state = buildState(def);
+                  const connector = getConnector(def.key);
                   return (
                     <IntegrationCard
                       key={def.key}
                       def={def}
                       state={state}
                       nangoReady={nangoReady}
-                      canSync={state.status === 'connected' && !!getConnector(def.key)?.sync}
+                      canSync={state.status === 'connected' && !!connector?.sync}
+                      capabilities={[...(connector?.capabilities ?? [])]}
                     />
                   );
                 })}

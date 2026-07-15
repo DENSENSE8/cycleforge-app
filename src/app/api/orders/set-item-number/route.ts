@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { publishOrderChanged } from '@/lib/realtime/publish';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { withAuth } from '@/lib/auth/withAuth';
 
 /**
@@ -38,7 +38,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: true, updated: false, message: 'item_number already set or row not found' });
     }
 
-    await invalidateCacheTags(['orders']);
+    await invalidateAllOrdersApiCaches([], ctx.organizationId);
     await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.set-item-number' });
 
     return NextResponse.json({ success: true, updated: true, row: result.rows[0] });

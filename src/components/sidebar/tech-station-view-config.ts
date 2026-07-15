@@ -7,7 +7,7 @@ import { History, ShieldCheck, Truck } from '@/components/Icons';
  * each mode owns a completely different sidebar body.
  *
  *   shipping → {@link ShippingSidebarPanel} (order scan + Up Next rail + filter).
- *              Right pane = shipping History feed.
+ *              Right pane = Shipping workspace (Pending · FBA | History).
  *   testing  → {@link TestingSidebarPanel} (receiving scan + To Test rail + filter)
  *   history  → TestingHistoryList in the right pane (browse + bulk-select feed
  *              of this tech's tested lines). Promoted from the old Recent/History

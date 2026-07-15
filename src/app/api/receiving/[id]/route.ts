@@ -4,7 +4,7 @@ import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { resolveCartonZohoPoId } from '@/lib/receiving/resolve-carton-po-id';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { readTimeline } from '@/lib/inventory/events';
@@ -715,7 +715,7 @@ export async function PATCH(
         : ((before as { priority_lane?: string | null } | null)?.priority_lane ?? null),
     };
 
-    await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({
       organizationId: ctx.organizationId,
       action: 'update',
@@ -745,7 +745,7 @@ export async function PATCH(
         }),
       );
       after(async () => {
-        try { await invalidateCacheTags(['receiving-lines', 'receiving-logs']); } catch { /* best-effort */ }
+        try { await invalidateReceivingViews(ctx.organizationId); } catch { /* best-effort */ }
       });
       if (!zoho.ok && !zoho.skipped) {
         return NextResponse.json(

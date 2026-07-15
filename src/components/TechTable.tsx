@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useEventBridge } from '@/hooks';
 import { type TechRecord } from '@/hooks/useTechLogs';
 import { useTechTableController } from '@/hooks/station/useTechTableController';
@@ -25,6 +26,8 @@ import { techRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { formatTechCopyRow, TECH_COPY_HEADER } from '@/lib/station/format-station-copy-row';
 import { TECH_HISTORY_SELECTION_SCOPE } from '@/lib/selection/station-scopes';
 import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
+import { useStaffFilter } from '@/hooks/useStaffFilter';
+import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 
 const TECH_LANE_ICON: Record<TechLaneIconKey, React.ComponentType<{ className?: string }>> = {
   clock: Clock,
@@ -43,7 +46,15 @@ const TECH_LANES: SwimlaneLaneDef<TechHistoryLane>[] = TECH_HISTORY_BOARD_LANES.
 }));
 
 interface TechTableProps {
+  /** Signed-in tech — used when `staffScope` is `'self'` (legacy default). */
   testedBy: number;
+  /**
+   * `'self'` — always this tech (legacy TechTable callers).
+   * `'url'` — org-wide by default; `?staff=` narrows via useStaffFilter.
+   */
+  staffScope?: 'self' | 'url';
+  /** Portal column / board controls into the shipping workspace header. */
+  toolbarPortalTarget?: HTMLElement | null;
 }
 
 /** Newest-first by pack/test time (created_at). */
@@ -51,13 +62,21 @@ function byNewestCreated(a: TechRecord, b: TechRecord): number {
   return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
 }
 
-export function TechTable({ testedBy }: TechTableProps) {
+export function TechTable({
+  testedBy,
+  staffScope = 'self',
+  toolbarPortalTarget = null,
+}: TechTableProps) {
+  const { staffId: urlStaffId } = useStaffFilter();
+  const staffId =
+    staffScope === 'url' ? (urlStaffId ?? 'all') : testedBy;
+
   const {
     weekOffset, setWeekOffset, weekRange,
     groupedRecords, loading, isRefreshing,
     getRowKey, setRemovedRowKeys,
     scrollRef,
-  } = useTechTableController({ staffId: testedBy });
+  } = useTechTableController({ staffId });
 
   // Week-scoped day bands (newest day first, each day newest-first).
   const daySections = useMemo<[string, TechRecord[]][]>(
@@ -118,64 +137,78 @@ export function TechTable({ testedBy }: TechTableProps) {
     [getRowKey, openDetails],
   );
 
+  const portaledControls =
+    toolbarPortalTarget != null
+      ? createPortal(
+          <ColumnConfigButton variant="toolbar" />,
+          toolbarPortalTarget,
+        )
+      : null;
+
   // Flag-gated cutover: the unified virtualized shell (week band + ⋮ menu + density
   // + per-staff columns) once `NEXT_PUBLIC_STATION_VIRTUAL_LIST=1`; the legacy
   // `StationWeekTable` stays the default until bake-in. Same rows either way.
   if (STATION_VIRTUAL_LIST) {
     return (
-      <StationHistoryTable<TechRecord>
+      <>
+        {portaledControls}
+        <StationHistoryTable<TechRecord>
+          loading={loading}
+          isRefreshing={isRefreshing}
+          weekRange={weekRange}
+          weekOffset={weekOffset}
+          onPrevWeek={() => setWeekOffset(weekOffset + 1)}
+          onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+          onResetWeek={() => setWeekOffset(0)}
+          daySections={daySections}
+          renderRow={renderRow}
+          getRowKey={(record) => getRowKey(record)}
+          tableId="tech"
+          virtualized
+          savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
+          savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
+          emptyMessage="No tech records found"
+          firstRunEmpty={<ContextualEmptyState state="no-work" />}
+          pipeline={{
+            records: orderedRecords,
+            lanes: TECH_LANES,
+            bucket: techBucket,
+            prefsKey: 'techHistoryBoard',
+            toDaySections: toLaneDaySections,
+            getRowDate: (r) => r.created_at,
+          }}
+          selection={{
+            scope: TECH_HISTORY_SELECTION_SCOPE,
+            queueMode: 'tech',
+            toQueueRow: techRecordToQueueRow,
+            getRecordId: (r) => r.id,
+            onOpen: openDetails,
+            formatCopyRow: formatTechCopyRow,
+            copyHeader: TECH_COPY_HEADER,
+            deepLinkParam: 'techLogId',
+          }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {portaledControls}
+      <StationWeekTable
         loading={loading}
         isRefreshing={isRefreshing}
         weekRange={weekRange}
         weekOffset={weekOffset}
         onPrevWeek={() => setWeekOffset(weekOffset + 1)}
         onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-        onResetWeek={() => setWeekOffset(0)}
         daySections={daySections}
-        renderRow={renderRow}
-        getRowKey={(record) => getRowKey(record)}
-        tableId="tech"
-        virtualized
-        savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
-        savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
         emptyMessage="No tech records found"
         firstRunEmpty={<ContextualEmptyState state="no-work" />}
-        pipeline={{
-          records: orderedRecords,
-          lanes: TECH_LANES,
-          bucket: techBucket,
-          prefsKey: 'techHistoryBoard',
-          toDaySections: toLaneDaySections,
-          getRowDate: (r) => r.created_at,
-        }}
-        selection={{
-          scope: TECH_HISTORY_SELECTION_SCOPE,
-          queueMode: 'tech',
-          toQueueRow: techRecordToQueueRow,
-          getRecordId: (r) => r.id,
-          onOpen: openDetails,
-          formatCopyRow: formatTechCopyRow,
-          copyHeader: TECH_COPY_HEADER,
-          deepLinkParam: 'techLogId',
-        }}
+        scrollRef={scrollRef}
+        renderRow={renderRow}
+        tableId="tech"
       />
-    );
-  }
-
-  return (
-    <StationWeekTable
-      loading={loading}
-      isRefreshing={isRefreshing}
-      weekRange={weekRange}
-      weekOffset={weekOffset}
-      onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-      onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-      daySections={daySections}
-      emptyMessage="No tech records found"
-      firstRunEmpty={<ContextualEmptyState state="no-work" />}
-      scrollRef={scrollRef}
-      renderRow={renderRow}
-      tableId="tech"
-    />
+    </>
   );
 }

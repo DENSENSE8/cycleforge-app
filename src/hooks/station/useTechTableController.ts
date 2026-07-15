@@ -53,7 +53,7 @@ export interface GroupedRecords {
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 interface UseTechTableControllerOptions {
-  staffId: number;
+  staffId: number | 'all';
 }
 
 export function useTechTableController({ staffId }: UseTechTableControllerOptions) {

@@ -17,7 +17,7 @@ import { after } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { ingestPurchase } from '@/lib/inbound/ingest-purchase';
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
@@ -103,7 +103,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
   after(async () => {
     try {
-      await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+      await invalidateReceivingViews(ctx.organizationId);
     } catch (e) {
       console.warn('[inbound/import-ebay] cache invalidation failed', e);
     }

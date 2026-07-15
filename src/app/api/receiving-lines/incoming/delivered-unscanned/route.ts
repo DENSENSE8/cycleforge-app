@@ -28,11 +28,22 @@ import {
   DELIVERED_UNSCANNED_WINDOW_DAYS as WINDOW_DAYS,
   DELIVERED_UNSCANNED_CAP as CAP,
 } from '@/lib/receiving/delivered-unscanned';
+import { getOrSet } from '@/lib/cache/upstash-cache';
+import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   try {
+    // 60s-polled Incoming "delivered · not scanned" lane. Cached org-scoped;
+    // every receiving write busts receiving-lines (org-scoped).
+    const payload = await getOrSet(
+      CACHE_NS.receivingIncomingLanes,
+      ctx.organizationId,
+      'delivered-unscanned',
+      CACHE_TTL.rollup,
+      [CACHE_TAGS.receivingLines],
+      async () => {
     // Phase 3: when the unified inbound model is on, a delivered shipment
     // resolves its PO + line-level SKU/order# DIRECTLY through
     // receiving_line.shipment_id, instead of only via a linked receiving_carton row
@@ -158,7 +169,11 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       .sort((a, b) => (b.delivered_at ?? '').localeCompare(a.delivered_at ?? ''))
       .slice(0, CAP);
 
-    return NextResponse.json({ success: true, count: items.length, window_days: WINDOW_DAYS, items });
+        return { count: items.length, window_days: WINDOW_DAYS, items };
+      },
+    );
+
+    return NextResponse.json({ success: true, ...payload });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load delivered-unscanned';
     console.error('incoming/delivered-unscanned failed:', error);

@@ -2,7 +2,7 @@ import { NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { formatPSTTimestamp } from '@/utils/date';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged, publishReturnPendingTest, publishOrderReadyShip } from '@/lib/realtime/publish';
 import {
   assertPurchaseOrderLineItemsEditable,
@@ -1001,7 +1001,7 @@ export const POST = withAuth(async (request, ctx) => {
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-logs', 'receiving-lines', 'serial-units']);
+        await invalidateReceivingViews(ctx.organizationId, ['serial-units']);
         await publishReceivingLogChanged({
           organizationId: ctx.organizationId,
           action: 'update',

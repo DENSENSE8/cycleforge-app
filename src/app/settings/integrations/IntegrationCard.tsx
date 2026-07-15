@@ -3,13 +3,10 @@
 /**
  * Per-provider integration card. Renders a monogram badge, status pill, the
  * connected accounts, and an action set driven by the provider's `connect`
- * method (registry.ts):
- *   - amazon : region/OAuth/paste sheet + health + per-account disconnect
- *   - ebay   : OAuth connect (account label) + per-account token refresh
- *   - oauth  : single OAuth redirect (+ health) + vault disconnect
- *   - vault  : paste-JSON credential entry + disconnect
+ * method (registry.ts).
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives/Button';
@@ -17,9 +14,14 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { RefreshCw, Trash2, ExternalLink, Link2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasTypedCredentialForm } from '@/lib/integrations/credential-form-defs';
+import { parseHealthResult } from './integration-health';
 import type { ProviderDef, ProviderState, AccountSummary } from './registry';
 import { monogram, managePermission } from './registry';
 import { AmazonConnectModal } from './AmazonConnectModal';
+import { VaultConnectSheet } from './VaultConnectSheet';
+import { EbayConnectPopover, EbayAccountNameChip } from './EbayAccountPopover';
+import { IntegrationConnectSuccess } from './IntegrationConnectSuccess';
 
 const PILL: Record<ProviderState['status'], { dot: string; text: string; bg: string; label: string }> = {
   connected: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Connected' },
@@ -35,17 +37,32 @@ const ACCOUNT_DOT: Record<AccountSummary['status'], string> = {
   unknown: 'bg-surface-strong',
 };
 
-export function IntegrationCard({ def, state, nangoReady, canSync }: { def: ProviderDef; state: ProviderState; nangoReady?: boolean; canSync?: boolean }) {
+export function IntegrationCard({
+  def,
+  state,
+  nangoReady,
+  canSync,
+  capabilities = [],
+}: {
+  def: ProviderDef;
+  state: ProviderState;
+  nangoReady?: boolean;
+  canSync?: boolean;
+  capabilities?: string[];
+}) {
   const [busy, setBusy] = useState(false);
   const [vaultOpen, setVaultOpen] = useState(false);
   const [amazonOpen, setAmazonOpen] = useState(false);
-  const [payload, setPayload] = useState('{}');
-  const [formError, setFormError] = useState<string | null>(null);
+  const [ebayOpen, setEbayOpen] = useState<'seller' | 'buyer' | null>(null);
+  const [connectSuccess, setConnectSuccess] = useState<string | null>(null);
+  const sellerConnectRef = useRef<HTMLButtonElement>(null);
+  const buyerConnectRef = useRef<HTMLButtonElement>(null);
 
   const auth = useAuth();
   const canManage = auth.isLoaded ? auth.has(managePermission(def)) : false;
   const pill = PILL[state.status];
   const connected = state.status !== 'not_connected';
+  const detailHref = `/settings/integrations/${def.key}`;
 
   const runHealth = useCallback(async () => {
     if (!def.healthPath) return;
@@ -53,21 +70,16 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
     try {
       const res = await fetch(def.healthPath);
       const data = await res.json().catch(() => ({}));
-      const ok = res.ok && (data.ok ?? data.success);
-      if (ok) {
-        toast.success(`${def.label} connection healthy.`);
-      } else {
-        const detail = data.error || data.accounts?.find?.((a: { ok?: boolean; error?: string }) => !a.ok)?.error || 'health check failed';
-        toast.error(`${def.label}: ${detail}`);
-      }
+      const result = parseHealthResult(data, def.label);
+      if (result.ok) toast.success(result.message);
+      else toast.error(result.message);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'health check failed');
+      toast.error(err instanceof Error ? err.message : 'Health check failed');
     } finally {
       setBusy(false);
     }
   }, [def]);
 
-  // Connection-driven "Sync now" — runs the connector's sync() server-side.
   const runSync = useCallback(async () => {
     setBusy(true);
     try {
@@ -88,30 +100,6 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
       setBusy(false);
     }
   }, [def]);
-
-  const vaultSave = useCallback(async () => {
-    setBusy(true);
-    setFormError(null);
-    try {
-      const parsed = JSON.parse(payload);
-      const res = await fetch('/api/admin/integrations/upsert', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ provider: def.key, payload: parsed }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setFormError(data.error || `HTTP ${res.status}`);
-        return;
-      }
-      toast.success(`${def.label} credentials saved.`);
-      window.location.reload();
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'invalid JSON');
-    } finally {
-      setBusy(false);
-    }
-  }, [def, payload]);
 
   const vaultDisconnect = useCallback(async () => {
     if (!confirm(`Disconnect ${def.label}? Sync jobs will fail until reconnected.`)) return;
@@ -138,7 +126,6 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
     if (def.oauthStartPath) window.location.href = def.oauthStartPath;
   }, [def]);
 
-  // Hosted Nango Connect UI (OAuth dance) — mirrors src/components/admin/IntegrationCard.
   const connectViaNango = useCallback(async () => {
     setBusy(true);
     try {
@@ -188,24 +175,6 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
       setBusy(false);
     }
   }, [def]);
-
-  // role='seller' is the existing outbound path; role='buyer' connects a
-  // PURCHASING account whose orders flow into Universal Incoming.
-  const ebayConnect = useCallback((role: 'seller' | 'buyer' = 'seller') => {
-    const peers = state.accounts.filter((a) => (a.role ?? 'seller') === role);
-    const prefix = role === 'buyer' ? 'ebay-buyer' : 'ebay';
-    const suggested = peers.length === 0 ? `${prefix}-main` : `${prefix}-${peers.length + 1}`;
-    const kind = role === 'buyer' ? 'purchasing' : 'selling';
-    const acct = window.prompt(`eBay ${kind} account label (e.g. ${suggested}):`, suggested);
-    const label = acct?.trim();
-    if (!label) return;
-    if (state.accounts.some((a) => a.label.toLowerCase() === label.toLowerCase())) {
-      toast.error(`An eBay account labeled "${label}" already exists — pick a different label, or reconnect it from its row.`);
-      return;
-    }
-    const roleParam = role === 'buyer' ? '&role=buyer' : '';
-    window.location.href = `${def.oauthStartPath}?accountName=${encodeURIComponent(label)}${roleParam}`;
-  }, [def, state.accounts]);
 
   const ebayDisconnect = useCallback(async (id: number, label: string) => {
     if (!confirm(`Disconnect eBay account "${label}"? Its stored tokens will be removed.`)) return;
@@ -259,19 +228,19 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
     }
   }, []);
 
-  const connectLabel = connected ? 'Reconnect' : 'Connect';
+  const openVaultConnect = useCallback(() => setVaultOpen(true), []);
 
   return (
-    // id anchors deep links like /settings/integrations#gmail (PO mailbox tab).
     <div id={def.key} className="flex h-full scroll-mt-6 flex-col rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm shadow-gray-900/[0.02]">
-      {/* Header */}
       <div className="flex items-start gap-3">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-role-body font-black ${def.badge}`}>
           {monogram(def.label)}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-role-body font-semibold text-text-default">{def.label}</span>
+            <Link href={detailHref} className="truncate text-role-body font-semibold text-text-default hover:text-blue-600">
+              {def.label}
+            </Link>
             {def.docsUrl && (
               <HoverTooltip label="Provider docs" asChild>
                 <a href={def.docsUrl} target="_blank" rel="noreferrer" aria-label="Provider docs" className="text-text-faint hover:text-text-soft">
@@ -281,6 +250,15 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
             )}
           </div>
           <p className="mt-0.5 text-role-caption leading-snug text-text-soft">{def.description}</p>
+          {capabilities.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {capabilities.map((cap) => (
+                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                  {cap}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full ${pill.bg} px-2 py-1 text-[10.5px] font-medium ${pill.text}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${pill.dot}`} />
@@ -288,45 +266,37 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
         </span>
       </div>
 
-      {/* Accounts */}
+      {connectSuccess && (
+        <div className="mt-3">
+          <IntegrationConnectSuccess message={connectSuccess} confettiBurst={false} />
+        </div>
+      )}
+
       {state.accounts.length > 0 && (
         <div className="mt-3 space-y-1.5 rounded-xl bg-surface-canvas/70 p-2">
           {state.accounts.map((acct, i) => (
             <div key={acct.id ?? `${acct.label}-${i}`} className="flex items-center gap-2">
               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${ACCOUNT_DOT[acct.status]}`} />
-              <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
+              {def.connect === 'ebay' ? (
+                <EbayAccountNameChip
+                  account={acct}
+                  canManage={canManage}
+                  busy={busy}
+                  onRefresh={() => ebayRefresh(acct.label)}
+                  onDisconnect={acct.id != null ? () => ebayDisconnect(acct.id!, acct.label) : undefined}
+                />
+              ) : (
+                <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
+              )}
               {def.connect === 'ebay' && acct.role === 'buyer' && (
                 <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
               )}
-              {acct.detail && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
+              {acct.detail && def.connect !== 'ebay' && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
               {canManage && def.connect === 'amazon' && acct.id != null && (
                 <HoverTooltip label="Disconnect account" asChild>
                   <IconButton
                     icon={<Trash2 className="h-3.5 w-3.5" />}
                     onClick={() => amazonDisconnect(acct.id!, acct.label)}
-                    disabled={busy}
-                    ariaLabel="Disconnect account"
-                    className="shrink-0 hover:text-red-600"
-                  />
-                </HoverTooltip>
-              )}
-              {canManage && def.connect === 'ebay' && (
-                <HoverTooltip label="Refresh token" asChild>
-                  <IconButton
-                    icon={<RefreshCw className={`h-3.5 w-3.5 ${busy ? 'animate-spin' : ''}`} />}
-                    onClick={() => ebayRefresh(acct.label)}
-                    disabled={busy}
-                    ariaLabel="Refresh token"
-                    tone="accent"
-                    className="shrink-0"
-                  />
-                </HoverTooltip>
-              )}
-              {canManage && def.connect === 'ebay' && acct.id != null && (
-                <HoverTooltip label="Disconnect account" asChild>
-                  <IconButton
-                    icon={<Trash2 className="h-3.5 w-3.5" />}
-                    onClick={() => ebayDisconnect(acct.id!, acct.label)}
                     disabled={busy}
                     ariaLabel="Disconnect account"
                     className="shrink-0 hover:text-red-600"
@@ -350,39 +320,43 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
         </div>
       )}
 
-      {/* Actions — pinned to the bottom so buttons align across cards in a row */}
       <div className="mt-auto flex items-center gap-2 border-t border-border-hairline pt-3">
         {!canManage ? (
           <span className="text-[11.5px] text-text-faint">Read-only — requires elevated access</span>
         ) : (
           <>
-            {def.connect === 'amazon' && (
-              <Button variant="primary" size="sm" icon={<Link2 />} onClick={() => setAmazonOpen(true)}>{connectLabel}</Button>
-            )}
-            {def.connect === 'ebay' && (
+            {connected ? (
+              <Link
+                href={detailHref}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-medium text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500"
+              >
+                Manage
+              </Link>
+            ) : (
               <>
-                <Button variant="primary" size="sm" icon={<Link2 />} onClick={() => ebayConnect('seller')}>{connected ? 'Add selling account' : 'Connect'}</Button>
-                <Button variant="secondary" size="sm" icon={<Link2 />} onClick={() => ebayConnect('buyer')}>Add purchasing account</Button>
+                {def.connect === 'amazon' && (
+                  <Button variant="primary" size="sm" icon={<Link2 />} onClick={() => setAmazonOpen(true)}>Connect</Button>
+                )}
+                {def.connect === 'ebay' && (
+                  <>
+                    <Button ref={sellerConnectRef} variant="primary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('seller')}>Connect</Button>
+                    <Button ref={buyerConnectRef} variant="secondary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('buyer')}>Add purchasing</Button>
+                  </>
+                )}
+                {def.connect === 'oauth' && (
+                  <Button variant="primary" size="sm" icon={<Link2 />} onClick={oauthConnect}>Connect</Button>
+                )}
+                {def.connect === 'vault' && hasTypedCredentialForm(def.key) && (
+                  <Button variant="primary" size="sm" onClick={openVaultConnect}>Connect</Button>
+                )}
+                {def.connect === 'nango' && (
+                  nangoReady ? (
+                    <Button variant="primary" size="sm" icon={<Link2 />} loading={busy} onClick={connectViaNango}>Connect</Button>
+                  ) : (
+                    <Button variant="primary" size="sm" onClick={openVaultConnect}>Connect</Button>
+                  )
+                )}
               </>
-            )}
-            {def.connect === 'oauth' && (
-              <Button variant="primary" size="sm" icon={<Link2 />} onClick={oauthConnect}>{connectLabel}</Button>
-            )}
-            {def.connect === 'vault' && (
-              <Button variant={connected ? 'secondary' : 'primary'} size="sm" onClick={() => { setPayload('{}'); setFormError(null); setVaultOpen(true); }}>
-                {connected ? 'Update credentials' : 'Connect'}
-              </Button>
-            )}
-            {def.connect === 'nango' && (
-              nangoReady ? (
-                <Button variant="primary" size="sm" icon={<Link2 />} loading={busy} onClick={connectViaNango}>
-                  {connected ? 'Reconnect with OAuth' : 'Connect with OAuth'}
-                </Button>
-              ) : (
-                <Button variant={connected ? 'secondary' : 'primary'} size="sm" onClick={() => { setPayload('{}'); setFormError(null); setVaultOpen(true); }}>
-                  {connected ? 'Update credentials' : 'Connect'}
-                </Button>
-              )
             )}
 
             {def.healthPath && (
@@ -404,30 +378,31 @@ export function IntegrationCard({ def, state, nangoReady, canSync }: { def: Prov
         )}
       </div>
 
-      {/* Amazon connect sheet */}
       {amazonOpen && <AmazonConnectModal onClose={() => setAmazonOpen(false)} />}
 
-      {/* Generic vault credential sheet */}
       {vaultOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center px-4">
-          {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
-          <button type="button" aria-label="Close" onClick={() => setVaultOpen(false)} className="absolute inset-0 bg-scrim/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-lg rounded-2xl border border-border-soft bg-surface-card p-5 shadow-2xl">
-            <h2 className="text-base font-semibold text-text-default">{def.label} credentials</h2>
-            <p className="mt-1 text-role-caption text-text-soft">Paste the provider payload JSON. Stored encrypted in the workspace vault.</p>
-            <textarea
-              className="mt-3 block h-48 w-full rounded-xl border border-border-soft bg-surface-card p-3 font-mono text-role-caption text-text-default shadow-inner focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
-              value={payload}
-              onChange={(e) => setPayload(e.target.value)}
-              spellCheck={false}
-            />
-            {formError && <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{formError}</div>}
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setVaultOpen(false)}>Cancel</Button>
-              <Button variant="primary" size="sm" loading={busy} onClick={vaultSave}>Save</Button>
-            </div>
-          </div>
-        </div>
+        <VaultConnectSheet
+          provider={def.key}
+          providerLabel={def.label}
+          onClose={() => setVaultOpen(false)}
+          isUpdate={connected}
+          onSuccess={() => {
+            setVaultOpen(false);
+            setConnectSuccess(`${def.label} credentials saved.`);
+            setTimeout(() => window.location.reload(), 1400);
+          }}
+        />
+      )}
+
+      {ebayOpen && (
+        <EbayConnectPopover
+          role={ebayOpen}
+          existingLabels={state.accounts.filter((a) => (a.role ?? 'seller') === ebayOpen).map((a) => a.label)}
+          oauthStartPath={def.oauthStartPath ?? '/api/ebay/connect'}
+          open={ebayOpen != null}
+          onClose={() => setEbayOpen(null)}
+          anchorRef={ebayOpen === 'buyer' ? buyerConnectRef : sellerConnectRef}
+        />
       )}
     </div>
   );

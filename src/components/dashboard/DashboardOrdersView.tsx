@@ -13,12 +13,13 @@ import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
 import { OutboundKpiStrip } from '@/components/dashboard/OutboundKpiStrip';
 import { OutboundWorkspaceHeader } from '@/components/dashboard/OutboundWorkspaceHeader';
+import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 import type { DashSelectableRow } from '@/hooks/useDashboardBulkSelection';
-import { useOutboundMyWorkDefault } from '@/hooks/useOutboundMyWorkDefault';
+import { cn } from '@/utils/_cn';
 
 // Phase 4 (bundle deferral): non-default order views are code-split so their
 // chunks load only when the user switches tabs — the default To Ship view
@@ -60,42 +61,42 @@ export function DashboardOrdersView({
   const showOutboundChrome =
     orderView === 'unshipped' || orderView === 'packed' || orderView === 'shipped';
   const [outboundControlsEl, setOutboundControlsEl] = useState<HTMLDivElement | null>(null);
-  // Sticky My work default: inject ?staff=<me> on clean outbound URLs.
-  useOutboundMyWorkDefault(showOutboundChrome);
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+    <DashboardScrollShell>
       {/* One content column for the whole outbound surface — KPI strip, header
           bar, and list share the same max-width + horizontal gutter. */}
       <div
         className={
           showOutboundChrome
-            ? 'relative mx-auto flex min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col overflow-hidden px-4 pb-8 pt-5 sm:px-6 lg:px-8'
-            : 'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'
+            ? 'relative mx-auto flex w-full max-w-[1440px] min-w-0 flex-col px-4 pb-8 pt-5 sm:px-6 lg:px-8'
+            : 'relative flex min-w-0 flex-col'
         }
       >
         {showOutboundChrome ? (
-          <div className="mb-4 shrink-0">
+          <div
+            className={cn(
+              'sticky top-0 z-header -mx-4 mb-4 bg-surface-canvas/95 px-4 pb-1 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
+            )}
+          >
             <OutboundKpiStrip
               mode={orderView === 'packed' ? 'shipped' : (orderView as 'unshipped' | 'shipped')}
             />
           </div>
         ) : null}
 
-        {/* `relative z-header` lifts the header above the later-in-DOM table so the
-            table's sticky group headers slide UNDER it instead of bleeding over the
-            seam; `mb-3` keeps a clear, intentional gap to the table top. */}
+        {/* Sticky below KPI — table date headers slide under this seam. */}
         {showOutboundChrome ? (
           <OutboundWorkspaceHeader
             orderView={orderView}
             onSelectView={onSelectView}
             controlsSlotRef={setOutboundControlsEl}
-            className="relative z-header mb-3"
+            className="sticky top-[var(--dashboard-kpi-height,72px)] z-header mb-3 bg-surface-canvas/95 backdrop-blur-sm"
           />
         ) : null}
 
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <Suspense fallback={<div className="flex-1 bg-surface-canvas" aria-hidden />}>
+        <div className="relative flex min-w-0 flex-col">
+          <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
             {orderView === 'shipped' ? (
               <DashboardShippedTable
                 selectMode={selectMode}
@@ -122,15 +123,14 @@ export function DashboardOrdersView({
         </div>
       </div>
 
-      {/* Bulk-action capsule — pins to the bottom of the orders region when rows
-          are checked in the To Ship / Packed / Shipped lists. */}
       {selectionEnabled ? (
         <ContextualSelectionBar
           scope={DASHBOARD_ORDERS_SELECTION_SCOPE}
           rows={selectedRows}
           actions={selectionActions}
+          pinToViewport
         />
       ) : null}
-    </div>
+    </DashboardScrollShell>
   );
 }

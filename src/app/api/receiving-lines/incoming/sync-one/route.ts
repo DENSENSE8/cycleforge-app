@@ -23,7 +23,7 @@ import { errorResponse } from '@/lib/api';
 import { syncOnePoMirror } from '@/lib/zoho/po-mirror-sync';
 import { syncShipment } from '@/lib/shipping/sync-shipment';
 import { syncOneInboundPurchase } from '@/lib/inbound/sync-one-inbound';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -54,7 +54,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         return NextResponse.json({ success: false, ...inbound }, { status: 400 });
       }
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+        await invalidateReceivingViews(ctx.organizationId);
       } catch (err) {
         console.warn('incoming/sync-one: cache invalidate failed (non-fatal)', err);
       }
@@ -104,7 +104,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     // Re-read the rail + tiles + open panel on the next refetch.
     try {
-      await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+      await invalidateReceivingViews(ctx.organizationId);
     } catch (err) {
       console.warn('incoming/sync-one: cache invalidate failed (non-fatal)', err);
     }

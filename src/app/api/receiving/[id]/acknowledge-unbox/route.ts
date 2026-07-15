@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
 
@@ -31,7 +31,7 @@ export const POST = withAuth(
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+        await invalidateReceivingViews(ctx.organizationId);
         await publishReceivingLogChanged({
           organizationId: ctx.organizationId,
           action: 'update',

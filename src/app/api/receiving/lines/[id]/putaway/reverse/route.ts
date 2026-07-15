@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -112,7 +112,7 @@ export async function POST(
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-lines', 'sku-stock', 'serial-units']);
+        await invalidateReceivingViews(orgId, ['sku-stock', 'serial-units']);
       } catch (err) {
         console.warn('receiving/lines/putaway/reverse: cache invalidate failed', err);
       }

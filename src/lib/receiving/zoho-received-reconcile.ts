@@ -24,7 +24,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 
 /** Zoho statuses that mean "the vendor side considers this PO received". */
 export const ZOHO_RECEIVED_LIKE_STATUSES = ['received', 'billed', 'closed'] as const;
@@ -200,7 +200,7 @@ export async function reconcileZohoReceivedLines(
   );
 
   try {
-    await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+    await invalidateReceivingViews(orgId);
   } catch (err) {
     console.warn('zoho-received-reconcile: cache invalidate failed (non-fatal)', err);
   }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import {
   recordInventoryEvent,
   type InventoryEventStation,
@@ -215,7 +215,7 @@ export async function POST(
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-lines', 'sku-stock', 'serial-units']);
+        await invalidateReceivingViews(orgId, ['sku-stock', 'serial-units']);
       } catch (err) {
         console.warn('receiving/lines/move: cache invalidation failed', err);
       }

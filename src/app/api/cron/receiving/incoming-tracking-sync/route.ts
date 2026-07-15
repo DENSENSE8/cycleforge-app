@@ -24,7 +24,7 @@ import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { selectIncomingShipmentIds } from '@/lib/receiving/incoming-shipments';
 import { syncShipmentsByIds } from '@/lib/shipping/scheduler';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
         if (result.terminal > 0 || result.synced > 0) {
           try {
-            await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+            await invalidateReceivingViews(null);
           } catch {
             /* non-fatal */
           }

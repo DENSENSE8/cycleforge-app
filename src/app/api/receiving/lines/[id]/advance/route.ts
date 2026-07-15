@@ -15,7 +15,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { recordReceivingException } from '@/lib/receiving/exceptions';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import type { InventoryEventStation } from '@/lib/inventory/events';
 
@@ -114,7 +114,7 @@ export async function POST(
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+        await invalidateReceivingViews(orgId);
         if (result.receivingId != null) {
           await publishReceivingLogChanged({
             organizationId: orgId,

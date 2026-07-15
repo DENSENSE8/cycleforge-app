@@ -167,9 +167,7 @@ export function OrdersQueueTable({
   dateHeaderEndSlot,
   stickyTopClass = 'top-0',
   listShell = 'default',
-  // `scrollParentRef` is still accepted (SwimlaneBoard lane-body contract) but no
-  // longer consumed: stacked lanes render all rows instead of windowing against the
-  // shared ancestor scroll (see the render branch below), so nothing to wire here.
+  scrollParentRef,
 }: OrdersQueueTableProps) {
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
@@ -185,14 +183,19 @@ export function OrdersQueueTable({
   // `monitor`: table owns the scrollport (like the default shell / To Ship) so
   // sticky DateGroupHeaders dock correctly inside the monitor card.
   const monitorShell = listShell === 'monitor';
+  const pageScroll = Boolean(scrollParentRef && growToContent);
   const rootClass = monitorShell
-    ? 'relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col'
-    : autoHeight
+    ? pageScroll
+      ? 'relative flex min-w-0 w-full flex-col'
+      : 'relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col'
+    : autoHeight || pageScroll
       ? 'flex min-w-0 w-full bg-surface-card relative'
       : 'flex h-full min-w-0 flex-1 bg-surface-card relative';
   const columnClass = monitorShell
-    ? 'flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden'
-    : autoHeight
+    ? pageScroll
+      ? 'flex min-w-0 w-full flex-col'
+      : 'flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden'
+    : autoHeight || pageScroll
       ? 'flex flex-col w-full min-w-0'
       : 'flex-1 flex flex-col overflow-hidden';
   const xScroll = noHorizontalScroll ? 'overflow-x-hidden' : 'overflow-x-auto';
@@ -200,15 +203,16 @@ export function OrdersQueueTable({
   // grows to content and an ancestor scroll region owns the wheel. Otherwise the
   // body scrolls internally, capped by the px (drag) or class (preset) height.
   const bodyScrollClass = monitorShell
-    ? `min-h-0 flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`
+    ? pageScroll
+      ? `${xScroll} overflow-x-clip w-full`
+      : `min-h-0 flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`
     : autoHeight
       ? growToContent
-        // `overflow-x-clip` (NOT hidden): clips horizontally without becoming a
-        // scroll container, so it doesn't trap the sticky DateGroupHeader — the
-        // header promotes to the board's scroll region and docks at the top.
         ? 'overflow-x-clip w-full'
         : `${xScroll} overflow-y-auto no-scrollbar w-full ${maxBodyHeightPx == null ? maxBodyHeightClass ?? '' : ''}`
-      : `flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`;
+      : pageScroll
+        ? 'overflow-x-clip w-full'
+        : `flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`;
   const listBodyClass = monitorShell ? 'flex w-full flex-col px-2 pb-6' : 'flex w-full flex-col';
   const bodyScrollStyle =
     autoHeight && !growToContent && maxBodyHeightPx != null ? { maxHeight: maxBodyHeightPx } : undefined;
@@ -415,15 +419,17 @@ export function OrdersQueueTable({
                   </div>
                 </div>
               ) : null}
-              {virtualized && !growToContent ? (
+              {virtualized && growToContent && scrollParentRef ? (
+                <VirtualQueueSections
+                  orderGroupsByDate={orderGroupsByDate}
+                  scrollParentRef={scrollParentRef}
+                  useAncestorScroll
+                  isMobile={isMobile}
+                  renderRow={renderRow}
+                />
+              ) : virtualized && !growToContent ? (
                 // Self-scrolling body (dense table + grid lanes): window against the
-                // internal `scrollRef`. Stacked (growToContent) lanes deliberately fall
-                // through to the all-rows path below — the ancestor-scroll virtualizer
-                // mis-measures on first mount (rows only appear after a column toggle),
-                // and the queue is already bounded (rowLimit 200, split across lanes),
-                // so rendering all rows keeps the wheel on the board's shared scroll
-                // region with no first-paint race. This is the "windowing degrades to
-                // all-rows in 1-up lanes" behavior the `virtualized` prop doc promises.
+                // internal `scrollRef`.
                 <VirtualQueueSections
                   orderGroupsByDate={orderGroupsByDate}
                   scrollParentRef={scrollRef}

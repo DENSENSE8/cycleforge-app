@@ -19,7 +19,8 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { syncShipmentsByIdsStreaming } from '@/lib/shipping/scheduler';
 import { NOT_ZOHO_RECEIVED_PREDICATE } from '@/lib/receiving/delivered-unscanned';
-import { getCachedJson, setCachedJson, invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { createNdjsonStream, ndjsonResponseHeaders } from '@/lib/orders-sync/streaming';
 import type { CarrierSyncResult, CarrierSyncStreamEvent } from '@/lib/carrier-sync/types';
 import type { CarrierCode, NormalizedShipmentStatus } from '@/lib/shipping/types';
@@ -177,7 +178,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // refetch reflects freshly-delivered packages.
       if (result.terminal > 0 || result.synced > 0) {
         try {
-          await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+          await invalidateReceivingViews(ctx.organizationId);
         } catch { /* non-fatal */ }
       }
 

@@ -57,11 +57,6 @@ export function PoMailboxTab() {
     }
   }, [search, router]);
 
-  const handleConnect = () => {
-    // Server route issues a 302 to Google; full-page nav keeps the OAuth state cookie usable.
-    window.location.href = '/api/admin/po-gmail/connect';
-  };
-
   const handleDisconnect = async () => {
     if (!confirm('Disconnect the PO mailbox? You will need to re-authorize to scan emails.')) return;
     setDisconnecting(true);
@@ -137,9 +132,13 @@ export function PoMailboxTab() {
               )}
 
               <div className="flex flex-wrap gap-2 pt-2">
-                <Button variant="secondary" icon={<RefreshCw />} onClick={handleConnect}>
-                  Reconnect
-                </Button>
+                <Link
+                  href="/settings/integrations/gmail"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-surface-card px-3.5 text-role-data font-medium text-text-default ring-1 ring-border-soft hover:bg-surface-canvas"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Manage in Settings
+                </Link>
                 <Button
                   variant="secondary"
                   icon={<X />}
@@ -156,14 +155,12 @@ export function PoMailboxTab() {
             <>
               <StatusRow ok={false} label="Not connected" detail="No email inbox has been authorized yet." />
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="primary" icon={<Mail />} onClick={handleConnect}>
-                  Connect email inbox
-                </Button>
                 <Link
-                  href="/settings/integrations#gmail"
-                  className="text-role-caption font-medium text-blue-600 hover:underline"
+                  href="/settings/integrations/gmail"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-role-data font-medium text-white shadow-sm hover:bg-blue-500"
                 >
-                  or connect from Settings → Integrations
+                  <Mail className="h-4 w-4" />
+                  Connect in Settings
                 </Link>
               </div>
               <p className="text-role-caption text-text-soft">

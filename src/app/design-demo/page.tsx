@@ -80,7 +80,7 @@ export default function DesignShowcasePage() {
   const [defaultTab, setDefaultTab] = useState('unshipped');
 
   const LIFECYCLE_TABS = [
-    { id: 'unshipped', label: 'To Ship', count: 83, color: 'blue' as const },
+    { id: 'unshipped', label: 'Pending', count: 83, color: 'blue' as const },
     { id: 'packed', label: 'Packed', color: 'orange' as const },
     { id: 'shipped', label: 'Shipped', color: 'emerald' as const },
   ];

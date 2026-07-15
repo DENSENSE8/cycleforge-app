@@ -44,7 +44,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
@@ -370,7 +370,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }, { status: 404 });
     }
 
-    await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(receivingId), source: 'receiving.match' });
 
     return NextResponse.json({

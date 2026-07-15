@@ -28,6 +28,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { getOrSet } from '@/lib/cache/upstash-cache';
+import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 import {
   getDeliveredUnscannedCount,
   getDeliveredUnscannedByCarrier,
@@ -44,6 +46,15 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;
+    // 30s-polled Incoming stat tiles (IncomingSidebarPanel). Cache the composed
+    // aggregate org-scoped; every receiving write busts receiving-lines.
+    const payload = await getOrSet(
+      CACHE_NS.receivingIncomingSummary,
+      orgId,
+      'summary',
+      CACHE_TTL.rollup,
+      [CACHE_TAGS.receivingLines],
+      async () => {
     const r = await tenantQuery<{
       issued: number;
       delivered_unopened: number;
@@ -304,14 +315,17 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
       ebay_pending = er.rows[0]?.ebay_pending ?? 0;
     }
 
-    return NextResponse.json({
-      success: true,
+    return {
       ...row,
       delivered_not_unboxed,
       delivered_email: deliveredEmail,
       ebay_pending,
       by_carrier,
-    });
+    };
+      },
+    );
+
+    return NextResponse.json({ success: true, ...payload });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to compute summary';
     console.error('receiving-lines/incoming/summary failed:', error);

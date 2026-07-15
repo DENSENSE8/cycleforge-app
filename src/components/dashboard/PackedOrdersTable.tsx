@@ -23,10 +23,10 @@ import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclo
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { createPortal } from 'react-dom';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
-import { cn } from '@/utils/_cn';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
 import { PACKED_SAVED_VIEWS_KEY, PACKED_VIEW_PARAMS } from '@/components/unshipped/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/types/orders';
 
@@ -48,6 +48,8 @@ export function PackedOrdersTable({
   const searchQuery = String(searchParams.get('search') || '').trim();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const dashboardScrollRef = useDashboardScrollParentOptional();
+  const pageScroll = Boolean(dashboardScrollRef);
 
   const query = useQuery({
     ...packedOrdersQuery({ searchQuery, staffId }),
@@ -133,19 +135,14 @@ export function PackedOrdersTable({
   return (
     <TableColumnConfigProvider tableId="orders">
       <TableDensityProvider tableId="orders" urlSync={false}>
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+        <div className={pageScroll ? 'flex flex-col bg-surface-canvas' : 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas'}>
           {toolbarPortalTarget ? createPortal(toolbar, toolbarPortalTarget) : (
             <div className="flex h-[40px] shrink-0 items-center justify-end gap-2 border-b border-border-default px-3">
               {toolbar}
             </div>
           )}
-          <div
-            className={cn(
-              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-              toolbarPortalTarget ? 'py-1' : 'p-4',
-            )}
-          >
-            <div className={cn(MONITOR_SECTION_CARD_SCROLL_CLASS, 'flex min-h-0 min-w-0 flex-1 flex-col')}>
+          <div className={pageScroll ? (toolbarPortalTarget ? 'py-1' : 'p-4') : `flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${toolbarPortalTarget ? 'py-1' : 'p-4'}`}>
+            <div className={pageScroll ? MONITOR_SECTION_CARD_SCROLL_CLASS : `${MONITOR_SECTION_CARD_SCROLL_CLASS} flex min-h-0 min-w-0 flex-1 flex-col`}>
               <OrdersQueueTable
                 records={records as ShippedOrder[]}
                 loading={query.isLoading}
@@ -173,6 +170,9 @@ export function PackedOrdersTable({
                 inheritColumnConfig
                 listShell="monitor"
                 noHorizontalScroll
+                growToContent={pageScroll}
+                scrollParentRef={dashboardScrollRef ?? undefined}
+                virtualized={pageScroll}
               />
             </div>
           </div>

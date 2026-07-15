@@ -1,6 +1,6 @@
 import pool from '@/lib/db';
 import { publishOrderChanged, publishShipmentChanged } from '@/lib/realtime/publish';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { tenantQuery, transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -61,7 +61,7 @@ export async function publishShipmentStatusChange(
       .filter(Number.isFinite);
     if (orderIds.length === 0) return;
 
-    await invalidateCacheTags(['orders', 'shipped', 'orders-next']);
+    await invalidateAllOrdersApiCaches(['shipped', 'orders-next'], publishOrgId);
     await publishOrderChanged({ organizationId: publishOrgId, orderIds, source });
   } catch (error) {
     console.error('[publish-on-status-change] order publish failed:', error);

@@ -7,12 +7,13 @@
  */
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { Check, AlertTriangle, X } from '@/components/Icons';
+import { AlertTriangle, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { IntegrationConnectSuccess } from './IntegrationConnectSuccess';
 
 const SUCCESS: Record<string, string> = {
   amazon_connected: 'Amazon connected.',
-  ebay_connected: 'eBay connected.',
+  ebay_connected: 'eBay account linked successfully.',
   zoho_connected: 'Zoho connected.',
   google_drive_connected: 'Google Drive connected — photo backups will start automatically.',
 };
@@ -24,7 +25,6 @@ const ERRORS: Record<string, string> = {
   amazon_oauth_state_expired: 'The Amazon connection link expired — please retry.',
   amazon_server_configuration: 'The Amazon app is not fully configured on the server.',
   amazon_callback_failed: 'Amazon connection failed — please retry.',
-  // eBay
   ebay_consent_declined: 'eBay sign-in was cancelled.',
   ebay_missing_oauth_params: 'eBay sign-in returned no authorization code — please retry.',
   ebay_invalid_oauth_state: 'The eBay connection link was invalid — please retry.',
@@ -35,7 +35,6 @@ const ERRORS: Record<string, string> = {
   ebay_callback_failed: 'eBay connection failed — please retry.',
   missing_oauth_params: 'Sign-in returned no authorization code — please retry.',
   token_exchange_failed: 'Token exchange with the provider failed — please retry.',
-  // Google Drive
   google_drive_missing_oauth_params: 'Google sign-in returned no authorization code — please retry.',
   google_drive_invalid_oauth_state: 'The Google Drive connection link was invalid — please retry.',
   google_drive_incomplete_oauth_state: 'The Google Drive connection link was incomplete — please retry.',
@@ -63,16 +62,25 @@ export function ResultBanner({ success, error }: { success?: string; error?: str
   }, [successMsg, errorMsg]);
 
   if (dismissed || (!successMsg && !errorMsg)) return null;
-  const ok = !!successMsg;
+
+  if (successMsg) {
+    return (
+      <div className="relative">
+        <IntegrationConnectSuccess message={successMsg} />
+        <IconButton
+          icon={<X className="h-3.5 w-3.5" />}
+          ariaLabel="Dismiss"
+          onClick={() => setDismissed(true)}
+          className="absolute right-2 top-2 shrink-0 text-emerald-700/60 hover:text-emerald-900"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`flex items-start gap-2 rounded-xl border px-3 py-2 ${
-        ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'
-      }`}
-    >
-      {ok ? <Check className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
-      <span className="flex-1 text-[12.5px] font-medium">{successMsg ?? errorMsg}</span>
+    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span className="flex-1 text-[12.5px] font-medium">{errorMsg}</span>
       <IconButton
         icon={<X className="h-3.5 w-3.5" />}
         ariaLabel="Dismiss"

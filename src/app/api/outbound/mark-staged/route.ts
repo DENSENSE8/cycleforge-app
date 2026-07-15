@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import {
   listDockStagingCandidateShipmentIds,
   markShipmentsDockStaged,
@@ -33,7 +33,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const shipmentIds = await listDockStagingCandidateShipmentIds(ctx.organizationId);
   const marked = await markShipmentsDockStaged(ctx.organizationId, staffId, shipmentIds);
 
-  await invalidateCacheTags(['api:orders']);
+  await invalidateAllOrdersApiCaches([], ctx.organizationId);
 
   return NextResponse.json({
     ok: true,

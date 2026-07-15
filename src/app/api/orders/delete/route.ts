@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
@@ -105,7 +105,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     // Dashboard shipped table is backed by /api/packerlogs cache ("packing-logs"),
     // not only /api/shipped, so delete must invalidate both domains.
-    await invalidateCacheTags(['orders', 'shipped', 'packing-logs']);
+    await invalidateAllOrdersApiCaches(['shipped', 'packing-logs'], ctx.organizationId);
     await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: txOutcome.idsToDelete, source: 'orders.delete' });
     // A deleted order leaves its packed scans pointing at a stale match — refresh
     // the shipped-table read model so they fall back correctly (best-effort). The

@@ -7,7 +7,7 @@ import {
 } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { resolveTrackingException } from '@/lib/tracking-exceptions';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
@@ -217,13 +217,7 @@ export async function POST(
 
   after(async () => {
     try {
-      await invalidateCacheTags([
-        'receiving-logs',
-        'receiving-lines',
-        'pending-unboxing',
-        'tracking-exceptions',
-        'sku-catalog',
-      ]);
+      await invalidateReceivingViews(orgId, ['tracking-exceptions', 'sku-catalog']);
       if (promotedReceivingId) {
         await publishReceivingLogChanged({
           organizationId: orgId,

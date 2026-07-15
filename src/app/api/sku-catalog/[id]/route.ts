@@ -12,6 +12,8 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { tenantQuery } from '@/lib/tenancy/db';
 import pool from '@/lib/db';
 import { upsertSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
+import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { CACHE_TAGS } from '@/lib/cache/tags';
 
 /**
  * GET /api/sku-catalog/[id] — Full detail for a single SKU catalog entry.
@@ -111,6 +113,10 @@ export async function PATCH(
       after: { ...updated },
     });
 
+    // Edits change catalog search results (title/category/upc/is_active) — bust the
+    // org-scoped sku-catalog read models (search wrap, title-by-sku, …).
+    await invalidateCacheTags(gate.ctx.organizationId, [CACHE_TAGS.skuCatalog]);
+
     return NextResponse.json({ success: true, catalog: updated });
   } catch (error: any) {
     console.error('Error in PATCH /api/sku-catalog/[id]:', error);
@@ -178,6 +184,10 @@ export async function DELETE(
       before: { ...before },
       after: { ...deleted },
     });
+
+    // Soft-delete drops the SKU from active search results — bust the org-scoped
+    // sku-catalog read models so it disappears immediately, not after TTL.
+    await invalidateCacheTags(gate.ctx.organizationId, [CACHE_TAGS.skuCatalog]);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

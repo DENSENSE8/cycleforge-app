@@ -132,7 +132,7 @@ export default function FBAShipmentsTable() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-surface-card">
+    <div className="flex flex-col bg-surface-card">
       <div className="border-b border-border-soft bg-fill-fulfillment/10 px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -149,7 +149,7 @@ export default function FBAShipmentsTable() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="w-full overflow-x-auto">
         {rows.length === 0 ? (
           /* Typed first-use empty (onboarding O0): this table has no search/filter,
              so zero rows always means "no shipments yet" — teach the next action

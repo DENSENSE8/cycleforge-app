@@ -17,6 +17,8 @@ import {
   dispatchLineUpdated,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
+import { upsertReceivingRailRows } from '@/lib/queries/receiving-queries';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   readReceivingLineDetailsScratch,
   writeReceivingLineDetailsScratch,
@@ -54,6 +56,23 @@ export function useReceivingLineCore(
   opts: { dispatchLine?: (patch: Partial<ReceivingLineRow> & { id: number }) => void } = {},
 ) {
   const dispatchLine = opts.dispatchLine ?? dispatchLineUpdated;
+  const queryClient = useQueryClient();
+
+  /** Keep the Unboxed rail row by carton id — tracking is metadata, never a membership remove. */
+  const upsertUnboxRailRow = useCallback(
+    (line: Partial<ReceivingLineRow> & { id: number }) => {
+      const receivingId = line.receiving_id ?? row.receiving_id ?? null;
+      if (receivingId == null || !Number.isFinite(receivingId)) return;
+      upsertReceivingRailRows(queryClient, [
+        {
+          id: line.id,
+          receiving_id: receivingId,
+          client_event_id: line.client_event_id ?? `carton:${receivingId}`,
+        },
+      ]);
+    },
+    [queryClient, row.receiving_id],
+  );
   const [zendesk, setZendesk] = useState('');
   const supportTicketQuery = useEntitySupportTicket({
     lineId: row.id ?? null,
@@ -245,7 +264,13 @@ export function useReceivingLineCore(
       body: JSON.stringify({ id: row.id, ...fields }),
     });
     const data = await res.json();
-    if (data?.success && data.receiving_line) dispatchLine(data.receiving_line);
+    if (data?.success && data.receiving_line) {
+      const line = data.receiving_line as ReceivingLineRow;
+      dispatchLine(line);
+      // Tracking / carton field edits must upsert by id — never rely on a full
+      // feed refetch that can race empty and blank the Unboxed rail.
+      upsertUnboxRailRow(line);
+    }
     return data;
   });
   const saving = patchMut.isPending;
@@ -286,12 +311,23 @@ export function useReceivingLineCore(
           toast.success(`Box ${data.box_count} linked to ${poLabel}`);
         }
         setExtraTrackings((xs) => xs.map((x, j) => (j === index ? '' : x)));
-        dispatchLine({ id: row.id, notes: row.notes });
+        // Sort-safe bus patch + id-scoped Unboxed cache upsert (do not remove the row).
+        const patch = { id: row.id, notes: row.notes, receiving_id: row.receiving_id };
+        dispatchLine(patch);
+        upsertUnboxRailRow(patch);
       } catch {
         toast.error('Could not link tracking number');
       }
     },
-    [row.receiving_id, row.id, row.notes, row.zoho_purchaseorder_number, row.zoho_purchaseorder_id],
+    [
+      row.receiving_id,
+      row.id,
+      row.notes,
+      row.zoho_purchaseorder_number,
+      row.zoho_purchaseorder_id,
+      dispatchLine,
+      upsertUnboxRailRow,
+    ],
   );
 
   const { zohoSyncing, syncWithZoho, syncCartonFromZoho } = useZohoSync(row, {

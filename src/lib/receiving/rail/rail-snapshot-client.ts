@@ -38,6 +38,9 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function persistRailSnapshot(feedParam: string, rows: ReceivingLineRow[]): void {
   if (typeof window === 'undefined') return;
+  // Never overwrite a good Upstash seed with an empty list (transient empty
+  // refetches must not poison the next reload's first paint).
+  if (rows.length === 0) return;
   const existing = timers.get(feedParam);
   if (existing) clearTimeout(existing);
   const snapshot = rows.slice(0, RAIL_SNAPSHOT_MAX_ROWS);

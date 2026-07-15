@@ -19,6 +19,8 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { readInventorySpine, type InventoryEventRecord } from '@/lib/audit-log/inventory-spine';
 import { isRegisteredInboundSource, INBOUND_SOURCE_FACT_KIND, type InboundSourceType } from '@/lib/inbound/source-registry';
+import { getOrSet, createCacheLookupKey } from '@/lib/cache/upstash-cache';
+import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -310,6 +312,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
+    // Cache the dominant PO-anchored detail branch org-scoped (polled 60s per open
+    // drawer). Keyed by po_id; every receiving write busts receiving-lines
+    // (org-scoped). The shipment/inbound fallback branches above return before
+    // this and stay uncached (rarer; some resolve transient shipment state).
+    const payload = await getOrSet(
+      CACHE_NS.receivingIncomingDetails,
+      orgId,
+      createCacheLookupKey({ poId }),
+      CACHE_TTL.rollup,
+      [CACHE_TAGS.receivingLines],
+      async () => {
     // ── PO header (zoho_po_mirror) ──────────────────────────────────────────
     // zoho_po_mirror has no organization_id column yet (NEEDS-COL): GUC-wrapped
     // via tenantQuery only — no explicit org filter until the column lands.
@@ -602,8 +615,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       return candidates;
     })();
 
-    return NextResponse.json({
-      success: true,
+    return {
       po: mirror,
       receiving: recv,
       line_items,
@@ -638,7 +650,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       delivered_emails,
       zoho_activity,
       notes: recv?.support_notes ?? null,
-    });
+    };
+      },
+    );
+
+    return NextResponse.json({ success: true, ...payload });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load details';
     console.error('receiving-lines/incoming/details failed:', error);
