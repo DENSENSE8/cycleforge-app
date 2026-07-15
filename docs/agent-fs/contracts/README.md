@@ -45,6 +45,7 @@ roles — the generator never grades its own work:
 | **guard-sweep** | cron `0 9 * * 1-5` (loopany) | workflow-only (no LLM) → 4 guard checks | [`loopany/guard-sweep/README.md`](../../../loopany/guard-sweep/README.md) |
 | **forge** | manual / Telegram / `forge.sh --next-ticket` | Architect plan → Coder → Neon-branch verify + CI | [`.cycle_forge_ops/prompts/`](../../../.cycle_forge_ops/prompts) + `forge.sh` |
 | **claude-fix-issue** | GitHub issue label | agent fix → CI | [`.github/workflows/claude-fix-issue.yml`](../../../.github/workflows/claude-fix-issue.yml) |
+| **verifier** | post-generation | (read-only role) → refute-by-default + Neon-branch + guards | [`verifier.md`](./verifier.md) |
 
 New loop → copy [`TEMPLATE.md`](./TEMPLATE.md), fill every required section, add a
 registry row. Keep the detail in the loop's own home; this registry stays thin.

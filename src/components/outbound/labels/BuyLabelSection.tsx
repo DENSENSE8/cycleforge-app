@@ -8,6 +8,7 @@ import { Button } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 interface RatesResponse {
   ok: boolean;
@@ -94,7 +95,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
     onSuccess: (data) => {
       setSelectedRateId(data.rates?.[0]?.rateId ?? null);
       setConfirming(false);
-      clientEventIdRef.current = crypto.randomUUID();
+      clientEventIdRef.current = safeRandomUUID();
     },
   });
 

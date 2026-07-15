@@ -1,5 +1,6 @@
 import { normalizeFedExStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 export const FEDEX_BASE_URL =
   process.env.FEDEX_ENV === 'production'
@@ -67,7 +68,7 @@ export async function getAccessToken(forceRefresh = false): Promise<string> {
 }
 
 async function callFedExTrack(trackingNumberNormalized: string, token: string): Promise<Response> {
-  const transactionId = crypto.randomUUID();
+  const transactionId = safeRandomUUID();
   return fetch(FEDEX_TRACK_URL, {
     method: 'POST',
     headers: {
