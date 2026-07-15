@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-14T08:21:53Z",
-  "totalRoutes": 845,
+  "generatedAt": "2026-07-15T10:40:38Z",
+  "totalRoutes": 846,
   "summary": {
-    "permissionGated": 717,
+    "permissionGated": 718,
     "authenticatedNoPermission": 46,
     "anonymousIntentional": 80,
     "serviceToService": 2,
@@ -96,6 +96,15 @@
       ],
       "gate": "withAuth",
       "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/admin/integrations/[provider]/summary/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.view",
       "exemptReason": null
     },
     {
