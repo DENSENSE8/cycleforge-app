@@ -179,6 +179,10 @@ export const PERMISSIONS = [
   // Zendesk integration gate — a thread exists before any provider ticket).
   { id: 'support.thread.view',      category: 'ops', label: 'View entity conversation threads' },
   { id: 'support.thread.manage',    category: 'ops', label: 'Post & manage entity conversation threads' },
+  // Reported-Issues console (UIC-*): tenant Workbench over user_reported_issues.
+  // View = list/detail; manage lands with UIC-3 (claim/resolve/edit).
+  { id: 'support.issues.view',      category: 'ops', label: 'View reported issues console' },
+  { id: 'support.issues.manage',    category: 'ops', label: 'Triage & resolve reported issues' },
   { id: 'reports.view',             category: 'ops', label: 'View reports' },
   { id: 'reports.export',           category: 'ops', label: 'Export reports' },
   { id: 'print.label',              category: 'ops', label: 'Print labels' },

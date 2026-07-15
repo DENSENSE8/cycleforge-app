@@ -4,12 +4,12 @@ import { useEffect } from 'react';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { applyTheme, applyAccentTheme } from '@/lib/theme/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { getStaffThemeById } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
+import { resolveOperatorAccentTheme } from '@/utils/operator-accent';
 
 /**
  * Bridges the server-backed staff_preferences `theme` to the live `data-theme`
- * attribute, and the staff accent color to the `theme-${accent}` class.
+ * attribute, and the operator accent to the `theme-${accent}` class.
  * Mount once inside the authenticated tree (beside ScanHotkeySync).
  */
 export function ThemeSync() {
@@ -23,13 +23,12 @@ export function ThemeSync() {
   }, [prefs]);
 
   useEffect(() => {
-    if (user?.staffId) {
-      const theme = getStaffThemeById(user.staffId);
-      applyAccentTheme(theme);
-    } else {
-      applyAccentTheme('blue'); // fallback theme
+    if (!user?.staffId) {
+      applyAccentTheme('blue');
+      return;
     }
-  }, [user?.staffId, colorVersion]);
+    applyAccentTheme(resolveOperatorAccentTheme(prefs, user.staffId));
+  }, [user?.staffId, colorVersion, prefs?.useStaffAccent, prefs?.accentHex, prefs]);
 
   return null;
 }

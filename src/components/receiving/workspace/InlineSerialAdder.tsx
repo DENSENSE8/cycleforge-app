@@ -54,6 +54,11 @@ interface Props {
    * active row's adder when the line becomes active (e.g. after click).
    */
   autoFocus?: boolean;
+  /**
+   * @deprecated Kept for call-site compat. The field always stays open for
+   * adding more serials (no collapsed chip + pencil edit chrome).
+   */
+  collapsible?: boolean;
 }
 
 /**
@@ -179,19 +184,17 @@ export function InlineSerialAdder({
   return (
     // items-end: the +/save button bottom-aligns with the input only, so the
     // serial chips sit above the input's right edge — never above the button.
-    <div className="flex items-end gap-2">
+    <div className="flex min-w-0 flex-1 items-end gap-2">
       <div className="min-w-0 flex-1 space-y-2">
       {showSavedChips && count > 0 ? (
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {saved.map((s, idx) => {
               const sn = (s.serial_number || '').trim();
               if (!sn) return null;
-              const isEditingThis = editing?.id === s.id;
               return onReplaceSerial ? (
                 <SerialChipWithMenu
                   key={s.id ?? `${sn}-${idx}`}
                   serial={s}
-                  isEditing={isEditingThis}
                   onEdit={beginEdit}
                   onDelete={onDelete ? (target) => onDelete(lineId, target) : undefined}
                 />
@@ -229,7 +232,7 @@ export function InlineSerialAdder({
           label="Serial"
           value={scan}
           onChange={setScan}
-          tone={editing ? 'amber' : 'blue'}
+          tone="blue"
           mono
           disabled={disabled || isSubmitting}
           autoComplete="off"
@@ -261,9 +264,7 @@ export function InlineSerialAdder({
           ariaLabel={editing ? 'Save serial' : 'Add serial'}
           onClick={() => void submit()}
           disabled={!scan.trim() || isSubmitting || disabled}
-          className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white shadow-sm disabled:bg-surface-strong disabled:opacity-100 ${
-            editing ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:bg-surface-strong disabled:opacity-100"
         />
       </HoverTooltip>
     </div>

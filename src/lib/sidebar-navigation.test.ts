@@ -273,7 +273,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=fba')), 'fba');
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=scan-out')), 'scan-out');
-  // Dashboard: Unshipped + Shipped collapsed into one "Outbound" nav mode; the
+  // Dashboard: Unshipped + Shipped collapsed into one "Shipping" nav mode; the
   // Unshipped/Shipped split is now a top-left tab in the main content, so both
   // `?shipped` and `?unshipped` (+ legacy `?pending` + bare) resolve to Outbound.
   // Warranty Logger moved to Support (`?mode=warranty`).
@@ -285,10 +285,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
   // param-based so it resolves identically on the canonical route + legacy alias.
+  // Legacy view=testing-history still resolves to Testing (history browse is inline).
   assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
-  assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing-history')), 'history');
+  assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing-history')), 'testing');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the

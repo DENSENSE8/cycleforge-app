@@ -27,7 +27,6 @@ export * from './mobile';
 export * from './PlatformBadge';
 export * from './StaffBadge';
 export * from './WorkspaceCard';
-export * from './StationSectionTabs';
 export * from './SectionTabsSlider';
 export * from './StickyActionBar';
 export * from './MobileSelectionBar';

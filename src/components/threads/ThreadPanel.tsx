@@ -1,17 +1,47 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Lock, Globe, MessageSquare, Send, Ticket } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Loader2, Lock, Globe, MessageSquare, Send, Ticket, User, Check, Clock,
+  MoreHorizontal, Pencil, Trash2, X, ExternalLink,
+  Package, Truck, Barcode, Tag, PackageOpen, Wrench, ShieldCheck, Box,
+} from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useAuth } from '@/contexts/AuthContext';
-import { useThread } from '@/hooks/useThread';
-import type { ThreadMessage } from '@/lib/threads/types';
+import { useThread, type ThreadConnectionRow, type ThreadAssignmentRow } from '@/hooks/useThread';
+import type { ThreadMessage, ThreadStatus } from '@/lib/threads/types';
 import { initials } from '@/components/support/zendesk/chat/support-chat-utils';
+import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { formatDateTimePST } from '@/utils/date';
 import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
+
+/** Imperative composer bridge for a host terminal dock (e.g. Unbox Conversation tab). */
+export interface ThreadComposerBridge {
+  hasDraft: boolean;
+  isPublic: boolean;
+  submitting: boolean;
+  canPost: boolean;
+  focus: () => void;
+  submit: () => void;
+}
+
+/** Status → dot + text tones (semantic; never ad-hoc hues). */
+const STATUS_TONE: Record<ThreadStatus, { label: string; dot: string; text: string; bg: string; ring: string }> = {
+  open:     { label: 'Open',     dot: 'bg-blue-500',    text: 'text-blue-700',    bg: 'bg-blue-50',    ring: 'ring-blue-200' },
+  snoozed:  { label: 'Snoozed',  dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',   ring: 'ring-amber-200' },
+  resolved: { label: 'Resolved', dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' },
+};
+
+/** Connection entity_type → glyph. Paired with a label, never bare. */
+const CONNECTION_ICON: Record<string, typeof Package> = {
+  ORDER: Package, TRACKING: Truck, SERIAL_UNIT: Barcode, SKU: Tag,
+  RECEIVING: PackageOpen, RECEIVING_LINE: PackageOpen, REPAIR: Wrench,
+  WARRANTY_CLAIM: ShieldCheck, FBA_SHIPMENT: Box,
+};
 
 /**
  * ThreadPanel — the one reusable entity-conversation surface (chat bubbles +
@@ -31,14 +61,64 @@ function Time({ iso }: { iso: string }) {
   );
 }
 
-function MessageBubble({ m, ownStaffId }: { m: ThreadMessage; ownStaffId: number | null }) {
+function MessageBubble({
+  m,
+  ownStaffId,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  m: ThreadMessage;
+  ownStaffId: number | null;
+  canManage: boolean;
+  onEdit: (messageId: number, body: string) => void;
+  onDelete: (messageId: number) => void;
+}) {
   const internal = m.visibility === 'internal';
   const ours = m.authorStaffId != null && m.authorStaffId === ownStaffId;
   const name = m.authorName?.trim() || (m.provider === 'system' ? 'System' : 'Staff');
   const pending = m.id < 0; // optimistic row (negative temp id) awaiting server ack
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(m.body);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const editable = canManage && !pending && m.provider !== 'system';
+
+  if (editing) {
+    return (
+      <div className="flex items-end gap-2.5">
+        <span className="h-7 w-7 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={2}
+            autoFocus
+            className="block w-full resize-none rounded-xl border border-blue-300 bg-surface-card px-3 py-2 text-role-data text-text-default outline-none focus:ring-2 focus:ring-blue-100"
+          />
+          <div className="mt-1.5 flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!draft.trim() || draft.trim() === m.body}
+              onClick={() => { onEdit(m.id, draft.trim()); setEditing(false); }}
+              icon={<Check className="h-3.5 w-3.5" />}
+            >
+              Save
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setDraft(m.body); setEditing(false); }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn('flex items-end gap-2.5', pending && 'opacity-60')}>
+    <div
+      className={cn('group/msg relative flex items-end gap-2.5', pending && 'opacity-60')}
+      onMouseLeave={() => setMenuOpen(false)}
+    >
       <span
         className={cn(
           'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-role-micro',
@@ -62,6 +142,39 @@ function MessageBubble({ m, ownStaffId }: { m: ThreadMessage; ownStaffId: number
           <span className="text-text-faint">
             · <Time iso={m.createdAt} />
           </span>
+          {m.meta && (m.meta as Record<string, unknown>).editedAt ? (
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">· edited</span>
+          ) : null}
+          {editable ? (
+            <span className="relative ml-auto opacity-0 transition-opacity group-hover/msg:opacity-100">
+              <IconButton
+                size="xs"
+                ariaLabel="Message actions"
+                icon={<MoreHorizontal className="h-3.5 w-3.5" />}
+                onClick={() => setMenuOpen((v) => !v)}
+              />
+              {menuOpen ? (
+                <div className="absolute right-0 z-panelPopover mt-1 w-32 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg">
+                  {/* ds-raw-button: popover menu rows */}
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setDraft(m.body); setEditing(true); }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </button>
+                  {/* ds-raw-button: popover menu rows */}
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); onDelete(m.id); }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-rose-600 hover:bg-rose-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </button>
+                </div>
+              ) : null}
+            </span>
+          ) : null}
         </div>
         <div
           className={cn(
@@ -73,10 +186,214 @@ function MessageBubble({ m, ownStaffId }: { m: ThreadMessage; ownStaffId: number
                 : 'border border-border-soft bg-surface-card text-text-default',
           )}
         >
-          <div className="whitespace-pre-wrap break-words">{m.body}</div>
+          <div className="break-words">{renderInlineMarkdown(m.body)}</div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** Thread status pill + menu (open / snoozed / resolved). Semantic tones only. */
+function StatusControl({
+  status,
+  canManage,
+  onChange,
+  pending,
+}: {
+  status: ThreadStatus;
+  canManage: boolean;
+  onChange: (s: ThreadStatus) => void;
+  pending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const tone = STATUS_TONE[status];
+  const pill = (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-role-eyebrow font-black uppercase tracking-widest ring-1 ring-inset',
+        tone.bg, tone.text, tone.ring,
+      )}
+    >
+      <span className={cn('h-2 w-2 rounded-full', tone.dot)} />
+      {tone.label}
+    </span>
+  );
+  if (!canManage) return pill;
+  return (
+    <span className="relative" onMouseLeave={() => setOpen(false)}>
+      {/* ds-raw-button: status pill acts as a menu trigger, not a Button action */}
+      <button type="button" onClick={() => setOpen((v) => !v)} disabled={pending} className="disabled:opacity-60">
+        {pill}
+      </button>
+      {open ? (
+        <div className="absolute left-0 z-panelPopover mt-1 w-36 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg">
+          {(Object.keys(STATUS_TONE) as ThreadStatus[]).map((s) => (
+            // ds-raw-button: popover menu rows
+            <button
+              key={s}
+              type="button"
+              onClick={() => { setOpen(false); if (s !== status) onChange(s); }}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
+            >
+              <span className={cn('h-2 w-2 rounded-full', STATUS_TONE[s].dot)} />
+              {STATUS_TONE[s].label}
+              {s === status ? <Check className="ml-auto h-3.5 w-3.5 text-text-faint" /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
+/** Assignee chip — one owner per thread; opens a staff picker (lazy-loaded). */
+function AssigneeControl({
+  assignment,
+  canManage,
+  onAssign,
+  onUnassign,
+}: {
+  assignment: ThreadAssignmentRow | null;
+  canManage: boolean;
+  onAssign: (staffId: number) => void;
+  onUnassign: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const staffQuery = useQuery<Array<{ id: number; name: string }>>({
+    queryKey: ['thread-assignee-staff'],
+    enabled: open,
+    staleTime: 300_000,
+    queryFn: async () => {
+      const res = await fetch('/api/staff');
+      const data = await res.json().catch(() => []);
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const name = assignment?.assignedStaffName?.trim() || (assignment ? 'Assigned' : null);
+  const chip = name ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-muted">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[8px] font-black text-blue-700">
+        {initials(name)}
+      </span>
+      {name}
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-faint ring-1 ring-inset ring-border-soft">
+      <User className="h-3 w-3" /> Unassigned
+    </span>
+  );
+
+  if (!canManage) return name ? chip : null;
+  return (
+    <span className="relative" onMouseLeave={() => setOpen(false)}>
+      {/* ds-raw-button: assignee chip acts as a menu trigger */}
+      <button type="button" onClick={() => setOpen((v) => !v)}>{chip}</button>
+      {open ? (
+        <div className="absolute left-0 z-panelPopover mt-1 max-h-64 w-52 overflow-y-auto rounded-lg border border-border-soft bg-surface-card shadow-lg">
+          {assignment ? (
+            // ds-raw-button: popover menu rows
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onUnassign(); }}
+              className="flex w-full items-center gap-2 border-b border-border-hairline px-3 py-1.5 text-left text-role-caption text-rose-600 hover:bg-rose-50"
+            >
+              <X className="h-3.5 w-3.5" /> Unassign
+            </button>
+          ) : null}
+          {staffQuery.isLoading ? (
+            <div className="flex items-center gap-2 px-3 py-3 text-role-caption text-text-faint">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+            </div>
+          ) : (
+            (staffQuery.data ?? []).map((s) => (
+              // ds-raw-button: popover menu rows
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => { setOpen(false); onAssign(s.id); }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-strong text-[8px] font-black text-text-muted">
+                  {initials(s.name)}
+                </span>
+                <span className="truncate">{s.name}</span>
+                {assignment?.assignedStaffId === s.id ? <Check className="ml-auto h-3.5 w-3.5 text-text-faint" /> : null}
+              </button>
+            ))
+          )}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
+/** The "connecting dots" strip — derived + curated related entities as chips. */
+function ConnectionsStrip({
+  connections,
+  dense,
+}: {
+  connections: ThreadConnectionRow[];
+  dense: boolean;
+}) {
+  if (connections.length === 0) return null;
+  return (
+    <div className={cn('flex items-center gap-1.5 overflow-x-auto border-b border-border-hairline pb-2', dense ? 'px-3' : 'px-5')}>
+      <span className="shrink-0 text-role-eyebrow font-black uppercase tracking-widest text-text-faint">Linked</span>
+      {connections.map((c, i) => {
+        const Icon = CONNECTION_ICON[c.entityType] ?? Tag;
+        const inner = (
+          <span
+            className={cn(
+              'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide ring-1 ring-inset',
+              c.origin === 'derived'
+                ? 'bg-surface-canvas text-text-muted ring-border-soft'
+                : 'bg-blue-50 text-blue-700 ring-blue-200',
+            )}
+          >
+            <Icon className="h-3 w-3" />
+            <span className="max-w-[9rem] truncate normal-case tracking-normal">{c.label}</span>
+            {c.href ? <ExternalLink className="h-2.5 w-2.5 opacity-60" /> : null}
+          </span>
+        );
+        const key = `${c.entityType}:${c.entityId ?? c.label}:${i}`;
+        return (
+          <HoverTooltip
+            key={key}
+            label={`${c.entityType.replace(/_/g, ' ').toLowerCase()}${c.origin === 'link' ? ' · linked' : ''}`}
+            focusable={false}
+          >
+            {c.href ? (
+              <a href={c.href} className="shrink-0">{inner}</a>
+            ) : (
+              inner
+            )}
+          </HoverTooltip>
+        );
+      })}
+    </div>
+  );
+}
+
+function EscalateOption({
+  label,
+  hint,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    // ds-raw-button: menu row inside a popover, not a standalone Button action
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-surface-sunken"
+    >
+      <span className="text-role-caption font-semibold text-text-default">{label}</span>
+      <span className="text-role-eyebrow text-text-faint">{hint}</span>
+    </button>
   );
 }
 
@@ -85,6 +402,9 @@ export function ThreadPanel({
   entityId,
   dense = false,
   className,
+  /** Hide the inline Add note / Send — the host StationTerminalDock owns submit. */
+  externalSubmit = false,
+  onBridgeChange,
 }: {
   /** Canonical anchor vocab (SURFACE_ENTITY_TYPES key, e.g. 'ORDER'). */
   entityType: string;
@@ -92,6 +412,8 @@ export function ThreadPanel({
   /** Tighter paddings for sidebar/tab slots. */
   dense?: boolean;
   className?: string;
+  externalSubmit?: boolean;
+  onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
 }) {
   const { user, has, isLoaded } = useAuth();
   const canView = isLoaded && has('support.thread.view');
@@ -104,7 +426,16 @@ export function ThreadPanel({
     messagesLoading,
     messagesError,
     postMessage,
+    escalate,
+    connections,
+    assignment,
+    setStatus,
+    assign,
+    unassign,
+    editMessage,
+    deleteMessage,
   } = useThread(entityType, entityId);
+  const [escalateOpen, setEscalateOpen] = useState(false);
 
   const [body, setBody] = useState('');
   // Default to internal — public mirrors to the linked ticket only once
@@ -112,11 +443,10 @@ export function ThreadPanel({
   const [isPublic, setIsPublic] = useState(false);
 
   const endRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [messages.length]);
-
-  if (!isLoaded || !canView) return null;
 
   const submit = () => {
     const text = body.trim();
@@ -127,16 +457,104 @@ export function ThreadPanel({
     );
   };
 
+  useEffect(() => {
+    if (!onBridgeChange || !isLoaded) return;
+    if (!canView) {
+      onBridgeChange(null);
+      return;
+    }
+    onBridgeChange({
+      hasDraft: body.trim().length > 0,
+      isPublic,
+      submitting: postMessage.isPending,
+      canPost,
+      focus: () => {
+        composerRef.current?.focus();
+        composerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      },
+      submit,
+    });
+    return () => onBridgeChange(null);
+    // submit closes over body/isPublic/postMessage — refresh when those change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    onBridgeChange,
+    isLoaded,
+    canView,
+    canPost,
+    body,
+    isPublic,
+    postMessage.isPending,
+  ]);
+
+  if (!isLoaded || !canView) return null;
+
   const loading = threadLoading || messagesLoading;
   const error = threadError || messagesError;
 
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
-      {thread?.supportTicketId ? (
-        <div className={cn('flex items-center justify-end pb-2', dense ? 'px-3' : 'px-5')}>
+      <div className={cn('flex flex-wrap items-center gap-2 pb-2 pt-2', dense ? 'px-3' : 'px-5')}>
+        {thread ? (
+          <StatusControl
+            status={thread.status}
+            canManage={canPost}
+            pending={setStatus.isPending}
+            onChange={(s) => setStatus.mutate(s)}
+          />
+        ) : null}
+        <AssigneeControl
+          assignment={assignment}
+          canManage={canPost}
+          onAssign={(id) => assign.mutate(id)}
+          onUnassign={() => unassign.mutate()}
+        />
+        <div className="ml-auto flex items-center gap-2">
+        {thread?.supportTicketId ? (
           <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
             <Ticket className="h-2.5 w-2.5" /> Ticket #{thread.supportTicketId}
           </span>
+        ) : canPost ? (
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={escalate.isPending}
+              onClick={() => setEscalateOpen((v) => !v)}
+              icon={<Ticket className="h-3.5 w-3.5" />}
+            >
+              Escalate
+            </Button>
+            {escalateOpen && !escalate.isPending ? (
+              <div className="absolute right-0 z-panelPopover mt-1 w-52 overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg">
+                <EscalateOption
+                  label="Internal ticket"
+                  hint="Track here — no external send"
+                  onClick={() => {
+                    setEscalateOpen(false);
+                    escalate.mutate('internal');
+                  }}
+                />
+                <EscalateOption
+                  label="Support ticket"
+                  hint="Open a helpdesk ticket"
+                  onClick={() => {
+                    setEscalateOpen(false);
+                    escalate.mutate('zendesk');
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        </div>
+      </div>
+
+      <ConnectionsStrip connections={connections} dense={dense} />
+
+      {escalate.isError ? (
+        <div className={cn('pb-2 text-right text-role-caption text-rose-600', dense ? 'px-3' : 'px-5')}>
+          {(escalate.error as Error)?.message || 'Couldn’t escalate.'}
         </div>
       ) : null}
 
@@ -159,7 +577,14 @@ export function ThreadPanel({
         ) : (
           <div className="space-y-4">
             {messages.map((m) => (
-              <MessageBubble key={m.id} m={m} ownStaffId={user?.staffId ?? null} />
+              <MessageBubble
+                key={m.id}
+                m={m}
+                ownStaffId={user?.staffId ?? null}
+                canManage={canPost}
+                onEdit={(messageId, newBody) => editMessage.mutate({ messageId, body: newBody })}
+                onDelete={(messageId) => deleteMessage.mutate(messageId)}
+              />
             ))}
             <div ref={endRef} />
           </div>
@@ -185,6 +610,7 @@ export function ThreadPanel({
             )}
           >
             <textarea
+              ref={composerRef}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onKeyDown={(e) => {
@@ -193,25 +619,39 @@ export function ThreadPanel({
               rows={dense ? 2 : 3}
               placeholder={
                 isPublic
-                  ? 'Message…  (⌘↵ to send)'
-                  : 'Internal note — team only…  (⌘↵ to send)'
+                  ? externalSubmit
+                    ? 'Message…  (⌘↵ or dock Send)'
+                    : 'Message…  (⌘↵ to send)'
+                  : externalSubmit
+                    ? 'Internal note — team only…  (⌘↵ or dock Add note)'
+                    : 'Internal note — team only…  (⌘↵ to send)'
               }
               className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default outline-none placeholder:text-text-faint"
             />
             <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
               <span className="text-role-caption text-text-faint">
-                {postMessage.isError ? 'Couldn’t send — try again.' : isPublic ? 'Visible on the record' : 'Team-only note'}
+                {postMessage.isError
+                  ? 'Couldn’t send — try again.'
+                  : externalSubmit
+                    ? isPublic
+                      ? 'Visible on the record — use the dock to Send'
+                      : 'Team-only note — use the dock to Add note'
+                    : isPublic
+                      ? 'Visible on the record'
+                      : 'Team-only note'}
               </span>
-              <Button
-                variant={isPublic ? 'primary' : 'secondary'}
-                size="sm"
-                loading={postMessage.isPending}
-                disabled={!body.trim()}
-                onClick={submit}
-                icon={<Send className="h-3.5 w-3.5" />}
-              >
-                {isPublic ? 'Send' : 'Add note'}
-              </Button>
+              {externalSubmit ? null : (
+                <Button
+                  variant={isPublic ? 'primary' : 'secondary'}
+                  size="sm"
+                  loading={postMessage.isPending}
+                  disabled={!body.trim()}
+                  onClick={submit}
+                  icon={<Send className="h-3.5 w-3.5" />}
+                >
+                  {isPublic ? 'Send' : 'Add note'}
+                </Button>
+              )}
             </div>
           </div>
         </div>

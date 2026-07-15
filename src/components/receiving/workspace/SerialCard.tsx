@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Pencil } from '@/components/Icons';
@@ -90,6 +91,8 @@ interface Props {
   resultSlot?: ReactNode;
   /** When false, serial input does not steal focus on mount (step-aware unbox). */
   autoFocusInput?: boolean;
+  /** Shared ref for programmatic focus (units dock → overview scan handoff). */
+  externalInputRef?: RefObject<HTMLInputElement | null>;
   /** Nested inside {@link PoLinesAccordion} — skip duplicate card chrome. */
   embedded?: boolean;
   /** Controlled edit target from the PO item header chip. */
@@ -126,6 +129,7 @@ export function SerialCard({
   notesId,
   showSavedChips = true,
   autoFocusInput = true,
+  externalInputRef,
   embedded = false,
   editingSerial = null,
   onEditingSerialChange,
@@ -157,6 +161,13 @@ export function SerialCard({
   /** Avoid flashing “Saving…” on fast round-trips; only shown if submit hangs ~400ms+ */
   const [showSavingLabel, setShowSavingLabel] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const setInputRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      inputRef.current = el;
+      if (externalInputRef) externalInputRef.current = el;
+    },
+    [externalInputRef],
+  );
   const count = saved.length;
 
   /**
@@ -364,8 +375,9 @@ export function SerialCard({
             noSerialSlot
           ) : (
           <TextField
-            ref={inputRef}
+            ref={setInputRef}
             label="Serial"
+            data-unbox-serial-input
             value={scan}
             onChange={(next) => {
               setScan(next);
@@ -373,7 +385,7 @@ export function SerialCard({
               if (inlineNotice) setInlineNotice(null);
               if (trackingOverride) setTrackingOverride(null);
             }}
-            tone={editing ? 'emerald' : 'blue'}
+            tone="blue"
             mono
             disabled={disabled || isSubmitting}
             autoComplete="off"
@@ -472,12 +484,10 @@ export function SerialCard({
           {saved.map((s, idx) => {
             const sn = (s.serial_number || '').trim();
             if (!sn) return null;
-            const isEditingThis = editing?.id === s.id;
             return (
               <SerialChipWithMenu
                 key={s.id ?? `${sn}-${idx}`}
                 serial={s}
-                isEditing={isEditingThis}
                 onEdit={onReplaceSerial ? beginEdit : undefined}
                 onDelete={onDeleteSerial}
               />
@@ -522,14 +532,17 @@ export function SerialCard({
  */
 export function SerialChipWithMenu({
   serial,
-  isEditing,
   onEdit,
   onDelete,
   onSetCondition,
   dense,
 }: {
   serial: SavedSerial;
-  isEditing: boolean;
+  /**
+   * @deprecated No longer paints an in-edit selection ring — kept optional for
+   * call-site compat. Edit state is ownership of the scan input, not the chip.
+   */
+  isEditing?: boolean;
   onEdit?: (s: SavedSerial) => void;
   onDelete?: (s: SavedSerial) => void;
   /** When provided, the hover menu includes a condition picker for this serial. */
@@ -704,11 +717,7 @@ export function SerialChipWithMenu({
         if (hasActions) scheduleClose();
       }}
     >
-      <div
-        className={`inline-flex items-center gap-1 rounded-md transition-colors ${
-          isEditing ? 'ring-2 ring-emerald-400 ring-offset-1' : ''
-        }`}
-      >
+      <div className="inline-flex items-center gap-1 rounded-md">
         <SerialChip value={sn} width="w-fit max-w-full" pending={pending} dense={dense} />
       </div>
       {hasActions ? menu : null}

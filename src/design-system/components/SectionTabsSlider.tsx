@@ -8,7 +8,7 @@
  * the active panel under ONE container — panels stay mounted (`hidden`) so
  * per-panel state survives switching.
  *
- * - Hover labels use {@link HoverTooltip} (icon-only pills).
+ * - Hover labels use {@link HoverTooltip} (icon-only pills in a recessed track).
  * - The active pill is a sliding indicator (`layoutId`); a tab added at runtime
  *   (e.g. Units once a serial is scanned) animates its pill in.
  * - With a single tab there is no bar — it renders exactly like the plain
@@ -19,13 +19,20 @@ import { useId, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
+import { operatorAccentClasses } from '@/utils/operator-accent';
 
 export interface SectionTab {
   id: string;
-  /** Accessible name — shown as the pill's hover tooltip. */
+  /** Accessible name — shown as the pill's hover tooltip and active label. */
   label: string;
   icon: (props: { className?: string }) => JSX.Element;
   content: ReactNode;
+  count?: number;
+}
+
+function resolveActiveTabId(tabIds: string[], value: string): string | undefined {
+  if (tabIds.some((id) => id === value)) return value;
+  return tabIds[0];
 }
 
 export function SectionTabsSlider({
@@ -35,6 +42,7 @@ export function SectionTabsSlider({
   ariaLabel = 'Section displays',
   className,
   rightSlot,
+  showActiveLabel = true,
 }: {
   tabs: SectionTab[];
   value: string;
@@ -43,12 +51,15 @@ export function SectionTabsSlider({
   className?: string;
   /** Context control pinned to the right of the bar row (e.g. an Edit-PO pencil). */
   rightSlot?: ReactNode;
+  /** Name the active display beside the pills. Default true. */
+  showActiveLabel?: boolean;
 }) {
   const reduce = useReducedMotion();
   const pillId = useId();
-  // Fall back to the first tab if the selected display is no longer available
-  // (e.g. Units selected, then its serials removed) — no stranded blank panel.
-  const activeId = tabs.some((t) => t.id === value) ? value : tabs[0]?.id;
+  const activeId = resolveActiveTabId(
+    tabs.map((t) => t.id),
+    value,
+  );
   const activeTab = tabs.find((t) => t.id === activeId);
   const showPills = tabs.length > 1;
 
@@ -70,9 +81,6 @@ export function SectionTabsSlider({
                     return (
                       <motion.div
                         key={tab.id}
-                        // No `layout` — it animates a freshly-mounted pill in from
-                        // the layout origin (top-left). Scale from center keeps the
-                        // motion in place; the active pill's `layoutId` slides.
                         style={{ transformOrigin: 'center' }}
                         initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -93,7 +101,7 @@ export function SectionTabsSlider({
                             {active ? (
                               <motion.span
                                 layoutId={`${pillId}-active`}
-                                className="absolute inset-0 rounded-lg bg-blue-600 shadow-sm shadow-blue-600/25"
+                                className={`absolute inset-0 rounded-lg ${operatorAccentClasses.activePill}`}
                                 transition={framerTransition.sliderIndicator}
                               />
                             ) : null}
@@ -106,8 +114,7 @@ export function SectionTabsSlider({
                 </AnimatePresence>
               </div>
             ) : null}
-            {/* Name the active display — don't rely on the icon alone. */}
-            {activeTab ? (
+            {showActiveLabel && activeTab ? (
               <span className="truncate text-role-eyebrow font-black uppercase tracking-widest text-text-muted">
                 {activeTab.label}
               </span>
@@ -117,7 +124,6 @@ export function SectionTabsSlider({
         </div>
       ) : null}
 
-      {/* One content region — the active panel shows; the rest stay mounted + hidden. */}
       <div>
         {tabs.map((tab) => (
           <div key={tab.id} role="tabpanel" hidden={tab.id !== activeId}>

@@ -168,6 +168,24 @@ export const Upload = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+export const Maximize2 = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 3h6v6" />
+        <path d="M9 21H3v-6" />
+        <path d="M21 3l-7 7" />
+        <path d="M3 21l7-7" />
+    </svg>
+);
+
+export const Minimize2 = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 14h6v6" />
+        <path d="M20 10h-6V4" />
+        <path d="M14 10l7-7" />
+        <path d="M3 21l7-7" />
+    </svg>
+);
+
 /** Horizontal ellipsis — overflow / more-actions trigger. */
 export const MoreHorizontal = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">

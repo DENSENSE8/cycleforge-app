@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Clock, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { formatDateTimePST } from '@/utils/date';
+import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { ClaimTicketReply } from '@/components/receiving/workspace/claim/components/ClaimTicketReply';
 import type { UseClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-types';
@@ -25,6 +26,7 @@ export interface ThreadResult {
     status: string;
     priority: string | null;
     url: string | null;
+    requesterEmail: string | null;
   };
   comments: ThreadComment[];
 }
@@ -40,7 +42,17 @@ export function useTicketThread(ticketId: number | null, enabled: boolean = true
       if (!res.ok || !data?.success) {
         throw new Error(data?.error || `Request failed (${res.status})`);
       }
-      return { ticket: data.ticket, comments: data.comments } as ThreadResult;
+      return {
+        ticket: {
+          id: data.ticket.id,
+          subject: data.ticket.subject ?? null,
+          status: String(data.ticket.status ?? ''),
+          priority: data.ticket.priority ?? null,
+          url: data.ticket.url ?? null,
+          requesterEmail: data.ticket.requesterEmail ?? null,
+        },
+        comments: data.comments,
+      } as ThreadResult;
     },
     enabled: enabled && !!ticketId,
     staleTime: 30_000,
@@ -53,6 +65,10 @@ export interface TicketThreadCardProps {
   replyProps?: {
     reply: UseClaimTicketReply;
     filedTicket: FiledTicket;
+    /** Where the send CTA lives — terminal for Claim tab dock. */
+    sendPlacement?: 'inline' | 'terminal';
+    /** Opens SendPhotoNoteModal locked to this ticket. */
+    onAttachPhotos?: () => void;
   };
   className?: string;
 }
@@ -97,7 +113,9 @@ export function TicketThreadCard({ ticketId, replyProps, className }: TicketThre
                     {formatDateTimePST(c.createdAt)}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-role-data leading-snug text-text-default">{c.body}</p>
+                <p className="break-words text-role-data leading-snug text-text-default">
+                  {renderInlineMarkdown(c.body)}
+                </p>
               </li>
             ))}
           </ul>
@@ -106,7 +124,13 @@ export function TicketThreadCard({ ticketId, replyProps, className }: TicketThre
 
       {replyProps ? (
         <div className="mt-4 border-t border-border-soft pt-4">
-          <ClaimTicketReply reply={replyProps.reply} filedTicket={replyProps.filedTicket} />
+          <ClaimTicketReply
+            reply={replyProps.reply}
+            filedTicket={replyProps.filedTicket}
+            requesterEmail={data?.ticket.requesterEmail}
+            sendPlacement={replyProps.sendPlacement}
+            onAttachPhotos={replyProps.onAttachPhotos}
+          />
         </div>
       ) : null}
     </div>

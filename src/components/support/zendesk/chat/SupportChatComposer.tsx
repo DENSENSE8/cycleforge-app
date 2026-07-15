@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { markdownToHtml } from '@/lib/support/markdown';
 import { cn } from '@/utils/_cn';
 import { SupportPhotoLibraryPicker } from './SupportPhotoLibraryPicker';
+import { ExpandableComposerField } from './ExpandableComposerField';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,6 +29,8 @@ export function SupportChatComposer({
   staging,
   seedBody,
   seedToken,
+  hideSendBar = false,
+  receivingId,
 }: {
   ticketId: number;
   requesterEmail?: string | null;
@@ -36,6 +39,13 @@ export function SupportChatComposer({
   seedBody?: string;
   /** Bump this to re-apply seedBody even if the text is unchanged. */
   seedToken?: number;
+  /**
+   * Station ticket inclusion — drop the "Signs as / Add note" footer bar.
+   * Send remains available via ⌘↵ (see textarea placeholder).
+   */
+  hideSendBar?: boolean;
+  /** Carton context for media library “Current carton” tab. */
+  receivingId?: number;
 }) {
   const [body, setBody] = useState('');
 
@@ -135,8 +145,13 @@ export function SupportChatComposer({
         : `${staffName ? `Signs as — ${staffName} · ` : ''}Not emailed`;
 
   return (
-    <div className="shrink-0 border-t border-border-hairline bg-surface-card px-4 py-3">
-      <div className="mb-2.5 flex items-center justify-between">
+    <div
+      className={cn(
+        'shrink-0 border-t border-border-hairline bg-surface-card',
+        hideSendBar ? 'px-3 py-2' : 'px-4 py-3',
+      )}
+    >
+      <div className={cn('flex items-center justify-between', hideSendBar ? 'mb-1.5' : 'mb-2.5')}>
         <VisibilityToggle
           value={isPublic}
           onChange={setIsPublic}
@@ -150,7 +165,7 @@ export function SupportChatComposer({
               size="sm"
               onClick={() => setLibraryOpen(true)}
               icon={<ImageIcon className="h-3.5 w-3.5" />}
-              className="gap-1.5 px-2 text-role-caption font-bold"
+              className={cn('gap-1.5 px-2 font-bold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
             >
               Library
             </Button>
@@ -160,7 +175,7 @@ export function SupportChatComposer({
             size="sm"
             onClick={picker.openPicker}
             icon={<Paperclip className="h-3.5 w-3.5" />}
-            className="gap-1.5 px-2 text-role-caption font-bold"
+            className={cn('gap-1.5 px-2 font-bold', hideSendBar ? 'text-role-micro' : 'text-role-caption')}
           >
             Attach
           </Button>
@@ -171,6 +186,7 @@ export function SupportChatComposer({
       {canBrowseLibrary ? (
         <SupportPhotoLibraryPicker
           ticketId={ticketId}
+          receivingId={receivingId}
           open={libraryOpen}
           onClose={() => setLibraryOpen(false)}
           excludePhotoIds={stagedPhotoIds}
@@ -267,31 +283,54 @@ export function SupportChatComposer({
             : 'border-amber-300 bg-amber-50/30 focus-within:ring-2 focus-within:ring-amber-100',
         )}
       >
-        <textarea
+        <ExpandableComposerField
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
-          }}
-          rows={3}
+          onChange={setBody}
+          rows={hideSendBar ? 2 : 3}
           placeholder={
             isPublic ? 'Reply to the customer…  (⌘↵ to send)' : 'Internal note — not emailed…  (⌘↵ to send)'
           }
-          className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default outline-none placeholder:text-text-faint"
+          expandTitle={isPublic ? 'Compose public reply' : 'Compose internal note'}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
+          }}
+          textareaClassName={cn(
+            'rounded-xl',
+            hideSendBar ? 'px-3 py-2 text-role-micro leading-snug' : 'px-3.5 py-2.5 text-role-caption leading-relaxed',
+          )}
+          expandFooter={
+            hideSendBar ? undefined : (
+              <>
+                <span className="text-role-caption text-text-faint">{hint}</span>
+                <Button
+                  variant={isPublic ? 'primary' : 'secondary'}
+                  size="sm"
+                  loading={reply.isPending}
+                  disabled={!body.trim() || staging.uploading}
+                  onClick={submit}
+                  icon={<Send className="h-3.5 w-3.5" />}
+                >
+                  {isPublic ? 'Send reply' : 'Add note'}
+                </Button>
+              </>
+            )
+          }
         />
-        <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
-          <span className="text-role-caption text-text-faint">{hint}</span>
-          <Button
-            variant={isPublic ? 'primary' : 'secondary'}
-            size="sm"
-            loading={reply.isPending}
-            disabled={!body.trim() || staging.uploading}
-            onClick={submit}
-            icon={<Send className="h-3.5 w-3.5" />}
-          >
-            {isPublic ? 'Send reply' : 'Add note'}
-          </Button>
-        </div>
+        {hideSendBar ? null : (
+          <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
+            <span className="text-role-caption text-text-faint">{hint}</span>
+            <Button
+              variant={isPublic ? 'primary' : 'secondary'}
+              size="sm"
+              loading={reply.isPending}
+              disabled={!body.trim() || staging.uploading}
+              onClick={submit}
+              icon={<Send className="h-3.5 w-3.5" />}
+            >
+              {isPublic ? 'Send reply' : 'Add note'}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

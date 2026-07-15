@@ -30,7 +30,9 @@ import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnCo
 import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
+import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { UNSHIPPED_VIEW_PARAMS } from '@/components/unshipped/outbound-sidebar-shared';
+import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import {
   deriveFulfillmentState,
   FULFILLMENT_STATE_META,
@@ -259,7 +261,8 @@ export function UnshippedShelfBoard({
           clearSearchLabel={clearSearchLabel}
           onOpenRecord={onOpenRecord}
           dateHeaderEndSlot={dateHeaderEndSlot}
-          stickyTopClass={growToContent ? 'top-[41px]' : 'top-0'}
+          // Lane chrome no longer sticks under pageScroll — day bands dock at top-0.
+          stickyTopClass="top-0"
         />
       );
     },
@@ -270,7 +273,9 @@ export function UnshippedShelfBoard({
 
   const headerPersistentEndSlot = useMemo(() => <StaffFilterButton align="start" />, []);
   const dashboardScrollRef = useDashboardScrollParentOptional();
+  const pageScroll = Boolean(dashboardScrollRef);
 
+  /** Secondary controls — tucked behind disclosure on the lane board. */
   const headerEndSlot = useMemo(
     () => (
       <div className="flex items-center gap-2">
@@ -293,9 +298,6 @@ export function UnshippedShelfBoard({
             <ColumnConfigButton variant="toolbar" />
           </span>
         </HoverTooltip>
-        {onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : null}
         <HoverTooltip label="Table options" asChild>
           <span className="inline-flex">
             <TableOptionsMenu
@@ -307,7 +309,16 @@ export function UnshippedShelfBoard({
         </HoverTooltip>
       </div>
     ),
-    [selectMode, onToggleSelectMode, surface, setSurface],
+    [surface, setSurface],
+  );
+
+  /** Always-visible far-right Select — outside the disclosure. */
+  const headerTrailingSlot = useMemo(
+    () =>
+      onToggleSelectMode ? (
+        <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
+      ) : null,
+    [selectMode, onToggleSelectMode],
   );
 
   return (
@@ -319,46 +330,53 @@ export function UnshippedShelfBoard({
               ? createPortal(
                   <div className="flex items-center gap-2">
                     {headerPersistentEndSlot}
-                    {headerEndSlot}
+                    <ToolbarControlsDisclosure>{headerEndSlot}</ToolbarControlsDisclosure>
+                    {headerTrailingSlot}
                   </div>,
                   toolbarPortalTarget,
                 )
               : (
                 <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-soft px-3 py-1.5">
                   {headerPersistentEndSlot}
-                  {headerEndSlot}
+                  <ToolbarControlsDisclosure>{headerEndSlot}</ToolbarControlsDisclosure>
+                  {headerTrailingSlot}
                 </div>
               )}
-            <OrdersQueueTable
-              records={records}
-              loading={loading}
-              isRefreshing={false}
-              searchValue={searchValue}
-              onClearSearch={onClearSearch}
-              emptyMessage="No orders to ship"
-              searchEmptyTitle={searchEmptyTitle}
-              searchResultLabel={searchResultLabel}
-              clearSearchLabel={clearSearchLabel}
-              queueMode="fulfillment"
-              sort="priority"
-              selectMode={selectMode}
-              selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-              onOpenRecord={(record) => {
-                setSelectedId(Number(record.id));
-                onOpenRecord(record);
-              }}
-              onCloseRecord={() => {
-                setSelectedId(null);
-                dispatchCloseShippedDetails();
-              }}
-              hideHeader
-              noHorizontalScroll
-              inheritColumnConfig
-              autoHeight
-              growToContent={Boolean(dashboardScrollRef)}
-              scrollParentRef={dashboardScrollRef ?? undefined}
-              virtualized={VIRTUAL_LANES && Boolean(dashboardScrollRef)}
-            />
+            <div className={toolbarPortalTarget ? 'py-1' : 'p-4'}>
+              {pageScroll ? <div className="shrink-0 h-1" aria-hidden /> : null}
+              <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>
+                <OrdersQueueTable
+                  records={records}
+                  loading={loading}
+                  isRefreshing={false}
+                  searchValue={searchValue}
+                  onClearSearch={onClearSearch}
+                  emptyMessage="No orders to ship"
+                  searchEmptyTitle={searchEmptyTitle}
+                  searchResultLabel={searchResultLabel}
+                  clearSearchLabel={clearSearchLabel}
+                  queueMode="fulfillment"
+                  sort="priority"
+                  selectMode={selectMode}
+                  selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+                  onOpenRecord={(record) => {
+                    setSelectedId(Number(record.id));
+                    onOpenRecord(record);
+                  }}
+                  onCloseRecord={() => {
+                    setSelectedId(null);
+                    dispatchCloseShippedDetails();
+                  }}
+                  hideHeader
+                  noHorizontalScroll
+                  inheritColumnConfig
+                  listShell="monitor"
+                  growToContent={pageScroll}
+                  scrollParentRef={dashboardScrollRef ?? undefined}
+                  virtualized={VIRTUAL_LANES && pageScroll}
+                />
+              </div>
+            </div>
             {footer}
           </div>
         ) : (
@@ -376,6 +394,7 @@ export function UnshippedShelfBoard({
             defaultSort="priority"
             headerPersistentEndSlot={headerPersistentEndSlot}
             headerEndSlot={headerEndSlot}
+            headerTrailingSlot={headerTrailingSlot}
             collapsibleControls
             getRowDate={getRowDate}
             renderLaneBody={renderLaneBody}

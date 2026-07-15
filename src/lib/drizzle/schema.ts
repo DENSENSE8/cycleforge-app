@@ -4127,6 +4127,8 @@ export const entityThreads = pgTable('entity_threads', {
   createdBy: integer('created_by').references(() => staff.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Soft-delete tombstone (2026-07-15); reads filter deleted_at IS NULL. */
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   naturalIdx: uniqueIndex('ux_entity_threads_natural').on(table.organizationId, table.entityType, table.entityId),
   lastMessageIdx: index('idx_entity_threads_org_last_message').on(table.organizationId, table.lastMessageAt.desc(), table.id.desc()),
@@ -4153,9 +4155,51 @@ export const threadMessages = pgTable('thread_messages', {
   clientEventId: text('client_event_id'),
   meta: jsonb('meta'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Soft-delete tombstone (2026-07-15); reads filter deleted_at IS NULL. */
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   clientEventIdx: uniqueIndex('ux_thread_messages_client_event').on(table.organizationId, table.clientEventId).where(sql`client_event_id IS NOT NULL`),
   threadIdx: index('idx_thread_messages_thread').on(table.threadId, table.createdAt.desc(), table.id.desc()),
+}));
+
+/**
+ * thread_assignments — one staff OWNER per entity thread (conversation
+ * ownership; distinct from work_assignments' work-queue). Upsert-to-reassign,
+ * delete-to-clear. Migration 2026-07-15_thread_crud_connections.sql.
+ */
+export const threadAssignments = pgTable('thread_assignments', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  threadId: bigint('thread_id', { mode: 'number' }).notNull().references(() => entityThreads.id, { onDelete: 'cascade' }),
+  assignedStaffId: integer('assigned_staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  assignedBy: integer('assigned_by').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  threadIdx: uniqueIndex('thread_assignments_organization_id_thread_id_key').on(table.organizationId, table.threadId),
+  staffIdx: index('idx_thread_assignments_staff').on(table.organizationId, table.assignedStaffId),
+}));
+
+/**
+ * thread_links — curated cross-entity connections for a thread ("also concerns
+ * entity X"). Modeled on photo_entity_links. entity_type CHECK = the 7 canonical
+ * anchors + 'SKU' (entity_id = sku_catalog.id, NEVER the SKU string). Manual /
+ * non-derivable links only — order→tracking/serial resolve read-side.
+ */
+export const threadLinks = pgTable('thread_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  threadId: bigint('thread_id', { mode: 'number' }).notNull().references(() => entityThreads.id, { onDelete: 'cascade' }),
+  /** CHECK thread_links_entity_type_chk: RECEIVING | RECEIVING_LINE | SERIAL_UNIT | ORDER | FBA_SHIPMENT | REPAIR | WARRANTY_CLAIM | SKU */
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** CHECK thread_links_link_role_chk: related | tracking | order | sku | serial | duplicate | follow_up */
+  linkRole: text('link_role').notNull().default('related'),
+  createdBy: integer('created_by').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  naturalIdx: uniqueIndex('ux_thread_links_natural').on(table.organizationId, table.threadId, table.entityType, table.entityId, table.linkRole),
+  entityIdx: index('idx_thread_links_entity').on(table.organizationId, table.entityType, table.entityId),
 }));
 
 /**

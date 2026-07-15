@@ -27,7 +27,7 @@ export interface OrderRailFacts {
 
 /**
  * Compact urgency phrase shown at the left of the meta row. Mirrors the
- * vocabulary used in `OrderPreviewPanel` so the same word appears in both.
+ * vocabulary used in the shipping workspace so the same word appears in both.
  */
 export function describeOrderUrgency(daysLate: number | null): string {
   return describeUrgency(daysLate);

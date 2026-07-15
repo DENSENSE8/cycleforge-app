@@ -17,3 +17,10 @@
 - `2026-07-15T14:23:29.316Z` · **main** · main · agent · Dashboard Pending/Packed UX polish: remove chrome bg band, keep card corners rounded on scroll, Select always visible far-right — done
 - `2026-07-15T14:31:23.453Z` · **main** · main · agent · Shipping sidebar: switch from /api/orders/recent ship-outs to History tech-logs feed (staff-scoped); History/KPI default to Me with staff=all for All — ok
 - `2026-07-15T14:32:44.301Z` · **main** · main · claude · planned Reported-Issues console (UIC): plan doc + execution prompt + master-plan tickets UIC-1..5 — done · UIC
+- `2026-07-15T14:38:38.003Z` · **main** · main · agent · UIC-1 read API + support.issues.view — done · UIC-1
+- `2026-07-15T14:38:44.941Z` · **main** · main · agent · Shipping sidebar: dense Testing-parity row height; restore last-50 personal ship-outs via /api/orders/recent — ok
+- `2026-07-15T15:00:21.600Z` · **main** · main · agent · Fix shipping edit: exception rows use PATCH /api/orders-exceptions/[id]; client duplicate-tracking validation; org-scoped getOrderById on tracking route — done — Order not found on EX rows resolved; same-tracking draft blocked client-side
+- `2026-07-15T15:02:09.382Z` · **main** · main · agent · Claims/support UI: markdown in ticket threads, To/Cc reply header, Claim tab FloatingButton send, photos via SendPhotoNoteModal lock, Zendesk link on SectionTabsSlider rightSlot — ok
+- `2026-07-15T15:06:18.636Z` · **main** · main · agent · Unbox per-tab terminal docks: checklist Check/Uncheck all, units Add serial+Prebox (removed R·PO header), conversation Add note; tracking Copy / ticket Reply — ok
+- `2026-07-15T15:29:45.998Z` · **main** · main · agent · UIC-2 read-only Issues console at /support?mode=issues — done · UIC-2
+- `2026-07-15T15:49:22.462Z` · **main** · main · agent · Ticket media UX: PhotoViewerModal Layer portal (header leak), media picker This ticket/Current carton tabs, ExpandableComposerField on support+claim composers — ok

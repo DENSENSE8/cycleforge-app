@@ -117,7 +117,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           */}
           <motion.ul
             ref={listRef}
-            className={`${SIDEBAR_GUTTER} overflow-x-clip py-1 outline-none ${isFetching ? 'opacity-90' : ''}`}
+            className={`${SIDEBAR_GUTTER} overflow-x-clip py-0.5 outline-none ${isFetching ? 'opacity-90' : ''}`}
             role="listbox"
             aria-label={`${eyebrowTitle} activity`}
             aria-busy={isFetching || undefined}

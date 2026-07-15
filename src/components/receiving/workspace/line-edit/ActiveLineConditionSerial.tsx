@@ -1,6 +1,6 @@
 'use client';
 
-import { type ComponentProps } from 'react';
+import { type ComponentProps, type RefObject } from 'react';
 import { ConditionPills } from '../ConditionPills';
 import { SerialCard } from '../SerialCard';
 import { SerialMatchResult, type SerialMatchedOrder } from '../SerialMatchResult';
@@ -49,6 +49,7 @@ export function ActiveLineConditionSerial({
   onSerialAbsentChange,
   requireSerialConfirmation,
   serialStepActive = false,
+  serialInputRef,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -69,6 +70,8 @@ export function ActiveLineConditionSerial({
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
   /** Stepper active step = serial — focus the scan input. */
   serialStepActive?: boolean;
+  /** Programmatic focus target for the dock Add serial handoff. */
+  serialInputRef?: RefObject<HTMLInputElement | null>;
   onSubmitSerial: (raw?: string, conditionGrade?: string | null) => void | Promise<void>;
   onDeleteSerialUnit: (serialUnitId: number, lineId?: number) => void;
   onReplaceSerialUnit: (
@@ -117,6 +120,7 @@ export function ActiveLineConditionSerial({
             lineCondition={cond}
             disabled={!receivingId}
             isSubmitting={serialSubmitting}
+            serialInputRef={serialInputRef}
             serialEditTarget={editingSerial?.id != null ? (editingSerial as UnitSerial) : null}
             onAddSerial={(sn, grade) => onSubmitSerial(sn, grade)}
             onDeleteSerial={(id) => {
@@ -154,15 +158,16 @@ export function ActiveLineConditionSerial({
           disabled={!receivingId}
           embedded
           autoFocusInput={serialStepActive}
+          externalInputRef={serialInputRef}
           showSavedChips={false}
           editingSerial={editingSerial}
           onEditingSerialChange={onEditingSerialChange}
           resultSlot={matchResult}
           condition={cond}
           onConditionChange={onConditionChange}
-          // The PO-line meta row already shows the condition chip, so the
-          // collapsed picker here is edit-pencil-only (no redundant grade pill).
-          collapsedConditionLabel={false}
+          // Collapsed picker shows selected grade pill + edit pencil (copy-chip
+          // pattern). Meta-row ConditionGradeChip remains the scan-alignment readout.
+          collapsedConditionLabel={true}
           onAdd={(sn) => onSubmitSerial(sn, cond)}
           noSerialActive={serialAbsent}
           onMarkNoSerial={() =>

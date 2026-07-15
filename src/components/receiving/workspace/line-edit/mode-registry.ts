@@ -5,14 +5,15 @@
  * DISPLAYS, not one panel with bits hidden:
  *   - `unbox`   (/receiving)            — scan → identify → serial → print · receive
  *   - `triage`  (/receiving?mode=triage)— fast classify pass → save for unbox
- *   - `testing` (/tech?view=testing)    — verdict pills → pass · print
+ *   - `testing` (/test?view=testing)    — verdict pills → pass · print
+ *     (tested-lines browse when no line is selected)
  *
  * Card visibility is no longer a shared matrix — unbox and triage are separate
  * panels (`LineEditPanel` / `TriagePanel`) that each declare their own sections.
- * This registry owns only the cross-mode chrome config the unified pane header
- * needs — which toolbar actions a mode shows and which rail/table navigation
- * channel its prev/next drives — so the header is one primitive configured by
- * data, not a bespoke toolbar per mode. Adding a mode = one row here.
+ * This registry owns the cross-mode chrome config the unified pane header needs
+ * — which toolbar actions a mode shows, which rail/table navigation channel
+ * its prev/next drives — plus pointers into `STATION_TERMINAL_REGISTRY` for the
+ * tab-aware bottom dock. Adding a mode = one row here.
  */
 
 export type WorkspaceMode = 'unbox' | 'triage' | 'testing';
@@ -45,6 +46,13 @@ export interface ModeDef {
   showDetails: boolean;
   /** Which navigation event prev/next dispatches for this mode. */
   navChannel: NavChannel;
+  /**
+   * Key into `STATION_TERMINAL_REGISTRY` (`src/lib/station-terminal`) — which
+   * terminal-dock slice owns this mode's bottom CTA.
+   */
+  terminalSlice: WorkspaceMode;
+  /** True when the mode hosts a SectionTabsSlider (tab-aware terminal). */
+  hasSectionTabs: boolean;
 }
 
 export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
@@ -53,18 +61,24 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
     headerActions: ['refresh', 'share', 'audit', 'copy', 'photoNote'],
     showDetails: true,
     navChannel: 'receiving-navigate-table',
+    terminalSlice: 'unbox',
+    hasSectionTabs: true,
   },
   triage: {
     label: 'Receiving',
     headerActions: ['refresh', 'share', 'audit', 'copy', 'photoNote'],
     showDetails: true,
     navChannel: 'receiving-navigate-table',
+    terminalSlice: 'triage',
+    hasSectionTabs: false,
   },
   testing: {
     label: 'Testing',
     headerActions: ['refresh', 'share', 'audit', 'pair', 'copy', 'photoNote', 'details'],
     showDetails: true,
     navChannel: 'testing-navigate-rail',
+    terminalSlice: 'testing',
+    hasSectionTabs: true,
   },
 };
 

@@ -64,8 +64,17 @@ export function isReceivingPoGroupTitleRow(row: ReceivingLineRow): boolean {
   return poValue.length > 0;
 }
 
+/** Minimal fields used by {@link receivingPoGroupKey} / {@link filterLinesByPoGroup}. */
+export type PoGroupKeySource = {
+  id: number;
+  zoho_purchaseorder_number?: string | null;
+  zoho_purchaseorder_id?: string | null;
+  inbound_source_type?: string | null;
+  source_order_id?: string | null;
+};
+
 /** PO grouping key — mirrors {@link useReceivingGrouping}. */
-export function receivingPoGroupKey(row: ReceivingLineRow): string {
+export function receivingPoGroupKey(row: PoGroupKeySource): string {
   const po = (
     row.zoho_purchaseorder_number ||
     row.zoho_purchaseorder_id ||
@@ -76,6 +85,23 @@ export function receivingPoGroupKey(row: ReceivingLineRow): string {
   const orderId = (row.source_order_id || '').trim();
   if (src && orderId) return `src:${src}:${orderId}`;
   return `line:${row.id}`;
+}
+
+/**
+ * Keep lines that share the anchor's PO group key.
+ *
+ * Uses line-level PO fields (`zoho_purchaseorder_number` /
+ * `zoho_purchaseorder_id`), same as table grouping — not the carton header.
+ * Mixed-PO cartons (one `receiving_id`, multiple Zoho POs) therefore isolate
+ * when the operator selects a PO-titled sidebar row. Unmatched stubs fall
+ * through to `line:{id}` and stay single-line.
+ */
+export function filterLinesByPoGroup<T extends PoGroupKeySource>(
+  lines: ReadonlyArray<T>,
+  anchor: PoGroupKeySource,
+): T[] {
+  const key = receivingPoGroupKey(anchor);
+  return lines.filter((l) => receivingPoGroupKey(l) === key);
 }
 
 /** Distinct product identity for adaptive title (SKU preferred, else item name). */

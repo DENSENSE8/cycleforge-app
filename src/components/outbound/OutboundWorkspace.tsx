@@ -14,6 +14,7 @@ import { ShippedDetailsPanel } from '@/components/shipped/ShippedDetailsPanel';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
+import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -73,6 +74,9 @@ export function OutboundWorkspace() {
     transition: useMotionTransition(framerTransition.workbenchPaneMount),
   };
 
+  // Modes are switched from the sidebar mode rail (outbound ∈ MASTER_NAV_RAIL_PAGES),
+  // not a top tab band — each mode is its own contextual surface: Labels (padded
+  // queue ⇄ print), Scan out (dock Station), Ready (allocation table), FBA (board).
   if (mode === 'fba') {
     return (
       <Suspense
@@ -91,42 +95,59 @@ export function OutboundWorkspace() {
     return <ReadyQueueTable searchQuery={q} />;
   }
 
+  if (mode === 'scan-out') {
+    // The dock scan bar lives in the sidebar (ScanOutModeBody footer); the main
+    // pane is the padded staged queue you scan out of.
+    return (
+      <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
+        <WorkbenchTablePane>
+          <StagedQueueTable
+            searchQuery={q}
+            onOpenOrder={handleOpenOrder}
+            onCloseOrder={handleCloseDetail}
+            hideHeader
+          />
+        </WorkbenchTablePane>
+        <AnimatePresence>
+          {open ? (
+            <StagedOrderDetail key={open} orderId={open} onClose={handleCloseDetail} />
+          ) : null}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // Labels
   return (
-    <div className="relative flex h-full min-w-0 flex-1 overflow-hidden">
-      {mode === 'scan-out' ? (
-        <StagedQueueTable
-          searchQuery={q}
-          onOpenOrder={handleOpenOrder}
-          onCloseOrder={handleCloseDetail}
-        />
-      ) : (
-        <div className="relative flex h-full min-w-0 flex-1 overflow-hidden">
-          <AnimatePresence mode="wait" initial={false}>
-            {open ? (
-              <motion.div key={`documents-${open}`} {...paneMotionProps} className="flex h-full min-w-0 flex-1">
-                <OutboundDocumentsPrintView orderId={open} />
-              </motion.div>
-            ) : (
-              <motion.div key="queue" {...paneMotionProps} className="flex h-full min-w-0 flex-1">
+    <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
+      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          {open ? (
+            <motion.div
+              key={`documents-${open}`}
+              {...paneMotionProps}
+              className="flex h-full min-w-0 flex-1"
+            >
+              <OutboundDocumentsPrintView orderId={open} />
+            </motion.div>
+          ) : (
+            <motion.div key="queue" {...paneMotionProps} className="flex h-full min-w-0 flex-1">
+              <WorkbenchTablePane>
                 <LabelsQueueTable
                   searchQuery={q}
                   sort={sort}
                   onOpenOrder={handleOpenOrder}
                   onCloseOrder={handleCloseDetail}
+                  hideHeader
                 />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
+              </WorkbenchTablePane>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       <AnimatePresence>
         {open ? (
-          mode === 'labels' ? (
-            <LabelsOrderWorkspace key={open} orderId={open} onClose={handleCloseDetail} />
-          ) : (
-            <StagedOrderDetail key={open} orderId={open} onClose={handleCloseDetail} />
-          )
+          <LabelsOrderWorkspace key={open} orderId={open} onClose={handleCloseDetail} />
         ) : null}
       </AnimatePresence>
     </div>

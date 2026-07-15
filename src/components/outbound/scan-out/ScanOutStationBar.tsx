@@ -1,140 +1,75 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+/**
+ * Dock scan-out bar (sidebar) — scan a carrier label to record SHIP_CONFIRM.
+ * The one scan target for scan-out mode; the main pane shows the staged queue.
+ * Scan loop + undo live in `useScanOutStation`; this is the compact bar + a
+ * one-line active result.
+ */
+
 import { StationScanBar } from '@/components/station/StationScanBar';
 import { Button } from '@/design-system/primitives';
 import { Barcode, Check, AlertTriangle } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
-import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
+import { useScanOutStation, type ActiveScanOut } from '@/components/outbound/scan-out/useScanOutStation';
+import { cn } from '@/utils/_cn';
 
-interface ScanOutResult {
-  ok: boolean;
-  matched: boolean;
-  duplicate?: boolean;
-  alreadyDelivered?: boolean;
-  shipmentId?: number;
-  tracking?: string | null;
-  orderId?: string | null;
-  productTitle?: string | null;
-  message?: string | null;
-}
+const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
+  ok: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  dup: 'bg-amber-50 text-amber-700 ring-amber-200',
+  exc: 'bg-amber-50 text-amber-700 ring-amber-200',
+  miss: 'bg-rose-50 text-rose-700 ring-rose-200',
+  err: 'bg-rose-50 text-rose-700 ring-rose-200',
+};
 
-/**
- * Dock scan-out bar — scan a carrier label to record SHIP_CONFIRM.
- * Shared by the Outbound station and the legacy dashboard sidebar footer.
- */
 export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } = {}) {
-  const queryClient = useQueryClient();
-  const [scanValue, setScanValue] = useState('');
-  const [lastResult, setLastResult] = useState<{ kind: 'ok' | 'dup' | 'miss' | 'err' | 'exc'; text: string } | null>(null);
-  const [undoable, setUndoable] = useState<{ shipmentId: number } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const refocus = useCallback(() => {
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, []);
-
-  const bustCaches = useCallback(() => {
-    bustScanOutCaches(queryClient);
-  }, [queryClient]);
-
-  const scanOut = useMutation({
-    mutationFn: async (tracking: string): Promise<ScanOutResult> => {
-      const res = await fetch('/api/shipped/scan-out', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackingNumber: tracking }),
-      });
-      if (!res.ok) throw new Error(`scan-out failed (${res.status})`);
-      return res.json();
-    },
-    onSuccess: (result) => {
-      setUndoable(null);
-      if (!result.matched) {
-        setLastResult({ kind: 'miss', text: result.message || 'No shipment found for that label' });
-        return;
-      }
-      const label = result.orderId ? `#${getLast4(result.orderId)}` : (result.tracking ?? '');
-      if (result.alreadyDelivered) {
-        setLastResult({ kind: 'exc', text: `Delivered already — ${label}` });
-        return;
-      }
-      if (result.duplicate) {
-        setLastResult({ kind: 'dup', text: `Already scanned out — ${label}` });
-      } else {
-        setLastResult({ kind: 'ok', text: `Out — ${result.productTitle || label}` });
-        if (result.shipmentId) setUndoable({ shipmentId: result.shipmentId });
-      }
-      bustCaches();
-    },
-    onError: () => {
-      setLastResult({ kind: 'err', text: 'Scan-out failed — try again' });
-    },
-  });
-
-  const undo = useMutation({
-    mutationFn: async (shipmentId: number): Promise<void> => {
-      const res = await fetch('/api/shipped/scan-out', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shipmentId }),
-      });
-      if (!res.ok) throw new Error(`undo failed (${res.status})`);
-    },
-    onSuccess: () => {
-      setUndoable(null);
-      setLastResult(null);
-      bustCaches();
-      refocus();
-    },
-    onError: () => {
-      setLastResult({ kind: 'err', text: 'Undo failed — try again' });
-    },
-  });
-
-  const handleSubmit = useCallback(() => {
-    const v = scanValue.trim();
-    if (!v || scanOut.isPending) return;
-    scanOut.mutate(v);
-    setScanValue('');
-    refocus();
-  }, [scanValue, scanOut, refocus]);
-
-  const feedbackTone =
-    lastResult?.kind === 'ok'
-      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-      : lastResult?.kind === 'dup'
-        ? 'bg-amber-50 text-amber-700 ring-amber-200'
-        : 'bg-rose-50 text-rose-700 ring-rose-200';
+  const station = useScanOutStation();
+  const active = station.active;
+  const label = active?.result?.orderId
+    ? `#${getLast4(active.result.orderId)}`
+    : active?.result?.tracking
+      ? `…${getLast4(active.result.tracking)}`
+      : '';
+  const text =
+    active?.status === 'ok' && active.result?.productTitle ? active.result.productTitle : active?.text ?? '';
 
   return (
     <div>
-      {lastResult ? (
+      {active ? (
         <div
-          className={`mb-2 flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${feedbackTone}`}
+          className={cn(
+            'mb-2 flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 ring-inset',
+            FEEDBACK_TONE[active.status],
+          )}
         >
-          {lastResult.kind === 'ok' ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-          <span className="truncate">{lastResult.text}</span>
-          {undoable && lastResult.kind === 'ok' ? (
+          {active.status === 'ok' ? (
+            <Check className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          )}
+          <span className="truncate">
+            {text}
+            {label ? ` — ${label}` : ''}
+          </span>
+          {active.status === 'ok' && station.undoable ? (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => undo.mutate(undoable.shipmentId)}
-              disabled={undo.isPending}
+              onClick={station.undo}
+              disabled={station.isUndoing}
               className="ml-auto h-auto shrink-0 px-0 text-xs text-emerald-700 underline-offset-2 hover:text-emerald-800 hover:underline"
             >
-              {undo.isPending ? 'Undoing…' : 'Undo'}
+              {station.isUndoing ? 'Undoing…' : 'Undo'}
             </Button>
           ) : null}
         </div>
       ) : null}
 
       <StationScanBar
-        value={scanValue}
-        onChange={setScanValue}
-        onSubmit={handleSubmit}
-        inputRef={inputRef}
+        value={station.scanValue}
+        onChange={station.setScanValue}
+        onSubmit={station.submit}
+        inputRef={station.inputRef}
         autoFocus={autoFocus}
         placeholder="Scan label to ship out…"
         icon={<Barcode className="h-[17px] w-[17px]" />}
@@ -142,7 +77,7 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
         inputBorderClassName="border-2 border-emerald-200"
         inputClassName="bg-surface-card focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400"
         hasRightContent={false}
-        onPaste={(text) => setScanValue(text)}
+        onPaste={(text) => station.setScanValue(text)}
       />
     </div>
   );

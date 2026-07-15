@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -19,7 +19,6 @@ import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewer
 import { SupportChatHeader } from './SupportChatHeader';
 import { SupportChatThread } from './SupportChatThread';
 import { SupportChatComposer } from './SupportChatComposer';
-import { SupportSuggestionPanel } from './SupportSuggestionPanel';
 import { SupportLinkedContext } from './SupportLinkedContext';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
 
@@ -45,7 +44,22 @@ function commentImageUrls(c: ZendeskComment): string[] {
  * photos, so clicking any photo opens the shared in-app PhotoViewerModal (no new
  * tab) and the viewer can page across the whole ticket.
  */
-export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; onBack?: () => void }) {
+export function SupportTicketDetail({
+  ticketId,
+  onBack,
+  hideExternalLink = false,
+  /** Station ticket tab — denser chrome, no AI panel, no composer send bar. */
+  embedded = false,
+  /** Carton context for media library “Current carton” tab (unbox / testing). */
+  receivingId,
+}: {
+  ticketId: number;
+  onBack?: () => void;
+  /** Hide the in-header Zendesk link when the host already shows one. */
+  hideExternalLink?: boolean;
+  embedded?: boolean;
+  receivingId?: number;
+}) {
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
   const ticket = bundle?.ticket;
   const commentsData = bundle
@@ -62,19 +76,6 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
 
   const gallery = usePhotoGallery({ photos: photoUrls });
   const { openViewer } = gallery;
-
-  // Draft seeded into the composer when the agent accepts an AI suggestion.
-  const [seed, setSeed] = useState<{ text: string; token: number } | null>(null);
-
-  // The customer's latest message — what the AI drafts a reply to. Falls back to
-  // the ticket's opening description if there are no customer comments yet.
-  const question = useMemo(() => {
-    const requesterId = (ticket as { requester_id?: number } | null)?.requester_id;
-    const fromCustomer = (commentsData?.comments ?? []).filter((c) => c.author_id === requesterId);
-    const last = fromCustomer[fromCustomer.length - 1];
-    const text = last?.body || (ticket as { description?: string } | null)?.description || '';
-    return text.trim();
-  }, [commentsData, ticket]);
 
   const onOpenPhoto = useCallback(
     (url: string) => {
@@ -136,7 +137,12 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
   return (
     <RightPaneOverlayHost className="relative flex h-full min-h-0 flex-col bg-surface-canvas/40">
     <div {...dz.rootProps} className="relative flex h-full min-h-0 flex-col">
-      <SupportChatHeader ticket={ticket} onBack={onBack} />
+      <SupportChatHeader
+        ticket={ticket}
+        onBack={onBack}
+        hideExternalLink={hideExternalLink}
+        compact={embedded}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <SupportChatThread
           ticketId={ticketId}
@@ -144,21 +150,17 @@ export function SupportTicketDetail({ ticketId, onBack }: { ticketId: number; on
           requesterName={requesterLabel(ticket)}
           requesterEmail={requester.email}
           onOpenPhoto={onOpenPhoto}
+          compact={embedded}
         />
-        <SupportLinkedContext ticketId={ticketId} onOpenPhoto={onOpenPhoto} />
+        <SupportLinkedContext ticketId={ticketId} onOpenPhoto={onOpenPhoto} compact={embedded} />
       </div>
-      <SupportSuggestionPanel
-        ticketId={ticketId}
-        subject={(ticket as { subject?: string }).subject}
-        question={question}
-        onUse={(text) => setSeed({ text, token: Date.now() })}
-      />
+      {/* AI suggested reply intentionally omitted for now (station + console). */}
       <SupportChatComposer
         ticketId={ticketId}
         requesterEmail={requester.email}
         staging={staging}
-        seedBody={seed?.text}
-        seedToken={seed?.token}
+        hideSendBar={embedded}
+        receivingId={receivingId}
       />
 
       {/* Full-panel drop overlay while dragging an OS file over the ticket. */}

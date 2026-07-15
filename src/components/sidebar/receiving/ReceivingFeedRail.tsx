@@ -180,6 +180,7 @@ export function ReceivingFeedRail({
       eyebrowTitle={feed.eyebrowTitle}
       autoSelectFirstWhenEmpty={feed.autoSelectFirstWhenEmpty}
       pinSelectedLead={feed.pinSelectedLead}
+      staggerRevealMotion={feed.staggerRevealMotion}
       getActivityAt={feed.getActivityAt}
       getStatusDot={dot.getStatusDot}
       getStatusDotLabel={dot.getStatusDotLabel}

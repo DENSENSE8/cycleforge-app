@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { deriveOrderPipeline, deriveOrderPipelineStates, deriveShippedHeaderMeta, resolveDeleteRequest } from './shipped-details-logic';
+import {
+  canEditShippingInfo,
+  deriveOrderPipeline,
+  deriveOrderPipelineStates,
+  deriveShippedHeaderMeta,
+  isExceptionShippedRow,
+  resolveDeleteRequest,
+  resolveShippedRowEditTarget,
+} from './shipped-details-logic';
 
 /** Minimal ShippedOrder factory — only the fields the logic reads. */
 function makeShipped(overrides: Record<string, unknown>): ShippedOrder {
@@ -52,6 +60,36 @@ test('resolveDeleteRequest: plain order → order delete', () => {
     rowSource: 'order',
     orderId: 100,
   });
+});
+
+// ─── exception / edit-target helpers ─────────────────────────────────────────
+
+test('isExceptionShippedRow: row_source exception or negative id', () => {
+  assert.equal(isExceptionShippedRow(makeShipped({ id: 7, row_source: 'exception' })), true);
+  assert.equal(isExceptionShippedRow(makeShipped({ id: -42 })), true);
+  assert.equal(isExceptionShippedRow(makeShipped({ id: 7, row_source: 'order' })), false);
+});
+
+test('resolveShippedRowEditTarget: order vs exception', () => {
+  assert.deepEqual(resolveShippedRowEditTarget(makeShipped({ id: 100 })), {
+    kind: 'order',
+    orderId: 100,
+  });
+  assert.deepEqual(resolveShippedRowEditTarget(makeShipped({ id: 7, row_source: 'exception' })), {
+    kind: 'exception',
+    exceptionId: 7,
+  });
+  assert.deepEqual(resolveShippedRowEditTarget(makeShipped({ id: -42 })), {
+    kind: 'exception',
+    exceptionId: 42,
+  });
+  assert.equal(resolveShippedRowEditTarget(makeShipped({ id: 0 })), null);
+});
+
+test('canEditShippingInfo: true for valid order and exception rows', () => {
+  assert.equal(canEditShippingInfo(makeShipped({ id: 100 })), true);
+  assert.equal(canEditShippingInfo(makeShipped({ id: 7, row_source: 'exception' })), true);
+  assert.equal(canEditShippingInfo(makeShipped({ id: 0 })), false);
 });
 
 // ─── deriveShippedHeaderMeta ──────────────────────────────────────────────────

@@ -23,6 +23,101 @@ type DbClient = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[]; rowCount?: number }>;
 };
 
+export async function getOrderExceptionById(
+  exceptionId: number,
+  orgId: OrgId,
+): Promise<OrdersExceptionRecord | null> {
+  const result = await tenantQuery<OrdersExceptionRecord>(
+    orgId,
+    `SELECT id, shipping_tracking_number, source_station, staff_id, staff_name,
+            exception_reason, notes, status,
+            created_at::text AS created_at, updated_at::text AS updated_at
+     FROM orders_exceptions
+     WHERE id = $1 AND organization_id = $2
+     LIMIT 1`,
+    [exceptionId, orgId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export type UpdateOrderExceptionTrackingResult =
+  | { ok: true; before: OrdersExceptionRecord; after: OrdersExceptionRecord }
+  | { ok: false; code: 'not_found' | 'invalid_tracking' | 'conflict'; message: string };
+
+/**
+ * Update the tracking number on a single `orders_exceptions` row. Rejects when
+ * another open exception in the same org already owns the normalized key.
+ */
+export async function updateOrderExceptionTracking(
+  exceptionId: number,
+  shippingTrackingNumber: string,
+  orgId: OrgId,
+): Promise<UpdateOrderExceptionTrackingResult> {
+  const tracking = String(shippingTrackingNumber || '').trim();
+  const trackingKey18 = normalizeTrackingKey18(tracking);
+  const trackingLast8 = normalizeTrackingLast8(tracking);
+  const normalizedLast8 = /^\d{8}$/.test(trackingLast8) ? trackingLast8 : null;
+  if (!tracking || !trackingKey18) {
+    return { ok: false, code: 'invalid_tracking', message: 'Tracking number is invalid' };
+  }
+
+  return withTenantTransaction(orgId, async (client) => {
+    const beforeResult = await client.query(
+      `SELECT id, shipping_tracking_number, source_station, staff_id, staff_name,
+              exception_reason, notes, status,
+              created_at::text AS created_at, updated_at::text AS updated_at
+       FROM orders_exceptions
+       WHERE id = $1 AND organization_id = $2
+       LIMIT 1`,
+      [exceptionId, orgId],
+    );
+    const before = beforeResult.rows[0] as OrdersExceptionRecord | undefined;
+    if (!before) {
+      return { ok: false as const, code: 'not_found' as const, message: 'Exception not found' };
+    }
+
+    const conflict = await client.query(
+      `SELECT id
+       FROM orders_exceptions
+       WHERE status = 'open'
+         AND organization_id = $3
+         AND id <> $4
+         AND (
+           RIGHT(regexp_replace(UPPER(COALESCE(shipping_tracking_number, '')), '[^A-Z0-9]', '', 'g'), 18) = $1
+           OR (
+             $2::text IS NOT NULL
+             AND RIGHT(regexp_replace(COALESCE(shipping_tracking_number, ''), '[^0-9]', '', 'g'), 8) = $2
+           )
+         )
+       LIMIT 1`,
+      [trackingKey18, normalizedLast8, orgId, exceptionId],
+    );
+    if ((conflict.rowCount ?? 0) > 0) {
+      return {
+        ok: false as const,
+        code: 'conflict' as const,
+        message: 'Tracking number already exists on another exception',
+      };
+    }
+
+    const updated = await client.query(
+      `UPDATE orders_exceptions
+       SET shipping_tracking_number = $1,
+           updated_at = NOW()
+       WHERE id = $2 AND organization_id = $3
+       RETURNING id, shipping_tracking_number, source_station, staff_id, staff_name,
+                 exception_reason, notes, status,
+                 created_at::text AS created_at, updated_at::text AS updated_at`,
+      [tracking, exceptionId, orgId],
+    );
+    const after = updated.rows[0] as OrdersExceptionRecord | undefined;
+    if (!after) {
+      return { ok: false as const, code: 'not_found' as const, message: 'Exception not found' };
+    }
+    return { ok: true as const, before, after };
+  });
+}
+
 export async function findOrderByTrackingKey(
   shippingTrackingNumber: string,
   dbClient: DbClient = pool,

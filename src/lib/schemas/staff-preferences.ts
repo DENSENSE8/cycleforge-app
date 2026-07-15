@@ -33,6 +33,9 @@ export const TIME_FORMAT_VALUES = ['12h', '24h'] as const;
 export type TimeFormat = (typeof TIME_FORMAT_VALUES)[number];
 export const DEFAULT_TIME_FORMAT: TimeFormat = '12h';
 
+/** `#RRGGBB` personal accent override when `useStaffAccent` is false. */
+export const ACCENT_HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
 /** ISO day-range filter — `null` clears it. Shared by board + per-lane prefs. */
 const BOARD_RANGE = z
   .object({
@@ -89,6 +92,21 @@ export const StaffPreferencesPutBody = z
      * default (`12h`). Display-only — never affects stored/API timestamps.
      */
     timeFormat: z.enum(TIME_FORMAT_VALUES).nullable().optional(),
+    /**
+     * When true (default), operator accent chrome (`bg-accent-bg`, section tab
+     * pills, floating CTAs) follows `staff.color_hex`. When false, uses
+     * `accentHex` instead. `null` resets to the default (staff color ON).
+     */
+    useStaffAccent: z.boolean().nullable().optional(),
+    /**
+     * Personal accent hex when `useStaffAccent` is false. Snapped to the nearest
+     * station theme at apply time. `null` clears back to the default blue anchor.
+     */
+    accentHex: z
+      .string()
+      .regex(ACCENT_HEX_RE, 'Accent color must be a #RRGGBB hex value')
+      .nullable()
+      .optional(),
     /**
      * "Skip for now" on the dashboard Getting-Started checklist. `true` hides
      * the card; `null` clears the dismissal (re-opens it). The underlying

@@ -1,4 +1,5 @@
 import { normalizeTrackingNumber } from '@/lib/tracking-format';
+import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ScanHandlerContext } from './types';
 
 interface TrackingCallbacks {
@@ -57,6 +58,10 @@ export async function handleTrackingScan(
       tracking: data.order.tracking,
       serialNumbers: data.order.serialNumbers || [],
       scannedSkuCodes: Array.isArray(data.order.scannedSkuCodes) ? data.order.scannedSkuCodes : [],
+      skuSerialGroups: initSkuSerialGroups(
+        data.order.sku,
+        data.order.serialNumbers || [],
+      ),
       testDateTime: data.order.testDateTime,
       testedBy: data.order.testedBy,
       quantity: parseInt(String(data.order.quantity || 1), 10) || 1,

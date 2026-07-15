@@ -1,6 +1,9 @@
 'use client';
 
-import { useCallback, useRef, type WheelEvent } from 'react';
+import { useRef, useState } from 'react';
+import { Pencil } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 
 /**
  * Verdict the tech assigns to a receiving line during the testing step.
@@ -19,6 +22,20 @@ interface Props {
   value: TestingVerdict | null | undefined;
   onChange: (next: TestingVerdict) => void;
   disabled?: boolean;
+  /**
+   * When set, the picker starts as the full row and collapses to the selected
+   * pill + an edit pencil once a verdict is chosen — mirroring {@link ConditionPills}.
+   */
+  collapsible?: boolean;
+  /** Controlled expanded state (collapsible mode only). */
+  expanded?: boolean;
+  onExpandedChange?: (next: boolean) => void;
+  /**
+   * Collapsible mode only. When false, the collapsed state renders JUST the edit
+   * pencil (no selected-verdict pill) — used where another surface already shows
+   * the verdict. Defaults to true.
+   */
+  collapsedLabel?: boolean;
 }
 
 const TEST_OPTS: Array<{
@@ -52,28 +69,92 @@ const TEST_OPTS: Array<{
   },
 ];
 
+const PILL_BASE =
+  'ds-raw-button inline-flex h-9 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-4 text-role-caption font-black uppercase tracking-[0.1em] ring-1 ring-inset transition-all active:scale-[0.98]';
+
 /**
  * Testing verdict picker. Mirrors {@link ConditionPills}' visual primitive
  * (ring-pill row, horizontal-scroll, radio semantics) so the receiving and
  * testing forms feel identical — only the choices differ. Tones intentionally
  * encode meaning: green = ship-ready, amber = re-queue, rose = fail/claim.
  */
-export function TestingStatusPills({ value, onChange, disabled = false }: Props) {
-  const selected = (value ?? '').toUpperCase();
+export function TestingStatusPills({
+  value,
+  onChange,
+  disabled = false,
+  collapsible = false,
+  expanded: expandedProp,
+  onExpandedChange,
+  collapsedLabel = true,
+}: Props) {
+  const selected = (value ?? '').toUpperCase() as TestingVerdict | '';
+  const selectedOpt = TEST_OPTS.find((o) => o.value === selected) ?? null;
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [internalExpanded, setInternalExpanded] = useState(true);
+  const expanded = expandedProp ?? internalExpanded;
+  const setExpanded = (next: boolean) => {
+    onExpandedChange?.(next);
+    if (expandedProp === undefined) setInternalExpanded(next);
+  };
+  useHorizontalWheelScroll(scrollerRef, expanded);
 
-  const onWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-    el.scrollLeft += e.deltaY;
-    e.preventDefault();
-  }, []);
+  // Collapsed: selected pill + pencil, or pencil-only when no verdict yet
+  // (lets condition/verdict mutex collapse the row even before a pick).
+  if (collapsible && !expanded) {
+    return (
+      <div
+        role="radiogroup"
+        aria-label="Testing verdict"
+        aria-disabled={disabled || undefined}
+        className={`flex w-fit items-center gap-1.5 ${disabled ? 'pointer-events-none opacity-60' : ''}`}
+      >
+        {selectedOpt && collapsedLabel ? (
+          <HoverTooltip label={`${selectedOpt.label} — change`} asChild focusable={false}>
+            <button
+              type="button"
+              aria-label={`Verdict ${selectedOpt.label} — change`}
+              onClick={() => setExpanded(true)}
+              disabled={disabled}
+              className={`${PILL_BASE} ${selectedOpt.tone.active}`}
+            >
+              {selectedOpt.label}
+            </button>
+          </HoverTooltip>
+        ) : null}
+        <HoverTooltip
+          label={
+            selectedOpt
+              ? collapsedLabel
+                ? 'Edit verdict'
+                : `Verdict ${selectedOpt.label} — change`
+              : 'Set testing verdict'
+          }
+          asChild
+          focusable={false}
+        >
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            disabled={disabled}
+            aria-label={
+              selectedOpt
+                ? collapsedLabel
+                  ? 'Edit verdict'
+                  : `Verdict ${selectedOpt.label} — change`
+                : 'Set testing verdict'
+            }
+            className="ds-raw-button rounded p-0.5 text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+        </HoverTooltip>
+      </div>
+    );
+  }
 
   return (
     <div
       ref={scrollerRef}
-      onWheel={onWheel}
       role="radiogroup"
       aria-label="Testing verdict"
       aria-disabled={disabled || undefined}
@@ -89,11 +170,12 @@ export function TestingStatusPills({ value, onChange, disabled = false }: Props)
             type="button"
             role="radio"
             aria-checked={isActive}
-            onClick={() => onChange(opt.value)}
+            onClick={() => {
+              onChange(opt.value);
+              if (collapsible) setExpanded(false);
+            }}
             disabled={disabled}
-            className={`ds-raw-button inline-flex h-9 shrink-0 snap-start items-center whitespace-nowrap rounded-full px-4 text-role-caption font-black uppercase tracking-[0.1em] ring-1 ring-inset transition-all active:scale-[0.98] ${
-              isActive ? opt.tone.active : opt.tone.inactive
-            }`}
+            className={`${PILL_BASE} ${isActive ? opt.tone.active : opt.tone.inactive}`}
           >
             {opt.label}
           </button>

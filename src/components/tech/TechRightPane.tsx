@@ -3,12 +3,11 @@
 /**
  * The tech dashboard's right pane, swapped by sidebar mode:
  *   - receiving ........ the inbound receiving feed
- *   - testing .......... the Pass/Test-Again verdict workspace
- *   - testing-history .. the browse + bulk-select feed of tested lines
+ *   - testing .......... TestingLineWorkspace (history browse when no line;
+ *                        Pass/Test-Again panel when a line is open)
  *   - history (default)  Shipping workspace (Pending · FBA | History), OVER which a
  *     scanned/active order — or an Up Next preview — crossfades and back.
- * Pure presentational; state comes from the dashboard's hooks. Extracted from
- * TechDashboard; behaviour is unchanged.
+ * Pure presentational; state comes from the dashboard's hooks.
  */
 
 import React from 'react';
@@ -16,7 +15,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { framerPresence } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
 import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';
-import { TestingHistoryList } from '@/components/tech/TestingHistoryList';
 import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed';
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
 import { TestingLineWorkspace } from '@/components/tech/TestingLineWorkspace';
@@ -60,23 +58,14 @@ export function TechRightPane({
   }
 
   if (rightViewMode === 'testing') {
-    // Testing mode → the Pass/Test-Again verdict workspace.
+    // Testing mode → history browse when no line; Pass/Test-Again when open.
     return (
       <TestingLineWorkspace
         staffId={techId}
         selectedLineId={testingLineId}
         onSelectedLineChange={onTestingLineChange}
-      />
-    );
-  }
-
-  if (rightViewMode === 'testing-history') {
-    // History mode → the browse + bulk-select feed of this tech's tested lines.
-    return (
-      <TestingHistoryList
-        staffId={techId}
-        selectMode={testingSelectMode}
-        onOpenLine={onOpenTestingLine}
+        testingSelectMode={testingSelectMode}
+        onOpenTestingLine={onOpenTestingLine}
       />
     );
   }

@@ -1,4 +1,4 @@
-import { TestingLinePanel, type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
+import { ActiveLineTestingSerial, type UnitSlotSerial } from './ActiveLineTestingSerial';
 import type { TestingController } from './testing-panel-types';
 
 /** Shared confirm before removing a serial. */
@@ -36,7 +36,7 @@ export function TestingLineSlot({
   onEditingSerialChange?: (s: UnitSlotSerial | null) => void;
 }) {
   return (
-    <TestingLinePanel
+    <ActiveLineTestingSerial
       lineId={lineId}
       saved={serials}
       expected={expected}

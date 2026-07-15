@@ -47,11 +47,8 @@ async function runTrackingOps(
   ctx: NonNullable<Awaited<ReturnType<typeof requireRoutePerm>>['ctx']>,
   ops: Omit<ApplyOrderTrackingOps, 'orderIds'>,
 ): Promise<NextResponse> {
-  const before = await getOrderById(id);
+  const before = await getOrderById(id, ctx.organizationId);
   if (!before) {
-    return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-  }
-  if (before.organization_id !== ctx.organizationId) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
 
@@ -70,7 +67,7 @@ async function runTrackingOps(
   await invalidateAllOrdersApiCaches(['shipped', 'orders-next', 'tech-logs', 'packing-logs', 'need-to-order'], ctx.organizationId);
   await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.tracking' });
 
-  const updated = await getOrderById(id);
+  const updated = await getOrderById(id, ctx.organizationId);
 
   // The order↔tracking linkage just changed, which flips the `order_match`
   // resolution for any already-packed PACK scan on this order. Recompute its

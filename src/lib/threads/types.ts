@@ -13,6 +13,18 @@ export type ThreadMessageProvider = (typeof THREAD_MESSAGE_PROVIDERS)[number];
 export const THREAD_MESSAGE_VISIBILITIES = ['internal', 'public'] as const;
 export type ThreadMessageVisibility = (typeof THREAD_MESSAGE_VISIBILITIES)[number];
 
+/** thread_links discriminator — the 7 anchors + SKU (entity_id = sku_catalog.id). */
+export const THREAD_LINK_ENTITY_TYPES = [
+  'RECEIVING', 'RECEIVING_LINE', 'SERIAL_UNIT', 'ORDER',
+  'FBA_SHIPMENT', 'REPAIR', 'WARRANTY_CLAIM', 'SKU',
+] as const;
+export type ThreadLinkEntityType = (typeof THREAD_LINK_ENTITY_TYPES)[number];
+
+export const THREAD_LINK_ROLES = [
+  'related', 'tracking', 'order', 'sku', 'serial', 'duplicate', 'follow_up',
+] as const;
+export type ThreadLinkRole = (typeof THREAD_LINK_ROLES)[number];
+
 export interface EntityThread {
   id: number;
   entityType: string;
@@ -37,4 +49,41 @@ export interface ThreadMessage {
   clientEventId: string | null;
   meta: Record<string, unknown> | null;
   createdAt: string;
+  /** Set once the message is soft-deleted (kept for the audit/ops_events trail). */
+  editedAt?: string | null;
+}
+
+export interface ThreadAssignment {
+  threadId: number;
+  assignedStaffId: number;
+  assignedStaffName?: string | null;
+  assignedBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ThreadLink {
+  id: number;
+  threadId: number;
+  entityType: ThreadLinkEntityType;
+  entityId: number;
+  linkRole: ThreadLinkRole;
+  createdBy: number | null;
+  createdAt: string;
+  /** Best-effort display label resolved server-side (e.g. order #, serial, SKU). */
+  label?: string | null;
+}
+
+/** One resolved "dot" — a related entity a thread connects to. */
+export interface ThreadConnection {
+  entityType: string;
+  entityId: number | null;
+  /** Human label (order number, serial, tracking, SKU). */
+  label: string;
+  /** Where the connection came from: 'derived' (read-side) or 'link' (curated). */
+  origin: 'derived' | 'link';
+  /** Deep-link href when resolvable. */
+  href?: string | null;
+  /** For derived tracking rows with no entity id. */
+  hint?: string | null;
 }

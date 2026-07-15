@@ -13,36 +13,6 @@ import {
 /** Custom event the testing toolbar "Pair" action dispatches to jump to the pairing tab. */
 export const TESTING_OPEN_SKU_PAIRING_EVENT = 'testing-open-sku-pairing';
 
-const NOTES_TEXTAREA_FOCUS =
-  'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
-
-/**
- * Operator notes composer for the testing workspace overview tab.
- * Distinct from unbox `LineNotesCard` — a simple auto-saving textarea.
- */
-export function TestingNotesField({
-  notes,
-  onChange,
-  onBlur,
-}: {
-  notes: string;
-  onChange: (next: string) => void;
-  onBlur: () => void;
-}) {
-  return (
-    <WorkspaceCard label="Notes" bodyClassName="p-4">
-      <textarea
-        rows={2}
-        aria-label="Notes"
-        value={notes}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        className={`w-full resize-none rounded-lg border border-border-soft inset-field text-role-caption text-text-default ${NOTES_TEXTAREA_FOCUS}`}
-      />
-    </WorkspaceCard>
-  );
-}
-
 /** Cross-platform SKU pairing hub for the testing workspace pairing tab. */
 export function TestingSkuPairingPanel({
   skuCatalogId,

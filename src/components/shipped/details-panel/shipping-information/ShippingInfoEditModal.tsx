@@ -13,6 +13,7 @@ export function ShippingInfoEditModal({
   isSaving,
   isSaveSuccess,
   error,
+  exceptionMode = false,
   onClose,
   onSave,
 }: {
@@ -22,6 +23,8 @@ export function ShippingInfoEditModal({
   isSaving: boolean;
   isSaveSuccess: boolean;
   error: string | null;
+  /** Tracking-exception rows: single tracking field, no order/serial editors. */
+  exceptionMode?: boolean;
   onClose: () => void;
   onSave: () => void;
 }) {
@@ -64,32 +67,40 @@ export function ShippingInfoEditModal({
             </div>
 
             <div className="space-y-4 px-5 py-5">
-              <div className="space-y-4">
-                <label className="block">
-                  <span className="mb-1.5 block text-role-micro uppercase tracking-[0.18em] text-text-soft">Ship By Date</span>
-                  <input
-                    type="text"
-                    value={draft.shipByDate}
-                    onChange={(e) => setDraft((current) => ({ ...current, shipByDate: e.target.value }))}
-                    placeholder="MM-DD-YY"
-                    className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-bold text-text-default outline-none transition-colors focus:border-blue-400"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-role-micro uppercase tracking-[0.18em] text-text-soft">Order ID</span>
-                  <input
-                    type="text"
-                    value={draft.orderNumber}
-                    onChange={(e) => setDraft((current) => ({ ...current, orderNumber: e.target.value }))}
-                    placeholder="Enter order ID"
-                    className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-bold text-text-default outline-none transition-colors focus:border-blue-400"
-                  />
-                </label>
-              </div>
+              {!exceptionMode ? (
+                <div className="space-y-4">
+                  <label className="block">
+                    <span className="mb-1.5 block text-role-micro uppercase tracking-[0.18em] text-text-soft">Ship By Date</span>
+                    <input
+                      type="text"
+                      value={draft.shipByDate}
+                      onChange={(e) => setDraft((current) => ({ ...current, shipByDate: e.target.value }))}
+                      placeholder="MM-DD-YY"
+                      className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-bold text-text-default outline-none transition-colors focus:border-blue-400"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-role-micro uppercase tracking-[0.18em] text-text-soft">Order ID</span>
+                    <input
+                      type="text"
+                      value={draft.orderNumber}
+                      onChange={(e) => setDraft((current) => ({ ...current, orderNumber: e.target.value }))}
+                      placeholder="Enter order ID"
+                      className="h-10 w-full rounded-xl border border-border-soft bg-surface-card px-3 text-sm font-bold text-text-default outline-none transition-colors focus:border-blue-400"
+                    />
+                  </label>
+                </div>
+              ) : (
+                <p className="text-role-caption font-semibold text-text-soft">
+                  Tracking exception — edit the tracking number only. Sync Exceptions to match an order, or delete from the panel footer.
+                </p>
+              )}
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Tracking Numbers</p>
+                  <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
+                    {exceptionMode ? 'Tracking Number' : 'Tracking Numbers'}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   {draft.trackingRows.map((row, index) => (
@@ -118,111 +129,117 @@ export function ShippingInfoEditModal({
                               }));
                             } catch {}
                           }}
-                          placeholder={`Tracking Number ${index + 1}`}
+                          placeholder={exceptionMode ? 'Tracking Number' : `Tracking Number ${index + 1}`}
                           ariaLabel={`Paste tracking number ${index + 1}`}
                           title="Paste tracking number"
                         />
                       </div>
-                      <HoverTooltip label={`Delete tracking number ${index + 1}`} asChild>
-                        <IconButton
-                          onClick={() => {
-                            setDraft((current) => {
-                              const next = current.trackingRows.filter((_, i) => i !== index);
-                              return {
-                                ...current,
-                                trackingRows: next.length > 0 ? next : [{ shipmentId: null, tracking: '' }],
-                              };
-                            });
-                          }}
-                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-soft hover:border-red-300 hover:bg-red-50 hover:text-red-600"
-                          ariaLabel={`Delete tracking number ${index + 1}`}
-                          icon={<Trash2 className="h-4 w-4" />}
-                        />
-                      </HoverTooltip>
+                      {!exceptionMode ? (
+                        <HoverTooltip label={`Delete tracking number ${index + 1}`} asChild>
+                          <IconButton
+                            onClick={() => {
+                              setDraft((current) => {
+                                const next = current.trackingRows.filter((_, i) => i !== index);
+                                return {
+                                  ...current,
+                                  trackingRows: next.length > 0 ? next : [{ shipmentId: null, tracking: '' }],
+                                };
+                              });
+                            }}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-soft hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                            ariaLabel={`Delete tracking number ${index + 1}`}
+                            icon={<Trash2 className="h-4 w-4" />}
+                          />
+                        </HoverTooltip>
+                      ) : null}
                     </div>
                   ))}
-                  <HoverTooltip label="Add tracking number" asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setDraft((current) => ({
-                          ...current,
-                          trackingRows: [...current.trackingRows, { shipmentId: null, tracking: '' }],
-                        }));
-                      }}
-                      icon={<Plus className="h-3.5 w-3.5" />}
-                      className="w-full rounded-xl border border-dashed border-border-default text-text-soft hover:border-blue-400 hover:text-blue-600"
-                      ariaLabel="Add tracking number"
-                    >
-                      Add Tracking Number
-                    </Button>
-                  </HoverTooltip>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Serial Numbers</p>
-                </div>
-                <div className="space-y-2">
-                  {(draft.serialRows.length > 0 ? draft.serialRows : ['']).map((row, index) => {
-                    const input = (
-                      <PasteableDraftInput
-                        value={row}
-                        onChange={(value) => {
+                  {!exceptionMode ? (
+                    <HoverTooltip label="Add tracking number" asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
                           setDraft((current) => ({
                             ...current,
-                            serialRows: current.serialRows.map((entry, entryIndex) => (
-                              entryIndex === index ? value.toUpperCase() : entry
-                            )),
+                            trackingRows: [...current.trackingRows, { shipmentId: null, tracking: '' }],
                           }));
                         }}
-                        onPaste={async () => {
-                          try {
-                            const text = await navigator.clipboard.readText();
-                            if (!text.trim()) return;
-                            const pasted = text.trim().toUpperCase();
-                            setDraft((current) => ({
-                              ...current,
-                              serialRows: current.serialRows.length > 0
-                                ? current.serialRows.map((entry, entryIndex) => (entryIndex === index ? pasted : entry))
-                                : [pasted],
-                            }));
-                          } catch {}
-                        }}
-                        placeholder={`Serial ${index + 1}`}
-                        inputClassName="font-mono"
-                        ariaLabel={`Paste serial ${index + 1}`}
-                        title="Paste serial"
-                      />
-                    );
-
-                    if (index === 0) {
-                      return (
-                        <div key={`serial-${index}`} className="flex items-center gap-2">
-                          <div className="min-w-0 flex-1">{input}</div>
-                          <HoverTooltip label="Add serial number" asChild>
-                            <IconButton
-                              onClick={() => {
-                                setDraft((current) => ({
-                                  ...current,
-                                  serialRows: current.serialRows.length > 0 ? [...current.serialRows, ''] : [''],
-                                }));
-                              }}
-                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-600 bg-blue-600 transition-colors hover:border-blue-700 hover:bg-blue-700"
-                              ariaLabel="Add serial number"
-                              icon={<Plus className="h-4 w-4 text-white" />}
-                            />
-                          </HoverTooltip>
-                        </div>
-                      );
-                    }
-
-                    return <div key={`serial-${index}`}>{input}</div>;
-                  })}
+                        icon={<Plus className="h-3.5 w-3.5" />}
+                        className="w-full rounded-xl border border-dashed border-border-default text-text-soft hover:border-blue-400 hover:text-blue-600"
+                        ariaLabel="Add tracking number"
+                      >
+                        Add Tracking Number
+                      </Button>
+                    </HoverTooltip>
+                  ) : null}
                 </div>
               </div>
+
+              {!exceptionMode ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">Serial Numbers</p>
+                  </div>
+                  <div className="space-y-2">
+                    {(draft.serialRows.length > 0 ? draft.serialRows : ['']).map((row, index) => {
+                      const input = (
+                        <PasteableDraftInput
+                          value={row}
+                          onChange={(value) => {
+                            setDraft((current) => ({
+                              ...current,
+                              serialRows: current.serialRows.map((entry, entryIndex) => (
+                                entryIndex === index ? value.toUpperCase() : entry
+                              )),
+                            }));
+                          }}
+                          onPaste={async () => {
+                            try {
+                              const text = await navigator.clipboard.readText();
+                              if (!text.trim()) return;
+                              const pasted = text.trim().toUpperCase();
+                              setDraft((current) => ({
+                                ...current,
+                                serialRows: current.serialRows.length > 0
+                                  ? current.serialRows.map((entry, entryIndex) => (entryIndex === index ? pasted : entry))
+                                  : [pasted],
+                              }));
+                            } catch {}
+                          }}
+                          placeholder={`Serial ${index + 1}`}
+                          inputClassName="font-mono"
+                          ariaLabel={`Paste serial ${index + 1}`}
+                          title="Paste serial"
+                        />
+                      );
+
+                      if (index === 0) {
+                        return (
+                          <div key={`serial-${index}`} className="flex items-center gap-2">
+                            <div className="min-w-0 flex-1">{input}</div>
+                            <HoverTooltip label="Add serial number" asChild>
+                              <IconButton
+                                onClick={() => {
+                                  setDraft((current) => ({
+                                    ...current,
+                                    serialRows: current.serialRows.length > 0 ? [...current.serialRows, ''] : [''],
+                                  }));
+                                }}
+                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-600 bg-blue-600 transition-colors hover:border-blue-700 hover:bg-blue-700"
+                                ariaLabel="Add serial number"
+                                icon={<Plus className="h-4 w-4 text-white" />}
+                              />
+                            </HoverTooltip>
+                          </div>
+                        );
+                      }
+
+                      return <div key={`serial-${index}`}>{input}</div>;
+                    })}
+                  </div>
+                </div>
+              ) : null}
 
               {error ? <p className="text-sm font-bold text-red-600">{error}</p> : null}
             </div>

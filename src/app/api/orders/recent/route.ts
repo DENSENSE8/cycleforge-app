@@ -12,10 +12,13 @@ interface RecentOrder {
   item_number: string | null;
   sku: string;
   quantity: string | number | null;
+  account_source: string | null;
+  condition: string | null;
   tracking_number: string | null;
   is_shipped: boolean;
   status: string | null;
   ship_by_date: string | null;
+  ship_confirmed_at: string | null;
   created_at: string;
   has_manual: boolean;
 }
@@ -39,11 +42,36 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
     const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 60);
     const query = searchParams.get('q') || '';
+    // Personalized ship-out history is ALWAYS the current logged-in staffer.
+    // The presence of `?staff=` opts into it; the bound identity is the session's
+    // staff id (`ctx.staffId` — the same id scan-out stamps onto SHIP_CONFIRM),
+    // never a client-supplied value, so a viewer can only ever see their own
+    // ship-outs. Absent = org-wide recent orders by creation (back-compat).
+    const wantsPersonalized = searchParams.has('staff') || searchParams.has('staffId');
+    const sessionStaff = Number(ctx.staffId) || 0;
+    const hasStaff = wantsPersonalized && sessionStaff > 0;
 
     // $1 is always the org anchor — orders is tenant-owned, so the result set
     // is scoped to this tenant. product_manuals has no organization_id column
     // (child of sku_catalog, matched here by item_number string), so the
     // has_manual EXISTS subquery is GUC-wrapped only — see needsColTables.
+    // A personalized request with no resolvable session staff must never fall
+    // back to the org-wide (all-staff) list — return an empty history instead.
+    if (wantsPersonalized && !hasStaff) {
+      ok = true;
+      return NextResponse.json({ groups: [], orders: [], total: 0 });
+    }
+
+    const params: (string | number)[] = [orgId];
+    let paramCount = 2;
+    // Reserve $staffIdx for the SHIP_CONFIRM attribution filter (see ship_out).
+    let staffIdx = 0;
+    if (hasStaff) {
+      staffIdx = paramCount;
+      params.push(sessionStaff);
+      paramCount++;
+    }
+
     let sql = `
       SELECT
         o.id,
@@ -53,11 +81,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.item_number,
         o.sku,
         o.quantity,
+        o.account_source,
+        o.condition,
         stn.tracking_number_raw AS tracking_number,
         COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
           OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
         o.status,
         to_char(wa_deadline.deadline_at, 'YYYY-MM-DD') AS ship_by_date,
+        ship_out.ship_confirmed_at,
         o.created_at,
         EXISTS (
           SELECT 1 FROM product_manuals pm
@@ -75,13 +106,33 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ORDER BY CASE wa.status WHEN 'IN_PROGRESS' THEN 1 WHEN 'ASSIGNED' THEN 2 WHEN 'OPEN' THEN 3 WHEN 'DONE' THEN 4 ELSE 5 END,
                  wa.updated_at DESC, wa.id DESC LIMIT 1
       ) wa_deadline ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT MAX(so.created_at) AS ship_confirmed_at,
+               (ARRAY_AGG(so.staff_id ORDER BY so.created_at DESC))[1] AS shipped_out_by
+        FROM station_activity_logs so
+        WHERE so.activity_type = 'SHIP_CONFIRM'
+          AND so.shipment_id = o.shipment_id
+          AND so.organization_id = o.organization_id
+      ) ship_out ON TRUE
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-      WHERE o.created_at >= NOW() - INTERVAL '${days} days'
-        AND o.organization_id = $1
+      WHERE o.organization_id = $1
     `;
 
-    const params: string[] = [orgId];
-    let paramCount = 2;
+    if (hasStaff) {
+      // Personalized ship-out history: every order this staffer shipped out at
+      // the dock, regardless of age. An indexable SHIP_CONFIRM semi-join (no
+      // time window) — the result is count-capped to the most recent 50 below.
+      sql += ` AND EXISTS (
+        SELECT 1 FROM station_activity_logs sc
+        WHERE sc.activity_type = 'SHIP_CONFIRM'
+          AND sc.shipment_id = o.shipment_id
+          AND sc.staff_id = $${staffIdx}
+          AND sc.organization_id = o.organization_id
+      )`;
+    } else {
+      // Org-wide default keeps its recent-by-creation time window.
+      sql += ` AND o.created_at >= NOW() - INTERVAL '${days} days'`;
+    }
 
     if (query.trim()) {
       sql += ` AND (
@@ -95,7 +146,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       paramCount++;
     }
 
-    sql += ' ORDER BY o.created_at DESC LIMIT 500';
+    // Staff scope = the 50 most recent ship-outs (newest ship-out first, by
+    // count — not a weekly window); the org-wide default keeps creation-order.
+    sql += hasStaff
+      ? ' ORDER BY ship_out.ship_confirmed_at DESC NULLS LAST, o.created_at DESC LIMIT 50'
+      : ' ORDER BY o.created_at DESC LIMIT 500';
 
     const result = await tenantQuery(orgId, sql, params);
     const orders: RecentOrder[] = result.rows.map((row) => ({
@@ -106,10 +161,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       item_number: row.item_number ? String(row.item_number) : null,
       sku: String(row.sku || ''),
       quantity: row.quantity,
+      account_source: row.account_source ? String(row.account_source) : null,
+      condition: row.condition ? String(row.condition) : null,
       tracking_number: row.tracking_number ? String(row.tracking_number) : null,
       is_shipped: Boolean(row.is_shipped),
       status: row.status ? String(row.status) : null,
       ship_by_date: row.ship_by_date ? String(row.ship_by_date) : null,
+      ship_confirmed_at: row.ship_confirmed_at ? normalizePSTTimestamp(row.ship_confirmed_at) : null,
       created_at: normalizePSTTimestamp(row.created_at) || '',
       has_manual: Boolean(row.has_manual),
     }));
@@ -133,7 +191,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     });
 
     ok = true;
-    return NextResponse.json({ groups, total: orders.length });
+    // `orders` is the flat, SQL-ordered array (preserves ship-out ordering under
+    // `?staff=`); `groups` is the creation-date grouping kept for back-compat.
+    return NextResponse.json({ groups, orders, total: orders.length });
   } catch (err) {
     console.error('[/api/orders/recent] Error:', err);
     return NextResponse.json({ error: 'Failed to fetch recent orders' }, { status: 500 });

@@ -22,17 +22,25 @@ const ENTITY_LABELS: Record<string, string> = {
 export function SupportLinkedContext({
   ticketId,
   onOpenPhoto,
+  compact = false,
 }: {
   ticketId: number;
   onOpenPhoto?: (url: string) => void;
+  compact?: boolean;
 }) {
   const { data } = useTicketPhotos(ticketId);
   const entity = (data?.entity ?? null) as { type?: string; id?: number; source?: string } | null;
   const photos = data?.photos ?? [];
-  const libraryHref = `/ops/photos?sourceScope=claims&entityType=ZENDESK_TICKET&entityId=${ticketId}`;
+  const libraryHref = `/ops/photos?sourceScope=claims&ticketId=${ticketId}`;
 
   return (
-    <div className="border-t border-border-hairline bg-surface-canvas/60 px-5 py-4">
+    <div
+      className={
+        compact
+          ? 'border-t border-border-hairline bg-surface-canvas/60 px-3 py-2.5'
+          : 'border-t border-border-hairline bg-surface-canvas/60 px-5 py-4'
+      }
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <Link2 className="h-3.5 w-3.5 text-text-faint" />
@@ -42,22 +50,30 @@ export function SupportLinkedContext({
           href={libraryHref}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-role-caption font-semibold text-blue-600 hover:text-blue-800"
+          className={`inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-800 ${
+            compact ? 'text-role-micro' : 'text-role-caption'
+          }`}
         >
           Media library <ExternalLink className="h-3 w-3" />
         </a>
       </div>
 
       {!entity?.type && photos.length === 0 ? (
-        <p className="mt-2 text-role-caption text-text-faint">
+        <p className={`mt-2 text-text-faint ${compact ? 'text-role-micro' : 'text-role-caption'}`}>
           No internal record linked — use Library in the composer to attach media from the library.
         </p>
       ) : null}
 
       {entity?.type ? (
         <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5">
-          <span className="text-role-caption font-bold text-text-muted">{ENTITY_LABELS[entity.type] ?? entity.type}</span>
-          {entity.id ? <span className="text-role-caption font-semibold text-text-faint">#{entity.id}</span> : null}
+          <span className={`font-bold text-text-muted ${compact ? 'text-role-micro' : 'text-role-caption'}`}>
+            {ENTITY_LABELS[entity.type] ?? entity.type}
+          </span>
+          {entity.id ? (
+            <span className={`font-semibold text-text-faint ${compact ? 'text-role-micro' : 'text-role-caption'}`}>
+              #{entity.id}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

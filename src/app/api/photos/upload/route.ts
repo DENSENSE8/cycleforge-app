@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { ApiError, errorResponse } from '@/lib/api';
 import { uploadPhoto } from '@/lib/photos/service';
+import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { uploadPermissionFor } from '@/lib/photos/entity-permissions';
 import type { PhotoEntityType, PhotoLinkRole } from '@/lib/photos/types';
 import { PHOTO_ENTITY_TYPES, PHOTO_LINK_ROLES } from '@/lib/photos/types';
@@ -81,6 +82,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const thumbUrl = await resolvePhotoAccessUrl(result.id, ctx.organizationId, 'thumb');
 
     if (entityType === 'RECEIVING' || entityType === 'RECEIVING_LINE') {
+      // Dual-link to the carton's claim (best-effort) when one exists, so a photo
+      // captured after the claim was filed still lands under the claim umbrella.
+      await linkReceivingPhotoToClaim({
+        organizationId: ctx.organizationId,
+        photoId: result.id,
+        entityType,
+        entityId,
+      });
       const receivingId =
         entityType === 'RECEIVING'
           ? entityId

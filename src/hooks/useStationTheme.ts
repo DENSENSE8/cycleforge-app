@@ -10,8 +10,10 @@ import {
 } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { useAuth } from '@/contexts/AuthContext';
+import { operatorAccentClasses } from '@/utils/operator-accent';
 
 export type { StationTheme, StationThemeColors, StationInputThemeClasses };
+export { operatorAccentClasses };
 
 export interface ResolvedTheme {
   /** The resolved theme key (e.g. 'purple', 'green', 'black'). */
@@ -29,8 +31,8 @@ interface StaffInput {
 }
 
 const dynamicThemeColors: StationThemeColors = {
-  bg: 'bg-accent-bg',
-  hover: 'hover:bg-accent-hover',
+  bg: operatorAccentClasses.bg,
+  hover: operatorAccentClasses.hover,
   light: 'bg-accent-light',
   border: 'border-accent-border',
   text: 'text-accent-text',

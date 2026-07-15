@@ -2,19 +2,21 @@
 
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle, Calendar, ChevronRight, ExternalLink, FileText, Image as ImageIcon,
-  Layers, Package, Sparkles, User,
+  AlertTriangle, Barcode, Calendar, ChevronRight, ExternalLink, FileText, Hash,
+  Image as ImageIcon, Layers, Package, Sparkles, Truck, User,
 } from '../../Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { useZendeskTicketSubject } from '@/hooks/useZendeskTicketSubject';
+import { usePhotoReceivingContext } from '@/hooks/usePhotoReceivingContext';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
   describePhotoWorkflow,
   resolveLinkedEntityDisplay,
   resolveProvenanceNavLink,
+  unboxingPoLabel,
   type PhotoWorkflowKind,
 } from './photo-context-provenance';
 import type { PhotoItem } from './photo-gallery-utils';
@@ -63,8 +65,11 @@ export function PhotoContextPanel({
   // toggle (close == open reversed). Under reduced motion this collapses to
   // duration 0, so the width snaps open/closed instantly.
   const panelTransition = useMotionTransition(framerTransition.photoContextPanelMount);
-  // Hook must run unconditionally; it self-disables for null/invalid ids.
+  // Hooks must run unconditionally; each self-disables for null/invalid ids.
   const ticketSubject = useZendeskTicketSubject(meta?.ticketId ?? null);
+  // Lazy provenance detail (serial / tracking / claim) — fetched only while the
+  // details panel is open (this component unmounts when collapsed).
+  const receivingCtx = usePhotoReceivingContext(photo?.id ?? null);
 
   if (!photo) return null;
 
@@ -72,6 +77,23 @@ export function PhotoContextPanel({
   const linked = resolveLinkedEntityDisplay(workflow, meta, ticketSubject.data);
   const navLink = resolveProvenanceNavLink(workflow, meta);
   const WorkflowIcon = WORKFLOW_ICONS[workflow.kind];
+
+  // Discrete provenance identifiers, shown as their own fields so the viewer
+  // surfaces the WHOLE picture (PO + claim + serial + tracking) instead of one
+  // "Linked to" line. Each is suppressed when it's already the primary headline
+  // above, so nothing reads twice.
+  const ctx = receivingCtx.data;
+  const serials = ctx?.serials ?? [];
+  const tracking = ctx?.tracking ?? null;
+  const claimRaw = ctx?.claim ?? (meta?.ticketId != null ? `#${meta.ticketId}` : null);
+  const claimDisplay = claimRaw ? (claimRaw.startsWith('#') ? claimRaw : `#${claimRaw}`) : null;
+  const poRef = meta?.poRef?.trim() || null;
+  const poDisplay = poRef ? unboxingPoLabel(poRef) : null;
+  const primaryIsClaim = workflow.kind === 'claims';
+  const primaryIsPo = workflow.kind === 'unboxing' && !!poRef;
+  const showClaimField = !!claimDisplay && !primaryIsClaim;
+  const showPoField = !!poDisplay && !primaryIsPo;
+  const hasIdentifiers = showClaimField || showPoField || serials.length > 0 || !!tracking;
 
   const analysisNode = meta?.damageDetected
     ? <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-bold text-rose-200 ring-1 ring-inset ring-rose-400/30"><AlertTriangle className="h-3.5 w-3.5" /> Damage detected</span>
@@ -104,9 +126,12 @@ export function PhotoContextPanel({
               e.stopPropagation();
               onCollapse();
             }}
-            className="rounded-full border border-glass/20 bg-glass/10 p-2 text-white transition-colors hover:bg-glass/20"
+            // Match the viewer toolbar's icon-button box (p-3 + h-5) so this
+            // chevron sits on the same baseline as the X / Info / Download cluster
+            // across the divider, instead of a smaller button riding higher.
+            className="rounded-full border border-glass/20 bg-glass/10 p-3 text-white transition-colors hover:bg-glass/20"
             ariaLabel="Hide photo details"
-            icon={<ChevronRight className="h-4 w-4 text-white" />}
+            icon={<ChevronRight className="h-5 w-5 text-white" />}
           />
         </HoverTooltip>
       </div>
@@ -160,6 +185,43 @@ export function PhotoContextPanel({
           <ExternalLink className="h-4 w-4 shrink-0" />
           {navLink.label}
         </a>
+      ) : null}
+
+      {/* Provenance identifiers — PO / claim / serial(s) / tracking, resolved
+          lazily from the photo's receiving carton. Each field is hidden when
+          empty or already shown as the primary "Linked to" headline above. */}
+      {hasIdentifiers ? (
+        <div className="space-y-4">
+          {showClaimField ? (
+            <Field icon={<Hash className="h-3.5 w-3.5" />} label="Claim">
+              <span className="font-semibold tabular-nums text-white">{claimDisplay}</span>
+            </Field>
+          ) : null}
+          {showPoField ? (
+            <Field icon={<Package className="h-3.5 w-3.5" />} label="Purchase order">
+              <span className="font-semibold text-white">{poDisplay}</span>
+            </Field>
+          ) : null}
+          {serials.length > 0 ? (
+            <Field icon={<Barcode className="h-3.5 w-3.5" />} label={serials.length > 1 ? 'Serials' : 'Serial'}>
+              <div className="flex flex-wrap gap-1">
+                {serials.map((s) => (
+                  <span
+                    key={s}
+                    className="rounded bg-glass/10 px-1.5 py-0.5 font-mono text-xs text-stage-soft ring-1 ring-inset ring-glass/15"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </Field>
+          ) : null}
+          {tracking ? (
+            <Field icon={<Truck className="h-3.5 w-3.5" />} label="Tracking">
+              <span className="font-mono text-xs tabular-nums text-stage-soft">{tracking}</span>
+            </Field>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="h-px bg-glass/10" />

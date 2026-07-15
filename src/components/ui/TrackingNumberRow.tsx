@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Copy, ExternalLink } from '@/components/Icons';
+import { Copy, ExternalLink, RefreshCw } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
@@ -18,8 +18,16 @@ export interface TrackingNumberRowProps {
   onBlur?: () => void;
   /** @deprecated The paste-&-replace clipboard icon was replaced by the carrier
    *  external-link icon. Accepted (so existing callers keep type-checking) but no
-   *  longer rendered. */
+   *  longer rendered. Use {@link onReplace} for the explicit replace flow. */
   onPasteReplace?: () => Promise<void> | void;
+  /**
+   * Explicit "replace tracking number" commit. When provided, a Replace action
+   * (↻) renders in the row; clicking it opens a seeded inline editor where the
+   * operator can type OR paste a new number. Commits `onReplace(next)` on Enter
+   * or blur when the value actually changed; Esc cancels. Independent of
+   * {@link allowEdit} (which is click-the-value inline editing).
+   */
+  onReplace?: (next: string) => void | Promise<void>;
   /**
    * Click-to-edit the value inline. The shipped panel leaves this off (edits go
    * through its modal); the receiving panel turns it on so tracking stays
@@ -46,6 +54,7 @@ export function TrackingNumberRow({
   placeholder = 'No tracking number',
   onChange,
   onBlur,
+  onReplace,
   allowEdit = false,
   headerAccessory,
   headerAccessoryClassName,
@@ -54,8 +63,20 @@ export function TrackingNumberRow({
   dividerClassName,
 }: TrackingNumberRowProps) {
   const [isEditing, setIsEditing] = useState(false);
+  // Replace flow — a local seeded draft (null = not replacing) so it never
+  // collides with the `allowEdit` click-to-edit path above.
+  const [replaceDraft, setReplaceDraft] = useState<string | null>(null);
+  const isReplacing = replaceDraft !== null;
   const displayValue = String(value || '').trim();
   const iconClassName = 'h-3.5 w-3.5';
+
+  const commitReplace = async () => {
+    const next = String(replaceDraft ?? '').trim();
+    setReplaceDraft(null);
+    if (onReplace && next && next !== displayValue) {
+      await onReplace(next);
+    }
+  };
   // Carrier tracking page for the live in-depth updates. getTrackingUrl resolves
   // known carriers by number pattern; fall back to the carrier-agnostic builder
   // (a tracking-number web search) so the link always opens something useful.
@@ -65,6 +86,16 @@ export function TrackingNumberRow({
 
   const actions = (
     <div className="flex items-center gap-1.5 text-text-faint">
+      {onReplace ? (
+        <HoverTooltip label={`Replace ${label}`} asChild>
+          <IconButton
+            tone="accent"
+            ariaLabel={`Replace ${label}`}
+            onClick={() => setReplaceDraft(displayValue)}
+            icon={<RefreshCw className={iconClassName} />}
+          />
+        </HoverTooltip>
+      ) : null}
       {trackingUrl ? (
         <HoverTooltip label={`Open ${label} on the carrier site for full tracking updates`} asChild>
           <a
@@ -110,7 +141,25 @@ export function TrackingNumberRow({
       className={rowClassName}
       dividerClassName={dividerClassName}
     >
-      {allowEdit && isEditing ? (
+      {isReplacing ? (
+        <input
+          type="text"
+          value={replaceDraft ?? ''}
+          onChange={(e) => setReplaceDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              void commitReplace();
+            } else if (e.key === 'Escape') {
+              setReplaceDraft(null);
+            }
+          }}
+          onBlur={() => { void commitReplace(); }}
+          placeholder={placeholder}
+          autoFocus
+          className="h-8 w-full border-0 bg-transparent px-0 text-sm font-bold text-text-default outline-none ring-0"
+        />
+      ) : allowEdit && isEditing ? (
         <input
           type="text"
           value={value}

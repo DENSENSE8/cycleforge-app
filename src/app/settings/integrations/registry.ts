@@ -87,6 +87,15 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
     badge: 'bg-surface-strong text-text-muted',
   },
   {
+    key: 'shopify',
+    label: 'Shopify',
+    description: 'Storefront orders in — OAuth via the Nango connector.',
+    category: 'Sales channels',
+    connect: 'nango',
+    docsUrl: 'https://shopify.dev/docs/api/admin-graphql',
+    badge: 'bg-emerald-100 text-emerald-700',
+  },
+  {
     key: 'google_sheets',
     label: 'Google Sheets',
     description: 'Spreadsheet order import pipelines.',

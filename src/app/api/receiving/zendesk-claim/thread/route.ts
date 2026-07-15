@@ -9,7 +9,7 @@ import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
-import { claimBodyToHtml } from '@/lib/zendesk-claim-template';
+import { markdownToHtml } from '@/lib/support/markdown';
 import { getTicketEntity } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 
@@ -44,6 +44,22 @@ function mapZendeskError(err: unknown, context: string): NextResponse {
   return errorResponse(err, context);
 }
 
+/** Best-effort requester email from via.from, falling back to getUsers. */
+async function resolveRequesterEmail(
+  ticket: {
+    requester_id?: number;
+    via?: { source?: { from?: { address?: string } } };
+  },
+  getUsers: (ids: number[]) => Promise<Array<{ id: number; email: string | null }>>,
+): Promise<string | null> {
+  const viaEmail = ticket.via?.source?.from?.address?.trim() || null;
+  if (viaEmail) return viaEmail;
+  const requesterId = ticket.requester_id;
+  if (!requesterId) return null;
+  const users = await getUsers([requesterId]);
+  return users[0]?.email?.trim() || null;
+}
+
 const Query = z.object({
   ticketId: z.coerce.number().int().positive(),
 });
@@ -63,7 +79,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
     const ticket = await helpdesk.getTicket(ticketId);
     if (!ticket) throw ApiError.notFound('Helpdesk ticket', ticketId);
-    const { comments } = await helpdesk.listComments(ticketId, { perPage: 100 });
+    const [{ comments }, requesterEmail] = await Promise.all([
+      helpdesk.listComments(ticketId, { perPage: 100 }),
+      resolveRequesterEmail(ticket, (ids) => helpdesk.getUsers(ids)),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -73,6 +92,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         status: String(ticket.status ?? ''),
         priority: ticket.priority ? String(ticket.priority) : null,
         url: zendeskTicketUrl(ticket.id),
+        requesterEmail,
       },
       comments: comments.map((c) => ({
         id: c.id,
@@ -96,6 +116,8 @@ const PostBody = z.object({
    *                   (the customer on the case).
    */
   public: z.boolean().optional().default(false),
+  /** CC emails — only applied on public replies. */
+  emailCcs: z.array(z.string().trim().email()).max(50).optional(),
 });
 
 /**
@@ -115,11 +137,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
-    const ticket = await helpdesk.addComment(parsed.ticketId, {
-      body: parsed.body,
-      html_body: claimBodyToHtml(parsed.body),
-      public: parsed.public,
-    });
+    const emailCcs =
+      parsed.public && parsed.emailCcs?.length
+        ? parsed.emailCcs.map((user_email) => ({ user_email, action: 'put' as const }))
+        : undefined;
+    const ticket = await helpdesk.addComment(
+      parsed.ticketId,
+      {
+        body: parsed.body,
+        html_body: markdownToHtml(parsed.body),
+        public: parsed.public,
+      },
+      emailCcs ? { emailCcs } : undefined,
+    );
     if (!ticket) throw ApiError.notFound('Helpdesk ticket', parsed.ticketId);
 
     return NextResponse.json({

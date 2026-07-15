@@ -3,7 +3,8 @@
  * URL namespaces, query params, and storage keys from bleeding into each other.
  *
  * Receiving modes are path-first (graduated routes); Testing modes are
- * `?view=testing` / `?view=testing-history` on `/test` only.
+ * `?view=testing` on `/test` only (legacy `?view=testing-history` redirects
+ * to `?view=testing` — the tested-lines browse is Testing's empty state).
  */
 
 import {

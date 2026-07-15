@@ -104,15 +104,15 @@ export function PackedOrdersTable({
             <ColumnConfigButton variant="toolbar" />
           </span>
         </HoverTooltip>
-        {onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : null}
         <TableOptionsMenu
           showDensity
           showColumnPresets
           savedViews={{ storageKey: PACKED_SAVED_VIEWS_KEY, paramKeys: PACKED_VIEW_PARAMS }}
         />
       </ToolbarControlsDisclosure>
+      {onToggleSelectMode ? (
+        <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
+      ) : null}
     </div>
   );
 
@@ -142,6 +142,8 @@ export function PackedOrdersTable({
             </div>
           )}
           <div className={pageScroll ? (toolbarPortalTarget ? 'py-1' : 'p-4') : `flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${toolbarPortalTarget ? 'py-1' : 'p-4'}`}>
+            {/* h-1 spacer keeps the card's top radius clear of the scroll edge */}
+            {pageScroll ? <div className="shrink-0 h-1" aria-hidden /> : null}
             <div className={pageScroll ? MONITOR_SECTION_CARD_SCROLL_CLASS : `${MONITOR_SECTION_CARD_SCROLL_CLASS} flex min-h-0 min-w-0 flex-1 flex-col`}>
               <OrdersQueueTable
                 records={records as ShippedOrder[]}

@@ -1106,6 +1106,7 @@ function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): Record<
     last_scan_at: pkg.last_scan_at,
     image_url: null,
     photo_count: pkg.photo_count,
+    zendesk_ticket: pkg.zendesk_ticket ?? null,
     zoho_reference_number: null,
   };
 }

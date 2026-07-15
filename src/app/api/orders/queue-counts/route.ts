@@ -70,7 +70,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
         )) AS has_tech_scan,
         (COALESCE(TRIM(o.out_of_stock), '') <> '') AS blocked,
-        COUNT(*)::int AS n
+        COUNT(*)::int AS n,
+        COUNT(*) FILTER (WHERE o.is_urgent)::int AS urgent_n
       FROM orders o
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       WHERE o.organization_id = $1
@@ -93,12 +94,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }));
     const total = combos.reduce((sum, c) => sum + c.count, 0);
     const testedRaw = combos.filter((c) => c.hasTechScan).reduce((s, c) => s + c.count, 0);
+    // Operator-flagged urgent tally (orders.is_urgent) — a flat count of the same
+    // scoped rows, orthogonal to the PENDING/TESTED/BLOCKED lane mapping.
+    const urgent = result.rows.reduce((s, r) => s + (Number(r.urgent_n) || 0), 0);
 
     const payload = {
       total,
       // Coarse `?stage` facet (has_tech_scan raw split) — safe to compute here
       // (it is NOT the fulfillment-lane mapping).
       byStage: { all: total, tested: testedRaw, pending: total - testedRaw },
+      // Operator urgent count for the sidebar "Urgent" segment.
+      urgent,
       // Raw combos for the PENDING/TESTED/BLOCKED legend, mapped client-side via
       // deriveFulfillmentState (Decision 8).
       combos,
@@ -111,7 +117,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   } catch (error) {
     console.error('Error in GET /api/orders/queue-counts:', error);
     return NextResponse.json(
-      { total: 0, byStage: { all: 0, tested: 0, pending: 0 }, combos: [] },
+      { total: 0, byStage: { all: 0, tested: 0, pending: 0 }, urgent: 0, combos: [] },
       { status: 200, headers: { 'x-db-fallback': 'error' } },
     );
   } finally {

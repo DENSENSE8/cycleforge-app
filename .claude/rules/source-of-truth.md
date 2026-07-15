@@ -20,6 +20,9 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` (do not invent status maps) |
 | Z-index | `src/design-system/tokens/z-index.ts` |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
+| Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
+| Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
+| Station entity-context header | `@/components/station/entity-context` (`CartonContextCard`) — Unbox / Triage / Testing / Shipping active-order |
 | Buttons | `src/design-system/primitives` `Button` |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
@@ -57,6 +60,14 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - Source: `src/design-system/tokens/z-index.ts`, wired into Tailwind as named utilities
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
+
+## Focus affordance
+
+- Source: `src/design-system/tokens/focus-ring.ts` — `focusRing(archetype, tone)` returns a `cn()`-ready
+  class string. Archetypes: `field` (`:focus`), `control` (`:focus-visible` + offset), `wrapper`
+  (`:focus-within`). Semantic tones: `accent`/`danger`/`warning`/`success`/`neutral`.
+- Never hand-roll a `focus:ring-*`/`focus-visible:ring-*` recipe; compose `focusRing(...)`. Guard:
+  `src/components/ui/focus-ring-tokens.guard.test.ts` (escape: same-line `ds-allow-focus`).
 
 ## Spacing (density-aware scale + intents)
 
@@ -111,6 +122,17 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 - Icon-only actions use `IconButton` with a `size` (xs/sm/md/lg/touch) for the hit-box — never a hand-set
   `h-N w-N` on the button (guard: `control-size-tokens.guard.test.ts`). `touch` = the 44px tap floor that
   `tokens/touch.ts` used to own (retired).
+
+## Station entity-context header (inbound carton + shipping active order)
+
+- **SoT:** `@/components/station/entity-context` → `CartonContextCard` (implementation under
+  `receiving/workspace/line-edit/`; barrel is the public waist).
+- Condensed one-row anatomy: listing · PO# / order# · tracking · CLAIM · photos · platform/type/priority.
+  Editors slide below on demand — do not regroup into stacked form sections.
+- **Compose for Unbox / Triage / Testing / Shipping (active order)** via thin adapters
+  (`LineCartonContextSection`, `TestingCartonHeader`, `ShippingEntityContextHeader`).
+  Omit optional props to hide claim / photos / classify per station.
+- **Never fork** a second condensed identity header (no page-local title + "Open listing" card).
 
 ## SKU identity (data-integrity)
 

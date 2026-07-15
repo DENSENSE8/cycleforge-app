@@ -32,6 +32,7 @@ export type IntegrationProvider =
   | 'zoho'
   | 'ecwid'
   | 'square'
+  | 'shopify'
   | 'ups'
   | 'fedex'
   | 'usps'
@@ -98,6 +99,28 @@ export interface ZohoCredentials {
 /** Ecwid storefront — store id + secret API token (vault-first; env fallback
  *  for the dogfood org lives in fetchEcwidTransferRows, not here). */
 export interface EcwidCredentials { storeId: string; apiToken: string }
+
+/**
+ * Shopify storefront — the `orders` sales channel (catalog / stock push-out is
+ * a later phase). Connected per-tenant via Nango (authKind 'nango'), mirroring
+ * Square: Nango custodies the OAuth token + its refresh, so the vault row only
+ * needs the shop identity + the Nango connection handle. The optional
+ * accessToken supports the vault paste-key fallback only (Nango path leaves it
+ * undefined).
+ *   - shopDomain         — the `*.myshopify.com` host; the canonical store id.
+ *   - nangoConnectionId  — Nango connection handle used to mint Admin API tokens.
+ *   - accessToken        — direct Admin API token (vault paste-key fallback only).
+ *   - scope              — granted OAuth scopes (display / capability gating).
+ *   - apiVersion         — pinned Admin API version (e.g. '2024-10'); the client
+ *     falls back to its own default when absent.
+ */
+export interface ShopifyCredentials {
+  shopDomain: string;
+  nangoConnectionId?: string;
+  accessToken?: string;
+  scope?: string;
+  apiVersion?: string;
+}
 
 export interface UpsCredentials { clientId: string; clientSecret: string; webhookSecret?: string }
 export interface FedexCredentials { clientId: string; clientSecret: string; env: 'production' | 'sandbox' }
@@ -374,6 +397,10 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       return null;
     case 'ecwid': case 'square':
       return null; // Add when needed.
+    case 'shopify':
+      // Nango-connected per-tenant (or vault paste-key). No single-tenant
+      // Shopify store to mirror from env, so there is no env bridge.
+      return null;
   }
 }
 

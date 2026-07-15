@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
@@ -24,8 +24,7 @@ import type { Order } from '@/components/station/upnext/upnext-types';
 import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 import { UpNextActionDock } from './UpNextActionDock';
-import { OrderPreviewPanel } from './OrderPreviewPanel';
-import { ActiveOrderBody } from './ActiveOrderBody';
+import { ShippingScanWorkspace } from './shipping/ShippingScanWorkspace';
 import { TechSubstituteSection } from './TechSubstituteSection';
 import { useSubstitutionPolicy } from '@/hooks/fulfillment/useSubstitutionPolicy';
 import { useOrderAmendments } from '@/hooks/fulfillment/useSubstitution';
@@ -97,7 +96,7 @@ export function ActiveOrderWorkspace({
   const cardPresence = useMotionPresence(framerPresence.stationCard);
   const cardTransition = useMotionTransition(framerTransition.stationCardMount);
   const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
-  const revealItem: Variants = reduceMotion
+  const revealItem = reduceMotion
     ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
     : staggerRevealRiseItem;
 
@@ -210,29 +209,24 @@ export function ActiveOrderWorkspace({
               </div>
             ) : null}
 
-            {isPreview && previewOrder ? (
-              <OrderPreviewPanel
-                order={previewOrder}
-                revealItem={revealItem}
-                onChangeCondition={handleConditionChange}
-                isMutatingCondition={orderAssignmentMutation.isPending}
-              />
-            ) : (
-              <ActiveOrderBody
+            <motion.div variants={revealItem}>
+              <ShippingScanWorkspace
                 activeOrder={activeOrder}
-                onRemoveSerial={onRemoveSerial}
-                revealItem={revealItem}
+                previewOrder={isPreview ? previewOrder : undefined}
+                onRemoveSerial={isPreview ? undefined : onRemoveSerial}
                 onChangeCondition={handleConditionChange}
                 isMutatingCondition={orderAssignmentMutation.isPending}
               />
-            )}
+            </motion.div>
 
             {substitution.show && substitution.orderId !== null ? (
-              <TechSubstituteSection
-                orderId={substitution.orderId}
-                orderLabel={substitution.orderLabel}
-                enforcement={policyQuery.data?.enforcement ?? 'advisory'}
-              />
+              <motion.div variants={revealItem}>
+                <TechSubstituteSection
+                  orderId={substitution.orderId}
+                  orderLabel={substitution.orderLabel}
+                  enforcement={policyQuery.data?.enforcement ?? 'advisory'}
+                />
+              </motion.div>
             ) : null}
           </motion.div>
         </div>

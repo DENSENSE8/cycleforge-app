@@ -40,6 +40,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout } from '@/lib/station/table-url-params';
+import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -234,8 +235,8 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
 
   return (
     <TableColumnConfigProvider tableId="receiving">
-    <div className="flex h-full min-w-0 overflow-hidden bg-surface-card">
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
+      <WorkbenchTablePane>
         {isIncomingMode ? (
           // Incoming gets its own purpose-built header — title + count +
           // pagination. The sidebar (IncomingSidebarPanel) owns search + facet
@@ -284,7 +285,7 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
             />
           )}
         </div>
-      </div>
+      </WorkbenchTablePane>
     </div>
     </TableColumnConfigProvider>
   );

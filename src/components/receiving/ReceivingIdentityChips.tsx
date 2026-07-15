@@ -12,7 +12,6 @@ import {
   TrackingChip,
   SerialChip,
   getLast4,
-  getLast8,
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -147,7 +146,8 @@ export function ReceivingIdentityChips({
   const trackCol = dense ? 'w-[52px]' : CHIP_COL.tracking;
   const serialCol = dense ? 'w-[52px]' : CHIP_COL.serial;
 
-  const trackingDisplay = trackingValue.length >= 8 ? getLast8(trackingValue) : getLast4(trackingValue);
+  // Last-4 only — matches PO / SKU / serial chips; full value still copies.
+  const trackingDisplay = getLast4(trackingValue);
   if (asColumns) {
     const columns: ChipColumn[] = [];
     if (includePo) {

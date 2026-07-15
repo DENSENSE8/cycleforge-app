@@ -69,6 +69,39 @@ export interface ShippedHeaderMeta {
   orderIdDisplay: string;
 }
 
+/** Tracking-exception rows from `orders_exceptions` (search maps `oe.id` → `shipped.id`). */
+export function isExceptionShippedRow(shipped: ShippedOrder): boolean {
+  const rowId = Number(shipped.id);
+  return (shipped as { row_source?: string }).row_source === 'exception' || rowId < 0;
+}
+
+export type ShippedRowEditTarget =
+  | { kind: 'order'; orderId: number }
+  | { kind: 'exception'; exceptionId: number };
+
+/**
+ * Resolve which API target a shipped-panel row should use for shipping edits.
+ * Exception rows address `orders_exceptions`; everything else addresses `orders`.
+ */
+export function resolveShippedRowEditTarget(shipped: ShippedOrder): ShippedRowEditTarget | null {
+  const rowId = Number(shipped.id);
+  if (!Number.isFinite(rowId) || rowId === 0) return null;
+  if (isExceptionShippedRow(shipped)) {
+    const exceptionId = Math.abs(rowId);
+    return exceptionId > 0 ? { kind: 'exception', exceptionId } : null;
+  }
+  return rowId > 0 ? { kind: 'order', orderId: rowId } : null;
+}
+
+/**
+ * Whether the shipping-info edit pencil/modal is available. Order rows save
+ * through `/api/orders/[id]…`; exception rows through `/api/orders-exceptions/[id]`
+ * (tracking-only). Invalid / zero ids are not editable.
+ */
+export function canEditShippingInfo(shipped: ShippedOrder): boolean {
+  return resolveShippedRowEditTarget(shipped) != null;
+}
+
 /**
  * Derive the header status pill + order-id display for a shipped order. When no
  * canonical `order_id` is present (exceptions rows, partial intake), the header
@@ -78,7 +111,7 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
   const outOfStockValue = String((shipped as any).out_of_stock || '').trim();
   const hasOutOfStock = outOfStockValue !== '';
   const testedById = shipped.tested_by ?? null;
-  const canEditAssignment = Number(shipped.id) > 0 && (shipped as any).row_source !== 'exception';
+  const canEditAssignment = Number(shipped.id) > 0 && !isExceptionShippedRow(shipped);
   const hasTechScan = Boolean((shipped as any).has_tech_scan);
   // State decision flows through the canonical fulfillment projection so this
   // header pill can never disagree with the order's board lane (the projection

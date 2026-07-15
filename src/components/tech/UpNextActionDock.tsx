@@ -95,7 +95,7 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
         label="Start"
         onClick={handleStart}
         icon={<Play className="h-4 w-4 shrink-0" />}
-        tone="emerald"
+        tone="accent"
         maxWidth="max-w-3xl"
         fullWidth
         menuLabel="Order actions"

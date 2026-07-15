@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2 } from '@/components/Icons';
 import {
   dispatchSelectLine,
   type ReceivingLineRow,
@@ -10,20 +9,31 @@ import {
   readSelectLineDetail,
   type ReceivingSelectLineDetail,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { TestingHistoryList } from '@/components/tech/TestingHistoryList';
 import { TestingPanel } from '@/components/tech/TestingPanel';
+
+/** Persisted last-open line — written on select for future session UX / e2e;
+ *  not restored on cold load so Testing mode lands on the history browse. */
+export const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
 
 interface Props {
   staffId: string;
   /** When set, drives the rail-side highlighted line. */
   selectedLineId: number | null;
   onSelectedLineChange: (id: number | null) => void;
+  /** Multi-select checkboxes on the history browse (when no line is open). */
+  testingSelectMode?: boolean;
+  /** Non-select history row click — already navigates via `dispatchSelectLine`. */
+  onOpenTestingLine?: () => void;
 }
 
-const LAST_TESTING_LINE_KEY = 'cf:testing:last-line-id';
-
-export function TestingLineWorkspace({ staffId, onSelectedLineChange }: Props) {
+export function TestingLineWorkspace({
+  staffId,
+  onSelectedLineChange,
+  testingSelectMode = false,
+  onOpenTestingLine,
+}: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);
-  const [restoring, setRestoring] = useState(true);
   const lastSelectedRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -32,7 +42,6 @@ export function TestingLineWorkspace({ staffId, onSelectedLineChange }: Props) {
       const { row: next } = readSelectLineDetail(detail);
       if (next) {
         setRow(next);
-        setRestoring(false);
         onSelectedLineChange(next.id);
         lastSelectedRef.current = next.id;
         try {
@@ -50,84 +59,6 @@ export function TestingLineWorkspace({ staffId, onSelectedLineChange }: Props) {
     return () => window.removeEventListener('receiving-select-line', handler);
   }, [onSelectedLineChange]);
 
-  const rowRef = useRef<ReceivingLineRow | null>(null);
-  rowRef.current = row;
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchById = async (id: number): Promise<ReceivingLineRow | null> => {
-      try {
-        const res = await fetch(`/api/receiving-lines?id=${id}&include=serials`, { cache: 'no-store' });
-        const data = await res.json().catch(() => null);
-        if (data?.success && data.receiving_line) return data.receiving_line as ReceivingLineRow;
-        return null;
-      } catch {
-        return null;
-      }
-    };
-
-    const fetchMostRecent = async (): Promise<ReceivingLineRow | null> => {
-      try {
-        const res = await fetch(
-          `/api/receiving-lines?limit=1&offset=0&view=all&include=serials`,
-          { cache: 'no-store' },
-        );
-        const data = await res.json().catch(() => null);
-        const rows = Array.isArray(data?.receiving_lines)
-          ? (data.receiving_lines as ReceivingLineRow[])
-          : [];
-        return rows[0] ?? null;
-      } catch {
-        return null;
-      }
-    };
-
-    void (async () => {
-      let stored: string | null = null;
-      try {
-        stored = window.localStorage.getItem(LAST_TESTING_LINE_KEY);
-      } catch {
-        /* private mode — fall through to recent */
-      }
-      const storedId = Number(stored);
-      if (Number.isFinite(storedId) && storedId > 0) {
-        const restored = await fetchById(storedId);
-        if (cancelled) return;
-        if (restored) {
-          if (rowRef.current) {
-            setRestoring(false);
-            return;
-          }
-          dispatchSelectLine(restored);
-          setRestoring(false);
-          return;
-        }
-        try {
-          window.localStorage.removeItem(LAST_TESTING_LINE_KEY);
-        } catch {
-          /* non-fatal */
-        }
-      }
-      if (cancelled || rowRef.current) {
-        setRestoring(false);
-        return;
-      }
-      const recent = await fetchMostRecent();
-      if (cancelled) {
-        setRestoring(false);
-        return;
-      }
-      if (recent && !rowRef.current) {
-        dispatchSelectLine(recent);
-      }
-      setRestoring(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useEffect(() => {
     const handler = (event: Event) => {
       const patch = (event as CustomEvent<Partial<ReceivingLineRow>>).detail;
@@ -142,27 +73,46 @@ export function TestingLineWorkspace({ staffId, onSelectedLineChange }: Props) {
     return () => window.removeEventListener('receiving-line-updated', handler);
   }, []);
 
-  if (restoring && !row) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-surface-canvas">
-        <Loader2 className="h-6 w-6 animate-spin text-text-faint" aria-hidden />
-        <p className="text-role-caption font-bold uppercase tracking-widest text-text-faint">
-          Loading testing workspace…
-        </p>
-      </div>
-    );
-  }
+  // No cold-load auto-restore — Testing mode lands on the history browse so
+  // operators can pick a line (or scan). Selection still writes LAST_TESTING_LINE_KEY.
 
   if (!row) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-surface-canvas px-6 text-center">
-        <p className="text-sm font-bold text-text-muted">No line selected</p>
-        <p className="max-w-sm text-role-caption text-text-soft">
-          Scan a unit or PO from the sidebar, or pick a line from the testing rail to begin.
-        </p>
+      <div className="flex h-full min-w-0 flex-col overflow-hidden bg-surface-card">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border-soft px-4 py-2.5">
+          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+            Your tested lines
+          </p>
+          <p className="text-role-caption text-text-soft">
+            Pick a line to open the testing workspace, or scan from the sidebar.
+          </p>
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <TestingHistoryList
+            staffId={staffId}
+            selectMode={testingSelectMode}
+            onOpenLine={() => {
+              onOpenTestingLine?.();
+            }}
+          />
+        </div>
       </div>
     );
   }
 
-  return <TestingPanel key={row.id} row={row} staffId={staffId} />;
+  return (
+    <TestingPanel
+      key={row.id}
+      row={row}
+      staffId={staffId}
+      onBackToBrowse={() => {
+        try {
+          window.localStorage.removeItem(LAST_TESTING_LINE_KEY);
+        } catch {
+          /* non-fatal */
+        }
+        dispatchSelectLine(null);
+      }}
+    />
+  );
 }

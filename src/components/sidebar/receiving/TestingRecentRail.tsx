@@ -73,7 +73,8 @@ interface Props {
 /**
  * Sidebar activity rail for the Testing workspace. A sticky pill toggle switches
  * between the recently-tested log (`view=testing`, default) and the needs-test
- * queue (`view=needs-test`, backed by assignments).
+ * queue (`view=needs-test`, backed by assignments). On `/test` the signed-in
+ * `testerId` is always required so the rail stays personal (never all-staff).
  */
 export function TestingRecentRail({
   selectedLineId,
@@ -83,20 +84,33 @@ export function TestingRecentRail({
   filterText = '',
 }: Props) {
   const [feed, setFeed] = useState<TestingRailFeed>('tested');
-  const hasTester = Number.isFinite(testerId) && (testerId as number) > 0;
+  const scopedTesterId =
+    Number.isFinite(testerId) && (testerId as number) > 0 ? (testerId as number) : null;
   const isQueue = feed === 'queue';
   const trimmedFilter = filterText.trim();
 
   const queryKey = useMemo(
-    () => ['receiving-lines-table', 'rail', feed, String(testerId ?? 'all'), trimmedFilter] as const,
-    [feed, testerId, trimmedFilter],
+    () =>
+      [
+        'receiving-lines-table',
+        'rail',
+        feed,
+        scopedTesterId != null ? String(scopedTesterId) : 'none',
+        trimmedFilter,
+      ] as const,
+    [feed, scopedTesterId, trimmedFilter],
   );
 
   const fetchFn = async (): Promise<ApiResponse> => {
+    // Without a signed-in tester, never fetch the org-wide testing feed — return
+    // empty so the rail cannot leak other staffers' verdicts.
+    if (scopedTesterId == null) {
+      return { success: true, receiving_lines: [], total: 0 };
+    }
     const params = new URLSearchParams({ limit: '500', offset: '0' });
     params.set('include', 'serials');
     params.set('view', isQueue ? 'needs-test' : 'testing');
-    if (hasTester) params.set('tester', String(testerId));
+    params.set('tester', String(scopedTesterId));
     const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
     if (!res.ok) throw new Error('fetch failed');
     const data = await res.json();
@@ -118,11 +132,7 @@ export function TestingRecentRail({
         refreshEvents={isQueue ? TESTING_QUEUE_REFRESH_EVENTS : TESTING_TESTED_REFRESH_EVENTS}
         navigateEvent="testing-navigate-rail"
         eyebrowTitle={isQueue ? 'To Test' : 'Tested'}
-        eyebrowSuffix={
-          isQueue
-            ? (hasTester ? 'Your Queue' : 'Newest Received')
-            : (hasTester ? 'Your Verdicts' : 'All Staff')
-        }
+        eyebrowSuffix={isQueue ? 'Your Queue' : 'You'}
         getStatusDot={getTestingStatusDot}
         getStatusDotLabel={getTestingStatusDotLabel}
         renderQuantity={(row) => {

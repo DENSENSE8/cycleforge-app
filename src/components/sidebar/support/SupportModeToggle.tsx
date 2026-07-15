@@ -10,13 +10,14 @@ interface SupportModeToggleProps {
   onChange: (next: SupportMode) => void;
 }
 
-/** Top-level Tickets / Voicemail / Calls / Warranty switcher for /support. */
+/** Top-level Tickets / Voicemail / Calls / Warranty / Issues switcher for /support. */
 export function SupportModeToggle({ value, onChange }: SupportModeToggleProps) {
   const { has, isLoaded } = useAuth();
   const items = useMemo(() => {
     if (!isLoaded) return SUPPORT_MODE_ITEMS;
     return SUPPORT_MODE_ITEMS.filter((item) => {
       if (item.id === 'warranty') return has('warranty.view');
+      if (item.id === 'issues') return has('support.issues.view');
       // Tickets / voicemail / calls ride Zendesk (or voice APIs under the same console).
       return has('integrations.zendesk');
     });

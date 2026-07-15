@@ -22,6 +22,7 @@ import {
   Link2,
   List,
   MapPin,
+  MessageSquare,
   Monitor,
   Package,
   PackageOpen,
@@ -34,6 +35,7 @@ import {
   Star,
   Tags,
   TrendingUp,
+  Send,
   Truck,
   Wrench,
   Zap,
@@ -157,7 +159,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // hop. Route key still resolves to 'receiving', so the item stays active
   // across every receiving mode (/unbox, /triage, /receiving?mode=…).
   { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: ClipboardList,   kind: 'station', requires: 'receiving.view' },
-  { id: 'outbound',          label: 'Outbound',    href: '/outbound',           icon: Truck,           kind: 'station', requires: 'shipping.view' },
+  { id: 'outbound',          label: 'Shipping',    href: '/outbound',           icon: Send,            kind: 'station', requires: 'shipping.view' },
   // Points at the first-class Test surface (`/test`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
@@ -448,17 +450,17 @@ const PACK = '/pack';
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Dashboard ─────────────────────────────────────────────────────────────
   // Bare presence params (`?unshipped` / `?shipped`); first match wins in the
-  // reader. Unshipped + Shipped are ONE nav mode ("Outbound") — the Unshipped/
+  // reader. Unshipped + Shipped are ONE nav mode ("Shipping") — the Unshipped/
   // Shipped split is a top-left TAB inside the main content
   // (`DashboardOrdersView`). Warranty Logger moved to Support (`?mode=warranty`);
   // legacy `/dashboard?warranty=` redirects there from the dashboard page.
   {
     id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
     modes: [
-      { id: 'outbound',  label: 'Outbound',         icon: Truck,        to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
+      { id: 'outbound',  label: 'Shipping',         icon: Send,         to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
     ],
     resolveMode: () => {
-      // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Outbound.
+      // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Shipping.
       return 'outbound';
     },
   },
@@ -564,15 +566,17 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return v === 'plan' || v === 'shipped' ? v : 'combine';
     },
   },
-  // ── Outbound ──────────────────────────────────────────────────────────────
+  // ── Shipping (outbound station) ───────────────────────────────────────────
   // `?mode=labels|scan-out|ready|fba`; default `labels` (param cleared).
   {
-    id: 'outbound', label: 'Outbound', href: OUTBOUND, icon: Truck, kind: 'station', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: OUTBOUND, icon: Send, kind: 'station', requires: 'shipping.view',
+    // Scan out sits last (rightmost) — the dock ship-confirm station is the
+    // end-of-line action after labels/ready/fba prep.
     modes: [
       { id: 'labels',   label: 'Labels',   icon: Printer,       to: () => ({ pathname: OUTBOUND, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'scan-out', label: 'Scan out', icon: Barcode,       to: () => ({ pathname: OUTBOUND, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
       { id: 'ready',    label: 'Ready',    icon: ClipboardList, to: () => ({ pathname: OUTBOUND, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
       { id: 'fba',      label: 'FBA',      icon: Boxes,         to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', q: null, open: null, sort: null } }) },
+      { id: 'scan-out', label: 'Scan out', icon: Barcode,       to: () => ({ pathname: OUTBOUND, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -653,22 +657,20 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Testing ───────────────────────────────────────────────────────────────
-  // Top-mode switch — Shipping / Testing / History (matches TECH_TOP_MODE_ITEMS).
-  // `?view=testing` → Testing; `?view=testing-history` → the tested-lines feed;
+  // Top-mode switch — Testing / Shipping (matches TECH_TOP_MODE_ITEMS).
+  // `?view=testing` → Testing (history browse when no line; panel when open);
   // everything else is Shipping (right pane = Pending · FBA | History workspace).
+  // Legacy `?view=testing-history` redirects to `?view=testing`.
   {
     id: 'tech', label: 'Testing', href: TECH, icon: Wrench, kind: 'station', requires: 'tech.view',
     modes: [
-      { id: 'shipping', label: 'Shipping', icon: Truck,       to: () => ({ pathname: TECH, params: { view: null } }) },
-      { id: 'testing',  label: 'Testing',  icon: ShieldCheck, to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
-      { id: 'history',  label: 'History',  icon: History,     to: () => ({ pathname: TECH, params: { view: 'testing-history' } }) },
+      { id: 'testing',  label: 'Testing',  icon: Wrench, to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
+      { id: 'shipping', label: 'Shipping', icon: Truck,  to: () => ({ pathname: TECH, params: { view: null } }) },
     ],
     resolveMode: ({ params }) =>
-      params.get('view') === 'testing'
+      params.get('view') === 'testing' || params.get('view') === 'testing-history'
         ? 'testing'
-        : params.get('view') === 'testing-history'
-          ? 'history'
-          : 'shipping',
+        : 'shipping',
   },
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the
   // station UX is ready for general rollout. Route + `tech.data_wipe` gate remain.
@@ -692,11 +694,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Support ───────────────────────────────────────────────────────────────
-  // `?mode=voicemail|calls|warranty`; bare /support = the Zendesk Tickets
+  // `?mode=voicemail|calls|warranty|issues`; bare /support = the Zendesk Tickets
   // console (default, param cleared) for deep-link back-compat. Voicemail is a
   // Workbench, Calls is a Monitor, Warranty is the claim/coverage Workbench
-  // (moved from Dashboard). Every switch clears mode-scoped params so each
-  // mode opens clean — see SUPPORT_MODE_SCOPED_PARAMS.
+  // (moved from Dashboard), Issues is the reported-issues Workbench (+ KPI).
+  // Every switch clears mode-scoped params so each mode opens clean — see
+  // SUPPORT_MODE_SCOPED_PARAMS.
   {
     id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'bottom', requires: 'integrations.zendesk',
     modes: [
@@ -719,6 +722,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
             open: null,
             wstatus: null,
             wexp: null,
+            issueId: null,
+            type: null,
+            reporter: null,
           },
         }),
       },
@@ -741,6 +747,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
             open: null,
             wstatus: null,
             wexp: null,
+            issueId: null,
+            type: null,
+            reporter: null,
           },
         }),
       },
@@ -763,6 +772,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
             open: null,
             wstatus: null,
             wexp: null,
+            issueId: null,
+            type: null,
+            reporter: null,
           },
         }),
       },
@@ -786,6 +798,35 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
             open: null,
             wstatus: null,
             wexp: null,
+            issueId: null,
+            type: null,
+            reporter: null,
+          },
+        }),
+      },
+      {
+        id: 'issues',
+        label: 'Issues',
+        icon: MessageSquare,
+        requires: 'support.issues.view',
+        to: () => ({
+          pathname: SUPPORT,
+          params: {
+            mode: 'issues',
+            ticket: null,
+            vm: null,
+            q: null,
+            status: null,
+            assignee: null,
+            direction: null,
+            range: null,
+            search: null,
+            open: null,
+            wstatus: null,
+            wexp: null,
+            issueId: null,
+            type: null,
+            reporter: null,
           },
         }),
       },
@@ -795,6 +836,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'voicemail') return 'voicemail';
       if (m === 'calls') return 'calls';
       if (m === 'warranty') return 'warranty';
+      if (m === 'issues') return 'issues';
       return 'tickets';
     },
   },

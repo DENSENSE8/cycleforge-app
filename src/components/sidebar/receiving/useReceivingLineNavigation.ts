@@ -5,14 +5,19 @@
  * sibling-line list for the selected carton (so up/down nav + the progress pill
  * work after a row-click), derive index/progress, and move prev/next.
  *
+ * Navigation is PO-scoped via {@link filterLinesByPoGroup} so mixed-PO cartons
+ * (one receiving_id, multiple Zoho POs) never let prev/next step into a foreign
+ * PO's lines.
+ *
  * Extracted from ReceivingSidebarPanel. The selection STATE stays in the panel
  * (many event handlers mutate it); this hook owns only the derived nav logic +
  * the lazy prefetch + the arrow-key bridge, taking the state and setters as
- * inputs. Behaviour is unchanged.
+ * inputs.
  */
 
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 
 interface UseReceivingLineNavigationArgs {
   selectedLine: ReceivingLineRow | null;
@@ -29,15 +34,30 @@ export function useReceivingLineNavigation({
   setScanMatchedRows,
   setLineAccordionBootstrap,
 }: UseReceivingLineNavigationArgs) {
+  // PO-scoped sibling list for nav + progress. Defensive: even if the store
+  // briefly holds a full carton, the UI only walks the active PO group.
+  const navRows = useMemo(() => {
+    if (!selectedLine) return scanMatchedRows;
+    return filterLinesByPoGroup(scanMatchedRows, selectedLine);
+  }, [selectedLine, scanMatchedRows]);
+
   // When the user row-clicks a line in the dashboard table, scanMatchedRows
   // is empty — which would disable the up/down nav. Populate it lazily by
-  // fetching all sibling lines for the same receiving_id. Skipped when
-  // scanMatchedRows already contains the selected line (scan-driven entry
-  // or a prior fetch).
+  // fetching all sibling lines for the same receiving_id, then scoping to the
+  // selected line's PO group. When the selected line is already present but the
+  // list still contains foreign-PO siblings, re-scope in place (no refetch).
   useEffect(() => {
     const receivingId = selectedLine?.receiving_id;
-    if (!receivingId) return;
-    if (scanMatchedRows.some((r) => r.id === selectedLine.id)) return;
+    if (!receivingId || !selectedLine) return;
+
+    if (scanMatchedRows.some((r) => r.id === selectedLine.id)) {
+      const scoped = filterLinesByPoGroup(scanMatchedRows, selectedLine);
+      if (scoped.length > 0 && scoped.length !== scanMatchedRows.length) {
+        setScanMatchedRows(scoped);
+      }
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -51,10 +71,12 @@ export function useReceivingLineNavigation({
           ? (data.receiving_lines as ReceivingLineRow[])
           : [];
         if (rows.length > 0) {
-          setScanMatchedRows(rows);
+          const scoped = filterLinesByPoGroup(rows, selectedLine);
+          const pool = scoped.length > 0 ? scoped : rows;
+          setScanMatchedRows(pool);
           setSelectedLine((prev) => {
             if (!prev) return prev;
-            const hit = rows.find((r) => r.id === prev.id);
+            const hit = pool.find((r) => r.id === prev.id);
             if (!hit) return prev;
             // Guard: if this fetch somehow lacks serials, keep the ones the
             // previously-selected row already had so the Serial step never
@@ -69,19 +91,19 @@ export function useReceivingLineNavigation({
     return () => { cancelled = true; };
   }, [selectedLine, scanMatchedRows, setScanMatchedRows, setSelectedLine]);
 
-  // Navigation + progress derived from the full sibling-line list. Counter
+  // Navigation + progress derived from the PO-scoped sibling list. Counter
   // sums *units* across every matched line (received vs expected) so the pill
   // mirrors the table row's quantityText (e.g. 0/5) instead of a line count
   // (0/1). A line with workflow_status=DONE is treated as fully received even
   // if quantity_received lags behind the expectation.
   const { currentIndex, canPrev, canNext, progressReceived, progressTotal } = useMemo(() => {
-    if (!selectedLine || scanMatchedRows.length === 0) {
+    if (!selectedLine || navRows.length === 0) {
       return { currentIndex: -1, canPrev: false, canNext: false, progressReceived: 0, progressTotal: 0 };
     }
-    const idx = scanMatchedRows.findIndex((r) => r.id === selectedLine.id);
+    const idx = navRows.findIndex((r) => r.id === selectedLine.id);
     let receivedUnits = 0;
     let totalUnits = 0;
-    for (const r of scanMatchedRows) {
+    for (const r of navRows) {
       const expected = Math.max(0, Number(r.quantity_expected ?? 0));
       const received = Math.max(0, Number(r.quantity_received ?? 0));
       const isDone = String(r.workflow_status || '').toUpperCase() === 'DONE';
@@ -92,11 +114,11 @@ export function useReceivingLineNavigation({
     return {
       currentIndex: idx,
       canPrev: idx > 0,
-      canNext: idx >= 0 && idx < scanMatchedRows.length - 1,
+      canNext: idx >= 0 && idx < navRows.length - 1,
       progressReceived: receivedUnits,
       progressTotal: totalUnits,
     };
-  }, [selectedLine, scanMatchedRows]);
+  }, [selectedLine, navRows]);
 
   // Prev/next flips the local selectedLine and fires the dedicated
   // receiving-highlight-line event so the dashboard table's blue row
@@ -105,23 +127,23 @@ export function useReceivingLineNavigation({
   // would break subsequent nav.
   const goPrevLine = useCallback(() => {
     if (currentIndex <= 0) return;
-    const target = scanMatchedRows[currentIndex - 1];
+    const target = navRows[currentIndex - 1];
     if (target) {
       setLineAccordionBootstrap('default');
       setSelectedLine(target);
       window.dispatchEvent(new CustomEvent('receiving-highlight-line', { detail: target.id }));
     }
-  }, [currentIndex, scanMatchedRows, setLineAccordionBootstrap, setSelectedLine]);
+  }, [currentIndex, navRows, setLineAccordionBootstrap, setSelectedLine]);
 
   const goNextLine = useCallback(() => {
-    if (currentIndex < 0 || currentIndex >= scanMatchedRows.length - 1) return;
-    const target = scanMatchedRows[currentIndex + 1];
+    if (currentIndex < 0 || currentIndex >= navRows.length - 1) return;
+    const target = navRows[currentIndex + 1];
     if (target) {
       setLineAccordionBootstrap('default');
       setSelectedLine(target);
       window.dispatchEvent(new CustomEvent('receiving-highlight-line', { detail: target.id }));
     }
-  }, [currentIndex, scanMatchedRows, setLineAccordionBootstrap, setSelectedLine]);
+  }, [currentIndex, navRows, setLineAccordionBootstrap, setSelectedLine]);
 
   // Arrow keys move the main table selection (same as carton header chevrons).
   useEffect(() => {

@@ -6,14 +6,17 @@
  * (creates + seals a label_manifest, prints the master QR) or *one label per
  * unit* (prints each unit's product label). Opened from the receiving carton
  * rollup overflow.
+ *
+ * Anchored over the receiving right pane via {@link RightPaneOverlay} — same
+ * shell as {@link ReceivingClaimModal}.
  */
 
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { toast } from '@/lib/toast';
-import { X, Package, Barcode, Loader2, Check } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { getLast4 } from '@/components/ui/CopyChip';
+import { X, Package, Loader2, Check } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
+import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
+import { SerialChip, OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
 import { printProductLabels } from '@/lib/print/printProductLabel';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 
@@ -132,110 +135,124 @@ export function PreboxWizard({
     }
   };
 
-  if (typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-      <div
-        role="presentation"
-        className="absolute inset-0 bg-scrim/40 backdrop-blur-[1px]"
-        onClick={onClose}
-      />
-      <div className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-xl">
-        <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
+  return (
+    <RightPaneOverlay
+      open
+      onClose={onClose}
+      align="center"
+      resizable
+      storageKey="receiving-prebox-wizard-size"
+      minWidth={400}
+      minHeight={320}
+      className="h-[min(80vh,28rem)] w-[min(94vw,28rem)]"
+      aria-label="Create prebox label"
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
           <Package className="h-4 w-4 shrink-0 text-violet-600" />
-          <span className="flex-1 text-role-caption font-bold text-text-default">Create prebox label</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="ds-raw-button rounded p-1 text-text-muted hover:bg-surface-canvas"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <p className="truncate text-sm font-extrabold tracking-tight text-text-default">
+            Create prebox label
+          </p>
         </div>
+        <IconButton
+          onClick={onClose}
+          disabled={busy}
+          ariaLabel="Close"
+          icon={<X className="h-4 w-4" />}
+          className="rounded-lg p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
+        />
+      </div>
 
-        {/* Template choice */}
-        <div className="flex items-center gap-2 border-b border-border-soft px-4 py-2.5">
-          <button
-            type="button"
-            onClick={() => setMode('master')}
-            className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
-              mode === 'master'
-                ? 'bg-violet-50 text-violet-700 ring-violet-300'
-                : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
-            }`}
-          >
-            One master label
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('per-unit')}
-            className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
-              mode === 'per-unit'
-                ? 'bg-emerald-50 text-emerald-700 ring-emerald-300'
-                : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
-            }`}
-          >
-            One label per unit
-          </button>
-        </div>
+      {/* Template choice */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-border-soft px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => setMode('master')}
+          className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
+            mode === 'master'
+              ? 'bg-violet-50 text-violet-700 ring-violet-300'
+              : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
+          }`}
+        >
+          One master label
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('per-unit')}
+          className={`ds-raw-button flex-1 rounded-lg px-2 py-1.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset transition-colors ${
+            mode === 'per-unit'
+              ? 'bg-emerald-50 text-emerald-700 ring-emerald-300'
+              : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-canvas'
+          }`}
+        >
+          One label per unit
+        </button>
+      </div>
 
-        {/* Serial checklist */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
-          {serials.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
-              No serialized units to prebox.
-            </div>
-          ) : (
-            <ul className="divide-y divide-border-soft">
-              {serials.map((s) => {
-                const on = checked.has(s.id);
-                return (
-                  <li key={s.id}>
+      {/* Serial checklist */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2 text-role-data">
+        {serials.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
+            No serialized units to prebox.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border-soft">
+            {serials.map((s) => {
+              const on = checked.has(s.id);
+              const unitUid = String(s.unit_uid ?? '').trim();
+              return (
+                <li key={s.id}>
+                  <div
+                    className={`flex w-full items-center gap-2.5 py-2.5 transition-colors ${
+                      on ? 'bg-blue-50/60' : ''
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => toggle(s.id)}
-                      className="ds-raw-button flex w-full items-center gap-2 py-2 text-left"
+                      aria-label={on ? 'Deselect serial' : 'Select serial'}
+                      aria-pressed={on}
+                      className={`ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded ring-1 ring-inset ${
+                        on ? 'bg-blue-500 text-white ring-blue-500' : 'bg-surface-card ring-border-soft'
+                      }`}
                     >
-                      <span
-                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded ring-1 ring-inset ${
-                          on ? 'bg-blue-500 text-white ring-blue-500' : 'bg-surface-card ring-border-soft'
-                        }`}
-                      >
-                        {on ? <Check className="h-3 w-3" /> : null}
-                      </span>
-                      <Barcode className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                      <span className="font-mono text-role-caption font-semibold text-text-default">
-                        …{getLast4(s.serial_number)}
-                      </span>
-                      {s.unit_uid ? (
-                        <span className="ml-auto truncate font-mono text-role-eyebrow text-text-soft">{s.unit_uid}</span>
-                      ) : (
-                        <span className="ml-auto text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
-                          not labeled
-                        </span>
-                      )}
+                      {on ? <Check className="h-3 w-3" /> : null}
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 border-t border-border-soft px-4 py-3">
-          <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
-            {chosen.length} selected
-          </span>
-          <Button size="sm" variant="primary" disabled={busy || chosen.length === 0} onClick={() => void run()}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            {mode === 'master' ? 'Seal + print master' : 'Print unit labels'}
-          </Button>
-        </div>
+                    <div className="shrink-0">
+                      <SerialChip value={s.serial_number} width="w-fit" />
+                    </div>
+                    <div className="min-w-0 flex-1" aria-hidden />
+                    <div className="ml-auto flex shrink-0 justify-end">
+                      {unitUid ? (
+                        <OrderIdChip value={unitUid} display={getLast4(unitUid)} />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggle(s.id)}
+                          className="ds-raw-button text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted"
+                        >
+                          not labeled
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
-    </div>,
-    document.body,
+
+      {/* Footer */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border-hairline bg-surface-canvas px-4 py-2.5">
+        <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+          {chosen.length} selected
+        </span>
+        <Button size="sm" variant="primary" disabled={busy || chosen.length === 0} onClick={() => void run()}>
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          {mode === 'master' ? 'Seal + print master' : 'Print unit labels'}
+        </Button>
+      </div>
+    </RightPaneOverlay>
   );
 }

@@ -9,16 +9,19 @@ import {
   orderAuditToTimeline,
   inventoryEventsToTimeline,
   stationActivityToTimeline,
+  threadMessagesToTimeline,
   collapseTimeline,
   type OrderAuditRow,
   type InventoryTimelineRow,
   type StationActivityRow,
+  type ThreadMessageTimelineRow,
 } from '@/lib/timeline';
 
 interface OrderTimelinePayload {
   events: OrderAuditRow[];
   lifecycle: InventoryTimelineRow[];
   stationEvents: StationActivityRow[];
+  threadMessages: ThreadMessageTimelineRow[];
 }
 
 /**
@@ -45,6 +48,7 @@ export function OrderTimelineSection({ orderId }: { orderId: number }) {
         events: (json.events ?? []) as OrderAuditRow[],
         lifecycle: (json.lifecycle ?? []) as InventoryTimelineRow[],
         stationEvents: (json.stationEvents ?? []) as StationActivityRow[],
+        threadMessages: (json.threadMessages ?? []) as ThreadMessageTimelineRow[],
       };
     },
     enabled: Number.isFinite(orderId) && orderId > 0,
@@ -62,13 +66,14 @@ export function OrderTimelineSection({ orderId }: { orderId: number }) {
           ...orderAuditToTimeline(data?.events ?? []),
           ...inventoryEventsToTimeline(data?.lifecycle ?? []),
           ...stationActivityToTimeline(data?.stationEvents ?? []),
+          ...threadMessagesToTimeline(data?.threadMessages ?? []),
         ].sort((a, b) => {
           const ta = a.at ? new Date(a.at).getTime() : 0;
           const tb = b.at ? new Date(b.at).getTime() : 0;
           return tb - ta;
         }),
       ),
-    [data?.events, data?.lifecycle, data?.stationEvents],
+    [data?.events, data?.lifecycle, data?.stationEvents, data?.threadMessages],
   );
 
   // Only offer the serial view when there's at least one serial/identifier to

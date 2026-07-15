@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Copy, History, Info, Link2, MoreVertical, RefreshCw, Ticket } from '@/components/Icons';
+import { ChevronLeft, Copy, History, Info, Link2, MoreVertical, RefreshCw, Ticket } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -45,6 +45,7 @@ export function LineEditToolbar({
   copyingAll,
   pairing = false,
   handlers,
+  onBackToBrowse,
 }: {
   /** Drives which header actions + nav channel render. Defaults to unbox. */
   mode?: WorkspaceMode;
@@ -57,6 +58,8 @@ export function LineEditToolbar({
   pairing?: boolean;
   /** Handler per action key; only the keys this mode lists are read. */
   handlers: Partial<Record<HeaderActionKey, () => void>>;
+  /** Testing: return to the tested-lines browse (history empty state). */
+  onBackToBrowse?: () => void;
 }) {
   const def = workspaceMode(mode);
   const disabled = receivingId == null;
@@ -187,6 +190,21 @@ export function LineEditToolbar({
     <PaneHeaderActionBar
       variant="header"
       iconOnly
+      leftSlot={
+        onBackToBrowse ? (
+          <HoverTooltip label="All tested lines" asChild>
+            <button
+              type="button"
+              onClick={onBackToBrowse}
+              aria-label="Back to all tested lines"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro font-bold uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">All lines</span>
+            </button>
+          </HoverTooltip>
+        ) : null
+      }
       rightSlot={
         <>
           {overflowMenu}

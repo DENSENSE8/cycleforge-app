@@ -14,6 +14,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { handleRepairScan } from './station/handleRepairScan';
 import { handleCommand } from './station/handleCommand';
 import { normalizeTrackingKey } from '@/lib/tracking-format';
+import { rebuildSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 
 // Re-export types consumed by external components — import paths unchanged.
 export { getStationInputMode } from '@/lib/station-scan-routing';
@@ -278,7 +279,18 @@ export function useStationTestingController({
       const removedSerial = e?.detail?.removedSerial;
       if (!activeOrder) return;
       if (!salMatch && !trackingMatch) return;
-      syncActiveOrderState({ ...activeOrder, serialNumbers }, { preserveHidden: true });
+      syncActiveOrderState(
+        {
+          ...activeOrder,
+          serialNumbers,
+          skuSerialGroups: rebuildSkuSerialGroups(
+            activeOrder.skuSerialGroups,
+            serialNumbers,
+            activeOrder.sku,
+          ),
+        },
+        { preserveHidden: true },
+      );
       if (removedSerial) {
         setSuccessMessage(`Undo successful: removed ${removedSerial}`);
       } else {

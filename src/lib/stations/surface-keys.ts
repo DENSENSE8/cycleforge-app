@@ -196,7 +196,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   outbound: {
     key: 'outbound',
-    label: 'Outbound',
+    label: 'Shipping',
     route: '/outbound',
     archetype: 'station',
     permission: 'shipping.view',

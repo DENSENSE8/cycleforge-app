@@ -1,7 +1,11 @@
 import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { normalizeShipByDraft } from '../helpers';
+import {
+  canEditShippingInfo,
+  resolveShippedRowEditTarget,
+} from '@/components/shipped/details-panel/shipped-details-logic';
+import { findDuplicateTrackingInDraft, normalizeShipByDraft } from '../helpers';
 import type { EditableShippingFields, FlatTrackingRow, ShippingInfoEditDraft } from '../types';
 import type { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
 
@@ -15,6 +19,21 @@ interface UseShippingInfoEditModalArgs {
   internalFieldSave: OrderFieldSave;
   onUpdate?: () => void;
   setLinkedTrackingDrafts: Dispatch<SetStateAction<Record<string, string>>>;
+}
+
+function mapShippingSaveError(message: string, isException: boolean): string {
+  const trimmed = String(message || '').trim();
+  if (!trimmed) return 'Failed to save shipping details';
+  if (/order not found/i.test(trimmed) && !isException) {
+    return "This order record couldn't be found. Close and re-open the panel to refresh.";
+  }
+  if (/already exists on another shipment/i.test(trimmed)) {
+    return 'Tracking number already exists on another shipment.';
+  }
+  if (/already exists on another exception/i.test(trimmed)) {
+    return 'Tracking number already exists on another exception.';
+  }
+  return trimmed;
 }
 
 /**
@@ -32,6 +51,8 @@ export function useShippingInfoEditModal({
   setLinkedTrackingDrafts,
 }: UseShippingInfoEditModalArgs) {
   const queryClient = useQueryClient();
+  const editTarget = resolveShippedRowEditTarget(shipped);
+  const exceptionMode = editTarget?.kind === 'exception';
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
@@ -57,19 +78,43 @@ export function useShippingInfoEditModal({
   };
 
   const openEditModal = useCallback(() => {
-    setDraft({
-      shipByDate: normalizeShipByDraft(ef.shipByDate),
-      orderNumber: ef.orderNumber,
-      itemNumber: ef.itemNumber,
-      trackingRows: allTrackingRows.length > 0
-        ? allTrackingRows.map((row) => ({ shipmentId: row.shipmentId, tracking: row.tracking }))
-        : [{ shipmentId: null, tracking: '' }],
-      serialRows: serialNumberRows.length > 0 ? serialNumberRows.map((row) => row.toUpperCase()) : [''],
-    });
+    if (!canEditShippingInfo(shipped)) return;
+    const target = resolveShippedRowEditTarget(shipped);
+    if (target?.kind === 'exception') {
+      const tracking = String(
+        allTrackingRows[0]?.tracking
+        || shipped.shipping_tracking_number
+        || '',
+      ).trim();
+      setDraft({
+        shipByDate: '',
+        orderNumber: '',
+        itemNumber: '',
+        trackingRows: [{ shipmentId: null, tracking }],
+        serialRows: [],
+      });
+    } else {
+      setDraft({
+        shipByDate: normalizeShipByDraft(ef.shipByDate),
+        orderNumber: ef.orderNumber,
+        itemNumber: ef.itemNumber,
+        trackingRows: allTrackingRows.length > 0
+          ? allTrackingRows.map((row) => ({ shipmentId: row.shipmentId, tracking: row.tracking }))
+          : [{ shipmentId: null, tracking: '' }],
+        serialRows: serialNumberRows.length > 0 ? serialNumberRows.map((row) => row.toUpperCase()) : [''],
+      });
+    }
     setError(null);
     setIsSaveSuccess(false);
     setIsOpen(true);
-  }, [allTrackingRows, ef.itemNumber, ef.orderNumber, ef.shipByDate, serialNumberRows]);
+  }, [
+    allTrackingRows,
+    ef.itemNumber,
+    ef.orderNumber,
+    ef.shipByDate,
+    serialNumberRows,
+    shipped,
+  ]);
 
   const requestClose = useCallback(() => {
     if (isSaving || isSaveSuccess) return;
@@ -124,15 +169,58 @@ export function useShippingInfoEditModal({
     setIsSaveSuccess(false);
     setError(null);
     try {
-      const currentOrderId = Number((shipped as any).id);
+      const duplicate = findDuplicateTrackingInDraft(draft.trackingRows);
+      if (duplicate) {
+        throw new Error('Same tracking number entered more than once.');
+      }
+
+      const target = resolveShippedRowEditTarget(shipped);
+
+      // ── Exception path: tracking-only PATCH on orders_exceptions ──────────
+      if (target?.kind === 'exception') {
+        const nextTracking = String(draft.trackingRows[0]?.tracking || '').trim();
+        if (!nextTracking) {
+          throw new Error('Tracking number is required.');
+        }
+        const currentTracking = String(
+          allTrackingRows[0]?.tracking || shipped.shipping_tracking_number || '',
+        ).trim();
+        if (nextTracking.toUpperCase() !== currentTracking.toUpperCase()) {
+          const res = await fetch(`/api/orders-exceptions/${target.exceptionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shippingTrackingNumber: nextTracking }),
+          });
+          if (!res.ok) {
+            const payload = await res.json().catch(() => ({}));
+            throw new Error(String(payload?.details || payload?.error || 'Failed to update tracking'));
+          }
+        }
+        ef.onTrackingNumberChange(nextTracking);
+        setLinkedTrackingDrafts({ 'none:0': nextTracking });
+        setIsSaveSuccess(true);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['orders'] }),
+          queryClient.invalidateQueries({ queryKey: ['shipped-table'] }),
+          queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] }),
+          queryClient.invalidateQueries({ queryKey: ['dashboard-table'] }),
+        ]);
+        onUpdate?.();
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        setIsOpen(false);
+        setIsSaveSuccess(false);
+        return;
+      }
+
+      if (!target || target.kind !== 'order') {
+        throw new Error(
+          "This order record couldn't be found. Close and re-open the panel to refresh.",
+        );
+      }
+
+      const currentOrderId = target.orderId;
 
       // ── 1. Record fields → canonical CRUD ────────────────────────────────
-      // itemNumber goes through the canonical PATCH /api/orders/[id]. orderNumber
-      // stays on /api/orders/assign because that route owns the cross-order
-      // duplicate check (409). shipByDate stays on saveShipByDate (assign) to
-      // preserve the work_assignments deadline-promotion behavior. Each field is
-      // compared against the live `ef` props directly — no stale ref gates that
-      // could silently skip the write.
       const recordPatch: Record<string, unknown> = {};
       if (draft.itemNumber.trim() !== String(ef.itemNumber || '').trim()) {
         recordPatch.itemNumber = draft.itemNumber.trim() || null;
@@ -166,13 +254,6 @@ export function useShippingInfoEditModal({
       }
 
       // ── 2. Tracking → desired-state reconcile ────────────────────────────
-      //
-      // Tracking numbers are equal attachments — there is no user-facing
-      // "primary". We send the full ordered set and let the server reconcile
-      // links to match (add new, unlink removed) and keep an internal pointer
-      // (orders.shipment_id = first entry) for single-value consumers. This
-      // replaces the old primary/edits/creates/deletes client diffing, whose
-      // primary-clear-vs-delete collision made deleting the top row fail.
       const desiredTracking = draft.trackingRows
         .map((row) => String(row.tracking || '').trim())
         .filter(Boolean);
@@ -180,7 +261,6 @@ export function useShippingInfoEditModal({
         .map((row) => String(row.tracking || '').trim())
         .filter(Boolean);
 
-      // Touched = the ordered set changed (case-insensitive, raw compare).
       const trackingSetKey = (rows: string[]) => rows.map((t) => t.toUpperCase()).join('\n');
       const trackingTouched = trackingSetKey(desiredTracking) !== trackingSetKey(currentTracking);
 
@@ -235,8 +315,6 @@ export function useShippingInfoEditModal({
 
       setIsSaveSuccess(true);
 
-      // Bust all cached order views and AWAIT refetch so the parent
-      // passes fresh `shipped` data before we close the modal.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['orders'] }),
         queryClient.invalidateQueries({ queryKey: ['shipped-table'] }),
@@ -252,12 +330,13 @@ export function useShippingInfoEditModal({
       setIsSaveSuccess(false);
 
       if (trackingChanged) {
-        void syncOrderExceptions().catch((error) => {
-          console.error('Background orders exception sync failed:', error);
+        void syncOrderExceptions().catch((syncError) => {
+          console.error('Background orders exception sync failed:', syncError);
         });
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to save shipping details');
+    } catch (saveError) {
+      const raw = saveError instanceof Error ? saveError.message : 'Failed to save shipping details';
+      setError(mapShippingSaveError(raw, exceptionMode));
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -266,6 +345,7 @@ export function useShippingInfoEditModal({
     allTrackingRows,
     draft,
     ef,
+    exceptionMode,
     internalFieldSave,
     onUpdate,
     queryClient,
@@ -282,6 +362,7 @@ export function useShippingInfoEditModal({
     isSaving,
     isSaveSuccess,
     error,
+    exceptionMode,
     openEditModal,
     requestClose,
     handleModalSave,

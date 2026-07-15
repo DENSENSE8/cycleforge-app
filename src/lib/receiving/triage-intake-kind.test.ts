@@ -47,14 +47,25 @@ test('isIntakeClassified: fresh unfound carton (all disposition fields null) →
   assert.equal(isIntakeClassified(row({})), false);
 });
 
-test('isIntakeClassified: a concrete kind on any disposition field → true', () => {
+test('isIntakeClassified: regression — a 0-line unfound stub defaults line receiving_type to PO but is NOT classified', () => {
+  // The bug: an unfound carton with no lines renders a stub whose line
+  // receiving_type is the 'PO' default ("Unfound – PO"), while the CARTON
+  // intake_type is still null. Counting the line default made Classify read
+  // done and suppressed the header auto-expand on a genuinely unclassified
+  // carton. The carton disposition (intake_type / carton_intake_type) is the
+  // only deliberate signal.
+  assert.equal(isIntakeClassified(row({ receiving_type: 'PO' })), false);
+  assert.equal(isIntakeClassified(row({ receiving_type: 'RETURN' })), false);
+});
+
+test('isIntakeClassified: a deliberate carton/line intake_type → true', () => {
   assert.equal(isIntakeClassified(row({ intake_type: 'return' })), true); // case-insensitive
-  assert.equal(isIntakeClassified(row({ receiving_type: 'PO' })), true);
+  assert.equal(isIntakeClassified(row({ intake_type: 'PO' })), true); // explicit PO pick counts
   assert.equal(isIntakeClassified(row({ carton_intake_type: 'TRADE_IN' })), true);
   assert.equal(isIntakeClassified(row({ carton_intake_type: 'PICKUP' })), true);
 });
 
 test('isIntakeClassified: an unrecognized disposition string does not count as classified', () => {
   assert.equal(isIntakeClassified(row({ intake_type: 'UNKNOWN' })), false);
-  assert.equal(isIntakeClassified(row({ receiving_type: '' })), false);
+  assert.equal(isIntakeClassified(row({ carton_intake_type: '' })), false);
 });

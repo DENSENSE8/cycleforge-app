@@ -27,6 +27,14 @@ interface StationConditionEditorProps {
   onChange: (nextCondition: string) => Promise<void> | void;
   isLocked?: boolean;
   collapsible?: boolean;
+  /**
+   * Collapsible mode only. When false, collapse to just the edit pencil
+   * (grade already shown in the PO-line meta row). Defaults to true.
+   */
+  collapsedLabel?: boolean;
+  /** Controlled expanded state — used to mutex with the testing verdict picker. */
+  expanded?: boolean;
+  onExpandedChange?: (next: boolean) => void;
 }
 
 export function StationConditionEditor({
@@ -34,6 +42,9 @@ export function StationConditionEditor({
   onChange,
   isLocked = false,
   collapsible = false,
+  collapsedLabel = true,
+  expanded,
+  onExpandedChange,
 }: StationConditionEditorProps) {
   const [conditionValue, setConditionValue] = useState<ConditionGrade>(normalizeCondition(condition));
   const [isSaving, setIsSaving] = useState(false);
@@ -70,6 +81,9 @@ export function StationConditionEditor({
         onChange={handleChange}
         readOnly={isLocked}
         collapsible={collapsible}
+        collapsedLabel={collapsedLabel}
+        expanded={expanded}
+        onExpandedChange={onExpandedChange}
       />
     </div>
   );

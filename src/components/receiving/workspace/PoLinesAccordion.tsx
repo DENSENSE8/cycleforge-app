@@ -185,7 +185,7 @@ export function PoLinesAccordion({
         </div>
       )}
       <LayoutGroup id={`po-lines-${receivingId}`}>
-        <ul ref={listRef} className="flex min-w-0 flex-col gap-1">
+        <ul ref={listRef} className="flex min-w-0 flex-col gap-0">
           {rows.map((line) => (
             <PoLineRow
               key={line.id}

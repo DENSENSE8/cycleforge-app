@@ -35,6 +35,7 @@ import {
   type PoContext,
   type PoLineSummary,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import type { ScanApplyCtx } from './scan-types';
 
 /** After a scan opens a carton: unbox arms the serial field; triage keeps the tracking scan bar hot. */
@@ -104,12 +105,30 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   const poIds = Array.isArray(d.po_ids) ? (d.po_ids as string[]) : [];
   ctx.onResult?.({ tracking: ctx.trackingNumber, matched: true, po_ids: poIds, receiving_id: recvId });
 
+  const allLines = ((d.lines as Record<string, unknown>[]) || []).map((l) =>
+    mapApiLineToPoSummary(l as Parameters<typeof mapApiLineToPoSummary>[0]),
+  );
+  // When a single open line is already known, scope PO context to that line's
+  // PO group so mixed-PO cartons don't arm serials / receive counts across POs.
+  const openPreview = allLines.filter(
+    (l) => l.quantity_expected == null || l.quantity_received < (l.quantity_expected ?? 0),
+  );
+  const scopedLines =
+    openPreview.length === 1 ? filterLinesByPoGroup(allLines, openPreview[0]) : allLines;
+  const scopedPoIds =
+    scopedLines.length < allLines.length
+      ? [
+          ...new Set(
+            scopedLines
+              .map((l) => (l.zoho_purchaseorder_id || '').trim())
+              .filter((x) => x.length > 0),
+          ),
+        ]
+      : poIds;
   const poCtx: PoContext = {
     receiving_id: recvId,
-    po_ids: poIds,
-    lines: ((d.lines as Record<string, unknown>[]) || []).map((l) =>
-      mapApiLineToPoSummary(l as Parameters<typeof mapApiLineToPoSummary>[0]),
-    ),
+    po_ids: scopedPoIds,
+    lines: scopedLines,
     receiving_package: parseReceivingPackage(d.receiving_package),
   };
   // Arming serial-scan context + the active line only makes sense if the operator
@@ -138,7 +157,8 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
 
   // Seed the siblings cache from lookup-po so PoLinesAccordion paints on first
   // frame — the hydration fetch below reconciles serials in the background.
-  const stubRows = poCtx.lines.map((l) =>
+  // Cache stays carton-keyed (all lines); UI scopes to the active PO at read time.
+  const stubRows = allLines.map((l) =>
     buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, l),
   );
   seedReceivingSiblingsCache(
@@ -220,16 +240,51 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
       }
       // Open/select only if still on this scan's mode (stale-guard).
       if (ctx.isCurrent()) {
-        ctx.setScanMatchedRows(rows);
         const openRows = rows.filter(
           (r) => r.quantity_expected == null || r.quantity_received < (r.quantity_expected ?? 0),
         );
         // Fall back to the first line when all are received; only null when the
         // carton has no lines (avoids a blank workspace).
         const pick = openRows[0] ?? rows[0] ?? null;
+        // Scope nav/receive counts to the picked line's PO group.
+        ctx.setScanMatchedRows(pick ? filterLinesByPoGroup(rows, pick) : rows);
         ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
         ctx.setSelectedLine(pick);
         ctx.setScanDriven(true);
+        if (pick) {
+          const scopedPoLines = filterLinesByPoGroup(
+            rows.map((r) =>
+              mapApiLineToPoSummary({
+                id: r.id,
+                sku: r.sku,
+                item_name: r.item_name,
+                image_url: r.image_url ?? null,
+                quantity_expected: r.quantity_expected,
+                quantity_received: r.quantity_received,
+                zoho_purchaseorder_id: r.zoho_purchaseorder_id,
+                zoho_purchaseorder_number: r.zoho_purchaseorder_number,
+                receiving_type: r.receiving_type,
+                condition_grade: r.condition_grade,
+              }),
+            ),
+            pick,
+          );
+          ctx.setPoContext((prev) =>
+            prev && prev.receiving_id === poCtx.receiving_id
+              ? {
+                  ...prev,
+                  lines: scopedPoLines,
+                  po_ids: [
+                    ...new Set(
+                      scopedPoLines
+                        .map((l) => (l.zoho_purchaseorder_id || '').trim())
+                        .filter((x) => x.length > 0),
+                    ),
+                  ],
+                }
+              : prev,
+          );
+        }
       }
     } catch {
       /* silent — sidebar still has poContext for serial scans */

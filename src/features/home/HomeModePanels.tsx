@@ -80,15 +80,18 @@ export function HomeCollabPanel() {
   return (
     <HomeModePlaceholder
       eyebrow="Home · Collab"
-      title="Threads on a stuck task"
-      blurb="Ops threads anchored to a selected task or phase — comment, mark a phase blocked with a required reason, and @mention a lead. Always entity-anchored, never a freeform channel."
+      title="Threads live on the entity"
+      blurb="Ops conversations are now anchored to the record itself — open any order, receiving line, unit, warranty claim, or support ticket and use its Conversation panel to comment (internal note or public reply), always entity-anchored, never a freeform channel. This mode will graduate to a cross-entity inbox of the threads you follow."
       wires={[
-        'Comments extend entity_notes (entity_type=ops_plan_task) — plan §22',
-        'Block reason via reason_codes (flow_context=ops_plan_task_block) — plan §31',
-        '@mentions ride staff_messages + org:{id}:inbox:{staffId} (reuse, do not fork) — plan §23',
+        'Shipped: entity_threads / thread_messages + ThreadPanel on Order / Receiving line / Unit / Warranty / Support',
+        'Next (this mode): a personal inbox of followed threads (@mention ride staff_messages + org:{id}:inbox:{staffId})',
+        'Task/phase anchor (ops_plan_task) is a new discriminator value — needs a schema decision before it joins the 7 surface types',
         'Thread refresh rides the existing ops_plans:changes channel',
       ]}
-      links={[{ label: 'Back to Tasks', href: '/?mode=tasks' }]}
+      links={[
+        { label: 'Back to Tasks', href: '/?mode=tasks' },
+        { label: 'Open the dashboard', href: '/dashboard' },
+      ]}
     />
   );
 }

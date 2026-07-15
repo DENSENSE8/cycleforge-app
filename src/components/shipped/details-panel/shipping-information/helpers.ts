@@ -81,6 +81,26 @@ export function serialNumberRowsFromShipped(shipped: ShippedOrder): string[] {
     .filter(Boolean);
 }
 
+/**
+ * True when the draft tracking list contains the same normalized key more than
+ * once (case / punctuation insensitive via {@link normalizeTrackingKey}).
+ */
+export function findDuplicateTrackingInDraft(
+  rows: Array<{ tracking?: string | null } | string>,
+): string | null {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const raw = typeof row === 'string' ? row : String(row?.tracking || '');
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const key = normalizeTrackingKey(trimmed);
+    if (!key) continue;
+    if (seen.has(key)) return trimmed;
+    seen.add(key);
+  }
+  return null;
+}
+
 export interface ShippingDisplayMeta {
   daysLate: number;
   /** Packed timestamp source (pack-activity preferred over packed_at), or null. */

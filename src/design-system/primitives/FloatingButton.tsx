@@ -4,10 +4,18 @@ import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronDown, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import { operatorAccentClasses } from '@/utils/operator-accent';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type FloatingButtonTone = 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
+export type FloatingButtonTone =
+  | 'accent'
+  | 'blue'
+  | 'emerald'
+  | 'orange'
+  | 'violet'
+  | 'red'
+  | 'gray';
 
 export interface FloatingButtonMenuItem {
   label: string;
@@ -28,7 +36,7 @@ export interface FloatingButtonProps {
   loading?: boolean;
   /** Title attribute for the CTA (explains disabled states). */
   title?: string;
-  /** Tone preset. Ignored when `toneClasses` is set. Defaults to `emerald`. */
+  /** Tone preset. Ignored when `toneClasses` is set. Defaults to `accent` (staff theme). */
   tone?: FloatingButtonTone;
   /** Override the tone with arbitrary Tailwind classes (e.g. a per-row theme). */
   toneClasses?: { bg: string; hover: string };
@@ -57,6 +65,7 @@ export interface FloatingButtonProps {
 }
 
 const TONE_BG_SOLID: Record<FloatingButtonTone, string> = {
+  accent: operatorAccentClasses.bg,
   blue: 'bg-blue-600',
   emerald: 'bg-emerald-600',
   orange: 'bg-orange-600',
@@ -98,7 +107,7 @@ export function FloatingButton({
   disabled = false,
   loading = false,
   title,
-  tone = 'emerald',
+  tone = 'accent',
   toneClasses,
   menu,
   menuLabel,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ConditionPills } from './ConditionPills';
 import { UnitSlotList, type UnitLike } from './UnitSlotList';
 import { ConditionBadge } from './ConditionBadge';
@@ -41,6 +41,8 @@ interface Props {
   serialEditTarget?: UnitSerial | null;
   /** Icon-only no-serial control, pinned to the top-right of the unit list. */
   noSerialControl?: ReactNode;
+  /** Programmatic focus target for the dock Add serial handoff. */
+  serialInputRef?: RefObject<HTMLInputElement | null>;
 }
 
 /**
@@ -69,6 +71,7 @@ export function ReceivingUnitRows({
   onActiveConditionChange,
   serialEditTarget = null,
   noSerialControl,
+  serialInputRef,
 }: Props) {
   const total = Math.max(quantityExpected, saved.length, 1);
 
@@ -172,6 +175,7 @@ export function ReceivingUnitRows({
         onDeleteSerial={(s) => onDeleteSerial(s.id)}
         onReplaceSerial={(original, next) => onReplaceSerial(original, next)}
         serialEditTarget={serialEditTarget}
+        primaryInputRef={serialInputRef}
       />
     </div>
   );

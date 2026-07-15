@@ -101,12 +101,15 @@ export function SupportChatThread({
   requesterName,
   requesterEmail,
   onOpenPhoto,
+  compact = false,
 }: {
   ticketId: number;
   requesterId?: number;
   requesterName?: string | null;
   requesterEmail?: string | null;
   onOpenPhoto?: (url: string) => void;
+  /** Station ticket tab — denser bubbles + smaller type. */
+  compact?: boolean;
 }) {
   const { data, isLoading, error } = useTicketComments(ticketId);
   const { data: agents = [] } = useZendeskAgents();
@@ -156,7 +159,7 @@ export function SupportChatThread({
   }
 
   return (
-    <div className="space-y-5 px-5 py-6">
+    <div className={cn(compact ? 'space-y-3 px-3 py-3' : 'space-y-5 px-5 py-6')}>
       {comments.map((c) => {
         const a = resolveAuthor(c, { agentsById, usersById, requesterId, requesterName, requesterEmail });
         const atts = imageAttachments(c);
@@ -164,10 +167,15 @@ export function SupportChatThread({
         const onDark = a.isOurs && !internal; // only the blue public bubble is dark
 
         return (
-          <div key={c.id} className="flex items-end gap-2.5">
+          <div key={c.id} className="flex items-end gap-2">
             <Avatar name={a.name} photo={a.photo} ours={a.isOurs} />
             <div className="min-w-0 max-w-[78%] items-start">
-              <div className="mb-1 flex items-center gap-2 text-role-caption justify-start">
+              <div
+                className={cn(
+                  'mb-1 flex items-center gap-1.5 justify-start',
+                  compact ? 'text-role-micro' : 'text-role-caption',
+                )}
+              >
                 {internal ? (
                   <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700">
                     <Lock className="h-2.5 w-2.5" /> Internal
@@ -187,15 +195,18 @@ export function SupportChatThread({
               </div>
               <div
                 className={cn(
-                  'rounded-2xl px-3.5 py-2.5 text-role-data leading-relaxed shadow-sm',
+                  'rounded-2xl shadow-sm',
+                  compact
+                    ? 'rounded-bl-md px-3 py-2 text-role-caption leading-snug'
+                    : 'rounded-bl-md px-3.5 py-2.5 text-role-data leading-relaxed',
                   a.isOurs
                     ? internal
-                      ? 'rounded-bl-md border border-amber-200 bg-amber-50 text-amber-900'
-                      : 'rounded-bl-md bg-blue-600 text-white'
-                    : 'rounded-bl-md border border-border-soft bg-surface-card text-text-default',
+                      ? 'border border-amber-200 bg-amber-50 text-amber-900'
+                      : 'bg-blue-600 text-white'
+                    : 'border border-border-soft bg-surface-card text-text-default',
                 )}
               >
-                <div className="whitespace-pre-wrap break-words">{renderInlineMarkdown(c.body)}</div>
+                <div className="break-words">{renderInlineMarkdown(c.body)}</div>
                 <Attachments atts={atts} onDark={onDark} onOpenPhoto={onOpenPhoto} />
               </div>
             </div>

@@ -462,7 +462,7 @@ function OrderSuggestList({
           <button
             type="button"
             onClick={() => onPick(c)}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-blue-50"
+            className="flex w-full items-center justify-between gap-2 inset-field text-left hover:bg-blue-50"
           >
             <span className="min-w-0">
               {c.product_title ? (
@@ -949,7 +949,7 @@ function TicketCreateInline({
         onChange={(e) => setBody(e.target.value)}
         rows={5}
         placeholder="Ticket details…"
-        className="block w-full resize-y rounded-lg border border-border-default bg-surface-card px-3 py-2 text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
+        className="block w-full resize-y rounded-lg border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
       />
       <div className="flex items-center justify-between gap-2">
         <p className="text-role-micro font-semibold text-text-faint">
@@ -990,7 +990,7 @@ function CompareLine({
 }) {
   return (
     <div
-      className={`flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-role-caption ring-1 ring-inset ${LINE_TONE[tone]}`}
+      className={`flex items-start gap-2 rounded-lg inset-cozy text-role-caption ring-1 ring-inset ${LINE_TONE[tone]}`}
     >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 font-semibold">{text}</span>
@@ -1016,7 +1016,7 @@ function MergedNotice({ state }: { state: RefetchState }) {
 
   return (
     <div
-      className={`flex items-start gap-2 rounded-lg px-3 py-2 text-role-caption ring-1 ring-inset ${tone}`}
+      className={`flex items-start gap-2 rounded-lg inset-field text-role-caption ring-1 ring-inset ${tone}`}
     >
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0">{state.message}</span>

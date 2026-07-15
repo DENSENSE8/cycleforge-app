@@ -13,12 +13,15 @@ interface StagedQueueTableProps {
   searchQuery: string;
   onOpenOrder: (order: ShippedOrder) => void;
   onCloseOrder: () => void;
+  /** Hide the built-in banner when the mode tab band already labels the queue. */
+  hideHeader?: boolean;
 }
 
 export function StagedQueueTable({
   searchQuery,
   onOpenOrder,
   onCloseOrder,
+  hideHeader = false,
 }: StagedQueueTableProps) {
   const queryClient = useQueryClient();
   const query = useQuery(stagedOrdersQuery({ searchQuery }));
@@ -73,6 +76,7 @@ export function StagedQueueTable({
       bannerTitle="Staging"
       bannerSubtitle={countLabel}
       bannerCompact
+      hideHeader={hideHeader}
       sort="priority"
       onOpenRecord={(record) => onOpenOrder(record)}
       onCloseRecord={() => onCloseOrder()}

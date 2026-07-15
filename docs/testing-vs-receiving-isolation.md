@@ -10,7 +10,7 @@ Cycle Forge keeps **Testing** (`/test`) and **Receiving** (`/unbox`, `/triage`, 
 | Triage / Receiving | `/triage` | path | `triview`, `triq` |
 | Incoming | `/incoming` | path | `incview`, `state`, `sort`, `po_from`, `po_to`, `page` |
 | History | `/receiving/history` | path | `q`, `field`, `scope` (history search) |
-| Testing | `/test` (legacy `/tech`) | `?view=testing` \| `?view=testing-history` | `view`, `search` |
+| Testing | `/test` (legacy `/tech`) | `?view=testing` (absent = Shipping) | `view`, `search` |
 
 **Source of truth module:** `src/lib/surface-isolation.ts`
 
@@ -70,9 +70,10 @@ Event listeners (e.g. `useReceivingSelection`) must use `resolveLiveReceivingMod
 
 ## Verification checklist
 
-1. Open `/test?view=testing` → scan / pair → confirm Unbox Recent rail unchanged
+1. Open `/test?view=testing` → lands on tested-lines browse; scan / pick a line → confirm Unbox Recent rail unchanged
 2. Open `/unbox` → scan real PO → confirm Testing rail unchanged
 3. Deep-link `/unbox?view=testing` → `view` stripped on load
-4. `GET /api/receiving-lines?view=testing` → 403
-5. `GET /api/testing/receiving-lines?view=testing` → 200 (with `tech.qc_pass`)
-6. Timeline actor matches logged-in staff after mark-received / status updates
+4. Deep-link `/test?view=testing-history` → redirects to `/test?view=testing`
+5. `GET /api/receiving-lines?view=testing` → 403
+6. `GET /api/testing/receiving-lines?view=testing` → 200 (with `tech.qc_pass`)
+7. Timeline actor matches logged-in staff after mark-received / status updates

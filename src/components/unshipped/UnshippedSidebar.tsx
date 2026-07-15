@@ -15,8 +15,6 @@ import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedCh
 import { ShippedFilterDropdown } from '@/components/shipping/shipped-filter/ShippedFilterDropdown';
 import { motion } from 'framer-motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SearchBar } from '@/components/ui/SearchBar';
 import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSidebarScope';
 
 interface UnshippedSidebarProps {
@@ -43,7 +41,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     embedded = false,
     hideSectionHeader = false,
     searchValue = '',
-    onSearchChange,
   } = props;
   const handleOpenIntakeForm = () => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -112,38 +109,28 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
           {!hideSectionHeader ? (
             <motion.header variants={itemVariants} className={`${SIDEBAR_GUTTER} ${filterControl ? 'pt-2' : 'pt-6'}`}>
               <h2 className="text-xl font-black tracking-tighter uppercase leading-none text-text-default">
-                Outbound
+                Shipping
               </h2>
               <p className="text-role-eyebrow font-bold text-text-accent uppercase tracking-widest mt-1">
                 Fulfillment queue
               </p>
             </motion.header>
           ) : null}
-          {/* 1) Search — in-context list filter over dashboard ?search=. */}
+          {/* New order entry — scoped list search now lives in the workspace
+              header toolbar (one search home); the rail keeps create + scope. */}
           <motion.div
             variants={itemVariants}
             className={`${SIDEBAR_GUTTER} ${hideSectionHeader ? 'pt-4' : 'pt-3'} pb-1`}
           >
-            <SearchBar
-              size="compact"
-              variant="blue"
-              value={searchValue}
-              onChange={(v) => onSearchChange?.(v)}
-              onClear={() => onSearchChange?.('')}
-              placeholder="Filter orders…"
-              rightElement={
-                <HoverTooltip label="New Order Entry" asChild>
-                  <button
-                    type="button"
-                    onClick={handleOpenIntakeForm}
-                    className="ds-raw-button rounded-xl bg-emerald-500 p-2.5 text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
-                    aria-label="Open new order entry form"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-                </HoverTooltip>
-              }
-            />
+            {/* ds-raw-button — emerald "create" affordance; DS Button has no success variant */}
+            <button
+              type="button"
+              onClick={handleOpenIntakeForm}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-role-caption font-bold text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
+              aria-label="Open new order entry form"
+            >
+              <Plus className="h-4 w-4" /> New order
+            </button>
           </motion.div>
         </>
       }

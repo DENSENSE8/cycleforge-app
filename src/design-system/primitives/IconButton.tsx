@@ -2,6 +2,7 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '../tokens/focus-ring';
 
 type IconButtonTone = 'neutral' | 'accent';
 
@@ -76,6 +77,9 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       title={title}
       className={cn(
         'transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+        // Keyboard focus ring from the SoT — IconButton had none (a11y gain);
+        // :focus-visible so a mouse click never flashes it.
+        focusRing('control', 'accent'),
         size && 'inline-flex shrink-0 items-center justify-center',
         size && sizeClassName[size],
         toneClassName[tone],

@@ -62,7 +62,9 @@ interface TestingHistoryListProps {
 
 /**
  * History view for the Testing sub-page — the full feed of lines this tech has
- * tested (`/api/receiving-lines?view=testing`), ordered most-recent first.
+ * tested (`/api/testing/receiving-lines?view=testing&tester=`), ordered
+ * most-recent first. Always scoped to the signed-in staffer — missing/invalid
+ * `staffId` yields an empty personal history, never the org-wide feed.
  *
  * Mirrors the Receiving History list: a flat list of {@link ReceivingLineOrderRow}
  * that supports the shared "Select → pick rows → act" flow on
@@ -72,13 +74,23 @@ interface TestingHistoryListProps {
 export function TestingHistoryList({ staffId, selectMode = false, onOpenLine }: TestingHistoryListProps) {
   const { isMobile } = useUIModeOptional();
   const searchParams = useSearchParams();
-  const testerId = staffId ? Number(staffId) : null;
+  const parsed = staffId ? Number(staffId) : NaN;
+  const testerId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 
   const { data, isLoading } = useQuery<ApiResponse>({
     queryKey: ['testing-history', testerId],
+    enabled: testerId != null,
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '500', offset: '0', include: 'serials', view: 'testing' });
-      if (testerId) params.set('tester', String(testerId));
+      if (testerId == null) {
+        return { success: true, receiving_lines: [], total: 0 };
+      }
+      const params = new URLSearchParams({
+        limit: '500',
+        offset: '0',
+        include: 'serials',
+        view: 'testing',
+        tester: String(testerId),
+      });
       const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
       if (!res.ok) throw new Error('fetch failed');
       return res.json();
@@ -87,10 +99,10 @@ export function TestingHistoryList({ staffId, selectMode = false, onOpenLine }: 
     refetchOnWindowFocus: true,
   });
 
-  const rows = useMemo(
-    () => (Array.isArray(data?.receiving_lines) ? data!.receiving_lines : []),
-    [data],
-  );
+  const rows = useMemo(() => {
+    if (testerId == null) return [];
+    return Array.isArray(data?.receiving_lines) ? data!.receiving_lines : [];
+  }, [data, testerId]);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
 
@@ -205,7 +217,11 @@ export function TestingHistoryList({ staffId, selectMode = false, onOpenLine }: 
           renderRow={renderRow}
           getRowKey={(row) => String(row.id)}
           virtualized
-          emptyMessage="No tested lines yet — pass a unit to populate your history."
+          emptyMessage={
+            testerId == null
+              ? 'Sign in to see your tested lines.'
+              : 'No tested lines yet — pass a unit to populate your history.'
+          }
         />
       </div>
     );
@@ -221,7 +237,9 @@ export function TestingHistoryList({ staffId, selectMode = false, onOpenLine }: 
         ) : rows.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
             <p className="text-sm font-semibold text-text-soft">
-              No tested lines yet — pass a unit to populate your history.
+              {testerId == null
+                ? 'Sign in to see your tested lines.'
+                : 'No tested lines yet — pass a unit to populate your history.'}
             </p>
           </div>
         ) : (

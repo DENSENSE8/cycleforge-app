@@ -12,7 +12,7 @@ const Icon = () => null as unknown as JSX.Element;
 const defaults: SidebarNavItem[] = [
   { id: 'operations', label: 'Operations', href: '/operations', icon: Icon, kind: 'main' },
   { id: 'receiving', label: 'Receiving', href: '/unbox', icon: Icon, kind: 'station' },
-  { id: 'outbound', label: 'Outbound', href: '/outbound', icon: Icon, kind: 'station' },
+  { id: 'outbound', label: 'Shipping', href: '/outbound', icon: Icon, kind: 'station' },
   { id: 'settings', label: 'Settings', href: '/settings', icon: Icon, kind: 'bottom' },
 ];
 

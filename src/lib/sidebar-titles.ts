@@ -23,7 +23,7 @@ export const SIDEBAR_TITLES: Record<string, string> = {
   sourcing: 'Sourcing',
   tech: 'Testing',
   packer: 'Packing',
-  outbound: 'Outbound',
+  outbound: 'Shipping',
   support: 'Support',
   'ai-chat': 'AI Chat',
   admin: 'Admin',

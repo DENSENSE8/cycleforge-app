@@ -94,6 +94,8 @@ export const AUDIT_ENTITY = {
   BIN: 'bin',
   SHIPMENT: 'shipment',
   ORDER: 'order',
+  /** Hold-bucket row for unmatched outbound tracking (`orders_exceptions`). */
+  ORDERS_EXCEPTION: 'orders_exception',
   PACKER_LOG: 'PACKER_LOG',
   STAFF: 'staff',
   PHOTO: 'photo',
@@ -281,7 +283,15 @@ export const AUDIT_ACTION = {
   // Entity-anchored conversation threads (entity_threads / thread_messages)
   THREAD_CREATE:           'thread.create',
   THREAD_MESSAGE_POST:     'thread.message.post',
+  THREAD_MESSAGE_EDIT:     'thread.message.edit',
+  THREAD_MESSAGE_DELETE:   'thread.message.delete',
   THREAD_TICKET_ATTACH:    'thread.ticket.attach',
+  THREAD_STATUS_UPDATE:    'thread.status.update',
+  THREAD_DELETE:           'thread.delete',
+  THREAD_ASSIGN:           'thread.assign',
+  THREAD_UNASSIGN:         'thread.unassign',
+  THREAD_LINK:             'thread.link',
+  THREAD_UNLINK:           'thread.unlink',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',
@@ -383,6 +393,8 @@ export const AUDIT_ACTION = {
   ORDER_DOCUMENT_DELETE: 'order.document.delete',
   // Orders-exceptions reconciliation sweep (writes orders + orders_exceptions)
   ORDERS_EXCEPTIONS_SYNC: 'orders_exceptions.sync',
+  /** Manual tracking edit on a single open `orders_exceptions` row. */
+  ORDERS_EXCEPTION_UPDATE: 'orders_exceptions.update',
   // Repair service soft-cancel + its reverse (reopen → restore prior status)
   REPAIR_CANCEL: 'repair_service.cancel',
   REPAIR_REOPEN: 'repair_service.reopen',

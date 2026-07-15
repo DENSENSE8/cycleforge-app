@@ -11,7 +11,6 @@
 
 import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
   DASHBOARD_ORDER_VIEW_LABEL,
   type DashboardOrderView,
@@ -22,8 +21,10 @@ import {
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
 import { OutboundSavedViewChips } from '@/components/dashboard/OutboundSavedViewChips';
+import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import { SearchField } from '@/design-system/primitives/SearchField';
+import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { cn } from '@/utils/_cn';
 
 const LIFECYCLE_VIEWS = ['unshipped', 'packed', 'shipped'] as const;
 type LifecycleView = (typeof LIFECYCLE_VIEWS)[number];
@@ -47,6 +48,7 @@ export function OutboundWorkspaceHeader({
 }: OutboundWorkspaceHeaderProps) {
   const active = isLifecycleView(orderView) ? orderView : 'unshipped';
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
+  const { searchQuery, setSearch } = useDashboardSearchController();
   useToShipFilterHotkeys(active === 'unshipped');
 
   // Counts only on To Ship; Packed/Shipped stay label-only.
@@ -65,38 +67,34 @@ export function OutboundWorkspaceHeader({
   );
 
   return (
-    <div
-      className={cn(
-        'flex min-w-0 shrink-0 items-center gap-3 rounded-2xl border border-border-soft bg-surface-card px-2.5 py-1.5 shadow-sm',
-        className,
-      )}
-    >
-      {/* Left — lifecycle tabs only */}
-      <TabSwitch
-        tabs={tabs}
-        activeTab={active}
-        onTabChange={(id) => onSelectView(id as DashboardOrderView)}
-        className="w-auto shrink-0"
-        variant="solid"
-        countStyle="plain"
-        railClassName="rounded-full border border-border-default bg-surface-card p-1 shadow-sm"
-      />
-
-      <div className="min-w-0 flex-1" aria-hidden />
-
-      {/* Right — [◀ filters] [All N] [saved view chips] | portal (staff, etc.) */}
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
+    <WorkbenchChromeHeader
+      tabs={tabs}
+      activeTab={active}
+      onTabChange={(id) => onSelectView(id as DashboardOrderView)}
+      solidTone="accent"
+      controlsSlotRef={controlsSlotRef}
+      controlsSlotProps={{ 'data-outbound-controls': '' }}
+      className={className}
+      // Scoped list filter over ?search= (header slot) — the ⌘K pill stays global.
+      search={
+        <SearchField
+          value={searchQuery}
+          onChange={setSearch}
+          onClear={() => setSearch('')}
+          placeholder="Filter orders…"
+          tone="blue"
+          size="compact"
+          className="w-40 shrink-0 lg:w-56"
+        />
+      }
+      // [◀ filters] [All N] [saved view chips]
+      right={
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           <OutboundExactFilters mode={active} />
           <OutboundAllFilterButton mode={active} />
           <OutboundSavedViewChips mode={active} />
         </div>
-        <div
-          ref={controlsSlotRef}
-          className="flex shrink-0 items-center gap-2"
-          data-outbound-controls
-        />
-      </div>
-    </div>
+      }
+    />
   );
 }

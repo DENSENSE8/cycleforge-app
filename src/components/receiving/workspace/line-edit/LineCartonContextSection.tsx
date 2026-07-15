@@ -3,11 +3,12 @@
 /**
  * Carton-context section of the LineEditPanel — photos + claim + shipment
  * context (listing, PO#, tracking, platform + type + priority pills) in one
- * WorkspaceCard. Pure wiring from the controller bag to {@link CartonContextCard};
+ * WorkspaceCard. Pure wiring from the controller bag to the station SoT
+ * {@link CartonContextCard} (`@/components/station/entity-context`);
  * extracted from LineEditPanel so the panel stays a short composition surface.
  */
 
-import { CartonContextCard } from './CartonContextCard';
+import { CartonContextCard } from '@/components/station/entity-context';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { classifyLineSource } from '@/lib/receiving/intake-items-routing';

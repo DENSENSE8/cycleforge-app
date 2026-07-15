@@ -19,6 +19,8 @@ interface Props {
   c: TestingController;
   embedded?: boolean;
   headerRight?: React.ReactNode;
+  /** Hide the "PO items · N" header — parent tab row owns the pencil. */
+  suppressHeader?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export function TestingPoItemsSection({
   c,
   embedded = false,
   headerRight,
+  suppressHeader = false,
 }: Props) {
   if (row.receiving_id == null) {
     // Not linked to a carton yet — no longer a dead end. A REAL line (positive
@@ -84,6 +87,7 @@ export function TestingPoItemsSection({
           staffId={staffId}
           embedded={embedded}
           headerRight={headerRight}
+          suppressHeader={suppressHeader}
           sourcePlatformHint={c.sourcePlatform || undefined}
           receivingTypeHint={isReturnIntake(row) ? 'RETURN' : c.receivingType}
           listingUrlHint={c.listingLink || undefined}
@@ -108,6 +112,7 @@ export function TestingPoItemsSection({
       activeLineId={row.id}
       embedded={embedded}
       headerRight={headerRight}
+      suppressHeader={suppressHeader}
       placeholderActiveRow={row}
       hideNoTestLines
       renderTitleActions={(line) => (

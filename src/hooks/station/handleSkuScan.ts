@@ -1,3 +1,4 @@
+import { mergeSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ScanHandlerContext } from './types';
 
 /**
@@ -8,7 +9,7 @@ import type { ScanHandlerContext } from './types';
  *  2. POST to /api/tech/scan-sku with the full colon code, tracking, and salId.
  *  3. Server looks up serial(s) from sku.serial_number, inserts them via SAL context,
  *     decrements sku_stock, and writes shipping_tracking_number back to the sku row.
- *  4. Update the active order card with the new serial list.
+ *  4. Update the active order card with the new serial list + SKU↔serial pairing.
  */
 export async function handleSkuScan(input: string, ctx: ScanHandlerContext): Promise<void> {
   const contextOrder = ctx.reopenScanContextOrder();
@@ -53,18 +54,24 @@ export async function handleSkuScan(input: string, ctx: ScanHandlerContext): Pro
     const nextSkuCodes = prevSkuCodes.includes(matchedSku)
       ? prevSkuCodes
       : [...prevSkuCodes, matchedSku];
+    const addedSerials = Array.isArray(data.serialNumbers) ? (data.serialNumbers as string[]) : [];
 
     ctx.syncActiveOrderState({
       ...contextOrder,
       serialNumbers: nextSerials,
       scannedSkuCodes: nextSkuCodes,
+      skuSerialGroups: mergeSkuSerialGroups(
+        contextOrder.skuSerialGroups,
+        matchedSku,
+        addedSerials,
+      ),
       scanSessionId:
         typeof data.scanSessionId === 'string'
           ? data.scanSessionId
           : contextOrder.scanSessionId ?? ctx.scanSessionIdRef.current,
     });
 
-    const addedCount = Array.isArray(data.serialNumbers) ? data.serialNumbers.length : 0;
+    const addedCount = addedSerials.length;
     const titleSuffix = data.productTitle ? ` · ${data.productTitle}` : '';
     const notesSuffix = data.notes ? ' · Notes on file' : '';
     ctx.setSuccessMessage(

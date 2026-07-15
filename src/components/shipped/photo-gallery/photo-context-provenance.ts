@@ -33,6 +33,17 @@ export function describePhotoWorkflow(meta: PhotoMeta): PhotoWorkflowDescriptor 
   return { kind: 'unknown', label: 'Photo', tone: 'bg-glass/10 text-stage-soft ring-glass/20' };
 }
 
+/**
+ * Format an unboxing PO ref for display. A synthetic `PO_<cartonId>` ref means
+ * the carton was scanned at the dock but never matched a real purchase order —
+ * render it as "PO Unfound — <id>" rather than the opaque `PO_13204`. A real PO
+ * ref renders as "PO <ref>".
+ */
+export function unboxingPoLabel(poRef: string): string {
+  const unfound = poRef.trim().match(/^PO_(\d+)$/);
+  return unfound ? `PO Unfound — ${unfound[1]}` : `PO ${poRef}`;
+}
+
 export interface LinkedEntityDisplay {
   /** Bold headline when a PO / order / ticket is known. */
   primary: string | null;
@@ -50,7 +61,7 @@ function entityRefLabel(workflow: PhotoWorkflowDescriptor, meta: PhotoMeta): str
   }
   if (!meta.poRef?.trim()) return null;
   if (workflow.kind === 'packing') return `Order ${meta.poRef}`;
-  if (workflow.kind === 'unboxing') return `PO ${meta.poRef}`;
+  if (workflow.kind === 'unboxing') return unboxingPoLabel(meta.poRef);
   return meta.poRef;
 }
 

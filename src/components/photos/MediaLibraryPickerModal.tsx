@@ -10,6 +10,8 @@ export interface MediaLibraryPickerModalProps {
   open: boolean;
   onClose: () => void;
   ticketId?: number;
+  receivingId?: number;
+  defaultTab?: 'browse' | 'ticket' | 'carton';
   title?: string;
   subtitle?: string;
   selected: ClaimPhotoInput[];
@@ -28,6 +30,8 @@ export function MediaLibraryPickerModal({
   open,
   onClose,
   ticketId,
+  receivingId,
+  defaultTab,
   title = 'Media library',
   subtitle,
   selected,
@@ -40,8 +44,10 @@ export function MediaLibraryPickerModal({
   const href =
     libraryHref ??
     (ticketId
-      ? `/ops/photos?sourceScope=claims&entityType=ZENDESK_TICKET&entityId=${ticketId}`
-      : '/ops/photos');
+      ? `/ops/photos?sourceScope=claims&ticketId=${ticketId}`
+      : receivingId
+        ? `/ops/photos?receivingId=${receivingId}`
+        : '/ops/photos');
 
   return (
     <RightPaneOverlay
@@ -74,6 +80,8 @@ export function MediaLibraryPickerModal({
 
       <MediaLibraryPickerContent
         ticketId={ticketId}
+        receivingId={receivingId}
+        defaultTab={defaultTab}
         selected={selected}
         onSelectedChange={onSelectedChange}
         excludePhotoIds={excludePhotoIds}

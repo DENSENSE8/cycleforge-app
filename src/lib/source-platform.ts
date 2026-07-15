@@ -35,6 +35,7 @@ export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
   // was paired with an Ecwid repair-service (-RS) order.
   { value: 'ecwid',      label: 'ECWID-RS',   text: 'text-blue-600',   border: 'border-blue-600' },
   { value: 'square',     label: 'Square',     text: 'text-text-muted',  border: 'border-slate-600' }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
+  { value: 'shopify',    label: 'Shopify',    text: 'text-green-600',  border: 'border-green-600' },
   { value: 'other',      label: 'Other',      text: 'text-text-soft',  border: 'border-border-emphasis' },
 ];
 

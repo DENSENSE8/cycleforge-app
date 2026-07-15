@@ -329,6 +329,8 @@ interface PaneHeaderActionBarProps {
   variant?: 'card' | 'flat' | 'header';
   /** Icon-only mode — hides text labels but preserves them as aria-label/title for accessibility. */
   iconOnly?: boolean;
+  /** Custom node pinned to the left, before the action buttons (e.g. back-to-browse). */
+  leftSlot?: ReactNode;
   /** Custom node pinned to the right, before the prev/next chevrons (e.g. an Info button). */
   rightSlot?: ReactNode;
   /** Extra classes applied to prev/next nav buttons (e.g. responsive hide). */
@@ -353,6 +355,7 @@ export function PaneHeaderActionBar({
   nextTitle = 'Next',
   variant = 'card',
   iconOnly = false,
+  leftSlot,
   rightSlot,
   navClassName,
   className,
@@ -367,6 +370,7 @@ export function PaneHeaderActionBar({
 
   const content = (
     <>
+      {leftSlot}
       {actions.map((action) => (
         <HoverTooltip
           key={action.key}

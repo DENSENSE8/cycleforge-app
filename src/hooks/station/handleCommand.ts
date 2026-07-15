@@ -1,3 +1,4 @@
+import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ScanHandlerContext } from './types';
 
 interface CommandCallbacks {
@@ -23,6 +24,7 @@ export function handleCommand(
       notes: 'This is a test order for debugging',
       tracking: 'TEST-TRK-123',
       serialNumbers: [],
+      skuSerialGroups: initSkuSerialGroups('TEST-SKU'),
       testDateTime: null,
       testedBy: null,
       quantity: 1,

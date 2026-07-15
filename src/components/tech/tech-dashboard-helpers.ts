@@ -5,6 +5,7 @@
 
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
+import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 
 /**
  * Build the synthetic `ActiveStationOrder` shape consumed by the workspace card
@@ -13,16 +14,18 @@ import type { Order } from '@/components/station/upnext/upnext-types';
  */
 export function previewOrderToActiveShape(order: Order): ActiveStationOrder {
   const qty = Math.max(1, parseInt(String(order.quantity || '1'), 10) || 1);
+  const sku = order.sku || '';
   return {
     id: order.id,
     orderId: order.order_id,
     productTitle: order.product_title || '',
     itemNumber: order.item_number,
-    sku: order.sku || '',
+    sku,
     condition: order.condition || '',
     notes: '',
     tracking: order.shipping_tracking_number || '',
     serialNumbers: [],
+    skuSerialGroups: initSkuSerialGroups(sku),
     testDateTime: null,
     testedBy: null,
     quantity: qty,

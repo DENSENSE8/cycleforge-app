@@ -13,33 +13,43 @@ import { useClaimPhotos } from './claim/hooks/useClaimPhotos';
 import { ClaimPhotoPicker } from './claim/components/ClaimPhotoPicker';
 import { CcEmailField } from './claim/components/CcEmailField';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import type { LinkCandidate } from './claim/claim-types';
 
 /**
  * Send-photos-to-ticket modal. Forwards photos already captured on THIS purchase
- * order to a DIFFERENT Zendesk ticket — either as a private internal note (never
- * emailed) or as a public reply that emails the customer plus any CC'd
- * collaborators (e.g. looping a vendor in on condition photos).
+ * order to a Zendesk ticket — either as a private internal note (never emailed)
+ * or as a public reply that emails the customer plus any CC'd collaborators.
  *
  * Reuses the claim flow's ticket picker (`useClaimTicketSearch` / `ClaimTicketPicker`)
  * and PO photo grid (`useClaimPhotos` / `ClaimPhotoPicker`), and posts to the
- * shared `/api/zendesk/photo-ticket` route in `update` mode — the same chokepoint
- * the Support console uses to attach library photos (which already threads
- * `isPublic` + `emailCcs` to Zendesk).
+ * shared `/api/zendesk/photo-ticket` route in `update` mode.
  *
- * Presented as a centered overlay, identical chrome to {@link ReceivingClaimModal}.
+ * When `defaultTicket` + `lockTicket` are set (Claim tab attach-photos), the
+ * picker is skipped and the modal targets that ticket only.
  */
 export function SendPhotoNoteModal({
   open,
   row,
   onClose,
+  defaultTicket,
+  lockTicket = false,
 }: {
   open: boolean;
   row: ReceivingLineRow;
   onClose: () => void;
+  /** Pre-select this ticket when the modal opens. */
+  defaultTicket?: { id: number; subject?: string | null };
+  /** Hide the ticket picker and lock to `defaultTicket`. */
+  lockTicket?: boolean;
 }) {
   const receivingId = row.receiving_id ?? null;
   const lineId = row.id ?? null;
-  const search = useClaimTicketSearch({ open, enabled: open, receivingId, lineId });
+  const search = useClaimTicketSearch({
+    open,
+    enabled: open && !lockTicket,
+    receivingId,
+    lineId,
+  });
   const photos = useClaimPhotos(open, receivingId);
   const [note, setNote] = useState('');
   // Internal-first: a public reply (which emails the customer) is the deliberate
@@ -55,10 +65,24 @@ export function SendPhotoNoteModal({
       setIsPublic(false);
       setCcs([]);
       search.reset();
+      if (defaultTicket) {
+        const locked: LinkCandidate = {
+          id: defaultTicket.id,
+          subject: defaultTicket.subject ?? null,
+          description: null,
+          status: '',
+          priority: null,
+          createdAt: '',
+          updatedAt: '',
+          url: null,
+          linkedToThis: true,
+        };
+        search.setSelectedTicket(locked);
+      }
     }
-    // search.reset is stable enough; only re-run on open toggle.
+    // search.reset / setSelectedTicket are stable enough; only re-run on open toggle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, defaultTicket?.id]);
 
   const selectedTicket = search.selectedTicket;
   const photoCount = photos.selectedPhotoIds.size;
@@ -128,9 +152,13 @@ export function SendPhotoNoteModal({
       <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
         <div className="min-w-0">
           <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
-            Send photos to ticket
+            {lockTicket ? 'Add photos to ticket' : 'Send photos to ticket'}
           </p>
-          <p className="truncate text-xs font-semibold text-text-default">{poLabel}</p>
+          <p className="truncate text-xs font-semibold text-text-default">
+            {lockTicket && defaultTicket
+              ? `#${defaultTicket.id}${defaultTicket.subject ? ` · ${defaultTicket.subject}` : ''}`
+              : poLabel}
+          </p>
         </div>
         <IconButton
           onClick={onClose}
@@ -141,7 +169,14 @@ export function SendPhotoNoteModal({
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-role-data">
-        <ClaimTicketPicker search={search} onSelect={search.setSelectedTicket} />
+        {lockTicket && defaultTicket ? (
+          <div className="rounded-lg border border-border-soft bg-surface-canvas/60 px-3 py-2">
+            <p className="text-role-micro uppercase tracking-widest text-text-faint">Ticket</p>
+            <p className="text-role-caption font-semibold text-text-default">#{defaultTicket.id}</p>
+          </div>
+        ) : (
+          <ClaimTicketPicker search={search} onSelect={search.setSelectedTicket} />
+        )}
 
         <ClaimPhotoPicker photos={photos} receivingId={receivingId} />
 

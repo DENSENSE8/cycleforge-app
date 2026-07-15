@@ -81,6 +81,16 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     // Lazy import so the connection reader never pulls in the Ecwid job.
     sync: (orgId) => import('./orders-transfer').then((m) => m.ecwidSync(orgId)),
   },
+  // Nango-connected storefront (mirrors Square). Orders in via the GraphQL Admin
+  // API through Nango's proxy; catalog/stock push-out is a later phase. Lazy
+  // import so the connection reader never pulls in the Shopify client.
+  shopify: {
+    provider: 'shopify',
+    authKind: 'nango',
+    capabilities: ['orders'],
+    sync: (orgId) => import('./shopify').then((m) => m.shopifySync(orgId)),
+    validate: (orgId) => import('./shopify').then((m) => m.shopifyValidate(orgId)),
+  },
   // Payments
   stripe: {
     provider: 'stripe',

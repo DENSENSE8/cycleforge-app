@@ -5,12 +5,12 @@
  *
  * Logic lives in focused hooks under `@/components/tech/`:
  *   - useTechRightView ........... `?view=` → right-pane mode
- *   - useTechTestingSelection .... testing-history pencil multi-select + actions
+ *   - useTechTestingSelection .... Testing browse pencil multi-select + actions
  *   - useTechOrderPanes .......... active-order + Up Next preview (event bridges)
  *   - useTechDetailOverlays ...... selected log + repair panel (event bridges)
  *
  * Render is pure composition: <TechRightPane> (the mode-swapped right pane) +
- * the testing-history selection bar, then the page-level <TechDashboardOverlays>.
+ * the testing browse selection bar, then the page-level <TechDashboardOverlays>.
  */
 
 import { useState } from 'react';
@@ -30,7 +30,15 @@ interface TechDashboardProps {
 }
 
 export default function TechDashboard({ techId }: TechDashboardProps) {
-  const { rightViewMode, isTestingHistory } = useTechRightView();
+  const { rightViewMode, isTestingMode } = useTechRightView();
+
+  // Currently-selected receiving line id for the testing pane. Lives at dashboard
+  // level so the sidebar's recent rail (rendered in TechSidebarPanel) can
+  // highlight the same row the workspace shows, and so bulk Select is gated
+  // to the history browse (no line open).
+  const [testingLineId, setTestingLineId] = useState<number | null>(null);
+
+  const browseActive = isTestingMode && testingLineId === null;
 
   const {
     testingSelectMode,
@@ -40,7 +48,7 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     exitTestingSelect,
     openTestingLine,
     testingBulkActions,
-  } = useTechTestingSelection(isTestingHistory);
+  } = useTechTestingSelection(browseActive);
 
   const { activeOrderPane, setActiveOrderPane, previewOrder, setPreviewOrder } = useTechOrderPanes();
 
@@ -53,11 +61,6 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     handleLogUpdated,
     handleLogDeleted,
   } = useTechDetailOverlays();
-
-  // Currently-selected receiving line id for the testing pane. Lives at dashboard
-  // level so the sidebar's recent rail (rendered in TechSidebarPanel) can
-  // highlight the same row the workspace shows.
-  const [testingLineId, setTestingLineId] = useState<number | null>(null);
 
   return (
     <div className="relative flex h-full w-full flex-col">
@@ -77,7 +80,7 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               onClosePreview={() => setPreviewOrder(null)}
               onSelectLog={setSelectedLog}
             />
-            {isTestingHistory ? (
+            {browseActive ? (
               <ContextualSelectionBar
                 scope={TESTING_SELECTION_SCOPE}
                 rows={testingSelectedRows}

@@ -12,6 +12,16 @@ export const dynamic = 'force-dynamic';
 
 const TTL = Number(process.env.PHOTOS_SIGNED_URL_TTL_SECONDS || 3600);
 
+// A photo is content-addressed by an immutable {id}+variant — its bytes never
+// change (a re-upload is a new id). Cache thumbnails hard, browser-only.
+// `private` (never `public`) keeps these auth-gated tenant photos off any shared
+// CDN — the cache stays per-browser, so no cross-tenant leak.
+const IMMUTABLE_CACHE = 'private, max-age=31536000, immutable';
+// Cached-302 lifetime for the full-res redirect: half the signing TTL, so the
+// browser always re-fetches the redirect (getting a fresh signed URL) BEFORE the
+// previously-signed target can expire — a cached 302 never replays a dead URL.
+const REDIRECT_CACHE = `private, max-age=${Math.max(60, Math.floor(TTL / 2))}`;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -71,17 +81,45 @@ export async function GET(
   }
 
   if (storage?.provider === 'gcs' && storage.bucket) {
-    const key = variant === 'thumb' && storage.thumbObjectKey
-      ? storage.thumbObjectKey
-      : storage.objectKey;
+    const isThumb = variant === 'thumb' && !!storage.thumbObjectKey;
+    const key = isThumb ? storage.thumbObjectKey! : storage.objectKey;
     try {
       const adapter = getStorageAdapter('gcs');
+
+      // Thumbnails render by the hundreds (grid + strip) and are tiny (≤256px).
+      // Stream their bytes inline off THIS stable route URL with an immutable
+      // cache, so the browser reuses them across scroll / reopen / revisit with
+      // zero network. The old signed-URL redirect rotated the cache key on every
+      // request, so nothing was ever reused — the "no caching at all" symptom.
+      if (isThumb) {
+        const etag = `"p${photoId}-thumb"`;
+        if (request.headers.get('if-none-match') === etag) {
+          return new NextResponse(null, {
+            status: 304,
+            headers: { etag, 'cache-control': IMMUTABLE_CACHE },
+          });
+        }
+        const bytes = await adapter.getObjectBytes({ bucket: storage.bucket, objectKey: key });
+        return new NextResponse(Buffer.from(bytes), {
+          headers: {
+            'content-type': storage.contentType || 'image/jpeg',
+            'cache-control': IMMUTABLE_CACHE,
+            etag,
+          },
+        });
+      }
+
+      // Full-res stays a direct-from-GCS redirect (avoids streaming MBs through
+      // the function), but the 302 is now browser-cacheable — see REDIRECT_CACHE.
       const signed = await adapter.getSignedReadUrl({
         bucket: storage.bucket,
         objectKey: key,
         ttlSeconds: TTL,
       });
-      return NextResponse.redirect(signed, { status: 302 });
+      return NextResponse.redirect(signed, {
+        status: 302,
+        headers: { 'cache-control': REDIRECT_CACHE },
+      });
     } catch (err) {
       // Do NOT swallow silently — a signing failure here (bad SA key, missing
       // IAM, malformed creds) is exactly how photo content 404s with no trace.
@@ -98,7 +136,12 @@ export async function GET(
   if (legacyUrl && !legacyUrl.startsWith('/api/photos/')) {
     const display = normalizePhotoDisplayUrl(legacyUrl);
     if (display.startsWith('http') || display.startsWith('/')) {
-      return NextResponse.redirect(display, { status: 302 });
+      // Legacy targets (NAS proxy / blob) are stable URLs, so this redirect is
+      // safe to cache — immutable for thumbs, TTL-bounded for full.
+      return NextResponse.redirect(display, {
+        status: 302,
+        headers: { 'cache-control': variant === 'thumb' ? IMMUTABLE_CACHE : REDIRECT_CACHE },
+      });
     }
   }
 
@@ -108,7 +151,7 @@ export async function GET(
       return new NextResponse(Buffer.from(bytes.bytes), {
         headers: {
           'content-type': bytes.contentType,
-          'cache-control': 'private, max-age=300',
+          'cache-control': variant === 'thumb' ? IMMUTABLE_CACHE : REDIRECT_CACHE,
         },
       });
     }

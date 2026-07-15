@@ -40,7 +40,7 @@ export function UnboxTrackingTab({ poId }: { poId: string }) {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading tracking…
         </div>
       ) : isError || !data ? (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
+        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-700">
           Could not load carrier tracking.
         </div>
       ) : (

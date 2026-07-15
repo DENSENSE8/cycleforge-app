@@ -28,12 +28,24 @@ const UNASSIGNED = 'unassigned';
  *   - the FOLLOW-UP row assigns the ticket to one of OUR staff, dropping a
  *     notification into their inbox bell — it never touches Zendesk.
  */
-export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; onBack?: () => void }) {
+export function SupportChatHeader({
+  ticket,
+  onBack,
+  hideExternalLink = false,
+  compact = false,
+}: {
+  ticket: ZendeskTicket;
+  onBack?: () => void;
+  /** When the host already shows the Zendesk link (e.g. SectionTabsSlider rightSlot). */
+  hideExternalLink?: boolean;
+  /** Station ticket tab — tighter padding + smaller type. */
+  compact?: boolean;
+}) {
   const update = useUpdateTicket();
   const assign = useAssignTicket();
   const { data: agents = [] } = useZendeskAgents();
   const { data: assignment } = useTicketAssignment(ticket.id);
-  const url = zendeskTicketUrl(ticket.id);
+  const url = hideExternalLink ? null : zendeskTicketUrl(ticket.id);
   const requester = requesterFrom(ticket);
   const reqName = requester.name || requester.email || 'Requester';
   const sb = statusBadge(ticket.status);
@@ -76,21 +88,31 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
   ];
 
   return (
-    <div className="shrink-0 border-b border-border-hairline bg-surface-card px-5 py-3.5">
-      <div className="flex items-start gap-3">
+    <div
+      className={cn(
+        'shrink-0 border-b border-border-hairline bg-surface-card',
+        compact ? 'px-3 py-2' : 'px-5 py-3.5',
+      )}
+    >
+      <div className="flex items-center gap-2.5">
         {onBack ? (
           <IconButton
             icon={<ChevronLeft className="h-4 w-4" />}
             onClick={onBack}
             ariaLabel="Back to list"
-            className="-ml-1 mt-0.5 rounded-md p-1 hover:bg-surface-sunken lg:hidden"
+            className="-ml-1 rounded-md p-1 hover:bg-surface-sunken lg:hidden"
           />
         ) : null}
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-role-caption font-black text-text-soft">
+        <span
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-black text-text-soft',
+            compact ? 'h-7 w-7 text-role-micro' : 'h-9 w-9 text-role-caption',
+          )}
+        >
           {initials(reqName)}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
             {editingTitle ? (
               <>
                 <input
@@ -105,7 +127,10 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
                       setEditingTitle(false);
                     }
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 text-role-body font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100"
+                  className={cn(
+                    'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
+                    compact ? 'text-role-caption' : 'text-role-body',
+                  )}
                 />
                 <HoverTooltip label="Save title" asChild>
                   <IconButton
@@ -133,25 +158,39 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
                     type="button"
                     onClick={startEditTitle}
                     aria-label="Click to edit title"
-                    className="min-w-0 truncate text-left text-role-body font-bold tracking-tight text-text-default transition hover:text-blue-700"
+                    className={cn(
+                      'min-w-0 truncate text-left font-bold tracking-tight text-text-default transition hover:text-blue-700',
+                      compact ? 'text-role-caption' : 'text-role-body',
+                    )}
                   >
                     {ticket.subject || '(no subject)'}
                   </button>
                 </HoverTooltip>
-                <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest', sb.className)}>
+                <span
+                  className={cn(
+                    'shrink-0 rounded px-1.5 py-0.5 uppercase tracking-widest',
+                    compact ? 'text-[9px]' : 'text-role-eyebrow',
+                    sb.className,
+                  )}
+                >
                   {sb.label}
                 </span>
+                {/* Details affordance sits on the title row so it doesn't grow header height. */}
+                <SupportDetailsStack ticket={ticket} />
               </>
             )}
           </div>
-          <p className="mt-0.5 truncate text-role-caption text-text-soft">
+          <p
+            className={cn(
+              'mt-0.5 truncate text-text-soft',
+              compact ? 'text-role-micro' : 'text-role-caption',
+            )}
+          >
             <span className="font-semibold text-text-muted">{reqName}</span>
             {requester.email && requester.name ? <span className="text-text-faint"> · {requester.email}</span> : null}
             <span className="text-text-faint"> · #{ticket.id}</span>
           </p>
         </div>
-        {/* Details stack — secondary detail + tags, just left of the Zendesk link. */}
-        <SupportDetailsStack ticket={ticket} />
         {url ? (
           <HoverTooltip label="Open in Zendesk" asChild>
             <a
@@ -159,15 +198,15 @@ export function SupportChatHeader({ ticket, onBack }: { ticket: ZendeskTicket; o
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open in Zendesk"
-              className="mt-0.5 shrink-0 rounded-lg border border-border-soft p-1.5 text-text-soft transition hover:bg-surface-hover hover:text-text-muted"
+              className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="h-4 w-4" />
             </a>
           </HoverTooltip>
         ) : null}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-2', compact ? 'mt-2' : 'mt-3')}>
         {/* Zendesk ticket fields — these write back to Zendesk. */}
         <div className="flex items-center gap-2">
           <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">Helpdesk</span>

@@ -130,6 +130,7 @@ export function ShippedDetailsHeader({
               { value: 'timeline' as const, label: 'Timeline' },
               ...(showCustomerTab ? [{ value: 'customer' as const, label: 'Customer' }] : []),
               ...(showWarrantyTab ? [{ value: 'warranty' as const, label: 'Warranty' }] : []),
+              { value: 'conversation' as const, label: 'Conversation' },
             ]}
             value={activeSection}
             onChange={onSectionChange}
