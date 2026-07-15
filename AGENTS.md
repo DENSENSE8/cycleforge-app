@@ -22,6 +22,7 @@ Operator copy uses capability nouns or runtime provider labels, never hardcoded 
   Verify with `git branch --show-current` before committing.
 - **Parallel lanes, own ports.** `pnpm dev` auto-resolves this lane's port (main :3000, others :3010+); lanes run concurrently. Tunnel is main-only (`pnpm dev:tunnel`, mobile testing). Map: [`docs/portfolio/WORKTREE-LANES.md`](docs/portfolio/WORKTREE-LANES.md).
 - **Work-log for cross-session memory.** Read the last ~10 entries before starting (`pnpm worklog:tail`); append one when you finish a unit of work (`pnpm worklog "<action>" --result <r>`). Contract: [`docs/agent-log/README.md`](docs/agent-log/README.md).
+- **Shared-memory artifacts.** Record work in its typed home (tickets → `master-plan.mdx`, signals → `user_reported_issues`/`entity_signals`, logs → work-log, …); never fork a markdown twin of an existing store. Map: [`docs/agent-fs/README.md`](docs/agent-fs/README.md). New autonomous loop → a contract ([`docs/agent-fs/contracts/`](docs/agent-fs/contracts)).
 - **The user manages commits; never `git stash`.** Leave in-flight working-tree changes untouched; commit/push only when asked.
 - **Never commit `.env`.** Real `.env` is gitignored with live secrets. `.env.example` is the template.
 
