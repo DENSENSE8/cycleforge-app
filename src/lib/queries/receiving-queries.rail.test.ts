@@ -9,6 +9,7 @@ import {
   reconcileUnboxRailAfterLineDelete,
   removeReceivingRailByCarton,
   removeReceivingRailByLine,
+  upsertReceivingRailRows,
   type ReceivingRailRow,
 } from './receiving-queries';
 
@@ -77,6 +78,25 @@ describe('removeReceivingRailByCarton / ByLine', () => {
     assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), [
       { id: 502, receiving_id: 88, client_event_id: 'carton:88' },
     ]);
+  });
+});
+
+describe('upsertReceivingRailRows (tracking metadata)', () => {
+  it('keeps the carton id in Unboxed when re-upserted (add/edit tracking must not drop the row)', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      { id: 501, receiving_id: 77, client_event_id: 'carton:77' },
+      { id: 502, receiving_id: 88, client_event_id: 'carton:88' },
+    ] satisfies ReceivingRailRow[]);
+
+    upsertReceivingRailRows(qc, [
+      { id: 501, receiving_id: 77, client_event_id: 'carton:77' },
+    ]);
+
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.length, 2);
+    assert.ok(next?.some((r) => r.receiving_id === 77 && r.client_event_id === 'carton:77'));
+    assert.ok(next?.some((r) => r.receiving_id === 88));
   });
 });
 

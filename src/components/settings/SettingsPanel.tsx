@@ -158,7 +158,10 @@ export function SettingsPanel({ page }: { page: SettingPage }) {
     () => defs.filter((d) => d.scope === 'staff' || d.personalizable),
     [defs],
   );
-  const orgDefs = useMemo(() => defs.filter((d) => d.scope === 'org'), [defs]);
+  const orgDefs = useMemo(
+    () => defs.filter((d) => d.scope === 'org' && !d.personalizable),
+    [defs],
+  );
 
   if (isLoading) {
     return (

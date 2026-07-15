@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { completeTriage } from '@/lib/receiving/complete-triage';
 
@@ -42,7 +42,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
   after(async () => {
     try {
-      await invalidateCacheTags(['receiving-lines', 'receiving-logs', 'pending-unboxing']);
+      await invalidateReceivingViews(ctx.organizationId);
     } catch (err) {
       console.warn('[receiving.triage.complete.after] cache invalidation failed', err);
     }

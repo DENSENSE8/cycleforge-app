@@ -62,8 +62,9 @@ function DashboardPageContent() {
   }
 
   return (
-    <div className="flex h-full w-full">
-      <DashboardOrdersView
+    <div className="flex min-h-0 w-full flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <DashboardOrdersView
         orderView={orderView}
         onSelectView={setOrderView}
         selectMode={selectMode}
@@ -71,7 +72,8 @@ function DashboardPageContent() {
         selectionEnabled={selectionEnabled}
         selectedRows={selectedRows}
         selectionActions={selectionActions}
-      />
+        />
+      </div>
 
       <DashboardOrderDetails
         detailsEnabled={detailsEnabled}

@@ -2,9 +2,9 @@
 
 /**
  * Resolves the tech dashboard's right-pane mode from the `?view=` URL param.
- * Shipping mode's right pane is fixed to the History feed (the legacy
- * shipped/pending sub-tabs were removed); `testing-history` is the tested-lines
- * browse feed; anything unrecognised falls through to the shipping History feed.
+ * Shipping mode's right pane is the Shipping workspace (Pending · FBA | History
+ * via `?ship=`); `testing-history` is the tested-lines browse feed; anything
+ * unrecognised falls through to the shipping workspace.
  * Extracted from TechDashboard; behaviour is unchanged.
  */
 

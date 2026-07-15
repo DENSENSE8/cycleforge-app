@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { logUnmatchedReturnSerial } from '@/lib/receiving/returned-serial-link';
 import type { SerialCompareOutcome } from '@/lib/receiving/returned-serial-link';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 
 const SERIAL_MATCH_VALUES: readonly SerialCompareOutcome[] = [
   'match',
@@ -78,7 +78,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs', 'pending-unboxing']);
+        await invalidateReceivingViews(ctx.organizationId);
       } catch (err) {
         console.warn('log-serial: cache invalidate failed', err);
       }

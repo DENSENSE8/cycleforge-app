@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -106,7 +106,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       ]
     );
 
-    await invalidateCacheTags(['orders', 'shipped']);
+    await invalidateAllOrdersApiCaches(['shipped'], ctx.organizationId);
     await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [result.rows[0].id], source: 'orders.add' });
     // A new order can newly match an already-packed scan by tracking — refresh
     // the shipped-table read model for any affected PACK scans (best-effort).

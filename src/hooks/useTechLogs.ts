@@ -53,9 +53,11 @@ export interface UseTechLogsOptions {
   weekRange?: { startStr: string; endStr: string };
 }
 
+export type TechLogsScope = number | 'all';
+
 function prependTechRecordToMatchingWeekCaches(
   queryClient: QueryClient,
-  techId: number,
+  techId: TechLogsScope,
   record: TechRecord,
 ) {
   const createdAt = record.created_at || new Date().toISOString();
@@ -95,7 +97,7 @@ function prependTechRecordToMatchingWeekCaches(
   }
 }
 
-export function useTechLogs(techId: number, options: UseTechLogsOptions = {}) {
+export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions = {}) {
   const { weekOffset = 0, weekRange } = options;
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -112,7 +114,10 @@ export function useTechLogs(techId: number, options: UseTechLogsOptions = {}) {
   const query = useQuery<TechRecord[]>({
     queryKey,
     queryFn: async () => {
-      const params = new URLSearchParams({ techId: String(techId), limit: '1000' });
+      const params = new URLSearchParams({
+        techId: techId === 'all' ? 'all' : String(techId),
+        limit: '1000',
+      });
       if (weekRange) {
         params.set('weekStart', weekRange.startStr);
         params.set('weekEnd', weekRange.endStr);
@@ -127,6 +132,7 @@ export function useTechLogs(techId: number, options: UseTechLogsOptions = {}) {
     staleTime: weekOffset === 0 ? 5 * 60 * 1000 : 30 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     placeholderData: (prev) => prev,
+    enabled: techId === 'all' || (typeof techId === 'number' && techId > 0),
   });
 
   // ── Ably: live row-level updates from any session (mobile or web) ─────────
@@ -140,7 +146,9 @@ export function useTechLogs(techId: number, options: UseTechLogsOptions = {}) {
     'tech-log.changed',
     (msg: any) => {
       const { techId: changedId, action, row } = msg?.data ?? {};
-      if (Number(changedId) !== techId) return;
+      const matchesScope =
+        techId === 'all' || Number(changedId) === techId;
+      if (!matchesScope) return;
 
       if (action === 'insert' && row) {
         prependTechRecordToMatchingWeekCaches(queryClient, techId, row as TechRecord);
@@ -163,7 +171,7 @@ export function useTechLogs(techId: number, options: UseTechLogsOptions = {}) {
     const handleNewLog = (e: any) => {
       const record = e?.detail as TechRecord | null;
       if (!record) return;
-      if (Number(record.tested_by) !== techId) return;
+      if (techId !== 'all' && Number(record.tested_by) !== techId) return;
       const rid = record.id;
       if (rid == null || (typeof rid === 'number' && !Number.isFinite(rid))) return;
 

@@ -5,7 +5,7 @@ import { SendPhotoNoteModal } from '@/components/receiving/workspace/SendPhotoNo
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { TestingController } from './testing-panel-types';
 
-/** The claim and audit overlays for the testing panel. SKU pairing lives inline in {@link LineTestingTabbedCard}. */
+/** The claim and audit overlays for the testing panel. SKU pairing lives in the pairing section tab. */
 export function TestingPanelModals({
   c,
   row,

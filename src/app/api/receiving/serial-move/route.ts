@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { moveSerialToLine } from '@/lib/receiving/serial-move';
 
@@ -67,7 +67,7 @@ export const POST = withAuth(
       const moved = result;
       after(async () => {
         try {
-          await invalidateCacheTags(['receiving-lines', 'receiving-logs', 'pending-unboxing']);
+          await invalidateReceivingViews(ctx.organizationId);
           await publishReceivingLogChanged({
             organizationId: ctx.organizationId,
             action: 'update',

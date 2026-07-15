@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import {
   syncItemDescriptionToZohoPo,
   type SyncItemDescriptionResult,
@@ -114,7 +114,7 @@ export async function PATCH(
     }
 
     after(async () => {
-      try { await invalidateCacheTags(['receiving-lines', 'receiving-logs']); } catch { /* best-effort */ }
+      try { await invalidateReceivingViews(orgId); } catch { /* best-effort */ }
     });
 
     if (!zoho.ok && !zoho.skipped) {

@@ -20,7 +20,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { resolveCartonZohoPoId } from '@/lib/receiving/resolve-carton-po-id';
 import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 
@@ -56,7 +56,7 @@ export async function POST(
     }
 
     after(async () => {
-      try { await invalidateCacheTags(['receiving-lines', 'receiving-logs']); } catch { /* best-effort */ }
+      try { await invalidateReceivingViews(orgId); } catch { /* best-effort */ }
     });
 
     // Read back the synced carton notes so the caller can refresh its display.

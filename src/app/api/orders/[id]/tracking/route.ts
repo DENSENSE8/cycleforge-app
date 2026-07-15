@@ -5,7 +5,7 @@ import { getOrderById } from '@/lib/neon/orders-queries';
 import { applyOrderTrackingOps, type ApplyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
 import { parseBody } from '@/lib/schemas/parse';
 import { OrderTrackingPostBody, OrderTrackingPatchBody } from '@/lib/schemas/orders';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
@@ -67,7 +67,7 @@ async function runTrackingOps(
     );
   }
 
-  await invalidateCacheTags(['orders', 'shipped', 'orders-next', 'tech-logs', 'packing-logs', 'need-to-order']);
+  await invalidateAllOrdersApiCaches(['shipped', 'orders-next', 'tech-logs', 'packing-logs', 'need-to-order'], ctx.organizationId);
   await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.tracking' });
 
   const updated = await getOrderById(id);

@@ -23,6 +23,8 @@ interface MobileSelectionBarProps {
   onClear: () => void;
   onDismiss?: () => void;
   actions?: MobileSelectionAction[];
+  /** Pin to viewport bottom when the page scrolls (dashboard bulk actions). */
+  pinToViewport?: boolean;
 }
 
 const spring = { type: 'spring', stiffness: 520, damping: 38 } as const;
@@ -146,13 +148,20 @@ export function MobileSelectionBar({
   onClear,
   onDismiss,
   actions = [],
+  pinToViewport = false,
 }: MobileSelectionBarProps) {
   const anim = useBarAnim();
 
   return (
     <AnimatePresence>
       {visible && (
-        <motion.div {...anim} className="absolute inset-x-0 bottom-0 z-20 px-3 pb-4">
+        <motion.div
+          {...anim}
+          className={cn(
+            'z-20 px-3 pb-4',
+            pinToViewport ? 'fixed inset-x-0 bottom-0' : 'absolute inset-x-0 bottom-0',
+          )}
+        >
           <div className={cn('relative flex items-center overflow-hidden rounded-full p-1.5 shadow-xl shadow-gray-900/10', SURFACE_LIGHT)}>
             <div className="relative z-10 flex flex-1 items-center gap-2">
               <SelectAll count={count} allSelected={allSelected} onToggleAll={onToggleAll} />

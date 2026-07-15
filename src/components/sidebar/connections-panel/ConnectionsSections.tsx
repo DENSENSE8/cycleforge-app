@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sectionLabel, dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
 import { SidebarSection, LineItem, ActionButton } from './connections-panel-pieces';
@@ -137,42 +136,14 @@ export function AmazonSection({ c }: { c: ConnectionsPanelController }) {
         right={<ActionButton onClick={() => c.amazonSyncMutation.mutate(true)} loading={c.amazonSyncMutation.isPending && c.amazonSyncMutation.variables === true} title="Sync all Amazon orders" tone="indigo" />}
       />
       <div className="border-b border-border-soft bg-surface-card px-4 py-3">
-        <p className={dataValue}>Connect with Refresh Token</p>
-        <p className={`mt-0.5 ${fieldLabel} text-text-soft`}>Self-authorized private app (bootstrap)</p>
-        <div className="mt-2 space-y-2">
-          <input
-            value={c.amazonRefreshToken}
-            onChange={(e) => c.setAmazonRefreshToken(e.target.value)}
-            placeholder="Paste LWA refresh token (Atzr|…)"
-            className={`w-full border border-border-soft bg-surface-canvas px-2 py-2 ${sectionLabel} text-text-default outline-none`}
-          />
-          <div className="flex items-stretch gap-2">
-            <input
-              value={c.amazonSellerId}
-              onChange={(e) => c.setAmazonSellerId(e.target.value)}
-              placeholder="Seller ID (optional)"
-              className={`min-w-0 flex-1 border border-border-soft bg-surface-canvas px-2 py-2 ${sectionLabel} text-text-default outline-none`}
-            />
-            <select
-              value={c.amazonRegion}
-              onChange={(e) => c.setAmazonRegion(e.target.value as 'NA' | 'EU' | 'FE')}
-              className={`border border-border-soft bg-surface-canvas px-2 py-2 ${sectionLabel} text-text-default outline-none`}
-            >
-              <option value="NA">NA</option>
-              <option value="EU">EU</option>
-              <option value="FE">FE</option>
-            </select>
-          </div>
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => c.amazonConnectMutation.mutate()}
-            disabled={!c.amazonRefreshToken.trim() || c.amazonConnectMutation.isPending}
-            className="w-full bg-blue-50 text-blue-700 ring-blue-300 ring-inset hover:bg-blue-100"
-          >
-            {c.amazonConnectMutation.isPending ? 'Verifying…' : 'Verify & Connect'}
-          </Button>
-        </div>
+        <p className={dataValue}>Connect with refresh token</p>
+        <p className={`mt-0.5 ${fieldLabel} text-text-soft`}>
+          Credential connect lives in{' '}
+          <a href="/settings/integrations/amazon" className="font-medium text-blue-600 hover:underline">
+            Settings → Integrations → Amazon
+          </a>
+          . Use this sidebar for sync tools only.
+        </p>
       </div>
       {c.amazonAccounts.map((acc) => (
         <LineItem

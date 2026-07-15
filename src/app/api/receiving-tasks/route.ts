@@ -4,7 +4,7 @@ import { receivingTasks } from '@/lib/drizzle/schema';
 import { eq, desc } from 'drizzle-orm';
 import { ApiError, errorResponse } from '@/lib/api';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const GET = withAuth(async (req: NextRequest) => {
@@ -41,7 +41,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       status: 'pending',
     }).returning();
 
-    await invalidateCacheTags(['receiving-logs']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'insert', rowId: String(result.id), source: 'receiving-tasks.create' });
 
     return NextResponse.json(result, { status: 201 });
@@ -75,7 +75,7 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
 
     if (!result) throw ApiError.notFound('receiving-task', id);
 
-    await invalidateCacheTags(['receiving-logs']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-tasks.update' });
 
     return NextResponse.json(result);
@@ -96,7 +96,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
 
     if (!deleted) throw ApiError.notFound('receiving-task', id);
 
-    await invalidateCacheTags(['receiving-logs']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: String(deleted.id), source: 'receiving-tasks.delete' });
 
     return NextResponse.json({ success: true, id: deleted.id });

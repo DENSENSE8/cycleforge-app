@@ -3,7 +3,8 @@ import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
-import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson } from '@/lib/cache/upstash-cache';
+import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { upsertReceivingAssignment } from '@/lib/receiving/assignment-upsert';
 import { isValidPriorityTier } from '@/lib/receiving/priority-override';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
@@ -242,7 +243,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
                 [ids]
             );
             const deleted = result.rows.map((r) => Number(r.id));
-            await invalidateCacheTags(['receiving-logs', 'pending-unboxing']);
+            await invalidateReceivingViews(ctx.organizationId);
             // Count, not the id list — listeners only refetch on this event,
             // and an unbounded id string risks the broker's message size cap.
             await publishReceivingLogChanged({
@@ -277,7 +278,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
             );
         }
 
-        await invalidateCacheTags(['receiving-logs', 'pending-unboxing']);
+        await invalidateReceivingViews(ctx.organizationId);
         await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: String(id), source: 'receiving-logs.delete' });
         return NextResponse.json({ success: true, id });
     } catch (error: any) {
@@ -561,7 +562,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
             }
         }
 
-        await invalidateCacheTags(['receiving-logs', 'receiving-lines', 'pending-unboxing']);
+        await invalidateReceivingViews(ctx.organizationId);
         await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-logs.patch' });
         return NextResponse.json({ success: true, id });
     } catch (error: any) {

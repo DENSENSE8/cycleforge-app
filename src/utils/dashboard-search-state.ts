@@ -8,12 +8,12 @@ import type { ShippedDetailsContext } from '@/utils/events';
 // URLs resolve to 'unshipped' at the URL-read layer.
 //
 // Lifecycle tabs (ops names → industry labels in the UI):
-//   unshipped → "To Ship"  (labeled, not yet packed)
+//   unshipped → "Pending"  (labeled, not yet packed)
 //   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
 //   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
 export type DashboardOrderView = 'unshipped' | 'packed' | 'shipped' | 'fba';
 /**
- * UI grouping for the dashboard view pills. To Ship / Packed / Shipped share
+ * UI grouping for the dashboard view pills. Pending / Packed / Shipped share
  * outbound order data; FBA is a distinct data source and stays its own group.
  */
 export type DashboardViewGroup = 'orders' | 'fba';
@@ -74,7 +74,7 @@ export const DASHBOARD_ORDER_VIEW_LABEL: Record<
   Exclude<DashboardOrderView, 'fba'>,
   string
 > = {
-  unshipped: 'To Ship',
+  unshipped: 'Pending',
   packed: 'Packed',
   shipped: 'Shipped',
 };
@@ -94,7 +94,7 @@ export function normalizeDashboardOrderViewParams(
   params.delete('open');
   params.delete('wstatus');
   params.delete('wexp');
-  // Nested board layout was retired — lists only on To Ship / Packed / Shipped.
+  // Nested board layout was retired — lists only on Pending / Packed / Shipped.
   params.delete('layout');
   // Cross-tab status filters are view-specific; clear so they don't bleed.
   if (nextView !== 'unshipped') {

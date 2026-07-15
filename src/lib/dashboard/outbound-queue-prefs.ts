@@ -1,18 +1,7 @@
 /**
  * Outbound queue preference keys + URL helpers for the dashboard workbench.
- * Sticky defaults live in localStorage; shareable filters stay in the URL.
+ * Shareable filters stay in the URL; column presets use localStorage.
  */
-
-import type { StationScope } from '@/lib/station/table-url-params';
-
-/** Sticky default for My work vs All staff when the URL has no explicit scope/staff. */
-export const OUTBOUND_STAFF_DEFAULT_KEY = 'outbound-queue-staff-default';
-
-export type OutboundStaffDefault = 'me' | 'all';
-
-export function parseOutboundStaffDefault(raw: unknown): OutboundStaffDefault {
-  return raw === 'all' ? 'all' : 'me';
-}
 
 /** Needs-attention focus: blocked OR late (To Ship) / exceptions (Shipped). */
 export const ATTENTION_PARAM = 'attention';
@@ -28,11 +17,6 @@ export type OutboundSurface = 'lanes' | 'list';
 
 export function parseOutboundSurface(raw: string | null | undefined): OutboundSurface {
   return raw === 'list' ? 'list' : 'lanes';
-}
-
-/** Map sticky staff default → station scope used as parse fallback. */
-export function staffDefaultToScope(d: OutboundStaffDefault): StationScope {
-  return d === 'me' ? 'mine' : 'all';
 }
 
 /** localStorage key for column preset labels (not the hidden set itself). */

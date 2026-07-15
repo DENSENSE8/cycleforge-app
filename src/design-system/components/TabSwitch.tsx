@@ -10,6 +10,12 @@ interface Tab {
   label: string;
   count?: number;
   color?: 'blue' | 'emerald' | 'orange' | 'purple' | 'green' | 'yellow' | 'gray' | 'red' | 'teal';
+  /**
+   * When true, render a vertical hairline immediately before this tab
+   * (e.g. to separate a secondary/browse group like History). Outside the
+   * button so the sliding pill measurement stays aligned.
+   */
+  dividerBefore?: boolean;
 }
 
 interface TabSwitchProps {
@@ -187,76 +193,83 @@ export function TabSwitch({
           const colors = colorTextMap[tab.color ?? 'blue'] ?? colorTextMap.blue;
           const upNextLabels = upNextLabelTextClass[tab.color ?? 'blue'] ?? upNextLabelTextClass.blue;
           return (
-            <button
-              key={tab.id}
-              type="button"
-              ref={(node) => {
-                buttonRefs.current[tab.id] = node;
-              }}
-              onClick={() => onTabChange(tab.id)}
-              className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
-                solid ? 'font-bold' : 'font-black uppercase tracking-widest'
-              } ${
-                upNext
-                  ? 'px-3 py-2 text-role-caption'
-                  : solid || highContrast
-                    ? 'px-4 py-2 text-role-caption'
-                    : 'px-3 py-1.5 text-role-micro'
-              } ${
-                upNext
-                  ? isActive
-                    ? upNextLabels.active
-                    : upNextLabels.inactive
-                  : solid
-                    ? isActive
-                      ? 'text-text-inverse'
-                      : 'text-text-soft hover:text-text-default'
-                    : isActive
-                      ? colors.active
-                      : highContrast
-                        ? 'text-text-default'
-                        : 'text-text-soft hover:text-text-muted'
-              }`}
-            >
-              <motion.span
-                className="relative z-10 flex items-center justify-center gap-1"
-                animate={{
-                  scale: isActive ? 1 : solid ? 1 : upNext || highContrast ? 0.98 : 0.93,
-                  opacity: isActive ? 1 : solid || upNext ? 1 : highContrast ? 0.9 : 0.52,
+            <div key={tab.id} className="contents">
+              {tab.dividerBefore ? (
+                <span
+                  aria-hidden
+                  className="my-1 w-px shrink-0 self-stretch bg-border-hairline"
+                />
+              ) : null}
+              <button
+                type="button"
+                ref={(node) => {
+                  buttonRefs.current[tab.id] = node;
                 }}
-                transition={{ duration: 0.18, ease: motionBezier.easeOut }}
+                onClick={() => onTabChange(tab.id)}
+                className={`relative z-10 flex-1 min-w-[3rem] whitespace-nowrap rounded-full transition-colors duration-150 ${
+                  solid ? 'font-bold' : 'font-black uppercase tracking-widest'
+                } ${
+                  upNext
+                    ? 'px-3 py-2 text-role-caption'
+                    : solid || highContrast
+                      ? 'px-4 py-2 text-role-caption'
+                      : 'px-3 py-1.5 text-role-micro'
+                } ${
+                  upNext
+                    ? isActive
+                      ? upNextLabels.active
+                      : upNextLabels.inactive
+                    : solid
+                      ? isActive
+                        ? 'text-text-inverse'
+                        : 'text-text-soft hover:text-text-default'
+                      : isActive
+                        ? colors.active
+                        : highContrast
+                          ? 'text-text-default'
+                          : 'text-text-soft hover:text-text-muted'
+                }`}
               >
-                {tab.label}
-                {tab.count !== undefined && tab.count > 0 ? (
-                  countStyle === 'plain' ? (
-                    <span
-                      key={tab.count}
-                      className={`tabular-nums ${isActive ? 'opacity-80' : 'opacity-55'}`}
-                    >
-                      {tab.count > 99 ? '99+' : tab.count}
-                    </span>
-                  ) : (
-                    <motion.span
-                      key={tab.count}
-                      initial={{ scale: 0.7, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: 'spring', stiffness: 420, damping: 26 }}
-                      className={/* ds-allow-spacing — 14px count bubble, deliberate 3px inset */ `inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-role-micro tabular-nums leading-none ${
-                        upNext
-                          ? 'bg-current/[0.14] text-current'
-                          : isActive
-                            ? 'bg-current/[0.12] text-current'
-                            : highContrast
-                              ? 'bg-surface-inverse-soft/20 text-text-default'
-                              : 'bg-surface-strong/70 text-text-muted'
-                      }`}
-                    >
-                      {tab.count > 99 ? '99+' : tab.count}
-                    </motion.span>
-                  )
-                ) : null}
-              </motion.span>
-            </button>
+                <motion.span
+                  className="relative z-10 flex items-center justify-center gap-1"
+                  animate={{
+                    scale: isActive ? 1 : solid ? 1 : upNext || highContrast ? 0.98 : 0.93,
+                    opacity: isActive ? 1 : solid || upNext ? 1 : highContrast ? 0.9 : 0.52,
+                  }}
+                  transition={{ duration: 0.18, ease: motionBezier.easeOut }}
+                >
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 ? (
+                    countStyle === 'plain' ? (
+                      <span
+                        key={tab.count}
+                        className={`tabular-nums ${isActive ? 'opacity-80' : 'opacity-55'}`}
+                      >
+                        {tab.count > 99 ? '99+' : tab.count}
+                      </span>
+                    ) : (
+                      <motion.span
+                        key={tab.count}
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                        className={/* ds-allow-spacing — 14px count bubble, deliberate 3px inset */ `inline-flex items-center justify-center min-w-[14px] h-[14px] px-[3px] rounded-full text-role-micro tabular-nums leading-none ${
+                          upNext
+                            ? 'bg-current/[0.14] text-current'
+                            : isActive
+                              ? 'bg-current/[0.12] text-current'
+                              : highContrast
+                                ? 'bg-surface-inverse-soft/20 text-text-default'
+                                : 'bg-surface-strong/70 text-text-muted'
+                        }`}
+                      >
+                        {tab.count > 99 ? '99+' : tab.count}
+                      </motion.span>
+                    )
+                  ) : null}
+                </motion.span>
+              </button>
+            </div>
           );
         })}
       </div>

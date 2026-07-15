@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { isIncomingUniversal } from '@/lib/feature-flags';
 import { syncEbayPurchasesToReceiving } from '@/lib/inbound/sync-ebay-purchases';
 import { resolveInboundSettings, isInboundSourceEnabled } from '@/lib/inbound/org-settings';
@@ -53,7 +53,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
 
     if (ebay.created > 0 || ebay.ingested > 0) {
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+        await invalidateReceivingViews(ctx.organizationId);
       } catch (err) {
         console.warn('incoming/marketplace-refresh: cache invalidate failed (non-fatal)', err);
       }

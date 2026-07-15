@@ -138,10 +138,9 @@ test.describe('Unshipped board virtualization', () => {
     expect(domRows).toBeGreaterThan(0);
     expect(domRows).toBeLessThan(150);
 
-    // Scroll the BOARD's shared scroll region (in 1-up the lane body grows to
-    // content and is NOT the scroller) and confirm rows recycle.
-    const boardScroll = page.locator('[data-testid="swimlane-board-scroll"]');
-    await boardScroll.evaluate((el) => el.scrollTo({ top: 6000 }));
+    // Scroll the dashboard page scroll port (stacked lanes grow to content).
+    const pageScroll = page.locator('[data-testid="dashboard-scroll"]');
+    await pageScroll.evaluate((el) => el.scrollTo({ top: 6000 }));
     await page.waitForTimeout(600);
 
     const domRowsAfter = await page.locator('[data-order-row-id]').count();

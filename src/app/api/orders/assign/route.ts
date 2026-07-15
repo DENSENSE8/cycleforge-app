@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderAssignmentsUpdated, publishOrderChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import {
@@ -437,7 +437,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     try {
-      await invalidateCacheTags(['orders', 'shipped', 'orders-next', 'tech-logs', 'packing-logs', 'need-to-order']);
+      await invalidateAllOrdersApiCaches(['shipped', 'orders-next', 'tech-logs', 'packing-logs', 'need-to-order'], ctx.organizationId);
     } catch (cacheErr) {
       console.warn('[orders/assign] cache invalidation failed (non-critical):', cacheErr);
     }

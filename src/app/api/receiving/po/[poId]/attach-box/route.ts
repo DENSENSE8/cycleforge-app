@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import {
   attachBoxToReceiving,
@@ -246,7 +246,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: result.error }, { status: result.status });
     }
 
-    await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({
       organizationId: ctx.organizationId,
       action: 'update',

@@ -20,6 +20,8 @@ interface ContextualSelectionBarProps<T> {
   onDismiss?: () => void;
   /** Keep the bar mounted even when the selection count hits zero. */
   visible?: boolean;
+  /** Pin the capsule to the viewport bottom (page scroll) instead of the relative region. */
+  pinToViewport?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function ContextualSelectionBar<T>({
   actions,
   onDismiss,
   visible,
+  pinToViewport = false,
 }: ContextualSelectionBarProps<T>) {
   const total = useTableSelectionTotal(scope);
 
@@ -74,6 +77,7 @@ export function ContextualSelectionBar<T>({
       onClear={() => emitToggleAll(scope, 'none')}
       onDismiss={onDismiss}
       actions={capsuleActions}
+      pinToViewport={pinToViewport}
     />
   );
 }

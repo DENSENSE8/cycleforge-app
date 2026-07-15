@@ -13,16 +13,6 @@ import {
 const EMPTY_EXCLUDED: ReadonlySet<number> = new Set();
 
 /**
- * How long to wait before re-checking an ESTABLISHED list that just refetched
- * empty. A mutation's broad `app-refresh-data` invalidate often fires before the
- * write's `after()` side-effects settle, so the reconciling refetch returns a
- * transient empty; this delay lets the write settle before the confirming
- * re-check decides whether the emptiness is real. Long enough to clear a typical
- * settle, short enough that a genuine emptying still resolves promptly.
- */
-const RAIL_EMPTY_RECHECK_DELAY_MS = 700;
-
-/**
  * Debounce/defer window for the reconciling refetch triggered by refresh events.
  * A single mutation often fires a BURST of broad `app-refresh-data` events, and
  * firing the invalidate eagerly races the write's `after()` side-effects
@@ -93,46 +83,29 @@ export function useSidebarRail<TRow>({
   const prevKeySigRef = useRef<string>(queryKeySig);
   // Once this feed has rendered real rows, never swap back to the full skeleton
   // on background refetch — that remount kills stagger + hover popovers and
-  // reads as a loading↔loaded flash.
+  // reads as a loading↔loaded flash. Also never blank an established list on an
+  // empty refetch (tracking / shipment.changed invalidates race to [] often);
+  // genuine removals arrive via delete / group-delete events only.
   const hadRowsForKeyRef = useRef(false);
-  // Set once we've held an empty result back for a re-check (see the guard
-  // below), so the CONFIRMING empty is allowed through instead of looping.
-  const emptyGraceRef = useRef(false);
   useEffect(() => {
     const keyChanged = prevKeySigRef.current !== queryKeySig;
     if (keyChanged) {
       prevKeySigRef.current = queryKeySig;
       hadRowsForKeyRef.current = false;
-      emptyGraceRef.current = false;
     }
     if (Array.isArray(data)) {
       const sorted = sortRowsByActivity(data);
-      // Never-self-blank invariant. An ESTABLISHED list must not blank on the
-      // FIRST empty refetch: a mutation's broad `app-refresh-data` invalidate
-      // frequently fires before the write's `after()` side-effects settle, so the
-      // reconciling refetch returns a TRANSIENT empty that would wipe the rail
-      // until reload. Keep the prior rows and re-check once after a settle delay;
-      // only a CONFIRMING second empty fetch (a fresh `dataUpdatedAt`) actually
-      // blanks. Genuine removals never depend on this path — they arrive through
-      // the explicit delete / group-delete events, which remove specific rows.
-      if (
-        sorted.length === 0
-        && !keyChanged
-        && hadRowsForKeyRef.current
-        && !emptyGraceRef.current
-      ) {
-        emptyGraceRef.current = true;
-        const timer = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey });
-        }, RAIL_EMPTY_RECHECK_DELAY_MS);
-        return () => clearTimeout(timer);
+      // Never-self-blank: keep prior rows when an established feed refetches empty.
+      if (sorted.length === 0 && !keyChanged && hadRowsForKeyRef.current) {
+        return;
       }
-      if (sorted.length > 0) emptyGraceRef.current = false;
       setLocalRows(sorted);
-      // Persist the freshest settled rows as the next reload's first-paint seed.
+      // Persist non-empty settled rows only — never overwrite an Upstash seed with [].
       // Skip placeholder data: during a key change `keepPreviousData` briefly
       // returns the PREVIOUS feed's rows, which must not be saved for this feed.
-      if (persistSnapshot && !isPlaceholderData) persistSnapshot(sorted);
+      if (persistSnapshot && !isPlaceholderData && sorted.length > 0) {
+        persistSnapshot(sorted);
+      }
       return;
     }
     if (keyChanged) {
@@ -140,7 +113,7 @@ export function useSidebarRail<TRow>({
     }
   }, [
     data, dataUpdatedAt, isPlaceholderData, sortRowsByActivity, queryKeySig,
-    persistSnapshot, queryClient, queryKey,
+    persistSnapshot,
   ]);
 
   // First-mount cold-reload seed. Fetches the viewer's last-known rows (a fast

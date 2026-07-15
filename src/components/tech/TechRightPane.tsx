@@ -5,7 +5,7 @@
  *   - receiving ........ the inbound receiving feed
  *   - testing .......... the Pass/Test-Again verdict workspace
  *   - testing-history .. the browse + bulk-select feed of tested lines
- *   - history (default)  the tech's shipping History table, OVER which a
+ *   - history (default)  Shipping workspace (Pending · FBA | History), OVER which a
  *     scanned/active order — or an Up Next preview — crossfades and back.
  * Pure presentational; state comes from the dashboard's hooks. Extracted from
  * TechDashboard; behaviour is unchanged.
@@ -15,7 +15,7 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { framerPresence } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
-import { TechTable } from '@/components/TechTable';
+import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';
 import { TestingHistoryList } from '@/components/tech/TestingHistoryList';
 import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed';
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
@@ -81,8 +81,8 @@ export function TechRightPane({
     );
   }
 
-  // Shipping mode: the right pane is always the tech's History feed; the
-  // active/preview order crossfades over it and back.
+  // Shipping mode: Workbench (Pending · FBA | History); active/preview order
+  // crossfades over it and back.
   return (
     <AnimatePresence initial={false} mode="wait">
       {activeOrderPane ? (
@@ -106,9 +106,9 @@ export function TechRightPane({
           animate={tabFade.animate}
           exit={tabFade.exit}
           transition={{ duration: 0.16 }}
-          className="h-full w-full"
+          className="flex h-full min-h-0 w-full flex-col"
         >
-          <TechTable testedBy={parseInt(techId)} />
+          <ShippingWorkspaceView techId={techId} />
         </motion.div>
       )}
     </AnimatePresence>

@@ -76,7 +76,7 @@ export function UnshippedTable({
   strictSearchScope = false,
   searchEmptyTitle = 'No orders found',
   searchResultLabel = 'orders to ship',
-  clearSearchLabel = 'Show All To Ship Orders',
+  clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   onToggleSelectMode,
   toolbarPortalTarget,

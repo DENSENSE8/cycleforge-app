@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { clearReplenishmentForOrder, ensureReplenishmentForOrder } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -41,7 +41,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    await invalidateCacheTags(['orders', 'shipped', 'need-to-order']);
+    await invalidateAllOrdersApiCaches(['shipped', 'need-to-order'], ctx.organizationId);
     await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [Number(orderId)], source: 'orders.missing-parts' });
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -36,7 +36,7 @@ export interface MobileContextRowConfig {
 }
 
 const DASHBOARD_VIEW_OPTIONS: MobileContextOption[] = [
-  { id: 'unshipped', label: 'To Ship' },
+  { id: 'unshipped', label: 'Pending' },
   { id: 'packed', label: 'Packed' },
   { id: 'shipped', label: 'Shipped' },
   { id: 'fba', label: 'FBA prep' },
@@ -84,7 +84,7 @@ export function getMobileContextRowConfig(
       const activeId = getDashboardOrderViewFromSearch(searchParams);
       const active = DASHBOARD_VIEW_OPTIONS.find((o) => o.id === activeId);
       return {
-        activeLabel: active?.label ?? 'To Ship',
+        activeLabel: active?.label ?? 'Pending',
         activeId,
         options: DASHBOARD_VIEW_OPTIONS,
         onSelect: (id) => {

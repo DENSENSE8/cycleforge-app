@@ -4,6 +4,8 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { escapeLike } from '@/lib/sql-like';
+import { getOrSet, createCacheLookupKey } from '@/lib/cache/upstash-cache';
+import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -20,32 +22,45 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       | 'zoho_catalog';
     const limit = Math.min(Math.max(Number(searchParams.get('limit') || 20), 1), 100);
 
-    // QC view: restrict to SKUs that have QC checklist items directly linked
-    // (qc_check_templates.sku_catalog_id). Searches sku + title regardless of
-    // searchField so the QC picker only ever shows products with a checklist.
-    if (hasQc) {
-      return NextResponse.json(await searchSkusWithQcChecks(q, limit, ctx.organizationId));
-    }
+    // Reference catalog search → org-scoped cache. Busted on any sku-catalog write
+    // (skuCatalog, org-scoped). The QC-picker view (hasQc) additionally rides the
+    // qcChecks tag so adding/removing a checklist re-filters it immediately; the
+    // short rollup TTL also caps staleness of the Zoho `items` mirror modes.
+    const orgId = ctx.organizationId;
+    const cacheKey = createCacheLookupKey({ q, category, ecwidOnly, hasQc, excludeSkuSuffix, searchField, limit });
+    const tags = hasQc ? [CACHE_TAGS.skuCatalog, CACHE_TAGS.qcChecks] : [CACHE_TAGS.skuCatalog];
 
-    if (searchField === 'ecwid_sku' || searchField === 'title') {
-      return NextResponse.json(
-        await searchFromPlatform(q, searchField, excludeSkuSuffix, limit, ctx.organizationId),
-      );
-    }
+    const payload = await getOrSet(
+      CACHE_NS.skuCatalogSearch,
+      orgId,
+      cacheKey,
+      CACHE_TTL.rollup,
+      tags,
+      async () => {
+        // QC view: restrict to SKUs that have QC checklist items directly linked
+        // (qc_check_templates.sku_catalog_id). Searches sku + title regardless of
+        // searchField so the QC picker only ever shows products with a checklist.
+        if (hasQc) {
+          return searchSkusWithQcChecks(q, limit, orgId);
+        }
 
-    // `zoho_catalog`: title + SKU sourced from the Zoho `items` mirror (Zoho SKU
-    // + Zoho name + zoho_item_id) — the Zoho product display is the source of
-    // truth. Used by the labels product picker and by Local Pickup (which must
-    // reference real Zoho items when creating a Zoho PO).
-    if (searchField === 'zoho_catalog') {
-      return NextResponse.json(
-        await searchFromZohoCatalog(q, excludeSkuSuffix, limit, ctx.organizationId),
-      );
-    }
+        if (searchField === 'ecwid_sku' || searchField === 'title') {
+          return searchFromPlatform(q, searchField, excludeSkuSuffix, limit, orgId);
+        }
 
-    return NextResponse.json(
-      await searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, ctx.organizationId),
+        // `zoho_catalog`: title + SKU sourced from the Zoho `items` mirror (Zoho SKU
+        // + Zoho name + zoho_item_id) — the Zoho product display is the source of
+        // truth. Used by the labels product picker and by Local Pickup (which must
+        // reference real Zoho items when creating a Zoho PO).
+        if (searchField === 'zoho_catalog') {
+          return searchFromZohoCatalog(q, excludeSkuSuffix, limit, orgId);
+        }
+
+        return searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, orgId);
+      },
     );
+
+    return NextResponse.json(payload);
   } catch (error: any) {
     console.error('[sku-catalog/search] Error:', error);
     return NextResponse.json(

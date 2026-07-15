@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import {
   fetchSerialsForLines,
   refreshLineSerialProjectionSafe,
@@ -449,7 +449,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       return newId;
     });
 
-    await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'insert', rowId: String(lineId), source: 'receiving-lines.create' });
 
     // Envelope frozen ({ success, receiving_line }): compose the response by
@@ -771,7 +771,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-lines.update' });
 
     // Re-fetch with the shipment JOIN so the response carries the just-attached
@@ -913,7 +913,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       if (!delResult.ok) {
         return NextResponse.json({ success: false, error: delResult.error }, { status: delResult.status });
       }
-      await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+      await invalidateReceivingViews(ctx.organizationId);
       await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: `shipment:${sid}`, source: 'receiving-lines.delete-shipment' });
       return NextResponse.json({ success: true, shipment_id: sid });
     }
@@ -940,7 +940,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
           { status: 404 },
         );
       }
-      await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+      await invalidateReceivingViews(ctx.organizationId);
       await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: poId, source: 'receiving-lines.delete' });
       return NextResponse.json({ success: true, po_id: poId, deleted: result.rows.length });
     }
@@ -980,7 +980,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         }
         return deletedIds;
       });
-      await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+      await invalidateReceivingViews(ctx.organizationId);
       // Count, not the id list — listeners only refetch on this event, and an
       // unbounded id string risks the broker's message size cap.
       await publishReceivingLogChanged({
@@ -1018,7 +1018,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
     }
 
-    await invalidateCacheTags(['receiving-logs', 'receiving-lines']);
+    await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: String(id), source: 'receiving-lines.delete' });
 
     return NextResponse.json({ success: true, id });

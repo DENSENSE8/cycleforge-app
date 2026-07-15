@@ -24,7 +24,7 @@ import {
   type EbayCredentials,
 } from '@/lib/integrations/credentials';
 import { readEbayToken } from './token-refresh';
-import { normalizeEbayEnvironment, type EbayEnvironment } from './oauth-config';
+import { normalizeEbayEnvironment, normalizeEbayRole, type EbayEnvironment } from './oauth-config';
 
 export interface EbayAppCreds {
   appId: string;
@@ -66,6 +66,7 @@ export interface EbayAccount {
   id: number;
   accountName: string;
   ebayUserId: string | null;
+  accountRole: 'seller' | 'buyer';
   /** Decrypted access token (plaintext or AES-GCM envelope handled transparently). */
   accessToken: string | null;
   /** Decrypted refresh token. */
@@ -79,6 +80,7 @@ interface EbayAccountDbRow {
   id: number;
   account_name: string;
   ebay_user_id: string | null;
+  account_role: string | null;
   access_token: string | null;
   refresh_token: string | null;
   token_expires_at: string | Date | null;
@@ -91,6 +93,7 @@ function mapAccount(row: EbayAccountDbRow): EbayAccount {
     id: row.id,
     accountName: row.account_name,
     ebayUserId: row.ebay_user_id,
+    accountRole: normalizeEbayRole(row.account_role),
     accessToken: row.access_token ? safeReadToken(row.access_token) : null,
     refreshToken: row.refresh_token ? safeReadToken(row.refresh_token) : null,
     tokenExpiresAt: row.token_expires_at ? new Date(row.token_expires_at) : null,
@@ -107,7 +110,7 @@ function safeReadToken(stored: string): string | null {
   }
 }
 
-const ACCOUNT_COLUMNS = `id, account_name, ebay_user_id, access_token, refresh_token,
+const ACCOUNT_COLUMNS = `id, account_name, ebay_user_id, account_role, access_token, refresh_token,
   token_expires_at, refresh_token_expires_at, is_active`;
 
 // ebay_accounts is dual-used for Zoho tokens (platform='ZOHO', see

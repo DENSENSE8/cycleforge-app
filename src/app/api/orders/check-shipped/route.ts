@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 
@@ -28,7 +28,7 @@ export const POST = withAuth(async (_req, ctx) => {
       [ctx.organizationId],
     );
 
-    await invalidateCacheTags(['orders', 'orders-next', 'shipped', 'packing-logs']);
+    await invalidateAllOrdersApiCaches(['orders-next', 'shipped', 'packing-logs'], ctx.organizationId);
 
     const updatedIds = (result.rows || []).map((r: any) => Number(r.id)).filter(Number.isFinite);
     if (updatedIds.length > 0) {

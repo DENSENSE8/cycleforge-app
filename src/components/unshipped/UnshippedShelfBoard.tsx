@@ -43,6 +43,7 @@ import {
   type OutboundSurface,
 } from '@/lib/dashboard/outbound-queue-prefs';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
 import { dispatchCloseShippedDetails } from '@/utils/events';
 import { useEventBridge } from '@/hooks';
 import type { ShippedOrder } from '@/types/orders';
@@ -127,7 +128,7 @@ export function UnshippedShelfBoard({
   onClearSearch,
   searchEmptyTitle = 'No orders found',
   searchResultLabel = 'orders to ship',
-  clearSearchLabel = 'Show All To Ship Orders',
+  clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   onToggleSelectMode,
   footer,
@@ -268,6 +269,7 @@ export function UnshippedShelfBoard({
   const getRowDate = useCallback((r: ShippedOrder) => r.created_at || r.deadline_at, []);
 
   const headerPersistentEndSlot = useMemo(() => <StaffFilterButton align="start" />, []);
+  const dashboardScrollRef = useDashboardScrollParentOptional();
 
   const headerEndSlot = useMemo(
     () => (
@@ -312,7 +314,7 @@ export function UnshippedShelfBoard({
     <TableColumnConfigProvider tableId="orders">
       <TableDensityProvider tableId="orders" urlSync={false}>
         {surface === 'list' ? (
-          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-w-0 flex-col">
             {toolbarPortalTarget
               ? createPortal(
                   <div className="flex items-center gap-2">
@@ -352,6 +354,10 @@ export function UnshippedShelfBoard({
               hideHeader
               noHorizontalScroll
               inheritColumnConfig
+              autoHeight
+              growToContent={Boolean(dashboardScrollRef)}
+              scrollParentRef={dashboardScrollRef ?? undefined}
+              virtualized={VIRTUAL_LANES && Boolean(dashboardScrollRef)}
             />
             {footer}
           </div>
@@ -375,6 +381,7 @@ export function UnshippedShelfBoard({
             renderLaneBody={renderLaneBody}
             footerSlot={footer}
             toolbarPortalTarget={toolbarPortalTarget}
+            pageScrollParentRef={dashboardScrollRef ?? undefined}
           />
         )}
       </TableDensityProvider>

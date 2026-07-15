@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -104,7 +104,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 
   after(async () => {
     try {
-      await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+      await invalidateReceivingViews(ctx.organizationId);
       if (updated.receiving_id != null) {
         await publishReceivingLogChanged({
           organizationId: ctx.organizationId,

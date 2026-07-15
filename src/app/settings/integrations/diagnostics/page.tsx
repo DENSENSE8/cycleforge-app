@@ -20,6 +20,8 @@ import Link from 'next/link';
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import { listConnections } from '@/lib/integrations/connectors/connections';
+import { authKindLabel } from '@/lib/integrations/credential-form-defs';
+import { PROVIDER_CATALOG } from '../registry';
 import type { ConnectionStatus } from '@/lib/integrations/connectors/types';
 
 export const dynamic = 'force-dynamic';
@@ -97,6 +99,10 @@ function Chip({ tone, children }: { tone: string; children: React.ReactNode }) {
       {children}
     </span>
   );
+}
+
+function providerLabel(key: string): string {
+  return PROVIDER_CATALOG.find((p) => p.key === key)?.label ?? key;
 }
 
 export default async function IntegrationsDiagnosticsPage() {
@@ -197,11 +203,15 @@ export default async function IntegrationsDiagnosticsPage() {
             ) : (
               <div className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-card">
                 {connections.map((c) => (
-                  <div key={`${c.provider}-${c.scope ?? ''}`} className="flex items-center gap-3 px-4 py-2.5">
+                  <Link
+                    key={`${c.provider}-${c.scope ?? ''}`}
+                    href={`/settings/integrations/${c.provider}${c.scope ? `?scope=${encodeURIComponent(c.scope)}` : ''}`}
+                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-canvas/80"
+                  >
                     <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${STATE_DOT[c.state]}`} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-role-caption font-bold text-text-default">
-                        {c.provider}
+                        {providerLabel(c.provider)}
                         {c.scope ? <span className="font-normal text-text-faint"> · {c.scope}</span> : null}
                       </p>
                       <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
@@ -216,12 +226,12 @@ export default async function IntegrationsDiagnosticsPage() {
                           {cap}
                         </Chip>
                       ))}
-                      <Chip tone="bg-blue-50 text-blue-700 ring-blue-200">{c.authKind}</Chip>
+                      <Chip tone="bg-blue-50 text-blue-700 ring-blue-200">{authKindLabel(c.authKind)}</Chip>
                       <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
                         {relTime(c.lastUsedAt ?? null)}
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -243,7 +253,7 @@ export default async function IntegrationsDiagnosticsPage() {
                   <div key={`${r.provider}-${r.operation}-${r.outcome}-${i}`} className="flex items-center gap-3 px-4 py-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-role-caption font-bold text-text-default">
-                        {r.provider}
+                        {providerLabel(r.provider)}
                         <span className="font-normal text-text-faint"> · {r.operation}</span>
                       </p>
                     </div>

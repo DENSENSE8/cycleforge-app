@@ -7,6 +7,7 @@ import { upsertOpenOrderException } from '@/lib/orders-exceptions';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
+import { invalidateFbaViews } from '@/lib/fba/invalidation';
 import { formatPSTTimestamp } from '@/utils/date';
 import { publishActivityLogged, publishOrderTested, publishTechLogChanged } from '@/lib/realtime/publish';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
@@ -374,9 +375,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const summary = await fnskuStageCounts(client as any, ctx.organizationId, fnsku);
 
         await client.query('COMMIT');
-        await invalidateCacheTags(isFbaSource ? ['fba-stage-counts'] : ['orders', 'orders-next', 'tech-logs']);
-      await invalidateCacheTags(ctx.organizationId, isFbaSource ? [CACHE_TAGS.fbaStageCounts] : [CACHE_TAGS.orders, CACHE_TAGS.ordersNext, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail]);
-        await invalidateCacheTags(ctx.organizationId, isFbaSource ? [CACHE_TAGS.fbaStageCounts] : [CACHE_TAGS.orders, CACHE_TAGS.ordersNext, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail]);
+        // A tech/FBA FNSKU scan always mutates fba_shipment_items (advance an open
+        // item PLANNED→TESTED, or insert a new TESTED row), so bust the full FBA
+        // read set (board / today / stage-counts, dual-fired legacy + org-scoped).
+        // A tech-station scan is additionally a tech-log / order event; an
+        // FBA-workspace scan is not.
+        await invalidateFbaViews(
+          ctx.organizationId,
+          isFbaSource ? [] : [CACHE_TAGS.orders, CACHE_TAGS.ordersNext, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail],
+        );
         if (!isFbaSource) {
           await publishTechLogChanged({ organizationId: ctx.organizationId, techId: testedBy, action: 'insert', rowId: fnskuLogId!, source: ROUTE });
         }

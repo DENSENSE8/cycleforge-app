@@ -160,6 +160,9 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
   /** Portal the toolbar cluster into this element instead of the 40px header band
    *  (dashboard outbound floating row). */
   toolbarPortalTarget?: HTMLElement | null;
+  /** When set, the dashboard page scroll port owns vertical scroll — the board
+   *  body grows to content and stacked lanes window against this ancestor. */
+  pageScrollParentRef?: RefObject<HTMLElement | null>;
 }
 
 /** Board layout — bubbles stacked 1-up, or laid 2-up / 3-up side by side. */
@@ -529,13 +532,15 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   getRowDate,
   renderLaneBody,
   toolbarPortalTarget,
+  pageScrollParentRef,
 }: SwimlaneBoardProps<Row, LaneId, SortId>) {
   const { prefs, update } = useStaffPreferences();
 
-  // The board's single scroll region (the `flex-1 overflow-y-auto` body below).
-  // In stacked (1-up) mode each lane's virtualized body windows against THIS
-  // element instead of its own (absent) scroll body — see `useAncestorScrollMargin`.
+  // The board's scroll region (or the dashboard page scroll when `pageScrollParentRef`
+  // is set). Stacked (1-up) lanes window against this ancestor.
   const boardScrollRef = useRef<HTMLDivElement>(null);
+  const ancestorScrollRef = pageScrollParentRef ?? boardScrollRef;
+  const pageScroll = Boolean(pageScrollParentRef);
 
   // Only offer column layouts up to `maxColumns` (e.g. a 7-lane pipeline drops
   // the cramped 3-up option). The toggle hides the rest; clamping below keeps a
@@ -726,7 +731,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
     : null;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-surface-canvas">
+    <div className={pageScroll ? 'flex flex-col bg-surface-canvas' : 'flex flex-1 flex-col overflow-hidden bg-surface-canvas'}>
       {toolbarPortalTarget && portaledToolbar
         ? createPortal(portaledToolbar, toolbarPortalTarget)
         : null}
@@ -748,13 +753,17 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
       ) : null}
 
       <div
-        ref={boardScrollRef}
+        ref={pageScroll ? undefined : boardScrollRef}
         data-testid="swimlane-board-scroll"
         // Portaled dashboard toolbar: parent column already owns the horizontal
         // gutter (KPI + tabs + board share one edge).
         // Vertical air is provided by spacer divs below so `sticky top-0` correctly
         // caps at the absolute scroll boundary without bleeding through padding.
-        className={`flex-1 overflow-y-auto scrollbar-hide ${toolbarPortalTarget ? '' : 'px-4'}`}
+        className={
+          pageScroll
+            ? `w-full ${toolbarPortalTarget ? '' : 'px-4'}`
+            : `flex-1 overflow-y-auto scrollbar-hide ${toolbarPortalTarget ? '' : 'px-4'}`
+        }
       >
         <div className={`shrink-0 ${toolbarPortalTarget ? 'h-1' : 'h-4'}`} />
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorderLanes}>
@@ -779,7 +788,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
                     range={laneState.range}
                     showDateFilter={Boolean(getRowDate)}
                     laneHeaderSlot={laneHeaderSlot}
-                    boardScrollRef={boardScrollRef}
+                    boardScrollRef={ancestorScrollRef}
                     onSortChange={(s) => mutateLane(id, { sort: s })}
                     onRangeChange={(r) => mutateLane(id, { range: r })}
                     // Snapping to a preset clears any drag-resized height.

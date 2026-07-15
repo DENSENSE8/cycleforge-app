@@ -21,6 +21,7 @@ import { useShippedTableGrouping } from '@/components/shipped/dashboard-table/us
 import { useShippedDetailsSelection } from '@/components/shipped/dashboard-table/useShippedDetailsSelection';
 import { useShippedPeriodControls } from '@/components/shipped/dashboard-table/useShippedPeriodControls';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
+import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { ShippedTableHeader } from '@/components/shipped/dashboard-table/ShippedTableHeader';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
@@ -102,6 +103,9 @@ export function DashboardShippedTable({
 }: DashboardShippedTableProps = {}) {
   const { isMobile } = useUIModeOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dashboardScrollRef = useDashboardScrollParentOptional();
+  const pageScroll = Boolean(dashboardScrollRef) && !embedded;
+  const virtualScrollRef = pageScroll ? dashboardScrollRef! : scrollRef;
 
   const filters = useShippedTableFilters({ packedBy, testedBy, lockedOutboundStatus });
   const { query, derivedRecords, searchMeta, pagination } = useShippedTableRecords(filters);
@@ -128,9 +132,9 @@ export function DashboardShippedTable({
   });
 
   useEffect(() => {
-    const container = scrollRef.current;
+    const container = virtualScrollRef.current;
     if (container) container.scrollTop = 0;
-  }, [daySections]);
+  }, [daySections, virtualScrollRef]);
 
   const showResultsHeader = Boolean(filters.normalizedSearch) || filters.anyCarrierFilter;
   const shippedView = filters.layout;
@@ -184,7 +188,8 @@ export function DashboardShippedTable({
       <div className={listClassName}>
         <VirtualShippedSections
           daySections={daySections}
-          scrollParentRef={scrollRef}
+          scrollParentRef={virtualScrollRef}
+          useAncestorScroll={pageScroll}
           isMobile={isMobile}
           selectMode={selectMode}
           selectedIds={selectedIds}
@@ -253,7 +258,7 @@ export function DashboardShippedTable({
   const shippedAllInner = (
     <TableColumnConfigProvider tableId="shipped">
       <TableDensityProvider tableId="shipped" urlSync={false}>
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+        <div className={pageScroll ? 'flex flex-col bg-surface-canvas' : 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas'}>
           {portaledToolbar}
           {!toolbarPortalTarget ? (
             <div className="flex h-[40px] shrink-0 items-center justify-end gap-3 border-b border-border-default px-3">
@@ -261,12 +266,10 @@ export function DashboardShippedTable({
             </div>
           ) : null}
           <div
-            ref={scrollRef}
+            ref={pageScroll ? undefined : scrollRef}
             data-testid="column-table-body"
             className={cn(
-              'min-h-0 flex-1 overflow-x-auto overflow-y-auto scrollbar-hide',
-              // Portaled dashboard toolbar: parent column owns the horizontal
-              // gutter (KPI + tabs + board share one edge) — only keep vertical air.
+              pageScroll ? 'overflow-x-clip w-full' : 'min-h-0 flex-1 overflow-x-auto overflow-y-auto scrollbar-hide',
               toolbarPortalTarget ? 'py-1' : 'p-4',
             )}
           >
@@ -324,6 +327,7 @@ export function DashboardShippedTable({
             </div>
           }
           toolbarPortalTarget={toolbarPortalTarget}
+          pageScrollParentRef={pageScroll ? dashboardScrollRef ?? undefined : undefined}
           renderLaneBody={({ rows, laneLabel, maxBodyHeightClass, maxBodyHeightPx, growToContent, scrollParentRef }) => (
             <ShippedLaneTable
               records={rows}
@@ -358,7 +362,7 @@ export function DashboardShippedTable({
   const mainContent = shippedView === 'all' ? shippedAllInner : shippedBoardInner;
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className={pageScroll ? 'flex min-w-0 flex-col' : 'flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden'}>
       {mainContent}
       {loadMoreFooter}
     </div>

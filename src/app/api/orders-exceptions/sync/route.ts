@@ -50,7 +50,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     try {
       const result = await syncOrderExceptionsToOrders(stream.emit, orgId);
       if (result.matched > 0) {
-        await invalidateAllOrdersApiCaches();
+        await invalidateAllOrdersApiCaches([], orgId);
       }
       // The sweep writes orders + orders_exceptions rows — record who pulled
       // the trigger and what landed (the stream result isn't otherwise kept).

@@ -19,7 +19,8 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { syncShipmentsByIds } from '@/lib/shipping/scheduler';
 import { selectIncomingShipmentIds } from '@/lib/receiving/incoming-shipments';
-import { getCachedJson, setCachedJson, invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { isIncomingUniversal } from '@/lib/feature-flags';
 import { syncEbayPurchasesToReceiving } from '@/lib/inbound/sync-ebay-purchases';
 
@@ -106,7 +107,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // caches so the next refetch reflects freshly-delivered/imported purchases.
     if (result.terminal > 0 || result.synced > 0 || ebayCreated > 0) {
       try {
-        await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+        await invalidateReceivingViews(ctx.organizationId);
       } catch { /* non-fatal */ }
     }
 

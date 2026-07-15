@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import {
   recordInventoryEvent,
@@ -290,7 +290,7 @@ export async function POST(
 
     after(async () => {
       try {
-        await invalidateCacheTags(['receiving-lines', 'sku-stock', 'serial-units']);
+        await invalidateReceivingViews(ctx.organizationId, ['sku-stock', 'serial-units']);
         if (result.receivingId != null) {
           await publishReceivingLogChanged({
             organizationId: ctx.organizationId,

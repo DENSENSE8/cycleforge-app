@@ -35,7 +35,7 @@ import { syncZohoPurchaseOrdersToReceiving } from '@/lib/zoho-receiving-sync';
 import { syncZohoPoMirror } from '@/lib/zoho/po-mirror-sync';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { formatApiOffsetTimestamp } from '@/utils/date';
-import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
+import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -70,7 +70,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
 
     // ── 3. Invalidate so the rail + tiles reflect the fresh state ──────────
     try {
-      await invalidateCacheTags(['receiving-lines', 'receiving-logs']);
+      await invalidateReceivingViews(ctx.organizationId);
     } catch (err) {
       console.warn('incoming/inventory-refresh: cache invalidate failed (non-fatal)', err);
     }
