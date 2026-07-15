@@ -78,8 +78,12 @@ function getKnipReport() {
   try {
     return JSON.parse(stdout);
   } catch {
-    // The JSON reporter prints pure JSON to stdout; recover if anything leaked.
-    const start = stdout.indexOf('{');
+    // The JSON reporter prints one JSON object to stdout, but tools it loads can
+    // leak lines BEFORE it — notably dotenv v17, which prints `[dotenv] injecting
+    // env … { path: … }` tips (the example rotates, so the leak is flaky). Anchor
+    // on the reporter's `{"` opening (its first key is quoted); a dotenv tip's
+    // `{ path: … }` uses `{ ` + space, so a bare `{` search would grab the tip.
+    const start = stdout.indexOf('{"');
     const end = stdout.lastIndexOf('}');
     if (start !== -1 && end !== -1) return JSON.parse(stdout.slice(start, end + 1));
     console.error('✖ knip gate: could not parse knip JSON output.');
