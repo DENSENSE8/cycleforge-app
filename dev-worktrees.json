@@ -1,7 +1,8 @@
 {
   "port": 3099,
-  "script": "dev:tunnel",
+  "script": "dev",
   "appPort": 3000,
+  "_note": "Each lane runs its own `next dev` on its own appPort so lanes run in PARALLEL. `port` = switcher panel. `script` = plain `dev` (no per-lane tunnel; the Cloudflare tunnel is a main-only mobile-testing tool — run `pnpm dev:tunnel` there). `appPort` here is only the fallback for auto-discovered trees.",
   "trees": [
     {
       "id": "main",
@@ -9,79 +10,79 @@
       "path": ".",
       "appPort": 3000,
       "unlockParked": false,
-      "note": "Stations + shipping"
+      "note": "Stations + shipping · :3000"
     },
     {
       "id": "ai-chat",
       "label": "AI chat",
       "path": "../cycleforge-ai-chat",
-      "appPort": 3000,
+      "appPort": 3010,
       "unlockParked": true,
-      "note": "WS · topic/ai-chat · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · topic/ai-chat · :3010"
     },
     {
       "id": "fba",
       "label": "FBA prep",
       "path": "../cycleforge-fba",
-      "appPort": 3000,
+      "appPort": 3020,
       "unlockParked": true,
-      "note": "WS · topic/fba · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · topic/fba · :3020"
     },
     {
       "id": "glass",
       "label": "Glass design system",
       "path": "../cycleforge-glass",
-      "appPort": 3000,
+      "appPort": 3030,
       "unlockParked": true,
-      "note": "WS-GLASS · docs/portfolio/INDEX.md"
+      "note": "WS-GLASS · :3030"
     },
     {
       "id": "home",
       "label": "Home / My Day",
       "path": "../cycleforge-home",
-      "appPort": 3000,
+      "appPort": 3040,
       "unlockParked": true,
-      "note": "WS · topic/home · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · topic/home · :3040"
     },
     {
       "id": "inventory",
       "label": "Inventory",
       "path": "../cycleforge-inventory",
-      "appPort": 3000,
+      "appPort": 3050,
       "unlockParked": true,
-      "note": "WS · topic/inventory · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · topic/inventory · :3050"
     },
     {
       "id": "sourcing",
       "label": "Sourcing",
       "path": "../cycleforge-sourcing",
-      "appPort": 3000,
+      "appPort": 3060,
       "unlockParked": true,
-      "note": "WS · topic/sourcing · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · topic/sourcing · :3060"
     },
     {
       "id": "studio",
       "label": "Studio catalog follow-ups",
       "path": "../cycleforge-studio-followups",
-      "appPort": 3000,
+      "appPort": 3070,
       "unlockParked": true,
-      "note": "WS-STUDIO · docs/portfolio/INDEX.md"
+      "note": "WS-STUDIO · :3070"
     },
     {
       "id": "unbox",
       "label": "unbox · unbox-work",
       "path": "../cycleforge-unbox",
-      "appPort": 3000,
+      "appPort": 3080,
       "unlockParked": true,
-      "note": "WS · unbox-work · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · unbox-work · :3080"
     },
     {
       "id": "warehouse",
       "label": "Warehouse",
       "path": "../cycleforge-warehouse",
-      "appPort": 3000,
+      "appPort": 3090,
       "unlockParked": true,
-      "note": "WS · topic/warehouse · docs/portfolio/WORKTREE-LANES.md"
+      "note": "WS · topic/warehouse · :3090"
     }
   ]
 }

@@ -5,8 +5,12 @@
  *   pnpm dev:switcher
  *   → http://127.0.0.1:3099
  *
- * Click a worktree → stop current stack → start that tree with `dev:tunnel`
- * (Next + Cloudflare named tunnel). Binds 127.0.0.1 only.
+ * Start any number of worktrees IN PARALLEL — each runs its own `next dev` on
+ * its own port (from dev-worktrees.json). Click Start on several lanes and they
+ * all run at once; Stop is per-lane, plus a global Stop all. Binds 127.0.0.1.
+ *
+ * No tunnel here: the Cloudflare named tunnel is a main-only mobile-testing tool
+ * (`pnpm dev:tunnel` in the main checkout), decoupled from parallel lane dev.
  *
  * Optional: dev-worktrees.json in repo root (see example in repo).
  */
@@ -21,19 +25,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const HOST = '127.0.0.1';
 const DEFAULT_SWITCHER_PORT = 3099;
-/** Tunnel dashboard route is localhost:3000 — all trees share this port (one at a time). */
+/** Fallback port for auto-discovered trees; explicit per-tree appPort wins. */
 const DEFAULT_APP_PORT = 3000;
-const DEFAULT_TUNNEL_HOST = 'usav-dev.michaelgarisek.com';
 
 // ─── state ───────────────────────────────────────────────────────────────────
 
-/** @type {null | {
+/**
+ * Running lanes, keyed by tree id — multiple may run concurrently.
+ * @type {Map<string, {
  *   id: string, pid: number, appPort: number, cwd: string,
- *   startedAt: string, unlockParked: boolean, ready: boolean, phase: string
- * }} */
-let active = null;
-/** @type {import('node:child_process').ChildProcess | null} */
-let child = null;
+ *   startedAt: string, unlockParked: boolean, ready: boolean, phase: string,
+ *   script: string, child: import('node:child_process').ChildProcess
+ * }>}
+ */
+const running = new Map();
 /** @type {string[]} */
 const logBuffer = [];
 const LOG_MAX = 280;
@@ -49,6 +54,17 @@ function stripAnsi(s) {
   return String(s).replace(/\x1b\[[0-9;]*m/g, '');
 }
 
+/** Plain, serializable view of a running record (no child handle). */
+function publicRecord(r) {
+  if (!r) return null;
+  const { child, ...rest } = r;
+  return rest;
+}
+
+function runningList() {
+  return [...running.values()].map(publicRecord);
+}
+
 // ─── config / discovery ──────────────────────────────────────────────────────
 
 function loadConfig() {
@@ -60,22 +76,6 @@ function loadConfig() {
     log(`config parse error: ${e.message} — falling back to git discovery`);
     return null;
   }
-}
-
-function readTunnelHost(cwd) {
-  try {
-    const envLocal = path.join(cwd, '.env.local');
-    const envFile = path.join(cwd, '.env');
-    for (const f of [envLocal, envFile]) {
-      if (!fs.existsSync(f)) continue;
-      const text = fs.readFileSync(f, 'utf8');
-      const m = text.match(/^CLOUDFLARE_DEV_TUNNEL_HOST=(.+)$/m);
-      if (m) return m[1].trim().replace(/^["']|["']$/g, '');
-    }
-  } catch {
-    /* ignore */
-  }
-  return process.env.CLOUDFLARE_DEV_TUNNEL_HOST?.trim() || DEFAULT_TUNNEL_HOST;
 }
 
 function discoverGitWorktrees() {
@@ -107,32 +107,38 @@ function discoverGitWorktrees() {
   }
 }
 
+/** Guarantee every lane has a distinct port; auto-offset on collision. */
+function assignUniquePort(preferred, used) {
+  let port = Number(preferred) || DEFAULT_APP_PORT;
+  while (used.has(port)) port += 1;
+  used.add(port);
+  return port;
+}
+
 function resolveTrees() {
   const cfg = loadConfig();
   const switcherPort = Number(cfg?.port) || DEFAULT_SWITCHER_PORT;
-  // Always tunnel for worktrees (user request). Overridable only via config.
-  const script = String(cfg?.script || 'dev:tunnel');
-  // One app at a time on the tunnel port (default 3000).
-  const sharedPort = Number(cfg?.appPort) || DEFAULT_APP_PORT;
-  const tunnelHost = readTunnelHost(REPO_ROOT);
+  const script = String(cfg?.script || 'dev');
+  const fallbackPort = Number(cfg?.appPort) || DEFAULT_APP_PORT;
+  const used = new Set();
 
   if (cfg?.trees?.length) {
     const trees = cfg.trees.map((t, i) => {
       const abs = path.isAbsolute(t.path) ? t.path : path.resolve(REPO_ROOT, t.path);
+      const appPort = assignUniquePort(t.appPort || fallbackPort + i * 10, used);
       return {
         id: String(t.id || `tree-${i}`),
         label: String(t.label || t.id || path.basename(abs)),
         path: abs,
         branch: t.branch || null,
-        // Prefer shared tunnel port so cloudflared route stays correct.
-        appPort: Number(t.appPort) || sharedPort,
+        appPort,
         unlockParked: Boolean(t.unlockParked),
         exists: fs.existsSync(abs),
         script: String(t.script || script),
         note: t.note || null,
       };
     });
-    return { switcherPort, trees, script, tunnelHost, sharedPort };
+    return { switcherPort, trees, script };
   }
 
   const discovered = discoverGitWorktrees();
@@ -146,12 +152,13 @@ function resolveTrees() {
     const abs = path.resolve(t.path);
     const isMain = abs === REPO_ROOT;
     const base = path.basename(abs);
+    const appPort = assignUniquePort(isMain ? fallbackPort : fallbackPort + i * 10, used);
     return {
       id: isMain ? 'main' : base.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() || `tree-${i}`,
       label: isMain ? 'Main · dogfood' : base,
       path: abs,
       branch: t.branch,
-      appPort: sharedPort,
+      appPort,
       unlockParked: !isMain,
       exists: fs.existsSync(abs),
       script,
@@ -159,7 +166,7 @@ function resolveTrees() {
     };
   });
 
-  return { switcherPort, trees, script, tunnelHost, sharedPort };
+  return { switcherPort, trees, script };
 }
 
 // ─── process control ─────────────────────────────────────────────────────────
@@ -212,29 +219,19 @@ function freePort(port) {
   }
 }
 
-/** cloudflared often leaves no LISTEN on app port; best-effort cleanup by name */
-function killStrayCloudflared() {
-  try {
-    if (process.platform === 'darwin' || process.platform === 'linux') {
-      execSync('pkill -f "cloudflared tunnel" 2>/dev/null || true', { stdio: 'ignore' });
-    }
-  } catch {
-    /* ignore */
-  }
+/** Stop one lane by id. Returns true if it was running. */
+function stopTree(id) {
+  const r = running.get(id);
+  if (!r) return false;
+  log(`stopping ${id} pid=${r.pid} (:${r.appPort})`);
+  killPidTree(r.pid);
+  freePort(r.appPort);
+  running.delete(id);
+  return true;
 }
 
-function stopActive() {
-  if (child) {
-    log(`stopping child pid=${child.pid}`);
-    killPidTree(child.pid);
-    child = null;
-  }
-  if (active) {
-    freePort(active.appPort);
-    killStrayCloudflared();
-    log(`stopped ${active.id}`);
-    active = null;
-  }
+function stopAll() {
+  for (const id of [...running.keys()]) stopTree(id);
 }
 
 function packageManager(cwd) {
@@ -245,9 +242,9 @@ function packageManager(cwd) {
 }
 
 /**
- * Start worktree via package.json script (default `dev:tunnel`).
- * Port is passed ONLY via env (PORT / DEV_PORT) — never `pnpm … -- -p`,
- * which breaks `next dev --turbopack` (`-p` becomes a project directory).
+ * Start (or restart) a single worktree via its package.json script (default
+ * `dev`). It does NOT stop other lanes — lanes run in parallel. Port is passed
+ * via env (PORT / DEV_PORT); the `dev` launcher also resolves it from config.
  */
 function startTree(tree) {
   if (!tree.exists) {
@@ -264,16 +261,17 @@ function startTree(tree) {
   } catch {
     throw new Error(`Invalid package.json in ${tree.path}`);
   }
-  const scriptName = tree.script || 'dev:tunnel';
+  const scriptName = tree.script || 'dev';
   if (!pkg.scripts?.[scriptName]) {
     throw new Error(
       `Script "${scriptName}" missing in ${tree.path}. Add it or set "script" in dev-worktrees.json.`,
     );
   }
 
-  stopActive();
+  // Restart semantics: only this lane, never the others.
+  if (running.has(tree.id)) stopTree(tree.id);
   freePort(tree.appPort);
-  // Brief settle so ports release
+  // Brief settle so the port releases before the new bind.
   execSync('sleep 0.4', { stdio: 'ignore' });
 
   const pm = packageManager(tree.path);
@@ -290,12 +288,9 @@ function startTree(tree) {
     delete env.NEXT_PUBLIC_DOGFOOD_FULL_SURFACE;
   }
 
-  // pnpm run dev:tunnel   — do NOT append -- -p (breaks next)
-  const args = pm === 'npm' ? ['run', scriptName] : ['run', scriptName];
-
   log(`starting ${tree.id} → ${pm} run ${scriptName} (cwd=${cwd}) port=${tree.appPort} unlock=${Boolean(tree.unlockParked)}`);
 
-  const proc = spawn(pm, args, {
+  const proc = spawn(pm, ['run', scriptName], {
     cwd,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -303,8 +298,7 @@ function startTree(tree) {
     shell: process.platform === 'win32',
   });
 
-  child = proc;
-  active = {
+  const rec = {
     id: tree.id,
     pid: proc.pid,
     appPort: tree.appPort,
@@ -314,7 +308,9 @@ function startTree(tree) {
     ready: false,
     phase: 'starting',
     script: scriptName,
+    child: proc,
   };
+  running.set(tree.id, rec);
 
   const onData = (buf) => {
     const text = stripAnsi(buf.toString());
@@ -322,20 +318,15 @@ function startTree(tree) {
       const trimmed = line.trimEnd();
       if (!trimmed) continue;
       log(`[${tree.id}] ${trimmed}`);
-      if (!active || active.pid !== proc.pid) continue;
+      const cur = running.get(tree.id);
+      if (!cur || cur.pid !== proc.pid) continue;
 
-      if (/Starting Next\.js|next dev|Ready in|Local:/i.test(trimmed)) {
-        active.phase = 'next';
+      if (/Starting Next\.js|next dev/i.test(trimmed)) {
+        cur.phase = 'next';
       }
-      if (/Ready in|✓ Ready|started server on/i.test(trimmed)) {
-        active.phase = 'next-ready';
-      }
-      if (/Starting Cloudflare|cloudflared|Named dev tunnel/i.test(trimmed)) {
-        active.phase = 'tunnel';
-      }
-      if (/Registered tunnel connection|Connection established|Named dev tunnel is up/i.test(trimmed)) {
-        active.ready = true;
-        active.phase = 'ready';
+      if (/Ready in|✓ Ready|started server on|Local:\s*http/i.test(trimmed)) {
+        cur.ready = true;
+        cur.phase = 'ready';
       }
     }
   };
@@ -343,21 +334,20 @@ function startTree(tree) {
   proc.stderr?.on('data', onData);
   proc.on('exit', (code, signal) => {
     log(`${tree.id} exited code=${code} signal=${signal}`);
-    if (active?.pid === proc.pid) active = null;
-    if (child === proc) child = null;
+    const cur = running.get(tree.id);
+    if (cur?.pid === proc.pid) running.delete(tree.id);
   });
   proc.on('error', (err) => {
     log(`${tree.id} spawn error: ${err.message}`);
   });
 
-  return active;
+  return rec;
 }
 
 // ─── HTML UI ─────────────────────────────────────────────────────────────────
 
-function pageHtml({ trees, switcherPort, tunnelHost, script }) {
+function pageHtml({ trees, switcherPort, script }) {
   const treesJson = JSON.stringify(trees);
-  const tunnelHostJson = JSON.stringify(tunnelHost);
   const scriptJson = JSON.stringify(script);
 
   return `<!DOCTYPE html>
@@ -591,6 +581,8 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
       background: #f1f5f9; color: #475569;
       border: 1px solid var(--line);
     }
+    .chip a { color: inherit; text-decoration: none; }
+    .chip a:hover { color: var(--blue); }
     .actions {
       display: flex;
       flex-direction: column;
@@ -673,12 +665,12 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
         <div class="mark" aria-hidden="true">CF</div>
         <div>
           <h1>Worktree switcher</h1>
-          <p class="sub">Start one tree at a time via <strong id="script-name"></strong> · local + tunnel</p>
+          <p class="sub">Run lanes in parallel via <strong id="script-name"></strong> · each on its own port</p>
         </div>
       </div>
       <div class="toolbar">
         <button type="button" class="btn-ghost" id="btn-refresh">Refresh</button>
-        <button type="button" class="btn-danger" id="btn-stop">Stop</button>
+        <button type="button" class="btn-danger" id="btn-stop-all">Stop all</button>
       </div>
     </header>
 
@@ -704,19 +696,17 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
     <p class="hint">
       Panel: <code>http://127.0.0.1:${switcherPort}</code>
       · Config: <code>dev-worktrees.json</code>
-      · Each Start runs <code>pnpm run ${script}</code> with <code>PORT</code> set (no broken <code>-p</code> flags)
-      · Public tunnel host: <code id="tunnel-host-hint"></code>
+      · Each Start runs <code>pnpm run ${script}</code> on that lane's own port — lanes run concurrently
+      · Tunnel (mobile): <code>pnpm dev:tunnel</code> in main
     </p>
   </div>
 
   <script>
     const TREES = ${treesJson};
-    const TUNNEL_HOST = ${tunnelHostJson};
     const SCRIPT = ${scriptJson};
     const $ = (id) => document.getElementById(id);
 
     $('script-name').textContent = SCRIPT;
-    $('tunnel-host-hint').textContent = TUNNEL_HOST;
 
     async function api(path, opts) {
       const res = await fetch(path, {
@@ -736,64 +726,65 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
         .replace(/"/g, '&quot;');
     }
 
-    function phaseLabel(active) {
-      if (!active) return null;
-      if (active.ready || active.phase === 'ready') return 'Ready';
-      if (active.phase === 'tunnel') return 'Connecting tunnel…';
-      if (active.phase === 'next-ready') return 'Next ready · starting tunnel…';
-      if (active.phase === 'next') return 'Starting Next…';
+    function phaseLabel(rec) {
+      if (!rec) return null;
+      if (rec.ready || rec.phase === 'ready') return 'Ready';
+      if (rec.phase === 'next') return 'Starting Next…';
       return 'Starting…';
     }
 
+    let RUNNING = [];
+
     function renderStatus(s) {
-      const active = s.active;
+      RUNNING = Array.isArray(s.running) ? s.running : [];
       const dot = $('dot');
       const text = $('status-text');
       const links = $('links');
       links.innerHTML = '';
 
-      if (active) {
-        const phase = phaseLabel(active);
-        const isReady = active.ready || active.phase === 'ready';
-        dot.className = 'dot ' + (isReady ? 'ready' : 'busy');
-        text.textContent = active.id + ' · ' + phase;
-        const local = 'http://127.0.0.1:' + active.appPort;
-        const publicUrl = 'https://' + (s.tunnelHost || TUNNEL_HOST);
-        links.innerHTML =
-          '<a class="link-chip" href="' + local + '" target="_blank" rel="noreferrer">' +
-            '<span>Local</span><span class="mono">' + local.replace('http://', '') + '</span></a>' +
-          '<a class="link-chip public" href="' + publicUrl + '" target="_blank" rel="noreferrer">' +
-            '<span>Tunnel</span><span class="mono">' + publicUrl.replace('https://', '') + '</span></a>' +
-          (active.unlockParked
-            ? '<span class="badge unlock">Parked pages unlocked</span>'
-            : '<span class="badge">Parked pages locked</span>');
+      if (RUNNING.length) {
+        const anyBusy = RUNNING.some((r) => !(r.ready || r.phase === 'ready'));
+        dot.className = 'dot ' + (anyBusy ? 'busy' : 'ready');
+        text.textContent = RUNNING.length + ' running';
+        links.innerHTML = RUNNING.map((r) => {
+          const local = 'http://127.0.0.1:' + r.appPort;
+          return '<a class="link-chip" href="' + local + '" target="_blank" rel="noreferrer">' +
+            '<span>' + escapeHtml(r.id) + '</span><span class="mono">:' + r.appPort + '</span>' +
+            '<span>· ' + phaseLabel(r) + '</span></a>';
+        }).join('');
       } else {
         dot.className = 'dot off';
-        text.textContent = 'Idle — pick a worktree to start';
+        text.textContent = 'Idle — pick one or more worktrees to start';
       }
 
       $('log').textContent = (s.logs || []).join('\\n') || '(no logs yet)';
       $('log').scrollTop = $('log').scrollHeight;
     }
 
-    function renderGrid(activeId, activeReady) {
+    function renderGrid() {
+      const byId = new Map(RUNNING.map((r) => [r.id, r]));
       const grid = $('grid');
       grid.innerHTML = '';
       for (const t of TREES) {
-        const isActive = activeId === t.id;
+        const rec = byId.get(t.id);
+        const isActive = Boolean(rec);
+        const isReady = Boolean(rec && (rec.ready || rec.phase === 'ready'));
+        const local = 'http://127.0.0.1:' + t.appPort;
         const card = document.createElement('article');
         card.className = 'card' + (isActive ? ' active' : '') + (!t.exists ? ' missing' : '');
         card.innerHTML =
           '<div class="card-main">' +
             '<div class="title-row">' +
               '<span class="label">' + escapeHtml(t.label) + '</span>' +
-              (isActive ? '<span class="badge live">' + (activeReady ? 'Running' : 'Starting') + '</span>' : '') +
+              (isActive ? '<span class="badge live">' + (isReady ? 'Running' : 'Starting') + '</span>' : '') +
               (t.unlockParked ? '<span class="badge unlock">Unlock parked</span>' : '') +
               (!t.exists ? '<span class="badge missing">Missing path</span>' : '') +
             '</div>' +
             '<div class="path">' + escapeHtml(t.path) + '</div>' +
             '<div class="meta-row">' +
-              '<span class="chip">:' + t.appPort + '</span>' +
+              '<span class="chip">' + (isActive
+                  ? '<a href="' + local + '" target="_blank" rel="noreferrer">:' + t.appPort + ' ↗</a>'
+                  : ':' + t.appPort) + '</span>' +
               (t.branch ? '<span class="chip">' + escapeHtml(t.branch) + '</span>' : '') +
               '<span class="chip">' + escapeHtml(t.script || SCRIPT) + '</span>' +
               (t.note ? '<span class="chip">' + escapeHtml(t.note) + '</span>' : '') +
@@ -804,11 +795,17 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
               (!t.exists ? ' disabled' : '') + '>' +
               (isActive ? 'Restart' : 'Start') +
             '</button>' +
+            (isActive
+              ? '<button type="button" class="btn-danger btn-sm" data-stop="' + t.id + '">Stop</button>'
+              : '') +
           '</div>';
         grid.appendChild(card);
       }
       grid.querySelectorAll('[data-start]').forEach((btn) => {
         btn.addEventListener('click', () => start(btn.getAttribute('data-start'), btn));
+      });
+      grid.querySelectorAll('[data-stop]').forEach((btn) => {
+        btn.addEventListener('click', () => stopOne(btn.getAttribute('data-stop'), btn));
       });
     }
 
@@ -817,7 +814,7 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
       try {
         const s = await api('/api/status');
         renderStatus(s);
-        renderGrid(s.active?.id || null, Boolean(s.active?.ready || s.active?.phase === 'ready'));
+        renderGrid();
       } catch (e) {
         $('err').textContent = e.message;
       }
@@ -832,26 +829,39 @@ function pageHtml({ trees, switcherPort, tunnelHost, script }) {
       try {
         const s = await api('/api/start', { method: 'POST', body: JSON.stringify({ id }) });
         renderStatus(s);
-        renderGrid(s.active?.id || null, false);
+        renderGrid();
       } catch (e) {
         $('err').textContent = e.message;
         refresh();
       }
     }
 
-    async function stop() {
+    async function stopOne(id, btn) {
+      $('err').textContent = '';
+      if (btn) btn.disabled = true;
+      try {
+        const s = await api('/api/stop', { method: 'POST', body: JSON.stringify({ id }) });
+        renderStatus(s);
+        renderGrid();
+      } catch (e) {
+        $('err').textContent = e.message;
+        refresh();
+      }
+    }
+
+    async function stopAll() {
       $('err').textContent = '';
       try {
         const s = await api('/api/stop', { method: 'POST', body: '{}' });
         renderStatus(s);
-        renderGrid(null, false);
+        renderGrid();
       } catch (e) {
         $('err').textContent = e.message;
       }
     }
 
     $('btn-refresh').addEventListener('click', refresh);
-    $('btn-stop').addEventListener('click', stop);
+    $('btn-stop-all').addEventListener('click', stopAll);
     $('btn-copy-log').addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText($('log').textContent || '');
@@ -881,7 +891,7 @@ function json(res, status, body) {
 }
 
 function main() {
-  const { switcherPort, trees, script, tunnelHost, sharedPort } = resolveTrees();
+  const { switcherPort, trees, script } = resolveTrees();
   const byId = new Map(trees.map((t) => [t.id, t]));
 
   const server = http.createServer(async (req, res) => {
@@ -894,25 +904,32 @@ function main() {
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(pageHtml({ trees, switcherPort, tunnelHost, script }));
+      res.end(pageHtml({ trees, switcherPort, script }));
       return;
     }
 
     if (req.method === 'GET' && url.pathname === '/api/status') {
       json(res, 200, {
-        active,
+        running: runningList(),
         trees,
         logs: logBuffer.slice(-100),
-        tunnelHost,
         script,
-        sharedPort,
       });
       return;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/stop') {
-      stopActive();
-      json(res, 200, { active: null, logs: logBuffer.slice(-100), tunnelHost, script });
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      let id;
+      try {
+        id = JSON.parse(body || '{}').id;
+      } catch {
+        id = undefined;
+      }
+      if (id) stopTree(String(id));
+      else stopAll();
+      json(res, 200, { running: runningList(), logs: logBuffer.slice(-100), script });
       return;
     }
 
@@ -933,7 +950,7 @@ function main() {
       }
       try {
         startTree(tree);
-        json(res, 200, { active, logs: logBuffer.slice(-100), tunnelHost, script });
+        json(res, 200, { running: runningList(), logs: logBuffer.slice(-100), script });
       } catch (e) {
         json(res, 500, { error: e.message || String(e) });
       }
@@ -945,13 +962,13 @@ function main() {
 
   server.listen(switcherPort, HOST, () => {
     log(`worktree switcher → http://${HOST}:${switcherPort}`);
-    log(`default script: ${script} · shared app port: ${sharedPort} · tunnel: https://${tunnelHost}`);
-    log(`trees: ${trees.map((t) => `${t.id}${t.exists ? '' : ' (MISSING)'}`).join(', ')}`);
+    log(`default script: ${script} · lanes run in parallel, each on its own port`);
+    log(`trees: ${trees.map((t) => `${t.id}:${t.appPort}${t.exists ? '' : ' (MISSING)'}`).join(', ')}`);
   });
 
   const shutdown = () => {
     log('switcher shutting down…');
-    stopActive();
+    stopAll();
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 1500).unref();
   };

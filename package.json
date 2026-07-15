@@ -4,8 +4,12 @@
   "private": true,
   "packageManager": "pnpm@11.5.1",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "node scripts/dev-worktree.mjs",
+    "dev:next": "next dev --turbopack",
+    "dev:port": "node scripts/dev-worktree-port.mjs",
     "dev:switcher": "node scripts/dev-worktree-switcher.mjs",
+    "worklog": "node scripts/worklog.mjs",
+    "worklog:tail": "node scripts/worklog.mjs tail",
     "portfolio:sot": "node scripts/portfolio-sot-sync.mjs",
     "portfolio:sot:check": "node scripts/portfolio-sot-sync.mjs --check",
     "connections:extract": "node scripts/extract-connections-mdx.mjs --write",

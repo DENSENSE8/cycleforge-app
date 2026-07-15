@@ -20,6 +20,8 @@ Operator copy uses capability nouns or runtime provider labels, never hardcoded 
 - **Stay on the current checkout's branch; don't create ad-hoc branches or switch a checkout's branch mid-session.**
   The worktree *is* the branch — a separate directory per lane is what keeps agent work from colliding.
   Verify with `git branch --show-current` before committing.
+- **Parallel lanes, own ports.** `pnpm dev` auto-resolves this lane's port (main :3000, others :3010+); lanes run concurrently. Tunnel is main-only (`pnpm dev:tunnel`, mobile testing). Map: [`docs/portfolio/WORKTREE-LANES.md`](docs/portfolio/WORKTREE-LANES.md).
+- **Work-log for cross-session memory.** Read the last ~10 entries before starting (`pnpm worklog:tail`); append one when you finish a unit of work (`pnpm worklog "<action>" --result <r>`). Contract: [`docs/agent-log/README.md`](docs/agent-log/README.md).
 - **The user manages commits; never `git stash`.** Leave in-flight working-tree changes untouched; commit/push only when asked.
 - **Never commit `.env`.** Real `.env` is gitignored with live secrets. `.env.example` is the template.
 
