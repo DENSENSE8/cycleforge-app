@@ -45,7 +45,8 @@ const nextConfig: NextConfig = {
     // wedges Vercel prod deploys until the 45-min build timeout. Keep the
     // Vercel build a pure bundler step; CI owns correctness.
     typescript: { ignoreBuildErrors: true },
-    eslint: { ignoreDuringBuilds: true },
+    // Next 16 removed the `eslint` build key — `next build` no longer runs ESLint,
+    // so there is nothing to disable here; CI's `eslint src` is the lint gate.
     // Remote hosts allowed through the next/image optimizer. The mobile
     // receiving gallery (PhotoGalleryView) renders photos with <Image>, which
     // rejects any un-listed host. NAS photos are served over the Cloudflare
