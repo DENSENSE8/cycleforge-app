@@ -253,7 +253,7 @@ export function IntegrationCard({
           {capabilities.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {capabilities.map((cap) => (
-                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-text-faint">
+                <span key={cap} className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-bold uppercase tracking-wider text-text-faint">
                   {cap}
                 </span>
               ))}
