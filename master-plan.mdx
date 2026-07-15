@@ -34,6 +34,7 @@ ops_plans bridge can project tasks (`master-plan:{ticketId}`).
 | **ROI-*** | [Highest-ROI Ops](#highest-roi-ops--ui-execution-plan) | [docs/todo/highest-roi…](docs/todo/highest-roi-ops-ui-execution-plan.md) |
 | **ALP-*** | [Loop bring-up](#loop-bring-up-alp) | [agentic-loop plan](docs/todo/agentic-loop-master-plan.md) |
 | **P1/P2-*** | Product roadmap | [CYCLE-FORGE-ROADMAP](docs/CYCLE-FORGE-ROADMAP) |
+| **UIC-*** | [Reported-Issues console](#reported-issues-console-uic) | [plan](docs/todo/user-issues-console-plan.md) · [prompt](docs/todo/user-issues-console-EXECUTION-PROMPT.md) |
 
 **Human review:** tunnel walk → [review-protocol](docs/portfolio/review-protocol.md) → INDEX log.  
 **Agent queue:** any `pending` ticket below (forge / Hermes). **Do not** convert all docs to MDX — only tickets live here.
@@ -66,6 +67,20 @@ on `main` (WS-DOGFOOD). Collab + AI brief (D/E) are next.
 <TicketStatus status="pending" ticketId="HOME-OPS-D2" href="/docs/todo/home-ops-tv-collab-surfaces-plan.md" />
 <TicketStatus status="pending" ticketId="HOME-OPS-E1" href="/docs/todo/home-ops-tv-collab-surfaces-plan.md" />
 <TicketStatus status="pending" ticketId="HOME-OPS-F1" href="/docs/todo/home-ops-tv-collab-surfaces-plan.md" />
+
+## Reported-Issues console (UIC)
+
+Full-CRUD **Workbench** over the live `user_reported_issues` table — Read/Update/(gated)Delete + the
+display (Create already ships via `FeedbackWidget`). Plan:
+[docs/todo/user-issues-console-plan.md](docs/todo/user-issues-console-plan.md) · prompt:
+[EXECUTION-PROMPT](docs/todo/user-issues-console-EXECUTION-PROMPT.md). Default run = UIC-1 + UIC-2
+(read API + read-only console); UIC-4 (soft-delete migration) is a **HUMAN GATE**.
+
+<TicketStatus status="pending" ticketId="UIC-1" href="/docs/todo/user-issues-console-plan.md" />
+<TicketStatus status="pending" ticketId="UIC-2" href="/docs/todo/user-issues-console-plan.md" />
+<TicketStatus status="pending" ticketId="UIC-3" href="/docs/todo/user-issues-console-plan.md" />
+<TicketStatus status="pending" ticketId="UIC-4" href="/docs/todo/user-issues-console-plan.md" />
+<TicketStatus status="pending" ticketId="UIC-5" href="/docs/todo/user-issues-console-plan.md" />
 
 ## Run telemetry
 
