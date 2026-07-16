@@ -29,7 +29,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-SAAS | `saas-commercialization-plan.md`, `saas-production-readiness-audit-2026-07-08.md` |
 | WS-SERIAL | `serial-label-pairing-split-combine-plan.md` |
 | WS-SRC | `sourcing-hub-integration-plan.md` |
-| WS-STUDIO | `studio-driven-operator-surfaces-refactor-plan.md`, `studio-integrations-master-plan.md` |
+| WS-STUDIO | `studio-driven-operator-surfaces-refactor-plan.md`, `studio-integrations-master-plan.md`, **`foh-boh-surface-split-plan.md`** (Walk-In station · Sales main · Receiving BOH · inbound History chrome) |
 | WS-SUB | `tech-substitution-wiring-plan.md` |
 | WS-SYNC | `cycleforge-sync-from-usav-2026-07-10.md` |
 | WS-UNBOX | `unbox-receive-ux-improvement-plan.md` |

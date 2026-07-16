@@ -4,6 +4,9 @@
   "private": true,
   "packageManager": "pnpm@11.5.1",
   "scripts": {
+    "verify": "node scripts/verify.mjs",
+    "verify:fast": "node scripts/verify.mjs --fast",
+    "prepare": "git config core.hooksPath .githooks || true",
     "dev": "node scripts/dev-worktree.mjs",
     "dev:next": "next dev --turbopack",
     "dev:port": "node scripts/dev-worktree-port.mjs",

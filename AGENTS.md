@@ -133,11 +133,22 @@ Color only from semantic / theme tokens (`bg-surface-card`, `border-border-soft`
 
 ## Verify (when you change code)
 
-Prefer the smallest relevant check:
+Prefer the smallest relevant check during the inner loop:
 
 ```bash
 npx tsx --test path/to/file.test.ts        # unit tests for a file
 npx tsc --noEmit -p tsconfig.json          # typecheck (heavy — use when types are in doubt)
 ```
+
+**Before a task is "done" (and before any commit): `npm run verify`.** It is the
+local mirror of CI (`.github/workflows/ci.yml`) — lint, typecheck, unit tests
+(incl. the DS-ratchet guards), knip dead-code, route-auth drift + enforce, schema
+drift — and reports every failure at once. **Green locally ⇒ green in CI.** The
+pre-push hook (`.githooks/pre-push`, wired by `npm install`) runs it for you and
+blocks a red push; `--fast` (lint + typecheck) is the quick inner-loop variant.
+When a **DS-ratchet** gate fails, migrate to the DS primitive
+(`Button`/`IconButton`, `HoverTooltip`, `focusRing(...)`, `text-role-*`) or add
+the documented `ds-*` escape for a genuine one-off — **never** raise a baseline
+count or `--no-verify` past it.
 
 Do not invent new search engines, audit APIs, or status transitions outside the SoT modules above. **Do** improve those SoT modules when they are incomplete or inconsistent — that is pattern evolution, not invention.

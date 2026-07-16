@@ -194,6 +194,12 @@ export function TestingLinePanel({
     );
   }
 
+  // When the parent header already surfaces saved serials (PoLinesAccordion /
+  // UnmatchedLineRow meta chips), skip the inline adder so condition + verdict
+  // pills stay left-aligned. Re-show it for the first scan or an in-place edit
+  // from the header chip menu.
+  const headerOwnsSerial = !showSavedChips && saved.length > 0 && editingSerial == null;
+
   return (
     <div className="flex min-w-0 items-center gap-2">
       <ConditionVerdictColumns
@@ -209,26 +215,30 @@ export function TestingLinePanel({
         verdictDisabled={disabled || isMutating || saved.length === 0}
         conditionLocked={disabled || isMutating}
       />
-      <div className="h-8 w-px shrink-0 bg-surface-sunken" />
-      <InlineSerialAdder
-        key={`tech-adder-${lineId}`}
-        lineId={lineId}
-        saved={saved}
-        expected={expected}
-        isSubmitting={isSubmitting}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        showSavedChips={showSavedChips}
-        editingSerial={editingSerial}
-        onEditingSerialChange={(s) =>
-          onEditingSerialChange?.(s as UnitSlotSerial | null)
-        }
-        onAdd={(_lineId, sn) => onAddSerial(sn)}
-        onDelete={(_lineId, s) => onDeleteSerial(s as UnitSlotSerial)}
-        onReplaceSerial={(_lineId, original, next) =>
-          onReplaceSerial(original as UnitSlotSerial, next)
-        }
-      />
+      {headerOwnsSerial ? null : (
+        <>
+          <div className="h-8 w-px shrink-0 bg-surface-sunken" />
+          <InlineSerialAdder
+            key={`tech-adder-${lineId}`}
+            lineId={lineId}
+            saved={saved}
+            expected={expected}
+            isSubmitting={isSubmitting}
+            disabled={disabled}
+            autoFocus={autoFocus}
+            showSavedChips={showSavedChips}
+            editingSerial={editingSerial}
+            onEditingSerialChange={(s) =>
+              onEditingSerialChange?.(s as UnitSlotSerial | null)
+            }
+            onAdd={(_lineId, sn) => onAddSerial(sn)}
+            onDelete={(_lineId, s) => onDeleteSerial(s as UnitSlotSerial)}
+            onReplaceSerial={(_lineId, original, next) =>
+              onReplaceSerial(original as UnitSlotSerial, next)
+            }
+          />
+        </>
+      )}
     </div>
   );
 }

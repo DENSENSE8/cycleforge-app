@@ -2,18 +2,23 @@
 
 /**
  * Shipping-mode sidebar rail — same deduped History feed as the History tab
- * (`useShippingHistoryFeed` → `/api/tech/logs`). Dense Testing-parity row
+ * (`useShippingHistoryFeedOptional` when inside TechPageContent, else local
+ * `useTechLogs` — desktop sidebar renders outside the provider).
  * anatomy. Selecting a row opens Shipping preview for serial/tracking edits.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { dispatchUpNextPreview, type UpNextPreviewPayload } from '@/utils/events';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
-import type { TechRecord } from '@/hooks/useTechLogs';
-import { useShippingHistoryFeed } from '@/hooks/station/ShippingHistoryFeedProvider';
+import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
+import { useShippingHistoryFeedOptional } from '@/hooks/station/ShippingHistoryFeedProvider';
+import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
+import { dedupeTechRecords } from '@/lib/station/dedupe-tech-records';
+import { computeWeekRange } from '@/utils/date';
 import {
   getTechRecordStatusDot,
   getTechRecordStatusDotLabel,
@@ -71,10 +76,29 @@ function HistoryRowMain({
 export function ShippingStaffShippedRail({ techId, filterText = '' }: Props) {
   const trimmedFilter = filterText.trim();
   const selectedOrderId = useShippedRailSelection();
-  const { staffId, weekRange, records, loading } = useShippingHistoryFeed();
+  const sharedFeed = useShippingHistoryFeedOptional();
 
   const parsedTechId = Number(techId);
   const sessionStaffId = Number.isFinite(parsedTechId) && parsedTechId > 0 ? parsedTechId : 0;
+  const { staffId: urlStaffId } = useStaffFilter({ allToken: 'all' });
+  const searchParams = useSearchParams();
+  const rawStaff = searchParams.get(STAFF_FILTER_PARAM);
+  const wantAllExplicit = String(rawStaff || '').trim().toLowerCase() === 'all';
+  const localStaffId = wantAllExplicit ? 'all' : (urlStaffId ?? sessionStaffId);
+
+  const localWeekRange = useMemo(() => computeWeekRange(0), []);
+  const { data: localRecords = [], isLoading: localLoading } = useTechLogs(localStaffId, {
+    weekOffset: 0,
+    weekRange: localWeekRange,
+    enabled: sharedFeed == null,
+  });
+  const localRecordsDeduped = useMemo(() => dedupeTechRecords(localRecords), [localRecords]);
+
+  const staffId = sharedFeed?.staffId ?? localStaffId;
+  const weekRange = sharedFeed?.weekRange ?? localWeekRange;
+  const records = sharedFeed?.records ?? localRecordsDeduped;
+  const loading = sharedFeed?.loading ?? (localLoading && localRecordsDeduped.length === 0);
+
   const staffReady = staffId === 'all' || (typeof staffId === 'number' && staffId > 0);
 
   const filteredRecords = useMemo(() => {

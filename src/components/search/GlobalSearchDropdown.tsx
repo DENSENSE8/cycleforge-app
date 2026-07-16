@@ -146,6 +146,7 @@ export function GlobalSearchDropdown({
 
               {state === 'preview' && (
                 <>
+                  {/* ds-raw-button: listbox combobox option row (role="option"), not a Button action */}
                   <button
                     type="button"
                     role="option"

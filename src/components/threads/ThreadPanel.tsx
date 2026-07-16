@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Loader2, Lock, Globe, MessageSquare, Ticket, User, Check, Clock,
+  Loader2, Lock, Globe, MessageSquare, Ticket, User, Check,
   MoreHorizontal, Pencil, Trash2, X, ExternalLink,
   Package, Truck, Barcode, Tag, PackageOpen, Wrench, ShieldCheck, Box,
 } from '@/components/Icons';
@@ -18,6 +18,7 @@ import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { formatDateTimePST } from '@/utils/date';
 import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 
 /** Imperative composer bridge for a host terminal dock (e.g. Unbox Conversation tab). */
 export interface ThreadComposerBridge {
@@ -93,7 +94,10 @@ function MessageBubble({
             onChange={(e) => setDraft(e.target.value)}
             rows={2}
             autoFocus
-            className="block w-full resize-none rounded-xl border border-blue-300 bg-surface-card px-3 py-2 text-role-data text-text-default outline-none focus:ring-2 focus:ring-blue-100"
+            className={cn(
+              'block w-full resize-none rounded-xl border border-blue-300 bg-surface-card px-3 py-2 text-role-data text-text-default',
+              focusRing('field', 'accent'),
+            )}
           />
           <div className="mt-1.5 flex items-center gap-2">
             <Button

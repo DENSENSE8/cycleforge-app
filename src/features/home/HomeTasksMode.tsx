@@ -16,6 +16,8 @@ import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, CheckCircle, ClipboardList } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { TASK_STATUS_DOT } from '@/components/sidebar/operations/plans-shared';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,6 +54,7 @@ function TaskListRow({
   const dot = statusDot(item.status);
   const meta = [item.planTitle, item.station].filter(Boolean).join(' · ');
   return (
+    // ds-raw-button: full-row task selector, not a standalone Button action
     <button
       type="button"
       onClick={onSelect}
@@ -61,7 +64,9 @@ function TaskListRow({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.dot)} title={dot.label} />
+        <HoverTooltip label={dot.label} focusable={false}>
+          <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.dot)} />
+        </HoverTooltip>
         <span className="truncate text-role-caption font-bold text-gray-900">{item.title}</span>
       </div>
       {meta ? (
@@ -115,17 +120,18 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
 
         <div className="mt-6 flex flex-wrap gap-2">
           {showClaim ? (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               disabled={busy}
               onClick={() => claim.mutate(item.id)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+              icon={claim.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
             >
-              {claim.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
               Claim
-            </button>
+            </Button>
           ) : null}
           {showComplete ? (
+            // ds-raw-button: emerald "complete" action — Button has no success/emerald variant yet (grow it → migrate)
             <button
               type="button"
               disabled={busy}
@@ -137,15 +143,15 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
             </button>
           ) : null}
           {showReopen ? (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               disabled={busy}
               onClick={() => reopen.mutate(item.id)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border-soft bg-surface px-3 py-1.5 text-sm font-semibold text-text-strong transition-colors hover:bg-surface-sunken disabled:opacity-60"
+              icon={reopen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
             >
-              {reopen.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Reopen
-            </button>
+            </Button>
           ) : null}
           {item.source === 'work_assignment' && item.sourcePath ? (
             <Link
