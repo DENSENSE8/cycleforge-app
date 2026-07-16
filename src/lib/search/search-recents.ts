@@ -34,7 +34,7 @@ export interface SearchRecentEntry {
   scope: string;
   /** Human label for the scope chip; resolved from `scope` when absent. */
   scopeLabel?: string;
-  /** Explicit re-run target; defaults to `/dashboard?search=` when absent. */
+  /** Explicit re-run target; defaults to `/search?q=` when absent. */
   scopeHref?: string;
   /** ISO timestamp of the most recent run. */
   timestamp: string;
@@ -193,14 +193,10 @@ export function clearSearchRecents(scope?: string): void {
   broadcast();
 }
 
-/**
- * Re-run target for a recent — explicit scopeHref, else the orders board
- * applied as a filter (there is no standalone /search page; order details live
- * on /o/[id], reached by picking a specific order hit).
- */
+/** Re-run target for a recent — explicit scopeHref, else `/search?q=`. */
 export function recentRerunHref(entry: Pick<SearchRecentEntry, 'query' | 'scopeHref'>): string {
   if (entry.scopeHref) return entry.scopeHref;
-  return `/dashboard?search=${encodeURIComponent(entry.query)}`;
+  return `/search?q=${encodeURIComponent(entry.query)}`;
 }
 
 /**

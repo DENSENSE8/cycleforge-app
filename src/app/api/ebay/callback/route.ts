@@ -106,8 +106,25 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      // Surface the status only — the raw body can echo request context.
-      console.error('[ebay/callback] Token exchange failed: HTTP', tokenResponse.status);
+      // eBay returns { error, error_description } — surface the SHORT error CODE
+      // (safe, diagnostic; never the full body, which can echo request context).
+      // `invalid_client` = the app id/secret Basic auth was rejected: an app
+      // credential (Cert ID) problem, not a transient one — route it to a
+      // distinct, actionable banner so the admin fixes the Cert ID, not "retry".
+      let ebayErrorCode = '';
+      try {
+        ebayErrorCode = String((await tokenResponse.clone().json())?.error ?? '');
+      } catch {
+        /* non-JSON body — code stays empty */
+      }
+      console.error(
+        '[ebay/callback] Token exchange failed: HTTP',
+        tokenResponse.status,
+        ebayErrorCode ? `(${ebayErrorCode})` : '',
+      );
+      if (ebayErrorCode === 'invalid_client') {
+        return finish('error=ebay_app_credentials_invalid');
+      }
       return finish('error=ebay_token_exchange_failed');
     }
 

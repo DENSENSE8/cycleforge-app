@@ -55,7 +55,11 @@ export function SearchRecentsDropdown({
         {onClearAll && (
           <button
             type="button"
-            onClick={onClearAll}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClearAll();
+            }}
             className="-my-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint hover:text-text-muted"
           >
             Clear
@@ -103,7 +107,11 @@ export function SearchRecentsDropdown({
                 <button
                   type="button"
                   aria-label={`Remove recent search “${entry.query}”`}
-                  onClick={() => onRemove(entry.id)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(entry.id);
+                  }}
                   className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-text-muted group-hover:opacity-100"
                 >
                   <X className="h-3.5 w-3.5" />

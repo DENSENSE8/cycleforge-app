@@ -230,8 +230,10 @@ test('resolveUnboxTerminal dispatches kind', () => {
   assert.equal(resolveUnboxTerminal('checklist', ctx)?.label, 'Check all');
   assert.equal(resolveUnboxTerminal('units', ctx)?.label, 'Add serial');
   assert.equal(resolveUnboxTerminal('tracking', ctx)?.label, 'Copy tracking');
+  assert.equal(resolveUnboxTerminal('tracking', ctx)?.tone, 'accent');
   assert.equal(resolveUnboxTerminal('ticket', ctx)?.label, 'Reply');
   assert.equal(resolveUnboxTerminal('ticket', ctx)?.tone, 'accent');
   assert.equal(resolveUnboxTerminal('conversation', ctx)?.label, 'Add note');
+  assert.equal(resolveUnboxTerminal('conversation', ctx)?.tone, 'accent');
   assert.equal(resolveUnboxTerminal('none', ctx), null);
 });

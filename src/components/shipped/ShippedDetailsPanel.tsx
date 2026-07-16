@@ -10,7 +10,9 @@ import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRai
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { type PaneHeaderActionBarAction } from '@/components/ui/pane-header';
 import type { DetailsStackDurationData, ShippedActiveInput } from './stacks/types';
-import { buildAssignmentRow, deriveShippedHeaderMeta } from './details-panel/shipped-details-logic';
+import { buildAssignmentRow, buildShippedHeaderQuickActions, deriveShippedHeaderMeta } from './details-panel/shipped-details-logic';
+import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { toast } from '@/lib/toast';
 import {
   useShippedAssignment,
   useShippedCopyActions,
@@ -89,6 +91,8 @@ export function ShippedDetailsPanel({
     meta.orderIdDisplay,
   );
   const { isDeleteArmed, isDeleting, handleDelete } = useShippedDeletion(shipped, onUpdate);
+  const assignOrder = useOrderAssignment();
+  const isUrgent = Boolean((shipped as { is_urgent?: unknown }).is_urgent);
   const {
     showAssignmentCard,
     setShowAssignmentCard,
@@ -106,36 +110,53 @@ export function ShippedDetailsPanel({
       status: () => setActiveInput((prev) => (prev === 'mark_shipped' ? 'none' : 'mark_shipped')),
       out_of_stock: () => setActiveInput((prev) => (prev === 'out_of_stock' ? 'none' : 'out_of_stock')),
       notes: () => setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes')),
+      urgent: () => {
+        const id = Number(shipped.id);
+        if (!Number.isFinite(id)) return;
+        const next = !isUrgent;
+        assignOrder.mutate(
+          { orderId: id, isUrgent: next },
+          {
+            onSuccess: () => {
+              setShipped((prev) => ({ ...prev, is_urgent: next }));
+              toast.success(next ? 'Marked urgent' : 'Urgent cleared');
+            },
+            onError: (err) =>
+              toast.error(err instanceof Error ? err.message : 'Failed to update urgent'),
+          },
+        );
+      },
     },
   );
 
   // Compose the action list directly (assign + entity actions) for the flat,
   // full-width bar in PaneHeader.belowSlot — bypassing the rounded-card adapter.
-  const mappedPanelActions = panelActions.map((action) => ({
+  const mappedPanelActions: PaneHeaderActionBarAction[] = panelActions.map((action) => ({
     key: action.key,
     label: action.label,
     icon: <span className={action.toneClassName}>{action.icon}</span>,
     onClick: action.onAction,
     // Highlight the button while its panel is open, so the selected action is clear.
     active:
-      action.key === 'status'
-        ? activeInput === 'mark_shipped'
-        : action.key === 'out_of_stock'
-          ? activeInput === 'out_of_stock'
-          : action.key === 'notes'
-            ? activeInput === 'notes'
-            : false,
+      action.key === 'urgent'
+        ? isUrgent
+        : action.key === 'status'
+          ? activeInput === 'mark_shipped'
+          : action.key === 'out_of_stock'
+            ? activeInput === 'out_of_stock'
+            : action.key === 'notes'
+              ? activeInput === 'notes'
+              : false,
     // The "Status" action opens the Mark-as-shipped form — name the tooltip for
     // what it does, not the generic catalog label.
     ...(action.key === 'status' ? { title: 'Mark as shipped' } : {}),
+    ...(action.key === 'urgent' ? { title: isUrgent ? 'Clear urgent' : 'Mark urgent' } : {}),
   }));
-  const notesAction = mappedPanelActions.find((action) => action.key === 'notes');
-  const headerBarActions: PaneHeaderActionBarAction[] = [
-    ...(showDashboardExtras
-      ? mappedPanelActions.filter((action) => action.key !== 'notes' && action.key !== 'goals')
-      : []),
-    ...(notesAction ? [notesAction] : []),
-  ];
+  const headerBarActions: PaneHeaderActionBarAction[] = showDashboardExtras
+    ? buildShippedHeaderQuickActions(
+        mappedPanelActions.filter((action) => action.key !== 'goals'),
+      )
+    : [];
 
   const stackActionBar = {
     onClose,

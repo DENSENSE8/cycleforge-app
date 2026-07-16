@@ -51,6 +51,8 @@ export interface TechRecord {
 export interface UseTechLogsOptions {
   weekOffset?: number;
   weekRange?: { startStr: string; endStr: string };
+  /** When false, skip the fetch (consumer reads from a shared feed instead). */
+  enabled?: boolean;
 }
 
 export type TechLogsScope = number | 'all';
@@ -98,7 +100,7 @@ function prependTechRecordToMatchingWeekCaches(
 }
 
 export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions = {}) {
-  const { weekOffset = 0, weekRange } = options;
+  const { weekOffset = 0, weekRange, enabled: enabledOption = true } = options;
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
@@ -132,7 +134,9 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
     staleTime: weekOffset === 0 ? 5 * 60 * 1000 : 30 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     placeholderData: (prev) => prev,
-    enabled: techId === 'all' || (typeof techId === 'number' && techId > 0),
+    enabled:
+      enabledOption
+      && (techId === 'all' || (typeof techId === 'number' && techId > 0)),
   });
 
   // ── Ably: live row-level updates from any session (mobile or web) ─────────

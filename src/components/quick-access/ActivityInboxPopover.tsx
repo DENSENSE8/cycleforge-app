@@ -266,7 +266,12 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => clear()}
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              clear();
+            }}
             className="h-7 px-2 text-role-caption font-semibold leading-none text-text-soft hover:text-text-default"
           >
             Clear all

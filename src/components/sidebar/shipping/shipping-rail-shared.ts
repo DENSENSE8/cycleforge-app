@@ -1,4 +1,5 @@
 import type { Order } from '@/components/station/upnext/upnext-types';
+import type { TechRecord } from '@/hooks/useTechLogs';
 
 /** React-query key for the shipping Up Next sidebar rail (queue / stock). */
 export function shippingRailQueryKey(feed: 'queue' | 'stock', techId: string) {
@@ -8,6 +9,7 @@ export function shippingRailQueryKey(feed: 'queue' | 'stock', techId: string) {
 export const SHIPPING_RAIL_REFRESH_EVENTS = [
   'app-refresh-data',
   'dashboard-refresh',
+  'tech-log-added',
 ] as const;
 
 /** Normalize status so ShippingScanWorkspace opens the post-ship serial-edit path. */
@@ -93,6 +95,34 @@ export function normalizeUpNextOrders(rows: unknown[]): Order[] {
   );
 
   return deduped.filter((order) => !order.has_tech_scan);
+}
+
+/** Map a History {@link TechRecord} → Up Next preview `Order` shape. */
+export function techRecordToPreviewOrder(record: TechRecord): Order {
+  return {
+    id: Number(record.order_db_id ?? record.id),
+    ship_by_date: record.ship_by_date ?? null,
+    created_at: record.created_at ?? null,
+    order_id: String(record.order_id || ''),
+    product_title: String(record.product_title || ''),
+    item_number: record.item_number ?? null,
+    account_source: record.account_source ?? null,
+    sku: String(record.sku || ''),
+    condition: record.condition ?? null,
+    quantity: record.quantity != null ? String(record.quantity) : null,
+    status: normalizeShippedRailStatus(record.status, record.is_shipped),
+    shipping_tracking_number: String(record.shipping_tracking_number || ''),
+    out_of_stock: record.out_of_stock ?? null,
+    tester_id: record.tested_by ?? null,
+    tester_name: null,
+    has_tech_scan: true,
+    is_shipped: Boolean(record.is_shipped),
+  };
+}
+
+/** Rail row id — aligns preview selection with order_db_id when present. */
+export function techRecordRailId(record: TechRecord): number {
+  return Number(record.order_db_id ?? record.id);
 }
 
 /** Earliest ship-by first — the tech queue's default "must go" ordering. */

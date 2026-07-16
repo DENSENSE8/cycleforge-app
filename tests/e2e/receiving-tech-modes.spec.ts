@@ -249,8 +249,8 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
   });
 
-  // ── 5. SHIPPING MODE (/test default) — personal ship-out rail ───────────────
-  test('shipping mode — personal ship-out rail is present; stays off testing view', async ({
+  // ── 5. SHIPPING MODE (/test default) — History rail aligned with History tab ─
+  test('shipping mode — History rail is present; stays off testing view', async ({
     page,
   }) => {
     await page.goto('/test');
@@ -261,12 +261,12 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
 
     await expect(page).not.toHaveURL(/view=testing/);
 
-    await expect(aside.getByText(/Recently Shipped/i)).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(aside.getByText(/^History\b/i)).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     const railRows = aside.locator('[data-rail-row]');
     const count = await railRows.count();
     if (count === 0) {
-      console.log('[shipping] No ship-out rail rows — skipping preview assert.');
+      console.log('[shipping] No history rail rows — skipping preview assert.');
       return;
     }
     await railRows.first().click();

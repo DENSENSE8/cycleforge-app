@@ -203,7 +203,7 @@ export function resolveUnboxTrackingTerminal(ctx: UnboxTerminalContext): Termina
       );
     },
     icon: <Copy className="h-4 w-4 shrink-0" />,
-    tone: 'blue',
+    tone: 'accent',
   };
 }
 
@@ -263,7 +263,7 @@ export function resolveUnboxConversationTerminal(ctx: UnboxTerminalContext): Ter
       bridge.submit();
     },
     icon: <MessageSquare className="h-4 w-4 shrink-0" />,
-    tone: isPublic ? 'blue' : 'orange',
+    tone: 'accent',
   };
 }
 

@@ -75,6 +75,19 @@ export function isExceptionShippedRow(shipped: ShippedOrder): boolean {
   return (shipped as { row_source?: string }).row_source === 'exception' || rowId < 0;
 }
 
+/** Canonical quick-action order for order rows + shipped detail headers. */
+export const SHIPPED_QUICK_ACTION_KEYS = ['notes', 'urgent', 'status', 'out_of_stock'] as const;
+
+export type ShippedQuickActionKey = (typeof SHIPPED_QUICK_ACTION_KEYS)[number];
+
+/** Order header quick actions: notes → urgent → mark shipped → out of stock. */
+export function buildShippedHeaderQuickActions<T extends { key: string }>(
+  actions: T[],
+): T[] {
+  const byKey = new Map(actions.map((action) => [action.key, action]));
+  return SHIPPED_QUICK_ACTION_KEYS.map((key) => byKey.get(key)).filter(Boolean) as T[];
+}
+
 export type ShippedRowEditTarget =
   | { kind: 'order'; orderId: number }
   | { kind: 'exception'; exceptionId: number };

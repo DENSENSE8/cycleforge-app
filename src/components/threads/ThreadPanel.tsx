@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Loader2, Lock, Globe, MessageSquare, Send, Ticket, User, Check, Clock,
+  Loader2, Lock, Globe, MessageSquare, Send, Ticket, User, Check,
   MoreHorizontal, Pencil, Trash2, X, ExternalLink,
   Package, Truck, Barcode, Tag, PackageOpen, Wrench, ShieldCheck, Box,
 } from '@/components/Icons';
@@ -273,7 +273,7 @@ function AssigneeControl({
   const name = assignment?.assignedStaffName?.trim() || (assignment ? 'Assigned' : null);
   const chip = name ? (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-widest text-text-muted">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-[8px] font-black text-blue-700">
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-role-micro font-black text-blue-700">
         {initials(name)}
       </span>
       {name}
@@ -314,7 +314,7 @@ function AssigneeControl({
                 onClick={() => { setOpen(false); onAssign(s.id); }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
               >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-strong text-[8px] font-black text-text-muted">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-strong text-role-micro font-black text-text-muted">
                   {initials(s.name)}
                 </span>
                 <span className="truncate">{s.name}</span>

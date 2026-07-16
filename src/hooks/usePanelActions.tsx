@@ -3,7 +3,8 @@ import {
   AlertTriangle,
   FileText,
   Flag,
-  PackageCheck,
+  Truck,
+  Zap,
 } from '@/components/Icons';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
@@ -28,14 +29,15 @@ export interface PanelActionContext {
 
 const ACTION_CATALOG: Record<string, { label: string; icon: ReactNode; toneClassName: string }> = {
   goals:        { label: 'Goals',        icon: <Flag className="h-3.5 w-3.5" />,           toneClassName: 'text-blue-600' },
-  status:       { label: 'Status',       icon: <PackageCheck className="h-3.5 w-3.5" />,   toneClassName: 'text-emerald-600' },
-  out_of_stock: { label: 'Out of stock', icon: <AlertTriangle className="h-3.5 w-3.5" />,  toneClassName: 'text-orange-600' },
   notes:        { label: 'Notes',        icon: <FileText className="h-3.5 w-3.5" />,       toneClassName: 'text-text-muted' },
+  urgent:       { label: 'Urgent',       icon: <Zap className="h-3.5 w-3.5" />,            toneClassName: 'text-amber-600' },
+  status:       { label: 'Status',       icon: <Truck className="h-3.5 w-3.5" />,            toneClassName: 'text-emerald-600' },
+  out_of_stock: { label: 'Out of stock', icon: <AlertTriangle className="h-3.5 w-3.5" />,  toneClassName: 'text-red-600' },
 };
 
 const ENTITY_ACTION_KEYS: Record<PanelEntityType, string[]> = {
-  order:      ['goals', 'status', 'out_of_stock', 'notes'],
-  work_order: ['goals', 'status', 'out_of_stock', 'notes'],
+  order:      ['goals', 'notes', 'urgent', 'status', 'out_of_stock'],
+  work_order: ['goals', 'notes', 'urgent', 'status', 'out_of_stock'],
   fba_item:   ['goals', 'notes'],
   repair:         ['notes'],
   walk_in_sale:   ['notes'],
