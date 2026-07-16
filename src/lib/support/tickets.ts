@@ -292,7 +292,9 @@ async function ticketFromShipmentLink(
       WHERE r.organization_id = $1
         AND r.id = $2
         AND r.shipment_id IS NOT NULL
-      ORDER BY tl.created_at DESC
+      -- is_primary first: a ticket ANCHORED to this STN is about the shipment;
+      -- one that merely references it (among several STNs) is weaker evidence.
+      ORDER BY tl.is_primary DESC, tl.created_at DESC
       LIMIT 1`,
     [orgId, receivingId],
   );
@@ -493,10 +495,13 @@ export async function resolveSupportTicketToReceiving(
   const supportTicketId = ticketRes.rows[0] ? Number(ticketRes.rows[0].id) : null;
   if (supportTicketId == null) return null;
 
+  // `AND is_primary`: resolve the ticket's ANCHOR. ticket_links is
+  // many-per-ticket now, so a bare LIMIT 1 would return an arbitrary reference
+  // row (e.g. one of several STNs) and resolve the ticket to the wrong entity.
   const link = await tenantQuery<{ entity_type: string; entity_id: string }>(
     orgId,
     `SELECT entity_type, entity_id FROM ticket_links
-      WHERE organization_id = $1 AND support_ticket_id = $2
+      WHERE organization_id = $1 AND support_ticket_id = $2 AND is_primary
       LIMIT 1`,
     [orgId, supportTicketId],
   );

@@ -1186,6 +1186,54 @@ export const shipmentLinks = pgTable('shipment_links', {
   shipmentIdx: index('idx_shipment_links_shipment').on(table.shipmentId),
 }));
 
+/**
+ * Universal support-ticket ↔ internal-entity map (migration 2026-06-01_ticket_links.sql).
+ *
+ * MANY rows per ticket, exactly ONE flagged `is_primary` — the same shape
+ * shipment_links uses for its owners (2026-07-16_ticket_links_many_links.sql).
+ * `pickTicketLinkAnchor` (src/lib/support/tickets.ts) resolves the PRIMARY row
+ * only, via the line > carton > shipment ladder; non-primary rows are additional
+ * references (e.g. the extra STNs on one ticket).
+ *
+ * `entity_type` is deliberately UNCONSTRAINED free text — eleven values reach it
+ * from live writers, including a lowercase 'voicemail' outlier and anything
+ * `entity_threads` permits, because threads/escalate.ts passes thread.entityType
+ * straight through to linkTicket(). Constraining it is its own lane; see the
+ * 2026-07-16 migration header.
+ *
+ * `entity_id` is polymorphic and therefore has NO FK (like photos /
+ * work_assignments / shipment_links.owner_id); the SHIPMENT arm is cleaned up by
+ * trg_delete_ticket_links_on_stn_delete. `support_ticket_id` FKs support_tickets
+ * ON DELETE CASCADE in the DB — declared here as a plain bigint because
+ * support_tickets is not (yet) modeled in this file.
+ *
+ * NOTE: the DB also still carries the pre-many legacy
+ * UNIQUE (organization_id, zendesk_ticket_id) and the non-org-led
+ * idx_ticket_links_entity (entity_type, entity_id). Both are intentionally NOT
+ * modeled here — they are superseded by ticketPrimaryUx / orgEntityIdx and are
+ * dropped by the follow-up migration once every writer sets is_primary.
+ */
+export const ticketLinks = pgTable('ticket_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  zendeskTicketId: bigint('zendesk_ticket_id', { mode: 'number' }).notNull(),
+  // 'RECEIVING' | 'RECEIVING_LINE' | 'SHIPMENT' | 'ZENDESK_TICKET' | 'SERIAL_UNIT'
+  // | 'voicemail' | 'ORDER' | 'FBA_SHIPMENT' | 'REPAIR' | 'WARRANTY_CLAIM' | …
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** Exactly one per (organization_id, zendesk_ticket_id) — see ticketPrimaryUx. */
+  isPrimary: boolean('is_primary').notNull().default(false),
+  supportTicketId: bigint('support_ticket_id', { mode: 'number' }),
+  createdBy: integer('created_by').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  ticketEntityUx: uniqueIndex('ux_ticket_links_ticket_entity').on(table.organizationId, table.zendeskTicketId, table.entityType, table.entityId),
+  ticketPrimaryUx: uniqueIndex('ux_ticket_links_ticket_primary').on(table.organizationId, table.zendeskTicketId).where(sql`is_primary`),
+  orgEntityIdx: index('idx_ticket_links_org_entity').on(table.organizationId, table.entityType, table.entityId),
+  supportTicketIdx: index('idx_ticket_links_support_ticket').on(table.supportTicketId).where(sql`support_ticket_id IS NOT NULL`),
+}));
+
 export const localPickupItems = pgTable('local_pickup_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   receivingId: integer('receiving_id').notNull().references(() => receiving.id, { onDelete: 'cascade' }).unique(),

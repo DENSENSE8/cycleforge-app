@@ -5,7 +5,7 @@
  * Zendesk attachments. To show them we resolve the ticket's internal entity,
  * then fetch that entity's photos. See migration 2026-06-01_ticket_links.sql.
  */
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { getTicket, updateTicket } from './zendesk';
 import { upsertSupportTicket } from '@/lib/support/tickets';
 import { photoContentUrl } from '@/lib/photos/display-url';
@@ -34,7 +34,23 @@ export function parseExternalId(value: string | null | undefined): TicketEntityR
   return { type: m[1].toUpperCase(), id: Number(m[2]) };
 }
 
-/** Upsert a ticket → entity link. Best-effort callers should wrap in try/catch. */
+/**
+ * Upsert a ticket's PRIMARY entity link (its anchor). Best-effort callers should
+ * wrap in try/catch.
+ *
+ * Mirrors `linkShipment` (src/lib/shipping/shipment-links.ts): demote the
+ * ticket's other primary first, then upsert on the NATURAL key. A single
+ * `ON CONFLICT (organization_id, zendesk_ticket_id) WHERE is_primary` is NOT
+ * enough — since ticket_links gained many-link support there are two unique
+ * indexes and only one can be an ON CONFLICT target. Re-anchoring a ticket onto
+ * an entity it already holds as a NON-primary reference row conflicts on
+ * `ux_ticket_links_ticket_entity`, which a primary-inferred ON CONFLICT would
+ * miss — so that case must promote the existing row, not error.
+ *
+ * Handles all three cases: fresh anchor (insert), re-anchor to a different
+ * entity (demote + insert), and promote an existing reference row (demote +
+ * conflict → set is_primary).
+ */
 export async function linkTicket(args: {
   orgId: string;
   zendeskTicketId: number;
@@ -48,32 +64,53 @@ export async function linkTicket(args: {
     externalTicketId: String(args.zendeskTicketId),
     staffId: args.staffId ?? null,
   });
-  await tenantQuery(
-    args.orgId,
-    `INSERT INTO ticket_links
-       (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (organization_id, zendesk_ticket_id) DO UPDATE
-       SET support_ticket_id = EXCLUDED.support_ticket_id,
-           entity_type = EXCLUDED.entity_type,
-           entity_id   = EXCLUDED.entity_id,
-           updated_at  = NOW()`,
-    [
-      args.orgId,
-      supportTicket.id,
-      args.zendeskTicketId,
-      args.entityType,
-      args.entityId,
-      args.staffId ?? null,
-    ],
-  );
+  await withTenantTransaction(args.orgId, async (c) => {
+    // Demote whatever else held the anchor, so ux_ticket_links_ticket_primary
+    // can never see two primaries mid-statement.
+    await c.query(
+      `UPDATE ticket_links SET is_primary = false, updated_at = NOW()
+        WHERE organization_id = $1
+          AND zendesk_ticket_id = $2
+          AND is_primary
+          AND NOT (entity_type = $3 AND entity_id = $4)`,
+      [args.orgId, args.zendeskTicketId, args.entityType, args.entityId],
+    );
+    await c.query(
+      `INSERT INTO ticket_links
+         (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id,
+          is_primary, created_by)
+       VALUES ($1, $2, $3, $4, $5, true, $6)
+       ON CONFLICT (organization_id, zendesk_ticket_id, entity_type, entity_id) DO UPDATE
+         SET support_ticket_id = EXCLUDED.support_ticket_id,
+             is_primary        = true,
+             updated_at        = NOW()`,
+      [
+        args.orgId,
+        supportTicket.id,
+        args.zendeskTicketId,
+        args.entityType,
+        args.entityId,
+        args.staffId ?? null,
+      ],
+    );
+    return null;
+  });
   return { supportTicketId: supportTicket.id };
 }
 
 /**
- * Link a ticket to a shipment (STN id) so cartons anchored to that tracking
- * number resolve the ticket via receiving.shipment_id. Skips when the ticket
- * already has a ticket_links row (one primary entity per ticket).
+ * Link a ticket to a shipment (STN id) AS ITS PRIMARY ANCHOR, so cartons
+ * anchored to that tracking number resolve the ticket via receiving.shipment_id.
+ * Skips when the ticket already has a primary (never steals an anchored ticket).
+ *
+ * The guard is a `WHERE NOT EXISTS` rather than `ON CONFLICT (org, ticket)
+ * DO NOTHING` because that inference target no longer exists on its own: the
+ * primary index is partial. Keeping the ON CONFLICT on the natural key means a
+ * ticket that already references this STN as a non-primary row gets PROMOTED
+ * instead of erroring on ux_ticket_links_ticket_entity.
+ *
+ * NOTE: this is the anchor writer. Adding an extra STN to a ticket that already
+ * has an anchor is a *reference* link — see addTicketShipmentReference.
  */
 export async function linkTicketToShipment(args: {
   orgId: string;
@@ -90,9 +127,17 @@ export async function linkTicketToShipment(args: {
   const res = await tenantQuery(
     args.orgId,
     `INSERT INTO ticket_links
-       (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id, created_by)
-     VALUES ($1, $2, $3, 'SHIPMENT', $4, $5)
-     ON CONFLICT (organization_id, zendesk_ticket_id) DO NOTHING`,
+       (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id,
+        is_primary, created_by)
+     SELECT $1, $2, $3, 'SHIPMENT', $4, true, $5
+      WHERE NOT EXISTS (
+        SELECT 1 FROM ticket_links
+         WHERE organization_id = $1 AND zendesk_ticket_id = $3 AND is_primary
+      )
+     ON CONFLICT (organization_id, zendesk_ticket_id, entity_type, entity_id) DO UPDATE
+       SET is_primary        = true,
+           support_ticket_id = EXCLUDED.support_ticket_id,
+           updated_at        = NOW()`,
     [
       args.orgId,
       supportTicket.id,
@@ -164,10 +209,14 @@ export async function getTicketEntity(
   zendeskTicketId: number,
 ): Promise<ResolvedTicketEntity | null> {
   // 1. ticket_links (cheapest, authoritative)
+  // `AND is_primary` is load-bearing since ticket_links became many-per-ticket:
+  // a ticket may now hold extra reference rows (e.g. additional STNs), and the
+  // bare LIMIT 1 would return an arbitrary one of them as "the" entity.
+  // ux_ticket_links_ticket_primary guarantees at most one primary per ticket.
   const links = await tenantQuery<{ entity_type: string; entity_id: string }>(
     orgId,
     `SELECT entity_type, entity_id FROM ticket_links
-      WHERE organization_id = $1 AND zendesk_ticket_id = $2 LIMIT 1`,
+      WHERE organization_id = $1 AND zendesk_ticket_id = $2 AND is_primary LIMIT 1`,
     [orgId, zendeskTicketId],
   );
   if (links.rows[0]) {

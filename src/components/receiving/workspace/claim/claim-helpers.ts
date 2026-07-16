@@ -34,10 +34,6 @@ export function claimPhotoTileProps(
   };
 }
 
-/** Format a ticket ISO timestamp as a short, locale-aware date (or em dash). */
-export function ticketDate(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
+// `ticketDate` moved to @/components/support/link/TicketPicker with the picker
+// itself — that component was its only consumer, and leaving a copy here would
+// be the fork the promotion exists to prevent.

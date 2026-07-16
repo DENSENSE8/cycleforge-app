@@ -295,6 +295,13 @@ export const AUDIT_ACTION = {
   THREAD_UNASSIGN:         'thread.unassign',
   THREAD_LINK:             'thread.link',
   THREAD_UNLINK:           'thread.unlink',
+  // Support ticket ↔ entity linkage (the /api/support/tickets/link waist).
+  // The operator-facing timeline reads ops_events TICKET_LINKED/TICKET_UNLINKED,
+  // not these — audit_logs is the admin field-diff spine and is gated on
+  // admin.view_logs. These exist so the mutation is auditable, per the house
+  // route skeleton (backend-patterns.md step 5), which this waist never had.
+  SUPPORT_TICKET_LINKED:   'support.ticket.linked',
+  SUPPORT_TICKET_UNLINKED: 'support.ticket.unlinked',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',

@@ -10,6 +10,7 @@ import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
+import { StnTicketLinkModal } from '@/components/support/link/StnTicketLinkModal';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { cn } from '@/utils/_cn';
 
@@ -94,6 +95,15 @@ export function ShippingInformationSection({
   const canToggleUrgent =
     Number.isFinite(orderRowId) && orderRowId > 0 && !isExceptionShippedRow(shipped);
   const [urgentDraft, setUrgentDraft] = useState<boolean | null>(null);
+  /**
+   * The STN whose "Link ticket" modal is open, or null. Ephemeral — a link is an
+   * act-and-clear side action on the shipment, not a durable selection, so it
+   * stays out of the URL (that would be a second selection competing with the
+   * panel's own `?id=`).
+   */
+  const [ticketLinkShipment, setTicketLinkShipment] = useState<
+    { shipmentId: number; tracking: string | null } | null
+  >(null);
   useEffect(() => { setUrgentDraft(null); }, [shipped.id]);
   const isUrgent = urgentDraft ?? Boolean((shipped as { is_urgent?: boolean }).is_urgent);
   const toggleUrgent = () => {
@@ -211,6 +221,25 @@ export function ShippingInformationSection({
               label={`Tracking Number${allTrackingRows.length > 1 ? ` ${index + 1}` : ''}`}
               value={draftValue}
               placeholder="Enter tracking number"
+              // Per-STN, not per-order: each tracking number links to its own
+              // ticket(s). Needs a real shipment id — a tracking number typed but
+              // not yet registered has no STN row to anchor to.
+              headerAccessory={
+                row.shipmentId ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTicketLinkShipment({
+                        shipmentId: row.shipmentId as number,
+                        tracking: draftValue || null,
+                      })
+                    }
+                    className="ds-raw-button rounded text-role-eyebrow font-black uppercase tracking-widest text-text-info hover:underline"
+                  >
+                    Link ticket
+                  </button>
+                ) : undefined
+              }
               onReplace={async (next) => {
                 const trimmed = String(next || '').trim();
                 if (!trimmed) return;
@@ -241,6 +270,17 @@ export function ShippingInformationSection({
           <p className="pt-1 text-role-micro font-bold uppercase tracking-wide text-text-info">Saving ship by date...</p>
         ) : null}
       </div>
+
+      {/* Mounted only while open so the picker's search effect doesn't run for
+          every shipment the operator scrolls past. */}
+      {ticketLinkShipment ? (
+        <StnTicketLinkModal
+          open
+          onClose={() => setTicketLinkShipment(null)}
+          shipmentId={ticketLinkShipment.shipmentId}
+          trackingNumber={ticketLinkShipment.tracking}
+        />
+      ) : null}
     </section>
   );
 }

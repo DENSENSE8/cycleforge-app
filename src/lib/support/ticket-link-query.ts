@@ -32,6 +32,6 @@ export function resolveTicketIdForLink(
   if (exact) return exact.id;
   const unlinked = tickets.filter((t) => !t.linkedToThis);
   if (unlinked.length === 1) return unlinked[0].id;
-  if (tickets.length === 0) return parsed;
-  return exact?.id ?? parsed;
+  // exact returned above when present; here it is always undefined → bare id.
+  return parsed;
 }

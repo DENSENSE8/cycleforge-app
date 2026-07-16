@@ -1,4 +1,5 @@
 import type { LinearStepState } from '@/components/receiving/workspace/ReceivingProgressStepper';
+import type { TicketCandidate } from '@/components/support/link/useTicketSearch';
 
 /** 'create' files a fresh Zendesk ticket; 'link' attaches an existing one. */
 export type ClaimModalMode = 'create' | 'link';
@@ -53,19 +54,16 @@ export interface ArchiveState {
   warning: string | null;
 }
 
-/** Slim ticket shape returned by GET /api/receiving/zendesk-claim/link. */
-export interface LinkCandidate {
-  id: number;
-  subject: string | null;
-  /** First-comment snippet for the expanded detail view (server-capped). */
-  description: string | null;
-  status: string;
-  priority: string | null;
-  createdAt: string;
-  updatedAt: string;
-  url: string | null;
-  linkedToThis: boolean;
-}
+/**
+ * Slim ticket shape returned by GET /api/receiving/zendesk-claim/link.
+ *
+ * Now an alias of the shared {@link TicketCandidate}: both endpoints return the
+ * same server shape (`TicketLinkCandidate` in src/lib/zendesk-link-candidates.ts),
+ * and keeping two structurally-identical interfaces meant the shared TicketPicker
+ * could only be reused across a cast. The local name stays so the claim-flow call
+ * sites read unchanged.
+ */
+export type LinkCandidate = TicketCandidate;
 
 /** A carton photo eligible to attach to the Zendesk ticket. */
 export interface ClaimPhoto {

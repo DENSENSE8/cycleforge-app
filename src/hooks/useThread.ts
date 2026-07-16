@@ -260,6 +260,15 @@ export function useThread(entityType: string, entityId: number | null | undefine
     },
     onSuccess: (data) => {
       queryClient.setQueryData(threadKeys.thread(entityType, entityId ?? 0), data.thread);
+      // Escalating writes ticket_links, which is what the connections strip
+      // derives its SUPPORT_TICKET dot from — but only the thread row was being
+      // patched here, so the chip updated instantly while the strip kept a stale
+      // cache for its full 30s staleTime.
+      if (data.thread?.id != null) {
+        void queryClient.invalidateQueries({
+          queryKey: threadKeys.connections(data.thread.id),
+        });
+      }
     },
   });
 
