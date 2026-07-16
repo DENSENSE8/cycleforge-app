@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { readSessionSid } from '@/lib/auth/session';
+import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getPhotoReceivingContext } from '@/lib/photos/queries/photo-receiving-context';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Viewer-only provenance detail for one photo — serial(s), tracking, claim.
- * Read-only sibling of the photo content route: same lightweight actor auth
- * (the viewer is already showing this photo), strictly org-scoped in the query.
+ * Gated by `photos.view` (the base photo-viewing grant) via the canonical route
+ * guard, and strictly org-scoped in the query so a caller only ever sees their
+ * own tenant's provenance. Read-only sibling of the photo content route.
  */
 export async function GET(
   request: NextRequest,
@@ -20,13 +20,10 @@ export async function GET(
     return NextResponse.json({ error: 'Valid photo id is required' }, { status: 400 });
   }
 
-  const sid = readSessionSid(request.cookies);
-  const actor = await getCurrentUserBySid(sid);
-  if (!actor) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const gate = await requireRoutePerm(request, 'photos.view');
+  if (gate.denied) return gate.denied;
 
-  const ctx = await getPhotoReceivingContext(photoId, actor.organizationId);
+  const ctx = await getPhotoReceivingContext(photoId, gate.ctx.organizationId);
   return NextResponse.json(
     ctx ?? { cartonId: null, claim: null, tracking: null, serials: [] },
   );

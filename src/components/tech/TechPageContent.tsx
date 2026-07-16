@@ -3,6 +3,7 @@
 import TechDashboard from '@/components/TechDashboard';
 import { TechSidebarPanel } from '@/components/sidebar/TechSidebarPanel';
 import { RouteShell } from '@/design-system/components/RouteShell';
+import { ShippingHistoryFeedProvider } from '@/hooks/station/ShippingHistoryFeedProvider';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 
@@ -20,9 +21,11 @@ export function TechPageContent({ techId }: TechPageContentProps) {
   useRealtimeToasts('tech');
 
   return (
-    <RouteShell
-      actions={<TechSidebarPanel techId={techId} contextNavTitle="Testing" />}
-      history={<TechDashboard techId={techId} />}
-    />
+    <ShippingHistoryFeedProvider techId={techId}>
+      <RouteShell
+        actions={<TechSidebarPanel techId={techId} contextNavTitle="Testing" />}
+        history={<TechDashboard techId={techId} />}
+      />
+    </ShippingHistoryFeedProvider>
   );
 }

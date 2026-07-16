@@ -20,8 +20,9 @@
  */
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search } from '@/components/Icons';
+import { Search, History } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
@@ -61,10 +62,14 @@ export interface GlobalSearchDropdownProps {
 }
 
 const GLASS =
-  'overflow-hidden rounded-xl border border-border-soft bg-surface-card/80 backdrop-blur-md shadow-xl';
-const SCROLL = 'max-h-[min(360px,50vh)] overflow-y-auto';
+  'w-[28rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-border-soft bg-surface-card/80 backdrop-blur-md shadow-xl';
+const SCROLL = 'max-h-[min(420px,55vh)] overflow-y-auto';
 const GROUP_HEADER =
-  'px-3 pb-1 pt-2 text-role-eyebrow uppercase tracking-widest text-text-faint';
+  'px-3 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint';
+const FOOTER_LINK =
+  'flex items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken';
+const RECENTS_COMPACT =
+  '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-1';
 
 export function GlobalSearchDropdown({
   open,
@@ -99,10 +104,9 @@ export function GlobalSearchDropdown({
       open={open}
       onClose={onClose}
       anchorRef={anchorRef}
-      placement="bottom-start"
+      placement="bottom-center"
       gap={6}
       level="dropdown"
-      matchWidth
     >
       <AnimatePresence>
         {open && (
@@ -113,8 +117,13 @@ export function GlobalSearchDropdown({
             transition={transition}
             className={GLASS}
             // Keep the input focused when a row is clicked (prevents a blur
-            // that would close the dropdown before navigation).
-            onMouseDown={(e) => e.preventDefault()}
+            // that would close the dropdown before navigation). Skip for
+            // buttons/links so Clear / remove affordances work on first click.
+            onMouseDown={(e) => {
+              const t = e.target as HTMLElement;
+              if (t.closest('button, a, [role="option"]')) return;
+              e.preventDefault();
+            }}
           >
             <div role="listbox" id={listboxId} className={SCROLL}>
               {state === 'recents' && (
@@ -125,11 +134,12 @@ export function GlobalSearchDropdown({
                   onClearAll={onClearRecents}
                   activeIndex={activeIndex}
                   getOptionId={optionId}
+                  className={RECENTS_COMPACT}
                 />
               )}
 
               {state === 'first-use' && (
-                <p className="px-3 py-4 text-center text-role-caption text-text-muted">
+                <p className="px-3 py-3 text-center text-role-micro text-text-muted">
                   Search orders, serials, cartons, SKUs…
                 </p>
               )}
@@ -143,12 +153,12 @@ export function GlobalSearchDropdown({
                     aria-selected={activeIndex === 0 || undefined}
                     onClick={onSeeAll}
                     className={cn(
-                      'flex w-full items-center gap-2 border-b border-border-hairline px-3 py-2.5 text-left text-role-caption font-semibold text-blue-600 hover:bg-surface-sunken',
+                      'flex w-full items-center gap-2 border-b border-border-hairline px-3 py-2 text-left text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken',
                       activeIndex === 0 && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
                     )}
                   >
-                    <Search className="h-3.5 w-3.5" />
-                    See all matching orders for &ldquo;{query}&rdquo;
+                    <Search className="h-3 w-3" />
+                    See all results for &ldquo;{query}&rdquo;
                   </button>
                   {groupsWithBase.map(({ group, base }) => (
                     <section key={group.label}>
@@ -162,6 +172,7 @@ export function GlobalSearchDropdown({
                             <li key={`${hit.entityType}:${hit.id}`}>
                               <SearchResultRow
                                 hit={hit}
+                                density="dropdown"
                                 active={idx === activeIndex}
                                 optionId={optionId(idx)}
                                 onNavigate={onNavigateHit}
@@ -190,16 +201,22 @@ export function GlobalSearchDropdown({
               )}
 
               {state === 'empty' && (
-                <div className="px-3 py-4 text-center">
-                  <p className="text-role-caption font-semibold text-text-default">
+                <div className="px-3 py-3 text-center">
+                  <p className="text-role-micro font-semibold text-text-default">
                     No matches for &ldquo;{query}&rdquo;
                   </p>
-                  <p className="mt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                  <p className="mt-1 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
                     Try a partial serial or the last 8 of a tracking #
                   </p>
                 </div>
               )}
             </div>
+
+            {state === 'recents' && (
+              <Link href="/search/history" onClick={onClose} className={FOOTER_LINK}>
+                <History className="h-3.5 w-3.5" /> View all recent searches
+              </Link>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

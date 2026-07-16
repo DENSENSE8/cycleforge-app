@@ -169,7 +169,7 @@ export function SupportChatHeader({
                 <span
                   className={cn(
                     'shrink-0 rounded px-1.5 py-0.5 uppercase tracking-widest',
-                    compact ? 'text-[9px]' : 'text-role-eyebrow',
+                    compact ? 'text-role-micro' : 'text-role-eyebrow',
                     sb.className,
                   )}
                 >

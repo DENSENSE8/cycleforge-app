@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-15T14:59:23Z",
+  "generatedAt": "2026-07-16T16:36:58Z",
   "totalRoutes": 856,
   "summary": {
-    "permissionGated": 728,
+    "permissionGated": 729,
     "authenticatedNoPermission": 45,
     "anonymousIntentional": 80,
     "serviceToService": 2,
-    "ungatedRead": 1,
+    "ungatedRead": 0,
     "ungatedWrite": 0
   },
   "routes": [
@@ -3886,8 +3886,8 @@
       "methods": [
         "GET"
       ],
-      "gate": "NONE",
-      "permission": null,
+      "gate": "requireRoutePerm",
+      "permission": "photos.view",
       "exemptReason": null
     },
     {

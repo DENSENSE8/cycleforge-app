@@ -51,16 +51,27 @@ test('ebayScopeString joins with a single space', () => {
   strictEqual(ebayScopeString(), 'a b');
 });
 
-test('buyer scopes default to the buy.order.readonly set and are overridable', () => {
+test('buyer scopes default to the base api_scope only; buy.order.readonly is opt-in', () => {
   delete process.env.EBAY_BUYER_SCOPES;
   const buyer = ebayBuyerScopes();
+  // Base scope is always present and is sufficient for Trading-API purchase discovery.
   ok(buyer.includes('https://api.ebay.com/oauth/api_scope'));
-  ok(buyer.includes('https://api.ebay.com/oauth/api_scope/buy.order.readonly'));
+  // RESTRICTED scope is NOT requested by default — like the seller default excludes
+  // sell.finances, requesting an unapproved scope fails consent and breaks connect.
+  ok(
+    !buyer.includes('https://api.ebay.com/oauth/api_scope/buy.order.readonly'),
+    'buy.order.readonly must not be in the default (opt-in via EBAY_BUYER_SCOPES once approved)',
+  );
   // buyer set must NOT carry seller scopes
   ok(!buyer.some((s) => s.includes('/sell.')), 'buyer scopes must not include seller scopes');
 
-  process.env.EBAY_BUYER_SCOPES = 'https://api.ebay.com/oauth/api_scope';
-  deepStrictEqual(ebayBuyerScopes(), ['https://api.ebay.com/oauth/api_scope']);
+  // Approved orgs opt in explicitly via the env override.
+  process.env.EBAY_BUYER_SCOPES =
+    'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/buy.order.readonly';
+  deepStrictEqual(ebayBuyerScopes(), [
+    'https://api.ebay.com/oauth/api_scope',
+    'https://api.ebay.com/oauth/api_scope/buy.order.readonly',
+  ]);
 });
 
 test('normalizeEbayRole maps only "buyer" to buyer, everything else to seller', () => {

@@ -6,9 +6,10 @@
  * renders through this so there is exactly one row (SoT: never fork a
  * per-surface renderer).
  *
- * Two DENSITIES:
+ * Two DENSITIES (+ header dropdown):
  *   • compact     — the header dropdown preview + sidebar quick-jumps. Tight
  *     rows, bare leading glyph. (Default — unchanged from the original.)
+ *   • dropdown    — header combobox panel only: micro titles, tighter rows.
  *   • comfortable — the full results surface (/search + operations). Taller
  *     rows, a coloured entity tile, larger title, and — for serial units — a
  *     leading monospace serial badge that echoes the receiving carton display,
@@ -42,7 +43,7 @@ import {
   type ChipTone,
 } from './search-result-chips';
 
-export type SearchRowDensity = 'compact' | 'comfortable';
+export type SearchRowDensity = 'compact' | 'comfortable' | 'dropdown';
 
 export interface SearchResultRowProps {
   hit: AiSearchHit;
@@ -70,6 +71,7 @@ export interface SearchResultRowProps {
 const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'gap-3 px-3 py-1.5',
   comfortable: 'gap-3.5 px-4 py-3',
+  dropdown: 'gap-2 px-3 py-1',
 };
 // Title role by density — type role is (near-)constant; the row's padding does
 // the density work (plan §2.3-C). Compact = `role-caption` (12), comfortable =
@@ -77,6 +79,7 @@ const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
 const TITLE_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'text-role-caption',
   comfortable: 'text-role-body',
+  dropdown: 'text-role-micro',
 };
 const ROW_BASE = 'group flex items-center text-left transition-colors hover:bg-surface-hover';
 const ROW_ACTIVE = 'bg-blue-50 ring-1 ring-inset ring-blue-400';
@@ -246,10 +249,15 @@ function UnitRow({ hit, active, optionId, density = 'compact', onNavigate }: Sea
 function EntityTile({ entityType, density }: { entityType: string; density: SearchRowDensity }) {
   const Icon = ENTITY_ICONS[entityType] || Search;
   const tone = ENTITY_TONE[entityType] ?? 'gray';
-  if (density === 'compact') {
+  if (density === 'compact' || density === 'dropdown') {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        <Icon className="h-4 w-4 text-text-faint" />
+      <span
+        className={cn(
+          'flex shrink-0 items-center justify-center',
+          density === 'dropdown' ? 'h-4 w-4' : 'h-5 w-5',
+        )}
+      >
+        <Icon className={cn('text-text-faint', density === 'dropdown' ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
       </span>
     );
   }

@@ -677,25 +677,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               >
                 {canOos ? (
                   <motion.div layout="position" transition={layoutTransition} className="flex items-center">
-                    <HoverTooltip label={isUrgent ? 'Clear urgent' : 'Mark urgent'} asChild>
-                      <button
-                        type="button"
-                        onClick={onToggleUrgent}
-                        disabled={assignOrder.isPending}
-                        aria-label={isUrgent ? 'Clear urgent' : 'Mark urgent'}
-                        aria-pressed={isUrgent}
-                        className={cn(
-                          'ds-raw-button inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 disabled:opacity-60',
-                          isUrgent ? 'bg-amber-100' : 'hover:bg-amber-50',
-                        )}
-                      >
-                        <Zap className={cn('h-3.5 w-3.5', isUrgent && 'fill-current')} />
-                      </button>
-                    </HoverTooltip>
-                  </motion.div>
-                ) : null}
-                {canOos ? (
-                  <motion.div layout="position" transition={layoutTransition} className="flex items-center">
                     <HoverTooltip label={hasNotes ? 'Edit notes' : 'Add notes'} asChild>
                       <button
                         type="button"
@@ -717,6 +698,39 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 ) : null}
                 {canOos ? (
                   <motion.div layout="position" transition={layoutTransition} className="flex items-center">
+                    <HoverTooltip label={isUrgent ? 'Clear urgent' : 'Mark urgent'} asChild>
+                      <button
+                        type="button"
+                        onClick={onToggleUrgent}
+                        disabled={assignOrder.isPending}
+                        aria-label={isUrgent ? 'Clear urgent' : 'Mark urgent'}
+                        aria-pressed={isUrgent}
+                        className={cn(
+                          'ds-raw-button inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-600 disabled:opacity-60',
+                          isUrgent ? 'bg-amber-100' : 'hover:bg-amber-50',
+                        )}
+                      >
+                        <Zap className={cn('h-3.5 w-3.5', isUrgent && 'fill-current')} />
+                      </button>
+                    </HoverTooltip>
+                  </motion.div>
+                ) : null}
+                {canShip ? (
+                  <motion.div layout="position" transition={layoutTransition} className="flex items-center">
+                    <HoverTooltip label="Mark as shipped" asChild>
+                      <button
+                        type="button"
+                        onClick={onMarkShipped}
+                        className="ds-raw-button inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
+                        aria-label="Mark as shipped"
+                      >
+                        <Truck className="h-3.5 w-3.5" />
+                      </button>
+                    </HoverTooltip>
+                  </motion.div>
+                ) : null}
+                {canOos ? (
+                  <motion.div layout="position" transition={layoutTransition} className="flex items-center">
                     <HoverTooltip label={hasOutOfStock ? 'Edit out of stock' : 'Mark out of stock'} asChild>
                       <button
                         type="button"
@@ -732,20 +746,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                         )}
                       >
                         <AlertTriangle className="h-3.5 w-3.5" />
-                      </button>
-                    </HoverTooltip>
-                  </motion.div>
-                ) : null}
-                {canShip ? (
-                  <motion.div layout="position" transition={layoutTransition} className="flex items-center">
-                    <HoverTooltip label="Mark as shipped" asChild>
-                      <button
-                        type="button"
-                        onClick={onMarkShipped}
-                        className="ds-raw-button inline-flex h-7 w-7 items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-50"
-                        aria-label="Mark as shipped"
-                      >
-                        <Truck className="h-3.5 w-3.5" />
                       </button>
                     </HoverTooltip>
                   </motion.div>

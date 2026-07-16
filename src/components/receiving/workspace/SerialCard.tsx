@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -164,7 +165,8 @@ export function SerialCard({
   const setInputRef = useCallback(
     (el: HTMLInputElement | null) => {
       inputRef.current = el;
-      if (externalInputRef) externalInputRef.current = el;
+      if (externalInputRef)
+        (externalInputRef as MutableRefObject<HTMLInputElement | null>).current = el;
     },
     [externalInputRef],
   );

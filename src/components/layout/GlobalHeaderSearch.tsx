@@ -10,8 +10,8 @@
  * Combobox model: the input carries role=combobox + aria-activedescendant; the
  * dropdown is the listbox. ↓/↑ move a virtual activeIndex across the flattened
  * visible options (recents, or [see-all, ...preview hits]); Enter navigates the
- * active option or falls through to the orders board (/dashboard?search=); Esc
- * clears then blurs; ⌘K focuses. Order details live only on /o/[id].
+ * active option or falls through to /search (two-column workbench on Orders);
+ * Esc clears then blurs; ⌘K focuses. Preview row clicks navigate via hit.href.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,8 +34,19 @@ import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { GLOBAL_SEARCH_FOCUS_EVENT } from '@/lib/global-search-focus';
 import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
 import { recentRerunHref } from '@/lib/search/search-recents';
+import { looksLikeIdentifier } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
+
+/** Full-results handoff — order-heavy queries open the Orders workbench tab. */
+function globalSearchPageHref(query: string, previewHits: AiSearchHit[]): string {
+  const trimmed = query.trim();
+  const q = encodeURIComponent(trimmed);
+  const orderWorkbench =
+    looksLikeIdentifier(trimmed) ||
+    (previewHits.length > 0 && previewHits.every((h) => h.entityType === 'order'));
+  return orderWorkbench ? `/search?q=${q}&type=order` : `/search?q=${q}`;
+}
 
 /** Search pill width within the 420px header rail (icons occupy the rest). */
 const SEARCH_FIELD_WIDTH = 'max-w-[17.5rem] min-w-0 flex-1';
@@ -117,6 +128,13 @@ export function GlobalHeaderSearch() {
     return () => clearTimeout(classicDebounceRef.current);
   }, [trimmedQuery, showPreview, aiQuickJump.aiEnabled]);
 
+  // Keep the global query in sync when landing on /search.
+  useEffect(() => {
+    if (!isGlobal || pathname !== '/search') return;
+    const sp = new URLSearchParams(window.location.search);
+    setGlobalQuery(sp.get('q') ?? '');
+  }, [isGlobal, pathname]);
+
   const handleFocusRequest = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -138,6 +156,9 @@ export function GlobalHeaderSearch() {
   const handleClear = useCallback(() => {
     if (contextualSearch?.onClear) contextualSearch.onClear();
     else setGlobalQuery('');
+    window.clearTimeout(blurTimerRef.current);
+    setFocused(true);
+    inputRef.current?.focus();
   }, [contextualSearch]);
 
   const handlePaste = useCallback(async () => {
@@ -157,20 +178,18 @@ export function GlobalHeaderSearch() {
     return () => window.removeEventListener(GLOBAL_SEARCH_FOCUS_EVENT, handleFocusRequest);
   }, [handleFocusRequest]);
 
-  // "See all" / plain Enter → the orders board applied as a filter. There is no
-  // standalone /search results page; order details live only on `/o/[id]`
-  // (reached by selecting a specific order hit above).
-  const openSearchPage = useCallback(() => {
-    if (!trimmedQuery) return;
-    router.push(`/dashboard?search=${encodeURIComponent(trimmedQuery)}`);
-    setFocused(false);
-  }, [router, trimmedQuery]);
-
   // ── Preview grouping + flattened option model (for keyboard nav) ──────────
   const previewHits = aiQuickJump.aiEnabled ? aiQuickJump.hits : classicHits;
   const previewSearching = aiQuickJump.aiEnabled ? aiQuickJump.searching : classicSearching;
   const previewGroups = useMemo(() => groupHitsForPreview(previewHits), [previewHits]);
   const flatPreviewHits = useMemo(() => flattenPreviewGroups(previewGroups), [previewGroups]);
+
+  // "See all" / plain Enter → /search (Orders tab when the query is order-heavy).
+  const openSearchPage = useCallback(() => {
+    if (!trimmedQuery) return;
+    router.push(globalSearchPageHref(trimmedQuery, previewHits));
+    setFocused(false);
+  }, [router, trimmedQuery, previewHits]);
 
   const emptyQuery = trimmedQuery.length === 0;
   const showRecents = unifiedOn && isGlobal && focused && emptyQuery && recents.length > 0;
@@ -264,7 +283,7 @@ export function GlobalHeaderSearch() {
       const trimmed = raw.trim();
       if (!trimmed) return;
       if (unifiedOn) pushRecent({ query: trimmed, scope: 'global', scopeLabel: 'Everywhere' });
-      router.push(`/dashboard?search=${encodeURIComponent(trimmed)}`);
+      router.push(globalSearchPageHref(trimmed, navRef.current.flatPreviewHits));
       setFocused(false);
     },
     [contextualSearch, router, unifiedOn, pushRecent, activeIndex, navigateActive],
@@ -303,7 +322,7 @@ export function GlobalHeaderSearch() {
     <div
       ref={anchorRef}
       className={cn(
-        'group/search relative flex h-8 items-center overflow-hidden rounded-full border border-border-default bg-surface-canvas',
+        'group/search relative flex h-8 items-center overflow-visible rounded-full border border-border-default bg-surface-canvas',
         SEARCH_FIELD_WIDTH,
       )}
       onFocusCapture={handleFocusIn}
@@ -321,8 +340,7 @@ export function GlobalHeaderSearch() {
         tone="neutral"
         size="compact"
         hideUnderline
-        hideClear={!trimmedQuery}
-        customTrailingSlot={!trimmedQuery ? null : undefined}
+        customTrailingSlot={showShortcutHint ? null : undefined}
         className={cn('min-w-0 flex-1 border-0 pl-2.5', assistant.enabled ? 'pr-0' : 'pr-2.5')}
         trailingPrefix={
           showShortcutHint ? (

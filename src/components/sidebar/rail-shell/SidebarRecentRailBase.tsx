@@ -9,7 +9,7 @@ export type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
  * Generic "recent activity rail" base — the single shell node shared by the
  * domain presets:
  *   • receiving/testing → `RecentActivityRailBase` (`ReceivingLineRow`)
- *   • shipping          → `ShippingStaffShippedRail` (`Order` ship-outs)
+ *   • shipping          → `ShippingStaffShippedRail` (`TechRecord` history feed)
  *
  * It applies the recent-rail defaults (stagger reveal + pin-selected-lead) and
  * forwards everything else to the fully-generic {@link SidebarRailShell}. A

@@ -16,9 +16,9 @@ interface Props {
 }
 
 /**
- * Tech sidebar for Shipping mode — order / FNSKU scan band plus the signed-in
- * staffer's last 50 personal ship-outs (dense Testing-parity rail). Pick one
- * to reopen Shipping preview. Shares the shell anatomy of
+ * Tech sidebar for Shipping mode — order / FNSKU scan band plus the History
+ * feed rail (same deduped tech-log rows as the History tab). Pick one to reopen
+ * Shipping preview. Shares the shell anatomy of
  * {@link TestingSidebarPanel} (scan band, scrollable rail, bottom filter).
  */
 export function ShippingSidebarPanel({
@@ -48,7 +48,7 @@ export function ShippingSidebarPanel({
       <TechRailSearchBar
         value={railFilter}
         onChange={setRailFilter}
-        placeholder="Filter your ship-outs…"
+        placeholder="Filter history…"
       />
 
       {isMobile ? (

@@ -1,10 +1,9 @@
 'use client';
 
 /**
- * Shipping-mode sidebar rail — last 50 personal dock ship-outs
- * (`/api/orders/recent?staff=` → SHIP_CONFIRM by the signed-in staffer).
- * Dense Testing-parity row anatomy (title + qty·condition). Selecting a row
- * opens Shipping preview so serials can be edited without leaving Shipping.
+ * Shipping-mode sidebar rail — same deduped History feed as the History tab
+ * (`useShippingHistoryFeed` → `/api/tech/logs`). Dense Testing-parity row
+ * anatomy. Selecting a row opens Shipping preview for serial/tracking edits.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,30 +12,28 @@ import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { dispatchUpNextPreview, type UpNextPreviewPayload } from '@/utils/events';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
-import { filterShippingRailOrders } from '@/components/sidebar/tech/filter-shipping-rail-orders';
+import type { TechRecord } from '@/hooks/useTechLogs';
+import { useShippingHistoryFeed } from '@/hooks/station/ShippingHistoryFeedProvider';
 import {
-  getShippedOutStatusDot,
-  getShippedOutStatusDotLabel,
-  shippedOutToDenseRailVM,
-} from './shipped-out-rail-vm';
+  getTechRecordStatusDot,
+  getTechRecordStatusDotLabel,
+  filterTechRecordRailRows,
+  techRecordToRailVM,
+} from '@/components/station/tech-record-rail-vm';
 import {
-  recentOrderToShippedRow,
   SHIPPING_RAIL_REFRESH_EVENTS,
-  type RecentOrderRow,
-  type ShippedHistoryRow,
+  techRecordRailId,
+  techRecordToPreviewOrder,
 } from './shipping-rail-shared';
 
 interface Props {
-  /** Signed-in staff id — rail is scoped to this staffer's ship-outs. */
+  /** Signed-in staff id — fallback when `?staff=` is absent. */
   techId: string;
-  /** Client-side filter over the loaded ship-outs. */
+  /** Client-side filter over the loaded history rows. */
   filterText?: string;
 }
 
-const RAIL_LIMIT = 50;
-
-const getRowId = (row: ShippedHistoryRow) => row.id;
-const getRowActivityAt = (row: ShippedHistoryRow) => row.ship_confirmed_at ?? row.created_at;
+const getRowActivityAt = (row: TechRecord) => row.created_at;
 
 function useShippedRailSelection(): number | null {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -62,65 +59,74 @@ function useShippedRailSelection(): number | null {
   return selectedOrderId;
 }
 
-/** Testing-parity content stack — no eyebrow / chevron band. */
-function ShippedOutRowMain({
+function HistoryRowMain({
   row,
 }: {
-  row: ShippedHistoryRow;
+  row: TechRecord;
   ctx: SidebarRailRowContext;
 }) {
-  return <RailRowBody className="flex-1" vm={shippedOutToDenseRailVM(row)} />;
+  return <RailRowBody className="flex-1" vm={techRecordToRailVM(row)} />;
 }
 
 export function ShippingStaffShippedRail({ techId, filterText = '' }: Props) {
   const trimmedFilter = filterText.trim();
   const selectedOrderId = useShippedRailSelection();
+  const { staffId, weekRange, records, loading } = useShippingHistoryFeed();
+
   const parsedTechId = Number(techId);
-  const staffId = Number.isFinite(parsedTechId) && parsedTechId > 0 ? parsedTechId : 0;
+  const sessionStaffId = Number.isFinite(parsedTechId) && parsedTechId > 0 ? parsedTechId : 0;
+  const staffReady = staffId === 'all' || (typeof staffId === 'number' && staffId > 0);
+
+  const filteredRecords = useMemo(() => {
+    if (!trimmedFilter) return records;
+    return filterTechRecordRailRows(records, trimmedFilter);
+  }, [records, trimmedFilter]);
 
   const queryKey = useMemo(
-    () => ['shipping-staff-shipped-out', staffId, trimmedFilter] as const,
-    [staffId, trimmedFilter],
+    () =>
+      [
+        'shipping-history-rail',
+        staffId,
+        weekRange.startStr,
+        weekRange.endStr,
+        trimmedFilter,
+        filteredRecords.length,
+      ] as const,
+    [staffId, weekRange.startStr, weekRange.endStr, trimmedFilter, filteredRecords.length],
   );
 
-  const fetchFn = useCallback(async (): Promise<ShippedHistoryRow[]> => {
-    if (staffId <= 0) return [];
-    // Session staff is bound server-side; count-capped to 50 newest ship-outs.
-    const params = new URLSearchParams({ staff: String(staffId) });
-    if (trimmedFilter) params.set('q', trimmedFilter);
-    const res = await fetch(`/api/orders/recent?${params.toString()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('fetch failed');
-    const data = await res.json().catch(() => ({}));
-    const flat: RecentOrderRow[] = Array.isArray(data?.orders)
-      ? data.orders
-      : (Array.isArray(data?.groups) ? data.groups : []).flatMap(
-          (g: { orders?: RecentOrderRow[] }) => (Array.isArray(g.orders) ? g.orders : []),
-        );
-    const rows = flat.map(recentOrderToShippedRow).slice(0, RAIL_LIMIT);
-    if (!trimmedFilter) return rows;
-    return filterShippingRailOrders(rows, trimmedFilter) as ShippedHistoryRow[];
-  }, [staffId, trimmedFilter]);
+  const fetchFn = useCallback(async (): Promise<TechRecord[]> => filteredRecords, [filteredRecords]);
+
+  const eyebrowSuffix = staffId === 'all' ? 'All' : 'You';
+
+  if (!staffReady && sessionStaffId <= 0) {
+    return (
+      <section className="min-w-0 border-t border-border-hairline bg-surface-card px-3 py-3">
+        <p className="text-role-micro font-semibold text-text-faint">Sign in to see your history</p>
+      </section>
+    );
+  }
 
   return (
-    <SidebarRecentRailBase<ShippedHistoryRow>
+    <SidebarRecentRailBase<TechRecord>
       queryKey={queryKey}
       fetchFn={fetchFn}
       refreshEvents={[...SHIPPING_RAIL_REFRESH_EVENTS]}
       selectedId={selectedOrderId}
-      limit={RAIL_LIMIT}
-      eyebrowTitle="Recently Shipped"
-      eyebrowSuffix="You"
-      emptyText={staffId <= 0 ? 'Sign in to see your ship-outs' : 'No recent ship-outs'}
-      getId={getRowId}
+      eyebrowTitle="History"
+      eyebrowSuffix={eyebrowSuffix}
+      emptyText={loading ? 'Loading history…' : 'No history this week'}
+      getId={techRecordRailId}
       getActivityAt={getRowActivityAt}
       onSelect={(row) => {
+        const order = techRecordToPreviewOrder(row);
         dispatchUpNextPreview(
-          selectedOrderId === row.id ? null : { kind: 'order', order: row },
+          selectedOrderId === order.id ? null : { kind: 'order', order },
         );
       }}
-      getStatusDot={getShippedOutStatusDot}
-      getStatusDotLabel={getShippedOutStatusDotLabel}
-      renderRowMain={(row, ctx) => <ShippedOutRowMain row={row} ctx={ctx} />}
+      getStatusDot={getTechRecordStatusDot}
+      getStatusDotLabel={getTechRecordStatusDotLabel}
+      renderRowMain={(row, ctx) => <HistoryRowMain row={row} ctx={ctx} />}
     />
   );
 }

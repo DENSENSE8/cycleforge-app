@@ -54,20 +54,25 @@ const DEFAULT_SCOPES: readonly string[] = [
 /**
  * Minimal buyer (purchasing) scope set.
  *
+ * Base `api_scope` ONLY by default — same principle as the seller default
+ * excluding `sell.finances`: requesting a scope the eBay app is NOT approved for
+ * makes consent fail (eBay rejects the authorize request), so an unapproved
+ * RESTRICTED scope in the default silently breaks every buyer connect.
+ *
  * - `api_scope` — base user token. Trading API GetOrders (OrderRole=Buyer) for
  *   purchase *discovery* authorizes via the IAF header and does **not** require
- *   an extra OAuth scope beyond this base scope (traditional APIs ignore scopes).
- * - `buy.order.readonly` — RESTRICTED; required for Buy Order
- *   GET /buy/order/v1/purchase_order/{id} enrich. Needs eBay business approval;
- *   requesting it unapproved fails consent. Override via EBAY_BUYER_SCOPES
- *   (space-separated) to drop it until approved, or to add further scopes.
+ *   an extra OAuth scope beyond this base scope (traditional APIs ignore scopes),
+ *   so purchase discovery works with the base scope alone.
+ * - `buy.order.readonly` — RESTRICTED; only needed for Buy Order
+ *   GET /buy/order/v1/purchase_order/{id} enrich. Needs eBay business approval.
+ *   OPT IN once approved by setting EBAY_BUYER_SCOPES to include it, e.g.
+ *   `https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/buy.order.readonly`.
  *
  * Re-consent buyer accounts after changing this set so refresh keeps matching
  * consent (a narrower refresh silently downgrades the token).
  */
 const DEFAULT_BUYER_SCOPES: readonly string[] = [
   'https://api.ebay.com/oauth/api_scope',
-  'https://api.ebay.com/oauth/api_scope/buy.order.readonly',
 ];
 
 /** The exact SELLER scope list requested at consent AND on refresh — keep them equal. */

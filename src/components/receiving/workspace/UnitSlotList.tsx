@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode, type Ref, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+} from 'react';
 import { X } from '@/components/Icons';
 import { TextField, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -101,13 +109,14 @@ export function UnitSlotList({
   const syncPrimaryInputRef = (index: number, el: HTMLInputElement | null) => {
     inputRefs.current[index] = el;
     if (primaryInputRef && singleRowExpanded && index === primaryIndex) {
-      primaryInputRef.current = el;
+      (primaryInputRef as MutableRefObject<HTMLInputElement | null>).current = el;
     }
   };
 
   useEffect(() => {
     if (!primaryInputRef || !singleRowExpanded) return;
-    primaryInputRef.current = inputRefs.current[primaryIndex] ?? null;
+    (primaryInputRef as MutableRefObject<HTMLInputElement | null>).current =
+      inputRefs.current[primaryIndex] ?? null;
   }, [primaryIndex, primaryInputRef, saved.length, singleRowExpanded]);
 
   return (

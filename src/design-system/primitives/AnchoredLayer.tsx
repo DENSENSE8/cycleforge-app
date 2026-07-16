@@ -50,9 +50,11 @@ import { zIndex, type ZIndexToken } from '@/design-system/tokens/z-index';
 export type AnchoredPlacement =
   | 'bottom-start'
   | 'bottom-end'
+  | 'bottom-center'
   | 'bottom-stretch'
   | 'top-start'
   | 'top-end'
+  | 'top-center'
   | 'top-stretch';
 
 export interface AnchoredLayerProps {
@@ -107,6 +109,9 @@ function computeStyle(
   if (stretch) {
     base.left = rect.left;
     base.width = rect.width;
+  } else if (placement.endsWith('-center')) {
+    base.left = rect.left + rect.width / 2;
+    base.transform = 'translateX(-50%)';
   } else if (placement.endsWith('-end')) {
     base.right = Math.max(0, window.innerWidth - rect.right);
     if (matchWidth) base.width = rect.width;

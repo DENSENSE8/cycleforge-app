@@ -12,6 +12,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -146,6 +147,9 @@ export function ActivityInboxProvider({
   // survives reload — these are the first inbox items with a durable source.
   const [staffMessageItems, setStaffMessageItems] = useState<ActivityInboxItem[]>([]);
   const [pendingUndoId, setPendingUndoId] = useState<string | null>(null);
+  /** After "Clear all", ignore stale in-flight refreshes until a new realtime push. */
+  const inboxSuppressedRef = useRef(false);
+  const inboxFetchGenRef = useRef(0);
 
   useEffect(() => {
     if (!user) {
@@ -160,13 +164,15 @@ export function ActivityInboxProvider({
   // each push (the publishers fan out to primary techs only; non-techs get an
   // empty queue server-side). Survives reload, shows the true backlog.
   const refreshTechQueue = useCallback(async () => {
+    if (inboxSuppressedRef.current) return;
     if (!user?.staffId) {
       setTechQueueItems([]);
       return;
     }
+    const fetchGen = inboxFetchGenRef.current;
     try {
       const res = await fetch('/api/inbox/tech-queue');
-      if (!res.ok) return;
+      if (!res.ok || fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       const data = (await res.json()) as {
         items?: Array<{
           kind: ActivityInboxItemKind;
@@ -199,6 +205,7 @@ export function ActivityInboxProvider({
           productTitle: it.productTitle ?? undefined,
         };
       });
+      if (fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       setTechQueueItems(mapped);
     } catch {
       /* best-effort — next push or reload retries */
@@ -210,13 +217,15 @@ export function ActivityInboxProvider({
   }, [refreshTechQueue]);
 
   const refreshSupportFollowups = useCallback(async () => {
+    if (inboxSuppressedRef.current) return;
     if (!user?.staffId) {
       setSupportFollowupItems([]);
       return;
     }
+    const fetchGen = inboxFetchGenRef.current;
     try {
       const res = await fetch('/api/inbox/support');
-      if (!res.ok) return;
+      if (!res.ok || fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       const data = (await res.json()) as {
         items?: Array<{
           ticketId: number;
@@ -242,6 +251,7 @@ export function ActivityInboxProvider({
         assignedByStaffId: it.assignedByStaffId,
         assignedByStaffName: it.assignedByStaffName,
       }));
+      if (fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       setSupportFollowupItems(mapped);
     } catch {
       /* best-effort — next push or reload retries */
@@ -255,13 +265,15 @@ export function ActivityInboxProvider({
   // Persisted unread staff messages. Seeded on mount and refetched whenever a
   // staff_message push lands (authoritative read model, like the tech queue).
   const refreshStaffMessages = useCallback(async () => {
+    if (inboxSuppressedRef.current) return;
     if (!user?.staffId) {
       setStaffMessageItems([]);
       return;
     }
+    const fetchGen = inboxFetchGenRef.current;
     try {
       const res = await fetch('/api/staff-messages?unread=1', { cache: 'no-store' });
-      if (!res.ok) return;
+      if (!res.ok || fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       const data = (await res.json()) as {
         items?: Array<{
           id: number;
@@ -303,8 +315,9 @@ export function ActivityInboxProvider({
           body: m.body,
         };
       });
+      if (fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       setStaffMessageItems(mapped);
-      void refreshSupportFollowups();
+      if (!inboxSuppressedRef.current) void refreshSupportFollowups();
     } catch {
       /* best-effort — next push or reload retries */
     }
@@ -411,6 +424,7 @@ export function ActivityInboxProvider({
     inboxChannel,
     'priority_unbox',
     (msg: { data?: { skus?: unknown; trackingNumber?: unknown; receivingId?: unknown } }) => {
+      inboxSuppressedRef.current = false;
       const d = msg?.data ?? {};
       pushPriorityUnbox({
         skus: Array.isArray(d.skus) ? (d.skus as string[]) : [],
@@ -426,6 +440,7 @@ export function ActivityInboxProvider({
     inboxChannel,
     'warranty_claim',
     (msg: { data?: { claimId?: unknown; claimNumber?: unknown; status?: unknown; event?: unknown; title?: unknown } }) => {
+      inboxSuppressedRef.current = false;
       const d = msg?.data ?? {};
       const claimId = typeof d.claimId === 'number' ? d.claimId : Number(d.claimId);
       if (!Number.isFinite(claimId) || claimId <= 0) return;
@@ -442,8 +457,14 @@ export function ActivityInboxProvider({
 
   // Tech-station backlog nudges — fan-out reaches primary techs only. Either
   // event just means "your queue changed", so refetch the authoritative list.
-  useAblyChannel(inboxChannel, 'return_pending_test', () => void refreshTechQueue(), inboxEnabled);
-  useAblyChannel(inboxChannel, 'order_ready_ship', () => void refreshTechQueue(), inboxEnabled);
+  useAblyChannel(inboxChannel, 'return_pending_test', () => {
+    inboxSuppressedRef.current = false;
+    void refreshTechQueue();
+  }, inboxEnabled);
+  useAblyChannel(inboxChannel, 'order_ready_ship', () => {
+    inboxSuppressedRef.current = false;
+    void refreshTechQueue();
+  }, inboxEnabled);
 
   // Direct staff-to-staff messages (clipboard "send to staff"). Toast the
   // arrival, then refetch the authoritative unread list for the bell.
@@ -451,6 +472,7 @@ export function ActivityInboxProvider({
     inboxChannel,
     'staff_message',
     (msg: { data?: { senderName?: unknown; kind?: unknown } }) => {
+      inboxSuppressedRef.current = false;
       const sender = typeof msg?.data?.senderName === 'string' ? msg.data.senderName : 'A teammate';
       const kind = typeof msg?.data?.kind === 'string' ? msg.data.kind : '';
       if (kind === 'support_assignment') {
@@ -549,19 +571,19 @@ export function ActivityInboxProvider({
   );
 
   const clear = useCallback(() => {
+    inboxSuppressedRef.current = true;
+    inboxFetchGenRef.current += 1;
     setItems([]);
     setTechQueueItems([]);
     setSupportFollowupItems([]);
-    if (staffMessageItems.length > 0) {
-      setStaffMessageItems([]);
-      // Persisted messages must be marked read or they'd reappear on reload.
-      void fetch('/api/staff-messages', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'mark_all_read' }),
-      }).catch(() => {});
-    }
-  }, [staffMessageItems]);
+    setStaffMessageItems([]);
+    // Persisted messages must be marked read or they'd reappear on reload.
+    void fetch('/api/staff-messages', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_all_read' }),
+    }).catch(() => {});
+  }, []);
 
   // Ephemeral push items + the derive-live tech backlog + persisted unread
   // staff messages, newest first.
