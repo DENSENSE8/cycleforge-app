@@ -22,22 +22,25 @@ type LabelOverride = {
 };
 
 /**
- * Carton-label editing for a workspace mode that ISN'T unbox (today: testing).
- * Derives the default editable draft from the carton's identity, assembles the
- * live-preview / print payload from a draft, and on Save & print persists what
- * has a home (condition / PO# / type) while keeping the label-only choices
- * (platform display, date, corner) as a print-time override — mirroring the
- * unbox controller's carton-label section so both surfaces print the identical
+ * Carton-label editing shared by Unbox and Testing. Derives the default editable
+ * draft from the carton's identity, assembles the live-preview / print payload
+ * from a draft, and on Save & print persists what has a home (condition / PO# /
+ * type / optional notes) while keeping the label-only choices (platform display,
+ * date, corner) as a print-time override — both surfaces print the identical
  * face via the single {@link receivingPayloadToFace} SoT.
  *
  * Feeds the shared {@link LabelEditPopover} (defaults + buildPayload +
- * onApplyAndPrint) so the pencil → editor → "Save & print" CTA is identical to
- * the unit label. Reuse point for a future unbox/testing carton-label merge.
+ * onApplyAndPrint) so the pencil → editor → "Save & print" CTA is identical.
  */
 export function useCartonLabelEditor(
   row: ReceivingLineRow,
   core: ReceivingLineCore,
-  opts: { conditionCode: string; notes: string },
+  opts: {
+    conditionCode: string;
+    notes: string;
+    /** When set, Save & print also persists an edited notes field (Unbox durable line note). */
+    onPersistNotes?: (notes: string) => void;
+  },
 ) {
   const resolvePlatformMeta = usePlatformMeta();
   const resolveTypeLabel = useReceivingTypeLabel();
@@ -109,6 +112,9 @@ export function useCartonLabelEditor(
   const applyAndPrint = useCallback(
     (draft: LabelEditDraft) => {
       // Persist the fields that have a canonical home on the record.
+      if (opts.onPersistNotes && draft.notes !== opts.notes) {
+        opts.onPersistNotes(draft.notes);
+      }
       if ((draft.conditionCode || '') !== (opts.conditionCode || '')) {
         void core.patch({ condition_grade: draft.conditionCode });
       }
@@ -135,6 +141,8 @@ export function useCartonLabelEditor(
     },
     [
       opts.conditionCode,
+      opts.notes,
+      opts.onPersistNotes,
       buildPayload,
       row.id,
       core.patch,
@@ -146,5 +154,5 @@ export function useCartonLabelEditor(
     ],
   );
 
-  return { draftDefaults, buildPayload, defaultPayload, applyAndPrint };
+  return { draftDefaults, buildPayload, defaultPayload, applyAndPrint, derivedTicket, derivedPlatform, derivedDate };
 }

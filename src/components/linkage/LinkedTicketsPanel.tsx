@@ -92,6 +92,34 @@ export function LinkedTicketsPanel({
     ? 'text-role-eyebrow uppercase tracking-widest text-text-soft'
     : 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
+  // When order-linkage cannot resolve an order (common for ticket-only tracking
+  // bridges), still surface identifiers we already know from the host anchor.
+  const fallbackTrackings =
+    dTracking && !(data?.trackings ?? []).some((t) => t.tracking === dTracking)
+      ? [
+          {
+            shipmentId: 0,
+            tracking: dTracking,
+            isPrimary: true,
+            carrier: null,
+            statusCategory: null,
+            isDelivered: null,
+          },
+        ]
+      : [];
+  const fallbackSerials =
+    dSerial && !(data?.serials ?? []).some((s) => s.serial === dSerial)
+      ? [{ serialUnitId: null, serial: dSerial, state: null }]
+      : [];
+
+  const loopTrackings = [...(data?.trackings ?? []), ...fallbackTrackings].filter((t) =>
+    Boolean(t.tracking?.trim()),
+  );
+  const loopSerials = [...(data?.serials ?? []), ...fallbackSerials].filter((s) =>
+    Boolean(s.serial?.trim()),
+  );
+  const hasLoop = Boolean(data?.order || loopTrackings.length > 0 || loopSerials.length > 0);
+
   return (
     <section className={`space-y-2 ${className}`}>
       <p className={headerCls}>Linkage</p>
@@ -106,40 +134,40 @@ export function LinkedTicketsPanel({
         </div>
       )}
 
-      {!isLoading && !isError && data && !data.order && (
+      {!isLoading && !isError && !hasLoop && (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-2 text-center text-role-caption text-text-faint">
           No linked order found.
         </div>
       )}
 
-      {!isLoading && !isError && data?.order && (
+      {!isLoading && !isError && hasLoop && (
         <div className="space-y-2">
           {/* The loop: order ↔ tracking[] ↔ serial[] */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {data.order.orderId && (
+            {data?.order?.orderId && (
               <OrderIdChip value={data.order.orderId} display={data.order.orderId} dense />
             )}
-            {data.trackings.map((t) =>
+            {loopTrackings.map((t, i) =>
               t.tracking ? (
                 <TrackingChip
-                  key={t.shipmentId}
+                  key={`${t.shipmentId}-${t.tracking}-${i}`}
                   value={t.tracking}
                   display={last4(t.tracking)}
                   dense
                 />
               ) : null,
             )}
-            {data.serials.map((s, i) => (
+            {loopSerials.map((s, i) => (
               <SerialChip key={`${s.serialUnitId ?? 'tsn'}-${i}`} value={s.serial} dense />
             ))}
           </div>
 
           {/* Linked Zendesk tickets */}
-          {data.tickets.length === 0 ? (
+          {(data?.tickets ?? []).length === 0 ? (
             <div className="text-role-caption text-text-faint">No linked tickets.</div>
           ) : (
             <ul className="divide-y divide-border-hairline">
-              {data.tickets.map((tk) => (
+              {(data?.tickets ?? []).map((tk) => (
                 <li key={tk.zendeskTicketId ?? tk.supportTicketId ?? tk.label} className="flex items-center gap-2 py-1.5">
                   <HoverTooltip label={tk.status ?? 'unknown status'} asChild focusable={false}>
                     <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(tk.status)}`} />

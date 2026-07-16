@@ -4,6 +4,7 @@ import {
   formatSupportTicketDisplayLabel,
   formatSupportTicketLabel,
   normalizeReceivingTicketEntityRefs,
+  pickTicketLinkAnchor,
 } from './tickets';
 
 test('formatSupportTicketLabel uses internal registry id', () => {
@@ -36,17 +37,46 @@ test('formatSupportTicketDisplayLabel falls back to internal id for internal tic
   );
 });
 
-test('normalizeReceivingTicketEntityRefs maps placeholder line id to receiving', () => {
+test('normalizeReceivingTicketEntityRefs drops placeholder line id without inventing carton', () => {
   assert.deepEqual(
     normalizeReceivingTicketEntityRefs({ lineId: -6936, receivingId: 6936 }),
     { lineId: null, receivingId: 6936 },
   );
+  // Pending scan stub: hashed negative id + null receiving_id — never promote abs(hash).
   assert.deepEqual(
     normalizeReceivingTicketEntityRefs({ lineId: -6936, receivingId: null }),
-    { lineId: null, receivingId: 6936 },
+    { lineId: null, receivingId: null },
   );
   assert.deepEqual(
     normalizeReceivingTicketEntityRefs({ lineId: 42, receivingId: 6936 }),
     { lineId: 42, receivingId: 6936 },
+  );
+});
+
+test('pickTicketLinkAnchor prefers line > carton > shipment', () => {
+  assert.deepEqual(
+    pickTicketLinkAnchor({ lineId: 41, receivingId: 88, shipmentId: 555 }),
+    { entityType: 'RECEIVING_LINE', entityId: 41 },
+  );
+  assert.deepEqual(
+    pickTicketLinkAnchor({ lineId: null, receivingId: 88, shipmentId: 555 }),
+    { entityType: 'RECEIVING', entityId: 88 },
+  );
+  assert.deepEqual(
+    pickTicketLinkAnchor({ lineId: null, receivingId: null, shipmentId: 555 }),
+    { entityType: 'SHIPMENT', entityId: 555 },
+  );
+  assert.equal(pickTicketLinkAnchor({}), null);
+});
+
+test('pickTicketLinkAnchor ignores placeholder line id without inventing carton', () => {
+  // Unmatched stubs always pass receivingId; pending scan hashes must not become cartons.
+  assert.deepEqual(
+    pickTicketLinkAnchor({ lineId: -88, receivingId: 88, shipmentId: 555 }),
+    { entityType: 'RECEIVING', entityId: 88 },
+  );
+  assert.deepEqual(
+    pickTicketLinkAnchor({ lineId: -88, receivingId: null, shipmentId: 555 }),
+    { entityType: 'SHIPMENT', entityId: 555 },
   );
 });

@@ -22,6 +22,13 @@ multi-tenant. **Legible throughput** over document calm.
 4. **Presentation kinds resolve via SoT modules** — labels, tones, chips, dates, capabilities, search hits; views stay dumb.
 5. **Compose named primitives/blocks; grow the SoT when wrong** — pattern evolution, not freeze.
 
+### Station Workbench (Unbox-family right pane)
+
+Right-pane unit work (Unbox / Testing / Triage / Shipping / Packing / Repair intake) composes
+`StationWorkbench` from `@/components/station/workbench` — toolbar → entity context →
+`SectionTabsSlider` → tab-aware `StationTerminalDock`. Region contract:
+[`.claude/rules/display/station-workbench.md`](../../.claude/rules/display/station-workbench.md).
+
 ### Density modes (map to spacing density tokens when building)
 
 | Mode | When | Feel |

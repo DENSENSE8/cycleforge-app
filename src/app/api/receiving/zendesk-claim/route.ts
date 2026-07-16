@@ -27,7 +27,7 @@ import {
 } from '@/lib/photos/queries/receiving-list';
 import { createSharePack } from '@/lib/photos/share-packs';
 import { linkPhoto } from '@/lib/photos/service';
-import { buildExternalId, linkTicket, linkTicketToShipment } from '@/lib/zendesk-links';
+import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { readIdempotencyKey, withIdempotentResponse } from '@/lib/api-idempotency';
 import { getOrganization } from '@/lib/tenancy/organizations';
@@ -329,9 +329,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           console.warn('[zendesk-claim] photo archive failed', archiveErr);
         }
 
-        // Write the ticket→entity link row (the support workspace prefers ticket_links
-        // over external_id). Best-effort: the ticket already exists, so a failure here
-        // must not turn a successful claim into an error.
+        // Write the ticket→entity link row (one primary entity per ticket —
+        // UNIQUE on org + zendesk_ticket_id). Prefer RECEIVING_LINE / RECEIVING
+        // when the carton is open; a separate SHIPMENT write after this would
+        // always DO NOTHING. Pre-intake SHIPMENT links promote to RECEIVING on
+        // first dock scan (promoteShipmentTicketToReceiving).
         try {
           await linkTicket({
             orgId: ctx.organizationId,
@@ -340,21 +342,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             entityId,
             staffId: ctx.staffId,
           });
-          const shipmentRow = await tenantQuery<{ shipment_id: number | null }>(
-            ctx.organizationId,
-            `SELECT shipment_id FROM receiving_carton
-              WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-            [receivingId, ctx.organizationId],
-          );
-          const shipmentId = shipmentRow.rows[0]?.shipment_id;
-          if (shipmentId != null) {
-            await linkTicketToShipment({
-              orgId: ctx.organizationId,
-              zendeskTicketId: ticket.id,
-              shipmentId: Number(shipmentId),
-              staffId: ctx.staffId,
-            });
-          }
         } catch (linkErr) {
           console.warn('[POST /api/receiving/zendesk-claim] ticket link backfill failed', linkErr);
         }

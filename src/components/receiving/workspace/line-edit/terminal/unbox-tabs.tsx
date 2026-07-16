@@ -1,21 +1,20 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { CartonUnitsRollupBody } from '../../CartonUnitsRollup';
 import { WorkspaceNotesCard } from '../WorkspaceNotesCard';
-import { LineLabelPreviewCard } from '../LineLabelPreviewCard';
+import { UnboxLabelPreview } from '../UnboxLabelPreview';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { LineChecklistTab } from '../LineChecklistTab';
 import { LinePoNoteCard } from '../LinePoNoteCard';
-import { UnboxTrackingTab } from '../UnboxTrackingTab';
-import { ThreadPanel } from '@/components/threads/ThreadPanel';
+import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
+import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
 import {
   Barcode,
   ClipboardList,
   FileText,
-  MapPin,
+  History,
   MessageSquare,
   PackageOpen,
   Ticket,
@@ -43,10 +42,8 @@ export interface BuildUnboxTabsInput {
   activeUnboxView: UnboxView;
   hasUnits: boolean;
   serialCount: number;
-  hasTrackingTab: boolean;
+  hasTimelineTab: boolean;
   poIdForTracking: string;
-  hasTicketTab: boolean;
-  linkedTicketId: number | null | undefined;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
   pairingOpen: boolean;
@@ -63,6 +60,7 @@ export interface BuildUnboxTabsInput {
 /**
  * Build the Unbox SectionTabsSlider tab list. Visibility gates stay here so the
  * terminal registry tab ids stay in lock-step with what the slider actually shows.
+ * Filters through {@link buildSectionTabs} — the shared waist for all stations.
  */
 export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
   const {
@@ -72,10 +70,8 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     activeUnboxView,
     hasUnits,
     serialCount,
-    hasTrackingTab,
+    hasTimelineTab,
     poIdForTracking,
-    hasTicketTab,
-    linkedTicketId,
     hasPoNoteTab,
     poNote,
     pairingOpen,
@@ -89,7 +85,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     onConversationBridge,
   } = input;
 
-  const tabs: SectionTab[] = [
+  return buildSectionTabs([
     {
       id: 'overview',
       label: 'Unbox',
@@ -118,26 +114,15 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
             onActionFeedback={onActionFeedback}
             activeStep={activeStep as never}
           />
-          <LineLabelPreviewCard
-            scanValue={c.scanValue}
-            labelPayload={c.labelPayload}
-            sku={row.sku}
-            itemName={row.item_name}
-            serialNumber={c.serialInput.trim()}
-            labelDraftDefaults={c.labelDraftDefaults}
-            buildLabelPayload={c.buildLabelPayload}
-            onApplyAndPrint={c.applyAndPrintLabel}
-          />
+          <UnboxLabelPreview row={row} c={c} />
         </div>
       ),
     },
-  ];
-
-  if (hasPoNoteTab) {
-    tabs.push({
+    {
       id: 'po-note',
       label: 'Inventory notes',
       icon: FileText,
+      visible: hasPoNoteTab,
       content: (
         <LinePoNoteCard
           draft={poNote.draft}
@@ -145,30 +130,27 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
           loading={poNote.loading}
         />
       ),
-    });
-  }
-
-  tabs.push({
-    id: 'checklist',
-    label: 'Checklist',
-    icon: ClipboardList,
-    content: (
-      <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
-        <LineChecklistTab
-          lineId={row.id}
-          sku={row.sku}
-          onBridgeChange={onChecklistBridge}
-        />
-      </WorkspaceCard>
-    ),
-  });
-
-  if (hasUnits) {
-    tabs.push({
+    },
+    {
+      id: 'checklist',
+      label: 'Checklist',
+      icon: ClipboardList,
+      content: (
+        <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+          <LineChecklistTab
+            lineId={row.id}
+            sku={row.sku}
+            onBridgeChange={onChecklistBridge}
+          />
+        </WorkspaceCard>
+      ),
+    },
+    {
       id: 'units',
       label: `Units on carton · ${serialCount}`,
       icon: Barcode,
       count: serialCount,
+      visible: hasUnits,
       content: (
         <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
           <CartonUnitsRollupBody
@@ -179,55 +161,66 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
           />
         </WorkspaceCard>
       ),
-    });
-  }
-
-  if (hasTrackingTab) {
-    tabs.push({
-      id: 'tracking',
-      label: 'Tracking',
-      icon: MapPin,
-      content: <UnboxTrackingTab poId={poIdForTracking} />,
-    });
-  }
-
-  tabs.push({
-    id: 'conversation',
-    label: 'Conversation',
-    icon: MessageSquare,
-    content:
-      activeUnboxView === 'conversation' && row.id != null ? (
-        <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-          <ThreadPanel
-            entityType="RECEIVING_LINE"
-            entityId={row.id}
-            externalSubmit
-            onBridgeChange={onConversationBridge}
-          />
-        </div>
-      ) : null,
-  });
-
-  if (hasTicketTab) {
-    tabs.push({
+    },
+    {
+      id: 'timeline',
+      label: 'Timeline',
+      icon: History,
+      visible: hasTimelineTab,
+      content: (
+        <WorkspaceTimelineTab
+          poId={poIdForTracking || null}
+          tracking={row.tracking_number ?? null}
+          receivingId={row.receiving_id ?? null}
+        />
+      ),
+    },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: MessageSquare,
+      content:
+        activeUnboxView === 'support' && (row.id != null || row.receiving_id != null) ? (
+          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
+            <SupportContextHub
+              anchor={{
+                receivingId: row.receiving_id ?? null,
+                lineId: row.id ?? null,
+                tracking: row.tracking_number ?? null,
+              }}
+              variant="station"
+              defaultSegment="team"
+              hideCustomerSegment
+              hideLinkage
+              externalSubmit
+              onBridgeChange={onConversationBridge}
+              className="h-full min-h-0 rounded-2xl"
+            />
+          </div>
+        ) : null,
+    },
+    {
       id: 'ticket',
       label: 'Ticket',
       icon: Ticket,
       content:
-        activeUnboxView === 'ticket' && linkedTicketId != null ? (
-          <div className="flex h-[68vh] min-h-[460px] w-full flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-            <SupportTicketDetail
-              ticketId={linkedTicketId}
-              hideExternalLink
-              embedded
-              receivingId={row.receiving_id ?? undefined}
+        activeUnboxView === 'ticket' && (row.id != null || row.receiving_id != null) ? (
+          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
+            <SupportContextHub
+              anchor={{
+                receivingId: row.receiving_id ?? null,
+                lineId: row.id ?? null,
+                tracking: row.tracking_number ?? null,
+              }}
+              variant="station"
+              onlySegment="customer"
+              hideLinkage
+              className="h-full min-h-0 rounded-2xl"
             />
           </div>
         ) : null,
-    });
-  }
-
-  return tabs;
+    },
+  ]);
 }
 
 export function UnboxSectionTabs({

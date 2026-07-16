@@ -46,12 +46,13 @@ const RECEIVING_MODE_OPTIONS: MobileContextOption[] = [
   { id: 'triage', label: 'Receiving' },
   { id: 'receive', label: 'Unbox' },
   { id: 'history', label: 'History' },
-  { id: 'pickup', label: 'Local Pick Up' },
+  { id: 'pickup', label: 'Walk-In' },
 ];
 
 const WALK_IN_MODE_OPTIONS: MobileContextOption[] = [
   { id: 'repairs', label: 'Repairs' },
   { id: 'sales', label: 'Sales' },
+  { id: 'pickups', label: 'Pickups' },
 ];
 
 const SETTINGS_SECTION_OPTIONS: MobileContextOption[] = SETTINGS_REGISTRY.map((s) => ({
@@ -150,16 +151,23 @@ export function getMobileContextRowConfig(
       };
     }
     case 'walk-in': {
-      const activeId = searchParams.get('mode') === 'sales' ? 'sales' : 'repairs';
+      const category = searchParams.get('category');
+      const activeId =
+        category === 'sales' || category === 'pickups'
+          ? category
+          : searchParams.get('mode') === 'sales'
+            ? 'sales'
+            : 'repairs';
       const active = WALK_IN_MODE_OPTIONS.find((o) => o.id === activeId);
       return {
         activeLabel: active?.label ?? 'Repairs',
         activeId,
         options: WALK_IN_MODE_OPTIONS,
         onSelect: (id) => {
-          const params = new URLSearchParams(searchParams.toString());
-          params.set('mode', id);
-          navigate(`/walk-in?${params.toString()}`);
+          const params = new URLSearchParams();
+          if (id !== 'repairs') params.set('category', id);
+          const qs = params.toString();
+          navigate(qs ? `/walk-in?${qs}` : '/walk-in');
         },
       };
     }

@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Barcode, Hash, MapPin, Package, Pencil } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
+import { TestingScanSessionFeedback } from '@/components/sidebar/receiving/TestingScanSessionFeedback';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useIsMobile } from '@/hooks';
 import {
@@ -15,6 +16,10 @@ import {
   type ResolvedVia,
   type ForcedTestingType,
 } from '@/lib/testing/resolve-testing-scan';
+import {
+  INITIAL_TESTING_SCAN_SESSION,
+  testingScanSessionReducer,
+} from '@/lib/testing/testing-scan-session';
 import {
   dispatchSelectLine,
   type ReceivingLineRow,
@@ -27,6 +32,13 @@ import { SerialPreviewStrip, BoxMembershipHint, serialLast4 } from '@/components
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { BoxWorkbenchPanel } from '@/components/receiving/BoxWorkbenchPanel';
 import { ManifestWorkbenchPanel } from '@/components/receiving/ManifestWorkbenchPanel';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAblyClient } from '@/contexts/AblyContext';
+import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
+import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
+import { scannedUnitKey } from '@/lib/barcode-routing';
+import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
+import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
 
 interface Props {
   /**
@@ -79,10 +91,9 @@ function lineAckSummary(row: ReceivingLineRow): {
 }
 
 /**
- * Tech sidebar for Testing mode — receiving scan band plus the To Test /
- * Tested activity rail. Shares the same shell anatomy as
- * {@link ShippingSidebarPanel} (scan band, scrollable rail, bottom filter)
- * but uses testing-specific rails and scan resolution instead of Up Next orders.
+ * Tech sidebar for Testing mode — Pass+Print / unit-label creation surface.
+ * Scan band + To Test / Tested rail. STN anchors a line; unit-label scan
+ * confirms prepack identity (TRK↔SKU + serials feedback).
  */
 export function TestingSidebarPanel({
   selectedLineId: selectedLineIdProp,
@@ -98,13 +109,56 @@ export function TestingSidebarPanel({
     value: string;
     line?: ReturnType<typeof lineAckSummary> | null;
   } | null>(null);
+  const [session, dispatchSession] = useReducer(
+    testingScanSessionReducer,
+    INITIAL_TESTING_SCAN_SESSION,
+  );
   const [picker, setPicker] = useState<ResolvedTestingScan & { kind: 'multi' } | null>(null);
   const [boxPanel, setBoxPanel] = useState<{ id: number; lines: ReceivingLineRow[] } | null>(null);
   const [manifestPanel, setManifestPanel] = useState<{ ref: string } | null>(null);
   const [internalSelectedRow, setInternalSelectedRow] =
     useState<ReceivingLineRow | null>(null);
+  const [lastUnitPhotoRequest, setLastUnitPhotoRequest] = useState<{
+    serialUnitId: number;
+    unitKey: string | null;
+  } | null>(null);
   const internalSelectedId = internalSelectedRow?.id ?? null;
   const selectedLineId = selectedLineIdProp ?? internalSelectedId;
+
+  const { user } = useAuth();
+  const authOrgId = user?.organizationId;
+  const authStaffId = user?.staffId ?? 0;
+  const { getClient: getAblyClient } = useAblyClient();
+  const unitPhotoChannelName = safeChannelName(() =>
+    getStaffStationBridgeChannelName(authOrgId!, authStaffId),
+  );
+  const publishUnitPhotoRequest = useUnitPhotoRequestPublisher({
+    staffIdNum: authStaffId,
+    getAblyClient,
+    stationChannelName: unitPhotoChannelName,
+  });
+
+  const requestUnitPhotos = useCallback(
+    (rawInput: string) => {
+      if (!UNIT_SCAN_PHOTOS) return;
+      const key = scannedUnitKey(rawInput);
+      if (!key) return;
+      void (async () => {
+        try {
+          const res = await fetch(`/api/serial-units/${encodeURIComponent(key)}/photos`);
+          if (!res.ok) return;
+          const data = await res.json().catch(() => null);
+          const serialUnitId = Number(data?.unit_id);
+          if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) return;
+          await publishUnitPhotoRequest({ serialUnitId, unitKey: key });
+          setLastUnitPhotoRequest({ serialUnitId, unitKey: key });
+        } catch (err) {
+          console.warn('testing-sidebar: unit photo request failed', err);
+        }
+      })();
+    },
+    [publishUnitPhotoRequest],
+  );
 
   useEffect(() => {
     if (selectedLineIdProp !== undefined) return;
@@ -119,6 +173,40 @@ export function TestingSidebarPanel({
 
   const inFlightRef = useRef(false);
 
+  const applyLineToSession = useCallback(
+    (row: ReceivingLineRow, via: ResolvedVia | undefined, value: string) => {
+      if (via === 'tracking') {
+        dispatchSession({
+          type: 'ANCHOR_TRACKING',
+          trackingRef: value,
+          line: row,
+          via,
+        });
+        return;
+      }
+      if (via === 'unit_id' || via === 'serial') {
+        const unitKey = scannedUnitKey(value) || value.trim();
+        dispatchSession({
+          type: 'CONFIRM_UNIT',
+          unitKey,
+          line: row,
+          via: via ?? 'unit_id',
+        });
+        requestUnitPhotos(value);
+        return;
+      }
+      if (via) {
+        dispatchSession({
+          type: 'OPEN_LINE',
+          line: row,
+          via,
+          value,
+        });
+      }
+    },
+    [requestUnitPhotos],
+  );
+
   const runScan = useCallback(async (rawValue: string, forcedType: ForcedTestingType | null) => {
     const value = rawValue.trim();
     if (!value || inFlightRef.current) return;
@@ -132,6 +220,7 @@ export function TestingSidebarPanel({
           setScanValue('');
           setArmedMode(null);
           if (result.via) setLastAck({ via: result.via, value, line: lineAckSummary(result.row) });
+          applyLineToSession(result.row, result.via, value);
           const label = viaFoundLabel(result.via);
           if (label) {
             toast.success(`Found via ${label}`, { description: 'Opened the matching receiving line.' });
@@ -147,8 +236,6 @@ export function TestingSidebarPanel({
           break;
         }
         case 'box': {
-          // A license-plate (H-####) scan opens the box workbench drawer so the
-          // operator can re-sort its units — desktop parity with /m/h/[id].
           setBoxPanel({ id: result.handlingUnitId, lines: result.rows });
           setPicker(null);
           setScanValue('');
@@ -158,7 +245,6 @@ export function TestingSidebarPanel({
           break;
         }
         case 'manifest': {
-          // A KIT- master-label scan opens the manifest workbench drawer.
           setManifestPanel({ ref: result.manifestRef });
           setPicker(null);
           setScanValue('');
@@ -184,7 +270,7 @@ export function TestingSidebarPanel({
       inFlightRef.current = false;
       setIsResolving(false);
     }
-  }, []);
+  }, [applyLineToSession]);
 
   const handleSubmit = useCallback(() => {
     void runScan(scanValue, armedMode);
@@ -234,7 +320,16 @@ export function TestingSidebarPanel({
       {!isMobile ? (
         <div className={`${SIDEBAR_GUTTER} pt-1.5 pb-2`}>
           {scanBarBlock}
-          {lastAck ? (() => {
+          <TestingScanSessionFeedback session={session} />
+          {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+            <div className="mt-1.5">
+              <UnitPhotoRequestStatus
+                serialUnitId={lastUnitPhotoRequest.serialUnitId}
+                unitKey={lastUnitPhotoRequest.unitKey}
+              />
+            </div>
+          ) : null}
+          {!session.line && lastAck ? (() => {
             const meta = viaAckMeta(lastAck.via);
             return (
               <div className="mt-2 flex items-center gap-1.5">
@@ -275,14 +370,16 @@ export function TestingSidebarPanel({
                   type="button"
                   onClick={() => {
                     dispatchSelectLine(row);
-                    // Carry the chosen line into the ack strip so the post-pick
-                    // context (serial via + line + qty) reads the same as a
-                    // direct single-line resolve.
                     setLastAck((prev) => ({
                       via: picker.via ?? prev?.via ?? 'receiving_id',
                       value: prev?.value ?? '',
                       line: lineAckSummary(row),
                     }));
+                    applyLineToSession(
+                      row,
+                      picker.via ?? 'receiving_id',
+                      lastAck?.value ?? '',
+                    );
                     setPicker(null);
                     setScanValue('');
                   }}
@@ -332,11 +429,10 @@ export function TestingSidebarPanel({
       {isMobile ? (
         <div className={`flex-shrink-0 border-t border-border-hairline bg-surface-card ${SIDEBAR_GUTTER} pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-3`}>
           {scanBarBlock}
+          <TestingScanSessionFeedback session={session} />
         </div>
       ) : null}
 
-      {/* Box workbench — an H-#### scan opens this into the global right-rail
-          drawer (RightRailHost). Returns null here; it only registers the panel. */}
       {boxPanel ? (
         <DetailStackRailRegistrar id={`box:${boxPanel.id}`} onClose={() => setBoxPanel(null)}>
           <BoxWorkbenchPanel

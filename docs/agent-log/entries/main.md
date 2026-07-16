@@ -24,3 +24,19 @@
 - `2026-07-15T15:06:18.636Z` · **main** · main · agent · Unbox per-tab terminal docks: checklist Check/Uncheck all, units Add serial+Prebox (removed R·PO header), conversation Add note; tracking Copy / ticket Reply — ok
 - `2026-07-15T15:29:45.998Z` · **main** · main · agent · UIC-2 read-only Issues console at /support?mode=issues — done · UIC-2
 - `2026-07-15T15:49:22.462Z` · **main** · main · agent · Ticket media UX: PhotoViewerModal Layer portal (header leak), media picker This ticket/Current carton tabs, ExpandableComposerField on support+claim composers — ok
+- `2026-07-16T03:38:31.769Z` · **main** · main · agent · Fix Send photos to ticket picker: carton-grain search (omit lineId), harden useClaimTicketSearch (params/errors/loading), ClaimTicketPicker error + hiddenLinked empty copy — ok
+- `2026-07-16T04:00:06.295Z` · **main** · main · agent · STN↔Zendesk Support Context Hub: link waist + context API + SupportContextHub on Unbox/Support/Packing — ok
+- `2026-07-16T04:25:07.386Z` · **main** · main · agent · Promote Receiving Local Pickup → Walk-In station (job=sales|pickup|repair); /walk-in becomes categorized history — ok
+- `2026-07-16T04:39:06.226Z` · **main** · main · agent · Unbox scan: local-DB-only lookup-po + t=0 pending rail/pane soft-swap (no Zoho, no blanking) — ok
+- `2026-07-16T04:45:12.621Z` · **main** · main · agent · Promote Unbox display → StationWorkbench SoT: shell+slots, Testing/Triage/Shipping/Packing/Repair adopt anatomy — ok
+- `2026-07-16T04:54:37.444Z` · **main** · main · agent · Unbox label expansion: WorkspaceLabelPreviewCard + LabelTypeSelect parity, useCartonLabelEditor dedupe, workspace-label-kinds registry, As Listed + ticket_minimal faces (T- scan), dock print-kind pre-select — ok
+- `2026-07-16T05:02:42.378Z` · **main** · main · agent · Unbox pane optimism: sync workspace-open + UnboxPendingWorkspace chrome, no scan overlay double-cover — ok
+- `2026-07-16T05:08:56.876Z` · **main** · main · agent · Unbox pane: remove Opening chrome + skeletons; keep prior carton until STN match/unfound — ok
+- `2026-07-16T05:19:05.877Z` · **main** · main · agent · Universal Timeline tab: replace Unbox Tracking with shared WorkspaceTimelineTab; add to Testing/Shipping/Packing — done
+- `2026-07-16T05:28:13.957Z` · **main** · main · agent · UIC-3 PATCH claim/resolve/reopen/edit + setIssueStatus(expectedFrom) 409 + optimistic UI — done · UIC-3
+- `2026-07-16T05:32:27.963Z` · **main** · main · agent · UIC-4 soft-delete: migration authored (not applied), DELETE + confirm UI + deleted_at filters — done · UIC-4
+- `2026-07-16T05:42:18.645Z` · **main** · main · agent · STN↔ticket link discoverability: dashed Link ticket/tracking chips, paste-#id, rollup CTA outside expander, Support context band — ok
+- `2026-07-16T05:42:23.656Z` · **main** · main · agent · UIC-4 applied soft-delete migration + tenancy:coverage; ticket deployed — done · UIC-4
+- `2026-07-16T06:01:50.602Z` · **main** · main · agent · Unbox empty-pane-first: optimistic unmatched PO-items pane + tracking rail stub at scan t=0; local-tracking re-enabled; settle remount; not_found clears — ok
+- `2026-07-16T06:05:39.855Z` · **main** · main · agent · Unbox/Packing: Ticket SectionTabsSlider tab (Ticket icon) separate from Support conversations; onlySegment on SupportContextHub; wire ticket terminal Reply dock — ok
+- `2026-07-16T06:16:36.316Z` · **main** · main · agent · Station Ticket tab right of Support; hide Linkage strip on station Ticket/Support hubs — ok

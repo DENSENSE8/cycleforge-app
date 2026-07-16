@@ -17,7 +17,7 @@ import type { SurfaceKey } from '@/lib/stations/surface-keys';
  * `WorkspaceMode` in mode-registry (+ shipping for future scan-complete CTA).
  * Kept here so the lib layer does not import from components/.
  */
-export type TerminalWorkspaceMode = 'unbox' | 'triage' | 'testing' | 'shipping';
+export type TerminalWorkspaceMode = 'unbox' | 'triage' | 'testing' | 'shipping' | 'repair';
 
 /** Preset tones mirrored from FloatingButton — kept as a string union so the
  *  lib layer does not import the DS primitive. */

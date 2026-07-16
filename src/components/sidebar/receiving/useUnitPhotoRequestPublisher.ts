@@ -30,6 +30,12 @@ export type UnitPhotoRequestPublisher = (args: {
   serialUnitId: number;
   /** Resolvable unit key (serial or minted unit_uid) for display + poRef filing. */
   unitKey: string | null;
+  /** `testing` (default) or `packing` — phone capture stage. */
+  stage?: 'testing' | 'packing';
+  /** When packing, dual-link uploads to this packer_logs.id. */
+  packerLogId?: number | null;
+  /** Order / shipment ref for poRef. */
+  poRef?: string | null;
 }) => Promise<void>;
 
 export function useUnitPhotoRequestPublisher({
@@ -38,7 +44,7 @@ export function useUnitPhotoRequestPublisher({
   stationChannelName,
 }: UseUnitPhotoRequestPublisherArgs): UnitPhotoRequestPublisher {
   return useCallback(
-    async ({ serialUnitId, unitKey }) => {
+    async ({ serialUnitId, unitKey, stage = 'testing', packerLogId = null, poRef = null }) => {
       if (!Number.isFinite(serialUnitId) || serialUnitId <= 0 || staffIdNum <= 0) return;
       if (!stationChannelName) return;
       try {
@@ -48,11 +54,14 @@ export function useUnitPhotoRequestPublisher({
         await ch.publish('unit_photo_request', {
           serial_unit_id: serialUnitId,
           unit_key: unitKey,
+          stage,
+          packer_log_id: packerLogId,
+          po_ref: poRef,
           request_id: safeRandomUUID(),
           requested_by_staff_id: staffIdNum,
         });
       } catch (err) {
-        console.warn('station-testing: unit photo request publish failed', err);
+        console.warn('station: unit photo request publish failed', err);
       }
     },
     [getAblyClient, staffIdNum, stationChannelName],

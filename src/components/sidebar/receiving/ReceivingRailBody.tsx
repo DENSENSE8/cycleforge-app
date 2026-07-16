@@ -7,13 +7,16 @@
  *   - triage  → Triage/Prioritize/Unfound body
  *   - unbox   → Unboxed (unboxRecent) / Queue (scanned) / Viewed (per-staff)
  *
- * Unbox rails paint scan results via a single cache upsert on resolve. Triage uses
- * a pre-resolve leadingRow (tracking #) plus resolve-time prepend.
+ * Unbox rails paint a pending `scan:` stub at submit, then reconcile to
+ * `carton:{id}` on resolve. Triage uses a pre-resolve leadingRow plus prepend.
  */
 
 import { TriageSidebarBody } from '@/components/sidebar/receiving/TriageSidebarBody';
 import { ReceivingFeedRail } from '@/components/sidebar/receiving/ReceivingFeedRail';
-import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import {
+  isPendingTriageScanRow,
+  type ReceivingMode,
+} from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { UnboxView } from '@/components/sidebar/receiving/useReceivingMode';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -37,9 +40,12 @@ export function ReceivingRailBody({
   const selectedLineId = selectedLine?.id ?? null;
   // Unfound cartons are lineless stubs (negative id) but still open a workspace
   // keyed on receiving_id — pass them through so the rail highlight + pin stay
-  // in sync with the right pane.
+  // in sync with the right pane. Pending pre-resolve stubs (`scan:…`) likewise.
   const selectedRow =
-    selectedLine && (selectedLine.id > 0 || selectedLine.receiving_id != null)
+    selectedLine
+    && (selectedLine.id > 0
+      || selectedLine.receiving_id != null
+      || isPendingTriageScanRow(selectedLine))
       ? selectedLine
       : null;
 

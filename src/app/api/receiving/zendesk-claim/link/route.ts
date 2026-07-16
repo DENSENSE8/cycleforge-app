@@ -2,23 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  HelpdeskNotConnectedError,
-  requireHelpdeskProvider,
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
 import {
-  buildExternalId,
-  clearTicketExternalIdIfMatches,
-  getTicketEntity,
-  linkTicket,
-  unlinkTicket,
-} from '@/lib/zendesk-links';
-import { listTicketLinkCandidates } from '@/lib/zendesk-link-candidates';
-import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
-import { tenantQuery } from '@/lib/tenancy/db';
+  isHelpdeskNotConnected,
+  linkTicketToAnchor,
+  listCandidatesForAnchor,
+  unlinkTicketFromAnchor,
+} from '@/lib/support/ticket-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,17 +19,9 @@ export const dynamic = 'force-dynamic';
  * Link an EXISTING Zendesk ticket to a receiving carton/line (the counterpart
  * to POST /api/receiving/zendesk-claim, which creates a fresh ticket).
  *
- *   GET  ?receivingId=N[&lineId=N][&query=...] → link candidates. Without a
- *        query this is the most recent tickets (the common case: the claim
- *        was just filed by email, so it's near the top); with one it's a
- *        Zendesk search (or a direct id lookup for "#1234"). Either way,
- *        tickets already linked to a DIFFERENT entity (ticket_links /
- *        external_id / unfound_overlay) are hidden. A ticket already linked
- *        to THIS entity is returned flagged `linkedToThis` so the UI can show
- *        it as done.
- *   POST { receivingId, lineId?, ticketId } → write the link: ticket_links
- *        upsert + external_id backfill + zendesk_ticket column, mirroring the
- *        create route's post-create steps.
+ * Thin wrapper over the universal `/api/support/tickets/link` waist — same
+ * candidate search / link / unlink behaviour, gated by receiving.mark_received
+ * so floor operators can claim without the broader Zendesk console permission.
  */
 
 function notConfigured(context: string): NextResponse {
@@ -44,16 +29,6 @@ function notConfigured(context: string): NextResponse {
     new ApiError(503, HELPDESK_NOT_CONNECTED_MESSAGE, HELPDESK_CONNECT_HINT),
     context,
   );
-}
-
-function isNotConnected(err: unknown): boolean {
-  return err instanceof ZendeskNotConfiguredError || err instanceof HelpdeskNotConnectedError;
-}
-
-function entityRef(receivingId: number, lineId: number | null | undefined) {
-  return lineId != null
-    ? { entityType: 'RECEIVING_LINE', entityId: lineId }
-    : { entityType: 'RECEIVING', entityId: receivingId };
 }
 
 const SearchQuery = z.object({
@@ -71,21 +46,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       receivingId: sp.get('receivingId') ?? undefined,
       lineId: sp.get('lineId') ?? undefined,
     });
-    const { entityType, entityId } = entityRef(parsed.receivingId, parsed.lineId);
-
-    // Recent / search / direct-#id candidates with "linked elsewhere" hidden —
-    // shared with the warranty link route so manual-id entry behaves identically
-    // on both surfaces (see listTicketLinkCandidates).
-    const { tickets, hiddenLinked } = await listTicketLinkCandidates({
+    const { tickets, hiddenLinked } = await listCandidatesForAnchor({
       orgId: ctx.organizationId,
-      entityType,
-      entityId,
+      anchor: {
+        type: 'receiving',
+        receivingId: parsed.receivingId,
+        lineId: parsed.lineId,
+      },
       query: parsed.query,
     });
-
     return NextResponse.json({ success: true, tickets, hiddenLinked });
   } catch (err) {
-    if (isNotConnected(err)) return notConfigured(context);
+    if (isHelpdeskNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);
   }
 }, { permission: 'receiving.mark_received' });
@@ -100,61 +72,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const context = 'POST /api/receiving/zendesk-claim/link';
   try {
     const body = LinkBody.parse(await req.json().catch(() => null));
-    const { entityType, entityId } = entityRef(body.receivingId, body.lineId);
-
-    const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
-    const ticket = await helpdesk.getTicket(body.ticketId);
-    if (!ticket) throw ApiError.notFound('Helpdesk ticket', body.ticketId);
-
-    // One entity per ticket (ticket_links upserts on ticket id), so linking a
-    // ticket that already belongs to another carton/line would silently steal
-    // it. Refuse instead — the operator picked the wrong ticket.
-    const existing = await getTicketEntity(ctx.organizationId, body.ticketId);
-    if (existing && !(existing.type === entityType && existing.id === entityId)) {
-      throw ApiError.conflict(`Ticket #${body.ticketId} is already linked to another item`);
-    }
-
-    await linkTicket({
+    const result = await linkTicketToAnchor({
       orgId: ctx.organizationId,
-      zendeskTicketId: ticket.id,
-      entityType,
-      entityId,
+      ticketId: body.ticketId,
+      anchor: {
+        type: 'receiving',
+        receivingId: body.receivingId,
+        lineId: body.lineId,
+      },
       staffId: ctx.staffId,
     });
-
-    // Backfill external_id only when the ticket has none — never clobber a
-    // value some other system put there (ticket_links wins for resolution
-    // anyway).
-    if (!ticket.external_id) {
-      try {
-        await helpdesk.updateTicket(ticket.id, { external_id: buildExternalId(entityType, entityId) });
-      } catch (extErr) {
-        console.warn(`[${context}] external_id backfill failed`, extErr);
-      }
-    }
-
-    // Persist the human-visible ticket # onto the record, same as the create
-    // route, so the header pill / Support section pick it up. Best-effort.
-    const ticketNumber = `#${ticket.id}`;
-    const orgId = ctx.organizationId;
-    try {
-      if (body.lineId != null) {
-        await tenantQuery(orgId, `UPDATE receiving_line SET zendesk_ticket = $1 WHERE id = $2`, [ticketNumber, body.lineId]);
-      } else {
-        await tenantQuery(orgId, `UPDATE receiving_carton SET zendesk_ticket = $1 WHERE id = $2`, [ticketNumber, body.receivingId]);
-      }
-    } catch (colErr) {
-      console.warn(`[${context}] zendesk_ticket column update failed`, colErr);
-    }
-
     return NextResponse.json({
       success: true,
-      ticketNumber,
-      ticketUrl: zendeskTicketUrl(ticket.id),
-      subject: ticket.subject ?? null,
+      ticketNumber: result.ticketNumber,
+      ticketUrl: result.ticketUrl,
+      subject: result.subject,
     });
   } catch (err) {
-    if (isNotConnected(err)) return notConfigured(context);
+    if (isHelpdeskNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);
   }
 }, { permission: 'receiving.mark_received' });
@@ -167,9 +102,8 @@ const UnlinkQuery = z.object({
 
 /**
  * DELETE ?receivingId=N[&lineId=N]&ticketId=N — detach a linked ticket from the
- * carton/line. Removes the ticket_links row (entity-scoped, so a stale unlink
- * can't steal a re-linked ticket) and clears the zendesk_ticket column. The
- * Zendesk ticket itself is never touched — unlinking only severs our reference.
+ * carton/line. Removes the ticket_links row (entity-scoped) and clears the
+ * zendesk_ticket column. The Zendesk ticket itself is never touched.
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const context = 'DELETE /api/receiving/zendesk-claim/link';
@@ -180,51 +114,18 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
       lineId: sp.get('lineId') ?? undefined,
       ticketId: sp.get('ticketId') ?? undefined,
     });
-    const { entityType, entityId } = entityRef(parsed.receivingId, parsed.lineId);
-
-    const removed = await unlinkTicket({
+    const { removed } = await unlinkTicketFromAnchor({
       orgId: ctx.organizationId,
-      zendeskTicketId: parsed.ticketId,
-      entityType,
-      entityId,
+      ticketId: parsed.ticketId,
+      anchor: {
+        type: 'receiving',
+        receivingId: parsed.receivingId,
+        lineId: parsed.lineId,
+      },
     });
-
-    // Clear the dangling external_id off the Zendesk ticket (only when it still
-    // resolves to this entity) so getTicketEntity can't re-attach it via the
-    // external_id fallback after the ticket_links row is gone. Mirrors the
-    // warranty unlink — full clean detach.
-    await clearTicketExternalIdIfMatches({
-      orgId: ctx.organizationId,
-      zendeskTicketId: parsed.ticketId,
-      entityType,
-      entityId,
-    });
-
-    // Clear the human-visible ticket # from the record so the chip flips back to
-    // the Claim affordance. Best-effort; only clears when it still matches.
-    const ticketNumber = `#${parsed.ticketId}`;
-    const orgId = ctx.organizationId;
-    try {
-      if (parsed.lineId != null) {
-        await tenantQuery(
-          orgId,
-          `UPDATE receiving_line SET zendesk_ticket = NULL WHERE id = $1 AND zendesk_ticket = $2`,
-          [parsed.lineId, ticketNumber],
-        );
-      } else {
-        await tenantQuery(
-          orgId,
-          `UPDATE receiving_carton SET zendesk_ticket = NULL WHERE id = $1 AND zendesk_ticket = $2`,
-          [parsed.receivingId, ticketNumber],
-        );
-      }
-    } catch (colErr) {
-      console.warn(`[${context}] zendesk_ticket column clear failed`, colErr);
-    }
-
     return NextResponse.json({ success: true, removed });
   } catch (err) {
-    if (isNotConnected(err)) return notConfigured(context);
+    if (isHelpdeskNotConnected(err)) return notConfigured(context);
     return errorResponse(err, context);
   }
 }, { permission: 'receiving.mark_received' });

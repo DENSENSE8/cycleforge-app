@@ -3,6 +3,7 @@ import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
+import { promoteShipmentTicketToReceiving } from '@/lib/support/ticket-link';
 
 export type ReceivingScanSource = 'zoho_po' | 'unmatched';
 
@@ -49,6 +50,15 @@ async function linkScanToStn(
       `UPDATE receiving_carton SET shipment_id = $2 WHERE id = $1 AND shipment_id IS NULL`,
       [receivingId, shipmentId],
     );
+    // Pre-intake ticket↔STN links (support linked tracking before the carton
+    // existed) promote to RECEIVING so unbox resolves the ticket on scan.
+    if (orgId) {
+      await promoteShipmentTicketToReceiving({
+        orgId,
+        shipmentId,
+        receivingId,
+      });
+    }
     return true;
   } catch (err) {
     console.warn(`[recordReceivingScan] linkScanToStn skipped for scan=${scanId}:`, err);

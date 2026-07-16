@@ -144,7 +144,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   pickup: {
     key: 'pickup',
-    label: 'Local Pickup',
+    label: 'Walk-In',
     route: '/pickup',
     archetype: 'workbench',
     permission: 'receiving.view',

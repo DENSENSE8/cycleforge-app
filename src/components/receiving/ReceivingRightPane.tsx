@@ -3,11 +3,9 @@
 /**
  * The `/receiving` right-pane column. The History/Incoming table stays mounted
  * (display-toggled) so its cache + scroll survive tab flips; over it the focused
- * line workspace crossfades in, a scan-in-flight skeleton covers the lookup gap,
- * a per-mode empty state shows when nothing is open, and the Incoming details
- * slide-over opens on a row select. Pure presentational; state + handlers come
- * from the dashboard's hooks. Extracted from ReceivingDashboard; behaviour is
- * unchanged.
+ * line workspace soft-swaps in. Unbox scan opens an optimistic unmatched empty
+ * PO-items pane (settle remount) then fills in place — no Opening / Triage
+ * skeleton. Triage still uses its own in-flight skeleton.
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -19,7 +17,6 @@ import { ContextualSelectionBar } from '@/design-system/components/ContextualSel
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { EmptyState } from '@/design-system/primitives';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
-import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
 import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
@@ -86,19 +83,11 @@ export function ReceivingRightPane({
   onCloseWorkspace,
 }: ReceivingRightPaneProps) {
   const showWorkspace = !!workspace && !isTableOnlyMode;
-  // Scan loader covers the gap between scan and PO/line mounting, rendered above
-  // the workspace (z-20) so it overlays the previously-open line. Each mode gets
-  // its OWN skeleton loader — never the other mode's display — gated on the
-  // surface the in-flight scan belongs to (`scanInFlight.surface`). Unbox → the
-  // LineEditPanel-shaped ReceivingWorkspaceSkeleton; Triage → the TriagePanel-
-  // shaped TriageWorkspaceSkeleton. A scan in one mode can never paint the other
-  // mode's pane. There is no "Finding your PO" hero — the skeleton is the loader.
-  const showUnboxScanLoader =
-    !!scanInFlight && scanInFlight.surface === 'unbox' && !isTableOnlyMode && !isTriageMode;
+  // Unbox paints the real unmatched empty PO-items workspace as its in-flight
+  // display (scan-driven remount below). Triage keeps the dedicated skeleton.
   const showTriageScanLoader =
     !!scanInFlight && scanInFlight.surface === 'triage' && isTriageMode;
   const emptyState = RECEIVING_EMPTY_STATE[mode];
-  const showIdleSkeleton = mode === 'receive' && !isTableOnlyMode && !showWorkspace && !showUnboxScanLoader;
   // Heavy line-workspace overlay crossfade. Uses the slower, opacity-led
   // `workbenchPaneSettle` (not the snappy `workbenchPane`): a carton→carton swap
   // dissolves — the incoming pane rises + fades in over a static, fading-out
@@ -160,37 +149,16 @@ export function ReceivingRightPane({
         ) : null}
       </AnimatePresence>
 
-      {/* Idle Unbox right pane — workspace-shaped skeleton instead of empty copy. */}
-      {showIdleSkeleton ? (
-        <div className="absolute inset-0 overflow-hidden">
-          <ReceivingWorkspaceSkeleton />
-        </div>
-      ) : null}
+      {/* Idle Unbox right pane — intentionally empty (no skeleton). A real
+          matched/unfound workspace opens only after lookup-po resolves. */}
 
-      {/* Empty right pane — per-mode copy from RECEIVING_EMPTY_STATE. Sits under
-          the workspace/loader overlays (no z), so it only shows when neither is
-          mounted. */}
-      {!isTableOnlyMode && !showWorkspace && !showUnboxScanLoader && !showTriageScanLoader && !showIdleSkeleton && emptyState ? (
+      {/* Empty right pane — per-mode copy from RECEIVING_EMPTY_STATE. */}
+      {!isTableOnlyMode && !showWorkspace && !showTriageScanLoader && emptyState ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <EmptyState
             title={emptyState.title}
             description={emptyState.description}
           />
-        </div>
-      ) : null}
-
-      {/* Unbox scan-in-flight skeleton — shown the moment an unbox tracking scan
-          is submitted; cleared 500ms after the response lands. With a workspace
-          already mounted behind, start BELOW its 80px header chrome (40px stepper
-          + 40px toolbar) and drop the skeleton's own header so those rows stay
-          visible. Cold start fills from the top with the full skeleton. */}
-      {showUnboxScanLoader ? (
-        <div
-          className={`absolute inset-x-0 bottom-0 z-20 overflow-hidden ${
-            showWorkspace ? 'top-[80px]' : 'top-0'
-          }`}
-        >
-          <ReceivingWorkspaceSkeleton showHeader={!showWorkspace} />
         </div>
       ) : null}
 
@@ -203,27 +171,25 @@ export function ReceivingRightPane({
         </div>
       ) : null}
 
-      {/* Workspace — overlays everything when a line is active in Receiving. */}
+      {/* Workspace — overlays everything when a line is active in Receiving.
+          Scan-driven opens remount the shell (settle animation) so empty-pane
+          paint has time to ingest; later row updates (matched fill / unmatched
+          receiving_id) change the key when client_event_id / receiving_id
+          shifts. Mode leave still remounts via `workspacePresenceKey`. */}
       <AnimatePresence initial={false} key={workspacePresenceKey}>
         {showWorkspace ? (
           <motion.div
-            // Key on the CARTON, not the line. Switching between sibling lines of
-            // the same carton (receiving_id) must NOT remount/crossfade the whole
-            // workspace — only a carton→carton change should. The controller
-            // re-seeds per-line state on row.id change in place, so an in-place
-            // line switch is both faster and more correct (carton-level PO#,
-            // tracking, photos stay put). Fall back to the line id for rows with
-            // no carton yet (pre-carton stub).
-            key={`workspace-${workspace!.row.receiving_id ?? `line-${workspace!.row.id}`}`}
+            key={
+              workspace!.scanDriven
+                ? `scan-${workspace!.row.client_event_id ?? workspace!.row.tracking_number ?? workspace!.row.id}`
+                : `row-${workspace!.row.receiving_id ?? workspace!.row.id}`
+            }
             initial={workspacePane.initial}
             animate={workspacePane.animate}
             exit={workspacePane.exit}
             transition={workspaceTransition}
             className="absolute inset-0 z-10"
           >
-            {/* Unbox and Triage are de-coupled panels (LineEditPanel /
-                TriagePanel), selected by variant inside ReceivingLineWorkspace —
-                each declares its own sections; no shared capability matrix. */}
             <ReceivingLineWorkspace
               row={workspace!.row}
               staffId={staffId}

@@ -11,8 +11,25 @@ interface Props {
 
 /** Link-mode search box + results list (recent tickets when the box is empty). */
 export function ClaimTicketPicker({ search, onSelect }: Props) {
-  const { ticketQuery, setTicketQuery, ticketResults, hiddenLinked, searchLoading, selectedTicket } = search;
+  const {
+    ticketQuery,
+    setTicketQuery,
+    ticketResults,
+    hiddenLinked,
+    searchLoading,
+    searchError,
+    selectedTicket,
+  } = search;
   const hasQuery = !!ticketQuery.trim();
+
+  let emptyCopy: string;
+  if (hasQuery) {
+    emptyCopy = 'No tickets found — try a different search or ticket #';
+  } else if (hiddenLinked > 0) {
+    emptyCopy = `${hiddenLinked} recent ticket${hiddenLinked === 1 ? ' is' : 's are'} hidden — already linked to other items. Search by ticket # to find one.`;
+  } else {
+    emptyCopy = 'Recent support tickets will appear here';
+  }
 
   return (
     <>
@@ -42,7 +59,11 @@ export function ClaimTicketPicker({ search, onSelect }: Props) {
           {searchLoading ? <Loader2 className="h-3 w-3 animate-spin text-text-faint" /> : null}
         </div>
         <div className="max-h-[280px] overflow-y-auto rounded-xl border border-border-soft bg-surface-card">
-          {ticketResults.length > 0 ? (
+          {searchError ? (
+            <div className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-10 text-center text-role-micro font-medium text-rose-600">
+              {searchError}
+            </div>
+          ) : ticketResults.length > 0 ? (
             <div className={searchLoading ? 'opacity-50' : ''}>
               {ticketResults.map((t) => {
                 const isSel = selectedTicket?.id === t.id;
@@ -80,15 +101,13 @@ export function ClaimTicketPicker({ search, onSelect }: Props) {
             </div>
           ) : (
             <div className="px-4 py-10 text-center text-role-micro font-medium text-text-faint">
-              {hasQuery
-                ? 'No tickets found — try a different search or ticket #'
-                : 'Recent support tickets will appear here'}
+              {emptyCopy}
             </div>
           )}
         </div>
       </div>
 
-      {hiddenLinked > 0 ? (
+      {hiddenLinked > 0 && !searchError ? (
         <p className="text-role-micro font-medium text-text-faint">
           {hiddenLinked} matching ticket{hiddenLinked === 1 ? ' is' : 's are'} hidden — already linked
           to other items.

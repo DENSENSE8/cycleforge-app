@@ -1,6 +1,12 @@
 import type { UseClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 
-export type TestingView = 'testing' | 'pairing' | 'checklist' | 'manuals' | 'claim';
+export type TestingView =
+  | 'testing'
+  | 'pairing'
+  | 'checklist'
+  | 'manuals'
+  | 'claim'
+  | 'timeline';
 
 export interface TestingTerminalInput {
   primaryLabel: string;

@@ -16,9 +16,9 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
       'po-note': 'po-note',
       checklist: 'checklist',
       units: 'units',
-      tracking: 'tracking',
+      timeline: 'timeline',
       ticket: 'ticket',
-      conversation: 'conversation',
+      support: 'support',
     },
   },
   triage: {
@@ -36,17 +36,24 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
       manuals: 'mode-default',
       // Resolved further in TestingPanel → claim-reply | file-claim | none
       claim: 'claim',
+      timeline: 'none',
     },
   },
   shipping: {
     hasSectionTabs: true,
-    // No workspace dock yet — scan-driven. Registered so the guard stays
-    // complete when ShippingScanWorkspace later adds a scan-complete CTA.
-    defaultKind: 'none',
+    // Preview (Up Next) uses defaultKind with tabId null → Start CTA.
+    // Active scan tabs stay `none` (scan-driven; no sticky CTA on ship/units).
+    defaultKind: 'start',
     tabs: {
       ship: 'none',
       units: 'none',
+      timeline: 'none',
     },
+  },
+  repair: {
+    hasSectionTabs: false,
+    defaultKind: 'mode-default',
+    tabs: {},
   },
 };
 

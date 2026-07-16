@@ -24,9 +24,11 @@ import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 
 export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pickup';
 
-// Sidebar order: Incoming → Receiving (triage/scan) → Unbox → History → Local
-// Pickup. Each flips the `?mode=` URL param; the bare path (no `?mode=`) stays
-// the Unbox workspace (id `receive`) for deep-link + realtime back-compat.
+// Sidebar order: Incoming → Receiving (triage/scan) → Unbox → Walk-In → History.
+// Walk-In (id `pickup`) is the front-desk station: Sales / Local Pickup / Repair
+// via `?job=`. Each mode flips the `?mode=` URL param; the bare path (no
+// `?mode=`) stays the Unbox workspace (id `receive`) for deep-link + realtime
+// back-compat.
 //
 // `triage` (label "Receiving") is the scan/identify surface that runs BEFORE
 // unboxing: scan a tracking, see found/unfound + expedited/normal verdict, and
@@ -46,7 +48,7 @@ export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'incoming', label: 'Incoming',     icon: Inbox },
   { id: 'triage',   label: 'Receiving',    icon: ClipboardList },
   { id: 'receive',  label: 'Unbox',        icon: PackageOpen },
-  { id: 'pickup',   label: 'Local Pickup', icon: ShoppingCart },
+  { id: 'pickup',   label: 'Walk-In',      icon: ShoppingCart },
   { id: 'history',  label: 'History',      icon: List },
 ];
 
@@ -662,12 +664,72 @@ export function buildPendingScanStubRow(trackingNumber: string): ReceivingLineRo
   };
 }
 
-/** True while a row is the pre-resolve triage leading stub (not yet clickable). */
+/**
+ * Openable Unbox right-pane stub painted at scan t=0 (Phase-0 miss): unmatched
+ * empty PO-items surface with null `receiving_id`. Mutations stay gated until
+ * lookup-po stamps a real carton. Same `scan:` reconcile key as the rail
+ * pending stub so both clear together on resolve / not_found.
+ */
+export function buildOptimisticUnmatchedPaneStub(trackingNumber: string): ReceivingLineRow {
+  const trimmed = trackingNumber.trim();
+  const now = new Date().toISOString();
+  return {
+    id: pendingScanLineId(trimmed),
+    receiving_id: null,
+    client_event_id: pendingScanReconcileKey(trimmed),
+    tracking_number: trimmed,
+    carrier: null,
+    zoho_item_id: null,
+    zoho_line_item_id: null,
+    zoho_purchase_receive_id: null,
+    zoho_purchaseorder_id: null,
+    zoho_purchaseorder_number: null,
+    item_name: null,
+    sku: null,
+    quantity_received: 0,
+    quantity_expected: null,
+    qa_status: 'PENDING',
+    workflow_status: null,
+    disposition_code: 'HOLD',
+    condition_grade: '',
+    disposition_audit: [],
+    needs_test: true,
+    assigned_tech_id: null,
+    zoho_sync_source: null,
+    zoho_last_modified_time: null,
+    zoho_synced_at: null,
+    receiving_type: 'PO',
+    notes: null,
+    created_at: now,
+    last_activity_at: now,
+    scanned_at: now,
+    image_url: null,
+    source_platform: null,
+    receiving_source: 'unmatched',
+  };
+}
+
+/** True for the Unbox optimistic unmatched pane stub (openable, writes gated). */
+export function isOptimisticUnmatchedPaneStub(row: ReceivingLineRow): boolean {
+  return (
+    row.receiving_id == null
+    && row.receiving_source === 'unmatched'
+    && typeof row.client_event_id === 'string'
+    && row.client_event_id.startsWith('scan:')
+  );
+}
+
+/**
+ * True while a row is the pre-resolve rail leading stub (tracking# title, not
+ * clickable). Excludes {@link isOptimisticUnmatchedPaneStub} so Unbox can open
+ * the empty unmatched pane while the rail still shows the pending tracking#.
+ */
 export function isPendingTriageScanRow(row: ReceivingLineRow): boolean {
   return (
     row.receiving_id == null
     && typeof row.client_event_id === 'string'
     && row.client_event_id.startsWith('scan:')
+    && !isOptimisticUnmatchedPaneStub(row)
   );
 }
 

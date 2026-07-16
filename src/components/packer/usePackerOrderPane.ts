@@ -25,7 +25,11 @@ export interface PackActiveOrderPane {
   condition: string;
   tracking: string;
   sku?: string;
-  scanType?: 'ORDERS' | 'SKU' | 'REPAIR';
+  scanType?: 'ORDERS' | 'SKU' | 'REPAIR' | 'UNIT';
+  /** Prepack unit resolved from unit-label QR at the pack station. */
+  serialUnitId?: number | null;
+  unitKey?: string | null;
+  packerLogId?: number | null;
 }
 
 export function usePackerOrderPane() {

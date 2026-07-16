@@ -11,4 +11,10 @@ export { amendmentsToTimeline, type AmendmentTimelineRow } from './amendment-eve
 export { opsEventsToTimeline, type OpsEventRow } from './ops-events';
 export { entitySignalsToTimeline, type EntitySignalTimelineRow } from './entity-signals';
 export { threadMessagesToTimeline, type ThreadMessageTimelineRow } from './thread-events';
+export {
+  mergeSupportContextTimeline,
+  ticketLinkEventsToTimeline,
+  type SupportContextTimelineInput,
+  type TicketLinkTimelineRow,
+} from './support-context-timeline';
 export { collapseTimeline } from './collapse';

@@ -278,6 +278,9 @@ export const AUDIT_ACTION = {
   // In-app issue → fix → toast loop
   USER_ISSUE_REPORT:       'user_issue.report',
   USER_ISSUE_RESOLVE:      'user_issue.resolve',
+  USER_ISSUE_UPDATE:       'user_issue.update',
+  USER_ISSUE_STATUS:       'user_issue.status',
+  USER_ISSUE_DELETE:       'user_issue.delete',
   // Staff-to-staff messages (clipboard "send to staff")
   STAFF_MESSAGE_SEND:      'staff_message.send',
   // Entity-anchored conversation threads (entity_threads / thread_messages)

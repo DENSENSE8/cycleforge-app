@@ -26,15 +26,18 @@ export interface MobileUnitPhotoStudioProps {
   maxPhotos?: number;
   /** Drives the per-photo `unit_photo_uploaded` echo back to the desktop. */
   requestId?: string | null;
+  /** `testing` (default) or `packing` — selects photo_type + dual-link behavior. */
+  stage?: 'testing' | 'packing';
+  /** When packing, dual-link uploads to this packer_logs.id. */
+  packerLogId?: number | null;
+  /** Order / shipment ref for poRef. */
+  poRef?: string | null;
 }
 
 /**
- * Phone capture surface for SERIAL_UNIT testing-scan photos — the unit-scoped
- * mirror of `MobileReceivingPhotoStudio`. Captures via the shared
- * MobilePackerSpamCamera, enqueues into `unitPhotoUploadQueue` (GCS-primary,
- * entityType SERIAL_UNIT, photoType `testing_photo`), and echoes
- * `unit_photo_uploaded` on `phone:{staffId}` so the desktop refreshes.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
+ * Phone capture surface for SERIAL_UNIT photos — testing-scan (testing_photo)
+ * or pack-station (packer_photo + optional PACKER_LOG dual-link). Mirror of
+ * `MobileReceivingPhotoStudio`.
  */
 export function MobileUnitPhotoStudio({
   serialUnitId,
@@ -43,6 +46,9 @@ export function MobileUnitPhotoStudio({
   returnHref,
   maxPhotos = 10,
   requestId = null,
+  stage = 'testing',
+  packerLogId = null,
+  poRef = null,
 }: MobileUnitPhotoStudioProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -98,7 +104,14 @@ export function MobileUnitPhotoStudio({
       const existingCount = query.data?.photos?.length ?? 0;
       shots.forEach((s, index) => {
         unitPhotoUploadQueue.enqueue(
-          { serialUnitId, unitKey, fileIndex: existingCount + index + 1 },
+          {
+            serialUnitId,
+            unitKey,
+            fileIndex: existingCount + index + 1,
+            stage,
+            packerLogId,
+            poRef,
+          },
           s.blob,
           s.previewUrl,
         );
@@ -110,7 +123,15 @@ export function MobileUnitPhotoStudio({
       });
       returnToCaller();
     },
-    [query.data?.photos?.length, returnToCaller, serialUnitId, unitKey],
+    [
+      query.data?.photos?.length,
+      returnToCaller,
+      serialUnitId,
+      unitKey,
+      stage,
+      packerLogId,
+      poRef,
+    ],
   );
 
   return (
@@ -124,7 +145,7 @@ export function MobileUnitPhotoStudio({
       header={
         <div className="min-w-0">
           <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">
-            Add testing photos
+            {stage === 'packing' ? 'Add packing photos' : 'Add testing photos'}
           </p>
           <p className="truncate text-sm font-black text-white">{headerLabel}</p>
         </div>

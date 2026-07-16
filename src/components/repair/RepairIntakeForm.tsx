@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, Wrench, X, Check, Printer, Loader2 } from '../Icons';
 import { ProductSelector, type SelectedItem } from './ProductSelector';
 import { ReasonSelector } from './ReasonSelector';
@@ -14,7 +14,9 @@ import {
 } from './RepairIntakeStepper';
 import { FavoritesWorkspaceSection } from '@/components/sidebar/FavoritesWorkspaceSection';
 import { RepairPaperworkSheet } from './RepairPaperworkSheet';
-import { TextField, FloatingButton, Button, IconButton } from '@/design-system/primitives';
+import { TextField, Button, IconButton } from '@/design-system/primitives';
+import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
+import { resolveRepairTerminal } from './terminal/repair-terminal';
 import type { FavoriteSkuRecord } from '@/lib/favorites/sku-favorites';
 import { REPAIR_STEP_COPY, buildInitialFormData, isContactFieldValid, canSubmitRepairIntake, getRepairSubmitBlockReason, hasRepairIssue, isContactComplete, isProductSelected } from './repair-intake-logic';
 import { useRepairIntakeData } from './useRepairIntakeData';
@@ -298,6 +300,34 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
         : primaryDisabled
             ? 'Complete the required fields to continue'
             : undefined;
+
+    const buildTerminal = useCallback(
+        (kind: string) =>
+            resolveRepairTerminal(kind, {
+                label: primaryLabel,
+                onClick: isReviewStep ? handleSubmit : handleNext,
+                disabled: primaryDisabled,
+                loading: isSubmitting,
+                title: primaryTitle,
+                maxWidth: REPAIR_INTAKE_MAX_WIDTH,
+            }),
+        [
+            primaryLabel,
+            isReviewStep,
+            handleSubmit,
+            handleNext,
+            primaryDisabled,
+            isSubmitting,
+            primaryTitle,
+        ],
+    );
+
+    const terminalVm = useStationTerminalAction({
+        surface: 'pickup',
+        mode: 'repair',
+        tabId: null,
+        build: buildTerminal,
+    });
 
     // Post-submit: the repair is persisted and the Zendesk ticket is created.
     // Stay full-screen and present the exact paper to print — the customer never
@@ -696,17 +726,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
             </main>
 
             {!showPaperwork && (
-                <FloatingButton
-                    label={primaryLabel}
-                    onClick={isReviewStep ? handleSubmit : handleNext}
-                    disabled={primaryDisabled}
-                    loading={isSubmitting}
-                    title={primaryTitle}
-                    tone="gray"
-                    maxWidth={REPAIR_INTAKE_MAX_WIDTH}
-                    fullWidth
-                    className="px-0 sm:px-0"
-                />
+                <StationTerminalDock vm={terminalVm} />
             )}
         </div>
     );

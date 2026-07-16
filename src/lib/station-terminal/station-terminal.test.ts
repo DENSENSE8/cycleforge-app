@@ -60,9 +60,9 @@ test('resolveTerminalKind: unbox po-note → po-note', () => {
 test('resolveTerminalKind: unbox tabs each resolve to a distinct kind', () => {
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'checklist' }), 'checklist');
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'units' }), 'units');
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'tracking' }), 'tracking');
+  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'timeline' }), 'timeline');
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'ticket' }), 'ticket');
-  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'conversation' }), 'conversation');
+  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'support' }), 'support');
 });
 
 test('resolveTerminalKind: triage (no tabs) → mode-default', () => {
@@ -70,12 +70,15 @@ test('resolveTerminalKind: triage (no tabs) → mode-default', () => {
   assert.equal(resolveTerminalKind({ mode: 'triage' }), 'mode-default');
 });
 
-test('resolveTerminalKind: testing tabs → mode-default / claim', () => {
+test('resolveTerminalKind: testing tabs → mode-default / claim; timeline hides dock', () => {
   assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'testing' }), 'mode-default');
   assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'claim' }), 'claim');
+  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'timeline' }), null);
 });
 
-test('resolveTerminalKind: shipping tabs → null (no dock yet)', () => {
+test('resolveTerminalKind: shipping preview (null tab) → start; active tabs → null', () => {
+  assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: null }), 'start');
   assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: 'ship' }), null);
-  assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: null }), null);
+  assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: 'units' }), null);
+  assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: 'timeline' }), null);
 });

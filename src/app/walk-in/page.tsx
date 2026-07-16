@@ -1,79 +1,51 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { RepairTable } from '@/components/repair';
-import { SalesEditPanel } from '@/components/walk-in/SalesEditPanel';
-import { WalkInSidebarPanel } from '@/components/sidebar/WalkInSidebarPanel';
+import { Suspense } from 'react';
+import { WalkInHistoryHub } from '@/components/walk-in/WalkInHistoryHub';
+import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
 import { RouteShell } from '@/design-system/components/RouteShell';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
+import { useWalkInTaskRedirect } from '@/hooks/useWalkInTaskRedirect';
 
-type WalkInMode = 'repairs' | 'sales';
-
-function isMobileUserAgent(): boolean {
-    if (typeof navigator === 'undefined') return false;
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
-
+/**
+ * `/walk-in` — front-desk history Monitor (recent repairs / sales / pickups).
+ * Active intake & processing live on Receiving Walk-In (`/pickup?job=`).
+ * Legacy task deep-links (`?mode=sales`, `?new=true`, `?openRepair=`) redirect
+ * to the station via `useWalkInTaskRedirect`.
+ */
 function WalkInPageContent() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const mode: WalkInMode = searchParams.get('mode') === 'sales' ? 'sales' : 'repairs';
+  const redirecting = useWalkInTaskRedirect();
+  useRealtimeInvalidation({ repair: true, walkIn: true });
 
-    const rawTab = searchParams.get('tab');
-    const repairTab = rawTab === 'incoming' ? 'incoming' : rawTab === 'done' ? 'done' : 'active';
-
-    // Mobile QR-scan flow: if a printed repair label lands here on a phone,
-    // hop to the tech-friendly mobile page instead of the desktop sidebar.
-    const openRepairParam = searchParams.get('openRepair');
-    const [redirecting, setRedirecting] = useState(() => {
-        if (typeof window === 'undefined') return false;
-        return !!openRepairParam && isMobileUserAgent();
-    });
-    useEffect(() => {
-        if (!openRepairParam) return;
-        if (!isMobileUserAgent()) return;
-        const targetId = Number(openRepairParam);
-        if (!Number.isFinite(targetId) || targetId <= 0) return;
-        setRedirecting(true);
-        router.replace(`/m/rs/${targetId}`);
-    }, [openRepairParam, router]);
-
-    useRealtimeInvalidation({ repair: mode === 'repairs', walkIn: mode === 'sales' });
-
-    if (redirecting) {
-        return (
-            <div className="flex h-full w-full items-center justify-center bg-surface-card">
-                <LoadingSpinner size="lg" className="text-orange-500" />
-            </div>
-        );
-    }
-
+  if (redirecting) {
     return (
-        <div className="flex h-full w-full bg-surface-card">
-            <RouteShell
-                actions={<WalkInSidebarPanel embedded hideSectionHeader />}
-                history={
-                    mode === 'repairs' ? (
-                        <RepairTable filter={repairTab} />
-                    ) : (
-                        <SalesEditPanel />
-                    )
-                }
-            />
-        </div>
+      <div className="flex h-full w-full items-center justify-center bg-surface-card">
+        <LoadingSpinner size="lg" className="text-orange-500" />
+      </div>
     );
+  }
+
+  return (
+    <div className="flex h-full w-full bg-surface-card">
+      <RouteShell
+        actions={<WalkInHistorySidebar />}
+        history={<WalkInHistoryHub />}
+      />
+    </div>
+  );
 }
 
 export default function WalkInPage() {
-    return (
-        <Suspense fallback={
-            <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
-                <LoadingSpinner size="lg" className="text-emerald-600" />
-            </div>
-        }>
-            <WalkInPageContent />
-        </Suspense>
-    );
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
+          <LoadingSpinner size="lg" className="text-emerald-600" />
+        </div>
+      }
+    >
+      <WalkInPageContent />
+    </Suspense>
+  );
 }

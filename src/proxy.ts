@@ -134,7 +134,7 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   ['/triage/', '/m/receiving'],
   ['/incoming', '/m/receiving'],
   ['/incoming/', '/m/receiving'],
-  // Local Pickup + Receiving History surfaces (operator-surfaces refactor Phase 9)
+  // Walk-In station + Receiving History surfaces (operator-surfaces refactor Phase 9)
   // → the mobile receiving shell (same feed, its bottom nav labels itself).
   ['/pickup', '/m/receiving'],
   ['/pickup/', '/m/receiving'],
