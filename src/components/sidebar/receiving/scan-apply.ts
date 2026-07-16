@@ -3,22 +3,17 @@
  *
  * Once a rung resolves (see the pure pipeline in `src/lib/receiving/scan`), these
  * two functions perform every side-effect needed to OPEN the carton: PO context,
- * row hydration, optimistic select, feed refresh, phone-camera nudge, and the
- * background Zoho self-promote. They were lifted verbatim out of the
- * `submitTrackingScan` closure; the closure's captured cells are now passed in as
- * a {@link ScanApplyCtx}, so the open/promote logic is readable and isolated
- * while behaving identically. These are intentionally NOT pure (they touch React
- * state, the DOM event bus, and the network); the pure resolution lives in `lib`.
+ * row hydration, optimistic select, rail upsert (replacing the pending `scan:`
+ * stub), and phone-camera nudge. Live Zoho promote is operator/cron only.
  */
 
 import {
   deferInvalidateTriageAndUnboxQueueFeeds,
   deferInvalidateTriageReceivingFeeds,
-  deferInvalidateUnboxReceivingFeeds,
   dispatchReceivingLinesPrepended,
-  dispatchReceivingUnboxRefresh,
   dispatchReceivingTriageRefresh,
   receivingSiblingsQueryKey,
+  removePendingScanRailRow,
   seedReceivingSiblingsCache,
   upsertReceivingRailRows,
   upsertUnboxQueueRows,
@@ -32,6 +27,7 @@ import {
   buildUnboxRailUnmatchedRow,
   mapApiLineToPoSummary,
   parseReceivingPackage,
+  pendingScanReconcileKey,
   type PoContext,
   type PoLineSummary,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -143,14 +139,14 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     );
     ctx.setArmedLineId(openLines.length === 1 ? openLines[0].id : null);
 
-    // Optimistic OPEN: with exactly one open line, drop the operator into its
-    // workspace immediately from a matched stub built off the lookup-po line —
-    // no wait on the include=serials hydration fetch below. Keyed on receiving_id,
-    // so that fetch reconciles to the full row IN PLACE (no remount). Multi-line
-    // cartons skip this and let the scan-line picker render after hydration.
-    if (openLines.length === 1) {
+    // Optimistic OPEN: drop into a matched stub immediately so the Unbox
+    // empty-pane-first unmatched flash upgrades to PO chrome (header / lines /
+    // label) without waiting on include=serials hydration. Multi-line cartons
+    // still refine selection after hydration via the scan-line picker rows.
+    const pickForOpen = openLines[0] ?? poCtx.lines[0];
+    if (pickForOpen) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
-      ctx.setSelectedLine(buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, openLines[0]));
+      ctx.setSelectedLine(buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, pickForOpen));
       ctx.setScanDriven(true);
     }
   }
@@ -170,11 +166,10 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
 
   const unboxRailLine = pickPoLineSummary(poCtx.lines);
   if (ctx.intakeSurface === 'unbox' && unboxRailLine) {
+    removePendingScanRailRow(ctx.queryClient, pendingScanReconcileKey(ctx.trackingNumber));
     upsertReceivingRailRows(ctx.queryClient, [
       buildUnboxRailMatchedRow(poCtx.receiving_id, ctx.trackingNumber, unboxRailLine),
     ]);
-    deferInvalidateUnboxReceivingFeeds(ctx.queryClient);
-    dispatchReceivingUnboxRefresh();
   } else if (unboxRailLine) {
     const now = new Date().toISOString();
     dispatchTriageMatchedFeedRows(ctx, [
@@ -332,11 +327,10 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   }
 
   if (unmatchedReceivingId != null && isUnbox) {
+    removePendingScanRailRow(ctx.queryClient, pendingScanReconcileKey(ctx.trackingNumber));
     upsertReceivingRailRows(ctx.queryClient, [
       buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
     ]);
-    deferInvalidateUnboxReceivingFeeds(ctx.queryClient);
-    dispatchReceivingUnboxRefresh();
   }
 
   // Auto-open the unfound workspace so the operator can immediately add items via

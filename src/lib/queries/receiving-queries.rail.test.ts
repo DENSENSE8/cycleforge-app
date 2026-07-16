@@ -7,6 +7,7 @@ import {
   receivingRailCartonKey,
   receivingRailReconcileId,
   reconcileUnboxRailAfterLineDelete,
+  removePendingScanRailRow,
   removeReceivingRailByCarton,
   removeReceivingRailByLine,
   upsertReceivingRailRows,
@@ -78,6 +79,33 @@ describe('removeReceivingRailByCarton / ByLine', () => {
     assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), [
       { id: 502, receiving_id: 88, client_event_id: 'carton:88' },
     ]);
+  });
+});
+
+describe('removePendingScanRailRow', () => {
+  it('drops the pre-resolve scan: stub so carton: upsert does not double-list', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      { id: -1, receiving_id: null, client_event_id: 'scan:ABC123', tracking_number: 'ABC123' },
+      { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
+    ] satisfies ReceivingRailRow[]);
+
+    removePendingScanRailRow(qc, 'scan:ABC123');
+    upsertReceivingRailRows(qc, [
+      {
+        id: -99,
+        receiving_id: 99,
+        client_event_id: 'carton:99',
+        tracking_number: 'ABC123',
+        item_name: 'Unfound PO',
+      },
+    ]);
+
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.length, 2);
+    assert.ok(next?.every((r) => r.client_event_id !== 'scan:ABC123'));
+    assert.ok(next?.some((r) => r.client_event_id === 'carton:99'));
+    assert.ok(next?.some((r) => r.client_event_id === 'carton:20'));
   });
 });
 

@@ -13,6 +13,7 @@ import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/Un
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
+import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 
 /**
  * Testing workspace analogue of {@link POUnboxingSection}: one card with PO items
@@ -129,6 +130,17 @@ export function TestingPoUnboxingSection({
           showTopRule={!unfoundSurface}
           hideTicketLinkRow
         />
+        {c.activeSerial?.id != null && Number(c.activeSerial.id) > 0 ? (
+          <div className="mt-3 border-t border-border-hairline pt-3">
+            <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-faint">
+              Unit photos · unbox · testing · packed
+            </p>
+            <UnitPackPhotoPeek
+              serialUnitId={Number(c.activeSerial.id)}
+              preferSource="all"
+            />
+          </div>
+        ) : null}
       </div>
     </WorkspaceCard>
   );

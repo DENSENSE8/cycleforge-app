@@ -12,8 +12,10 @@ export interface ChecklistTabBridge {
   uncheckAll: () => void;
 }
 
-/** Alias — ThreadPanel owns the canonical composer bridge shape. */
-export type ConversationTabBridge = ThreadComposerBridge;
+/** Alias — ThreadPanel owns the canonical composer bridge shape (Team segment). */
+export type SupportTabBridge = ThreadComposerBridge;
+/** @deprecated use SupportTabBridge */
+export type ConversationTabBridge = SupportTabBridge;
 
 export interface UnitsTabBridge {
   serialCount: number;
@@ -22,6 +24,8 @@ export interface UnitsTabBridge {
 
 export interface UnboxTabBridges {
   checklist: ChecklistTabBridge | null;
-  conversation: ConversationTabBridge | null;
+  support: SupportTabBridge | null;
+  /** @deprecated use support */
+  conversation: SupportTabBridge | null;
   units: UnitsTabBridge | null;
 }

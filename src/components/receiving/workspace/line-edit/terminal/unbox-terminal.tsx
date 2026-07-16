@@ -25,9 +25,9 @@ export const UNBOX_TAB_TERMINAL: Record<UnboxView, UnboxTerminalKind> = {
   'po-note': 'po-note',
   checklist: 'checklist',
   units: 'units',
-  tracking: 'tracking',
+  timeline: 'timeline',
   ticket: 'ticket',
-  conversation: 'conversation',
+  support: 'support',
 };
 
 const UNBOX_DOCK_MAX = 'max-w-[720px]';
@@ -41,6 +41,22 @@ const dockBase = {
 /** Print · Receive dock — overview / mode-default. */
 export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
   const r = ctx.receive;
+  const labelOpts = r.labelSelectOptions ?? [];
+  const activeKind = r.activeLabelKind ?? r.selectedLabelKind ?? 'carton';
+  const activeName =
+    labelOpts.find((o) => o.key === activeKind)?.name ?? 'label';
+
+  const labelMenuItems = labelOpts.map((opt) => ({
+    label: opt.key === activeKind ? `✓ ${opt.name}` : opt.name,
+    icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
+    onClick: () => {
+      r.setSelectedLabelKind?.(opt.key);
+      r.printKind?.(opt.key);
+    },
+    disabled: !r.canPrintReview,
+    title: `Select and print ${opt.name}`,
+  }));
+
   return {
     ...dockBase,
     label: r.printReceivePrimaryLabel,
@@ -53,11 +69,13 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
     menuLabel: r.splitMenuAriaLabel,
     menuTitle: r.splitMenuHoverTitle,
     menu: [
+      ...labelMenuItems,
       {
-        label: 'Print only',
+        label: `Print only · ${activeName}`,
         icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
         onClick: () => r.runPrintLabel(),
         disabled: !r.canPrintReview,
+        title: `Print the selected ${activeName} without receiving`,
       },
       ...(r.isUnfound
         ? []
@@ -186,12 +204,12 @@ export function resolveUnboxUnitsTerminal(ctx: UnboxTerminalContext): TerminalAc
   };
 }
 
-/** Tracking — copy the carton tracking number. */
-export function resolveUnboxTrackingTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
+/** Timeline — copy the carton tracking number when present. */
+export function resolveUnboxTimelineTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
   const tracking = String(ctx.row.tracking_number ?? '').trim();
   return {
     ...dockBase,
-    label: 'Copy tracking',
+    label: tracking ? 'Copy tracking' : 'Timeline',
     title: tracking ? `Copy ${tracking}` : 'No tracking number on this carton',
     disabled: !tracking,
     disabledReason: tracking ? null : 'No tracking number',
@@ -227,7 +245,7 @@ export function resolveUnboxTicketTerminal(ctx: UnboxTerminalContext): TerminalA
  * Composer body stays in the tab; the inline submit button is hidden.
  */
 export function resolveUnboxConversationTerminal(ctx: UnboxTerminalContext): TerminalActionVm {
-  const bridge = ctx.bridges.conversation;
+  const bridge = ctx.bridges.support ?? ctx.bridges.conversation;
   const canPost = bridge?.canPost ?? false;
   const hasDraft = bridge?.hasDraft ?? false;
   const isPublic = bridge?.isPublic ?? false;
@@ -280,11 +298,11 @@ export function resolveUnboxTerminal(
       return resolveUnboxChecklistTerminal(ctx);
     case 'units':
       return resolveUnboxUnitsTerminal(ctx);
-    case 'tracking':
-      return resolveUnboxTrackingTerminal(ctx);
+    case 'timeline':
+      return resolveUnboxTimelineTerminal(ctx);
     case 'ticket':
       return resolveUnboxTicketTerminal(ctx);
-    case 'conversation':
+    case 'support':
       return resolveUnboxConversationTerminal(ctx);
     default:
       return null;

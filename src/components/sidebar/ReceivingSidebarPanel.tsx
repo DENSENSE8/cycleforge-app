@@ -41,7 +41,7 @@ import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanne
 import { ReceivingHistorySearchSection } from '@/components/sidebar/receiving/ReceivingHistorySearchSection';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
 import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSidebarPanel';
-import { LocalPickupSidebarList } from '@/components/work-orders/LocalPickupSidebarList';
+import { WalkInStationSidebar } from '@/components/walk-in/WalkInStationSidebar';
 
 import { ReceivingModeSwitcher } from '@/components/sidebar/receiving/ReceivingModeSwitcher';
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
@@ -259,7 +259,7 @@ export function ReceivingSidebarPanel() {
 
         {mode === 'pickup' ? (
           <div className="min-h-0 flex-1 overflow-hidden">
-            <LocalPickupSidebarList />
+            <WalkInStationSidebar />
           </div>
         ) : mode === 'incoming' ? (
           // Incoming = Zoho-sourced expected work. Sidebar owns the search +
@@ -308,11 +308,9 @@ export function ReceivingSidebarPanel() {
                   submitTrackingScan(undefined, { mode: m });
                 }}
                 inputRef={scanInputRef}
-                // Unbox no longer spins the scan bar on a tracking scan. The
-                // loading state is expressed as the right-pane skeleton takeover
-                // (ReceivingWorkspaceSkeleton), a clearer signal than a bar
-                // spinner — driven by the `receiving-scan-in-flight` event
-                // dispatched up-front in submitTrackingScan for the unbox surface.
+                // Unbox no longer spins the scan bar on a tracking scan. Loading
+                // is the right-pane optimistic unmatched empty PO-items open
+                // (settle remount), not ReceivingWorkspaceSkeleton / Opening chrome.
                 isResolving={false}
                 staffId={staffId}
                 armedMode={unboxScanMode}

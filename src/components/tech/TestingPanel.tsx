@@ -4,17 +4,22 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ClipboardList,
   Download,
-  ExternalLink,
+  History,
   Link2,
-  Pencil,
   Ticket,
   Wrench,
 } from '@/components/Icons';
 import { deriveColorFromTitle, resolveTestingLineTitle } from '@/lib/print/printProductLabel';
 import { receivingPayloadToFace } from '@/lib/print/printReceivingLabel';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
+import { SectionTabsSlider } from '@/design-system/components';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  StationWorkbench,
+  PairingTogglePill,
+  ExternalLinkPill,
+  buildSectionTabs,
+  WorkspaceTimelineTab,
+} from '@/components/station/workbench';
 import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
 import { resolveTestingTerminal } from './testing-panel/terminal/testing-terminal';
 import type { TestingView } from './testing-panel/terminal/types';
@@ -46,8 +51,7 @@ import { TestingLabelPreviewCard } from './testing-panel/TestingLabelPreviewCard
  * pills instead of condition, and the terminal action is Pass + Print instead of
  * Print · receive.
  *
- * Overview tab mirrors unbox: suppress PO-items header, pairing pencil on the
- * tab row, headerless notes + label, one-row verdict·condition·serial.
+ * Composes {@link StationWorkbench} — same anatomy as Unbox.
  */
 
 export function TestingPanel({
@@ -107,173 +111,179 @@ export function TestingPanel({
     c.activeSerial?.id ?? null,
   );
 
-  // Package Pairing state lifted so its pencil lives on the tab row (unbox parity).
+  const timelineSerials = useMemo(
+    () =>
+      (row.serials ?? [])
+        .map((s) => String(s.serial_number || '').trim())
+        .filter(Boolean),
+    [row.serials],
+  );
+  const poIdForTimeline = String(row.zoho_purchaseorder_id ?? '').trim();
+  const trackingForTimeline = String(row.tracking_number ?? '').trim();
+  const hasTimelineTab =
+    trackingForTimeline.length > 0 ||
+    row.receiving_id != null ||
+    timelineSerials.length > 0;
+
   const [pairingOpen, setPairingOpen] = useState(false);
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
-  const editPoControl = (
-    <div className="inline-flex items-center rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft">
-      <HoverTooltip
-        label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
-        placement="below"
-        focusable={false}
-        asChild
-      >
-        {/* ds-raw-button: toggle pill styled identically to the SectionTabsSlider tab pills */}
-        <button
-          type="button"
-          aria-label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
-          aria-expanded={pairingOpen}
-          onClick={togglePairing}
-          className={`flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
-            pairingOpen
-              ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
-              : 'text-text-muted hover:text-text-default'
-          }`}
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-      </HoverTooltip>
-    </div>
-  );
+  const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
 
-  const testingTabs = useMemo(() => {
-    const tabs: SectionTab[] = [
-      {
-        id: 'testing',
-        label: 'Testing',
-        icon: Wrench,
-        content: (
-          <div className="space-y-4">
-            <TestingPoUnboxingSection
-              c={c}
-              row={row}
-              staffId={staffId}
-              suppressItemsHeader
-              pairingOpen={pairingOpen}
-              onPairingToggle={togglePairing}
-            />
-            <TestingWorkspaceNotesCard row={row} c={c} />
-            {hasLabel ? (
-              <>
-                <TestingLabelPreviewCard
-                  sku={c.activeAllocation?.unitId || row.sku || ''}
-                  title={productTitle}
-                  condition={row.condition_grade}
-                  color={labelColor}
-                  dataMatrixValue={c.previewPayload?.value ?? ''}
-                  dataMatrixSymbology={c.previewPayload?.symbology ?? 'datamatrix'}
-                  labelOptions={labelOptions}
-                  activeLabel={activeLabel}
-                  onLabelChange={(key) => {
-                    setSelectedLabel(key);
-                    setCartonEditorOpen(false);
-                  }}
-                  faceOverride={showCartonLabel ? cartonFace : undefined}
-                  onEdit={showCartonLabel ? () => setCartonEditorOpen(true) : undefined}
-                  onApplyAndPrint={(draft: ProductLabelDraft) => {
-                    setColorOverride(draft.color);
-                    setTitleOverride(draft.title);
-                    if ((draft.condition || '') !== (row.condition_grade || '')) {
-                      c.patch({ condition_grade: draft.condition });
-                    }
-                    void c.handleApplyAndPrint({
-                      title: draft.title,
-                      color: draft.color,
-                      condition: draft.condition,
-                    });
-                  }}
-                />
-                {cartonLabelAvailable ? (
-                  <LabelEditPopover
-                    open={showCartonLabel && cartonEditorOpen}
-                    defaults={c.cartonLabelDraftDefaults}
-                    buildPayload={c.buildCartonLabelPayload}
-                    onApplyAndPrint={(draft: LabelEditDraft) => c.applyCartonLabel(draft)}
-                    onClose={() => setCartonEditorOpen(false)}
+  const testingTabs = useMemo(
+    () =>
+      buildSectionTabs([
+        {
+          id: 'testing',
+          label: 'Testing',
+          icon: Wrench,
+          content: (
+            <div className="space-y-4">
+              <TestingPoUnboxingSection
+                c={c}
+                row={row}
+                staffId={staffId}
+                suppressItemsHeader
+                pairingOpen={pairingOpen}
+                onPairingToggle={togglePairing}
+              />
+              <TestingWorkspaceNotesCard row={row} c={c} />
+              {hasLabel ? (
+                <>
+                  <TestingLabelPreviewCard
+                    sku={c.activeAllocation?.unitId || row.sku || ''}
+                    title={productTitle}
+                    condition={row.condition_grade}
+                    color={labelColor}
+                    dataMatrixValue={c.previewPayload?.value ?? ''}
+                    dataMatrixSymbology={c.previewPayload?.symbology ?? 'datamatrix'}
+                    labelOptions={labelOptions}
+                    activeLabel={activeLabel}
+                    onLabelChange={(key) => {
+                      setSelectedLabel(key);
+                      setCartonEditorOpen(false);
+                    }}
+                    faceOverride={showCartonLabel ? cartonFace : undefined}
+                    onEdit={showCartonLabel ? () => setCartonEditorOpen(true) : undefined}
+                    onApplyAndPrint={(draft: ProductLabelDraft) => {
+                      setColorOverride(draft.color);
+                      setTitleOverride(draft.title);
+                      if ((draft.condition || '') !== (row.condition_grade || '')) {
+                        c.patch({ condition_grade: draft.condition });
+                      }
+                      void c.handleApplyAndPrint({
+                        title: draft.title,
+                        color: draft.color,
+                        condition: draft.condition,
+                      });
+                    }}
                   />
-                ) : null}
-              </>
-            ) : null}
-          </div>
-        ),
-      },
-      {
-        id: 'pairing',
-        label: 'SKU Pairing',
-        icon: Link2,
-        content: (
-          <TestingSkuPairingPanel
-            skuCatalogId={row.sku_catalog_id ?? null}
-            headerTitle={productTitle}
-          />
-        ),
-      },
-      ...(hasSkuTabs
-        ? [
-            {
-              id: 'checklist',
-              label: 'Checklist',
-              icon: ClipboardList,
-              content: (
-                <TestingSkuChecklistPanel
-                  receivingLineId={row.id}
-                  serialUnitId={c.activeSerial?.id ?? null}
-                  data={skuTestingData}
-                />
-              ),
-            },
-            {
-              id: 'manuals',
-              label: 'Manuals',
-              icon: Download,
-              content: (
-                <TestingSkuManualsPanel
-                  receivingLineId={row.id}
-                  data={skuTestingData}
-                />
-              ),
-            },
-          ]
-        : []),
-      {
-        id: 'claim',
-        label: 'Claim',
-        icon: Ticket,
-        content: (
-          <TestingTicketReplyCard
-            ticketId={claimTicketId}
-            ticketNumber={claimTicketId ? `#${claimTicketId}` : undefined}
-            ticketUrl={c.zendeskHref}
-            failed={claimFailed}
-            onFileClaim={() => c.setClaimOpen(true)}
-            reply={claimReply}
-            row={row}
-          />
-        ),
-      },
-    ];
-    return tabs;
-  }, [
-    activeLabel,
-    c,
-    cartonEditorOpen,
-    cartonFace,
-    cartonLabelAvailable,
-    claimFailed,
-    claimReply,
-    claimTicketId,
-    hasLabel,
-    hasSkuTabs,
-    labelColor,
-    labelOptions,
-    pairingOpen,
-    productTitle,
-    row,
-    showCartonLabel,
-    skuTestingData,
-    staffId,
-    togglePairing,
-  ]);
+                  {cartonLabelAvailable ? (
+                    <LabelEditPopover
+                      open={showCartonLabel && cartonEditorOpen}
+                      defaults={c.cartonLabelDraftDefaults}
+                      buildPayload={c.buildCartonLabelPayload}
+                      onApplyAndPrint={(draft: LabelEditDraft) => c.applyCartonLabel(draft)}
+                      onClose={() => setCartonEditorOpen(false)}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          ),
+        },
+        {
+          id: 'pairing',
+          label: 'SKU Pairing',
+          icon: Link2,
+          content: (
+            <TestingSkuPairingPanel
+              skuCatalogId={row.sku_catalog_id ?? null}
+              headerTitle={productTitle}
+            />
+          ),
+        },
+        {
+          id: 'checklist',
+          label: 'Checklist',
+          icon: ClipboardList,
+          visible: hasSkuTabs,
+          content: (
+            <TestingSkuChecklistPanel
+              receivingLineId={row.id}
+              serialUnitId={c.activeSerial?.id ?? null}
+              data={skuTestingData}
+            />
+          ),
+        },
+        {
+          id: 'manuals',
+          label: 'Manuals',
+          icon: Download,
+          visible: hasSkuTabs,
+          content: (
+            <TestingSkuManualsPanel
+              receivingLineId={row.id}
+              data={skuTestingData}
+            />
+          ),
+        },
+        {
+          id: 'claim',
+          label: 'Claim',
+          icon: Ticket,
+          content: (
+            <TestingTicketReplyCard
+              ticketId={claimTicketId}
+              ticketNumber={claimTicketId ? `#${claimTicketId}` : undefined}
+              ticketUrl={c.zendeskHref}
+              failed={claimFailed}
+              onFileClaim={() => c.setClaimOpen(true)}
+              reply={claimReply}
+              row={row}
+            />
+          ),
+        },
+        {
+          id: 'timeline',
+          label: 'Timeline',
+          icon: History,
+          visible: hasTimelineTab,
+          content: (
+            <WorkspaceTimelineTab
+              poId={poIdForTimeline || null}
+              tracking={trackingForTimeline || null}
+              receivingId={row.receiving_id ?? null}
+              serials={timelineSerials}
+            />
+          ),
+        },
+      ]),
+    [
+      activeLabel,
+      c,
+      cartonEditorOpen,
+      cartonFace,
+      cartonLabelAvailable,
+      claimFailed,
+      claimReply,
+      claimTicketId,
+      hasLabel,
+      hasSkuTabs,
+      hasTimelineTab,
+      labelColor,
+      labelOptions,
+      pairingOpen,
+      poIdForTimeline,
+      productTitle,
+      row,
+      showCartonLabel,
+      skuTestingData,
+      staffId,
+      timelineSerials,
+      togglePairing,
+      trackingForTimeline,
+    ],
+  );
 
   const activeTestingView = testingTabs.some((t) => t.id === testingView)
     ? testingView
@@ -309,21 +319,9 @@ export function TestingPanel({
     ],
   );
 
-  // Match the pairing pencil chrome: recessed canvas track + white/neutral pill.
   const claimTicketLink =
     activeTestingView === 'claim' && c.zendeskHref ? (
-      <div className="inline-flex items-center rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft">
-        <HoverTooltip label="Open ticket in Zendesk" placement="below" focusable={false} asChild>
-          <button
-            type="button"
-            aria-label="Open ticket in Zendesk"
-            onClick={() => window.open(c.zendeskHref!, '_blank', 'noopener,noreferrer')}
-            className="flex h-8 w-9 items-center justify-center rounded-lg bg-surface-card text-text-muted transition-colors hover:text-text-default"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </button>
-        </HoverTooltip>
-      </div>
+      <ExternalLinkPill href={c.zendeskHref} label="Open ticket in Zendesk" />
     ) : null;
 
   const terminalVm = useStationTerminalAction({
@@ -335,46 +333,45 @@ export function TestingPanel({
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
-        <LineEditToolbar
-          mode="testing"
-          receivingId={row.receiving_id ?? null}
-          busy={c.saving || c.isMutating}
-          copyingAll={c.copyingAll}
-          onBackToBrowse={onBackToBrowse}
-          handlers={{
-            refresh: () => void c.syncWithZoho(),
-            share: () => void c.handleShare(),
-            audit: () => c.setAuditOpen(true),
-            pair:
-              row.sku_catalog_id != null
-                ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
-                : undefined,
-            copy: () => void c.handleCopyAll(),
-            photoNote: () => c.setPhotoNoteOpen(true),
-          }}
-        />
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-5 pb-32 sm:px-6">
-            <TestingCartonHeader c={c} row={row} staffId={staffId} />
-
-            <SectionTabsSlider
-              tabs={testingTabs}
-              value={activeTestingView}
-              onChange={(id) => setTestingView(id as TestingView)}
-              ariaLabel="Testing displays"
-              rightSlot={
-                activeTestingView === 'testing'
-                  ? editPoControl
-                  : claimTicketLink ?? undefined
-              }
-            />
-          </div>
-        </div>
-
-        <StationTerminalDock vm={terminalVm} assignedTechId={row.assigned_tech_id} />
-      </div>
+      <StationWorkbench
+        className="h-full"
+        reserveScrollClearance
+        toolbar={
+          <LineEditToolbar
+            mode="testing"
+            receivingId={row.receiving_id ?? null}
+            busy={c.saving || c.isMutating}
+            copyingAll={c.copyingAll}
+            onBackToBrowse={onBackToBrowse}
+            handlers={{
+              refresh: () => void c.syncWithZoho(),
+              share: () => void c.handleShare(),
+              audit: () => c.setAuditOpen(true),
+              pair:
+                row.sku_catalog_id != null
+                  ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
+                  : undefined,
+              copy: () => void c.handleCopyAll(),
+              photoNote: () => c.setPhotoNoteOpen(true),
+            }}
+          />
+        }
+        entityContext={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
+        tabs={
+          <SectionTabsSlider
+            tabs={testingTabs}
+            value={activeTestingView}
+            onChange={(id) => setTestingView(id as TestingView)}
+            ariaLabel="Testing displays"
+            rightSlot={
+              activeTestingView === 'testing'
+                ? editPoControl
+                : (claimTicketLink ?? undefined)
+            }
+          />
+        }
+        dock={<StationTerminalDock vm={terminalVm} assignedTechId={row.assigned_tech_id} />}
+      />
 
       <TestingPanelModals c={c} row={row} />
     </>

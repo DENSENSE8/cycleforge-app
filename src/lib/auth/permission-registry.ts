@@ -180,7 +180,7 @@ export const PERMISSIONS = [
   { id: 'support.thread.view',      category: 'ops', label: 'View entity conversation threads' },
   { id: 'support.thread.manage',    category: 'ops', label: 'Post & manage entity conversation threads' },
   // Reported-Issues console (UIC-*): tenant Workbench over user_reported_issues.
-  // View = list/detail; manage lands with UIC-3 (claim/resolve/edit).
+  // View = list/detail; manage = Claim/Resolve/Reopen/Edit (UIC-3 PATCH).
   { id: 'support.issues.view',      category: 'ops', label: 'View reported issues console' },
   { id: 'support.issues.manage',    category: 'ops', label: 'Triage & resolve reported issues' },
   { id: 'reports.view',             category: 'ops', label: 'View reports' },

@@ -1,8 +1,10 @@
 'use client';
 
-import { Fragment } from 'react';
-import { Check } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { LinearWorkflowStepper } from '@/components/receiving/workspace/ReceivingProgressStepper';
+import {
+  deriveLinearStepStates,
+  type LinearStepState,
+} from '@/components/receiving/workspace/derive-receiving-step-states';
 
 export type RepairIntakeStepKey = 'product' | 'issue' | 'contact' | 'review';
 
@@ -13,7 +15,25 @@ export const REPAIR_INTAKE_STEPS: ReadonlyArray<{ key: RepairIntakeStepKey; labe
   { key: 'review', label: 'Review' },
 ];
 
-type StepState = 'done' | 'active' | 'pending';
+/**
+ * Wizard-style step states for repair intake — earlier steps are `done`, the
+ * current step is `active`, later steps are `pending`. Feeds
+ * {@link deriveLinearStepStates} so Repair shares the Unbox stepper walk.
+ */
+export function deriveRepairIntakeStepStates(
+  currentStep: RepairIntakeStepKey,
+): Record<string, LinearStepState> {
+  const flags = REPAIR_INTAKE_STEPS.map((step) => {
+    const order = REPAIR_INTAKE_STEPS.map((s) => s.key);
+    const ci = order.indexOf(currentStep);
+    const ki = order.indexOf(step.key);
+    return { key: step.key, done: ki < ci };
+  });
+  // Force the current step active even though its own gate isn't "done" yet —
+  // deriveLinearStepStates marks the first incomplete as active, which matches
+  // wizard navigation (product → issue → contact → review).
+  return deriveLinearStepStates(flags);
+}
 
 interface RepairIntakeStepperProps {
   currentStep: RepairIntakeStepKey;
@@ -25,19 +45,10 @@ interface RepairIntakeStepperProps {
   canNavigateTo?: (key: RepairIntakeStepKey) => boolean;
 }
 
-function stepState(key: RepairIntakeStepKey, current: RepairIntakeStepKey): StepState {
-  const order = REPAIR_INTAKE_STEPS.map((s) => s.key);
-  const ci = order.indexOf(current);
-  const ki = order.indexOf(key);
-  if (ki < ci) return 'done';
-  if (ki === ci) return 'active';
-  return 'pending';
-}
-
-function connectorTone(leftState: StepState): string {
-  return leftState === 'done' ? 'bg-surface-inverse' : 'bg-surface-strong';
-}
-
+/**
+ * Repair intake progress — composes {@link LinearWorkflowStepper} (Unbox-family
+ * SoT) instead of a parallel dot+connector implementation.
+ */
 export function RepairIntakeStepper({
   currentStep,
   compact = false,
@@ -45,151 +56,31 @@ export function RepairIntakeStepper({
   onStepClick,
   canNavigateTo,
 }: RepairIntakeStepperProps) {
-  const nodeSize = compact || spread ? 'h-7 w-7' : 'h-8 w-8';
-  const connectorMt = compact || spread ? 'mt-3.5' : 'mt-4';
-  const connectorW = compact ? 'w-3 sm:w-5' : 'w-6 sm:w-10';
-  const colW = compact || spread ? 'w-auto shrink-0' : 'w-[4.75rem] sm:w-[5.5rem]';
-  const numSize = compact || spread ? 'text-role-micro' : 'text-role-caption';
-
-  const renderStepNode = (step: (typeof REPAIR_INTAKE_STEPS)[number], idx: number) => {
-    const state = stepState(step.key, currentStep);
-    const clickable =
-      !!onStepClick &&
-      state === 'done' &&
-      (canNavigateTo ? canNavigateTo(step.key) : true);
-
-    return (
-      <HoverTooltip label={step.label} asChild>
-        <button
-          type="button"
-          disabled={!clickable}
-          onClick={() => clickable && onStepClick?.(step.key)}
-          className={`ds-raw-button flex ${nodeSize} shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-            state === 'done'
-              ? 'border-border-strong bg-surface-inverse text-white'
-              : state === 'active'
-                ? 'border-border-strong bg-surface-card text-text-default ring-2 ring-border-strong/10'
-                : 'border-border-soft bg-surface-card text-text-faint'
-          } ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-border-strong/10' : 'cursor-default'}`}
-          aria-current={state === 'active' ? 'step' : undefined}
-          aria-label={step.label}
-        >
-          {state === 'done' ? (
-            <Check className={compact || spread ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
-          ) : (
-            <span className={`${numSize} font-black tabular-nums`}>{idx + 1}</span>
-          )}
-        </button>
-      </HoverTooltip>
-    );
-  };
-
-  if (spread) {
-    return (
-      <nav aria-label="Repair intake progress" className="flex w-full">
-        <ol className="flex w-full items-start">
-          {REPAIR_INTAKE_STEPS.map((step, idx) => {
-            const state = stepState(step.key, currentStep);
-
-            return (
-              <Fragment key={step.key}>
-                {idx > 0 ? (
-                  <li className={`flex min-w-3 flex-1 items-start ${connectorMt}`} aria-hidden>
-                    <div
-                      className={`h-px w-full ${connectorTone(
-                        stepState(REPAIR_INTAKE_STEPS[idx - 1].key, currentStep),
-                      )}`}
-                    />
-                  </li>
-                ) : null}
-                <li className="flex shrink-0 flex-col items-center">
-                  {renderStepNode(step, idx)}
-                  <span
-                    className={`mt-2 max-w-[4.25rem] text-center text-role-micro uppercase leading-tight tracking-[0.08em] sm:max-w-[5rem] sm:text-role-eyebrow sm:tracking-[0.1em] ${
-                      state === 'active'
-                        ? 'text-text-default'
-                        : state === 'done'
-                          ? 'text-text-muted'
-                          : 'text-text-faint'
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </li>
-              </Fragment>
-            );
-          })}
-        </ol>
-      </nav>
-    );
-  }
+  const states = deriveRepairIntakeStepStates(currentStep);
 
   return (
-    <nav
-      aria-label="Repair intake progress"
-      className={compact ? 'flex min-w-0 justify-center' : 'flex w-full justify-center'}
-    >
-      <ol className="flex items-start">
-        {REPAIR_INTAKE_STEPS.map((step, idx) => {
-          const state = stepState(step.key, currentStep);
-          const clickable =
-            !!onStepClick &&
-            state === 'done' &&
-            (canNavigateTo ? canNavigateTo(step.key) : true);
-
-          return (
-            <li key={step.key} className="flex items-start">
-              {idx > 0 && (
-                <div
-                  className={`${connectorMt} h-px ${connectorW} ${connectorTone(
-                    stepState(REPAIR_INTAKE_STEPS[idx - 1].key, currentStep),
-                  )}`}
-                  aria-hidden
-                />
-              )}
-
-              <div className={`flex flex-col items-center ${colW}`}>
-                <HoverTooltip label={step.label} asChild>
-                  <button
-                    type="button"
-                    disabled={!clickable}
-                    onClick={() => clickable && onStepClick?.(step.key)}
-                    className={`ds-raw-button flex ${nodeSize} shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                      state === 'done'
-                        ? 'border-border-strong bg-surface-inverse text-white'
-                        : state === 'active'
-                          ? 'border-border-strong bg-surface-card text-text-default ring-2 ring-border-strong/10'
-                          : 'border-border-soft bg-surface-card text-text-faint'
-                    } ${clickable ? 'cursor-pointer hover:ring-2 hover:ring-border-strong/10' : 'cursor-default'}`}
-                    aria-current={state === 'active' ? 'step' : undefined}
-                    aria-label={step.label}
-                  >
-                    {state === 'done' ? (
-                      <Check className={compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
-                    ) : (
-                      <span className={`${numSize} font-black tabular-nums`}>{idx + 1}</span>
-                    )}
-                  </button>
-                </HoverTooltip>
-
-                {!compact && (
-                  <span
-                    className={`mt-2 w-full text-center text-role-micro uppercase leading-tight tracking-[0.1em] sm:text-role-eyebrow sm:tracking-[0.12em] ${
-                      state === 'active'
-                        ? 'text-text-default'
-                        : state === 'done'
-                          ? 'text-text-muted'
-                          : 'text-text-faint'
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+    <LinearWorkflowStepper
+      steps={REPAIR_INTAKE_STEPS}
+      states={states}
+      ariaLabel="Repair intake progress"
+      size={compact || spread ? 'compact' : 'default'}
+      className={spread ? 'w-full' : undefined}
+      onStepClick={
+        onStepClick
+          ? (key) => {
+              const k = key as RepairIntakeStepKey;
+              if (states[k] !== 'done') return;
+              if (canNavigateTo && !canNavigateTo(k)) return;
+              onStepClick(k);
+            }
+          : undefined
+      }
+      isStepDisabled={(key) => {
+        const k = key as RepairIntakeStepKey;
+        if (states[k] !== 'done') return true;
+        if (canNavigateTo && !canNavigateTo(k)) return true;
+        return false;
+      }}
+    />
   );
 }

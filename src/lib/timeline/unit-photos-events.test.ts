@@ -18,11 +18,18 @@ test('groups photos into one row per source with the right title + tone', () => 
     row({ photoId: 1, source: 'testing' }),
     row({ photoId: 2, source: 'unbox' }),
     row({ photoId: 3, source: 'testing' }),
+    row({ photoId: 4, source: 'packing' }),
   ]);
 
-  assert.equal(items.length, 2);
+  assert.equal(items.length, 3);
+  // Display order: unbox → testing → packing
+  assert.equal(items[0]!.id, 'unit-photos-unbox');
+  assert.equal(items[1]!.id, 'unit-photos-testing');
+  assert.equal(items[2]!.id, 'unit-photos-packing');
+
   const testing = items.find((i) => i.id === 'unit-photos-testing');
   const unbox = items.find((i) => i.id === 'unit-photos-unbox');
+  const packing = items.find((i) => i.id === 'unit-photos-packing');
 
   assert.ok(testing);
   assert.equal(testing!.title, 'Testing photos');
@@ -34,6 +41,11 @@ test('groups photos into one row per source with the right title + tone', () => 
   assert.equal(unbox!.title, 'Unboxing photos');
   assert.equal(unbox!.tone, 'muted');
   assert.equal(unbox!.subtitle, '1 photo');
+
+  assert.ok(packing);
+  assert.equal(packing!.title, 'Packed photos');
+  assert.equal(packing!.tone, 'success');
+  assert.equal(packing!.subtitle, '1 photo');
 });
 
 test('attaches each photo as media (photoId + thumb + full)', () => {

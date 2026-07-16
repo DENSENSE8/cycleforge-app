@@ -68,16 +68,12 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
           : prev,
       );
     };
-    // Scan-loader events: sidebar dispatches in-flight when lookup-po POSTs,
-    // resolved when the response lands. We hold the loader briefly after resolve
-    // so the workspace open animation (~180ms) covers the swap.
-    let clearTimer: ReturnType<typeof setTimeout> | null = null;
-    // Grace delay before the full skeleton takeover mounts. A scan that
-    // resolves locally (already in incoming/mirror state, a deduped re-scan, or
-    // an adopted PO with no Zoho round-trip) comes back under this threshold, so
-    // the row flips inline and the loader never flashes. Only a genuine cold Zoho
-    // lookup outlives the delay and shows the skeleton. (Standard skeleton-delay
-    // pattern: never flash a loader for sub-threshold latencies.)
+    // Scan-loader events: sidebar dispatches in-flight at scan submit; resolved
+    // when the response lands. Soft-swap workspaces update in place — clear the
+    // loader immediately on resolve (no linger that stacks with a remount).
+    // Grace delay before the skeleton takeover mounts. A scan that resolves from
+    // Phase-0 cache under this threshold flips inline and never flashes the
+    // loader. (Standard skeleton-delay: never flash for sub-threshold latencies.)
     const SCAN_LOADER_GRACE_MS = 300;
     let showTimer: ReturnType<typeof setTimeout> | null = null;
     const handleInFlight = (e: Event) => {
@@ -87,10 +83,6 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       // per-mode skeleton (unbox vs triage) — the two never share a display.
       // Legacy dispatches without a surface default to 'unbox'.
       const surface: ScanIntakeSurface = detail.surface === 'triage' ? 'triage' : 'unbox';
-      if (clearTimer) {
-        clearTimeout(clearTimer);
-        clearTimer = null;
-      }
       if (showTimer) clearTimeout(showTimer);
       showTimer = setTimeout(() => {
         setScanInFlight({ tracking: detail.tracking, startedAt: detail.startedAt, surface });
@@ -98,19 +90,13 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       }, SCAN_LOADER_GRACE_MS);
     };
     const handleResolved = () => {
-      // Resolved before the grace delay elapsed → fast/local/deduped lookup;
-      // cancel the pending show so the takeover never appears. If it already
-      // showed (slow Zoho path), let it linger briefly so the workspace-open
-      // animation covers the swap.
+      // Resolved before the grace delay elapsed → cancel the pending show.
+      // Otherwise clear immediately so soft-swapped content is not covered.
       if (showTimer) {
         clearTimeout(showTimer);
         showTimer = null;
       }
-      if (clearTimer) clearTimeout(clearTimer);
-      clearTimer = setTimeout(() => {
-        setScanInFlight(null);
-        clearTimer = null;
-      }, 500);
+      setScanInFlight(null);
     };
 
     const handlePackageMeta = (e: Event) => {
@@ -136,7 +122,6 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       window.removeEventListener('receiving-package-updated', handlePackageMeta);
       window.removeEventListener('receiving-scan-in-flight', handleInFlight);
       window.removeEventListener('receiving-scan-resolved', handleResolved);
-      if (clearTimer) clearTimeout(clearTimer);
       if (showTimer) clearTimeout(showTimer);
     };
   }, []);

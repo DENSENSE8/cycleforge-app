@@ -1,26 +1,30 @@
 'use client';
 
 /**
- * Reported-Issues detail pane (UIC-2 read-only).
- * Fact stack + description SectionCard + placeholder actions (wired in UIC-3).
+ * Reported-Issues detail pane (UIC-2 + UIC-3).
+ * Fact stack + description SectionCard + Claim / Resolve / Reopen / Edit actions.
  */
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ExternalLink, MessageSquare } from '@/components/Icons';
 import { CopyChip } from '@/components/ui/CopyChip';
-import { EmptyState, Button } from '@/design-system/primitives';
+import { EmptyState, Button, TextField } from '@/design-system/primitives';
 import { SectionCard } from '@/design-system/components/monitor';
 import { cn } from '@/utils/_cn';
 import { formatDateTimePST } from '@/utils/date';
-import type { ReportedIssue } from '@/lib/user-issues/issues';
+import { useAuth } from '@/contexts/AuthContext';
+import type { ReportedIssue, UserIssueType } from '@/lib/user-issues/issues';
+import { USER_ISSUE_TYPES } from '@/lib/user-issues/issues';
 import {
   USER_ISSUE_STATUS_LABEL,
   USER_ISSUE_STATUS_TONE,
   USER_ISSUE_TYPE_CHIP,
   USER_ISSUE_TYPE_LABEL,
 } from '@/lib/user-issues/status-tone';
-import { useReportedIssue } from '@/hooks/useReportedIssues';
+import { usePatchReportedIssue, useReportedIssue, useSoftDeleteReportedIssue } from '@/hooks/useReportedIssues';
+import { useConfirmedAction } from '@/hooks';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -43,6 +47,175 @@ function StatusChip({ status }: { status: ReportedIssue['status'] }) {
       <span className={cn('h-2 w-2 rounded-full', tone.dot)} />
       {USER_ISSUE_STATUS_LABEL[status]}
     </span>
+  );
+}
+
+function IssueActions({
+  issue,
+  onDeleted,
+}: {
+  issue: ReportedIssue;
+  onDeleted?: () => void;
+}) {
+  const { has, isLoaded } = useAuth();
+  const canManage = !isLoaded || has('support.issues.manage');
+  const patch = usePatchReportedIssue(issue.id);
+  const softDelete = useSoftDeleteReportedIssue(issue.id);
+  const confirmDelete = useConfirmedAction(
+    async () => {
+      await softDelete.mutateAsync();
+      onDeleted?.();
+    },
+    `Delete “${issue.title}”? It will be hidden from the console (soft-delete).`,
+  );
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(issue.title);
+  const [draftDescription, setDraftDescription] = useState(issue.description);
+  const [draftType, setDraftType] = useState<UserIssueType>(issue.issueType);
+
+  const busy = patch.isPending || softDelete.isPending;
+
+  const claim = () => {
+    void patch.mutateAsync({ status: 'in-progress', expectedFrom: issue.status });
+  };
+  const resolve = () => {
+    void patch.mutateAsync({ status: 'deployed', expectedFrom: issue.status });
+  };
+  const reopen = () => {
+    void patch.mutateAsync({ status: 'pending', expectedFrom: issue.status });
+  };
+
+  const startEdit = () => {
+    setDraftTitle(issue.title);
+    setDraftDescription(issue.description);
+    setDraftType(issue.issueType);
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    const title = draftTitle.trim();
+    const description = draftDescription.trim();
+    if (!title || !description) return;
+    const payload: {
+      title?: string;
+      description?: string;
+      issueType?: UserIssueType;
+    } = {};
+    if (title !== issue.title) payload.title = title;
+    if (description !== issue.description) payload.description = description;
+    if (draftType !== issue.issueType) payload.issueType = draftType;
+    if (Object.keys(payload).length === 0) {
+      setEditing(false);
+      return;
+    }
+    await patch.mutateAsync(payload);
+    setEditing(false);
+  };
+
+  if (!canManage) {
+    return issue.githubIssueUrl ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<ExternalLink className="h-3.5 w-3.5" />}
+          onClick={() => window.open(issue.githubIssueUrl!, '_blank', 'noopener,noreferrer')}
+        >
+          GitHub
+        </Button>
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div className="stack-section">
+      <div className="flex flex-wrap items-center gap-2">
+        {issue.status === 'pending' ? (
+          <Button variant="secondary" size="sm" disabled={busy} onClick={claim}>
+            Claim
+          </Button>
+        ) : null}
+        {issue.status === 'pending' || issue.status === 'in-progress' ? (
+          <Button variant="primary" size="sm" disabled={busy} onClick={resolve}>
+            Resolve
+          </Button>
+        ) : null}
+        {issue.status === 'deployed' || issue.status === 'in-progress' ? (
+          <Button variant="ghost" size="sm" disabled={busy} onClick={reopen}>
+            Reopen
+          </Button>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy}
+          onClick={() => (editing ? setEditing(false) : startEdit())}
+        >
+          {editing ? 'Cancel' : 'Edit'}
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={busy}
+          onClick={() => void confirmDelete()}
+        >
+          Delete
+        </Button>
+        {issue.githubIssueUrl ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            onClick={() => window.open(issue.githubIssueUrl!, '_blank', 'noopener,noreferrer')}
+          >
+            GitHub
+          </Button>
+        ) : null}
+      </div>
+
+      {editing ? (
+        <div className="stack-section rounded-lg border border-border-soft bg-surface-card inset-card">
+          <TextField label="Title" value={draftTitle} onChange={setDraftTitle} />
+          <TextField
+            label="Description"
+            value={draftDescription}
+            onChange={setDraftDescription}
+            multiline
+            rows={4}
+          />
+          <label className="block space-y-1">
+            <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Type</span>
+            <select
+              value={draftType}
+              onChange={(e) => setDraftType(e.target.value as UserIssueType)}
+              className={cn(
+                'w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default',
+                focusRing('field'),
+              )}
+            >
+              {USER_ISSUE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {USER_ISSUE_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={busy || !draftTitle.trim() || !draftDescription.trim()}
+              onClick={() => void saveEdit()}
+            >
+              Save
+            </Button>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -130,28 +303,7 @@ export function IssuesDetail({
           <h1 className="text-lg font-black tracking-tight text-text-default">{issue.title}</h1>
         </header>
 
-        {/* Placeholder actions — Claim / Resolve / Edit / Delete land in UIC-3/4 */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" disabled aria-label="Claim (coming soon)">
-            Claim
-          </Button>
-          <Button variant="secondary" size="sm" disabled aria-label="Resolve (coming soon)">
-            Resolve
-          </Button>
-          <Button variant="ghost" size="sm" disabled aria-label="Edit (coming soon)">
-            Edit
-          </Button>
-          {issue.githubIssueUrl ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<ExternalLink className="h-3.5 w-3.5" />}
-              onClick={() => window.open(issue.githubIssueUrl!, '_blank', 'noopener,noreferrer')}
-            >
-              GitHub
-            </Button>
-          ) : null}
-        </div>
+        <IssueActions issue={issue} onDeleted={onBack} />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Field label="Reporter">{issue.reporterName || 'Unknown'}</Field>

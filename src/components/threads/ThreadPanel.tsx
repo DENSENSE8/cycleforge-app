@@ -40,7 +40,7 @@ const STATUS_TONE: Record<ThreadStatus, { label: string; dot: string; text: stri
 const CONNECTION_ICON: Record<string, typeof Package> = {
   ORDER: Package, TRACKING: Truck, SERIAL_UNIT: Barcode, SKU: Tag,
   RECEIVING: PackageOpen, RECEIVING_LINE: PackageOpen, REPAIR: Wrench,
-  WARRANTY_CLAIM: ShieldCheck, FBA_SHIPMENT: Box,
+  WARRANTY_CLAIM: ShieldCheck, FBA_SHIPMENT: Box, SUPPORT_TICKET: Ticket,
 };
 
 /**

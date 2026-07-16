@@ -16,6 +16,7 @@ import {
   serialUnitHandle,
   handlingUnitHandle,
   repairHandle,
+  ticketHandle,
   scannedUnitKey,
 } from './barcode-routing';
 
@@ -26,12 +27,18 @@ test('every generated handle round-trips to its entity type (not bin/sku fallbac
     [serialUnitHandle(451), 'serial-unit'],
     [handlingUnitHandle(12), 'handling-unit'],
     [repairHandle(33), 'receiving'], // repair routes via the mobile repair page
+    [ticketHandle(9395), 'support-ticket'],
   ];
   for (const [payload, expectedType] of cases) {
     const r = routeScan(payload);
     ok(r, `${payload} should route`);
     strictEqual(r!.type, expectedType, `${payload} → type`);
   }
+});
+
+test('T-{id} ticket label scans to Support deep-link', () => {
+  const r = routeScan(ticketHandle(9395));
+  strictEqual(r!.redirect, '/support?ticket=9395');
 });
 
 test('REP-{id} repair label scans back to the working /m/rs/{id} page (not the dead /repair/{id})', () => {

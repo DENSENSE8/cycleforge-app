@@ -7,10 +7,14 @@ import { STATION_TERMINAL_SCROLL_CLEARANCE } from './StationTerminalDock';
 /**
  * Shared Station workbench layout: toolbar → scroll body → optional dock.
  *
+ * Prefer {@link StationWorkbench} from `@/components/station/workbench` for the
+ * full Unbox-family anatomy (entity context + tabs + feedback + dock). This
+ * thinner shell remains for callers that only need toolbar → body → dock.
+ *
  * Matches the duplicated `relative flex h-full min-h-0 flex-col` recipe used by
- * LineEditPanel / TestingPanel / TriagePanel. Scroll body reserves bottom room
- * when the dock is an absolute float (`reserveScrollClearance`); docked bands
- * (unbox) use lighter padding instead.
+ * LineEditPanel / TestingPanel / TriagePanel historically. Scroll body reserves
+ * bottom room when the dock is an absolute float (`reserveScrollClearance`);
+ * docked bands (unbox) use lighter padding instead.
  */
 export function StationWorkbenchShell({
   toolbar,

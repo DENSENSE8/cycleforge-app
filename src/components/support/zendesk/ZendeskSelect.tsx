@@ -17,8 +17,8 @@ interface Props {
   disabled?: boolean;
   placeholder?: string;
   align?: 'left' | 'right';
-  /** `field` matches form inputs (h-10, rounded-xl); `compact` is the queue/header chip. */
-  size?: 'compact' | 'field';
+  /** `field` matches form inputs (h-10, rounded-xl); `compact` is the queue/header chip; `dense` is the ticket header row. */
+  size?: 'compact' | 'field' | 'dense';
   className?: string;
 }
 
@@ -37,6 +37,7 @@ export function ZendeskSelect({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.value === value) ?? null;
   const isField = size === 'field';
+  const isDense = size === 'dense';
 
   return (
     <div ref={wrapperRef} className={cn('relative', className)}>
@@ -48,12 +49,18 @@ export function ZendeskSelect({
           'ds-raw-button flex w-full items-center justify-between gap-2 border border-border-default bg-surface-card text-text-default transition-colors hover:bg-surface-hover disabled:opacity-50',
           isField
             ? 'h-10 min-h-10 rounded-xl px-3 text-role-data font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
-            : 'inline-flex max-w-[180px] gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold',
+            : isDense
+              ? 'inline-flex max-w-[9rem] gap-1 rounded-md px-2 py-1 text-role-micro font-semibold'
+              : 'inline-flex max-w-[180px] gap-1.5 rounded-lg px-2.5 py-1.5 text-role-caption font-bold',
         )}
       >
         <span className="truncate">{selected ? selected.label : placeholder}</span>
         <svg
-          className={`h-3 w-3 shrink-0 text-text-soft transition-transform ${open ? 'rotate-180' : ''}`}
+          className={cn(
+            'shrink-0 text-text-soft transition-transform',
+            isDense ? 'h-2.5 w-2.5' : 'h-3 w-3',
+            open ? 'rotate-180' : '',
+          )}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

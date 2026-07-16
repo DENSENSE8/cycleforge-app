@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom';
 import { Check, Loader2, Plus, Tool } from '@/components/Icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { IconButton } from '@/design-system/primitives';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -199,28 +198,14 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
       className="bg-surface-card"
       headerAbove={
         <>
-          <div className={`flex items-center justify-between gap-2 border-b border-border-hairline ${SIDEBAR_GUTTER} pt-4 pb-3`}>
-            {!hideSectionHeader ? (
-              <div>
-                <p className={`${sectionLabel} text-orange-500`}>Repair Service</p>
-                <h2 className={`mt-1 ${cardTitle}`}>Repairs</h2>
-              </div>
-            ) : (
-              <span />
-            )}
-            <HoverTooltip label="New repair" asChild>
-              <IconButton
-                type="button"
-                onClick={openNewRepair}
-                disabled={isSubmitting}
-                ariaLabel="Open new repair order form"
-                icon={<Plus className="h-5 w-5 text-white" />}
-                className="shrink-0 rounded-xl bg-orange-500 p-2.5 text-white transition-colors hover:bg-orange-600 disabled:bg-border-emphasis"
-              />
-            </HoverTooltip>
-          </div>
-          {/* In-context list filter — local base SearchBar. The global header
-              pill stays global. */}
+          {!hideSectionHeader ? (
+            <div className={`border-b border-border-hairline ${SIDEBAR_GUTTER} pt-4 pb-3`}>
+              <p className={`${sectionLabel} text-orange-500`}>Repair Service</p>
+              <h2 className={`mt-1 ${cardTitle}`}>Repairs</h2>
+            </div>
+          ) : null}
+          {/* In-context list filter — local base SearchBar. New-repair "+" rides
+              as rightElement (same pattern as Receiving History). Global pill stays global. */}
           <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
             <SearchBar
               size="compact"
@@ -230,12 +215,27 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
               onClear={handleClearSearch}
               onSearch={() => commitSearch()}
               placeholder="Filter repairs, tickets, SKU…"
+              rightElement={
+                <HoverTooltip label="New repair" asChild>
+                  <button
+                    type="button"
+                    onClick={openNewRepair}
+                    disabled={isSubmitting}
+                    className="ds-raw-button rounded-xl bg-orange-500 p-2 text-white transition-colors hover:bg-orange-600 disabled:bg-border-emphasis"
+                    aria-label="Open new repair order form"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </HoverTooltip>
+              }
             />
           </div>
         </>
       }
       headerRows={[
-        !masterNavEnabled ? (
+        // Station embed (Receiving Walk-In job=repair) keeps Active/Done even when
+        // master-nav owns the Receiving mode rail — those pills are not repair tabs.
+        !masterNavEnabled || embedded ? (
           <HorizontalButtonSlider
             items={REPAIR_TAB_ITEMS}
             value={activeTab}

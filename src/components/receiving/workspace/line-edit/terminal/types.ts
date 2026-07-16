@@ -7,9 +7,9 @@ export type UnboxView =
   | 'units'
   | 'checklist'
   | 'po-note'
-  | 'tracking'
+  | 'timeline'
   | 'ticket'
-  | 'conversation';
+  | 'support';
 
 /** Kind keys produced by STATION_TERMINAL_REGISTRY for unbox tabs. */
 export type UnboxTerminalKind =
@@ -17,9 +17,9 @@ export type UnboxTerminalKind =
   | 'po-note'
   | 'checklist'
   | 'units'
-  | 'tracking'
+  | 'timeline'
   | 'ticket'
-  | 'conversation';
+  | 'support';
 
 /**
  * Bags the unbox terminal resolver needs — controller surface + PO-note state
@@ -53,6 +53,14 @@ export interface UnboxReceiveTerminalInput {
   receiveMenuLabel: string;
   receiveMenuTitle?: string;
   handlePrintAndReceive: () => void | Promise<void>;
+  /** Print the currently selected label kind. */
   runPrintLabel: () => void;
+  /** Print a specific workspace label kind (dock pre-select). */
+  printKind?: (kind: string) => boolean;
+  /** Available label kinds for the split-menu pre-select. */
+  labelSelectOptions?: ReadonlyArray<{ key: string; name: string }>;
+  selectedLabelKind?: string;
+  setSelectedLabelKind?: (key: string) => void;
+  activeLabelKind?: string;
   handleReceive: (mode: 'scan_only' | 'zoho_receive' | 'local_receive') => void | Promise<void>;
 }

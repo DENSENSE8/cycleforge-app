@@ -43,12 +43,14 @@ export function SendPhotoNoteModal({
   lockTicket?: boolean;
 }) {
   const receivingId = row.receiving_id ?? null;
-  const lineId = row.id ?? null;
+  // Carton grain (receivingId only) — matches triage Zendesk matching and
+  // useClaimPhotos. Line-grain search would hide carton-linked tickets as
+  // "linked elsewhere" and leave the picker empty.
   const search = useClaimTicketSearch({
     open,
     enabled: open && !lockTicket,
     receivingId,
-    lineId,
+    lineId: null,
   });
   const photos = useClaimPhotos(open, receivingId);
   const [note, setNote] = useState('');

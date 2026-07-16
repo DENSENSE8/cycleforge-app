@@ -36,15 +36,18 @@ import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { LineEditModals } from './line-edit/LineEditModals';
-import { ExternalLink, Pencil } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { operatorAccentClasses } from '@/utils/operator-accent';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
+import {
+  StationWorkbench,
+  PairingTogglePill,
+  ExternalLinkPill,
+  STATION_WORKBENCH_COLUMN,
+} from '@/components/station/workbench';
 import { usePoNoteTabState } from './line-edit/terminal/usePoNoteTabState';
 import { resolveUnboxTerminal } from './line-edit/terminal/unbox-terminal';
 import { buildUnboxTabs, UnboxSectionTabs } from './line-edit/terminal/unbox-tabs';
@@ -56,8 +59,6 @@ import type {
 } from './line-edit/terminal/unbox-tab-bridges';
 
 const LABEL_PRINTED_KEY = (lineId: number) => `receiving-label-printed:${lineId}`;
-
-import { RECEIVING_WORKSPACE_COLUMN } from './receiving-workspace-layout';
 
 function readLabelPrinted(lineId: number): boolean {
   if (typeof window === 'undefined') return false;
@@ -136,17 +137,16 @@ export function LineEditPanel({
   const hasUnits = serialCount > 0;
   const trackingNumber = String(row.tracking_number ?? '').trim();
   const poIdForTracking = String(row.zoho_purchaseorder_id ?? '').trim();
-  const hasTrackingTab = trackingNumber.length > 0 && poIdForTracking.length > 0;
-  const linkedTicketId = c.providerTicketId;
-  const hasTicketTab = linkedTicketId != null;
+  const hasTimelineTab =
+    trackingNumber.length > 0 || hasUnits || row.receiving_id != null;
   const hasPoNoteTab = !c.isUnfound && row.receiving_id != null;
   const activeUnboxView: UnboxView =
     unboxView === 'checklist' ||
     (unboxView === 'po-note' && hasPoNoteTab) ||
     (unboxView === 'units' && hasUnits) ||
-    (unboxView === 'tracking' && hasTrackingTab) ||
-    (unboxView === 'ticket' && hasTicketTab) ||
-    unboxView === 'conversation'
+    (unboxView === 'timeline' && hasTimelineTab) ||
+    unboxView === 'ticket' ||
+    unboxView === 'support'
       ? unboxView
       : 'overview';
 
@@ -159,9 +159,7 @@ export function LineEditPanel({
 
   const [checklistBridge, setChecklistBridge] = useState<ChecklistTabBridge | null>(null);
   const [unitsBridge, setUnitsBridge] = useState<UnitsTabBridge | null>(null);
-  const [conversationBridge, setConversationBridge] = useState<ConversationTabBridge | null>(
-    null,
-  );
+  const [supportBridge, setSupportBridge] = useState<ConversationTabBridge | null>(null);
 
   const onChecklistBridge = useCallback((bridge: ChecklistTabBridge | null) => {
     setChecklistBridge(bridge);
@@ -170,7 +168,7 @@ export function LineEditPanel({
     setUnitsBridge(bridge);
   }, []);
   const onConversationBridge = useCallback((bridge: ConversationTabBridge | null) => {
-    setConversationBridge(bridge);
+    setSupportBridge(bridge);
   }, []);
 
   const buildTerminal = useCallback(
@@ -181,7 +179,8 @@ export function LineEditPanel({
         bridges: {
           checklist: checklistBridge,
           units: unitsBridge,
-          conversation: conversationBridge,
+          support: supportBridge,
+          conversation: supportBridge,
         },
         focusSerialScan: () => {
           const focus = () => {
@@ -196,11 +195,13 @@ export function LineEditPanel({
         },
         setUnboxView: (view) => setUnboxView(view),
         focusTicketReply: () => {
-          // Prefer focusing a composer inside the mounted SupportTicketDetail.
-          const el = document.querySelector<HTMLElement>(
-            '[role="tabpanel"]:not([hidden]) textarea, [role="tabpanel"]:not([hidden]) [contenteditable="true"]',
-          );
-          el?.focus();
+          setUnboxView('ticket');
+          globalThis.setTimeout(() => {
+            const el = document.querySelector<HTMLElement>(
+              '[role="tabpanel"]:not([hidden]) textarea, [role="tabpanel"]:not([hidden]) [contenteditable="true"]',
+            );
+            el?.focus();
+          }, 0);
         },
         receive: {
           printReceivePrimaryLabel: c.printReceivePrimaryLabel,
@@ -217,10 +218,15 @@ export function LineEditPanel({
           receiveMenuTitle: c.receiveMenuTitle,
           handlePrintAndReceive: () => void c.handlePrintAndReceive(),
           runPrintLabel: () => c.runPrintLabel(),
+          printKind: (kind) => c.printKind(kind),
+          labelSelectOptions: c.labelSelectOptions,
+          selectedLabelKind: c.selectedLabelKind,
+          setSelectedLabelKind: c.setSelectedLabelKind,
+          activeLabelKind: c.activeLabelKind,
           handleReceive: (mode) => void c.handleReceive(mode),
         },
       }),
-    [row, poNote, c, checklistBridge, unitsBridge, conversationBridge],
+    [row, poNote, c, checklistBridge, unitsBridge, supportBridge],
   );
 
   const terminalVm = useStationTerminalAction({
@@ -234,47 +240,10 @@ export function LineEditPanel({
   // row (context slot) instead of the removed "PO items · N" header.
   const [pairingOpen, setPairingOpen] = useState(false);
   const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
-  const editPoControl = (
-    <div className="inline-flex items-center rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft">
-      <HoverTooltip
-        label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
-        placement="below"
-        focusable={false}
-        asChild
-      >
-        {/* ds-raw-button: toggle pill styled identically to the SectionTabsSlider tab pills */}
-        <button
-          type="button"
-          aria-label={pairingOpen ? 'Hide package pairing' : 'Show package pairing'}
-          aria-expanded={pairingOpen}
-          onClick={togglePairing}
-          className={`flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
-            pairingOpen
-              ? `${operatorAccentClasses.activePill} text-white`
-              : 'text-text-muted hover:text-text-default'
-          }`}
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-      </HoverTooltip>
-    </div>
-  );
-
-  // Match the pairing pencil chrome: recessed canvas track + white/neutral pill.
+  const editPoControl = <PairingTogglePill open={pairingOpen} onToggle={togglePairing} />;
   const ticketTabLink =
     activeUnboxView === 'ticket' && c.zendeskHref ? (
-      <div className="inline-flex items-center rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft">
-        <HoverTooltip label="Open ticket in Zendesk" placement="below" focusable={false} asChild>
-          <button
-            type="button"
-            aria-label="Open ticket in Zendesk"
-            onClick={() => window.open(c.zendeskHref!, '_blank', 'noopener,noreferrer')}
-            className="flex h-8 w-9 items-center justify-center rounded-lg bg-surface-card text-text-muted transition-colors hover:text-text-default"
-          >
-            <ExternalLink className="h-4 w-4" />
-          </button>
-        </HoverTooltip>
-      </div>
+      <ExternalLinkPill href={c.zendeskHref} label="Open ticket in Zendesk" />
     ) : null;
 
   useEffect(() => {
@@ -334,10 +303,8 @@ export function LineEditPanel({
         activeUnboxView,
         hasUnits,
         serialCount,
-        hasTrackingTab,
+        hasTimelineTab,
         poIdForTracking,
-        hasTicketTab,
-        linkedTicketId,
         hasPoNoteTab,
         poNote,
         pairingOpen,
@@ -357,10 +324,8 @@ export function LineEditPanel({
       activeUnboxView,
       hasUnits,
       serialCount,
-      hasTrackingTab,
+      hasTimelineTab,
       poIdForTracking,
-      hasTicketTab,
-      linkedTicketId,
       hasPoNoteTab,
       poNote,
       pairingOpen,
@@ -374,36 +339,26 @@ export function LineEditPanel({
     ],
   );
 
+  const toolbar = (
+    <LineEditToolbar
+      mode="unbox"
+      receivingId={row.receiving_id ?? null}
+      zohoSyncing={c.zohoSyncing}
+      busy={c.saving || c.platformSaving}
+      copyingAll={c.copyingAll}
+      handlers={{
+        refresh: () => void c.syncWithZoho(),
+        share: () => void c.handleShare(),
+        audit: () => c.setAuditOpen(true),
+        copy: () => void c.handleCopyAll(),
+        photoNote: () => c.setPhotoNoteOpen(true),
+      }}
+    />
+  );
+
   return (
     <>
       <div className="relative isolate flex h-full min-h-0 flex-col bg-surface-canvas">
-        {/* Ambient wash — ultra-soft tonal blobs behind the glass cards so their
-            backdrop-blur has something to frost. Sits at -z-10 inside the
-            panel's isolated stacking context (`isolate` above), so it can never
-            paint over content. Pure decoration: token-family hues at ≤8% alpha,
-            calm enough to read as light, not color. */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
-          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
-          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
-        </div>
-        {!showTicketEditor ? (
-          <LineEditToolbar
-            mode="unbox"
-            receivingId={row.receiving_id ?? null}
-            zohoSyncing={c.zohoSyncing}
-            busy={c.saving || c.platformSaving}
-            copyingAll={c.copyingAll}
-            handlers={{
-              refresh: () => void c.syncWithZoho(),
-              share: () => void c.handleShare(),
-              audit: () => c.setAuditOpen(true),
-              copy: () => void c.handleCopyAll(),
-              photoNote: () => c.setPhotoNoteOpen(true),
-            }}
-          />
-        ) : null}
-
         <AnimatePresence mode="wait" initial={false}>
           {showTicketEditor ? (
             <motion.div
@@ -415,7 +370,7 @@ export function LineEditPanel({
               className="flex min-h-0 flex-1 flex-col"
             >
               <div className="shrink-0 px-4 pt-5 sm:px-6">
-                <div className={RECEIVING_WORKSPACE_COLUMN}>
+                <div className={STATION_WORKBENCH_COLUMN}>
                   <LineCartonContextSection
                     row={row}
                     staffId={staffId}
@@ -443,67 +398,81 @@ export function LineEditPanel({
               transition={paneTransition}
               className="flex min-h-0 flex-1 flex-col"
             >
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={revealContainer}
-            className={`${RECEIVING_WORKSPACE_COLUMN} space-y-4 px-4 py-5 pb-6 sm:px-6`}
-          >
-            <motion.div variants={revealItem}>
-              <LineCartonContextSection
-                row={row}
-                staffId={staffId}
-                c={c}
-                linkedOrderNumber={linkedOrder?.orderId ?? null}
-                onToggleTicketView={toggleTicketView}
-                ticketViewActive={false}
-              />
-            </motion.div>
-
-            <motion.div variants={revealItem}>
-              <UnboxSectionTabs
-                tabs={unboxTabs}
-                value={activeUnboxView}
-                onChange={(id) => setUnboxView(id as UnboxView)}
-                rightSlot={
-                  activeUnboxView === 'overview'
-                    ? editPoControl
-                    : ticketTabLink ?? undefined
+              <StationWorkbench
+                ambientWash
+                className="flex-1"
+                toolbar={toolbar}
+                entityContext={
+                  <motion.div
+                    initial={false}
+                    animate="show"
+                    variants={revealContainer}
+                  >
+                    <motion.div variants={revealItem}>
+                      <LineCartonContextSection
+                        row={row}
+                        staffId={staffId}
+                        c={c}
+                        linkedOrderNumber={linkedOrder?.orderId ?? null}
+                        onToggleTicketView={toggleTicketView}
+                        ticketViewActive={false}
+                      />
+                    </motion.div>
+                  </motion.div>
+                }
+                tabs={
+                  <motion.div
+                    initial={false}
+                    animate="show"
+                    variants={revealContainer}
+                  >
+                    <motion.div variants={revealItem}>
+                      <UnboxSectionTabs
+                        tabs={unboxTabs}
+                        value={activeUnboxView}
+                        onChange={(id) => setUnboxView(id as UnboxView)}
+                        rightSlot={
+                          activeUnboxView === 'overview'
+                            ? editPoControl
+                            : (ticketTabLink ?? undefined)
+                        }
+                      />
+                    </motion.div>
+                  </motion.div>
+                }
+                feedback={
+                  !showReceiveFeedback ? (
+                    <WorkspaceActionFeedbackSlot
+                      feedback={actionFeedback}
+                      onDismiss={() => setActionFeedback(null)}
+                    />
+                  ) : null
+                }
+                footer={
+                  showReceiveFeedback ? (
+                    <div className="shrink-0 px-4 py-2 sm:px-6">
+                      <div className={STATION_WORKBENCH_COLUMN}>
+                        <ReceiveFeedbackRegion
+                          receiving={c.receiving}
+                          receiveResult={c.receiveResult}
+                          responseExpanded={c.responseExpanded}
+                          setResponseExpanded={c.setResponseExpanded}
+                          onDismiss={() => {
+                            c.setReceiveResult(null);
+                            c.setResponseExpanded(false);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : null
+                }
+                dock={
+                  <StationTerminalDock
+                    vm={terminalVm}
+                    assignedTechId={row.assigned_tech_id}
+                  />
                 }
               />
-            </motion.div>
-
-            {!showReceiveFeedback ? (
-              <WorkspaceActionFeedbackSlot
-                feedback={actionFeedback}
-                onDismiss={() => setActionFeedback(null)}
-              />
-            ) : null}
-          </motion.div>
-        </div>
-
-        {showReceiveFeedback ? (
-          <div className="shrink-0 px-4 py-2 sm:px-6">
-            <div className={RECEIVING_WORKSPACE_COLUMN}>
-              <ReceiveFeedbackRegion
-                receiving={c.receiving}
-                receiveResult={c.receiveResult}
-                responseExpanded={c.responseExpanded}
-                setResponseExpanded={c.setResponseExpanded}
-                onDismiss={() => {
-                  c.setReceiveResult(null);
-                  c.setResponseExpanded(false);
-                }}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        <StationTerminalDock
-          vm={terminalVm}
-          assignedTechId={row.assigned_tech_id}
-        />
             </motion.div>
           )}
         </AnimatePresence>

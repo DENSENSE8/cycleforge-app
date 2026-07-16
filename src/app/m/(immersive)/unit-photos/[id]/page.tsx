@@ -23,6 +23,12 @@ function UnitPhotoPageInner() {
   const unitKey = (searchParams.get('unit') || '').trim() || null;
   const titleParam = (searchParams.get('title') || '').trim();
   const backParam = (searchParams.get('back') || '').trim();
+  const stageParam = (searchParams.get('stage') || '').trim().toLowerCase();
+  const stage = stageParam === 'packing' ? 'packing' : 'testing';
+  const packerLogIdRaw = Number(searchParams.get('packerLogId'));
+  const packerLogId =
+    Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null;
+  const poRef = (searchParams.get('poRef') || '').trim() || null;
 
   const validId = Number.isFinite(serialUnitId) && serialUnitId > 0;
   const headerLabel = titleParam || (unitKey ? `Unit ${unitKey}` : `Unit #${serialUnitId}`);
@@ -44,6 +50,9 @@ function UnitPhotoPageInner() {
       returnHref={backHref}
       requestId={requestId}
       maxPhotos={10}
+      stage={stage}
+      packerLogId={packerLogId}
+      poRef={poRef}
     />
   );
 }

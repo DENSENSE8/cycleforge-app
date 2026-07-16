@@ -7,6 +7,10 @@ import {
   resolveReportedIssue,
   listReportedIssues,
   getReportedIssue,
+  setIssueStatus,
+  updateReportedIssue,
+  softDeleteReportedIssue,
+  canTransitionIssueStatus,
   type UserIssuesDeps,
   type ReportedIssue,
 } from './issues';
@@ -65,6 +69,27 @@ function fakes(rows: Record<string, Array<Record<string, unknown>>> = {}) {
       if (/SELECT id, reporter_staff_id, title, status/.test(sql)) {
         return { rows: rows.found ?? [], rowCount: (rows.found ?? []).length };
       }
+      if (/UPDATE user_reported_issues uri/.test(sql) && /SET status = \$3/.test(sql)) {
+        const statusRows = rows.statusUpdate;
+        if (statusRows === undefined) {
+          // Default success: one row flipped.
+          return { rows: [{ id: 101 }], rowCount: 1 };
+        }
+        return { rows: statusRows, rowCount: statusRows.length };
+      }
+      if (/UPDATE user_reported_issues uri/.test(sql) && /SET title = COALESCE/.test(sql)) {
+        const fieldRows = rows.fieldUpdate;
+        if (fieldRows === undefined) return { rows: [{ id: 101 }], rowCount: 1 };
+        return { rows: fieldRows, rowCount: fieldRows.length };
+      }
+      if (/SET deleted_at = now\(\)/.test(sql)) {
+        const delRows = rows.softDelete;
+        if (delRows === undefined) return { rows: [{ id: 101 }], rowCount: 1 };
+        return { rows: delRows, rowCount: delRows.length };
+      }
+      if (/SELECT 1 AS ok FROM user_reported_issues/.test(sql)) {
+        return { rows: rows.exists ?? [], rowCount: (rows.exists ?? []).length };
+      }
       if (/LEFT JOIN staff/.test(sql) && /uri\.id = \$2/.test(sql)) {
         return { rows: rows.detail ?? [], rowCount: (rows.detail ?? []).length };
       }
@@ -111,13 +136,25 @@ test('attachGithubIssue stamps number + url', async () => {
   assert.deepEqual(update.params, [ORG, 101, 42, 'https://github.com/x/y/issues/42']);
 });
 
-test('resolveReportedIssue flips to deployed and reports the reporter for the toast', async () => {
-  const { deps, calls } = fakes({ found: [{ id: 101, reporter_staff_id: 7, title: 'Broken thing', status: 'pending' }] });
+test('resolveReportedIssue flips to deployed via setIssueStatus and reports the reporter', async () => {
+  const deployedRow = {
+    ...SAMPLE_ROW,
+    status: 'deployed',
+    resolution_commit: 'abc1234',
+    resolved_at: '2026-07-15T13:00:00.000Z',
+  };
+  const { deps, calls } = fakes({
+    found: [{ id: 101, reporter_staff_id: 7, title: 'Broken thing', status: 'pending' }],
+    detail: [deployedRow],
+  });
   const res = await resolveReportedIssue(ORG, { githubIssueNumber: 42, resolutionCommit: 'abc1234' }, deps);
   assert.deepEqual(res, { ok: true, issueId: 101, reporterStaffId: 7, title: 'Broken thing', idempotent: false });
-  const update = calls.find((c) => /SET status = 'deployed'/.test(c.sql));
+  const update = calls.find((c) => /SET status = \$3/.test(c.sql));
   assert.ok(update);
-  assert.deepEqual(update.params, [ORG, 101, 'abc1234']);
+  assert.equal(update.params[2], 'deployed');
+  assert.equal(update.params[3], 'abc1234');
+  assert.equal(update.params[4], 'pending', 'expectedFrom = pre-read status');
+  assert.match(update.sql, /AND uri\.status = \$5/, 'atomic expectedFrom guard');
 });
 
 test('resolveReportedIssue is idempotent — already deployed → no update, no re-toast signal', async () => {
@@ -128,26 +165,31 @@ test('resolveReportedIssue is idempotent — already deployed → no update, no 
   assert.ok(!calls.some((c) => /SET status/.test(c.sql)), 'no second status write');
 });
 
-test('resolve UPDATE is conditional (status <> deployed) — the TOCTOU loser is idempotent', async () => {
-  // The pre-read says 'pending', but a concurrent resolve already flipped it:
-  // the conditional UPDATE matches 0 rows → this call reports idempotent, so
-  // only ONE toast fires even under a race.
+test('resolve TOCTOU loser is idempotent when setIssueStatus conflicts to deployed', async () => {
+  // Pre-read says pending; concurrent resolve already flipped → status UPDATE
+  // matches 0 rows → conflict → re-read shows deployed → idempotent (one toast).
   const calls: Array<{ sql: string; params: unknown[] }> = [];
-  const deps = {
-    query: async (_o: string, sql: string, params: unknown[]) => {
+  const deps: UserIssuesDeps = {
+    query: async (_o, sql, params) => {
       calls.push({ sql, params });
       if (/SELECT id, reporter_staff_id/.test(sql)) {
         return { rows: [{ id: 101, reporter_staff_id: 7, title: 'T', status: 'pending' }], rowCount: 1 };
       }
-      if (/SET status = 'deployed'/.test(sql)) return { rows: [], rowCount: 0 }; // lost the race
-      return { rows: [], rowCount: 1 };
+      if (/SET status = \$3/.test(sql)) return { rows: [], rowCount: 0 }; // lost the race
+      if (/LEFT JOIN staff/.test(sql)) {
+        return {
+          rows: [{ ...SAMPLE_ROW, status: 'deployed', resolution_commit: 'x', resolved_at: '2026-07-15T13:00:00.000Z' }],
+          rowCount: 1,
+        };
+      }
+      return { rows: [], rowCount: 0 };
     },
   };
   const res = await resolveReportedIssue(ORG, { issueId: 101 }, deps);
   assert.equal(res.ok, true);
-  assert.equal((res as { idempotent: boolean }).idempotent, true, 'rowCount 0 → idempotent → no toast');
-  const update = calls.find((c) => /SET status = 'deployed'/.test(c.sql));
-  assert.match(update!.sql, /AND status <> 'deployed'/, 'the UPDATE is conditional (atomic flip)');
+  assert.equal((res as { idempotent: boolean }).idempotent, true, 'conflict→deployed → idempotent → no toast');
+  const update = calls.find((c) => /SET status = \$3/.test(c.sql));
+  assert.match(update!.sql, /AND uri\.status = \$5/, 'shared setIssueStatus waist');
 });
 
 test('resolveReportedIssue: not_found and bad_input surface as typed errors', async () => {
@@ -175,6 +217,7 @@ test('listReportedIssues maps staff join, filters, and keyset cursor', async () 
   assert.equal(result.nextCursor, null, 'page size not exceeded → no next cursor');
   const call = calls[0];
   assert.match(call.sql, /LEFT JOIN staff/);
+  assert.match(call.sql, /uri\.deleted_at IS NULL/);
   assert.match(call.sql, /\(uri\.created_at, uri\.id\) </);
   assert.match(call.sql, /ORDER BY uri\.created_at DESC, uri\.id DESC/);
   assert.equal(call.params[0], ORG);
@@ -226,4 +269,154 @@ test('encode/decodeIssueCursor round-trips; rejects garbage', () => {
   assert.equal(decodeIssueCursor('not-a-cursor'), null);
   assert.equal(decodeIssueCursor('garbage~1'), null);
   assert.equal(decodeIssueCursor('2026-07-15T12:00:00.000Z~-1'), null);
+});
+
+test('canTransitionIssueStatus allows claim/resolve/reopen edges only', () => {
+  assert.equal(canTransitionIssueStatus('pending', 'in-progress'), true);
+  assert.equal(canTransitionIssueStatus('pending', 'deployed'), true);
+  assert.equal(canTransitionIssueStatus('in-progress', 'deployed'), true);
+  assert.equal(canTransitionIssueStatus('in-progress', 'pending'), true);
+  assert.equal(canTransitionIssueStatus('deployed', 'pending'), true);
+  assert.equal(canTransitionIssueStatus('deployed', 'in-progress'), false);
+  assert.equal(canTransitionIssueStatus('pending', 'pending'), true, 'same-status is a no-op');
+});
+
+test('setIssueStatus claim pending→in-progress succeeds', async () => {
+  const claimed = { ...SAMPLE_ROW, status: 'in-progress' };
+  const { deps, calls } = fakes({ detail: [claimed] });
+  const res = await setIssueStatus(ORG, 101, 'in-progress', { expectedFrom: 'pending' }, deps);
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.from, 'pending');
+    assert.equal(res.to, 'in-progress');
+    assert.equal(res.issue.status, 'in-progress');
+  }
+  const update = calls.find((c) => /SET status = \$3/.test(c.sql));
+  assert.ok(update);
+  assert.deepEqual(update.params, [ORG, 101, 'in-progress', null, 'pending']);
+});
+
+test('setIssueStatus returns conflict (409 path) when expectedFrom mismatches', async () => {
+  // UPDATE matches 0 rows; re-read shows in-progress (someone else claimed).
+  const { deps } = fakes({
+    statusUpdate: [],
+    detail: [{ ...SAMPLE_ROW, status: 'in-progress' }],
+  });
+  const res = await setIssueStatus(ORG, 101, 'deployed', { expectedFrom: 'pending' }, deps);
+  assert.deepEqual(res, { ok: false, error: 'conflict' });
+});
+
+test('setIssueStatus returns not_found when the row is gone', async () => {
+  const { deps } = fakes({ statusUpdate: [], detail: [] });
+  const res = await setIssueStatus(ORG, 101, 'in-progress', { expectedFrom: 'pending' }, deps);
+  assert.deepEqual(res, { ok: false, error: 'not_found' });
+});
+
+test('setIssueStatus rejects invalid transitions before writing', async () => {
+  const { deps, calls } = fakes();
+  const res = await setIssueStatus(ORG, 101, 'in-progress', { expectedFrom: 'deployed' }, deps);
+  assert.deepEqual(res, { ok: false, error: 'invalid_transition' });
+  assert.ok(!calls.some((c) => /UPDATE/.test(c.sql)), 'no write on invalid graph edge');
+});
+
+test('setIssueStatus resolve stamps resolutionCommit; reopen clears it', async () => {
+  const deployed = {
+    ...SAMPLE_ROW,
+    status: 'deployed',
+    resolution_commit: 'deadbeef',
+    resolved_at: '2026-07-15T13:00:00.000Z',
+  };
+  const resolveFake = fakes({ detail: [deployed] });
+  const resolved = await setIssueStatus(
+    ORG,
+    101,
+    'deployed',
+    { expectedFrom: 'in-progress', resolutionCommit: 'deadbeef' },
+    resolveFake.deps,
+  );
+  assert.equal(resolved.ok, true);
+  const resolveUpdate = resolveFake.calls.find((c) => /SET status = \$3/.test(c.sql));
+  assert.equal(resolveUpdate!.params[3], 'deadbeef');
+
+  const reopenedRow = { ...SAMPLE_ROW, status: 'pending', resolution_commit: null, resolved_at: null };
+  const reopenFake = fakes({ detail: [reopenedRow] });
+  const reopened = await setIssueStatus(ORG, 101, 'pending', { expectedFrom: 'deployed' }, reopenFake.deps);
+  assert.equal(reopened.ok, true);
+  const reopenSql = reopenFake.calls.find((c) => /SET status = \$3/.test(c.sql))!.sql;
+  assert.match(reopenSql, /WHEN \$3 = 'pending' THEN NULL/, 'reopen clears commit + resolved_at');
+});
+
+test('updateReportedIssue patches title/description/type', async () => {
+  const after = {
+    ...SAMPLE_ROW,
+    title: 'Fixed title',
+    description: 'New body',
+    issue_type: 'suggestion',
+  };
+  const { deps, calls } = fakes({ detail: [after] });
+  const res = await updateReportedIssue(
+    ORG,
+    101,
+    { title: '  Fixed title  ', description: ' New body ', issueType: 'suggestion' },
+    deps,
+  );
+  assert.equal(res.ok, true);
+  if (res.ok) {
+    assert.equal(res.issue.title, 'Fixed title');
+    assert.equal(res.issue.issueType, 'suggestion');
+  }
+  const update = calls.find((c) => /SET title = COALESCE/.test(c.sql));
+  assert.ok(update);
+  assert.equal(update.params[2], 'Fixed title');
+  assert.equal(update.params[3], 'New body');
+  assert.equal(update.params[4], 'suggestion');
+});
+
+test('updateReportedIssue rejects empty patch and blank title', async () => {
+  const { deps, calls } = fakes();
+  assert.deepEqual(await updateReportedIssue(ORG, 101, {}, deps), { ok: false, error: 'bad_input' });
+  assert.deepEqual(
+    await updateReportedIssue(ORG, 101, { title: '   ' }, deps),
+    { ok: false, error: 'bad_input' },
+  );
+  assert.ok(!calls.some((c) => /UPDATE/.test(c.sql)));
+});
+
+test('updateReportedIssue returns not_found when UPDATE matches 0 rows', async () => {
+  const { deps } = fakes({ fieldUpdate: [] });
+  assert.deepEqual(
+    await updateReportedIssue(ORG, 999, { title: 'Gone' }, deps),
+    { ok: false, error: 'not_found' },
+  );
+});
+
+test('softDeleteReportedIssue tombstones a live row', async () => {
+  const { deps, calls } = fakes();
+  const res = await softDeleteReportedIssue(ORG, 101, deps);
+  assert.deepEqual(res, { ok: true, idempotent: false });
+  const update = calls.find((c) => /SET deleted_at = now\(\)/.test(c.sql));
+  assert.ok(update);
+  assert.match(update.sql, /AND deleted_at IS NULL/);
+  assert.deepEqual(update.params, [ORG, 101]);
+});
+
+test('softDeleteReportedIssue is idempotent when already tombstoned', async () => {
+  const { deps } = fakes({ softDelete: [], exists: [{ ok: 1 }] });
+  const res = await softDeleteReportedIssue(ORG, 101, deps);
+  assert.deepEqual(res, { ok: true, idempotent: true });
+});
+
+test('softDeleteReportedIssue returns not_found when the row is gone', async () => {
+  const { deps } = fakes({ softDelete: [], exists: [] });
+  assert.deepEqual(await softDeleteReportedIssue(ORG, 999, deps), { ok: false, error: 'not_found' });
+});
+
+test('list + get SQL always exclude soft-deleted rows', async () => {
+  const listFake = fakes({ list: [] });
+  await listReportedIssues(ORG, {}, listFake.deps);
+  assert.match(listFake.calls[0].sql, /uri\.deleted_at IS NULL/);
+
+  const detailFake = fakes({ detail: [] });
+  await getReportedIssue(ORG, 101, detailFake.deps);
+  assert.match(detailFake.calls[0].sql, /uri\.deleted_at IS NULL/);
 });

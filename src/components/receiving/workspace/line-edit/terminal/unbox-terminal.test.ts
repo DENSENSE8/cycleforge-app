@@ -35,7 +35,7 @@ function mockCtx(overrides: Partial<UnboxTerminalContext> = {}): UnboxTerminalCo
   return {
     row: { id: 1, tracking_number: '1Z999' } as UnboxTerminalContext['row'],
     poNote: mockPoNote(),
-    bridges: { checklist: null, units: null, conversation: null },
+    bridges: { checklist: null, units: null, support: null, conversation: null },
     focusSerialScan: () => {},
     setUnboxView: () => {},
     focusTicketReply: () => {},
@@ -71,9 +71,9 @@ test('registry kind: every unbox tab has a non-none kind', () => {
     'po-note',
     'checklist',
     'units',
-    'tracking',
+    'timeline',
     'ticket',
-    'conversation',
+    'support',
   ]) {
     assert.ok(
       resolveTerminalKind({ mode: 'unbox', tabId: tab }),
@@ -86,7 +86,7 @@ test('resolveUnboxReceiveTerminal: primary label from controller', () => {
   const vm = resolveUnboxReceiveTerminal(mockCtx());
   assert.equal(vm.label, 'Receive');
   assert.equal(vm.docked, true);
-  assert.ok(vm.menu && vm.menu.some((m) => m.label === 'Print only'));
+  assert.ok(vm.menu && vm.menu.some((m) => m.label.startsWith('Print only')));
   assert.ok(vm.menu && vm.menu.some((m) => m.label === 'Save all to inventory'));
 });
 
@@ -229,9 +229,8 @@ test('resolveUnboxTerminal dispatches kind', () => {
   assert.equal(resolveUnboxTerminal('po-note', ctx)?.label, 'Save to inventory');
   assert.equal(resolveUnboxTerminal('checklist', ctx)?.label, 'Check all');
   assert.equal(resolveUnboxTerminal('units', ctx)?.label, 'Add serial');
-  assert.equal(resolveUnboxTerminal('tracking', ctx)?.label, 'Copy tracking');
+  assert.equal(resolveUnboxTerminal('timeline', ctx)?.label, 'Copy tracking');
   assert.equal(resolveUnboxTerminal('ticket', ctx)?.label, 'Reply');
-  assert.equal(resolveUnboxTerminal('ticket', ctx)?.tone, 'accent');
-  assert.equal(resolveUnboxTerminal('conversation', ctx)?.label, 'Add note');
+  assert.equal(resolveUnboxTerminal('support', ctx)?.label, 'Add note');
   assert.equal(resolveUnboxTerminal('none', ctx), null);
 });

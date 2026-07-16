@@ -6,6 +6,9 @@ import {
   routeByPath,
   routesGatedBy,
 } from './route-permission-manifest';
+import { isKnownPermission } from './permission-registry';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 test('manifest summary has zero ungated writes (the Phase 2e invariant)', () => {
   const s = manifestSummary();
@@ -148,12 +151,36 @@ test('regression: support.thread.* gates the entity-thread routes', () => {
 
 test('regression: support.issues.view gates the reported-issues read routes', () => {
   // UIC-1 — Reported-Issues console read API. Manifest records the first-
-  // declared method's permission per file (GET before POST on the collection).
+  // declared method's permission per file (GET before POST on the collection;
+  // GET before PATCH on [id] — same as sku-catalog/[id]).
   const paths = routesGatedBy('support.issues.view').map((r) => r.path);
   assert.ok(paths.includes('/api/user-issues/route.ts'), 'support.issues.view should gate /api/user-issues');
   assert.ok(
     paths.includes('/api/user-issues/[id]/route.ts'),
     'support.issues.view should gate /api/user-issues/[id]',
+  );
+});
+
+test('regression: support.issues.manage gates PATCH on /api/user-issues/[id]', () => {
+  // UIC-3 — session Claim/Resolve/Reopen/Edit. Manifest records first-declared
+  // method (GET → view) per file, so assert the route source + registry instead.
+  assert.ok(
+    isKnownPermission('support.issues.manage'),
+    'support.issues.manage must stay in the permission registry',
+  );
+  const src = readFileSync(
+    join(process.cwd(), 'src/app/api/user-issues/[id]/route.ts'),
+    'utf8',
+  );
+  assert.match(
+    src,
+    /requireRoutePerm\(req, 'support\.issues\.manage'\)/,
+    'PATCH must gate on support.issues.manage',
+  );
+  assert.match(
+    src,
+    /export async function DELETE/,
+    'UIC-4 soft-delete DELETE must stay on the same [id] route',
   );
 });
 
