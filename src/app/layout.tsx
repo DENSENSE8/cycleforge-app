@@ -25,6 +25,7 @@ import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoS
 import { UserIssueResolvedToaster } from "../components/providers/UserIssueResolvedToaster";
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
 
@@ -116,6 +117,7 @@ export default async function RootLayout({
                 <InstallPrompt />
                 <AppearanceApplier />
                 <Analytics />
+                <SpeedInsights />
             </body>
         </html>
     );
