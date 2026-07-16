@@ -151,6 +151,126 @@ export async function resolveThreadConnections(
         });
       }
     }
+
+    // RECEIVING / RECEIVING_LINE → tracking (via carton.shipment_id → STN),
+    // SKU on the line, and the linked support ticket.
+    if (anchor.entityType === 'RECEIVING' || anchor.entityType === 'RECEIVING_LINE') {
+      let receivingId: number | null =
+        anchor.entityType === 'RECEIVING' ? anchor.entityId : null;
+      let lineId: number | null =
+        anchor.entityType === 'RECEIVING_LINE' ? anchor.entityId : null;
+
+      if (lineId != null) {
+        const line = await client.query<{
+          receiving_id: number | null;
+          sku: string | null;
+        }>(
+          `SELECT receiving_id, sku FROM receiving_line
+            WHERE id = $1::int AND organization_id = $2::uuid LIMIT 1`,
+          [lineId, orgId],
+        );
+        if (line.rows[0]?.receiving_id != null) {
+          receivingId = Number(line.rows[0].receiving_id);
+        }
+        if (line.rows[0]?.sku) {
+          push({
+            entityType: 'SKU',
+            entityId: null,
+            label: line.rows[0].sku,
+            origin: 'derived',
+            hint: 'sku',
+          });
+        }
+      }
+
+      if (receivingId != null) {
+        const carton = await client.query<{
+          shipment_id: number | null;
+          tracking: string | null;
+        }>(
+          `SELECT r.shipment_id, stn.tracking_number_raw AS tracking
+             FROM receiving_carton r
+             LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+            WHERE r.id = $1::int AND r.organization_id = $2::uuid
+            LIMIT 1`,
+          [receivingId, orgId],
+        );
+        const tracking = carton.rows[0]?.tracking?.trim();
+        if (tracking) {
+          push({
+            entityType: 'TRACKING',
+            entityId: carton.rows[0]?.shipment_id != null
+              ? Number(carton.rows[0].shipment_id)
+              : null,
+            label: tracking,
+            origin: 'derived',
+            hint: 'tracking',
+          });
+        }
+
+        // Linked ticket via ticket_links on line / carton / SHIPMENT.
+        const ticket = await client.query<{
+          support_ticket_id: string | null;
+          zendesk_ticket_id: string | null;
+          external_ticket_id: string | null;
+          provider: string | null;
+        }>(
+          `SELECT tl.support_ticket_id, tl.zendesk_ticket_id,
+                  st.external_ticket_id, st.provider
+             FROM ticket_links tl
+             LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+            WHERE tl.organization_id = $1::uuid
+              AND (
+                ($2::int IS NOT NULL AND tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id = $2)
+                OR (tl.entity_type = 'RECEIVING' AND tl.entity_id = $3)
+                OR (
+                  $4::bigint IS NOT NULL
+                  AND tl.entity_type = 'SHIPMENT'
+                  AND tl.entity_id = $4
+                )
+              )
+            ORDER BY
+              CASE tl.entity_type
+                WHEN 'RECEIVING_LINE' THEN 0
+                WHEN 'RECEIVING' THEN 1
+                WHEN 'SHIPMENT' THEN 2
+                ELSE 3
+              END,
+              tl.created_at DESC
+            LIMIT 1`,
+          [
+            orgId,
+            lineId,
+            receivingId,
+            carton.rows[0]?.shipment_id != null
+              ? Number(carton.rows[0].shipment_id)
+              : null,
+          ],
+        );
+        const trow = ticket.rows[0];
+        if (trow) {
+          const ext =
+            trow.external_ticket_id?.trim() ||
+            (trow.zendesk_ticket_id != null ? String(trow.zendesk_ticket_id) : null);
+          const label = ext ? `#${ext.replace(/^#/, '')}` : null;
+          if (label) {
+            push({
+              entityType: 'SUPPORT_TICKET',
+              entityId: trow.support_ticket_id != null
+                ? Number(trow.support_ticket_id)
+                : null,
+              label,
+              origin: 'derived',
+              hint: 'ticket',
+              href:
+                trow.provider === 'zendesk' && ext
+                  ? `/support?ticket=${ext.replace(/^#/, '')}`
+                  : null,
+            });
+          }
+        }
+      }
+    }
   });
 
   // ── Curated dots (thread_links) — resolve the thread id first ────────────

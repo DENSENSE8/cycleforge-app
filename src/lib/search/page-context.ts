@@ -22,7 +22,7 @@ const SEGMENT_SCOPE: Record<string, SearchEntityType[]> = {
   unbox: ['RECEIVING'],
   triage: ['RECEIVING'],
   incoming: ['RECEIVING'],
-  pickup: ['RECEIVING'], // first-class Local Pickup surface (operator-surfaces Phase 9)
+  pickup: ['RECEIVING'], // Walk-In front-desk station (operator-surfaces Phase 9)
   products: ['SKU'],
   'sku-stock': ['SKU'],
   inventory: ['SERIAL_UNIT', 'SKU'],

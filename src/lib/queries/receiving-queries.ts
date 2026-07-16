@@ -515,6 +515,22 @@ export function upsertReceivingRailRows(
 }
 
 /**
+ * Drop a pre-resolve `scan:{tracking}` pending stub from the Unboxed rail so
+ * the final `carton:{id}` upsert does not double-list.
+ */
+export function removePendingScanRailRow(
+  queryClient: QueryClient,
+  clientEventId: string,
+): void {
+  if (!clientEventId) return;
+  filterRailSegmentRows(
+    queryClient,
+    UNBOX_RAIL_SEGMENT,
+    (r) => r.client_event_id !== clientEventId,
+  );
+}
+
+/**
  * Mirror triage found-PO scans into the Unbox Queue — the only cross-mode write.
  */
 export function upsertUnboxQueueRows(

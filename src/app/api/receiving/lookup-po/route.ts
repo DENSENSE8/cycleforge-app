@@ -12,8 +12,6 @@ import { getOrSet } from '@/lib/cache/upstash-cache';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 import { publishReceivingLogChanged, publishPriorityUnbox } from '@/lib/realtime/publish';
-import { searchPurchaseOrdersByTracking, searchPurchaseReceivesByTracking, findPurchaseOrderByNumber } from '@/lib/zoho';
-import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 import { ensureSkuCatalogEntry } from '@/lib/neon/sku-catalog-queries';
 import { findPendingOrderSkuMatches } from '@/lib/receiving/pending-order-match';
 import {
@@ -40,35 +38,8 @@ import {
   resolveSupportTicketToReceiving,
 } from '@/lib/support/tickets';
 
-// ── Zoho error classification ────────────────────────────────────────────────
-// Distinguishes "Zoho replied, no match" from "Zoho is unreachable." The former
-// is normal traffic; the latter is an outage we want to alert on.
-function zohoErrStatus(err: unknown): number | null {
-  const status = (err as { status?: number; statusCode?: number; response?: { status?: number } } | null)
-    ?.status
-    ?? (err as { statusCode?: number } | null)?.statusCode
-    ?? (err as { response?: { status?: number } } | null)?.response?.status
-    ?? null;
-  return typeof status === 'number' ? status : null;
-}
-function zohoErrCode(err: unknown): string | null {
-  const code = (err as { code?: string } | null)?.code ?? null;
-  return typeof code === 'string' ? code : null;
-}
 function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-/**
- * A PO line-item import that fails because the org's Zoho integration is not
- * connected (no vault row AND no legacy bridge) throws CredentialNotConnectedError
- * (code 'CREDENTIAL_NOT_CONNECTED'). Detect it so the carton response can say
- * "Zoho not connected" instead of silently coming back matched-but-empty, which
- * the client renders as "No PO found". Checked by code so we stay decoupled from
- * the error class across the async boundary.
- */
-function isCredentialNotConnected(err: unknown): boolean {
-  return (err as { code?: string } | null)?.code === 'CREDENTIAL_NOT_CONNECTED';
 }
 
 /**
@@ -143,15 +114,6 @@ async function markReceivingPriority(receivingId: number | null, orgId: string):
   } catch (err) {
     console.warn('lookup-po: markReceivingPriority failed', errMessage(err));
   }
-}
-
-function isZohoNoMatch(err: unknown): boolean {
-  const status = zohoErrStatus(err);
-  // 4xx (except 401/403/429) generally means Zoho parsed the request and
-  // returned a non-fatal "nothing here." Auth + rate-limit = outage-like.
-  if (status == null) return false;
-  if (status === 401 || status === 403 || status === 429) return false;
-  return status >= 400 && status < 500;
 }
 
 async function parallelLimit<T, R>(
@@ -829,24 +791,17 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           : body?.mode === 'auto'
             ? 'auto'
             : 'tracking';
-    // localOnly: resolve from LOCAL data only and never block on a live Zoho
-    // search. The client sends this for the FIRST scan (both modes) so the
-    // carton resolves instantly — matched (local mirror / incoming) or unfound —
-    // with NO "Opening your PO" loader. On a local miss the route returns
-    // `zoho_pending: true` and the client fires a normal (Zoho) follow-up, which
-    // is the ONLY phase that shows the loader. Order mode: a local miss returns
-    // not-found+zoho_pending instead of synchronously hitting Zoho. Tracking
-    // mode: an unfound localOnly result still creates the unfound carton and the
-    // client's background Zoho call promotes it in place (findScanByTracking →
-    // preassigned path below).
-    const localOnly = body?.localOnly === true;
+    // Scan hot path is LOCAL-DB ONLY for every identity (tracking / ticket /
+    // order / auto). Live Zoho Inventory and inventory-provider calls never run
+    // here — crons seed STNs + PO mirrors; operators promote via UnfoundMatchStrip.
+    // `localOnly` on the body is accepted for API compat but ignored.
+    void body?.localOnly;
     // Canonicalize carrier scans at the ingestion boundary so a scanned GS1/"96"
     // FedEx barcode (e.g. 9632…382141152045) and a pasted human number
-    // (382141152045) — and the Zoho reference# they reconcile against — all land
-    // on ONE identical value for storage, display, dedup, and Zoho search. Only
-    // in tracking mode: an order-mode value is a PO/reference number, not a
-    // carrier barcode, so it must reach findPurchaseOrderByNumber untouched.
-    // PO#/reference resolution matches against the RAW scanned value (untouched);
+    // (382141152045) — and the local PO mirror Reference# they reconcile against —
+    // all land on ONE identical value for storage, display, and dedup. Only in
+    // tracking mode: an order-mode value is a PO/reference number, not a carrier
+    // barcode. PO#/reference resolution matches against the RAW scanned value;
     // carrier-tracking resolution matches against the canonical form. In `auto`
     // the same scan is tried as both, so canonicalize for tracking+auto and keep
     // the raw value for the PO# phase via `poLookupValue`.
@@ -985,20 +940,17 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    // 0. ORDER# mode — resolve a PO / reference number to its receiving carton.
-    //    LOCAL incoming mirror first (the PO is almost always already in the
-    //    Incoming table, so we adopt its existing lines with no Zoho round-trip);
-    //    live Zoho only as a fallback for a PO not yet synced. Runs before the
-    //    tracking dedup/Zoho path so an order number that happens to be mostly
-    //    digits can't be misread as a tracking suffix.
+    // 0. ORDER# mode — resolve a PO / reference number from LOCAL mirror only
+    //    (zoho_po_mirror / receiving_line_zoho / EXPECTED lines). No live Zoho.
+    //    Runs before the tracking dedup path so an order number that happens to
+    //    be mostly digits can't be misread as a tracking suffix.
     if (mode === 'order' || mode === 'auto') {
       let poId = await resolvePoIdLocally(poLookupValue, ctx.organizationId);
-      let resolvedVia: 'local' | 'zoho' = 'local';
+      const resolvedVia = 'local' as const;
       // Guard the local hit: a normalized-number collision or a mis-synced
       // receiving_line can point at the WRONG purchaseorder_id and open a
       // different PO than the one scanned. Drop the local id when the mirror
-      // says it carries a different number, then fall through to the exact
-      // Zoho lookup below.
+      // says it carries a different number.
       if (poId) {
         const verdict = await verifyPoNumberMatches(poId, poLookupValue, ctx.organizationId).catch((err) => {
           console.warn('[lookup-po.order] local verify failed', errMessage(err));
@@ -1006,7 +958,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         });
         if (verdict === 'mismatch') {
           console.warn(
-            `[lookup-po.order] local resolve for "${poLookupValue}" pointed at PO ${poId} with a different number — re-resolving via Zoho`,
+            `[lookup-po.order] local resolve for "${poLookupValue}" pointed at PO ${poId} with a different number — treating as miss`,
           );
           poId = null;
         }
@@ -1023,37 +975,12 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         ).catch(() => null);
         if (localByTracking) {
           poId = localByTracking;
-          resolvedVia = 'local';
         }
-      }
-      if (!poId && localOnly && mode === 'order') {
-        // Instant local phase for an EXPLICIT order# scan only. `auto` must fall
-        // through to the carrier-tracking path — returning zoho_pending here
-        // forced every tracking scan through synchronous Zoho + the loader.
-        return NextResponse.json({
-          success: true,
-          matched: false,
-          po_matched: false,
-          not_found: true,
-          zoho_pending: true,
-          po_ids: [],
-        });
-      }
-      if (!poId) {
-        // A PO/reference scan must EXACT-match against Zoho — never adopt a
-        // fuzzily-similar PO. Using the tolerant tracking search here returned
-        // the wrong PO (first fuzzy `search_text` hit, unverified).
-        const po = await findPurchaseOrderByNumber(poLookupValue).catch((err) => {
-          console.warn('[lookup-po.order] zoho lookup failed', errMessage(err));
-          return null;
-        });
-        poId = po?.purchaseorder_id ? String(po.purchaseorder_id) : null;
-        resolvedVia = 'zoho';
       }
 
       if (!poId && mode === 'order') {
-        // Explicit order mode, PO# fully missed (local + Zoho) — report not-found
-        // WITHOUT spawning a phantom carton (an order# typo must not create a box).
+        // Explicit order mode, PO# missed locally — report not-found WITHOUT
+        // spawning a phantom carton and WITHOUT calling live Zoho.
         return NextResponse.json({
           success: true,
           matched: false,
@@ -1071,25 +998,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       if (poId) {
 
       const { receivingId } = await upsertMatchedReceiving(poId, carrier, staffId, ctx.organizationId, intakeSurface);
-      let integrationError: 'zoho_not_connected' | null = null;
       const linked = await linkLocalPoLinesToReceiving(poId, receivingId, ctx.organizationId);
-      // Only hit Zoho for line items when there was nothing local to adopt.
-      if (linked === 0) {
-        await importZohoPurchaseOrderToReceiving(ctx.organizationId, poId, {
-          receivingId,
-          workflowStatus: 'MATCHED',
-        }).catch((err) => {
-          if (isCredentialNotConnected(err)) {
-            integrationError = 'zoho_not_connected';
-            console.error(
-              `[lookup-po.order] Zoho not connected — PO ${poId} matched but its line items could not import`,
-              { receiving_id: receivingId, message: errMessage(err) },
-            );
-          } else {
-            console.warn(`[lookup-po.order] import(${poId}) failed`, errMessage(err));
-          }
-        });
-      }
+      // Local adopt only — never live-import PO lines on the scan hot path.
       const orderScanId = await recordScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po', intakeSurface);
       await stampUnboxOpened(receivingId, orderScanId, trackingNumber);
       await applyIntakeClassification(receivingId, classification, ctx.organizationId);
@@ -1144,7 +1054,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
         po_ids: [poId],
         pending_order_skus: pendingOrderSkus,
-        integration_error: integrationError,
         receiving_package,
         lines: lines.map((l) => ({
           id: l.id,
@@ -1163,8 +1072,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // 1. Dedup short-circuit — scan already logged against a receiving row.
     //    Short-circuit ONLY when the receiving row has lines. If lines are
     //    empty (e.g. receiving_lines was truncated, or the row was created
-    //    as 'unmatched' before Zoho synced the PO), fall through to the
-    //    Zoho lookup so we can repopulate the PO linkage on this same row.
+    //    as 'unmatched' before the PO mirror synced), fall through to the
+    //    local tracking→PO adopt path so we can repopulate linkage on this row.
     const existingScan = await findScanByTracking(trackingNumber, staffId, carrier, ctx.organizationId, intakeSurface);
     let preassignedReceivingId: number | null = null;
     let preassignedScanId: number | null = null;
@@ -1328,19 +1237,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       });
     }
 
-    // 2. Zoho lookup for PO ids. Single search key: last 8 digits of the
-    //    tracking number — same key used at every local layer above, so a
-    //    miss here means the PO genuinely isn't in Zoho yet (rather than a
-    //    format mismatch). At most 2 Zoho calls per scan (receives, then
-    //    orders), down from 8 in the old variant ladder.
+    // 2. LOCAL tracking → PO ids only (STN / carton / zoho_po_mirror Reference#).
+    //    Live Zoho last-8 search is never on the scan hot path.
     const zohoPoIds = new Set<string>();
-    let zohoReachable = true;
 
     // 1c. LOCAL-FIRST tracking → PO. The incoming sync already mirrors this PO's
     //     header + lines locally (the reported "in the Incoming table but never
     //     scanned" case), so resolve the PO id from local data and seed it here.
-    //     The matched path below then adopts the pre-materialized local lines and
-    //     the live Zoho tracking search is skipped entirely — instant, no loader.
+    //     The matched path below then adopts the pre-materialized local lines.
     const localPoId = await resolvePoIdLocallyByTracking(
       trackingNumber,
       preassignedReceivingId,
@@ -1350,63 +1254,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     const digits = trackingNumber.replace(/\D/g, '');
     const last8 = digits.length >= 8 ? digits.slice(-8) : '';
-
-    // Only reach for Zoho when local resolution came up empty — and never in
-    // localOnly mode (the client's instant first phase; the Zoho search happens
-    // on its background follow-up call instead).
-    if (last8 && zohoPoIds.size === 0 && !localOnly) {
-      try {
-        const receives = await searchPurchaseReceivesByTracking(last8).catch((err) => {
-          // Reachability heuristic: HTTP 4xx with a JSON body = Zoho is up and
-          // says "no match"; anything else (network, 5xx, timeout) = unreachable.
-          // The distinction matters for alerting and for the exception_reason
-          // we write below ('not_found' vs 'zoho_unreachable').
-          if (!isZohoNoMatch(err)) {
-            zohoReachable = false;
-            console.error(
-              '[lookup-po.zoho] searchPurchaseReceivesByTracking outage',
-              { last8, status: zohoErrStatus(err), code: zohoErrCode(err), message: errMessage(err) },
-            );
-          } else {
-            console.warn(
-              '[lookup-po.zoho] searchPurchaseReceivesByTracking no-match',
-              { last8, status: zohoErrStatus(err) },
-            );
-          }
-          return [];
-        });
-        for (const r of receives) {
-          const poId = String(r.purchaseorder_id || '');
-          if (poId) zohoPoIds.add(poId);
-        }
-        if (zohoPoIds.size === 0 && zohoReachable) {
-          const pos = await searchPurchaseOrdersByTracking(last8).catch((err) => {
-            if (!isZohoNoMatch(err)) {
-              zohoReachable = false;
-              console.error(
-                '[lookup-po.zoho] searchPurchaseOrdersByTracking outage',
-                { last8, status: zohoErrStatus(err), code: zohoErrCode(err), message: errMessage(err) },
-              );
-            } else {
-              console.warn(
-                '[lookup-po.zoho] searchPurchaseOrdersByTracking no-match',
-                { last8, status: zohoErrStatus(err) },
-              );
-            }
-            return [];
-          });
-          for (const po of pos) {
-            if (po.purchaseorder_id) zohoPoIds.add(po.purchaseorder_id);
-          }
-        }
-      } catch (err) {
-        zohoReachable = false;
-        console.error(
-          '[lookup-po.zoho] unexpected throw outside .catch',
-          { last8, message: errMessage(err) },
-        );
-      }
-    }
 
     // 3a. MATCHED path — one receiving row per PO.
     if (zohoPoIds.size > 0) {
@@ -1483,34 +1330,12 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         });
       }
 
-      // Adopt the PO's pre-materialized local lines first — the incoming sync
-      // already wrote every line into receiving_line (receiving_id NULL), so a
-      // PO "in the system" just needs its lines re-parented onto this carton.
-      // Only fall back to a live Zoho import when there was nothing local to
-      // adopt (a PO that hasn't been synced yet). This mirrors the order-mode
-      // path and fixes the regression where a multi-line PO already in the
-      // Incoming mirror came back with zero lines (the Zoho re-import didn't
-      // re-attach them) → matched-but-empty → the client rendered it 'unfound'.
-      // Track an integration-connectivity failure so a matched-but-empty carton
-      // is reported as "Zoho not connected" rather than a silent "No PO found".
-      let integrationError: 'zoho_not_connected' | null = null;
+      // Adopt the PO's pre-materialized local lines — the incoming sync already
+      // wrote every line into receiving_line (receiving_id NULL), so a PO "in
+      // the system" just needs its lines re-parented onto this carton. Never
+      // live-import from Zoho on the scan hot path.
       const linkedPrimary = await linkLocalPoLinesToReceiving(primaryPoId, primaryReceivingId, ctx.organizationId);
-      if (linkedPrimary === 0) {
-        await importZohoPurchaseOrderToReceiving(ctx.organizationId, primaryPoId, {
-          receivingId: primaryReceivingId,
-          workflowStatus: 'MATCHED',
-        }).catch((err) => {
-          if (isCredentialNotConnected(err)) {
-            integrationError = 'zoho_not_connected';
-            console.error(
-              `[lookup-po] Zoho not connected — PO ${primaryPoId} matched but its line items could not import`,
-              { receiving_id: primaryReceivingId, message: errMessage(err) },
-            );
-          } else {
-            console.warn(`lookup-po: import(${primaryPoId}) failed`, err);
-          }
-        });
-      }
+      void linkedPrimary;
 
       // Rare multi-PO tracking: each secondary PO gets its own receiving
       // row to respect the partial unique (zoho_purchaseorder_id) index.
@@ -1528,17 +1353,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             intakeSurface,
           );
           await recordScan(extraReceivingId, trackingNumber, carrier, staffId, 'zoho_po', intakeSurface);
-          const linkedSecondary = await linkLocalPoLinesToReceiving(poId, extraReceivingId, ctx.organizationId);
-          if (linkedSecondary === 0) {
-            await importZohoPurchaseOrderToReceiving(ctx.organizationId, poId, {
-              receivingId: extraReceivingId,
-              workflowStatus: 'MATCHED',
-            });
-          }
+          await linkLocalPoLinesToReceiving(poId, extraReceivingId, ctx.organizationId);
           secondaryPoIds.push(poId);
           secondaryReceivingIds.push(extraReceivingId);
         } catch (err) {
-          console.warn(`lookup-po: secondary PO import failed for ${poId}`, err);
+          console.warn(`lookup-po: secondary PO adopt failed for ${poId}`, err);
         }
       }
 
@@ -1655,10 +1474,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         secondary_receiving_ids: secondaryReceivingIds,
         multi_po_warning: secondaryPoIds.length > 0,
         zoho_reachable: true,
-        // Non-null when the PO header matched but its lines could not import
-        // because Zoho isn't connected — lets the client show a connect prompt
-        // instead of a misleading "No PO found".
-        integration_error: integrationError,
         receiving_package: receiving_package_matched,
         lines: lines.map((l) => ({
           id: l.id,
@@ -1673,15 +1488,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       });
     }
 
-    // 3b. UNMATCHED path — Zoho had no hit (or was unreachable). Log it, and
-    //     upsert a row into tracking_exceptions so the triage/reconciliation
-    //     worker can retry this tracking once Zoho catches up.
+    // 3b. UNMATCHED path — no local STN/PO-mirror hit. Log it and upsert a
+    //     tracking_exceptions row so triage can reconcile later (cron / operator
+    //     promote). Never live-calls Zoho here.
     //
-    //     REUSE the preassigned receiving row when one already exists (a re-scan,
-    //     or the instant-unfound localOnly carton this same client is following
-    //     up on) — createUnmatchedReceiving has no dedup, so calling it again
-    //     would create a DUPLICATE unfound carton for the same tracking. Only
-    //     create a fresh row on a genuine first miss.
+    //     REUSE the preassigned receiving row when one already exists (a re-scan)
+    //     — createUnmatchedReceiving has no dedup, so calling it again would
+    //     create a DUPLICATE unfound carton for the same tracking. Only create
+    //     a fresh row on a genuine first miss.
     let unmatchedReceivingId: number;
     let unmatchedShipmentId: number | null;
     if (preassignedReceivingId != null) {
@@ -1706,23 +1520,21 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     );
     await stampUnboxOpened(unmatchedReceivingId, unmatchedScanId, trackingNumber);
 
-    const exceptionReason = zohoReachable ? 'not_found' : 'zoho_unreachable';
+    const exceptionReason = 'not_found' as const;
     const exception = await upsertOpenTrackingException({
       trackingNumber,
       domain: 'receiving',
       sourceStation: 'receiving',
       staffId,
       reason: exceptionReason,
-      notes: zohoReachable
-        ? 'Receiving scan: tracking not found in Zoho purchase orders or receives'
-        : 'Receiving scan: Zoho API unreachable during lookup',
+      notes: 'Receiving scan: tracking not found in local STN / PO mirror',
       shipmentId: unmatchedShipmentId,
       receivingId: unmatchedReceivingId,
-      lastError: zohoReachable ? null : 'zoho_unreachable',
+      lastError: null,
       domainMetadata: {
         carrier: carrier || null,
         candidates_tried: last8 ? [last8] : [],
-        zoho_reachable: zohoReachable,
+        zoho_reachable: true,
         scan_id: unmatchedScanId,
       },
     }, undefined, ctx.organizationId).catch((err) => {
@@ -1769,11 +1581,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       po_matched: false,
       unbox_verdict: 'unfound',
       po_ids: [],
-      zoho_reachable: zohoReachable,
-      // Provisional unfound: localOnly skipped the live Zoho search, so the
-      // client should fire a background (Zoho) follow-up that can still promote
-      // this carton to matched in place. A non-localOnly unfound is final.
-      zoho_pending: localOnly,
+      zoho_reachable: true,
+      // Scan never schedules a Zoho follow-up — promote is cron / operator only.
+      zoho_pending: false,
       receiving_package: receiving_package_unmatched,
       lines: [],
     });

@@ -1,18 +1,16 @@
 import type { TimelineItem } from './types';
 
 /**
- * Adapter: a unit's photos (testing-scan + receiving-unbox buckets from
+ * Adapter: a unit's photos (testing / unbox / packing buckets from
  * `listUnitTimelinePhotos`) → `TimelineItem[]`. Each source collapses to ONE row
  * carrying its photos as inline `media` thumbnails, timestamped at the newest
- * capture. Owns the source → title/tone map (never inline in a view), mirroring
- * every other `*ToTimeline` adapter.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
+ * capture. Owns the source → title/tone map (never inline in a view).
  */
 
 export interface UnitTimelinePhotoRow {
   photoId: number;
   at: string | null;
-  source: 'testing' | 'unbox';
+  source: 'testing' | 'unbox' | 'packing';
   thumbUrl: string;
   fullUrl: string;
 }
@@ -20,7 +18,11 @@ export interface UnitTimelinePhotoRow {
 const SOURCE_META: Record<UnitTimelinePhotoRow['source'], { title: string; tone: TimelineItem['tone'] }> = {
   testing: { title: 'Testing photos', tone: 'info' },
   unbox: { title: 'Unboxing photos', tone: 'muted' },
+  packing: { title: 'Packed photos', tone: 'success' },
 };
+
+/** Stable display order: unbox → testing → packing (inbound → outbound). */
+const SOURCE_ORDER: UnitTimelinePhotoRow['source'][] = ['unbox', 'testing', 'packing'];
 
 export function unitPhotosToTimeline(rows: UnitTimelinePhotoRow[]): TimelineItem[] {
   const bySource = new Map<UnitTimelinePhotoRow['source'], UnitTimelinePhotoRow[]>();
@@ -31,8 +33,9 @@ export function unitPhotosToTimeline(rows: UnitTimelinePhotoRow[]): TimelineItem
   }
 
   const items: TimelineItem[] = [];
-  for (const [source, list] of bySource) {
-    if (list.length === 0) continue;
+  for (const source of SOURCE_ORDER) {
+    const list = bySource.get(source);
+    if (!list || list.length === 0) continue;
     const sorted = [...list].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
     const meta = SOURCE_META[source];
     items.push({

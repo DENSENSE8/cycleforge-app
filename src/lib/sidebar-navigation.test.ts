@@ -289,7 +289,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
-  assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing-history')), 'testing');
+  // Walk-In history categories
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in')), 'repairs');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=sales')), 'sales');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=pickups')), 'pickups');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=sales')), 'sales');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the

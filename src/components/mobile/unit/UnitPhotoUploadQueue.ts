@@ -6,7 +6,7 @@ import {
   downscaleImageTo720,
 } from '@/lib/image/downscale';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
+import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 
 /**
  * Module-singleton store for in-flight SERIAL_UNIT testing-scan photo uploads —
@@ -30,6 +30,15 @@ export interface UnitPhotoScope {
   unitKey?: string | null;
   /** One-based clean filename suffix for captured photos. */
   fileIndex?: number | null;
+  /**
+   * Capture context: `testing` (default) → testing_photo; `packing` → packer_photo.
+   * Packing captures may also dual-link to a PACKER_LOG via packerLogId.
+   */
+  stage?: 'testing' | 'packing';
+  /** When set (packing stage), dual-link the photo to this packer_logs.id. */
+  packerLogId?: number | null;
+  /** Order / shipment ref for poRef filing. */
+  poRef?: string | null;
 }
 
 export interface UnitUploadEntry {
@@ -167,14 +176,29 @@ async function postPhoto(
   entry: UnitUploadEntry,
   blob: Blob,
 ): Promise<{ id: number; url: string }> {
-  const { uploadPhotoClient } = await import('@/lib/photos/upload-client');
+  const { uploadPhotoClient, linkPhotoClient } = await import('@/lib/photos/upload-client');
+  const isPacking = entry.scope.stage === 'packing';
+  const photoType = isPacking ? UNIT_PACKING_PHOTO_TYPE : UNIT_TESTING_PHOTO_TYPE;
   const result = await uploadPhotoClient({
     file: blob,
     entityType: 'SERIAL_UNIT',
     entityId: entry.scope.serialUnitId,
-    photoType: UNIT_TESTING_PHOTO_TYPE,
-    poRef: entry.scope.unitKey ?? undefined,
+    photoType,
+    poRef: entry.scope.poRef ?? entry.scope.unitKey ?? undefined,
   });
+  const packerLogId = entry.scope.packerLogId;
+  if (isPacking && packerLogId != null && Number.isFinite(packerLogId) && packerLogId > 0) {
+    try {
+      await linkPhotoClient({
+        photoId: result.id,
+        entityType: 'PACKER_LOG',
+        entityId: packerLogId,
+        linkRole: 'primary',
+      });
+    } catch (err) {
+      console.warn('unit photo queue: PACKER_LOG dual-link failed', err);
+    }
+  }
   return { id: result.id, url: result.url };
 }
 

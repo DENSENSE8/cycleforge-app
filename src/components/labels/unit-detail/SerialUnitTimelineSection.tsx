@@ -8,15 +8,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUnitPhotosRealtimeRefresh } from '@/hooks/useUnitPhotosRealtimeRefresh';
 
 /**
- * The unit's PHOTO timeline — testing-scan captures paired with the receiving
- * UNBOX photos of the same physical unit (joined via serial_unit_provenance),
- * newest-first, thumbnails inline. Built on the canonical `TimelineSection` /
- * `EventTimeline` primitive; the adapter attaches media, the renderer stays
- * domain-free. Live-refreshes on `unit_photo_uploaded` / `unit-photo.changed`.
- *
- * Distinct from the event-history `TimelineCard` above it: this is the paired
- * photo display the packer testing-photo scan produces.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
+ * The unit's PHOTO timeline — testing-scan + packing captures paired with the
+ * receiving UNBOX photos of the same physical unit (joined via
+ * serial_unit_provenance), newest-first, thumbnails inline. Built on the
+ * canonical `TimelineSection` / `EventTimeline` primitive.
  */
 export function SerialUnitTimelineSection({ serialUnitId }: { serialUnitId: number }) {
   const { user } = useAuth();

@@ -10,12 +10,12 @@ import {
 } from '@/hooks/useZendeskQueries';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
-import { Check, ChevronLeft, ExternalLink, X } from '@/components/Icons';
+import { Check, ChevronLeft, ExternalLink, Link2, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect, type SelectOption } from '../ZendeskSelect';
-import { PRIORITY_OPTIONS, STATUS_OPTIONS, statusBadge } from '../badges';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../badges';
 import { SupportDetailsStack } from './SupportDetailsStack';
 import { initials, requesterFrom } from './support-chat-utils';
 
@@ -25,7 +25,7 @@ const UNASSIGNED = 'unassigned';
  * Chat header. Two separate concerns, deliberately split:
  *   - the ZENDESK row (status / priority / Zendesk assignee) updates the ticket
  *     in Zendesk;
- *   - the FOLLOW-UP row assigns the ticket to one of OUR staff, dropping a
+ *   - the Staff row assigns the ticket to one of OUR staff, dropping a
  *     notification into their inbox bell — it never touches Zendesk.
  */
 export function SupportChatHeader({
@@ -33,6 +33,9 @@ export function SupportChatHeader({
   onBack,
   hideExternalLink = false,
   compact = false,
+  onOpenContext,
+  contextOpen = false,
+  contextBadge = null,
 }: {
   ticket: ZendeskTicket;
   onBack?: () => void;
@@ -40,6 +43,12 @@ export function SupportChatHeader({
   hideExternalLink?: boolean;
   /** Station ticket tab — tighter padding + smaller type. */
   compact?: boolean;
+  /** Opens the Support Context slide-over (console host only). */
+  onOpenContext?: () => void;
+  /** Whether the context slide-over is open (pressed chrome). */
+  contextOpen?: boolean;
+  /** Short linked-state hint under the Links control (e.g. order last-4 / Unlinked). */
+  contextBadge?: string | null;
 }) {
   const update = useUpdateTicket();
   const assign = useAssignTicket();
@@ -48,7 +57,6 @@ export function SupportChatHeader({
   const url = hideExternalLink ? null : zendeskTicketUrl(ticket.id);
   const requester = requesterFrom(ticket);
   const reqName = requester.name || requester.email || 'Requester';
-  const sb = statusBadge(ticket.status);
 
   // Inline title (subject) edit — click the title, confirm with the checkmark.
   const [editingTitle, setEditingTitle] = useState(false);
@@ -166,17 +174,6 @@ export function SupportChatHeader({
                     {ticket.subject || '(no subject)'}
                   </button>
                 </HoverTooltip>
-                <span
-                  className={cn(
-                    'shrink-0 rounded px-1.5 py-0.5 uppercase tracking-widest',
-                    compact ? 'text-[9px]' : 'text-role-eyebrow',
-                    sb.className,
-                  )}
-                >
-                  {sb.label}
-                </span>
-                {/* Details affordance sits on the title row so it doesn't grow header height. */}
-                <SupportDetailsStack ticket={ticket} />
               </>
             )}
           </div>
@@ -191,28 +188,76 @@ export function SupportChatHeader({
             <span className="text-text-faint"> · #{ticket.id}</span>
           </p>
         </div>
-        {url ? (
-          <HoverTooltip label="Open in Zendesk" asChild>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open in Zendesk"
-              className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onOpenContext ? (
+            <HoverTooltip
+              label={contextBadge ? `Support context · ${contextBadge}` : 'Support context'}
+              asChild
             >
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </HoverTooltip>
-        ) : null}
+              <button
+                type="button"
+                onClick={onOpenContext}
+                aria-label="Support context"
+                aria-pressed={contextOpen}
+                className={cn(
+                  'inline-flex h-8 max-w-[9.5rem] items-center gap-1.5 rounded-lg px-2 text-text-muted ring-1 ring-inset transition',
+                  contextOpen
+                    ? 'bg-blue-50 text-blue-700 ring-blue-200'
+                    : 'bg-surface-card ring-border-soft hover:text-text-default',
+                )}
+              >
+                <Link2 className="h-4 w-4 shrink-0" />
+                <span className="truncate text-role-micro font-bold uppercase tracking-wider">
+                  {contextBadge ?? 'Links'}
+                </span>
+              </button>
+            </HoverTooltip>
+          ) : null}
+          {url ? (
+            <HoverTooltip label="Open in Zendesk" asChild>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open in Zendesk"
+                className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </HoverTooltip>
+          ) : null}
+        </div>
       </div>
 
-      <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-2', compact ? 'mt-2' : 'mt-3')}>
-        {/* Zendesk ticket fields — these write back to Zendesk. */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-x-3 gap-y-2',
+          compact ? 'mt-2' : 'mt-3',
+        )}
+      >
+        {/* In-website staff assignment — notifies that staffer's inbox bell. */}
         <div className="flex items-center gap-2">
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">Helpdesk</span>
+          <span className="text-role-micro font-bold uppercase tracking-widest text-text-faint">Staff</span>
+          <ZendeskSelect
+            value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
+            options={staffOptions}
+            placeholder="Assign staff"
+            size="dense"
+            disabled={assign.isPending}
+            onChange={(v) => {
+              const staffId = v === UNASSIGNED ? null : Number(v);
+              const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
+              assign.mutate({ id: ticket.id, staffId, staffName });
+            }}
+          />
+        </div>
+
+        {/* Zendesk ticket fields + details — pinned to the header's right edge. */}
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <ZendeskSelect
             value={String(ticket.status)}
             options={STATUS_OPTIONS}
+            size="dense"
             disabled={update.isPending}
             onChange={(status) => update.mutate({ id: ticket.id, patch: { status: status as ZendeskTicket['status'] } })}
           />
@@ -220,6 +265,7 @@ export function SupportChatHeader({
             value={ticket.priority ? String(ticket.priority) : null}
             options={PRIORITY_OPTIONS}
             placeholder="Priority"
+            size="dense"
             disabled={update.isPending}
             onChange={(priority) =>
               update.mutate({ id: ticket.id, patch: { priority: priority as ZendeskTicket['priority'] } })
@@ -229,26 +275,12 @@ export function SupportChatHeader({
             value={ticket.assignee_id ? String(ticket.assignee_id) : UNASSIGNED}
             options={assigneeOptions}
             placeholder="Agent"
+            size="dense"
+            align="right"
             disabled={update.isPending}
             onChange={(v) => update.mutate({ id: ticket.id, patch: { assignee_id: v === UNASSIGNED ? null : Number(v) } })}
           />
-        </div>
-
-        {/* In-website follow-up — assigning notifies that staffer's inbox bell. */}
-        <div className="flex items-center gap-2 border-l border-border-soft pl-3">
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">Follow-up</span>
-          <ZendeskSelect
-            value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
-            options={staffOptions}
-            placeholder="Assign staff"
-            align="right"
-            disabled={assign.isPending}
-            onChange={(v) => {
-              const staffId = v === UNASSIGNED ? null : Number(v);
-              const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
-              assign.mutate({ id: ticket.id, staffId, staffName });
-            }}
-          />
+          <SupportDetailsStack ticket={ticket} />
         </div>
       </div>
     </div>

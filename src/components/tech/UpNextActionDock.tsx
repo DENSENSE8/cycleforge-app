@@ -1,16 +1,16 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { OutOfStockEditorBlock } from '@/components/ui/OutOfStockEditorBlock';
-import { Play, AlertCircle } from '@/components/Icons';
-import { FloatingButton } from '@/design-system/primitives';
+import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   dispatchUpNextActionStart,
   dispatchUpNextActionOos,
 } from '@/utils/events';
 import type { Order } from '@/components/station/upnext/upnext-types';
+import { resolveShippingTerminal } from './shipping/terminal/shipping-terminal';
 
 interface UpNextActionDockProps {
   /**
@@ -24,17 +24,14 @@ interface UpNextActionDockProps {
 }
 
 /**
- * Terminal action surface for the shipping preview workspace — a floating
- * `Start` CTA with an optional split menu for Out of Stock. Mirrors the
- * receiving unbox / triage / testing panes (`FloatingButton` docked to the
- * bottom of a relative host) instead of the legacy two-button sticky bar.
+ * Terminal action surface for the shipping preview workspace — Start CTA with
+ * an optional split menu for Out of Stock. Routes through
+ * {@link STATION_TERMINAL_REGISTRY}.shipping + {@link StationTerminalDock}
+ * (Unbox-family waist) instead of a raw FloatingButton.
  *
  * Events out:
  *  - `tech-upnext-action-start` → starts the previewed order
  *  - `tech-upnext-action-oos-set` → marks the order out-of-stock with a reason
- *
- * Both are consumed by `UpNextOrder`, which already owns the API calls
- * and refresh logic.
  */
 export function UpNextActionDock({ order }: UpNextActionDockProps) {
   const [showEditor, setShowEditor] = useState(false);
@@ -46,20 +43,37 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
     setReason(order.out_of_stock ?? '');
   }, [order.id, order.out_of_stock]);
 
-  const handleStart = () => {
+  const handleStart = useCallback(() => {
     dispatchUpNextActionStart({
       orderId: order.id,
       shipping_tracking_number: order.shipping_tracking_number,
       order_id: order.order_id,
     });
-  };
+  }, [order.id, order.shipping_tracking_number, order.order_id]);
 
-  const handleOosSubmit = () => {
+  const handleOosSubmit = useCallback(() => {
     const trimmed = reason.trim();
     if (!trimmed) return;
     dispatchUpNextActionOos({ orderId: order.id, reason: trimmed });
     setShowEditor(false);
-  };
+  }, [order.id, reason]);
+
+  const buildTerminal = useCallback(
+    (kind: string) =>
+      resolveShippingTerminal(kind, {
+        onStart: handleStart,
+        onOutOfStock: () => setShowEditor(true),
+        hasOutOfStock,
+      }),
+    [handleStart, hasOutOfStock],
+  );
+
+  const terminalVm = useStationTerminalAction({
+    surface: 'test',
+    mode: 'shipping',
+    tabId: null,
+    build: buildTerminal,
+  });
 
   return (
     <>
@@ -91,23 +105,7 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
         ) : null}
       </AnimatePresence>
 
-      <FloatingButton
-        label="Start"
-        onClick={handleStart}
-        icon={<Play className="h-4 w-4 shrink-0" />}
-        tone="accent"
-        maxWidth="max-w-3xl"
-        fullWidth
-        menuLabel="Order actions"
-        menuTitle="More order actions"
-        menu={[
-          {
-            label: hasOutOfStock ? 'Update Out of Stock' : 'Out of Stock',
-            icon: <AlertCircle className="h-3.5 w-3.5 shrink-0" />,
-            onClick: () => setShowEditor(true),
-          },
-        ]}
-      />
+      <StationTerminalDock vm={terminalVm} />
     </>
   );
 }

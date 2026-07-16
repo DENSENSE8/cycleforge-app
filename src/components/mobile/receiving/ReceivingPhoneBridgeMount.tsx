@@ -3,6 +3,7 @@
 import { ReceivingShareToPhoneSheet } from '@/components/mobile/receiving/ReceivingShareToPhoneSheet';
 import { ReceivingPhotoRequestCamera } from '@/components/mobile/receiving/ReceivingPhotoRequestCamera';
 import { UnitPhotoRequestCamera } from '@/components/mobile/unit/UnitPhotoRequestCamera';
+import { PackerScanReadyCamera } from '@/components/mobile/packer/PackerScanReadyCamera';
 
 /**
  * Mount-only phone↔desktop receiving bridge. Subscribes to Ably on
@@ -10,8 +11,9 @@ import { UnitPhotoRequestCamera } from '@/components/mobile/unit/UnitPhotoReques
  * the capture surface. Mount once per app shell so `/receiving` mobile and
  * `/m/*` both get implicit pairing without duplicating listener logic.
  *
- * Also hosts the packer testing-label unit-photo receiver (`unit_photo_request`
- * → `/m/u/{id}/photos`), which self-gates on `UNIT_SCAN_PHOTOS`.
+ * Also hosts:
+ *   • unit-label photo receiver (`unit_photo_request` → `/m/unit-photos/{id}`)
+ *   • packer order-scan receiver (`scan_ready` → `/m/p/{id}/photos`)
  */
 export function ReceivingPhoneBridgeMount() {
   return (
@@ -19,6 +21,7 @@ export function ReceivingPhoneBridgeMount() {
       <ReceivingShareToPhoneSheet />
       <ReceivingPhotoRequestCamera />
       <UnitPhotoRequestCamera />
+      <PackerScanReadyCamera />
     </>
   );
 }

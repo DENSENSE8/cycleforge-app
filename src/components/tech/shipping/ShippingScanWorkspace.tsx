@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Barcode } from '@/components/Icons';
-import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
+import { Barcode, History } from '@/components/Icons';
+import { SectionTabsSlider } from '@/design-system/components';
+import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
 import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
@@ -15,11 +16,11 @@ import type { ShippingView } from './terminal/shipping-terminal';
  * Unbox-shaped shipping workspace — entity-context header
  * ({@link ShippingEntityContextHeader} → CartonContextCard SoT) +
  * {@link SectionTabsSlider} seam + focused tab bodies (SKU↔serial pairing,
- * captured units).
+ * captured units, timeline).
  *
- * Terminal dock: registered under STATION_TERMINAL_REGISTRY.shipping with every
- * tab mapped to `none` (scan-driven; no sticky CTA yet). Future scan-complete
- * CTA → `./terminal/shipping-terminal.ts`.
+ * Terminal dock: preview Start CTA lives on ActiveOrderWorkspace via
+ * STATION_TERMINAL_REGISTRY.shipping defaultKind `start`. Active scan tabs
+ * map to `none` (scan-driven).
  */
 export function ShippingScanWorkspace({
   activeOrder,
@@ -40,10 +41,17 @@ export function ShippingScanWorkspace({
   const isShipped =
     previewOrder?.status === 'SHIPPED' || previewOrder?.status === 'SHIPPED_EXT';
 
-  // Drop off the units tab when the last serial is undone.
+  const tracking =
+    String(activeOrder.tracking ?? '').trim() ||
+    String(previewOrder?.shipping_tracking_number ?? '').trim();
+  const orderId = String(activeOrder.orderId ?? '').trim();
+  const hasTimelineTab =
+    tracking.length > 0 || orderId.length > 0 || hasUnits;
+
   useEffect(() => {
     if (!hasUnits && view === 'units') setView('ship');
-  }, [hasUnits, view]);
+    if (!hasTimelineTab && view === 'timeline') setView('ship');
+  }, [hasUnits, hasTimelineTab, view]);
 
   const orderForContext = useMemo(() => {
     if (activeOrder.skuSerialGroups && activeOrder.skuSerialGroups.length > 0) {
@@ -55,46 +63,62 @@ export function ShippingScanWorkspace({
     };
   }, [activeOrder]);
 
-  const tabs = useMemo(() => {
-    const items: SectionTab[] = [
-      {
-        id: 'ship',
-        label: 'Ship',
-        icon: Barcode,
-        content: (
-          <ShippingSkuSerialRows
-            activeOrder={orderForContext}
-            onChangeCondition={onChangeCondition}
-            isMutatingCondition={isMutatingCondition}
-            isShipped={isShipped}
-          />
-        ),
-      },
-    ];
-    if (hasUnits) {
-      items.push({
-        id: 'units',
-        label: `Units · ${activeOrder.serialNumbers.length}`,
-        icon: Barcode,
-        count: activeOrder.serialNumbers.length,
-        content: (
-          <ShippingCapturedUnits
-            activeOrder={activeOrder}
-            onRemoveSerial={onRemoveSerial}
-          />
-        ),
-      });
-    }
-    return items;
-  }, [
-    orderForContext,
-    onChangeCondition,
-    isMutatingCondition,
-    isShipped,
-    hasUnits,
-    activeOrder,
-    onRemoveSerial,
-  ]);
+  const tabs = useMemo(
+    () =>
+      buildSectionTabs([
+        {
+          id: 'ship',
+          label: 'Ship',
+          icon: Barcode,
+          content: (
+            <ShippingSkuSerialRows
+              activeOrder={orderForContext}
+              onChangeCondition={onChangeCondition}
+              isMutatingCondition={isMutatingCondition}
+              isShipped={isShipped}
+            />
+          ),
+        },
+        {
+          id: 'units',
+          label: `Units · ${activeOrder.serialNumbers.length}`,
+          icon: Barcode,
+          count: activeOrder.serialNumbers.length,
+          visible: hasUnits,
+          content: (
+            <ShippingCapturedUnits
+              activeOrder={activeOrder}
+              onRemoveSerial={onRemoveSerial}
+            />
+          ),
+        },
+        {
+          id: 'timeline',
+          label: 'Timeline',
+          icon: History,
+          visible: hasTimelineTab,
+          content: (
+            <WorkspaceTimelineTab
+              orderId={orderId || null}
+              tracking={tracking || null}
+              serials={activeOrder.serialNumbers}
+            />
+          ),
+        },
+      ]),
+    [
+      orderForContext,
+      onChangeCondition,
+      isMutatingCondition,
+      isShipped,
+      hasUnits,
+      hasTimelineTab,
+      activeOrder,
+      onRemoveSerial,
+      orderId,
+      tracking,
+    ],
+  );
 
   return (
     <div className="space-y-4">

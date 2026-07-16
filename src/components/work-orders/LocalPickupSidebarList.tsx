@@ -38,10 +38,10 @@ export function LocalPickupSidebarList() {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
       <div className="border-b border-border-hairline px-3 py-2.5">
         <p className="text-role-eyebrow uppercase tracking-widest text-emerald-500">
-          Local Pickup
+          Walk-In
         </p>
         <h3 className="mt-0.5 text-role-caption font-black uppercase tracking-tight text-text-default">
-          New Intake
+          Local Pickup
         </h3>
       </div>
 

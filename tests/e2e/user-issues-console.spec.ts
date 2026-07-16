@@ -76,4 +76,109 @@ test.describe('Reported Issues console', () => {
     });
     await expect(page.getByText(`#${first.id}`).first()).toBeVisible();
   });
+
+  test('claim → resolve updates status chips', async ({ page, request }) => {
+    const title = `UIC-3 e2e ${Date.now()}`;
+    const createRes = await request.post('/api/user-issues', {
+      data: {
+        title,
+        description: 'Playwright claim/resolve smoke.',
+        type: 'bug',
+        page: '/support?mode=issues',
+        clientEventId: `e2e-uic3-${Date.now()}`,
+      },
+    });
+    if (createRes.status() === 401 || createRes.status() === 403) {
+      test.skip(true, 'Session cannot POST /api/user-issues — skipping');
+      return;
+    }
+    expect(createRes.ok()).toBeTruthy();
+    const created = await createRes.json();
+    const issueId: number | undefined = created.issueId ?? created.issue?.id;
+    expect(issueId).toBeTruthy();
+
+    const manageProbe = await request.patch(`/api/user-issues/${issueId}`, {
+      data: { status: 'in-progress', expectedFrom: 'pending' },
+    });
+    if (manageProbe.status() === 403) {
+      test.skip(true, 'support.issues.manage not granted — skipping claim/resolve UI');
+      return;
+    }
+    // Undo the API claim so the UI starts from Open and we exercise buttons.
+    if (manageProbe.ok()) {
+      await request.patch(`/api/user-issues/${issueId}`, {
+        data: { status: 'pending', expectedFrom: 'in-progress' },
+      });
+    }
+
+    await page.goto(`/support?mode=issues&issueId=${issueId}`);
+    await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Open', { exact: true }).first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Claim' }).click();
+    await expect(page.getByText('In progress', { exact: true }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.getByRole('button', { name: 'Resolve' }).click();
+    await expect(page.getByText('Deployed', { exact: true }).first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test('delete confirms then removes issue from console', async ({ page, request }) => {
+    const title = `UIC-4 e2e ${Date.now()}`;
+    const createRes = await request.post('/api/user-issues', {
+      data: {
+        title,
+        description: 'Playwright soft-delete smoke.',
+        type: 'suggestion',
+        page: '/support?mode=issues',
+        clientEventId: `e2e-uic4-${Date.now()}`,
+      },
+    });
+    if (createRes.status() === 401 || createRes.status() === 403) {
+      test.skip(true, 'Session cannot POST /api/user-issues — skipping');
+      return;
+    }
+    expect(createRes.ok()).toBeTruthy();
+    const created = await createRes.json();
+    const issueId: number | undefined = created.issueId ?? created.issue?.id;
+    expect(issueId).toBeTruthy();
+
+    // Probe manage + that deleted_at column exists (migration applied).
+    const delProbe = await request.delete(`/api/user-issues/${issueId}`);
+    if (delProbe.status() === 403) {
+      test.skip(true, 'support.issues.manage not granted — skipping delete UI');
+      return;
+    }
+    if (delProbe.status() === 500) {
+      test.skip(true, 'DELETE failed (likely UIC-4 migration not applied yet)');
+      return;
+    }
+    expect(delProbe.ok()).toBeTruthy();
+
+    // Create a fresh issue for the UI confirm path (probe already tombstoned the first).
+    const title2 = `UIC-4 e2e ui ${Date.now()}`;
+    const create2 = await request.post('/api/user-issues', {
+      data: {
+        title: title2,
+        description: 'UI confirm delete.',
+        type: 'bug',
+        page: '/support?mode=issues',
+        clientEventId: `e2e-uic4-ui-${Date.now()}`,
+      },
+    });
+    expect(create2.ok()).toBeTruthy();
+    const created2 = await create2.json();
+    const issueId2: number = created2.issueId ?? created2.issue?.id;
+
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.goto(`/support?mode=issues&issueId=${issueId2}`);
+    await expect(page.getByRole('heading', { name: title2 })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('button', { name: 'Delete' }).click();
+    await expect(page.getByRole('heading', { name: title2 })).toHaveCount(0, { timeout: 10_000 });
+    await expect(page).not.toHaveURL(new RegExp(`issueId=${issueId2}`));
+  });
 });

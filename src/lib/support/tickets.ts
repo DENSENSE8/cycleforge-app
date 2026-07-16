@@ -20,7 +20,10 @@ export function isPlaceholderReceivingLineId(lineId: number | null | undefined):
   return lineId != null && lineId <= 0;
 }
 
-/** Map placeholder line ids to the real carton id for ticket resolution / linking. */
+/** Map placeholder line ids to the real carton id for ticket resolution / linking.
+ *  Unmatched stubs use `id = -receiving_id` with `receiving_id` already set.
+ *  Pending scan stubs (`scan:…`) use a hashed negative id with `receiving_id`
+ *  null — never invent a carton id from that hash. */
 export function normalizeReceivingTicketEntityRefs(args: {
   lineId?: number | null;
   receivingId?: number | null;
@@ -28,10 +31,46 @@ export function normalizeReceivingTicketEntityRefs(args: {
   let lineId = args.lineId ?? null;
   let receivingId = args.receivingId ?? null;
   if (isPlaceholderReceivingLineId(lineId)) {
-    if (receivingId == null) receivingId = Math.abs(lineId!);
     lineId = null;
   }
   return { lineId, receivingId };
+}
+
+export type TicketLinkEntityType = 'SHIPMENT' | 'RECEIVING' | 'RECEIVING_LINE';
+
+export interface TicketLinkAnchor {
+  entityType: TicketLinkEntityType;
+  entityId: number;
+}
+
+/**
+ * Pick the single primary ticket_links entity for a Zendesk ticket.
+ * One ticket → one entity (UNIQUE on org + zendesk_ticket_id).
+ *
+ * Priority: line > carton > shipment (STN). Prefer the richest receiving
+ * context when a carton is open; fall back to SHIPMENT for pre-intake
+ * tracking links (support / packing surfaces).
+ */
+export function pickTicketLinkAnchor(args: {
+  lineId?: number | null;
+  receivingId?: number | null;
+  shipmentId?: number | null;
+}): TicketLinkAnchor | null {
+  const { lineId, receivingId } = normalizeReceivingTicketEntityRefs({
+    lineId: args.lineId ?? null,
+    receivingId: args.receivingId ?? null,
+  });
+  if (lineId != null) {
+    return { entityType: 'RECEIVING_LINE', entityId: lineId };
+  }
+  if (receivingId != null) {
+    return { entityType: 'RECEIVING', entityId: receivingId };
+  }
+  const shipmentId = args.shipmentId ?? null;
+  if (shipmentId != null && Number.isFinite(shipmentId) && shipmentId > 0) {
+    return { entityType: 'SHIPMENT', entityId: shipmentId };
+  }
+  return null;
 }
 
 /** Entity ref written to ticket_links when filing a claim. */
@@ -39,14 +78,11 @@ export function claimTicketLinkEntity(
   lineId: number | null | undefined,
   receivingId: number,
 ): { entityType: 'RECEIVING' | 'RECEIVING_LINE'; entityId: number } {
-  const { lineId: realLineId, receivingId: rid } = normalizeReceivingTicketEntityRefs({
-    lineId,
-    receivingId,
-  });
-  if (realLineId != null) {
-    return { entityType: 'RECEIVING_LINE', entityId: realLineId };
+  const picked = pickTicketLinkAnchor({ lineId, receivingId });
+  if (picked && (picked.entityType === 'RECEIVING' || picked.entityType === 'RECEIVING_LINE')) {
+    return { entityType: picked.entityType, entityId: picked.entityId };
   }
-  return { entityType: 'RECEIVING', entityId: rid! };
+  return { entityType: 'RECEIVING', entityId: receivingId };
 }
 
 export interface SupportTicketRow {

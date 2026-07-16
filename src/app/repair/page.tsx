@@ -1,19 +1,21 @@
 import { redirect } from 'next/navigation';
+import { walkInStationHref } from '@/lib/walk-in/jobs';
 
 /**
- * Legacy /repair route — redirects to /walk-in?mode=repairs.
- * Preserves tab and search params.
+ * Legacy /repair route — redirects to Receiving Walk-In repair job.
+ * Preserves tab, search, openRepair, and new params.
  */
 export default async function RepairPage({
-    searchParams,
+  searchParams,
 }: {
-    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const resolved = await searchParams;
-    const params = new URLSearchParams();
-    params.set('mode', 'repairs');
-    for (const [key, value] of Object.entries(resolved || {})) {
-        if (typeof value === 'string') params.set(key, value);
-    }
-    redirect(`/walk-in?${params.toString()}`);
+  const resolved = await searchParams;
+  const extra: Record<string, string | null | undefined> = {};
+  for (const [key, value] of Object.entries(resolved || {})) {
+    if (typeof value === 'string') extra[key] = value;
+  }
+  // Drop legacy mode=repairs — station uses job=repair.
+  delete extra.mode;
+  redirect(walkInStationHref('repair', extra));
 }

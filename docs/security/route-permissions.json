@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-15T14:59:23Z",
-  "totalRoutes": 856,
+  "generatedAt": "2026-07-16T05:32:26Z",
+  "totalRoutes": 858,
   "summary": {
-    "permissionGated": 728,
+    "permissionGated": 730,
     "authenticatedNoPermission": 45,
     "anonymousIntentional": 80,
     "serviceToService": 2,
@@ -6834,6 +6834,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/support/context/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "integrations.zendesk",
+      "exemptReason": null
+    },
+    {
       "path": "/api/support/overview/route.ts",
       "methods": [
         "GET"
@@ -6858,6 +6867,17 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/tickets/link/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "integrations.zendesk",
       "exemptReason": null
     },
     {
@@ -7222,9 +7242,11 @@
     {
       "path": "/api/user-issues/[id]/route.ts",
       "methods": [
-        "GET"
+        "DELETE",
+        "GET",
+        "PATCH"
       ],
-      "gate": "withAuth",
+      "gate": "requireRoutePerm",
       "permission": "support.issues.view",
       "exemptReason": null
     },

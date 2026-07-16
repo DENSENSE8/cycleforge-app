@@ -118,8 +118,7 @@ function escapeLike(raw: string): string {
 
 /**
  * Tenant-scoped issue list. Keyset-paginated on (created_at, id) DESC.
- * Soft-delete filter (`deleted_at IS NULL`) lands with UIC-4 — column does
- * not exist yet, so omit here.
+ * Soft-deleted rows (`deleted_at IS NOT NULL`) are excluded (UIC-4).
  */
 export async function listReportedIssues(
   orgId: string,
@@ -149,6 +148,7 @@ export async function listReportedIssues(
          ON s.id = uri.reporter_staff_id
         AND s.organization_id = uri.organization_id
       WHERE uri.organization_id = $1::uuid
+        AND uri.deleted_at IS NULL
         AND ($2::text IS NULL OR uri.status = $2)
         AND ($3::text IS NULL OR uri.issue_type = $3)
         AND ($4::int IS NULL OR uri.reporter_staff_id = $4)
@@ -189,6 +189,7 @@ export async function getReportedIssue(
          ON s.id = uri.reporter_staff_id
         AND s.organization_id = uri.organization_id
       WHERE uri.organization_id = $1::uuid AND uri.id = $2
+        AND uri.deleted_at IS NULL
       LIMIT 1`,
     [orgId, id],
   );
@@ -220,7 +221,9 @@ export async function createReportedIssue(
     const existing = await deps.query(
       orgId,
       `SELECT id FROM user_reported_issues
-        WHERE organization_id = $1::uuid AND client_event_id = $2 LIMIT 1`,
+        WHERE organization_id = $1::uuid AND client_event_id = $2
+          AND deleted_at IS NULL
+        LIMIT 1`,
       [orgId, input.clientEventId],
     );
     if (existing.rows[0]) return { id: Number(existing.rows[0].id), idempotent: true };
@@ -270,10 +273,151 @@ export type ResolveIssueResult =
   | { ok: true; issueId: number; reporterStaffId: number | null; title: string; idempotent: boolean }
   | { ok: false; error: 'not_found' | 'bad_input' };
 
+/** Console + machine status graph (mirrors master-plan TicketStatus vocabulary). */
+const ALLOWED_STATUS_TRANSITIONS: ReadonlySet<string> = new Set([
+  'pending→in-progress', // Claim
+  'pending→deployed', // Resolve without claim
+  'in-progress→deployed', // Resolve
+  'in-progress→pending', // Unclaim / reopen mid-triage
+  'deployed→pending', // Reopen
+]);
+
+export function canTransitionIssueStatus(from: UserIssueStatus, to: UserIssueStatus): boolean {
+  if (from === to) return true;
+  return ALLOWED_STATUS_TRANSITIONS.has(`${from}→${to}`);
+}
+
+export interface UpdateReportedIssueInput {
+  title?: string;
+  description?: string;
+  issueType?: UserIssueType;
+}
+
+export type UpdateReportedIssueResult =
+  | { ok: true; issue: ReportedIssue }
+  | { ok: false; error: 'not_found' | 'bad_input' };
+
+/**
+ * Field edit (title / description / type). Does not change status — use
+ * `setIssueStatus` for that. Soft-delete filter lands with UIC-4.
+ */
+export async function updateReportedIssue(
+  orgId: string,
+  id: number,
+  input: UpdateReportedIssueInput,
+  deps: UserIssuesDeps,
+): Promise<UpdateReportedIssueResult> {
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'bad_input' };
+
+  const title =
+    input.title !== undefined ? input.title.trim().slice(0, 200) : undefined;
+  const description =
+    input.description !== undefined ? input.description.trim().slice(0, 4000) : undefined;
+  const issueType = input.issueType;
+
+  if (title !== undefined && title.length === 0) return { ok: false, error: 'bad_input' };
+  if (description !== undefined && description.length === 0) return { ok: false, error: 'bad_input' };
+  if (title === undefined && description === undefined && issueType === undefined) {
+    return { ok: false, error: 'bad_input' };
+  }
+
+  const updated = await deps.query(
+    orgId,
+    `UPDATE user_reported_issues uri
+        SET title = COALESCE($3, uri.title),
+            description = COALESCE($4, uri.description),
+            issue_type = COALESCE($5, uri.issue_type),
+            updated_at = now()
+      WHERE uri.organization_id = $1::uuid AND uri.id = $2
+        AND uri.deleted_at IS NULL
+      RETURNING uri.id`,
+    [orgId, id, title ?? null, description ?? null, issueType ?? null],
+  );
+  if ((updated.rowCount ?? 0) === 0) return { ok: false, error: 'not_found' };
+
+  const issue = await getReportedIssue(orgId, id, deps);
+  if (!issue) return { ok: false, error: 'not_found' };
+  return { ok: true, issue };
+}
+
+export type SetIssueStatusResult =
+  | { ok: true; issue: ReportedIssue; from: UserIssueStatus; to: UserIssueStatus }
+  | { ok: false; error: 'not_found' | 'conflict' | 'invalid_transition' | 'bad_input' };
+
+/**
+ * Atomic status flip with optimistic concurrency (`expectedFrom`).
+ * Shared by the session PATCH (UIC-3) and the machine resolve webhook.
+ * Returns `conflict` (→ HTTP 409) when the row's status no longer matches
+ * `expectedFrom` — never a scattered raw status UPDATE outside this helper.
+ */
+export async function setIssueStatus(
+  orgId: string,
+  id: number,
+  to: UserIssueStatus,
+  opts: { expectedFrom: UserIssueStatus; resolutionCommit?: string | null },
+  deps: UserIssuesDeps,
+): Promise<SetIssueStatusResult> {
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'bad_input' };
+  if (!isUserIssueStatus(to) || !isUserIssueStatus(opts.expectedFrom)) {
+    return { ok: false, error: 'bad_input' };
+  }
+  if (!canTransitionIssueStatus(opts.expectedFrom, to)) {
+    return { ok: false, error: 'invalid_transition' };
+  }
+
+  // No-op same-status: return current row without writing (idempotent reopen
+  // / claim retry when the client already matches).
+  if (opts.expectedFrom === to) {
+    const current = await getReportedIssue(orgId, id, deps);
+    if (!current) return { ok: false, error: 'not_found' };
+    if (current.status !== to) return { ok: false, error: 'conflict' };
+    return { ok: true, issue: current, from: to, to };
+  }
+
+  const commit =
+    to === 'deployed' ? opts.resolutionCommit?.trim() || null : null;
+
+  // Conditional UPDATE on status = expectedFrom — the concurrency waist.
+  // Deployed stamps commit + resolved_at; leaving deployed clears both.
+  const updated = await deps.query(
+    orgId,
+    `UPDATE user_reported_issues uri
+        SET status = $3,
+            resolution_commit = CASE
+              WHEN $3 = 'deployed' THEN $4
+              WHEN $3 = 'pending' THEN NULL
+              ELSE uri.resolution_commit
+            END,
+            resolved_at = CASE
+              WHEN $3 = 'deployed' THEN now()
+              WHEN $3 = 'pending' THEN NULL
+              ELSE uri.resolved_at
+            END,
+            updated_at = now()
+      WHERE uri.organization_id = $1::uuid AND uri.id = $2 AND uri.status = $5
+        AND uri.deleted_at IS NULL
+      RETURNING uri.id`,
+    [orgId, id, to, commit, opts.expectedFrom],
+  );
+
+  if ((updated.rowCount ?? 0) === 0) {
+    const current = await getReportedIssue(orgId, id, deps);
+    if (!current) return { ok: false, error: 'not_found' };
+    return { ok: false, error: 'conflict' };
+  }
+
+  const issue = await getReportedIssue(orgId, id, deps);
+  if (!issue) return { ok: false, error: 'not_found' };
+  return { ok: true, issue, from: opts.expectedFrom, to };
+}
+
 /**
  * Flip an issue to `deployed` (ALP-5.3). Idempotent: re-resolving an already
  * deployed issue reports `idempotent: true` and does NOT re-notify — the
  * reporter gets exactly one toast per fix.
+ *
+ * Delegates the write to `setIssueStatus` so the session PATCH and this
+ * machine webhook share one atomic UPDATE waist.
  */
 export async function resolveReportedIssue(
   orgId: string,
@@ -291,6 +435,7 @@ export async function resolveReportedIssue(
     orgId,
     `SELECT id, reporter_staff_id, title, status FROM user_reported_issues
       WHERE organization_id = $1::uuid AND ${where}
+        AND deleted_at IS NULL
       ORDER BY id DESC LIMIT 1`,
     [orgId, key],
   );
@@ -300,22 +445,72 @@ export async function resolveReportedIssue(
   const issueId = Number(row.id);
   const reporterStaffId = row.reporter_staff_id == null ? null : Number(row.reporter_staff_id);
   const title = String(row.title);
+  const from = String(row.status) as UserIssueStatus;
 
-  if (String(row.status) === 'deployed') {
+  if (from === 'deployed') {
     return { ok: true, issueId, reporterStaffId, title, idempotent: true };
   }
 
-  // Conditional UPDATE — the `AND status <> 'deployed'` makes the flip atomic
-  // at the row level, so two concurrent resolves can't both see 'pending' and
-  // both fire a toast (each query runs in its own tx via tenantQuery). The
-  // loser's rowCount is 0 → reported idempotent → no second toast.
+  const flipped = await setIssueStatus(
+    orgId,
+    issueId,
+    'deployed',
+    { expectedFrom: from, resolutionCommit: input.resolutionCommit ?? null },
+    deps,
+  );
+
+  if (flipped.ok) {
+    return { ok: true, issueId, reporterStaffId, title, idempotent: false };
+  }
+
+  // Race: another resolve already flipped → idempotent (no second toast).
+  if (flipped.error === 'conflict') {
+    const again = await getReportedIssue(orgId, issueId, deps);
+    if (again?.status === 'deployed') {
+      return { ok: true, issueId, reporterStaffId, title, idempotent: true };
+    }
+  }
+
+  if (flipped.error === 'not_found') return { ok: false, error: 'not_found' };
+  // invalid_transition / bad_input shouldn't happen from a live row status,
+  // but treat as not_found rather than inventing a new webhook error code.
+  return { ok: false, error: 'not_found' };
+}
+
+export type SoftDeleteReportedIssueResult =
+  | { ok: true; idempotent: boolean }
+  | { ok: false; error: 'not_found' | 'bad_input' };
+
+/**
+ * Soft-delete (UIC-4). Sets `deleted_at = now()`; never hard-deletes.
+ * Idempotent when already tombstoned. List/get hide soft-deleted rows.
+ */
+export async function softDeleteReportedIssue(
+  orgId: string,
+  id: number,
+  deps: UserIssuesDeps,
+): Promise<SoftDeleteReportedIssueResult> {
+  if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'bad_input' };
+
   const updated = await deps.query(
     orgId,
     `UPDATE user_reported_issues
-        SET status = 'deployed', resolution_commit = $3, resolved_at = now(), updated_at = now()
-      WHERE organization_id = $1::uuid AND id = $2 AND status <> 'deployed'`,
-    [orgId, issueId, input.resolutionCommit?.trim() || null],
+        SET deleted_at = now(), updated_at = now()
+      WHERE organization_id = $1::uuid AND id = $2 AND deleted_at IS NULL
+      RETURNING id`,
+    [orgId, id],
   );
-  const changed = (updated.rowCount ?? 0) > 0;
-  return { ok: true, issueId, reporterStaffId, title, idempotent: !changed };
+  if ((updated.rowCount ?? 0) > 0) {
+    return { ok: true, idempotent: false };
+  }
+
+  // Absent vs already deleted — distinguish for a clean 404.
+  const exists = await deps.query(
+    orgId,
+    `SELECT 1 AS ok FROM user_reported_issues
+      WHERE organization_id = $1::uuid AND id = $2 LIMIT 1`,
+    [orgId, id],
+  );
+  if (exists.rows.length === 0) return { ok: false, error: 'not_found' };
+  return { ok: true, idempotent: true };
 }

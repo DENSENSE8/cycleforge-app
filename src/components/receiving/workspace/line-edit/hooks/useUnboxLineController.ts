@@ -1,28 +1,37 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import {
   printReceivingLabel,
   markReceivingLabelPrinted,
   markReceivingSerialAbsent,
-  type ReceivingLabelPayload,
 } from '../../receiving-label-helpers';
-import { labelCornerTicketDigits } from '@/lib/print/printReceivingLabel';
 import { useSerialLookup, type SerialMatchedOrder } from '../../SerialMatchResult';
 import { takeSerialEditHandoff } from '../../serialEditHandoff';
 import { printProductLabel } from '@/lib/print/printProductLabel';
+import { printAsListedLabel } from '@/lib/print/printAsListedLabel';
+import { printTicketLabel } from '@/lib/print/printTicketLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useLineSerials } from './useLineSerials';
 import { useReceiveAction } from './useReceiveAction';
 import { useZohoLinePrefill } from './useZohoLinePrefill';
 import { useReceivingLineCore } from './useReceivingLineCore';
+import { useCartonLabelEditor } from './useCartonLabelEditor';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
-import { useReceivingTypeLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import { useSetting } from '@/hooks/useSettings';
 import type { LabelEditDraft } from '../LabelEditPopover';
-import { formatLabelDateFromIso } from '@/components/labels/labelDate';
+import type { AsListedLabelDraft } from '@/components/labels/AsListedEditPopover';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import {
+  UNBOX_LABEL_KINDS,
+  labelOptionsForSelect,
+  listAvailableLabelOptions,
+  resolveActiveLabelKind,
+  workspaceLabelToFace,
+  type WorkspaceLabelContext,
+  type WorkspaceLabelKind,
+} from '@/lib/print/workspace-label-kinds';
 
 /**
  * Controller for the UNBOX + TRIAGE workspace display. Composes the mode-agnostic
@@ -43,10 +52,6 @@ export function useUnboxLineController(
   const core = useReceivingLineCore(row, staffId, {
     dispatchLine: dispatchUnboxRailLineUpdated,
   });
-  // Resolve a receiving-type code → its org-catalog label for the printed face.
-  const resolveTypeLabel = useReceivingTypeLabel();
-  // Resolve a source_platform slug → its org-catalog label for the printed face.
-  const resolvePlatformMeta = usePlatformMeta();
 
   const [qa, setQa] = useState(
     !row.qa_status || row.qa_status === 'PENDING' ? 'PASSED' : row.qa_status,
@@ -230,195 +235,256 @@ export function useUnboxLineController(
   });
 
   const scanValue = core.poNumber || (row.receiving_id != null ? `RCV-${row.receiving_id}` : '');
-  const trackingHint = (row.tracking_number || core.trackingEdit || '').trim();
-  // Platform precedence on the printed label.
-  const derivedPlatform = core.sourcePlatform
-    ? resolvePlatformMeta(core.sourcePlatform).label
-    : String(core.receivingType || 'PO').toUpperCase() === 'PICKUP'
-      ? 'Local pickup'
-      : row.receiving_source === 'unmatched'
-        ? 'Unfound'
-        : 'Unknown';
-  // Top-right label date = when the carton was unboxed, not the print day.
-  const derivedDate = formatLabelDateFromIso(row.unboxed_at ?? row.unbox_opened_at ?? null);
   const isMultiQtyLine = (row.quantity_expected ?? 0) > 1;
   const labelConditionCode = isMultiQtyLine && unitLabelCondition ? unitLabelCondition : cond;
 
-  // Custom-print override for the label-only FACE bits (Edit on the label
-  // preview). These have no clean canonical home / are display-only choices —
-  // platform display, date, and the bottom-right corner source (order# / ticket#
-  // / tracking#). Notes / condition / reference / type persist through their own
-  // handlers, so the payload below already reflects them. Reset per carton so a
-  // custom print never leaks to the next line. See LabelEditPopover.
-  const [labelOverride, setLabelOverride] = useState<{
-    platform?: string;
-    date?: string;
-    cornerMode?: 'order' | 'ticket' | 'tracking';
-    ticket?: string;
-    tracking?: string;
-  }>({});
-  useEffect(() => {
-    setLabelOverride({});
-  }, [row.id]);
-
-  // Zendesk ticket # for the label corner (provider id #9395, not registry id #3).
-  const derivedTicket = labelCornerTicketDigits({
-    providerTicketId: core.providerTicketId,
-    externalTicketId: core.supportTicket?.externalTicketId ?? null,
-    zendeskField: core.zendeskTrimmed || core.zendesk,
-  });
-
-  const labelPlatform = labelOverride.platform ?? derivedPlatform;
-  const labelDate = labelOverride.date ?? derivedDate;
-  const cornerMode: 'order' | 'ticket' | 'tracking' =
-    labelOverride.cornerMode ?? (derivedTicket ? 'ticket' : 'order');
-  const cornerTicket = labelOverride.ticket ?? derivedTicket;
-  const cornerTracking = labelOverride.tracking ?? trackingHint;
-
-  // Assemble the exact payload a popover draft previews + prints. The bottom-
-  // right corner is operator-chosen, so we steer the label-corner helper:
-  //   ticket   → set zendeskTicket    (helper shows `#ticket`)
-  //   tracking → force scanValue to the internal `RCV-{id}` handle + set
-  //              trackingNumber       (helper falls through to tracking last-4)
-  //   order    → drop both so it shows the order/PO last-4.
-  // labelPayload (the always-on card preview) is just this run over the current
-  // defaults, so the card and popover can never drift.
-  const buildLabelPayload = useCallback(
-    (draft: LabelEditDraft): ReceivingLabelPayload => {
-      const rcv = row.receiving_id != null ? `RCV-${row.receiving_id}` : '';
-      const base = {
-        receivingId: row.receiving_id ?? null,
-        platform: draft.platform,
-        notes: draft.notes.trim(),
-        conditionCode: draft.conditionCode,
-        receivingType: draft.receivingType || null,
-        // Catalog label so a renamed/custom type prints correctly on the face.
-        receivingTypeLabel: resolveTypeLabel(draft.receivingType) || null,
-        date: draft.date,
-      };
-      if (draft.cornerMode === 'ticket') {
-        return {
-          ...base,
-          scanValue: draft.reference.trim() || rcv,
-          zendeskTicket: draft.ticket.trim() || undefined,
-          trackingNumber: trackingHint || null,
-        };
-      }
-      if (draft.cornerMode === 'tracking') {
-        return {
-          ...base,
-          scanValue: rcv,
-          zendeskTicket: undefined,
-          trackingNumber: draft.tracking.trim() || trackingHint || null,
-        };
-      }
-      return {
-        ...base,
-        scanValue: draft.reference.trim() || rcv,
-        zendeskTicket: undefined,
-        trackingNumber: trackingHint || null,
-      };
+  const persistLabelNotes = useCallback(
+    (notes: string) => {
+      setLabelNotes(notes);
+      void core.patch({ notes });
     },
-    [row.receiving_id, trackingHint, resolveTypeLabel],
+    [core.patch],
   );
 
-  // Seed values for the Edit-label popover. Reference seeds from the real PO#
-  // (empty on an unfound carton), not the `R-{id}` corner fallback.
-  const labelDraftDefaults: LabelEditDraft = {
-    platform: labelPlatform,
-    receivingType: (core.receivingType || '').toUpperCase(),
-    notes: labelNotes,
+  // Shared carton-label editor (same SoT as Testing).
+  const cartonLabel = useCartonLabelEditor(row, core, {
     conditionCode: labelConditionCode,
-    cornerMode,
-    reference: core.poNumber,
-    ticket: cornerTicket,
-    tracking: cornerTracking,
-    date: labelDate,
-  };
+    notes: labelNotes,
+    onPersistNotes: persistLabelNotes,
+  });
 
-  const labelPayload: ReceivingLabelPayload = buildLabelPayload(labelDraftDefaults);
+  // As Listed disclosure — print-time override for the seller-defect phrase.
+  const [asListedOverride, setAsListedOverride] = useState<{
+    disclosure?: string;
+    conditionCode?: string;
+    corner?: string;
+    date?: string;
+  }>({});
+  useEffect(() => setAsListedOverride({}), [row.id]);
 
-  // Stamp the "label printed" marker + event so the row chips flip. One place,
-  // shared by the default print and the custom print.
+  const asListedDraftDefaults: AsListedLabelDraft = useMemo(
+    () => ({
+      disclosure: asListedOverride.disclosure ?? labelNotes,
+      conditionCode: asListedOverride.conditionCode ?? labelConditionCode,
+      corner: asListedOverride.corner ?? cartonLabel.derivedPlatform,
+      date: asListedOverride.date ?? cartonLabel.derivedDate,
+    }),
+    [
+      asListedOverride,
+      labelNotes,
+      labelConditionCode,
+      cartonLabel.derivedPlatform,
+      cartonLabel.derivedDate,
+    ],
+  );
+
+  const buildAsListedPayload = useCallback(
+    (draft: AsListedLabelDraft) => ({
+      disclosure: draft.disclosure.trim(),
+      conditionCode: draft.conditionCode,
+      corner: draft.corner.trim(),
+      date: draft.date.trim() || null,
+      receivingLineId: row.id ?? null,
+      receivingId: row.receiving_id ?? null,
+    }),
+    [row.id, row.receiving_id],
+  );
+
+  const asListedPayload = useMemo(
+    () => buildAsListedPayload(asListedDraftDefaults),
+    [buildAsListedPayload, asListedDraftDefaults],
+  );
+
+  const ticketDigits = cartonLabel.derivedTicket;
+  const ticketPayload = useMemo(
+    () =>
+      ticketDigits
+        ? {
+            ticketDigits,
+            context: (row.sku || core.poNumber || '').trim() || null,
+            platform: cartonLabel.derivedPlatform,
+          }
+        : null,
+    [ticketDigits, row.sku, core.poNumber, cartonLabel.derivedPlatform],
+  );
+
+  const unitInput = useMemo(() => {
+    const skuTrim = (row.sku || '').trim();
+    if (!skuTrim) return null;
+    return {
+      sku: skuTrim,
+      title: row.item_name ?? undefined,
+      serialNumber: serialInput.trim() || undefined,
+      condition: labelConditionCode,
+    };
+  }, [row.sku, row.item_name, serialInput, labelConditionCode]);
+
+  const labelCtx: WorkspaceLabelContext = useMemo(
+    () => ({
+      hasCarton: row.receiving_id != null && row.receiving_id > 0,
+      scanValue,
+      sku: row.sku,
+      receivingType: core.receivingType,
+      disclosureNote: labelNotes,
+      ticketDigits,
+      cartonPayload: cartonLabel.defaultPayload,
+      unitInput,
+      asListedPayload,
+      ticketPayload,
+    }),
+    [
+      row.receiving_id,
+      row.sku,
+      scanValue,
+      core.receivingType,
+      labelNotes,
+      ticketDigits,
+      cartonLabel.defaultPayload,
+      unitInput,
+      asListedPayload,
+      ticketPayload,
+    ],
+  );
+
+  const labelOptions = useMemo(
+    () => listAvailableLabelOptions(UNBOX_LABEL_KINDS, labelCtx),
+    [labelCtx],
+  );
+  const labelSelectOptions = useMemo(() => labelOptionsForSelect(labelOptions), [labelOptions]);
+
+  const [selectedLabelKind, setSelectedLabelKind] = useState<string>('carton');
+  useEffect(() => {
+    setSelectedLabelKind('carton');
+  }, [row.id]);
+
+  const activeLabelKind = resolveActiveLabelKind(selectedLabelKind, labelOptions, 'carton');
+  const activeLabelFace = useMemo(
+    () => workspaceLabelToFace(activeLabelKind, labelCtx),
+    [activeLabelKind, labelCtx],
+  );
+
+  // Stamp the "label printed" marker + event so the row chips flip.
   const markLabelPrinted = useCallback(() => {
     markReceivingLabelPrinted(row.id);
   }, [row.id]);
 
+  const printKind = useCallback(
+    (kind: WorkspaceLabelKind | string) => {
+      const k = kind as WorkspaceLabelKind;
+      let didPrint = false;
+      switch (k) {
+        case 'carton':
+          if (cartonLabel.defaultPayload) {
+            printReceivingLabel(cartonLabel.defaultPayload);
+            didPrint = true;
+          }
+          break;
+        case 'unit':
+          if (unitInput) {
+            printProductLabel(unitInput);
+            didPrint = true;
+          }
+          break;
+        case 'as_listed':
+          printAsListedLabel(asListedPayload);
+          didPrint = true;
+          break;
+        case 'ticket_minimal':
+          if (ticketPayload) {
+            printTicketLabel(ticketPayload);
+            didPrint = true;
+          }
+          break;
+        default:
+          break;
+      }
+      if (didPrint) markLabelPrinted();
+      return didPrint;
+    },
+    [cartonLabel.defaultPayload, unitInput, asListedPayload, ticketPayload, markLabelPrinted],
+  );
+
+  /** Print the currently selected preview label (dock "Print only"). */
   const runPrintLabel = useCallback(() => {
-    let didPrint = false;
-    if (scanValue.trim()) {
-      printReceivingLabel(labelPayload);
-      didPrint = true;
-    } else {
-      const skuTrim = (row.sku || '').trim();
-      if (skuTrim) {
-        printProductLabel({
-          sku: skuTrim,
-          title: row.item_name ?? undefined,
-          serialNumber: serialInput.trim() || undefined,
-        });
-        didPrint = true;
-      }
+    printKind(activeLabelKind);
+  }, [printKind, activeLabelKind]);
+
+  /**
+   * Industry default for Print · Receive: always carton when available, else
+   * the active selection / unit fallback.
+   */
+  const runPrimaryPrint = useCallback(() => {
+    if (cartonLabel.defaultPayload) {
+      printKind('carton');
+      return;
     }
-    if (didPrint) markLabelPrinted();
-  }, [scanValue, labelPayload, row.sku, row.item_name, serialInput, markLabelPrinted]);
+    printKind(activeLabelKind);
+  }, [cartonLabel.defaultPayload, printKind, activeLabelKind]);
 
-  // Custom print (Edit label → Save & print): persist condition / reference / type
-  // where they have a home. Label notes ARE the durable line note now, so an
-  // edited-and-printed face persists too — a reprint carries the same note.
-  const applyAndPrintLabel = useCallback(
-    (draft: LabelEditDraft) => {
-      const nextLabelNotes = draft.notes;
-      const nextCond = draft.conditionCode;
-      const nextRef = draft.reference.trim();
-      const nextType = (draft.receivingType || '').toUpperCase();
-      const labelNotesChanged = nextLabelNotes !== labelNotes;
-      const condChanged = nextCond !== cond;
-
-      if (labelNotesChanged) {
-        setLabelNotes(nextLabelNotes);
-        void core.patch({ notes: nextLabelNotes });
-      }
-      if (condChanged) {
-        setCond(nextCond);
-        void core.patch({ condition_grade: nextCond });
-      }
-      if (nextRef && nextRef !== core.poNumber) {
-        void core.persistPoNumber(nextRef);
-      }
-      if (nextType && nextType !== (core.receivingType || '').toUpperCase()) {
-        core.setReceivingType(nextType);
-        void core.saveType(nextType);
-      }
-      // Label-only / display-only choices — kept as a print-time override so the
-      // card preview reflects them, but never written to the record.
-      setLabelOverride({
-        platform: draft.platform,
+  const applyAsListedAndPrint = useCallback(
+    (draft: AsListedLabelDraft) => {
+      setAsListedOverride({
+        disclosure: draft.disclosure,
+        conditionCode: draft.conditionCode,
+        corner: draft.corner,
         date: draft.date,
-        cornerMode: draft.cornerMode,
-        ticket: draft.ticket,
-        tracking: draft.tracking,
       });
-
-      printReceivingLabel(buildLabelPayload(draft));
+      if ((draft.conditionCode || '') !== (labelConditionCode || '')) {
+        setCond(draft.conditionCode);
+        void core.patch({ condition_grade: draft.conditionCode });
+      }
+      if (draft.disclosure.trim() && draft.disclosure.trim() !== labelNotes) {
+        persistLabelNotes(draft.disclosure.trim());
+      }
+      printAsListedLabel(buildAsListedPayload(draft));
       markLabelPrinted();
     },
-    [
-      labelNotes, cond, row.id,
-      core.patch, core.poNumber, core.persistPoNumber, core.receivingType, core.setReceivingType, core.saveType,
-      buildLabelPayload, markLabelPrinted,
-    ],
+    [labelConditionCode, labelNotes, core.patch, persistLabelNotes, buildAsListedPayload, markLabelPrinted],
+  );
+
+  const applyUnitAndPrint = useCallback(
+    (draft: { title: string; color: string; condition: string }) => {
+      const skuTrim = (row.sku || '').trim();
+      if (!skuTrim) return;
+      if ((draft.condition || '') !== (labelConditionCode || '')) {
+        setCond(draft.condition);
+        void core.patch({ condition_grade: draft.condition });
+      }
+      printProductLabel({
+        sku: skuTrim,
+        title: draft.title,
+        serialNumber: serialInput.trim() || undefined,
+        condition: draft.condition,
+        color: draft.color,
+      });
+      markLabelPrinted();
+    },
+    [row.sku, labelConditionCode, serialInput, core.patch, markLabelPrinted],
+  );
+
+  // Back-compat aliases for callers still using the old carton field names.
+  const labelPayload = cartonLabel.defaultPayload;
+  const labelDraftDefaults = cartonLabel.draftDefaults;
+  const buildLabelPayload = cartonLabel.buildPayload;
+  const applyAndPrintLabel = useCallback(
+    (draft: LabelEditDraft) => {
+      if ((draft.conditionCode || '') !== (cond || '')) {
+        setCond(draft.conditionCode);
+      }
+      cartonLabel.applyAndPrint(draft);
+    },
+    [cond, cartonLabel.applyAndPrint],
   );
 
   // Unfound, return, and sales-order-linked cartons have no Zoho PO to receive against.
   const isUnfound = shouldUseLocalReceiveOnly(row);
 
   const handlePrintAndReceive = useCallback(() => {
-    runPrintLabel();
+    runPrimaryPrint();
     handleReceive(isUnfound ? 'local_receive' : 'zoho_receive');
-  }, [runPrintLabel, handleReceive, isUnfound]);
+  }, [runPrimaryPrint, handleReceive, isUnfound]);
 
-  const canPrintReview = Boolean(scanValue.trim() || (row.sku || '').trim());
+  const canPrintReview = labelOptions.length > 0;
   const canReceiveReview = row.receiving_id != null;
   // Zoho receive is only valid for matched cartons; unfound stays local-only.
   const canZohoReceive = canReceiveReview && !isUnfound;
@@ -620,9 +686,13 @@ export function useUnboxLineController(
     extraSerials, setExtraSerials, submitExtraSerial,
     // receive / print
     receiving, receiveResult, setReceiveResult, responseExpanded, setResponseExpanded, handleReceive,
-    scanValue, labelPayload, runPrintLabel, handlePrintAndReceive,
+    scanValue, labelPayload, runPrintLabel, runPrimaryPrint, printKind, handlePrintAndReceive,
     // custom label print (Edit on the label preview)
     labelDraftDefaults, buildLabelPayload, applyAndPrintLabel,
+    // workspace label kind selection (preview dropdown + dock pre-select)
+    labelOptions, labelSelectOptions, selectedLabelKind, setSelectedLabelKind, activeLabelKind,
+    activeLabelFace, unitInput,     asListedDraftDefaults, buildAsListedPayload, applyAsListedAndPrint,
+    asListedPayload, ticketPayload, applyUnitAndPrint,
     canPrintReview, canReceiveReview, canZohoReceive, isUnfound, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
     receiveMenuLabel, receiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow

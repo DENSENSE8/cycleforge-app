@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { LinkedTicketsPanel } from '@/components/linkage/LinkedTicketsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Barcode, AlertCircle, Loader2, Package } from '../Icons';
 import { getLast4 } from '../ui/CopyChip';
@@ -12,15 +11,24 @@ import StationGoalBar from './StationGoalBar';
 import { StationScanBar } from './StationScanBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
+import { scannedUnitKey } from '@/lib/barcode-routing';
 import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
 import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { PackZendeskSection } from './PackZendeskSection';
+import { SupportContextHub } from '@/components/support/context';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { STATION_SKILL } from '@/lib/assistant/page-skills';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAblyClient } from '@/contexts/AblyContext';
+import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
+import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
+import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
+import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
+import { toast } from '@/lib/toast';
 
 interface ActivePackingOrder {
   orderRowId: number | null;
@@ -29,8 +37,11 @@ interface ActivePackingOrder {
   qty: number;
   condition: string;
   tracking: string;
-  scanType?: 'ORDERS' | 'SKU' | 'REPAIR';
+  scanType?: 'ORDERS' | 'SKU' | 'REPAIR' | 'UNIT';
   sku?: string;
+  serialUnitId?: number | null;
+  unitKey?: string | null;
+  packerLogId?: number | null;
 }
 
 interface ActiveFbaScan {
@@ -104,11 +115,31 @@ export default function StationPacking({
       tracking: activeOrder.tracking,
       sku: activeOrder.sku,
       scanType: activeOrder.scanType,
+      serialUnitId: activeOrder.serialUnitId,
+      unitKey: activeOrder.unitKey,
+      packerLogId: activeOrder.packerLogId,
     });
   }, [activeOrder, activeFba]);
 
   const { theme: themeColor, colors: themeColors, inputBorder, inputTheme: activeColor } = useStationTheme({ staffId });
   const { normalizeTrackingQuery, normalizeTracking } = useLast8TrackingSearch();
+
+  const { user } = useAuth();
+  const authOrgId = user?.organizationId;
+  const authStaffId = user?.staffId ?? 0;
+  const { getClient: getAblyClient } = useAblyClient();
+  const unitPhotoChannelName = safeChannelName(() =>
+    getStaffStationBridgeChannelName(authOrgId!, authStaffId),
+  );
+  const publishUnitPhotoRequest = useUnitPhotoRequestPublisher({
+    staffIdNum: authStaffId,
+    getAblyClient,
+    stationChannelName: unitPhotoChannelName,
+  });
+  const [lastUnitPhotoRequest, setLastUnitPhotoRequest] = useState<{
+    serialUnitId: number;
+    unitKey: string | null;
+  } | null>(null);
 
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault();
@@ -121,6 +152,60 @@ export default function StationPacking({
     setActiveFba(null);
 
     try {
+      // ── Prepack unit QR — attach packing photos to the prepacked unit ────
+      const unitKey = scannedUnitKey(scan);
+      if (unitKey) {
+        const unitRes = await fetch(`/api/serial-units/${encodeURIComponent(unitKey)}`);
+        const unitData = await unitRes.json().catch(() => null);
+        if (!unitRes.ok || !unitData?.success || !unitData?.serial_unit) {
+          throw new Error(unitData?.error || 'Unit label not found');
+        }
+        const unit = unitData.serial_unit as {
+          id: number;
+          serial_number?: string;
+          unit_uid?: string | null;
+          sku?: string | null;
+          condition_grade?: string | null;
+          product_title?: string | null;
+        };
+        const serialUnitId = Number(unit.id);
+        const displayKey =
+          String(unit.unit_uid || unit.serial_number || unitKey).trim() || unitKey;
+        const sku = String(unit.sku || '').trim();
+
+        setActiveOrder({
+          orderRowId: null,
+          orderId: displayKey,
+          productTitle:
+            String(unit.product_title || '').trim() ||
+            (sku ? `Prepack · ${sku}` : `Unit ${displayKey}`),
+          qty: 1,
+          condition: String(unit.condition_grade || 'N/A').trim() || 'N/A',
+          tracking: '',
+          scanType: 'UNIT',
+          sku: sku || undefined,
+          serialUnitId,
+          unitKey: displayKey,
+          packerLogId: null,
+        });
+
+        if (UNIT_SCAN_PHOTOS) {
+          await publishUnitPhotoRequest({
+            serialUnitId,
+            unitKey: displayKey,
+            stage: 'packing',
+            packerLogId: null,
+            poRef: sku || displayKey,
+          });
+          setLastUnitPhotoRequest({ serialUnitId, unitKey: displayKey });
+        }
+        toast.success('Prepack unit ready', {
+          description: 'Phone camera opened for packing photos.',
+        });
+        onComplete?.();
+        return;
+      }
+
       // ── FBA path: FNSKU detected ───────────────────────────────────────────
       if (looksLikeFnsku(scan)) {
         const res = await fetch('/api/fba/items/scan', {
@@ -219,6 +304,7 @@ export default function StationPacking({
           const isSku = resolvedScanType === 'SKU';
           const skuValue = String(data?.sku || '').trim();
           const orderRowIdRaw = Number(data?.orderRowId);
+          const packerLogIdRaw = Number(data?.packerLogId ?? data?.packerRecord?.id);
           setActiveOrder({
             orderRowId: Number.isFinite(orderRowIdRaw) && orderRowIdRaw > 0 ? orderRowIdRaw : null,
             orderId: String(data?.orderId || '').trim(),
@@ -228,6 +314,8 @@ export default function StationPacking({
             tracking: String(data?.shippingTrackingNumber || scan).trim(),
             scanType: isSku ? 'SKU' : 'ORDERS',
             sku: skuValue || undefined,
+            packerLogId:
+              Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null,
           });
         }
 
@@ -278,15 +366,6 @@ export default function StationPacking({
             </>
           )}
 
-          {/* Embedded sidebar header band — the one filter control the minimal
-              chrome keeps: the shared `?staff=` picker (P1-WORK-02). It narrows
-              the history table in the right pane; absent = the signed-in packer. */}
-          {embedded && (
-            <div className="flex items-center justify-end">
-              <StaffFilterButton allLabel="My packs" align="end" />
-            </div>
-          )}
-
           {/* Mode reminder banner (Fragile / Multi-Item) — standalone station page
               only. The embedded sidebar stays minimal: the active mode already shows
               in the master-nav mode rail, so we don't repeat it here. */}
@@ -306,7 +385,7 @@ export default function StationPacking({
               onChange={setInputValue}
               onSubmit={handleSubmit}
               inputRef={inputRef}
-              placeholder="Tracking, FNSKU, FBA, SKU"
+              placeholder="Tracking, unit QR, FNSKU, FBA, SKU"
               icon={<Barcode className="h-[17px] w-[17px]" />}
               iconClassName={activeColor.text}
               inputBorderClassName={inputBorder}
@@ -318,9 +397,16 @@ export default function StationPacking({
             />
           </motion.div>
 
+          {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+            <UnitPhotoRequestStatus
+              serialUnitId={lastUnitPhotoRequest.serialUnitId}
+              unitKey={lastUnitPhotoRequest.unitKey}
+            />
+          ) : null}
+
           {!embedded && (
             <p className="text-role-micro font-bold text-text-faint px-1">
-              Supports tracking, FNSKU/ASIN (10 chars: <code className="font-mono">X00</code> or <code className="font-mono">B0</code> prefix), FBA, and{' '}
+              Supports tracking, unit QR, FNSKU/ASIN (10 chars: <code className="font-mono">X00</code> or <code className="font-mono">B0</code> prefix), FBA, and{' '}
               <code className="font-mono">SKU:VALUE</code> scans.
             </p>
           )}
@@ -471,15 +557,24 @@ export default function StationPacking({
                       className="mt-3"
                     />
                     <div className="mt-3 border-t border-border-hairline pt-3">
-                      <LinkedTicketsPanel
-                        order={activeOrder.orderId || undefined}
-                        tracking={activeOrder.tracking || undefined}
-                        dense
+                      <SupportContextHub
+                        anchor={{
+                          order: activeOrder.orderId || undefined,
+                          tracking: activeOrder.tracking || undefined,
+                        }}
+                        variant="rollup"
+                        defaultSegment="customer"
+                        defaultExpanded={false}
                       />
                     </div>
                     {/* A3 — Zendesk reach-in, collapsed by default so it never
                         competes with the scan loop. */}
-                    <PackZendeskSection orderId={activeOrder.orderId} className="mt-3" />
+                    <PackZendeskSection
+                      orderId={activeOrder.orderId}
+                      tracking={activeOrder.tracking}
+                      orderRowId={activeOrder.orderRowId}
+                      className="mt-3"
+                    />
                   </>
                 )}
               </motion.div>

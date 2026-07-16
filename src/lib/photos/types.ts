@@ -18,12 +18,31 @@ export const PHOTO_LINK_ROLES = ['primary', 'claim_evidence', 'insurance_share']
 export type PhotoLinkRole = (typeof PHOTO_LINK_ROLES)[number];
 
 /**
- * `photo_type` for a testing-label scan photo (packer scans a printed unit label
- * at the station → phone captures photos linked to the SERIAL_UNIT). Distinct
- * from receiving (`receiving_item`/`receiving_package`) and packer
- * (`packer_photo`) so unit-scan photos never collide in queries or the timeline.
+ * `photo_type` for a testing-label scan photo (operator scans a printed unit
+ * label at the testing station → phone captures photos linked to the
+ * SERIAL_UNIT). Distinct from receiving and packing so buckets never collide.
  */
 export const UNIT_TESTING_PHOTO_TYPE = 'testing_photo';
+
+/**
+ * `photo_type` for pack-station captures linked to a SERIAL_UNIT (and optionally
+ * dual-linked to PACKER_LOG). Canonical SoT for shipout/pack-at-unit photos —
+ * never use free-text `shipout` as photo_type; map stage → this constant.
+ */
+export const UNIT_PACKING_PHOTO_TYPE = 'packer_photo';
+
+/**
+ * Resolve the serial-units photo POST `stage` body field → canonical photo_type.
+ * `shipout` (default) → packer_photo; `prepack` kept as a free-text stage label
+ * for verify-before-pack captures that are still unit-scoped.
+ */
+export function resolveUnitPhotoTypeFromStage(stage: string | null | undefined): string {
+  const s = String(stage || 'shipout').trim().toLowerCase() || 'shipout';
+  if (s === 'shipout' || s === 'pack' || s === 'packing') return UNIT_PACKING_PHOTO_TYPE;
+  if (s === 'prepack') return 'prepack';
+  if (s === 'testing' || s === UNIT_TESTING_PHOTO_TYPE) return UNIT_TESTING_PHOTO_TYPE;
+  return UNIT_PACKING_PHOTO_TYPE;
+}
 
 export const PHOTO_STORAGE_PROVIDERS = [
   'gcs',

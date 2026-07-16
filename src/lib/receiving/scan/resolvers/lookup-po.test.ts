@@ -9,23 +9,18 @@ import assert from 'node:assert/strict';
 import { resolveViaLookupPo } from './lookup-po';
 import type { LookupPoData, LookupPoRequest } from '../types';
 
-/** A lookupPo dep that returns queued responses and records call bodies + loader hits. */
+/** A lookupPo dep that returns queued responses and records call bodies. */
 function harness(responses: LookupPoData[]) {
   const bodies: LookupPoRequest[] = [];
   let i = 0;
-  const loader = { count: 0 };
   return {
     deps: {
       lookupPo: async (body: LookupPoRequest) => {
         bodies.push(body);
         return responses[i++] ?? {};
       },
-      showLoader: () => {
-        loader.count += 1;
-      },
     },
     bodies,
-    loader,
   };
 }
 
@@ -37,12 +32,12 @@ const input = (over: Partial<Parameters<typeof resolveViaLookupPo>[0]> = {}) => 
   ...over,
 });
 
-test('phase-1 match → matched, localOnly:true, no loader', async () => {
+test('match → matched, localOnly:true, single call', async () => {
   const h = harness([{ success: true, matched: true, lines: [{}] }]);
   const res = await resolveViaLookupPo(input(), h.deps);
   assert.equal(res.kind, 'matched');
   assert.equal(h.bodies[0].localOnly, true);
-  assert.equal(h.loader.count, 0);
+  assert.equal(h.bodies.length, 1);
 });
 
 test('!success → throws', async () => {
@@ -56,42 +51,26 @@ test('zoho_not_connected → integration-error', async () => {
   assert.equal(res.kind, 'integration-error');
 });
 
-test('tracking miss (carton created, no not_found) → unmatched, no escalation', async () => {
+test('tracking miss (carton created, no not_found) → unmatched, no Zoho escalation', async () => {
   const h = harness([{ success: true, matched: false, receiving_id: 5 }]);
   const res = await resolveViaLookupPo(input(), h.deps);
   assert.equal(res.kind, 'unmatched');
-  assert.equal(h.bodies.length, 1); // never escalated to Zoho
-  assert.equal(h.loader.count, 0);
+  assert.equal(h.bodies.length, 1);
 });
 
-test('order miss → escalates to Zoho (loader shown); still nothing → not_found', async () => {
-  const h = harness([
-    { success: true, not_found: true, zoho_pending: true }, // phase 1
-    { success: true, not_found: true }, // phase 2 still empty
-  ]);
+test('order miss → not_found, never escalates to Zoho', async () => {
+  const h = harness([{ success: true, not_found: true, zoho_pending: true }]);
   const res = await resolveViaLookupPo(input({ callMode: 'order', originalMode: 'order' }), h.deps);
   assert.equal(res.kind, 'not_found');
-  assert.equal(h.bodies.length, 2);
-  assert.equal(h.bodies[1].localOnly, undefined); // phase 2 omits localOnly
-  assert.equal(h.loader.count, 1);
+  assert.equal(h.bodies.length, 1);
+  assert.equal(h.bodies[0].localOnly, true);
 });
 
-test('order miss → Zoho now resolves the PO → matched', async () => {
-  const h = harness([
-    { success: true, not_found: true, zoho_pending: true },
-    { success: true, matched: true, lines: [{}, {}] },
-  ]);
-  const res = await resolveViaLookupPo(input({ callMode: 'order', originalMode: 'order' }), h.deps);
-  assert.equal(res.kind, 'matched');
-  assert.equal(h.loader.count, 1);
-});
-
-test('auto miss with zoho_pending → does NOT escalate to Zoho (falls through to tracking on server)', async () => {
+test('auto miss with zoho_pending → does NOT escalate to Zoho', async () => {
   const h = harness([{ success: true, matched: false, not_found: true, zoho_pending: true }]);
   const res = await resolveViaLookupPo(input({ callMode: 'auto', originalMode: 'auto' }), h.deps);
   assert.equal(res.kind, 'not_found');
   assert.equal(h.bodies.length, 1);
-  assert.equal(h.loader.count, 0);
 });
 
 test('auto miss reported not_found (no carton) → not_found', async () => {
@@ -108,5 +87,4 @@ test('ticket miss → not_found, no Zoho escalation', async () => {
   );
   assert.equal(res.kind, 'not_found');
   assert.equal(h.bodies.length, 1);
-  assert.equal(h.loader.count, 0);
 });
