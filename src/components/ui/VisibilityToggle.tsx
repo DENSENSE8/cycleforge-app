@@ -13,11 +13,10 @@ interface Props {
 }
 
 /**
- * Internal-note ↔ public-reply segmented toggle — the single source of truth for
- * the "is this Zendesk comment private or emailed?" control. Extracted from the
- * Support console's claim composer so every Zendesk surface (support claim + chat
- * composers, receiving claim + photo-note modals) renders the identical control:
- * amber lock = internal/private, blue globe = public/emailed.
+ * Zendesk internal-note ↔ public-reply segmented toggle — the SoT for
+ * "is this helpdesk comment private or emailed to the customer?"
+ * Use only on external ticket surfaces (Support chat, claim modals).
+ * Warehouse {@link ThreadNoteComposer} uses different chrome for entity threads.
  */
 export function VisibilityToggle({ value, onChange, internalLabel, publicLabel, className }: Props) {
   return (

@@ -3,12 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Loader2, Lock, Globe, MessageSquare, Send, Ticket, User, Check, Clock,
+  Loader2, Lock, Globe, MessageSquare, Ticket, User, Check, Clock,
   MoreHorizontal, Pencil, Trash2, X, ExternalLink,
   Package, Truck, Barcode, Tag, PackageOpen, Wrench, ShieldCheck, Box,
 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
+import { ThreadNoteComposer } from '@/components/threads/ThreadNoteComposer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThread, type ThreadConnectionRow, type ThreadAssignmentRow } from '@/hooks/useThread';
@@ -593,67 +593,19 @@ export function ThreadPanel({
 
       {canPost ? (
         <div className={cn('shrink-0 border-t border-border-hairline bg-surface-card py-3', dense ? 'px-3' : 'px-4')}>
-          <div className="mb-2.5 flex items-center justify-between">
-            <VisibilityToggle
-              value={isPublic}
-              onChange={setIsPublic}
-              internalLabel="Internal note"
-              publicLabel="Public"
-            />
-          </div>
-          <div
-            className={cn(
-              'rounded-xl border bg-surface-card transition',
-              isPublic
-                ? 'border-border-soft focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
-                : 'border-amber-300 bg-amber-50/30 focus-within:ring-2 focus-within:ring-amber-100',
-            )}
-          >
-            <textarea
-              ref={composerRef}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
-              }}
-              rows={dense ? 2 : 3}
-              placeholder={
-                isPublic
-                  ? externalSubmit
-                    ? 'Message…  (⌘↵ or dock Send)'
-                    : 'Message…  (⌘↵ to send)'
-                  : externalSubmit
-                    ? 'Internal note — team only…  (⌘↵ or dock Add note)'
-                    : 'Internal note — team only…  (⌘↵ to send)'
-              }
-              className="block w-full resize-none rounded-xl bg-transparent px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default outline-none placeholder:text-text-faint"
-            />
-            <div className="flex items-center justify-between border-t border-border-hairline px-3 py-2">
-              <span className="text-role-caption text-text-faint">
-                {postMessage.isError
-                  ? 'Couldn’t send — try again.'
-                  : externalSubmit
-                    ? isPublic
-                      ? 'Visible on the record — use the dock to Send'
-                      : 'Team-only note — use the dock to Add note'
-                    : isPublic
-                      ? 'Visible on the record'
-                      : 'Team-only note'}
-              </span>
-              {externalSubmit ? null : (
-                <Button
-                  variant={isPublic ? 'primary' : 'secondary'}
-                  size="sm"
-                  loading={postMessage.isPending}
-                  disabled={!body.trim()}
-                  onClick={submit}
-                  icon={<Send className="h-3.5 w-3.5" />}
-                >
-                  {isPublic ? 'Send' : 'Add note'}
-                </Button>
-              )}
-            </div>
-          </div>
+          <ThreadNoteComposer
+            value={body}
+            onChange={setBody}
+            isOnRecord={isPublic}
+            onIsOnRecordChange={setIsPublic}
+            onSubmit={submit}
+            loading={postMessage.isPending}
+            disabled={!canPost}
+            dense={dense}
+            externalSubmit={externalSubmit}
+            errorMessage={postMessage.isError ? 'Couldn’t send — try again.' : null}
+            textareaRef={composerRef}
+          />
         </div>
       ) : null}
     </div>
