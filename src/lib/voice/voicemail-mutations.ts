@@ -129,12 +129,27 @@ export async function linkVoicemailToTicket(
       return { ok: true, linkedTicketId: null };
     }
 
-    // ticket_links is UNIQUE(org, zendesk_ticket_id); upsert keeps one entity per ticket.
+    // A voicemail link is the ticket's ANCHOR (the ticket is *about* the call),
+    // so it takes the primary slot. ticket_links is many-per-ticket now, with the
+    // one-anchor rule enforced by ux_ticket_links_ticket_primary — hence
+    // demote-then-upsert-on-natural-key, mirroring linkTicket()/linkShipment().
+    // (A single ON CONFLICT can only name one of the two unique indexes, and
+    // re-anchoring onto an entity already held as a reference row must promote
+    // that row rather than error.)
     await client.query(
-      `INSERT INTO ticket_links (organization_id, zendesk_ticket_id, entity_type, entity_id, created_by)
-       VALUES ($1, $2, 'voicemail', $3, $4)
-       ON CONFLICT (organization_id, zendesk_ticket_id)
-       DO UPDATE SET entity_type = 'voicemail', entity_id = EXCLUDED.entity_id, updated_at = now()`,
+      `UPDATE ticket_links SET is_primary = false, updated_at = now()
+        WHERE organization_id = $1
+          AND zendesk_ticket_id = $2
+          AND is_primary
+          AND NOT (entity_type = 'voicemail' AND entity_id = $3)`,
+      [orgId, ticketId, voicemailId],
+    );
+    await client.query(
+      `INSERT INTO ticket_links
+         (organization_id, zendesk_ticket_id, entity_type, entity_id, is_primary, created_by)
+       VALUES ($1, $2, 'voicemail', $3, true, $4)
+       ON CONFLICT (organization_id, zendesk_ticket_id, entity_type, entity_id)
+       DO UPDATE SET is_primary = true, updated_at = now()`,
       [orgId, ticketId, voicemailId, actorStaffId],
     );
     await client.query(

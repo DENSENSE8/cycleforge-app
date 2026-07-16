@@ -44,6 +44,62 @@ export async function resolveThreadConnections(
     out.push(c);
   };
 
+  /**
+   * The thread's linked support ticket, resolved over a precedence-ordered list
+   * of (entity_type, entity_id) candidates — the FIRST candidate that carries a
+   * ticket wins, and within one candidate an anchor beats a passing reference.
+   *
+   * Extracted so the ORDER and RECEIVING branches share one query instead of two
+   * near-identical copies (only RECEIVING had one, which is why a linked ticket
+   * was invisible on outbound threads entirely).
+   *
+   * Queries BOTH outbound anchor conventions, deliberately: threads/escalate.ts
+   * writes entity_type='ORDER' with orders.id, while the universal link waist
+   * writes 'SHIPMENT' with the STN id for the SAME order. Neither reads the
+   * other, so a reader that checks only one silently misses half the links.
+   * Convergence is a separate lane; until then, callers pass both.
+   */
+  const pushLinkedTicket = async (
+    client: Parameters<Parameters<typeof withTenantTransaction>[1]>[0],
+    candidates: Array<{ entityType: string; entityId: number }>,
+  ) => {
+    const usable = candidates.filter((c) => Number.isFinite(c.entityId));
+    if (usable.length === 0) return;
+    const ticket = await client.query<{
+      support_ticket_id: string | null;
+      zendesk_ticket_id: string | null;
+      external_ticket_id: string | null;
+      provider: string | null;
+    }>(
+      `SELECT tl.support_ticket_id, tl.zendesk_ticket_id,
+              st.external_ticket_id, st.provider
+         FROM ticket_links tl
+         JOIN unnest($2::text[], $3::bigint[]) WITH ORDINALITY AS c(etype, eid, ord)
+           ON tl.entity_type = c.etype AND tl.entity_id = c.eid
+         LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+        WHERE tl.organization_id = $1::uuid
+        ORDER BY c.ord, tl.is_primary DESC, tl.created_at DESC
+        LIMIT 1`,
+      [orgId, usable.map((c) => c.entityType), usable.map((c) => c.entityId)],
+    );
+    const trow = ticket.rows[0];
+    if (!trow) return;
+    const ext =
+      trow.external_ticket_id?.trim() ||
+      (trow.zendesk_ticket_id != null ? String(trow.zendesk_ticket_id) : null);
+    const label = ext ? `#${ext.replace(/^#/, '')}` : null;
+    if (!label) return;
+    push({
+      entityType: 'SUPPORT_TICKET',
+      entityId: trow.support_ticket_id != null ? Number(trow.support_ticket_id) : null,
+      label,
+      origin: 'derived',
+      hint: 'ticket',
+      href:
+        trow.provider === 'zendesk' && ext ? `/support?ticket=${ext.replace(/^#/, '')}` : null,
+    });
+  };
+
   await withTenantTransaction(orgId, async (client) => {
     // ── Derived dots ──────────────────────────────────────────────────────
     // ORDER anchor → order number + tracking + serials + SKU.
@@ -76,6 +132,22 @@ export async function resolveThreadConnections(
           hint: 'sku',
         });
       }
+
+      // Linked support ticket. The order's own STNs come from shipment_links —
+      // the same table the outbound link surface anchors tickets against — so
+      // "which ticket concerns this order?" resolves through the shipment the
+      // two sides share. Order-anchored links (escalate's convention) take
+      // precedence over shipment-anchored ones (the waist's).
+      const stns = await client.query<{ shipment_id: string }>(
+        `SELECT shipment_id FROM shipment_links
+          WHERE organization_id = $1::uuid AND owner_type = 'ORDER' AND owner_id = $2::int
+          ORDER BY is_primary DESC, box_seq ASC`,
+        [orgId, anchor.entityId],
+      );
+      await pushLinkedTicket(client, [
+        { entityType: 'ORDER', entityId: Number(anchor.entityId) },
+        ...stns.rows.map((r) => ({ entityType: 'SHIPMENT', entityId: Number(r.shipment_id) })),
+      ]);
     }
 
     // REPAIR anchor → its serial (→ order), plus the free-text source refs.
@@ -208,67 +280,18 @@ export async function resolveThreadConnections(
           });
         }
 
-        // Linked ticket via ticket_links on line / carton / SHIPMENT.
-        const ticket = await client.query<{
-          support_ticket_id: string | null;
-          zendesk_ticket_id: string | null;
-          external_ticket_id: string | null;
-          provider: string | null;
-        }>(
-          `SELECT tl.support_ticket_id, tl.zendesk_ticket_id,
-                  st.external_ticket_id, st.provider
-             FROM ticket_links tl
-             LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
-            WHERE tl.organization_id = $1::uuid
-              AND (
-                ($2::int IS NOT NULL AND tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id = $2)
-                OR (tl.entity_type = 'RECEIVING' AND tl.entity_id = $3)
-                OR (
-                  $4::bigint IS NOT NULL
-                  AND tl.entity_type = 'SHIPMENT'
-                  AND tl.entity_id = $4
-                )
-              )
-            ORDER BY
-              CASE tl.entity_type
-                WHEN 'RECEIVING_LINE' THEN 0
-                WHEN 'RECEIVING' THEN 1
-                WHEN 'SHIPMENT' THEN 2
-                ELSE 3
-              END,
-              tl.created_at DESC
-            LIMIT 1`,
-          [
-            orgId,
-            lineId,
-            receivingId,
-            carton.rows[0]?.shipment_id != null
-              ? Number(carton.rows[0].shipment_id)
-              : null,
-          ],
-        );
-        const trow = ticket.rows[0];
-        if (trow) {
-          const ext =
-            trow.external_ticket_id?.trim() ||
-            (trow.zendesk_ticket_id != null ? String(trow.zendesk_ticket_id) : null);
-          const label = ext ? `#${ext.replace(/^#/, '')}` : null;
-          if (label) {
-            push({
-              entityType: 'SUPPORT_TICKET',
-              entityId: trow.support_ticket_id != null
-                ? Number(trow.support_ticket_id)
-                : null,
-              label,
-              origin: 'derived',
-              hint: 'ticket',
-              href:
-                trow.provider === 'zendesk' && ext
-                  ? `/support?ticket=${ext.replace(/^#/, '')}`
-                  : null,
-            });
-          }
-        }
+        // Linked ticket via ticket_links on line / carton / SHIPMENT — same
+        // precedence as before (line > carton > shipment), now through the
+        // shared helper the ORDER branch also uses.
+        const cartonShipmentId =
+          carton.rows[0]?.shipment_id != null ? Number(carton.rows[0].shipment_id) : null;
+        await pushLinkedTicket(client, [
+          ...(lineId != null ? [{ entityType: 'RECEIVING_LINE', entityId: Number(lineId) }] : []),
+          { entityType: 'RECEIVING', entityId: Number(receivingId) },
+          ...(cartonShipmentId != null
+            ? [{ entityType: 'SHIPMENT', entityId: cartonShipmentId }]
+            : []),
+        ]);
       }
     }
   });

@@ -33,7 +33,25 @@ export interface TicketLinkCandidate {
   url: string | null;
   /** True when this ticket is already linked to the requesting entity. */
   linkedToThis: boolean;
+  /**
+   * `reference` mode only — the entity this ticket is ANCHORED to, when that is
+   * something else. Not a reason to hide it; the UI shows it as context so an
+   * operator knows what else the ticket is about.
+   */
+  anchoredElsewhere?: { type: string; id: number } | null;
 }
+
+/**
+ * `anchor` — picking the ONE entity a ticket is about. Tickets anchored to a
+ * different entity are hidden, because choosing one would re-anchor it.
+ *
+ * `reference` — attaching an ADDITIONAL entity (e.g. a second STN) to a ticket
+ * that keeps its existing anchor. Nothing is hidden: a ticket already anchored to
+ * a carton is a perfectly valid target for another shipment. Applying the anchor
+ * rule here would hide exactly the tickets the operator is looking for, and the
+ * "already linked to other items" copy would be a lie.
+ */
+export type TicketLinkCandidateMode = 'anchor' | 'reference';
 
 export async function listTicketLinkCandidates(args: {
   orgId: string;
@@ -41,7 +59,9 @@ export async function listTicketLinkCandidates(args: {
   entityId: number;
   query?: string | null;
   perPage?: number;
+  mode?: TicketLinkCandidateMode;
 }): Promise<{ tickets: TicketLinkCandidate[]; hiddenLinked: number }> {
+  const mode: TicketLinkCandidateMode = args.mode ?? 'anchor';
   const perPage = args.perPage ?? 20;
   const query = (args.query ?? '').trim();
   // A bare "#1234" / "1234" is a direct ticket lookup — this is what makes
@@ -64,9 +84,13 @@ export async function listTicketLinkCandidates(args: {
   const ids = tickets.map((t) => t.id);
   const linkByTicket = new Map<number, { type: string; id: number }>();
   if (ids.length > 0) {
+    // `AND is_primary`: linkByTicket is a ticket → ONE entity map, but
+    // ticket_links is many-per-ticket now. Without the filter, a ticket holding
+    // extra reference rows (e.g. additional STNs) would set the map repeatedly
+    // and an arbitrary row would win, mislabelling which entity "owns" it.
     const links = await pool.query<{ zendesk_ticket_id: string; entity_type: string; entity_id: string }>(
       `SELECT zendesk_ticket_id, entity_type, entity_id FROM ticket_links
-        WHERE organization_id = $1 AND zendesk_ticket_id = ANY($2::bigint[])`,
+        WHERE organization_id = $1 AND zendesk_ticket_id = ANY($2::bigint[]) AND is_primary`,
       [args.orgId, ids],
     );
     for (const row of links.rows) {
@@ -94,7 +118,9 @@ export async function listTicketLinkCandidates(args: {
   for (const t of tickets) {
     const link = linkByTicket.get(t.id) ?? parseExternalId(t.external_id as string | undefined);
     const linkedToThis = !!link && link.type === args.entityType && link.id === args.entityId;
-    if (link && !linkedToThis) {
+    // Anchor mode hides tickets anchored elsewhere (picking one would re-anchor
+    // it). Reference mode keeps them — see TicketLinkCandidateMode.
+    if (mode === 'anchor' && link && !linkedToThis) {
       hiddenLinked++;
       continue;
     }
@@ -110,6 +136,8 @@ export async function listTicketLinkCandidates(args: {
       updatedAt: t.updated_at,
       url: zendeskTicketUrl(t.id),
       linkedToThis,
+      anchoredElsewhere:
+        mode === 'reference' && link && !linkedToThis ? { type: link.type, id: link.id } : null,
     });
   }
 

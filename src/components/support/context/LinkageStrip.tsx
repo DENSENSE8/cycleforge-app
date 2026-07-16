@@ -69,19 +69,25 @@ export function LinkageStrip({
     mutationFn: async (trackingNumber: string) => {
       const ticketId = ticket?.providerTicketId;
       if (ticketId == null) throw new Error('No ticket to attach tracking to');
+      // `reference`, NOT `anchor`. The anchor path re-decides what the ticket is
+      // ABOUT and throws 409 ("already linked to another item") whenever the
+      // ticket already has one — which is every ticket that reached this strip
+      // with a carton or order resolved. Attaching an extra STN must leave the
+      // anchor alone. The route mints the STN from a raw tracking number here
+      // exactly as the tracking anchor did, so pasting still works unchanged.
       const res = await fetch('/api/support/tickets/link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ticketId,
-          anchor: { type: 'tracking', trackingNumber },
+          reference: { trackingNumber },
         }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         throw new Error(data?.error || data?.details || 'Could not link tracking');
       }
-      return data as { ticketNumber: string };
+      return data as { shipmentId: number; isPrimary: boolean; added: boolean };
     },
     onSuccess: () => {
       invalidateSupportContextCaches(qc);
@@ -103,9 +109,11 @@ export function LinkageStrip({
   const serial = linkage.serials[0]?.serial ?? null;
 
   const canLinkTicket = Boolean(canZendesk && !ticket && linkable?.canLinkTicket);
-  const canLinkTracking = Boolean(
-    canZendesk && ticket?.providerTicketId != null && !tracking,
-  );
+  // `!tracking` USED to gate this, which meant the control vanished the moment a
+  // ticket resolved ANY tracking — so a second STN could never be added from the
+  // support side. ticket_links is many-per-ticket now (one anchor + N shipment
+  // references), so the only real precondition is a ticket to attach to.
+  const canLinkTracking = Boolean(canZendesk && ticket?.providerTicketId != null);
   const showTeachingEmpty = !order && !tracking && !ticket;
 
   return (

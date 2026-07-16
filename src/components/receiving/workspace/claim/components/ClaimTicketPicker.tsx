@@ -1,6 +1,4 @@
-import { Loader2 } from '@/components/Icons';
-import { statusBadge } from '@/components/support/zendesk/badges';
-import { ticketDate } from '../claim-helpers';
+import { TicketPicker } from '@/components/support/link/TicketPicker';
 import type { LinkCandidate } from '../claim-types';
 import type { UseClaimTicketSearch } from '../hooks/useClaimTicketSearch';
 
@@ -9,110 +7,18 @@ interface Props {
   onSelect: (t: LinkCandidate | null) => void;
 }
 
-/** Link-mode search box + results list (recent tickets when the box is empty). */
+/**
+ * Receiving claim-flow adapter over the shared {@link TicketPicker}.
+ *
+ * The markup used to live here; it now lives in `@/components/support/link` so
+ * the shipment-link surface composes the SAME picker rather than forking a third
+ * copy (a second, incompatible `ClaimTicketPicker` already exists under
+ * support/zendesk/claim — see that file). This wrapper survives only to keep the
+ * claim flow's local `LinkCandidate` / `UseClaimTicketSearch` names at the call
+ * sites; both are structurally identical to the shared types.
+ */
 export function ClaimTicketPicker({ search, onSelect }: Props) {
-  const {
-    ticketQuery,
-    setTicketQuery,
-    ticketResults,
-    hiddenLinked,
-    searchLoading,
-    searchError,
-    selectedTicket,
-  } = search;
-  const hasQuery = !!ticketQuery.trim();
-
-  let emptyCopy: string;
-  if (hasQuery) {
-    emptyCopy = 'No tickets found — try a different search or ticket #';
-  } else if (hiddenLinked > 0) {
-    emptyCopy = `${hiddenLinked} recent ticket${hiddenLinked === 1 ? ' is' : 's are'} hidden — already linked to other items. Search by ticket # to find one.`;
-  } else {
-    emptyCopy = 'Recent support tickets will appear here';
-  }
-
   return (
-    <>
-      <div>
-        <label
-          htmlFor="claim-ticket-search"
-          className="mb-1.5 block text-role-micro uppercase tracking-[0.14em] text-text-soft"
-        >
-          Pick the existing ticket
-        </label>
-        <input
-          id="claim-ticket-search"
-          type="text"
-          value={ticketQuery}
-          onChange={(e) => setTicketQuery(e.target.value)}
-          placeholder="Search by subject, or paste a ticket # (e.g. #12345)"
-          autoFocus
-          className="block w-full rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption font-medium text-text-default outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
-        />
-      </div>
-
-      <div>
-        <div className="mb-1.5 flex items-center gap-2">
-          <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
-            {hasQuery ? 'Results' : 'Recent tickets'} — click to select
-          </p>
-          {searchLoading ? <Loader2 className="h-3 w-3 animate-spin text-text-faint" /> : null}
-        </div>
-        <div className="max-h-[280px] overflow-y-auto rounded-xl border border-border-soft bg-surface-card">
-          {searchError ? (
-            <div className="rounded-lg border border-dashed border-rose-200 bg-rose-50 px-4 py-10 text-center text-role-micro font-medium text-rose-600">
-              {searchError}
-            </div>
-          ) : ticketResults.length > 0 ? (
-            <div className={searchLoading ? 'opacity-50' : ''}>
-              {ticketResults.map((t) => {
-                const isSel = selectedTicket?.id === t.id;
-                const badge = statusBadge(t.status);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => onSelect(isSel ? null : t)}
-                    disabled={t.linkedToThis}
-                    className={`ds-raw-button flex w-full items-center gap-2.5 border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 ${
-                      isSel ? 'bg-rose-50' : 'hover:bg-surface-hover'
-                    } ${t.linkedToThis ? 'cursor-default opacity-60' : ''}`}
-                  >
-                    <span className="shrink-0 font-mono text-role-caption font-bold text-text-default">#{t.id}</span>
-                    <span
-                      className={`shrink-0 rounded-full inset-chip text-role-eyebrow uppercase tracking-wider ${badge.className}`}
-                    >
-                      {badge.label}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-muted">
-                      {t.subject || '—'}
-                    </span>
-                    <span className="shrink-0 text-role-micro font-medium text-text-faint">
-                      {ticketDate(t.updatedAt)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : searchLoading ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-role-micro font-semibold text-text-faint">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Searching…
-            </div>
-          ) : (
-            <div className="px-4 py-10 text-center text-role-micro font-medium text-text-faint">
-              {emptyCopy}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {hiddenLinked > 0 && !searchError ? (
-        <p className="text-role-micro font-medium text-text-faint">
-          {hiddenLinked} matching ticket{hiddenLinked === 1 ? ' is' : 's are'} hidden — already linked
-          to other items.
-        </p>
-      ) : null}
-    </>
+    <TicketPicker search={search} onSelect={onSelect} inputId="claim-ticket-search" mode="anchor" />
   );
 }

@@ -37,6 +37,10 @@ export function sqlLinkedSupportTicketLateralJoin(): string {
         WHEN 'SHIPMENT' THEN 2
         ELSE 3
       END,
+      -- Within a tier, an ANCHORED ticket beats one that merely references the
+      -- entity: ticket_links is many-per-ticket, so the SHIPMENT arm above can
+      -- now match tickets that carry this STN as one of several references.
+      tl.is_primary DESC,
       tl.created_at DESC
     LIMIT 1
   ) linked_ticket ON TRUE`;
@@ -79,6 +83,8 @@ export function sqlCartonLinkedSupportTicketLateralJoin(): string {
         WHEN 'SHIPMENT' THEN 1
         ELSE 2
       END,
+      -- See sqlLinkedSupportTicketLateralJoin: anchor beats passing reference.
+      tl.is_primary DESC,
       tl.created_at DESC
     LIMIT 1
   ) linked_ticket ON TRUE`;

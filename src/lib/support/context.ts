@@ -139,7 +139,7 @@ async function fetchTimelineSpines(args: {
 }): Promise<TimelineItem[]> {
   const { orgId, receivingId, shipmentIds, threadId } = args;
 
-  const [opsRes, carrierRes, msgRes, linkRes] = await Promise.all([
+  const [opsRes, carrierRes, msgRes, linkRes, shipLinkRes] = await Promise.all([
     receivingId != null
       ? tenantQuery<OpsEventRow>(
           orgId,
@@ -182,7 +182,20 @@ async function fetchTimelineSpines(args: {
             : [],
         )
       : Promise.resolve([] as ThreadMessageTimelineRow[]),
-    receivingId != null || shipmentIds.length > 0
+    // RECEIVING / RECEIVING_LINE link moments, derived from ROW STATE.
+    //
+    // The SHIPMENT arm deliberately moved OUT of this query and into the
+    // ops_events arm below. Row state can only ever say "linked" — an unlink
+    // deletes the row, so the detach moment is unrecoverable, which is why
+    // ticketLinkEventsToTimeline's 'unlinked' branch was dead code. It also
+    // dates a re-anchored ticket by its ORIGINAL created_at against its NEW
+    // entity, because linkTicket upserts.
+    //
+    // Receiving stays on row state for now: those links predate the event
+    // writer (107 live rows as of 2026-07-16), so reading them from ops_events
+    // would silently drop every historical link from the hub. Shipment links
+    // had ZERO rows at that point, so they lose no history by moving.
+    receivingId != null
       ? tenantQuery<{
           id: string;
           created_at: string;
@@ -196,30 +209,65 @@ async function fetchTimelineSpines(args: {
              FROM ticket_links tl
              LEFT JOIN staff s ON s.id = tl.created_by
             WHERE tl.organization_id = $1
+              AND tl.entity_type IN ('RECEIVING', 'RECEIVING_LINE')
               AND (
-                ($2::bigint IS NOT NULL AND tl.entity_type IN ('RECEIVING', 'RECEIVING_LINE')
-                  AND (
-                    (tl.entity_type = 'RECEIVING' AND tl.entity_id = $2)
-                    OR (tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id IN (
-                      SELECT id FROM receiving_line WHERE receiving_id = $2 AND organization_id = $1
-                    ))
-                  ))
-                OR (tl.entity_type = 'SHIPMENT' AND tl.entity_id = ANY($3::bigint[]))
+                (tl.entity_type = 'RECEIVING' AND tl.entity_id = $2)
+                OR (tl.entity_type = 'RECEIVING_LINE' AND tl.entity_id IN (
+                  SELECT id FROM receiving_line WHERE receiving_id = $2 AND organization_id = $1
+                ))
               )
             ORDER BY tl.created_at DESC
             LIMIT 20`,
-          [orgId, receivingId, shipmentIds.length ? shipmentIds : [0]],
+          [orgId, receivingId],
+        )
+      : Promise.resolve({ rows: [] }),
+    // SHIPMENT link/unlink moments, from the append-only ops_events spine.
+    // Both kinds are real events here, so 'unlinked' finally renders.
+    // Not folded into the `opsEvents` arm above: that one is entity_type
+    // 'receiving' only, and opsEventsToTimeline would render these a second
+    // time with a prettified title.
+    shipmentIds.length > 0
+      ? tenantQuery<{
+          id: string;
+          occurred_at: string;
+          event_type: string;
+          payload: { zendeskTicketId?: number } | null;
+          actor_name: string | null;
+        }>(
+          orgId,
+          `SELECT oe.id, oe.occurred_at, oe.event_type, oe.payload,
+                  s.name AS actor_name
+             FROM ops_events oe
+             LEFT JOIN staff s ON s.id = oe.actor_staff_id
+            WHERE oe.organization_id = $1
+              AND lower(oe.entity_type) = 'shipment'
+              AND oe.entity_id = ANY($2::bigint[])
+              AND oe.event_type IN ('TICKET_LINKED', 'TICKET_UNLINKED')
+            ORDER BY oe.occurred_at DESC
+            LIMIT 20`,
+          [orgId, shipmentIds],
         )
       : Promise.resolve({ rows: [] }),
   ]);
 
-  const ticketLinks: TicketLinkTimelineRow[] = (linkRes.rows ?? []).map((r) => ({
-    id: r.id,
-    at: r.created_at,
-    kind: 'linked' as const,
-    ticketLabel: r.zendesk_ticket_id ? `#${r.zendesk_ticket_id}` : '#—',
-    actorName: r.actor_name,
-  }));
+  const ticketLinks: TicketLinkTimelineRow[] = [
+    ...(linkRes.rows ?? []).map((r) => ({
+      id: r.id,
+      at: r.created_at,
+      kind: 'linked' as const,
+      ticketLabel: r.zendesk_ticket_id ? `#${r.zendesk_ticket_id}` : '#—',
+      actorName: r.actor_name,
+    })),
+    ...(shipLinkRes.rows ?? []).map((r) => ({
+      id: `ops:${r.id}`,
+      at: r.occurred_at,
+      kind: (r.event_type === 'TICKET_UNLINKED' ? 'unlinked' : 'linked') as
+        | 'linked'
+        | 'unlinked',
+      ticketLabel: r.payload?.zendeskTicketId ? `#${r.payload.zendeskTicketId}` : '#—',
+      actorName: r.actor_name,
+    })),
+  ];
 
   return mergeSupportContextTimeline({
     opsEvents: opsRes.rows ?? [],
