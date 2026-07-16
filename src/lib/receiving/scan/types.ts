@@ -152,15 +152,13 @@ export interface LookupPoInput {
 export interface LookupPoDeps {
   /** POST /api/receiving/lookup-po and return the parsed JSON. */
   lookupPo: (body: LookupPoRequest) => Promise<LookupPoData>;
-  /** Show the "Opening your PO" takeover loader (the Phase-2 Zoho call only). */
-  showLoader: () => void;
 }
 
 /**
- * lookup-po rung output (Phase 1b localOnly → Phase 2 Zoho). Each carries the
- * raw response `data` for the hook's apply layer:
+ * lookup-po rung output (local-DB only). Each carries the raw response `data`
+ * for the hook's apply layer:
  *   • `matched`           → openMatchedCarton(data)
- *   • `unmatched`         → an unfound carton was created; optimistic-open + promote
+ *   • `unmatched`         → an unfound carton was created; optimistic-open
  *   • `not_found`         → clean miss (no carton); toast, no open
  *   • `integration-error` → Zoho not connected; toast + reconnect
  */

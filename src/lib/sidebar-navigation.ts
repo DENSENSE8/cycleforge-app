@@ -509,9 +509,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // Unbox now lives at its own route (`/unbox`); dropping `mode` avoids a
       // stale `?mode=` riding onto the surface path.
       { id: 'receive',  label: 'Unbox',        icon: PackageOpen,    to: () => ({ pathname: UNBOX, params: { mode: null } }) },
-      // Pickup + History graduated to their own routes (`/pickup`,
-      // `/receiving/history`); dropping `mode` avoids a stale `?mode=` riding on.
-      { id: 'pickup',   label: 'Local Pickup', icon: ShoppingCart,   to: () => ({ pathname: PICKUP, params: { mode: null } }) },
+      // Walk-In station (graduated `/pickup`) — Sales / Local Pickup / Repair via `?job=`.
+      { id: 'pickup',   label: 'Walk-In',      icon: ShoppingCart,   to: () => ({ pathname: PICKUP, params: { mode: null } }) },
       { id: 'history',  label: 'History',      icon: List,           to: () => ({ pathname: RECEIVING_HISTORY, params: { mode: null } }) },
     ],
     resolveMode: ({ pathname, params }) => {
@@ -674,23 +673,23 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   },
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the
   // station UX is ready for general rollout. Route + `tech.data_wipe` gate remain.
-  // ── Walk-In (Repair queue tabs + Sales) ───────────────────────────────────
-  // `?tab=active|done` drives the repair-queue status (default `active`);
-  // `?mode=sales` flips the panel to the Sales surface. The status tabs clear
-  // `mode` so switching off Sales lands back in Repairs. /repair routes onto this
-  // page key too (see getSidebarRouteKey). Incoming repairs now live in the
-  // Receiving incoming display, so there's no longer an Incoming tab here.
+  // ── Walk-In (history Monitor — tasks live on Receiving Walk-In `/pickup`) ─
+  // `?category=repairs|sales|pickups` (default repairs). Station deep-links:
+  // `/pickup?job=sales|pickup|repair`. Legacy `?mode=sales` / `?new=true` /
+  // `?openRepair=` redirect to the station from the page itself.
   {
     id: 'walk-in', label: 'Walk-In', href: WALK_IN, icon: ShoppingCart, kind: 'main', requires: 'walk_in.view',
     modes: [
-      { id: 'active',   label: 'Active',   icon: Wrench,     to: () => ({ pathname: WALK_IN, params: { tab: null, mode: null } }) },
-      { id: 'done',     label: 'Done',     icon: Check,      to: () => ({ pathname: WALK_IN, params: { tab: 'done', mode: null } }) },
-      { id: 'sales',    label: 'Sales',    icon: DollarSign, to: () => ({ pathname: WALK_IN, params: { mode: 'sales', tab: null } }) },
+      { id: 'repairs',  label: 'Repairs',  icon: Wrench,     to: () => ({ pathname: WALK_IN, params: { category: null, mode: null, tab: null } }) },
+      { id: 'sales',    label: 'Sales',    icon: DollarSign, to: () => ({ pathname: WALK_IN, params: { category: 'sales', mode: null, tab: null } }) },
+      { id: 'pickups',  label: 'Pickups',  icon: Package,    to: () => ({ pathname: WALK_IN, params: { category: 'pickups', mode: null, tab: null } }) },
     ],
     resolveMode: ({ params }) => {
+      const c = params.get('category');
+      if (c === 'sales' || c === 'pickups') return c;
+      // Legacy deep-links before redirect fires.
       if (params.get('mode') === 'sales') return 'sales';
-      const t = params.get('tab');
-      return t === 'done' ? t : 'active';
+      return 'repairs';
     },
   },
   // ── Support ───────────────────────────────────────────────────────────────

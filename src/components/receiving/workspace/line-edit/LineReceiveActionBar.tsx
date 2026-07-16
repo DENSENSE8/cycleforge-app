@@ -83,7 +83,7 @@ export function LineReceiveActionBar({
       save: async () => {},
       syncFromInventory: async () => {},
     },
-    bridges: { checklist: null, units: null, conversation: null },
+    bridges: { checklist: null, units: null, support: null, conversation: null },
     focusSerialScan: () => {},
     setUnboxView: () => {},
     receive,

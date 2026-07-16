@@ -29,6 +29,10 @@ anatomy, chips, HoverTooltip, icons). This doc only adds what is *station-specif
 > Rule of thumb: if the input is a scanner and the operator's hands are busy, the **screen serves the scan, not the
 > pointer.** No browsable lists, no hover-reveal detail, no persistent selection.
 
+For the **right-pane unit editor** that opens after a scan (Unbox / Testing / Shipping body), compose
+[`station-workbench.md`](station-workbench.md) — toolbar → entity context → SectionTabsSlider → terminal dock —
+instead of hand-rolling a parallel shell.
+
 ---
 
 ## 2. Anatomy

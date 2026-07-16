@@ -47,6 +47,12 @@ const MODE_SCOPED_PARAMS = [
   'po_from',
   'po_to',
   'page',
+  // Walk-In station job + repair deep-links (must not ride into Unbox/History).
+  'job',
+  'new',
+  'openRepair',
+  'search',
+  'tab',
   // Triage's carton-list filter (D1, docs/receiving-triage-redesign-plan.md
   // §0.6). A separate param from History's own `q` (kept independent so this
   // change can't touch History's existing q/field/scope deep-link handling).

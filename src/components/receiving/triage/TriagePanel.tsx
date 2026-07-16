@@ -33,6 +33,7 @@ import {
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
+import { StationWorkbench } from '@/components/station/workbench';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -195,75 +196,63 @@ export function TriagePanel({
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
-        <LineEditToolbar
-          mode="triage"
-          receivingId={row.receiving_id ?? null}
-          zohoSyncing={c.zohoSyncing}
-          busy={c.saving || c.platformSaving}
-          copyingAll={c.copyingAll}
-          handlers={{
-            refresh: () => void c.syncWithZoho(),
-            share: () => void c.handleShare(),
-            audit: () => c.setAuditOpen(true),
-            copy: () => void c.handleCopyAll(),
-            photoNote: () => c.setPhotoNoteOpen(true),
-          }}
+      <div className="relative flex h-full min-h-0 flex-col">
+        <StationWorkbench
+          className="h-full"
+          reserveScrollClearance
+          toolbar={
+            <LineEditToolbar
+              mode="triage"
+              receivingId={row.receiving_id ?? null}
+              zohoSyncing={c.zohoSyncing}
+              busy={c.saving || c.platformSaving}
+              copyingAll={c.copyingAll}
+              handlers={{
+                refresh: () => void c.syncWithZoho(),
+                share: () => void c.handleShare(),
+                audit: () => c.setAuditOpen(true),
+                copy: () => void c.handleCopyAll(),
+                photoNote: () => c.setPhotoNoteOpen(true),
+              }}
+            />
+          }
+          children={
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={revealContainer}
+              className="space-y-4"
+            >
+              <WorkflowRecommendationsStrip row={row} surface="triage" />
+
+              <Template
+                row={row}
+                staffId={staffId}
+                c={c}
+                staging={staging}
+                revealItem={revealItem}
+                onItemDescFeedback={handleItemDescFeedback}
+                onItemDescSaved={handleItemDescSaved}
+              />
+
+              <motion.div variants={revealItem}>
+                <WorkspaceNotesCard row={row} c={c} onActionFeedback={setActionFeedback} />
+              </motion.div>
+
+              <WorkspaceActionFeedbackSlot
+                feedback={actionFeedback}
+                onDismiss={() => setActionFeedback(null)}
+              />
+            </motion.div>
+          }
+          dock={<StationTerminalDock vm={terminalVm} />}
         />
 
-        {/* Scroll surface — owns the centered hero column. Padding-bottom clears
-            the bottom sticky "Save for unbox" bar so the last card never hides. */}
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={revealContainer}
-            className="mx-auto w-full min-w-0 max-w-3xl space-y-4 px-4 py-5 pb-32 sm:px-6"
-          >
-            {/* Intake-kind fork — PO (+ UNKNOWN) vs Return template. Both compose
-                the same underlying cards (pairing hub UNCHANGED); only layout,
-                copy, and the unfound-todo framing differ. No serial scan and no
-                editable lines here — that's the unbox pass. */}
-            <WorkflowRecommendationsStrip row={row} surface="triage" />
-
-            <Template
-              row={row}
-              staffId={staffId}
-              c={c}
-              staging={staging}
-              revealItem={revealItem}
-              onItemDescFeedback={handleItemDescFeedback}
-              onItemDescSaved={handleItemDescSaved}
-            />
-
-            <motion.div variants={revealItem}>
-              <WorkspaceNotesCard row={row} c={c} onActionFeedback={setActionFeedback} />
-            </motion.div>
-
-            {/* Owns its own AnimatePresence (workbenchPane preset) — kept OUTSIDE
-                the stagger so two entrances don't compound. */}
-            <WorkspaceActionFeedbackSlot
-              feedback={actionFeedback}
-              onDismiss={() => setActionFeedback(null)}
-            />
-          </motion.div>
-        </div>
-
-        {/* Terminal action — classification / PO# / pairing already persist on
-            change, so this just confirms the carton is identified and hands it to
-            the unbox queue (clears selection → the rail auto-selects the next). */}
-        <StationTerminalDock vm={terminalVm} />
-
-        {/* Live photo peek — right-edge fanned preview of the carton's captures,
-            updating in real time over Ably. Needs a linked carton for the query. */}
         {row.receiving_id != null ? (
           <ReceivingPhotoPeek
             receivingId={row.receiving_id}
             staffId={Number(staffId) || 0}
             poRef={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || null}
-            // Show every capture on the carton regardless of intent (matches the
-            // header photo-count button and the unbox peek) so the fan appears
-            // whenever the carton has any photos, not only package/door shots.
             photoIntent="all"
           />
         ) : null}

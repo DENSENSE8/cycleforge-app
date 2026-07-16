@@ -14,6 +14,7 @@
  *   - Unbox / Triage → `LineCartonContextSection`
  *   - Testing → `TestingCartonHeader`
  *   - Shipping (active order) → `ShippingEntityContextHeader`
+ *   - Packing (active order) → `PackingEntityContextHeader`
  *
  * Implementation stays under `receiving/workspace/line-edit/` (claim, photos,
  * classify, receiving catalogs). This barrel is the public waist so stations

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -10,16 +10,18 @@ import {
 } from '@/hooks/useZendeskQueries';
 import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
+import { useSupportContext } from '@/hooks/useSupportContext';
+import type { SupportContextBundle } from '@/lib/support/context-types';
 import type { ZendeskComment } from '@/lib/zendesk';
-import { EmptyState, Spinner } from '@/design-system/primitives';
-import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
-import { Link2, Upload } from '@/components/Icons';
+import { EmptyState, IconButton, Spinner } from '@/design-system/primitives';
+import { RightPaneOverlay, RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
+import { Link2, Upload, X } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
 import { SupportChatHeader } from './SupportChatHeader';
 import { SupportChatThread } from './SupportChatThread';
 import { SupportChatComposer } from './SupportChatComposer';
-import { SupportLinkedContext } from './SupportLinkedContext';
+import { SupportContextHub } from '@/components/support/context';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
 
 /** Image attachment urls on a single Zendesk comment (full-res `content_url`). */
@@ -36,9 +38,31 @@ function commentImageUrls(c: ZendeskComment): string[] {
     .filter((u): u is string => Boolean(u));
 }
 
+/** Compact linked-state label for the header Links control. */
+function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): string {
+  if (!bundle) return 'Links';
+  const order = bundle.linkage.order?.orderId?.trim();
+  if (order) {
+    return order.length > 8 ? `…${order.slice(-4)}` : order;
+  }
+  const tracking =
+    bundle.linkage.trackings.find((t) => t.isPrimary)?.tracking ??
+    bundle.linkage.trackings[0]?.tracking ??
+    bundle.linkable?.trackingNumber ??
+    null;
+  if (tracking?.trim()) {
+    const t = tracking.trim();
+    return t.length > 8 ? `…${t.slice(-4)}` : t;
+  }
+  return 'Unlinked';
+}
+
 /**
  * Chat-style ticket detail: sticky header (requester + Zendesk pickers + staff
- * assignment) → scrollable conversation + linked context → sticky composer.
+ * assignment) → scrollable conversation → sticky composer.
+ *
+ * Support Context (Linkage + Team + Activity) lives in a right slide-over opened
+ * from the header — not under the thread — so the Zendesk composer stays alone.
  *
  * Owns ONE photo gallery aggregated across all message attachments + linked
  * photos, so clicking any photo opens the shared in-app PhotoViewerModal (no new
@@ -52,6 +76,8 @@ export function SupportTicketDetail({
   embedded = false,
   /** Carton context for media library “Current carton” tab (unbox / testing). */
   receivingId,
+  /** Hide linked-context strip (when already shown by SupportContextHub). */
+  hideLinkedContext = false,
 }: {
   ticketId: number;
   onBack?: () => void;
@@ -59,6 +85,7 @@ export function SupportTicketDetail({
   hideExternalLink?: boolean;
   embedded?: boolean;
   receivingId?: number;
+  hideLinkedContext?: boolean;
 }) {
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
   const ticket = bundle?.ticket;
@@ -66,6 +93,15 @@ export function SupportTicketDetail({
     ? { comments: bundle.comments, count: bundle.commentsCount, next_page: bundle.commentsNextPage }
     : undefined;
   const photosData = bundle ? { entity: bundle.entity, photos: bundle.photos } : undefined;
+
+  const showContext = !hideLinkedContext;
+  const contextAnchor = useMemo(
+    () => ({ ticket: String(ticketId) }),
+    [ticketId],
+  );
+  const { data: contextBundle } = useSupportContext(contextAnchor, showContext);
+  const [contextOpen, setContextOpen] = useState(false);
+  const contextBadge = contextBadgeFromBundle(contextBundle);
 
   const photoUrls = useMemo(() => {
     const urls: string[] = [];
@@ -142,6 +178,9 @@ export function SupportTicketDetail({
         onBack={onBack}
         hideExternalLink={hideExternalLink}
         compact={embedded}
+        onOpenContext={showContext ? () => setContextOpen(true) : undefined}
+        contextOpen={contextOpen}
+        contextBadge={showContext ? contextBadge : null}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <SupportChatThread
@@ -152,7 +191,6 @@ export function SupportTicketDetail({
           onOpenPhoto={onOpenPhoto}
           compact={embedded}
         />
-        <SupportLinkedContext ticketId={ticketId} onOpenPhoto={onOpenPhoto} compact={embedded} />
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}
       <SupportChatComposer
@@ -162,6 +200,45 @@ export function SupportTicketDetail({
         hideSendBar={embedded}
         receivingId={receivingId}
       />
+
+      {showContext ? (
+        <RightPaneOverlay
+          open={contextOpen}
+          onClose={() => setContextOpen(false)}
+          align="right"
+          anchor="pane"
+          width={420}
+          aria-label="Support context"
+        >
+          <div className="flex h-full min-h-0 flex-col bg-surface-card">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-hairline px-4 py-3">
+              <div>
+                <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
+                  Ticket #{ticketId}
+                </p>
+                <h2 className="text-role-body font-bold tracking-tight text-text-default">
+                  Support context
+                </h2>
+              </div>
+              <IconButton
+                icon={<X className="h-4 w-4" />}
+                ariaLabel="Close support context"
+                onClick={() => setContextOpen(false)}
+                className="-mr-1 -mt-0.5 rounded-lg p-1.5 hover:bg-surface-sunken"
+              />
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <SupportContextHub
+                anchor={contextAnchor}
+                variant={embedded ? 'station' : 'workbench'}
+                defaultSegment="activity"
+                hideCustomerSegment
+                className="h-full rounded-none border-0 shadow-none"
+              />
+            </div>
+          </div>
+        </RightPaneOverlay>
+      ) : null}
 
       {/* Full-panel drop overlay while dragging an OS file over the ticket. */}
       <AnimatePresence>

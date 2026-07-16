@@ -20,7 +20,8 @@ export type ScanType =
   | 'receiving-line'   // L-class — single line within a carton
   | 'serial-unit'      // U-class — one physical unit
   | 'handling-unit'    // H-class — a license-plated box/tray (LPN)
-  | 'manifest';        // KIT-class — a preboxed kit master label (label_manifests)
+  | 'manifest'         // KIT-class — a preboxed kit master label (label_manifests)
+  | 'support-ticket';   // T-class — provider ticket id → /support?ticket=
 
 export interface ScanRoute {
   type: ScanType;
@@ -194,6 +195,18 @@ export function routeScan(raw: string): ScanRoute | null {
   // misread as a bin (section 6 keys on a leading letter).
   const huShort = /^H-(\d+)$/i.exec(value);
   if (huShort) return { type: 'handling-unit',   value, redirect: `/m/h/${huShort[1]}` };
+
+  // T-class — support / claim ticket sticker. Provider ticket id (Zendesk today)
+  // opens the desktop Support queue deep-link. Anchored with the other bare
+  // handles so "T-9395" isn't swallowed by the letter→bin fallback.
+  const ticketShort = /^T-(\d+)$/i.exec(value);
+  if (ticketShort) {
+    return {
+      type: 'support-ticket',
+      value,
+      redirect: `/support?ticket=${ticketShort[1]}`,
+    };
+  }
 
   // KIT-class — a preboxed kit master label (label_manifests). The whole scanned
   // value IS the manifest_uid (KIT-{SKU}-{YYWW}-{SEQ6}); the desktop testing
@@ -583,4 +596,8 @@ export function handlingUnitHandle(id: string | number): string {
 }
 export function repairHandle(id: string | number): string {
   return `REP-${id}`;
+}
+/** Provider ticket id (Zendesk) — ticket-minimal label DataMatrix. */
+export function ticketHandle(id: string | number): string {
+  return `T-${id}`;
 }

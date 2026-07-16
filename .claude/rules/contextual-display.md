@@ -228,6 +228,7 @@ Full recipe: [display/motion-crossfade.md](display/motion-crossfade.md). Auth st
 ## Index of child docs
 
 - **[`display/station.md`](display/station.md)** — Station contract + floor density recipes.
+- **[`display/station-workbench.md`](display/station-workbench.md)** — Unbox-family right-pane anatomy (toolbar → entity → tabs → dock).
 - **[`display/workbench.md`](display/workbench.md)** — Workbench contract; master–detail **and** table/board recipes.
 - **[`display/monitor-and-canvas.md`](display/monitor-and-canvas.md)** — Monitor observe + Canvas graph.
 - **[`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md)** — Rollup block registry (`rollup` density).

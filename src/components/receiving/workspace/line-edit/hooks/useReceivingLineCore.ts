@@ -77,6 +77,9 @@ export function useReceivingLineCore(
   const supportTicketQuery = useEntitySupportTicket({
     lineId: row.id ?? null,
     receivingId: row.receiving_id ?? null,
+    // Pending scan stubs + lineless pre-open must not hit by-entity (negative
+    // hash must never become a fake carton id).
+    enabled: row.receiving_id != null,
   });
   const supportTicket = supportTicketQuery.data ?? null;
   const [listingLink, setListingLink] = useState('');

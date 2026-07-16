@@ -4447,11 +4447,14 @@ export const userReportedIssues = pgTable('user_reported_issues', {
   clientEventId: text('client_event_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Soft-delete tombstone (UIC-4 / 2026-07-16); reads filter deleted_at IS NULL. */
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   orgClientEventUniq: uniqueIndex('ux_user_reported_issues_org_client_event').on(table.organizationId, table.clientEventId),
   orgStatusIdx: index('idx_user_reported_issues_org_status').on(table.organizationId, table.status),
   orgReporterIdx: index('idx_user_reported_issues_org_reporter').on(table.organizationId, table.reporterStaffId),
   orgGithubIdx: index('idx_user_reported_issues_org_github').on(table.organizationId, table.githubIssueNumber),
+  orgLiveIdx: index('idx_user_reported_issues_org_live').on(table.organizationId, table.createdAt, table.id),
 }));
 
 export type UserReportedIssue = typeof userReportedIssues.$inferSelect;

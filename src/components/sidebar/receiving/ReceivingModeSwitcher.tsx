@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Top mode-switcher pills (Incoming · Receiving · Unbox · Local Pickup ·
+ * Top mode-switcher pills (Incoming · Receiving · Unbox · Walk-In ·
  * History) for the receiving sidebar. Hidden when the master-nav dropdown is
  * enabled (it owns mode switching there). Extracted from ReceivingSidebarPanel.
  */

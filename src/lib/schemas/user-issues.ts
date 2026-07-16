@@ -1,6 +1,5 @@
 /**
- * Zod contracts for /api/user-issues read paths (UIC-1).
- * Mutation bodies land with UIC-3.
+ * Zod contracts for /api/user-issues (UIC-1 read + UIC-3 PATCH).
  */
 
 import { z } from 'zod';
@@ -35,3 +34,38 @@ export const ListUserIssuesQuery = z.object({
 });
 
 export type ListUserIssuesQuery = z.infer<typeof ListUserIssuesQuery>;
+
+/**
+ * PATCH body — field edits and/or a status change.
+ * Status changes require `expectedFrom` (optimistic concurrency → 409).
+ */
+export const PatchUserIssueBody = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().min(1).max(4000).optional(),
+    issueType: typeEnum.optional(),
+    status: statusEnum.optional(),
+    expectedFrom: statusEnum.optional(),
+    resolutionCommit: z.string().trim().max(80).nullable().optional(),
+    clientEventId: z.string().trim().min(1).max(80).optional(),
+  })
+  .superRefine((body, ctx) => {
+    const hasFields =
+      body.title !== undefined || body.description !== undefined || body.issueType !== undefined;
+    const hasStatus = body.status !== undefined;
+    if (!hasFields && !hasStatus) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide at least one of title, description, issueType, or status',
+      });
+    }
+    if (hasStatus && body.expectedFrom === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['expectedFrom'],
+        message: 'expectedFrom is required when changing status',
+      });
+    }
+  });
+
+export type PatchUserIssueBody = z.infer<typeof PatchUserIssueBody>;

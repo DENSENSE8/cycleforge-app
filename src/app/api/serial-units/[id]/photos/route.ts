@@ -6,7 +6,8 @@ import { getOrganization } from '@/lib/tenancy/organizations';
 import { getActiveNasBaseUrl, getAllNasBaseUrls } from '@/lib/tenancy/settings';
 import { resolveOperatorNasFolder } from '@/lib/nas-photos-server';
 import { photoContentUrl } from '@/lib/photos/display-url';
-import { attachPhotoWithLegacyUrl, listPhotosForEntity } from '@/lib/photos/service';
+import { attachPhotoWithLegacyUrl, linkPhoto, listPhotosForEntity } from '@/lib/photos/service';
+import { resolveUnitPhotoTypeFromStage } from '@/lib/photos/types';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
@@ -150,8 +151,14 @@ export const POST = withAuth(
           { status: 400 },
         );
       }
-      // 'shipout' (packer captured it at pack) by default; 'prepack' allowed.
+      // Stage is a capture-context hint; photo_type is the SoT constant
+      // (shipout → packer_photo) so timeline buckets stay consistent.
       const stage = String(body.stage || 'shipout').trim() || 'shipout';
+      const photoType = resolveUnitPhotoTypeFromStage(stage);
+      const packerLogIdRaw = Number(body.packerLogId);
+      const packerLogId =
+        Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null;
+      const poRef = String(body.poRef ?? body.orderId ?? '').trim() || null;
 
       // Origin allowlist — same security boundary receiving uses now that we
       // trust a client-supplied URL: it must point at the org's configured NAS
@@ -182,11 +189,27 @@ export const POST = withAuth(
           entityType: 'SERIAL_UNIT',
           entityId: unit.id,
           legacyUrl: url,
-          photoType: stage,
+          photoType,
+          poRef,
           idempotent: true,
         });
         if (attached.created) {
           insertedIds.push(attached.id);
+          // Dual-link to PACKER_LOG when the pack session id is known (unbox
+          // parity: one photo visible on unit timeline AND packer history).
+          if (packerLogId != null) {
+            try {
+              await linkPhoto({
+                organizationId: ctx.organizationId,
+                photoId: attached.id,
+                entityType: 'PACKER_LOG',
+                entityId: packerLogId,
+                linkRole: 'primary',
+              });
+            } catch (err) {
+              console.warn('[serial-unit photos] PACKER_LOG dual-link failed (non-fatal)', err);
+            }
+          }
         }
       }
 
@@ -201,7 +224,13 @@ export const POST = withAuth(
             serial_unit_id: unit.id,
             sku: unit.sku,
             notes: `${insertedIds.length} ${stage} photo${insertedIds.length === 1 ? '' : 's'} captured`,
-            payload: { source: 'serial-unit-photos', stage, photo_ids: insertedIds },
+            payload: {
+              source: 'serial-unit-photos',
+              stage,
+              photo_type: photoType,
+              photo_ids: insertedIds,
+              packer_log_id: packerLogId,
+            },
           }, undefined, ctx.organizationId);
         } catch (err) {
           console.warn('[serial-unit photos] NOTE event failed (non-fatal)', err);

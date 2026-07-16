@@ -339,6 +339,25 @@ function FeedbackBody({
           </span>
         </div>
 
+        {/* Shipping mode: STN ↔ unit/preboxed label pairing cue */}
+        {trackingKey && scanned > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/80 px-2 py-1">
+            <MapPin className="h-3 w-3 shrink-0 text-blue-600" />
+            <span className="text-role-eyebrow uppercase tracking-widest text-blue-700">
+              STN …{getLast4(trackingKey)}
+            </span>
+            <span className="text-role-eyebrow text-blue-400">↔</span>
+            <Barcode className="h-3 w-3 shrink-0 text-emerald-600" />
+            <span className="text-role-eyebrow uppercase tracking-widest text-emerald-700">
+              {scanned} unit{scanned === 1 ? '' : 's'} paired
+            </span>
+          </div>
+        ) : trackingKey && scanned === 0 ? (
+          <div className="mt-2 rounded-md border border-dashed border-border-soft bg-surface-canvas px-2 py-1 text-role-eyebrow uppercase tracking-widest text-text-faint">
+            Scan unit / preboxed label to pair with STN
+          </div>
+        ) : null}
+
         <AnimatePresence initial={false}>
           {lastSerial ? (
             <motion.div

@@ -39,3 +39,16 @@ test('scan-apply does not branch on zoho_pending to fire a background promote', 
     'scan-apply.ts must not act on zoho_pending — promotion is cron + operator-initiated only',
   );
 });
+
+test('scan-apply reconciles pending scan: stub without deferInvalidateUnboxReceivingFeeds', () => {
+  assert.equal(
+    CODE.includes('removePendingScanRailRow'),
+    true,
+    'matched/unmatched unbox paths must drop the t=0 pending rail stub',
+  );
+  assert.equal(
+    CODE.includes('deferInvalidateUnboxReceivingFeeds'),
+    false,
+    'optimistic unbox upsert must not immediately invalidate the Unboxed rail',
+  );
+});
