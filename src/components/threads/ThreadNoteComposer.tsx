@@ -57,7 +57,7 @@ export function ThreadNoteComposer({
         )}
       >
         <textarea
-          ref={ref}
+          ref={ref as React.Ref<HTMLTextAreaElement>}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
@@ -115,11 +115,12 @@ function ThreadRecordToggle({
 }) {
   return (
     <div className="inline-flex rounded-lg bg-surface-sunken p-0.5">
+      {/* ds-raw-button: segmented team-only / on-record toggle, not a Button action */}
       <button
         type="button"
         onClick={() => onChange(false)}
         className={cn(
-          'ds-raw-button inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
           !value
             ? 'bg-surface-card text-violet-700 shadow-sm'
             : 'text-text-soft hover:text-text-muted',
@@ -127,11 +128,12 @@ function ThreadRecordToggle({
       >
         <User className="h-3.5 w-3.5" /> Team only
       </button>
+      {/* ds-raw-button: segmented team-only / on-record toggle, not a Button action */}
       <button
         type="button"
         onClick={() => onChange(true)}
         className={cn(
-          'ds-raw-button inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-role-caption font-bold transition',
           value
             ? 'bg-surface-card text-emerald-700 shadow-sm'
             : 'text-text-soft hover:text-text-muted',

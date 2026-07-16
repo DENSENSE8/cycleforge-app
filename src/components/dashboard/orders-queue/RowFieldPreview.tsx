@@ -125,6 +125,7 @@ export function RowFieldPreview({
   if (editable) {
     return (
       <>
+        {/* ds-raw-button: full-cell inline-edit trigger (owns a ref), not a Button action */}
         <button
           type="button"
           ref={(n) => {

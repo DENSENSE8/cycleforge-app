@@ -14,7 +14,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { History, Search, ChevronRight, X, Trash2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
@@ -124,14 +124,13 @@ export function SearchHistoryWorkspace() {
                       </span>
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
                     </Link>
-                    <button
-                      type="button"
-                      aria-label={`Remove recent search “${entry.query}”`}
+                    <IconButton
+                      size="xs"
+                      ariaLabel={`Remove recent search “${entry.query}”`}
+                      icon={<X className="h-3.5 w-3.5" />}
                       onClick={() => remove(entry.id)}
-                      className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-rose-600 group-hover:opacity-100"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                      className="absolute right-2 text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-rose-600 group-hover:opacity-100"
+                    />
                   </li>
                 );
               })}

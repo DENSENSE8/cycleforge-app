@@ -58,6 +58,7 @@ export function TestingPoItemsSection({
             disabled={c.saving}
             selectedIndex={c.activeSlot}
             autoFocus
+            showSavedChips={false}
           />
         </div>
       );
@@ -99,6 +100,7 @@ export function TestingPoItemsSection({
               expected={line.quantity_expected ?? null}
               disabled={c.saving}
               selectedIndex={c.activeSlotByLine[line.id] ?? 0}
+              showSavedChips={false}
             />
           )}
         />

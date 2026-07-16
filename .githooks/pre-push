@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# Pre-push gate — the local CI mirror. Blocks pushing red code to the remote so
+# `main` stops breaking. Runs the exact same checks CI runs (npm run verify).
+#
+# Wired up automatically by `npm install` (package.json "prepare" sets
+# core.hooksPath to .githooks). To wire it up by hand:
+#   git config core.hooksPath .githooks
+#
+# Deliberate escape (use sparingly, e.g. a docs-only hotfix):
+#   git push --no-verify
+#
+echo "▶ pre-push: running 'npm run verify' (local CI mirror)…"
+echo "  (skip with 'git push --no-verify' — use sparingly)"
+npm run verify

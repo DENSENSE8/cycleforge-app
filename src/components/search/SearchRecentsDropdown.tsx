@@ -14,6 +14,7 @@
 
 import Link from 'next/link';
 import { Clock, Search, ChevronRight, X } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives';
 import { resolveSearchScopeLabel } from '@/lib/search/search-scope-labels';
 import { recentRerunHref, formatRelativeTime, type SearchRecentEntry } from '@/lib/search/search-recents';
 import { cn } from '@/utils/_cn';
@@ -53,6 +54,7 @@ export function SearchRecentsDropdown({
           Recent searches
         </p>
         {onClearAll && (
+          // ds-raw-button: inline eyebrow-text clear action, not a Button
           <button
             type="button"
             onMouseDown={(e) => e.stopPropagation()}
@@ -104,18 +106,17 @@ export function SearchRecentsDropdown({
                 />
               </Link>
               {onRemove && (
-                <button
-                  type="button"
-                  aria-label={`Remove recent search “${entry.query}”`}
+                <IconButton
+                  size="xs"
+                  ariaLabel={`Remove recent search “${entry.query}”`}
+                  icon={<X className="h-3.5 w-3.5" />}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove(entry.id);
                   }}
-                  className="absolute right-2 flex h-6 w-6 items-center justify-center rounded-md text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-text-muted group-hover:opacity-100"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                  className="absolute right-2 text-text-faint opacity-0 transition-opacity hover:bg-surface-sunken hover:text-text-muted group-hover:opacity-100"
+                />
               )}
             </li>
           );

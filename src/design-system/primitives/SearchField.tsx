@@ -251,9 +251,7 @@ export function SearchField({
         type="button"
         onClick={handlePaste}
         className="inline-flex h-4 w-4 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
-        aria-label="Paste from clipboard"
-        title="Paste"
-      >
+        aria-label="Paste from clipboard"      >
         <Clipboard className="h-4 w-4" />
       </button>
     ) : hasValue ? (
@@ -265,9 +263,7 @@ export function SearchField({
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
           className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-text-faint transition-colors duration-100 ease-out hover:bg-surface-sunken hover:text-text-default active:scale-95"
-          aria-label="Clear search"
-          title="Clear"
-        >
+          aria-label="Clear search"        >
           <X className="h-3.5 w-3.5" />
         </button>
       )
@@ -276,9 +272,7 @@ export function SearchField({
         type="button"
         onClick={handlePaste}
         className="inline-flex h-4 w-4 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
-        aria-label="Paste from clipboard"
-        title="Paste"
-      >
+        aria-label="Paste from clipboard"      >
         <Clipboard className="h-4 w-4" />
       </button>
     );

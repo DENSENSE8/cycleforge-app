@@ -85,15 +85,7 @@ export function ShippingHistoryFeedProvider({ techId, children }: ShippingHistor
   );
 }
 
-export function useShippingHistoryFeed(): ShippingHistoryFeedContextValue {
-  const ctx = useContext(ShippingHistoryFeedContext);
-  if (!ctx) {
-    throw new Error('useShippingHistoryFeed must be used within ShippingHistoryFeedProvider');
-  }
-  return ctx;
-}
-
-/** Optional accessor — returns null outside the provider (e.g. legacy embeds). */
+/** Returns the shared feed when inside {@link ShippingHistoryFeedProvider}, else null. */
 export function useShippingHistoryFeedOptional(): ShippingHistoryFeedContextValue | null {
   return useContext(ShippingHistoryFeedContext);
 }

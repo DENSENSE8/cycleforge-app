@@ -3,10 +3,15 @@
  */
 
 import { z } from 'zod';
-import { USER_ISSUE_STATUSES, USER_ISSUE_TYPES } from '@/lib/user-issues/issues';
+import {
+  USER_ISSUE_STATUSES,
+  USER_ISSUE_TYPES,
+  type UserIssueStatus,
+  type UserIssueType,
+} from '@/lib/user-issues/issues';
 
-const statusEnum = z.enum(USER_ISSUE_STATUSES as [string, ...string[]]);
-const typeEnum = z.enum(USER_ISSUE_TYPES as [string, ...string[]]);
+const statusEnum = z.enum(USER_ISSUE_STATUSES as [UserIssueStatus, ...UserIssueStatus[]]);
+const typeEnum = z.enum(USER_ISSUE_TYPES as [UserIssueType, ...UserIssueType[]]);
 
 /** Opaque keyset cursor: `${isoCreatedAt}~${id}`. */
 export function encodeIssueCursor(cursor: { createdAt: string; id: number }): string {
