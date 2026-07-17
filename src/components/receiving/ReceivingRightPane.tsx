@@ -3,9 +3,8 @@
 /**
  * The `/receiving` right-pane column. The History/Incoming table stays mounted
  * (display-toggled) so its cache + scroll survive tab flips; over it the focused
- * line workspace soft-swaps in. Unbox scan opens an optimistic unmatched empty
- * PO-items pane (settle remount) then fills in place — no Opening / Triage
- * skeleton. Triage still uses its own in-flight skeleton.
+ * line workspace soft-swaps in. Unbox uses UnboxLineWorkspace (browse + overlay
+ * crossfade). Triage still uses its own in-flight skeleton + workspace overlay.
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -17,6 +16,7 @@ import { ContextualSelectionBar } from '@/design-system/components/ContextualSel
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { EmptyState } from '@/design-system/primitives';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
+import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
 import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
@@ -32,9 +32,8 @@ import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingD
 
 /**
  * Right-pane empty state per sidebar mode. Keyed by `?mode=` so each mode's copy
- * is structurally tied to that mode (triage's "pick from the Unfound/Prioritize
- * list" prompt is meaningless in Unbox, and vice versa). Modes without an entry
- * (history / incoming are table-only; pickup early-returns) render none.
+ * is structurally tied to that mode. Unbox hosts UnboxLineWorkspace (no empty
+ * state here); history / incoming are table-only.
  */
 const RECEIVING_EMPTY_STATE: Partial<Record<string, { title: string; description: string }>> = {
   triage: {
@@ -82,12 +81,12 @@ export function ReceivingRightPane({
   onCloseIncoming,
   onCloseWorkspace,
 }: ReceivingRightPaneProps) {
-  const showWorkspace = !!workspace && !isTableOnlyMode;
-  // Unbox paints the real unmatched empty PO-items workspace as its in-flight
-  // display (scan-driven remount below). Triage keeps the dedicated skeleton.
+  const isUnboxMode = mode === 'receive';
+  const showWorkspace = !!workspace && !isTableOnlyMode && !isUnboxMode;
+  // Triage keeps the dedicated skeleton for scan-in-flight.
   const showTriageScanLoader =
     !!scanInFlight && scanInFlight.surface === 'triage' && isTriageMode;
-  const emptyState = RECEIVING_EMPTY_STATE[mode];
+  const emptyState = isUnboxMode ? undefined : RECEIVING_EMPTY_STATE[mode];
   // Heavy line-workspace overlay crossfade. Uses the slower, opacity-led
   // `workbenchPaneSettle` (not the snappy `workbenchPane`): a carton→carton swap
   // dissolves — the incoming pane rises + fades in over a static, fading-out
@@ -98,10 +97,10 @@ export function ReceivingRightPane({
   // Triage/Unbox remounts the presence host — the exiting panel is torn down
   // immediately instead of crossfading for ~300ms over the now-visible surface
   // (the bleed). Including `mode` prevents TriagePanel ↔ LineEditPanel ghosting.
-  const workspacePresenceKey = isTableOnlyMode ? 'table-only' : `workspace-${mode}`;
+  const workspacePresenceKey = isTableOnlyMode || isUnboxMode ? 'table-only' : `workspace-${mode}`;
   const workspacePane = useMotionPresence(framerPresence.workbenchPaneSettle);
   const workspaceTransition = useMotionTransition(
-    isTableOnlyMode ? { duration: 0 } : framerTransition.workbenchPaneSettle,
+    isTableOnlyMode || isUnboxMode ? { duration: 0 } : framerTransition.workbenchPaneSettle,
   );
   // Incoming Email-Triage sub-view swap keeps the snappy canonical crossfade —
   // it fades in over the (display:none) table, so there is no second pane to
@@ -115,6 +114,19 @@ export function ReceivingRightPane({
   // below the 45px toggle band.
   const showEmailTriage = isIncomingMode && incomingView === 'email';
   const showTable = isTableOnlyMode && !showEmailTriage;
+
+  if (isUnboxMode) {
+    return (
+      <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <UnboxLineWorkspace
+          staffId={staffId}
+          workspace={workspace}
+          nav={nav}
+          onCloseWorkspace={onCloseWorkspace}
+        />
+      </RightPaneOverlayHost>
+    );
+  }
 
   return (
     <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -149,9 +161,6 @@ export function ReceivingRightPane({
         ) : null}
       </AnimatePresence>
 
-      {/* Idle Unbox right pane — intentionally empty (no skeleton). A real
-          matched/unfound workspace opens only after lookup-po resolves. */}
-
       {/* Empty right pane — per-mode copy from RECEIVING_EMPTY_STATE. */}
       {!isTableOnlyMode && !showWorkspace && !showTriageScanLoader && emptyState ? (
         <div className="absolute inset-0 flex items-center justify-center">
@@ -171,7 +180,7 @@ export function ReceivingRightPane({
         </div>
       ) : null}
 
-      {/* Workspace — overlays everything when a line is active in Receiving.
+      {/* Workspace — overlays everything when a line is active in Triage.
           Scan-driven opens remount the shell (settle animation) so empty-pane
           paint has time to ingest; later row updates (matched fill / unmatched
           receiving_id) change the key when client_event_id / receiving_id

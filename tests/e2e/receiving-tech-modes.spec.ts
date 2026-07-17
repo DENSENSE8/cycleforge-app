@@ -49,21 +49,35 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
     await expect(page.getByText('Application error')).toHaveCount(0);
 
-    // The unbox rail toggle (a HorizontalButtonSlider = role="tablist", pills =
-    // role="tab") exposes Queue · Unboxed · Viewed. "Viewed" is the per-staff
-    // recents rail (receiving_line_views).
+    // The unbox workbench tabs (WorkbenchChromeHeader → TabSwitch = role="tablist",
+    // pills = role="tab") expose Queue · Unboxed · Viewed in the right pane.
+    // "Viewed" is the per-staff recents feed (receiving_line_views).
     await expect(page.getByRole('tab', { name: 'Queue' })).toBeVisible({ timeout: PANEL_TIMEOUT });
     await expect(page.getByRole('tab', { name: 'Unboxed' })).toBeVisible({ timeout: PANEL_TIMEOUT });
     const viewedPill = page.getByRole('tab', { name: 'Viewed' });
     await expect(viewedPill).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // Switching to "Viewed" deep-links ?unboxview=viewed (the recents rail).
+    // Switching to "Viewed" deep-links ?unboxview=viewed (the recents feed).
     await viewedPill.click();
     await expect(page).toHaveURL(/unboxview=viewed/, { timeout: PANEL_TIMEOUT });
 
-    // The unbox workspace auto-selects its top line, so the shared LineEditToolbar
-    // mounts WITHOUT a rail click. Best-effort: when a line is present, assert the
-    // right-pane chrome; tolerate an empty feed (no crash already asserted).
+    // Browse-first: land on the feed; open a line via list click when rows exist.
+    // Switch back to Unboxed (default feed with most rows) then click first option.
+    await page.getByRole('tab', { name: 'Unboxed' }).click();
+    const firstRow = page.getByRole('option').first();
+    const hasRow = await firstRow
+      .waitFor({ state: 'visible', timeout: PANEL_TIMEOUT })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!hasRow) {
+      console.log('[unbox] No feed rows — route chrome + pills asserted, skipping panel.');
+      return;
+    }
+
+    await firstRow.click();
+
+    // Shared LineEditToolbar mounts after a row click.
     const auditBtn = page.getByRole('button', { name: 'View audit log' });
     const opened = await auditBtn
       .first()
@@ -72,7 +86,7 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
       .catch(() => false);
 
     if (!opened) {
-      console.log('[unbox] No line auto-opened — route chrome + pills asserted, skipping panel.');
+      console.log('[unbox] Row click did not open panel — chrome asserted, skipping panel.');
       return;
     }
 

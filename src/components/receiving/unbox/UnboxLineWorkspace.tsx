@@ -1,0 +1,93 @@
+'use client';
+
+/**
+ * Unbox right-pane shell — browse workbench always mounted; focused line
+ * workspace crossfades over it (TestingLineWorkspace pattern). Uses the heavier
+ * `workbenchPaneSettle` preset for carton→carton swaps (Receiving convention).
+ */
+
+import { AnimatePresence, motion } from 'framer-motion';
+import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
+import { UnboxWorkspaceView } from '@/components/receiving/unbox/UnboxWorkspaceView';
+import {
+  framerPresence,
+  framerTransition,
+} from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import { zIndex } from '@/design-system/tokens/z-index';
+import type {
+  NavState,
+  WorkspaceState,
+} from '@/components/receiving/useReceivingWorkspacePane';
+
+interface UnboxLineWorkspaceProps {
+  staffId: string;
+  workspace: WorkspaceState | null;
+  nav: NavState | null;
+  onCloseWorkspace: () => void;
+}
+
+export function UnboxLineWorkspace({
+  staffId,
+  workspace,
+  nav,
+  onCloseWorkspace,
+}: UnboxLineWorkspaceProps) {
+  const panePresence = useMotionPresence(framerPresence.workbenchPaneSettle);
+  const paneTransition = useMotionTransition(framerTransition.workbenchPaneSettle);
+  const row = workspace?.row ?? null;
+  const showOverlay = !!workspace;
+
+  return (
+    <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
+      <div
+        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
+        aria-hidden={showOverlay ? true : undefined}
+        inert={showOverlay ? true : undefined}
+        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
+      >
+        <UnboxWorkspaceView selectedLine={row} />
+      </div>
+
+      <AnimatePresence initial={false} mode="wait">
+        {showOverlay && workspace ? (
+          <motion.div
+            key={
+              workspace.scanDriven
+                ? `scan-${workspace.row.client_event_id ?? workspace.row.tracking_number ?? workspace.row.id}`
+                : `row-${workspace.row.receiving_id ?? workspace.row.id}`
+            }
+            initial={panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel }}
+            className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
+          >
+            <ReceivingLineWorkspace
+              row={workspace.row}
+              staffId={staffId}
+              accordionBootstrap={workspace.accordionBootstrap}
+              nav={nav}
+              variant="unbox"
+              onPrev={() => {
+                window.dispatchEvent(
+                  new CustomEvent('receiving-navigate-table', { detail: 'prev' }),
+                );
+              }}
+              onNext={() => {
+                window.dispatchEvent(
+                  new CustomEvent('receiving-navigate-table', { detail: 'next' }),
+                );
+              }}
+              onClose={onCloseWorkspace}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}

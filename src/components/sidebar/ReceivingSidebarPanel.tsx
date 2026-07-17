@@ -44,7 +44,6 @@ import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSid
 
 import { ReceivingModeSwitcher } from '@/components/sidebar/receiving/ReceivingModeSwitcher';
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
-import { UnboxViewToggle } from '@/components/sidebar/receiving/UnboxViewToggle';
 import { TriageViewToggle } from '@/components/sidebar/receiving/TriageViewToggle';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
 import { TriageMetricsStrip } from '@/components/sidebar/receiving/TriageMetricsStrip';
@@ -201,7 +200,8 @@ export function ReceivingSidebarPanel() {
     submitTrackingScan,
   });
 
-  // ── Rail edit mode (pencil bulk select / delete) ─────────────────────────
+  // ── Rail edit mode (pencil bulk select / delete) — triage sidebar only.
+  // Unbox browse + edit mode live in the right-pane UnboxWorkspaceView.
   const {
     railEditMode,
     railSelectedIds,
@@ -211,7 +211,12 @@ export function ReceivingSidebarPanel() {
     toggleRailSelected,
     setManyRailSelected,
     handleRailBulkDismiss,
-  } = useRailEditMode({ isScanSurface, mode, unboxView, triageView });
+  } = useRailEditMode({
+    isScanSurface: mode === 'triage',
+    mode,
+    unboxView,
+    triageView,
+  });
 
   // External focus trigger — Quick Access chips dispatch `receiving-focus-scan`
   // after navigating so the input is hot even when the panel was already mounted.
@@ -239,7 +244,7 @@ export function ReceivingSidebarPanel() {
     // `relative` anchors the edit-mode SelectionActionBar pinned at the bottom.
     <div className="relative flex h-full min-w-0 flex-col overflow-hidden">
       <RailEditModeProvider
-        active={railEditMode && isScanSurface}
+        active={railEditMode && mode === 'triage'}
         selectedIds={railSelectedIds}
         toggle={toggleRailSelected}
         setMany={setManyRailSelected}
@@ -306,11 +311,7 @@ export function ReceivingSidebarPanel() {
 
             <ReceivingReturnBanner returns={returns} onDismiss={dismissReturn} />
 
-            {/* Pinned sub-view toggles — outside the rail scroll body so pill
-                shadows and row entrance motion are not clipped by overflow. */}
-            {isScanSurface && mode === 'receive' ? (
-              <UnboxViewToggle value={unboxView} onChange={updateUnboxView} />
-            ) : null}
+            {/* Triage sub-view toggles — Unbox tabs live in the right-pane workbench. */}
             {isScanSurface && mode === 'triage' ? (
               <>
                 <TriageViewToggle value={triageView} onChange={updateTriageView} />
@@ -334,9 +335,8 @@ export function ReceivingSidebarPanel() {
               />
             ) : null}
 
-            {/* Rail only — matches TestingSidebarPanel: vertical scroll, no
-                horizontal clip from overflow-auto. */}
-            {isScanSurface ? (
+            {/* Triage rail only — Unbox feed list moved to UnboxWorkspaceView. */}
+            {isScanSurface && mode === 'triage' ? (
               <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
                 <ReceivingRailBody
                   mode={mode}
@@ -359,8 +359,8 @@ export function ReceivingSidebarPanel() {
           </>
         )}
 
-        {/* Edit-mode bulk actions — auto-shows while rows are checked. */}
-        {isScanSurface && railEditMode ? (
+        {/* Edit-mode bulk actions — triage sidebar only. */}
+        {mode === 'triage' && railEditMode ? (
           <ReceivingBulkActionBar
             selectedIds={railSelectedIdList}
             onDismiss={handleRailBulkDismiss}

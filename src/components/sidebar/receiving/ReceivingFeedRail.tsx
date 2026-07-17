@@ -51,6 +51,9 @@ interface ReceivingFeedRailProps {
   scope?: string;
   /** Desktop search text (filters the feed's rows). */
   filterText?: string;
+  /** Hide the TITLE · N eyebrow when workbench chrome owns tabs + select. */
+  hideEyebrow?: boolean;
+  emptyText?: string;
   /** Optional read-only context node under the popover badges (e.g. unfound exception dot). */
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
   /** Optional popover footer action, left of "Open →" (e.g. unfound "Claim"). */
@@ -65,6 +68,8 @@ export function ReceivingFeedRail({
   getRowDisabled,
   scope,
   filterText = '',
+  hideEyebrow = false,
+  emptyText,
   renderPopoverContext,
   renderPopoverActions,
 }: ReceivingFeedRailProps) {
@@ -178,6 +183,8 @@ export function ReceivingFeedRail({
       // same name but its rows aren't the rail's PO list).
       navigateEvent="receiving-navigate-table"
       eyebrowTitle={feed.eyebrowTitle}
+      hideEyebrow={hideEyebrow}
+      emptyText={emptyText}
       autoSelectFirstWhenEmpty={feed.autoSelectFirstWhenEmpty}
       pinSelectedLead={feed.pinSelectedLead}
       staggerRevealMotion={feed.staggerRevealMotion}

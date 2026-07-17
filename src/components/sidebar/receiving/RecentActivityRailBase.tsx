@@ -75,6 +75,9 @@ export interface RecentActivityRailBaseProps {
   eyebrowSuffix?: string;
   /** Right-aligned eyebrow slot (e.g. a refresh button); takes precedence over suffix. */
   eyebrowAction?: ReactNode;
+  /** Hide the TITLE · N eyebrow when workbench chrome owns tabs + select. */
+  hideEyebrow?: boolean;
+  emptyText?: string;
   autoSelectFirstWhenEmpty?: boolean;
   /**
    * Forwarded to the shell. False = strict sort order, no selected-row hoist
@@ -206,6 +209,8 @@ export function RecentActivityRailBase({
   eyebrowTitle,
   eyebrowSuffix,
   eyebrowAction,
+  hideEyebrow = false,
+  emptyText,
   autoSelectFirstWhenEmpty = false,
   pinSelectedLead = true,
   staggerRevealMotion,
@@ -247,6 +252,8 @@ export function RecentActivityRailBase({
       eyebrowTitle={eyebrowTitle}
       eyebrowSuffix={eyebrowSuffix}
       eyebrowAction={eyebrowAction}
+      hideEyebrow={hideEyebrow}
+      emptyText={emptyText}
       autoSelectFirstWhenEmpty={autoSelectFirstWhenEmpty}
       canAutoSelectFirst={
         autoSelectFirstWhenEmpty ? canAutoSelectReceivingRailFirst : undefined
