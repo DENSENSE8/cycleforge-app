@@ -12,12 +12,15 @@ import { cn } from '@/utils/_cn';
 /** Prefetch GCS thumbnails shortly before they enter the scrollport. */
 const THUMB_PREFETCH_MARGIN = '400px 0px';
 
+/** Decoded thumbnails stay warm when list/grid view trees remount. */
+const loadedPhotoUrls = new Set<string>();
+
 /**
  * The single image primitive for every photo-library tile.
  *
- * Thumbnails are signed GCS URLs — we defer the network request until the tile
- * is near the viewport (IntersectionObserver + native `loading="lazy"`) so a
- * page of metadata does not pull every object at once.
+ * Thumbnails use stable same-origin content URLs. Unknown images defer their
+ * request until the tile is near the viewport; previously loaded images render
+ * immediately when list/grid view trees remount.
  */
 export function PhotoThumb({
   src,
@@ -46,8 +49,12 @@ export function PhotoThumb({
   heroId?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [shouldLoad, setShouldLoad] = useState(false);
-  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const imageRef = useRef<HTMLImageElement>(null);
+  const initiallyLoaded = loadedPhotoUrls.has(src);
+  const [shouldLoad, setShouldLoad] = useState(initiallyLoaded);
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(
+    initiallyLoaded ? 'loaded' : 'loading',
+  );
   const reduce = useReducedMotion();
   const heroTransition = useMotionTransition(framerTransition.photoHeroMorph);
   const cover = ratio === 'square' || ratio === 'fill';
@@ -75,7 +82,19 @@ export function PhotoThumb({
   }, [shouldLoad]);
 
   useEffect(() => {
+    if (loadedPhotoUrls.has(src)) {
+      setShouldLoad(true);
+      setStatus('loaded');
+      return;
+    }
     if (!shouldLoad) return;
+
+    const image = imageRef.current;
+    if (image?.complete && image.naturalWidth > 0) {
+      loadedPhotoUrls.add(src);
+      setStatus('loaded');
+      return;
+    }
     setStatus('loading');
   }, [shouldLoad, src]);
 
@@ -116,12 +135,19 @@ export function PhotoThumb({
       ) : shouldLoad ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
+          ref={imageRef}
           src={src}
           alt={alt}
           loading="lazy"
           decoding="async"
-          onLoad={() => setStatus('loaded')}
-          onError={() => setStatus('error')}
+          onLoad={() => {
+            loadedPhotoUrls.add(src);
+            setStatus('loaded');
+          }}
+          onError={() => {
+            loadedPhotoUrls.delete(src);
+            setStatus('error');
+          }}
           className={cn(
             ratio === 'portrait'
               ? 'h-full w-full object-contain'

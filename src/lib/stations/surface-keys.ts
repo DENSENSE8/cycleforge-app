@@ -35,6 +35,7 @@ export const SURFACE_KEYS = [
   'triage',
   'incoming',
   'pickup',
+  'repair',
   'history',
   'pack',
   'test',
@@ -97,10 +98,11 @@ export interface SurfaceDefinition {
  * The closed registry. `Record<SurfaceKey, …>` makes a missing entry a compile
  * error, so a new key in `SURFACE_KEYS` cannot ship without a definition.
  *
- * During the receiving split (Phases 1–2) `unbox`/`triage`/`incoming`/`pickup`/
- * `history` share the legacy `receiving` page_key with distinct mode_keys, so
- * a per-org `station_definitions` row resolves per surface without a schema
- * change. `pack`/`test` keep their own future page_keys.
+ * The receiving-page family — `unbox`/`triage`/`incoming`/`pickup`/`repair`/
+ * `history` — shares the `receiving` page_key with distinct mode_keys, so a
+ * per-org `station_definitions` row resolves per surface without a schema
+ * change. Each is a mode on the receiving rail with its own graduated route.
+ * `pack`/`test` keep their own future page_keys.
  */
 export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   unbox: {
@@ -142,9 +144,13 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     workflowNodeType: 'receiving',
     legacy: { pathname: '/receiving', params: { mode: 'incoming' } },
   },
+  // Local Pickup — a Receiving MODE with its own graduated route, exactly like
+  // Unbox/Triage/Incoming. (It is not a separate "Walk-In station": front-desk
+  // pickup is receiving work, and the operator switches to it from the receiving
+  // mode rail.) Sales lives on the `/walk-in` Sales page, not here.
   pickup: {
     key: 'pickup',
-    label: 'Walk-In',
+    label: 'Local Pickup',
     route: '/pickup',
     archetype: 'workbench',
     permission: 'receiving.view',
@@ -153,6 +159,23 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     scan: null,
     workflowNodeType: 'receiving',
     legacy: { pathname: '/receiving', params: { mode: 'pickup' } },
+  },
+  // Repair intake — the sibling Receiving mode. `/repair` is now a first-class
+  // surface route (it used to redirect to `/pickup?job=repair`, the job-switcher
+  // model that this refactor drops). Gated by `receiving.view` like the rest of
+  // the rail; `repair.*` still gates the repair APIs.
+  repair: {
+    key: 'repair',
+    label: 'Repair',
+    route: '/repair',
+    archetype: 'workbench',
+    permission: 'receiving.view',
+    pageKey: 'receiving',
+    modeKey: 'repair',
+    scan: null,
+    workflowNodeType: 'receiving',
+    // The job-param URL the station model used — kept resolving via a proxy redirect.
+    legacy: { pathname: '/pickup', params: { job: 'repair' } },
   },
   history: {
     key: 'history',

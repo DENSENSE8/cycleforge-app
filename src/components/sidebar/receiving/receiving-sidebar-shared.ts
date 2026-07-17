@@ -12,8 +12,8 @@ import {
   PackageOpen,
   ClipboardList,
   Inbox,
-  List,
   ShoppingCart,
+  Wrench,
 } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -22,13 +22,20 @@ import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pickup';
+export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pickup' | 'repair';
 
-// Sidebar order: Incoming → Receiving (triage/scan) → Unbox → Walk-In → History.
-// Walk-In (id `pickup`) is the front-desk station: Sales / Local Pickup / Repair
-// via `?job=`. Each mode flips the `?mode=` URL param; the bare path (no
+// Sidebar order: Incoming → Receiving (triage/scan) → Unbox → Local Pickup → Repair.
+// Local Pickup + Repair are front-desk receiving work, each its own mode on its
+// own route (`/pickup`, `/repair`) — NOT one "Walk-In" station with a `?job=`
+// switcher. Sales is not a receiving mode; it lives on the Sales page
+// (`/walk-in`). Each mode flips the `?mode=` URL param; the bare path (no
 // `?mode=`) stays the Unbox workspace (id `receive`) for deep-link + realtime
 // back-compat.
+//
+// `history` stays in the TYPE (the `/receiving/history` route is still live and
+// its search/table code reads this mode) but is NOT a rail pill: Inbound History
+// moved off the receiving page to a `/dashboard` mode — plan lane 04. Delete the
+// type member once that cutover lands.
 //
 // `triage` (label "Receiving") is the scan/identify surface that runs BEFORE
 // unboxing: scan a tracking, see found/unfound + expedited/normal verdict, and
@@ -48,8 +55,8 @@ export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'incoming', label: 'Incoming',     icon: Inbox },
   { id: 'triage',   label: 'Receiving',    icon: ClipboardList },
   { id: 'receive',  label: 'Unbox',        icon: PackageOpen },
-  { id: 'pickup',   label: 'Walk-In',      icon: ShoppingCart },
-  { id: 'history',  label: 'History',      icon: List },
+  { id: 'pickup',   label: 'Local Pickup', icon: ShoppingCart },
+  { id: 'repair',   label: 'Repair',       icon: Wrench },
 ];
 
 // ── Carton scratch (localStorage) ───────────────────────────────────────────

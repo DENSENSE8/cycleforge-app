@@ -35,7 +35,7 @@ const DashboardShippedTable = dynamic(
   () => import('@/components/shipped').then((m) => m.DashboardShippedTable),
   { ssr: false, loading: TableFallback },
 );
-const FBAShipmentsTable = dynamic(() => import('@/components/dashboard/FBAShipmentsTable'), {
+const FbaShipmentsTable = dynamic(() => import('@/components/fba/FbaShipmentsTable'), {
   ssr: false,
   loading: TableFallback,
 });
@@ -78,6 +78,8 @@ export function DashboardOrdersView({
               orderView={orderView}
               onSelectView={onSelectView}
               controlsSlotRef={setOutboundControlsEl}
+              selectMode={selectMode}
+              onToggleSelectMode={onToggleSelectMode}
             />
           </div>
         ) : undefined
@@ -99,22 +101,19 @@ export function DashboardOrdersView({
             {orderView === 'shipped' ? (
               <DashboardShippedTable
                 selectMode={selectMode}
-                onToggleSelectMode={onToggleSelectMode}
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : orderView === 'packed' ? (
               <PackedOrdersTable
                 selectMode={selectMode}
-                onToggleSelectMode={onToggleSelectMode}
                 toolbarPortalTarget={outboundControlsEl}
               />
             ) : orderView === 'fba' ? (
-              <FBAShipmentsTable />
+              <FbaShipmentsTable />
             ) : (
               <UnshippedTable
                 strictSearchScope
                 selectMode={selectMode}
-                onToggleSelectMode={onToggleSelectMode}
                 toolbarPortalTarget={outboundControlsEl}
               />
             )}

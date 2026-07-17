@@ -20,7 +20,8 @@ import {
   buildSectionTabs,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
-import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
+import { SupportContextHub } from '@/components/support/context';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { resolveTestingTerminal } from './testing-panel/terminal/testing-terminal';
 import type { TestingView } from './testing-panel/terminal/types';
 import { LineEditToolbar } from '@/components/receiving/workspace/line-edit/LineEditToolbar';
@@ -38,11 +39,11 @@ import { useTestingLineController } from '@/components/tech/hooks/useTestingLine
 import { useTestingPrimaryAction } from './testing-panel/useTestingPrimaryAction';
 import { TestingCartonHeader } from './testing-panel/TestingCartonHeader';
 import type { LabelTypeOption } from './testing-panel/LabelTypeSelect';
-import { TestingTicketReplyCard } from './testing-panel/TestingTicketReplyCard';
 import { TestingPoUnboxingSection } from './testing-panel/TestingPoUnboxingSection';
 import { TestingPanelModals } from './testing-panel/TestingPanelModals';
 import { TestingWorkspaceNotesCard } from './testing-panel/TestingWorkspaceNotesCard';
 import { TestingLabelPreviewCard } from './testing-panel/TestingLabelPreviewCard';
+import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 
 /**
  * Right-pane TESTING display. Anchored on LineEditPanel's composition — the same
@@ -75,10 +76,6 @@ export function TestingPanel({
   const claimTicketId = c.providerTicketId ?? null;
   const claimFailed =
     c.deriveLineVerdict(row.serials ?? []) === 'TESTING_FAILED';
-  const claimReply = useClaimTicketReply({
-    open: claimTicketId != null,
-    ticketId: claimTicketId,
-  });
 
   const unitLabelAvailable = Boolean(c.previewPayload && row.sku);
   const cartonLabelAvailable = Boolean(c.cartonLabelPayload);
@@ -104,6 +101,7 @@ export function TestingPanel({
 
   const hasSkuTabs = Boolean(row.sku && row.id != null);
   const [testingView, setTestingView] = useState<TestingView>('testing');
+  const [ticketBridge, setTicketBridge] = useState<ThreadComposerBridge | null>(null);
   const skuTestingData = useSkuTestingData(
     row.id,
     row.sku ?? '',
@@ -228,20 +226,26 @@ export function TestingPanel({
           ),
         },
         {
-          id: 'claim',
-          label: 'Claim',
+          id: 'ticket',
+          label: 'Ticket',
           icon: Ticket,
-          content: (
-            <TestingTicketReplyCard
-              ticketId={claimTicketId}
-              ticketNumber={claimTicketId ? `#${claimTicketId}` : undefined}
-              ticketUrl={c.zendeskHref}
-              failed={claimFailed}
-              onFileClaim={() => c.setClaimOpen(true)}
-              reply={claimReply}
-              row={row}
-            />
-          ),
+          content:
+            testingView === 'ticket' && (row.id != null || row.receiving_id != null) ? (
+              <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
+                <SupportContextHub
+                  anchor={{
+                    receivingId: row.receiving_id ?? null,
+                    lineId: row.id ?? null,
+                    tracking: row.tracking_number ?? null,
+                  }}
+                  variant="station"
+                  onlySegment="customer"
+                  hideLinkage
+                  onBridgeChange={setTicketBridge}
+                  className="h-full min-h-0 rounded-2xl"
+                />
+              </div>
+            ) : null,
         },
         {
           id: 'timeline',
@@ -264,9 +268,6 @@ export function TestingPanel({
       cartonEditorOpen,
       cartonFace,
       cartonLabelAvailable,
-      claimFailed,
-      claimReply,
-      claimTicketId,
       hasLabel,
       hasSkuTabs,
       hasTimelineTab,
@@ -279,6 +280,7 @@ export function TestingPanel({
       showCartonLabel,
       skuTestingData,
       staffId,
+      testingView,
       timelineSerials,
       togglePairing,
       trackingForTimeline,
@@ -303,9 +305,9 @@ export function TestingPanel({
         primaryDisabled,
         isPrinting: c.isPrinting,
         onPrimary: () => void c.handlePrimary(),
-        claimTicketId,
+        ticketId: claimTicketId,
+        ticketBridge,
         claimFailedNoTicket: claimFailed && claimTicketId == null,
-        claimReply,
         onFileClaim: () => c.setClaimOpen(true),
       }),
     [
@@ -315,12 +317,12 @@ export function TestingPanel({
       c,
       claimTicketId,
       claimFailed,
-      claimReply,
+      ticketBridge,
     ],
   );
 
-  const claimTicketLink =
-    activeTestingView === 'claim' && c.zendeskHref ? (
+  const ticketLink =
+    activeTestingView === 'ticket' && c.zendeskHref ? (
       <ExternalLinkPill href={c.zendeskHref} label="Open ticket in Zendesk" />
     ) : null;
 
@@ -333,45 +335,55 @@ export function TestingPanel({
 
   return (
     <>
-      <StationWorkbench
-        className="h-full"
-        reserveScrollClearance
-        toolbar={
-          <LineEditToolbar
-            mode="testing"
-            receivingId={row.receiving_id ?? null}
-            busy={c.saving || c.isMutating}
-            copyingAll={c.copyingAll}
-            onBackToBrowse={onBackToBrowse}
-            handlers={{
-              refresh: () => void c.syncWithZoho(),
-              share: () => void c.handleShare(),
-              audit: () => c.setAuditOpen(true),
-              pair:
-                row.sku_catalog_id != null
-                  ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
-                  : undefined,
-              copy: () => void c.handleCopyAll(),
-              photoNote: () => c.setPhotoNoteOpen(true),
-            }}
+      <div className="relative isolate flex h-full min-h-0 flex-col bg-surface-canvas">
+        <StationWorkbench
+          className="flex-1"
+          reserveScrollClearance
+          toolbar={
+            <LineEditToolbar
+              mode="testing"
+              receivingId={row.receiving_id ?? null}
+              busy={c.saving || c.isMutating}
+              copyingAll={c.copyingAll}
+              onBackToBrowse={onBackToBrowse}
+              handlers={{
+                refresh: () => void c.syncWithZoho(),
+                share: () => void c.handleShare(),
+                audit: () => c.setAuditOpen(true),
+                pair:
+                  row.sku_catalog_id != null
+                    ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
+                    : undefined,
+                copy: () => void c.handleCopyAll(),
+                photoNote: () => c.setPhotoNoteOpen(true),
+              }}
+            />
+          }
+          entityContext={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
+          tabs={
+            <SectionTabsSlider
+              tabs={testingTabs}
+              value={activeTestingView}
+              onChange={(id) => setTestingView(id as TestingView)}
+              ariaLabel="Testing displays"
+              rightSlot={
+                activeTestingView === 'testing'
+                  ? editPoControl
+                  : (ticketLink ?? undefined)
+              }
+            />
+          }
+          dock={<StationTerminalDock vm={terminalVm} assignedTechId={row.assigned_tech_id} />}
+        />
+
+        {c.activeSerial?.id != null && Number(c.activeSerial.id) > 0 ? (
+          <UnitPackPhotoPeek
+            serialUnitId={Number(c.activeSerial.id)}
+            preferSource="all"
+            showEmptyState={false}
           />
-        }
-        entityContext={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
-        tabs={
-          <SectionTabsSlider
-            tabs={testingTabs}
-            value={activeTestingView}
-            onChange={(id) => setTestingView(id as TestingView)}
-            ariaLabel="Testing displays"
-            rightSlot={
-              activeTestingView === 'testing'
-                ? editPoControl
-                : (claimTicketLink ?? undefined)
-            }
-          />
-        }
-        dock={<StationTerminalDock vm={terminalVm} assignedTechId={row.assigned_tech_id} />}
-      />
+        ) : null}
+      </div>
 
       <TestingPanelModals c={c} row={row} />
     </>

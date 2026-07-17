@@ -67,6 +67,11 @@ export const receivingLinesQuerySchema = z.object({
   hideZohoReceived: z.boolean(),
   /** `?tester=` — raw Number; absent → 0, junk → NaN. */
   testerId: numberish,
+  /** Testing queue partition: forward intake, returns, or both. */
+  returnScope: z.enum(['all', 'standard', 'returns']),
+  /** `view=testing` verdict-time bounds; ISO `YYYY-MM-DD` or empty. */
+  weekStart: z.string(),
+  weekEnd: z.string(),
   includeSerials: z.boolean(),
   /** Universal-Incoming facet params (trimmed + lowercased raw strings). */
   inboundSourceParam: z.string(),
@@ -105,7 +110,16 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     .toUpperCase();
   // Incoming-only: optional PO purchase-date range. ISO YYYY-MM-DD;
   // anything malformed silently no-ops so bookmarks survive.
-  const isISODate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const isISODate = (s: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [year, month, day] = s.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    );
+  };
   const poFromRaw = String(searchParams.get('po_from') || '').trim();
   const poToRaw = String(searchParams.get('po_to') || '').trim();
   const poFrom = isISODate(poFromRaw) ? poFromRaw : '';
@@ -166,6 +180,24 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const hideZohoReceived = (inventoryStatusRaw || zohoStatusRaw) === 'open';
   // view=testing only: scope the recently-tested feed to one staff member.
   const testerId = Number(searchParams.get('tester'));
+  const returnScopeRaw = String(searchParams.get('return_scope') || '').trim().toLowerCase();
+  const returnScope =
+    returnScopeRaw === 'returns'
+      ? 'returns'
+      : returnScopeRaw === 'standard'
+        ? 'standard'
+        : 'all';
+  // Testing History only: verdict-time week range. Camel-case names are the
+  // shared station feed contract; the retired no-view snake-case fallback
+  // (`week_start` / `week_end`) remains ignored.
+  const weekStartRaw = String(searchParams.get('weekStart') || '').trim();
+  const weekEndRaw = String(searchParams.get('weekEnd') || '').trim();
+  const hasTestingWeek =
+    isISODate(weekStartRaw) &&
+    isISODate(weekEndRaw) &&
+    weekStartRaw <= weekEndRaw;
+  const weekStart = hasTestingWeek ? weekStartRaw : '';
+  const weekEnd = hasTestingWeek ? weekEndRaw : '';
   const include     = String(searchParams.get('include') || '').trim().toLowerCase();
   const includeSerials = include.split(',').map((s) => s.trim()).includes('serials');
   // Universal Incoming facets (flag-gated, plan §6).
@@ -198,6 +230,9 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     wantsPrioritySort,
     hideZohoReceived,
     testerId,
+    returnScope,
+    weekStart,
+    weekEnd,
     includeSerials,
     inboundSourceParam,
     incomingLinkParam,

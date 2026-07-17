@@ -13,7 +13,7 @@ export const PHOTO_GRID_DENSITY_ORDER: readonly PhotoGridDensity[] = ['sm', 'md'
 export const PHOTO_GRID_DENSITY_LABELS: Record<PhotoGridDensity, string> = {
   sm: 'Small grid',
   md: 'Medium grid',
-  lg: 'Large grid · full photo',
+  lg: 'Large grid',
 };
 
 export const PHOTO_GRID_DENSITY_STORAGE_KEY = 'photo-grid-density';
@@ -32,12 +32,12 @@ export function photoGridTileRatio(density: PhotoGridDensity): PhotoGridTileRati
   return density === 'lg' ? 'natural' : 'square';
 }
 
-/** Large tiles use the full image; squares use the lighter thumb. */
+/** Library tiles always use the stable, immutable thumbnail route. */
 export function photoGridImageUrl(
   photo: Pick<LibraryPhoto, 'thumbUrl' | 'displayUrl'>,
-  density: PhotoGridDensity,
+  _density: PhotoGridDensity,
 ): string {
-  return density === 'lg' ? photo.displayUrl : photo.thumbUrl;
+  return photo.thumbUrl;
 }
 
 export function photoGridTileProps(

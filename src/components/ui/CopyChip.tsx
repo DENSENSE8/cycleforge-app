@@ -339,7 +339,6 @@ export const PoChip = ({
  */
 export const TrackingChip = ({
   value,
-  display,
   disableCopy,
   width = 'w-fit max-w-full',
   /** When false, renders copy label only — use with a separate leading icon column so rows align across the FBA sidebar. */
@@ -352,7 +351,8 @@ export const TrackingChip = ({
   dense,
 }: {
   value: string;
-  display: string;
+  /** @deprecated Tracking labels are always derived from `value` as last four. */
+  display?: string;
   disableCopy?: boolean;
   /** Tailwind width utilities on the wrapper (sidebar grids need `min-w-0 flex-1`). */
   width?: string;
@@ -362,7 +362,7 @@ export const TrackingChip = ({
 }) => (
   <CopyChip
     value={value}
-    display={resolveChipDisplay(display)}
+    display={resolveChipDisplay(getLast4(value))}
     tone="tracking"
     icon={showIcon ? undefined : null}
     width={width}

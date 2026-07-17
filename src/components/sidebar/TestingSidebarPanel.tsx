@@ -423,7 +423,7 @@ export function TestingSidebarPanel({
       <TechRailSearchBar
         value={railFilter}
         onChange={setRailFilter}
-        placeholder="Filter lines…"
+        placeholder="Filter recent…"
       />
 
       {isMobile ? (

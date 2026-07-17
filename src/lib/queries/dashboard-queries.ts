@@ -207,7 +207,17 @@ export function dashboardShippedWeekQuery({
   });
 }
 
-// Lifecycle row shape (post-migration).
+/**
+ * FBA shipment lifecycle row.
+ *
+ * `due_date` is a **civil date key** (`YYYY-MM-DD`, cast to text in SQL) — a
+ * calendar day with no time. Format it with `formatDateKeyShort`; never reparse
+ * it through `new Date(...)` (date SoT).
+ *
+ * `ready_items` counts every item past PLANNED (TESTED | PACKED |
+ * LABEL_ASSIGNED | SHIPPED) — the route emits the whole progressed set, so the
+ * UI reads one field instead of re-summing per-status counts.
+ */
 export interface FBAShipmentLifecycleRow {
   id: number;
   shipment_ref: string;
@@ -222,34 +232,15 @@ export interface FBAShipmentLifecycleRow {
   assigned_packer_name: string | null;
   total_items: number;
   ready_items: number;
-  labeled_items: number;
-  shipped_items: number;
   total_expected_qty: number;
   total_actual_qty: number;
-  source: 'lifecycle';
 }
 
-// Legacy row shape (pre-migration fallback from the receiving table).
-export interface FBAShipmentLegacyRow {
-  id: number;
-  shipment_ref: string;
-  carrier: string | null;
-  qa_status: string | null;
-  disposition_code: string | null;
-  condition_grade: string | null;
-  needs_test: boolean;
-  assigned_tech_name: string | null;
-  received_at: string | null;
-  source: 'LEGACY';
-}
-
-export type FBAShipmentRow = FBAShipmentLifecycleRow | FBAShipmentLegacyRow;
-
-export async function fetchFbaShipments(): Promise<{ rows: FBAShipmentRow[]; source: string }> {
+export async function fetchFbaShipments(): Promise<{ rows: FBAShipmentLifecycleRow[] }> {
   const res = await fetch('/api/dashboard/fba-shipments?limit=500');
   if (!res.ok) throw new Error('Failed to fetch FBA shipments');
   const data = await res.json();
-  return { rows: Array.isArray(data?.rows) ? data.rows : [], source: data?.source || 'unknown' };
+  return { rows: Array.isArray(data?.rows) ? data.rows : [] };
 }
 
 /** FBA shipment lifecycle board. Matches `FBAShipmentsTable`. */

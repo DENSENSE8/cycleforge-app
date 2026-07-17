@@ -15,7 +15,7 @@
  * (scope_type='SKU') will later supersede the GLOBAL list at the data layer.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Plus, Trash2, Pencil, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -26,6 +26,8 @@ import { GLOBAL_RECEIVING_CHECKLIST } from '@/lib/receiving/global-checklist';
 import type { ChecklistTabBridge } from './terminal/unbox-tab-bridges';
 
 const storageKey = (lineId: number) => `receiving-checklist:${lineId}`;
+
+const EMPTY_CHECKLIST_ITEMS: { id: number; step_label: string }[] = [];
 
 function persistChecked(lineId: number, next: Record<string, boolean>) {
   try {
@@ -46,7 +48,9 @@ export function LineChecklistTab({
 }) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useChecklist('GLOBAL');
-  const items = data?.items ?? [];
+  const items = data?.items ?? EMPTY_CHECKLIST_ITEMS;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [managing, setManaging] = useState(false);
@@ -78,17 +82,17 @@ export function LineChecklistTab({
 
   const checkAll = useCallback(() => {
     const next: Record<string, boolean> = {};
-    for (const it of items) next[it.id] = true;
+    for (const it of itemsRef.current) next[it.id] = true;
     setChecked(next);
     persistChecked(lineId, next);
-  }, [items, lineId]);
+  }, [lineId]);
 
   const uncheckAll = useCallback(() => {
     const next: Record<string, boolean> = {};
-    for (const it of items) next[it.id] = false;
+    for (const it of itemsRef.current) next[it.id] = false;
     setChecked(next);
     persistChecked(lineId, next);
-  }, [items, lineId]);
+  }, [lineId]);
 
   const refresh = useCallback(
     () => queryClient.invalidateQueries({ queryKey: checklistQueryKey('GLOBAL') }),

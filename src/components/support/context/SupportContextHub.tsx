@@ -29,6 +29,7 @@ export interface SupportContextHubProps {
   defaultSegment?: SupportContextSegment;
   /** When true (station Conversation dock), Team pane uses externalSubmit. */
   externalSubmit?: boolean;
+  /** Exposes the active Customer or Team composer to a station terminal dock. */
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   /** Hide the Customer pane chrome send bar (station). */
   embeddedCustomer?: boolean;
@@ -46,6 +47,11 @@ export interface SupportContextHubProps {
   defaultExpanded?: boolean;
   /** Context band: linkage strip only (no Customer | Team | Activity). */
   linkageOnly?: boolean;
+  /**
+   * `card` — self-contained rounded shell (rollup, inline embeds).
+   * `flush` — body only; outer chrome comes from {@link DetailStackRailRegistrar}.
+   */
+  surface?: 'card' | 'flush';
 }
 
 export function SupportContextHub({
@@ -61,7 +67,15 @@ export function SupportContextHub({
   className,
   defaultExpanded = true,
   linkageOnly = false,
+  surface = 'card',
 }: SupportContextHubProps) {
+  const flush = surface === 'flush';
+  const cardShellClass = flush
+    ? 'flex min-h-0 flex-col overflow-hidden'
+    : 'flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm';
+  const linkageShellClass = flush
+    ? 'overflow-hidden'
+    : 'overflow-hidden rounded-2xl border border-border-soft bg-surface-card';
   const { data, isLoading, isError, error } = useSupportContext(anchor);
   const initialSegment =
     onlySegment ??
@@ -126,12 +140,7 @@ export function SupportContextHub({
 
   if (linkageOnly) {
     return (
-      <div
-        className={cn(
-          'overflow-hidden rounded-2xl border border-border-soft bg-surface-card',
-          className,
-        )}
-      >
+      <div className={cn(linkageShellClass, className)}>
         {strip}
       </div>
     );
@@ -165,6 +174,7 @@ export function SupportContextHub({
             bundle={data}
             embedded={embedded}
             receivingId={anchor.receivingId ?? undefined}
+            onBridgeChange={onBridgeChange}
           />
         ) : null}
         {activeSegment === 'team' ? (
@@ -185,12 +195,7 @@ export function SupportContextHub({
   if (isRollup) {
     const ticketLabel = data.ticket?.label;
     return (
-      <div
-        className={cn(
-          'overflow-hidden rounded-2xl border border-border-soft bg-surface-card',
-          className,
-        )}
-      >
+      <div className={cn(linkageShellClass, className)}>
         {/* Linkage (Link ticket / chips) always visible — never behind Open. */}
         {strip}
         <button
@@ -215,12 +220,7 @@ export function SupportContextHub({
   }
 
   return (
-    <div
-      className={cn(
-        'flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm',
-        className,
-      )}
-    >
+    <div className={cn(cardShellClass, className)}>
       {strip}
       {segmentsChrome}
     </div>

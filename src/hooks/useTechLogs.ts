@@ -51,6 +51,8 @@ export interface TechRecord {
 export interface UseTechLogsOptions {
   weekOffset?: number;
   weekRange?: { startStr: string; endStr: string };
+  /** Maximum rows returned; rolling rails use 25 while the week table keeps its larger window. */
+  limit?: number;
   /** When false, skip the fetch (consumer reads from a shared feed instead). */
   enabled?: boolean;
 }
@@ -100,7 +102,12 @@ function prependTechRecordToMatchingWeekCaches(
 }
 
 export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions = {}) {
-  const { weekOffset = 0, weekRange, enabled: enabledOption = true } = options;
+  const {
+    weekOffset = 0,
+    weekRange,
+    limit = 1000,
+    enabled: enabledOption = true,
+  } = options;
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
@@ -110,7 +117,11 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
   const queryKey = [
     'tech-logs',
     techId,
-    { weekStart: weekRange?.startStr ?? '', weekEnd: weekRange?.endStr ?? '' },
+    {
+      weekStart: weekRange?.startStr ?? '',
+      weekEnd: weekRange?.endStr ?? '',
+      limit,
+    },
   ] as const;
 
   const query = useQuery<TechRecord[]>({
@@ -118,7 +129,7 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
     queryFn: async () => {
       const params = new URLSearchParams({
         techId: techId === 'all' ? 'all' : String(techId),
-        limit: '1000',
+        limit: String(limit),
       });
       if (weekRange) {
         params.set('weekStart', weekRange.startStr);

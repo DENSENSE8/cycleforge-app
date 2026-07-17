@@ -16,13 +16,16 @@ import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
 } from '@/components/dashboard/workbench-shell';
+import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
 }
 
-const FBAShipmentsTable = dynamic(() => import('@/components/dashboard/FBAShipmentsTable'), {
+const FbaShipmentsTable = dynamic(() => import('@/components/fba/FbaShipmentsTable'), {
   ssr: false,
   loading: TableFallback,
 });
@@ -41,6 +44,11 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const parsedTechId = parseInt(techId, 10);
+  // Pending reuses the dashboard To Ship selection scope + actions. Keep the
+  // hook on `unshipped` for every tab so the Select pencil stays armed in chrome
+  // even on FBA / History (those tabs simply don't mount a selectable table).
+  const { selectMode, toggleSelectMode, selectedRows, selectionActions } =
+    useDashboardBulkSelection('unshipped');
 
   return (
     <DashboardScrollShell
@@ -54,6 +62,8 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
             tab={shipTab}
             onSelectTab={setShipTab}
             controlsSlotRef={setControlsEl}
+            selectMode={selectMode}
+            onToggleSelectMode={toggleSelectMode}
           />
         </div>
       }
@@ -74,7 +84,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
                   Recommended FBA to ship — work in progress. Use the FBA station for plan, label, and
                   hand-off.
                 </p>
-                <FBAShipmentsTable />
+                <FbaShipmentsTable />
               </div>
             ) : shipTab === 'history' ? (
               <TechTable
@@ -85,12 +95,22 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
             ) : (
               <UnshippedTable
                 strictSearchScope
+                selectMode={selectMode}
                 toolbarPortalTarget={controlsEl}
               />
             )}
           </Suspense>
         </div>
       </div>
+
+      {shipTab === 'pending' ? (
+        <ContextualSelectionBar
+          scope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          rows={selectedRows}
+          actions={selectionActions}
+          pinToViewport
+        />
+      ) : null}
     </DashboardScrollShell>
   );
 }

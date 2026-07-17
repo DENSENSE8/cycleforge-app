@@ -1,15 +1,18 @@
 'use client';
 
 /**
- * URL ⇄ Walk-In job sub-mode on the Receiving Walk-In station (`/pickup`).
+ * URL ⇄ Walk-In job sub-mode on the Walk-In station (`/pickup`).
  * `?job=sales|pickup|repair` (default pickup).
  */
 
 import { useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import type { PermissionString } from '@/lib/auth/permissions-shared';
 import {
   DEFAULT_WALK_IN_JOB,
   parseWalkInJob,
+  WALK_IN_JOB_PERMISSIONS,
   type WalkInJob,
 } from '@/lib/walk-in/jobs';
 
@@ -43,4 +46,20 @@ export function useWalkInJob(): {
   );
 
   return { job, setJob };
+}
+
+/**
+ * Per-job access on top of the route gate. The page is gated on `walk_in.view`;
+ * a job may demand more (Repair → `repair.view`, see `WALK_IN_JOB_PERMISSIONS`).
+ *
+ * Stays permissive until `isLoaded`, so a permitted operator never sees a
+ * denial flash on first paint.
+ */
+export function useWalkInJobAccess(job: WalkInJob): {
+  allowed: boolean;
+  requires: PermissionString | null;
+} {
+  const { has, isLoaded } = useAuth();
+  const requires = WALK_IN_JOB_PERMISSIONS[job];
+  return { allowed: !requires || !isLoaded || has(requires), requires };
 }

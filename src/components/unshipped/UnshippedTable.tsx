@@ -25,10 +25,8 @@ import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queri
 export interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
   testedBy?: number;
-  /** Pencil multi-select: rows render checkboxes; the page owns the action bar. */
+  /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
   selectMode?: boolean;
-  /** Flip select-mode — drives the board's in-toolbar Select toggle. */
-  onToggleSelectMode?: () => void;
   /** Portal board toolbar controls into the dashboard outbound floating row. */
   toolbarPortalTarget?: HTMLElement | null;
 }
@@ -78,7 +76,6 @@ export function UnshippedTable({
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
-  onToggleSelectMode,
   toolbarPortalTarget,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
@@ -316,7 +313,6 @@ export function UnshippedTable({
       loading={query.isLoading}
       searchValue={searchQuery}
       selectMode={selectMode}
-      onToggleSelectMode={onToggleSelectMode}
       onOpenRecord={(record) => {
         dispatchOpenShippedDetails(record, 'queue');
       }}

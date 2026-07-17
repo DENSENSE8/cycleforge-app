@@ -15,6 +15,11 @@ import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
  * {@link useStaffFilter}. Absent param = ALL staff (every surface's default);
  * picking the active staff again clears back to ALL — unless {@link allToken}
  * is set (absent = Me default for the caller; token = explicit all).
+ *
+ * Workbench toolbar SoT: popover `align="end"` (opens left — right edge flush
+ * with the trigger), matching {@link WorkbenchFilterPopover} lane filters and
+ * {@link ColumnConfigButton} `toolbar` variant. Do not pass `align="start"` in
+ * right-side chrome slots.
  */
 export function StaffFilterButton({
   iconOnly = false,
@@ -26,6 +31,10 @@ export function StaffFilterButton({
 }: {
   /** Square icon-only trigger for tight bands (label lives in the tooltip). */
   iconOnly?: boolean;
+  /**
+   * Popover edge alignment. Default `end` = open left (workbench SoT).
+   * Only use `start` when the trigger sits on the far left of a band.
+   */
   align?: 'start' | 'end';
   /** Trigger + reset-row label when All is selected. */
   allLabel?: string;

@@ -26,6 +26,7 @@ const SURFACE_TO_ROUTE_KEY: Record<SurfaceKey, SidebarRouteKey> = {
   triage: 'receiving',
   incoming: 'receiving',
   pickup: 'receiving',
+  repair: 'receiving',
   history: 'receiving',
   pack: 'packer',
   test: 'tech',
@@ -72,7 +73,7 @@ test('every SurfaceKey route round-trips through surfaceForRoute', () => {
 // the same nav key (the proxy 307s them, but a stray SSR/nav render of the legacy
 // path must not fall through to 'unknown').
 test('legacy alias paths resolve to the same nav route-key', () => {
-  assert.equal(getSidebarRouteKey('/receiving'), 'receiving'); // unbox/triage/incoming/pickup/history bucket
+  assert.equal(getSidebarRouteKey('/receiving'), 'receiving'); // unbox/triage/incoming/pickup/repair/history bucket
   assert.equal(getSidebarRouteKey('/packer'), 'packer'); // pack
   assert.equal(getSidebarRouteKey('/tech'), 'tech'); // test
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');

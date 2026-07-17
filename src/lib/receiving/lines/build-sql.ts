@@ -415,7 +415,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   const {
     search, searchField, searchScope, qaFilter, dispFilter, workflowFilter,
     view, deliveryStateFilter, poFrom, poTo,
-    incomingSort, historySort, wantsPrioritySort, testerId, limit, offset,
+    incomingSort, historySort, wantsPrioritySort, testerId, returnScope, weekStart, weekEnd, limit, offset,
     inboundSourceParam, incomingLinkParam, staffFilterRaw, staffFilterId,
   } = input.query;
   const { orgId, viewerStaffId, universalIncoming, applyScannedZohoExclusion } = input;
@@ -428,6 +428,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // (receiving_line_views) this feed returns. `viewedParamIdx` is the $N of the
   // staff_id param once pushed, reused by the WHERE / ORDER BY / SELECT below.
   let viewedParamIdx = 0;
+  let testingTesterParamIdx = 0;
+  let testingWeekStartParamIdx = 0;
+  let testingWeekEndParamIdx = 0;
 
   // org gate FIRST so every dynamic predicate below sits on a tenant-scoped
   // base set (and the shared count query inherits it via the same `where`).
@@ -668,7 +671,15 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     // a tester is supplied we scope to that staff's own tested items. Ordered
     // by rl.updated_at below — the per-verdict line rollup bumps it, so the
     // most recently tested rises to the top.
-    if (Number.isFinite(testerId) && testerId > 0) {
+    if (weekStart && weekEnd) {
+      if (Number.isFinite(testerId) && testerId > 0) {
+        testingTesterParamIdx = idx++;
+        values.push(testerId);
+      }
+      testingWeekStartParamIdx = idx++;
+      testingWeekEndParamIdx = idx++;
+      values.push(weekStart, weekEnd);
+    } else if (Number.isFinite(testerId) && testerId > 0) {
       conditions.push(
         `EXISTS (SELECT 1 FROM testing_results tr
                     WHERE tr.receiving_line_id = rl.id AND tr.tested_by = $${idx})`,
@@ -699,6 +710,11 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
            OR ru.unboxed_at IS NOT NULL
          )`,
     );
+    if (returnScope === 'returns') {
+      conditions.push('COALESCE(r.is_return, false) = true');
+    } else if (returnScope === 'standard') {
+      conditions.push('COALESCE(r.is_return, false) = false');
+    }
     if (Number.isFinite(testerId) && testerId > 0) {
       conditions.push(`rlt.assigned_tech_id = $${idx}`);
       values.push(testerId);
@@ -1005,7 +1021,19 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     ? `, COALESCE(ru.unboxed_at, rt.door_received_at, rl.updated_at, rl.created_at)::text AS needs_test_at`
     : '';
   const testedAggJoin = view === 'testing'
-    ? `LEFT JOIN LATERAL (
+    ? weekStart && weekEnd
+      ? `INNER JOIN (
+            SELECT tr.receiving_line_id,
+                   MAX(tr.created_at) AS tested_at,
+                   COUNT(*) AS tested_count
+            FROM testing_results tr
+            WHERE TRUE
+              ${testingTesterParamIdx ? `AND tr.tested_by = $${testingTesterParamIdx}` : ''}
+              AND tr.created_at >= ($${testingWeekStartParamIdx}::date AT TIME ZONE 'America/Los_Angeles')
+              AND tr.created_at < (($${testingWeekEndParamIdx}::date + 1) AT TIME ZONE 'America/Los_Angeles')
+            GROUP BY tr.receiving_line_id
+         ) tr_agg ON tr_agg.receiving_line_id = rl.id`
+      : `LEFT JOIN LATERAL (
             SELECT MAX(tr.created_at) AS tested_at, COUNT(*) AS tested_count
             FROM testing_results tr
             WHERE tr.receiving_line_id = rl.id
@@ -1297,7 +1325,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
          ) r ON TRUE
          LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
-         LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+         LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id${weekStart && weekEnd ? `\n         ${testedAggJoin}` : ''}
          ${incomingExtrasJoin}
          ${where}`;
 

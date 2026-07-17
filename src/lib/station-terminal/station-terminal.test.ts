@@ -70,9 +70,9 @@ test('resolveTerminalKind: triage (no tabs) → mode-default', () => {
   assert.equal(resolveTerminalKind({ mode: 'triage' }), 'mode-default');
 });
 
-test('resolveTerminalKind: testing tabs → mode-default / claim; timeline hides dock', () => {
+test('resolveTerminalKind: testing tabs → mode-default / ticket; timeline hides dock', () => {
   assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'testing' }), 'mode-default');
-  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'claim' }), 'claim');
+  assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'ticket' }), 'ticket');
   assert.equal(resolveTerminalKind({ mode: 'testing', tabId: 'timeline' }), null);
 });
 
@@ -81,4 +81,9 @@ test('resolveTerminalKind: shipping preview (null tab) → start; active tabs �
   assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: 'ship' }), null);
   assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: 'units' }), null);
   assert.equal(resolveTerminalKind({ mode: 'shipping', tabId: 'timeline' }), null);
+});
+
+test('resolveTerminalKind: pickup item → mode-default; add → add-item', () => {
+  assert.equal(resolveTerminalKind({ mode: 'pickup', tabId: 'item' }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'pickup', tabId: 'add' }), 'add-item');
 });

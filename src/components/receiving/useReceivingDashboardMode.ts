@@ -20,7 +20,6 @@ import {
 
 export interface ReceivingDashboardMode {
   mode: string;
-  isPickupMode: boolean;
   isTriageMode: boolean;
   isHistoryMode: boolean;
   isIncomingMode: boolean;
@@ -49,7 +48,6 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
   const incomingView: IncomingView = searchParams.get('incview') === 'email' ? 'email' : 'pos';
   return {
     mode,
-    isPickupMode: mode === 'pickup',
     isTriageMode: mode === 'triage',
     isHistoryMode,
     isIncomingMode,

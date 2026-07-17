@@ -3,8 +3,8 @@
 /**
  * Resolves the tech dashboard's right-pane mode from the `?view=` URL param.
  * Shipping mode's right pane is the Shipping workspace (Pending · FBA | History
- * via `?ship=`); `view=testing` is the Testing workspace (history browse when
- * no line is selected); anything unrecognised falls through to shipping.
+ * via `?ship=`); `view=testing` is the Testing workspace (Pending · Returns |
+ * History via `?testTab=`); anything unrecognised falls through to shipping.
  * Legacy `view=testing-history` is treated as testing (proxy redirects to
  * `view=testing`).
  */

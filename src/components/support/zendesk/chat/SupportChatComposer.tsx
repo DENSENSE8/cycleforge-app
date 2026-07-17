@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image as ImageIcon, Mail, Paperclip, Send, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -12,6 +12,7 @@ import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { markdownToHtml } from '@/lib/support/markdown';
 import { cn } from '@/utils/_cn';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportPhotoLibraryPicker } from './SupportPhotoLibraryPicker';
 import { ExpandableComposerField } from './ExpandableComposerField';
 
@@ -31,6 +32,7 @@ export function SupportChatComposer({
   seedToken,
   hideSendBar = false,
   receivingId,
+  onBridgeChange,
 }: {
   ticketId: number;
   requesterEmail?: string | null;
@@ -46,8 +48,11 @@ export function SupportChatComposer({
   hideSendBar?: boolean;
   /** Carton context for media library “Current carton” tab. */
   receivingId?: number;
+  /** Exposes the embedded composer to a station terminal dock. */
+  onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
 }) {
   const [body, setBody] = useState('');
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Populate the editor when the parent seeds a draft (AI "Use draft"). Keyed on
   // seedToken so re-using the same text still applies; never clobbers ongoing typing
@@ -66,6 +71,7 @@ export function SupportChatComposer({
   const { data: agents = [] } = useZendeskAgents();
   const { user, has, isLoaded } = useAuth();
   const canBrowseLibrary = isLoaded && has('photos.view');
+  const canPost = !isLoaded || has('integrations.zendesk');
   const staffName = user?.name?.trim() || '';
 
   // Reuse the dropzone hook purely for its file-picker plumbing (the ticket
@@ -133,6 +139,34 @@ export function SupportChatComposer({
       },
     );
   };
+
+  useEffect(() => {
+    if (!onBridgeChange) return;
+    onBridgeChange({
+      hasDraft: body.trim().length > 0,
+      isPublic,
+      submitting: reply.isPending || staging.uploading,
+      canPost,
+      focus: () => {
+        composerRef.current?.focus();
+        composerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      },
+      submit,
+    });
+    return () => onBridgeChange(null);
+    // submit closes over the current draft, visibility, CCs, and staged photos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    onBridgeChange,
+    body,
+    isPublic,
+    reply.isPending,
+    staging.uploading,
+    canPost,
+    ccs,
+    ccInput,
+    staging.staged,
+  ]);
 
   // Contextual QoL microcopy in the footer (the ⌘↵ + formatting hints live in
   // the textarea placeholder, so they're omitted here to avoid duplication).
@@ -284,6 +318,7 @@ export function SupportChatComposer({
         )}
       >
         <ExpandableComposerField
+          inputRef={composerRef}
           value={body}
           onChange={setBody}
           rows={hideSendBar ? 2 : 3}

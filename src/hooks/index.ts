@@ -34,6 +34,11 @@ export type { CameraConfig, CameraHook } from './useCamera';
 export { useChipTooltip, useCopyChip } from './useCopyChip';
 export type { ChipTooltipAnchor, CopyChipBehavior } from './useCopyChip';
 
+export {
+  invalidateSupportContextCaches,
+  useLinkTicketTrackingReference,
+} from './useLinkTicketTrackingReference';
+
 export { useInfiniteScroll } from './useInfiniteScroll';
 export type { InfiniteScrollOptions, InfiniteScrollResult } from './useInfiniteScroll';
 

@@ -9,6 +9,7 @@ import { withAuth } from '@/lib/auth/withAuth';
  *
  * GET /api/tech/logs?weekStart=2026-03-24&weekEnd=2026-03-28
  *   — defaults to the signed-in staff's logs.
+ *   — omit week bounds for a rolling newest-first feed (for station rails).
  *   — admin.view_logs holders can pass ?techId=N to view another tech.
  *   — tech.view holders can pass ?techId=all for org-wide TECH scan history
  *     (Shipping workspace History tab).
@@ -24,8 +25,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   const weekStart = searchParams.get('weekStart') || '';
   const weekEnd = searchParams.get('weekEnd') || '';
-  const limit = Math.min(Number(searchParams.get('limit')) || 500, 2000);
-  const offset = Number(searchParams.get('offset')) || 0;
+  const requestedLimit = Number.parseInt(searchParams.get('limit') || '500', 10);
+  const requestedOffset = Number.parseInt(searchParams.get('offset') || '0', 10);
+  const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 500, 1), 2000);
+  const offset = Math.max(Number.isFinite(requestedOffset) ? requestedOffset : 0, 0);
 
   if (!wantAll && !techId) {
     return NextResponse.json({ error: 'techId is required' }, { status: 400 });
@@ -39,8 +42,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     limit,
     offset,
   });
-  const isCurrentWeek = !weekStart; // no weekStart means current week
-  const cacheTtl = isCurrentWeek ? 60 : 3600; // 30s current week, 1hr historical
+  const isLiveScope = !weekStart;
+  const cacheTtl = isLiveScope ? 60 : 3600;
 
   try {
     const cached = await getCachedJson<unknown[]>('api:tech-logs-v3', cacheKey);
@@ -81,14 +84,32 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const offsetIdx = params.length;
 
     const query = `
+      WITH recent_logs AS MATERIALIZED (
+        SELECT
+          sal.id,
+          sal.activity_type,
+          sal.created_at,
+          sal.staff_id,
+          sal.fnsku,
+          sal.shipment_id,
+          sal.scan_ref,
+          sal.organization_id
+        FROM station_activity_logs sal
+        WHERE sal.station = 'TECH'
+          AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
+          ${staffClause}
+          AND sal.organization_id = $${orgIdx}
+          ${dateWhere}
+        ORDER BY sal.created_at DESC NULLS LAST
+        LIMIT $${limitIdx} OFFSET $${offsetIdx}
+      )
       SELECT
         sal.id,
         sal.id AS source_row_id,
         CASE
           WHEN sal.activity_type = 'FNSKU_SCANNED' THEN 'fba_scan'
-          WHEN sal.activity_type = 'TRACKING_SCANNED' AND EXISTS (
-            SELECT 1 FROM tech_serial_numbers tsn2 WHERE tsn2.context_station_activity_log_id = sal.id LIMIT 1
-          ) THEN 'tech_serial'
+          WHEN sal.activity_type = 'TRACKING_SCANNED'
+            AND COALESCE(serials.has_serials, false) THEN 'tech_serial'
           ELSE 'tech_scan'
         END AS source_kind,
         sal.created_at,
@@ -99,11 +120,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         -- Tracking display: carrier tracking > raw scan > fnsku
         COALESCE(stn.tracking_number_raw, sal.scan_ref, sal.fnsku) AS shipping_tracking_number,
 
-        -- Aggregate serials from TSN rows linked to this SAL
-        (SELECT STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at)
-         FROM tech_serial_numbers tsn
-         WHERE tsn.context_station_activity_log_id = sal.id
-        ) AS serial_number,
+        serials.serial_number,
 
         -- Order data (via shipment_id join)
         ord_match.id AS order_db_id,
@@ -130,17 +147,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         -- FBA log FK (for lifecycle tracking)
         fl.id AS fnsku_log_id,
 
-        EXISTS (
-          SELECT 1
-          FROM tech_serial_numbers tsn_src
-          WHERE tsn_src.context_station_activity_log_id = sal.id
-            AND tsn_src.source_sku_id IS NOT NULL
-        ) AS has_sku_serial_source
+        COALESCE(serials.has_sku_serial_source, false) AS has_sku_serial_source
 
-      FROM station_activity_logs sal
+      FROM recent_logs sal
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
       LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku AND ff.organization_id = sal.organization_id
       LEFT JOIN fba_fnsku_logs fl ON fl.station_activity_log_id = sal.id
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) > 0 AS has_serials,
+          STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at) AS serial_number,
+          COALESCE(BOOL_OR(tsn.source_sku_id IS NOT NULL), false) AS has_sku_serial_source
+        FROM tech_serial_numbers tsn
+        WHERE tsn.context_station_activity_log_id = sal.id
+      ) serials ON TRUE
       LEFT JOIN LATERAL (
         SELECT
           o.id,
@@ -224,14 +244,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         LIMIT 1
       ) wa_d ON ord_match.id IS NOT NULL
 
-      WHERE sal.station = 'TECH'
-        AND sal.activity_type IN ('TRACKING_SCANNED', 'FNSKU_SCANNED')
-        ${staffClause}
-        AND sal.organization_id = $${orgIdx}
-        ${dateWhere}
-
       ORDER BY sal.created_at DESC NULLS LAST
-      LIMIT $${limitIdx} OFFSET $${offsetIdx}
     `;
 
     const result = await tenantQuery(orgId, query, params);

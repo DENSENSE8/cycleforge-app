@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
@@ -24,6 +25,8 @@ import { sumDaySectionCounts } from '@/components/station/station-table-logic';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, type StationLayout } from '@/lib/station/table-url-params';
 import { useStationReconnectSync } from '@/hooks/station/useStationReconnectSync';
+import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
+import { formatWeekRangeCompact } from '@/utils/date';
 
 /**
  * `StationHistoryTable<T>` — the Phase-2 cutover shell for the Tech / Packer
@@ -63,6 +66,8 @@ export interface StationHistoryTableProps<T> {
   emptyMessage: string;
   /** Teaching first-run empty (zero rows, no active filter). */
   firstRunEmpty?: ReactNode;
+  /** Portal display controls into the owning workspace chrome. */
+  toolbarPortalTarget?: HTMLElement | null;
   /** Pipeline (board) config — enables the Pipeline/All toggle (behind
    *  `NEXT_PUBLIC_STATION_PIPELINE_BOARDS`). Records are the flat, unbanded set;
    *  the board buckets + day-bands per lane. Omit → no board toggle. */
@@ -109,6 +114,7 @@ export function StationHistoryTable<T>({
   savedViewsParamKeys,
   emptyMessage,
   firstRunEmpty,
+  toolbarPortalTarget = null,
   pipeline,
   selection,
 }: StationHistoryTableProps<T>) {
@@ -233,6 +239,12 @@ export function StationHistoryTable<T>({
     [searchParams, router, pathname],
   );
 
+  const optionsMenu = (
+    <TableOptionsMenu
+      layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
+      savedViews={{ storageKey: savedViewsStorageKey, paramKeys: savedViewsParamKeys }}
+    />
+  );
   const headerControls = (
     <div className="flex items-center gap-2">
       {selection ? (
@@ -244,12 +256,18 @@ export function StationHistoryTable<T>({
           <Pencil className="h-3.5 w-3.5" />
         </ToolbarButton>
       ) : null}
-      <TableOptionsMenu
-        layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
-        savedViews={{ storageKey: savedViewsStorageKey, paramKeys: savedViewsParamKeys }}
-      />
+      {toolbarPortalTarget ? null : optionsMenu}
     </div>
   );
+  const portaledControls = toolbarPortalTarget
+    ? createPortal(
+        <div className="flex items-center gap-2">
+          <ColumnConfigButton variant="toolbar" />
+          {optionsMenu}
+        </div>,
+        toolbarPortalTarget,
+      )
+    : null;
 
   // Bulk-action bar — pinned to the bottom of the table's relative region when
   // rows are selected. Copy-TSV + clear (Phase 7 §5.4).
@@ -282,6 +300,7 @@ export function StationHistoryTable<T>({
   return (
     <TableColumnConfigProvider tableId={tableId}>
       <TableDensityProvider tableId={tableId}>
+        {portaledControls}
         {boardEnabled && layout === 'board' && pipeline ? (
           <StationPipelineBoard<T, string>
             prefsKey={pipeline.prefsKey}
@@ -293,7 +312,20 @@ export function StationHistoryTable<T>({
             getRowKey={getRowKey}
             toDaySections={pipeline.toDaySections}
             getRowDate={pipeline.getRowDate}
-            headerStartSlot={<ColumnConfigButton variant="toolbar" />}
+            headerStartSlot={
+              <div className="flex items-center gap-2">
+                <DateRangePickerPill
+                  label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+                  count={totalCount}
+                  weekNav={{
+                    weekOffset,
+                    onPrev: onPrevWeek,
+                    onNext: onNextWeek,
+                  }}
+                />
+                {toolbarPortalTarget ? null : <ColumnConfigButton variant="toolbar" />}
+              </div>
+            }
             headerEndSlot={headerControls}
           />
         ) : (
@@ -319,7 +351,7 @@ export function StationHistoryTable<T>({
               getRowKey={getRowKey}
               virtualized={virtualized}
               scrollToKey={focusedKey}
-              headerColumnsSlot={<ColumnConfigButton iconOnly />}
+              headerColumnsSlot={toolbarPortalTarget ? undefined : <ColumnConfigButton iconOnly />}
               headerEndSlot={headerControls}
               emptyMessage={emptyMessage}
               firstRunEmpty={firstRunEmpty}

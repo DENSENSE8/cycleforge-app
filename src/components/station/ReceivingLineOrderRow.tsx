@@ -27,6 +27,7 @@ import {
 import { fmtShortTs } from '@/components/station/receiving-lines-table-helpers';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import type { ReceivingLineRow } from './receiving-line-row';
+import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
 
 export function ReceivingLineOrderRow({
   row,
@@ -72,11 +73,9 @@ export function ReceivingLineOrderRow({
   const skuValue = (row.sku || '').trim();
   const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
   // Join all serials so SerialChip's CSV-aware helper picks the most recent and
-  // shows its last 6 chars. Clipboard carries the full list for traceability.
-  const serialsCsv = (row.serials ?? [])
-    .map((s) => (s.serial_number || '').trim())
-    .filter(Boolean)
-    .join(', ');
+  // shows its last 6 chars. Return-intake fallback rows retain their scanned
+  // identity in the generated title until the serial projection catches up.
+  const serialsCsv = resolveReceivingLineSerialsCsv(row);
 
   return (
     <div

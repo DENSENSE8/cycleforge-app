@@ -4,12 +4,10 @@
  * (title / qty·condition) — not the old order ship-out chrome.
  */
 
-import type { ReactNode } from 'react';
 import type { TechRecord } from '@/hooks/useTechLogs';
 import { hasUsableProductTitle } from '@/hooks/station/useTechTableController';
 import { normalizeProductTitle } from '@/components/station/tech-record-mappers';
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
-import { getOrderIdLast4 } from '@/utils/upnext-helpers';
 import {
   resolveStationSource,
   SOURCE_DOT_BG,
@@ -59,33 +57,8 @@ export function techRecordToRailVM(record: TechRecord): RailRowVM {
   const title = techRecordRailTitle(record);
   const qty = Math.max(1, parseInt(String(record.quantity || '1'), 10) || 1);
   const condition = conditionLabel(record);
-  const shortId = record.order_id ? getOrderIdLast4(record.order_id) : null;
-  const channel = (record.account_source || '').trim() || null;
-  const fnsku = String(record.fnsku || '').trim();
-
-  let eyebrow: ReactNode | undefined;
-  if (fnsku) {
-    eyebrow = (
-      <>
-        <span className="font-mono font-bold text-text-muted truncate">{fnsku}</span>
-        <span className="text-text-faint">·</span>
-        <span className="truncate">FBA</span>
-      </>
-    );
-  } else if (shortId || channel) {
-    eyebrow = (
-      <>
-        {shortId ? (
-          <span className="font-mono font-bold text-text-muted">#{shortId}</span>
-        ) : null}
-        {shortId && channel ? <span className="text-text-faint">·</span> : null}
-        {channel ? <span className="truncate">{channel}</span> : null}
-      </>
-    );
-  }
 
   return {
-    eyebrow,
     title,
     meta: (
       <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">

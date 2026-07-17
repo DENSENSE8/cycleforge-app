@@ -1,11 +1,11 @@
-import type { UseClaimTicketReply } from '@/components/receiving/workspace/claim/hooks/useClaimTicketReply';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 
 export type TestingView =
   | 'testing'
   | 'pairing'
   | 'checklist'
   | 'manuals'
-  | 'claim'
+  | 'ticket'
   | 'timeline';
 
 export interface TestingTerminalInput {
@@ -14,10 +14,11 @@ export interface TestingTerminalInput {
   primaryDisabled: boolean;
   isPrinting: boolean;
   onPrimary: () => void | Promise<void>;
-  /** Linked Zendesk ticket id — when set on claim tab, dock becomes Send/Add note. */
-  claimTicketId?: number | null;
+  /** Linked customer ticket rendered by the shared SupportContextHub. */
+  ticketId?: number | null;
+  /** Shared ticket composer bridge used by the station terminal dock. */
+  ticketBridge?: ThreadComposerBridge | null;
   /** Failed testing with no ticket — dock becomes File claim. */
   claimFailedNoTicket?: boolean;
-  claimReply?: UseClaimTicketReply | null;
   onFileClaim?: () => void;
 }

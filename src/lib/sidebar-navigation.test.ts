@@ -10,6 +10,7 @@ import {
   getSidebarHref,
   getSidebarRouteKey,
   applyModeTarget,
+  permissionForPath,
   resolveSidebarMode,
 } from '@/lib/sidebar-navigation';
 
@@ -55,8 +56,8 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   assert.equal(navIds.includes('dashboard'), true);
   // FBA / inventory / studio / etc. are parked off prod nav (dogfood surface).
   assert.equal(navIds.includes('fba'), false);
-  // /repair is routed onto the 'walk-in' nav entry — there's no standalone
-  // sidebar item for it.
+  // /repair is a Receiving mode route now; the front-desk history page (Sales)
+  // keeps the 'walk-in' nav id.
   assert.equal(navIds.includes('walk-in'), true);
 });
 
@@ -259,10 +260,12 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // Pickup + History graduated to their own routes (Phase 9) — resolved path-based
   // (`/receiving/history` must beat the `/receiving` params fall-through), while the
   // legacy `?mode=` deep-links still resolve for back-compat.
+  // Local Pickup + Repair are receiving modes, each on its own graduated route.
   assert.equal(resolveSidebarMode('receiving', at('/pickup')), 'pickup');
-  assert.equal(resolveSidebarMode('receiving', at('/receiving/history')), 'history');
-  assert.equal(resolveSidebarMode('receiving', at('/receiving/history', 'q=abc')), 'history');
+  assert.equal(resolveSidebarMode('receiving', at('/repair')), 'repair');
+  assert.equal(resolveSidebarMode('receiving', at('/receiving', 'mode=repair')), 'repair');
   assert.equal(getSidebarRouteKey('/pickup'), 'receiving');
+  assert.equal(getSidebarRouteKey('/repair'), 'receiving');
   assert.equal(getSidebarRouteKey('/receiving/history'), 'receiving');
   // FBA sub-modes live under Outbound as fbaMode (legacy mode=plan still works).
   assert.equal(resolveSidebarMode('fba', at('/outbound', 'mode=fba')), 'combine');
@@ -289,7 +292,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
-  // Walk-In history categories
+  // Sales (former Walk-In main) — transaction-history categories.
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in')), 'repairs');
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=sales')), 'sales');
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=pickups')), 'pickups');

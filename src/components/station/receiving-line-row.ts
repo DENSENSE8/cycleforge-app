@@ -143,6 +143,8 @@ export interface ReceivingLineRow {
   updated_at?: string | null;
   /** Most-recent scan/receive time. Server sorts view=recent/all by this. */
   last_activity_at?: string | null;
+  /** Latest verdict time in the active Testing History scope (tester + week). */
+  tested_at?: string | null;
   /** Door-scan ("scanned at") timestamp — receiving.received_at (view=recent/all/received). */
   received_at?: string | null;
   /** Staff who recorded the door scan (receiving.received_by → staff.name). */

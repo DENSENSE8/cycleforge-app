@@ -28,6 +28,8 @@ interface LinkedTicketsPanelProps {
    * where only a returned serial resolves — so the panel stays silent otherwise.
    */
   hideWhenEmpty?: boolean;
+  /** Host already owns ticket identity (e.g. Support Context header/actions). */
+  hideTickets?: boolean;
   className?: string;
 }
 
@@ -61,6 +63,7 @@ export function LinkedTicketsPanel({
   serial,
   dense = false,
   hideWhenEmpty = false,
+  hideTickets = false,
   className = '',
 }: LinkedTicketsPanelProps) {
   const dOrder = useDebounced((order ?? '').trim());
@@ -163,34 +166,36 @@ export function LinkedTicketsPanel({
           </div>
 
           {/* Linked Zendesk tickets */}
-          {(data?.tickets ?? []).length === 0 ? (
-            <div className="text-role-caption text-text-faint">No linked tickets.</div>
-          ) : (
-            <ul className="divide-y divide-border-hairline">
-              {(data?.tickets ?? []).map((tk) => (
-                <li key={tk.zendeskTicketId ?? tk.supportTicketId ?? tk.label} className="flex items-center gap-2 py-1.5">
-                  <HoverTooltip label={tk.status ?? 'unknown status'} asChild focusable={false}>
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(tk.status)}`} />
-                  </HoverTooltip>
-                  {tk.openUrl ? (
-                    <a
-                      href={tk.openUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="shrink-0"
-                    >
+          {!hideTickets ? (
+            (data?.tickets ?? []).length === 0 ? (
+              <div className="text-role-caption text-text-faint">No linked tickets.</div>
+            ) : (
+              <ul className="divide-y divide-border-hairline">
+                {(data?.tickets ?? []).map((tk) => (
+                  <li key={tk.zendeskTicketId ?? tk.supportTicketId ?? tk.label} className="flex items-center gap-2 py-1.5">
+                    <HoverTooltip label={tk.status ?? 'unknown status'} asChild focusable={false}>
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(tk.status)}`} />
+                    </HoverTooltip>
+                    {tk.openUrl ? (
+                      <a
+                        href={tk.openUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0"
+                      >
+                        <TicketChip value={tk.label} display={tk.label} />
+                      </a>
+                    ) : (
                       <TicketChip value={tk.label} display={tk.label} />
-                    </a>
-                  ) : (
-                    <TicketChip value={tk.label} display={tk.label} />
-                  )}
-                  {tk.subject && (
-                    <span className="truncate text-role-caption text-text-muted">{tk.subject}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                    )}
+                    {tk.subject && (
+                      <span className="truncate text-role-caption text-text-muted">{tk.subject}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : null}
         </div>
       )}
     </section>

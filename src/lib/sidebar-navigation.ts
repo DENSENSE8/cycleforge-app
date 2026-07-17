@@ -20,7 +20,6 @@ import {
   Layout,
   LayoutDashboard,
   Link2,
-  List,
   MapPin,
   MessageSquare,
   Monitor,
@@ -120,6 +119,7 @@ const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/triage',
   '/incoming',
   '/pickup',
+  '/repair',
   '/pack',
   '/packer',
   '/outbound',
@@ -152,7 +152,13 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'home',              label: 'Home',        href: '/',                   icon: Layout,          kind: 'main',    parkedSurface: 'home' },
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view' },
   { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
-  { id: 'walk-in',           label: 'Walk-In',     href: '/walk-in',            icon: ShoppingCart,    kind: 'main',    requires: 'walk_in.view' },
+  // Front-desk commerce — the overall transaction history (Sales · Pickups ·
+  // Repairs categories) plus the sales cart. Renamed from "Walk-In" in the
+  // FOH/BOH split: the *work* (Local Pickup, Repair) is now Receiving modes, so
+  // this page keeps the commerce/history side and owns the Sales job. `id` stays
+  // `walk-in` for bookmark/test stability (id migration is a later pass — see
+  // the plan's Overlap register, "Nav id rename").
+  { id: 'walk-in',           label: 'Sales',       href: '/walk-in',            icon: ShoppingCart,    kind: 'main',    requires: 'walk_in.view' },
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
   // surface — so the primary nav lands on the canonical URL without a redirect
@@ -241,11 +247,16 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/unbox' || pathname.startsWith('/unbox/')) return 'receiving';
   if (pathname === '/triage' || pathname.startsWith('/triage/')) return 'receiving';
   if (pathname === '/incoming' || pathname.startsWith('/incoming/')) return 'receiving';
+  // Local Pickup + Repair are Receiving MODES (not a separate station), so
+  // `/pickup` stays on the receiving key — that's what mounts the receiving
+  // sidebar + its mode rail.
   if (pathname === '/pickup' || pathname.startsWith('/pickup/')) return 'receiving';
   // `/receiving/history` (+ every other receiving sub-route) resolves here too.
   if (pathname === '/receiving' || pathname.startsWith('/receiving/')) return 'receiving';
   if (pathname === '/walk-in' || pathname.startsWith('/walk-in/')) return 'walk-in';
-  if (pathname === '/repair' || pathname.startsWith('/repair/')) return 'walk-in';
+  // Repair is a Receiving mode with its own route — it mounts the receiving
+  // sidebar + rail, not the Sales page's.
+  if (pathname === '/repair' || pathname.startsWith('/repair/')) return 'receiving';
   if (pathname === '/replenish' || pathname.startsWith('/replenish/')) return 'replenish';
   if (pathname === '/products' || pathname.startsWith('/products/')) return 'products';
   if (pathname === '/warehouse' || pathname.startsWith('/warehouse/')) return 'warehouse';
@@ -319,7 +330,10 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/o',                  permission: 'dashboard.view' },
   { prefix: '/fba',                permission: 'fba.view' },
   { prefix: '/walk-in',            permission: 'walk_in.view' },
-  { prefix: '/repair',             permission: 'repair.view' },
+  // Repair + Local Pickup are Receiving modes — same gate as the rest of the
+  // rail. The `repair.*` tech permissions still gate the repair APIs; they no
+  // longer gate the UI (a receiving operator works the whole rail).
+  { prefix: '/repair',             permission: 'receiving.view' },
   { prefix: '/receiving',          permission: 'receiving.view' },
   // `/unbox` + `/triage` + `/incoming` are first-class receiving surfaces (same gate).
   { prefix: '/unbox',              permission: 'receiving.view' },
@@ -427,7 +441,7 @@ const OPERATIONS = '/operations';
 const UNBOX = '/unbox';
 const TRIAGE = '/triage';
 const PICKUP = '/pickup';
-const RECEIVING_HISTORY = '/receiving/history';
+const REPAIR = '/repair';
 const INCOMING = '/incoming';
 const INVENTORY = '/inventory';
 const WAREHOUSE = '/warehouse';
@@ -509,22 +523,25 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // Unbox now lives at its own route (`/unbox`); dropping `mode` avoids a
       // stale `?mode=` riding onto the surface path.
       { id: 'receive',  label: 'Unbox',        icon: PackageOpen,    to: () => ({ pathname: UNBOX, params: { mode: null } }) },
-      // Walk-In station (graduated `/pickup`) — Sales / Local Pickup / Repair via `?job=`.
-      { id: 'pickup',   label: 'Walk-In',      icon: ShoppingCart,   to: () => ({ pathname: PICKUP, params: { mode: null } }) },
-      { id: 'history',  label: 'History',      icon: List,           to: () => ({ pathname: RECEIVING_HISTORY, params: { mode: null } }) },
+      // Front-desk receiving work — two sibling modes, each on its own route.
+      // (They were briefly one "Walk-In" station with a `?job=` switcher; that
+      // model is gone — the jobs ARE modes. Sales lives on the Sales page.)
+      { id: 'pickup',   label: 'Local Pickup', icon: ShoppingCart,   to: () => ({ pathname: PICKUP, params: { mode: null, job: null } }) },
+      { id: 'repair',   label: 'Repair',       icon: Wrench,         to: () => ({ pathname: REPAIR, params: { mode: null, job: null } }) },
+      // History is NOT a receiving mode — it graduated to a `/dashboard` mode
+      // (plan lane 04). `/receiving/history` still resolves until that lands.
     ],
     resolveMode: ({ pathname, params }) => {
       // The graduated surface routes resolve path-based (consistent with
-      // Inventory's graph/triage/pulse), regardless of params. `/receiving/history`
-      // is checked before the bare-route params fall-through.
-      if (pathname === RECEIVING_HISTORY || pathname.startsWith(`${RECEIVING_HISTORY}/`)) return 'history';
+      // Inventory's graph/triage/pulse), regardless of params.
       if (pathname === UNBOX || pathname.startsWith(`${UNBOX}/`)) return 'receive';
       if (pathname === TRIAGE || pathname.startsWith(`${TRIAGE}/`)) return 'triage';
       if (pathname === INCOMING || pathname.startsWith(`${INCOMING}/`)) return 'incoming';
       if (pathname === PICKUP || pathname.startsWith(`${PICKUP}/`)) return 'pickup';
+      if (pathname === REPAIR || pathname.startsWith(`${REPAIR}/`)) return 'repair';
       const m = params.get('mode');
       if (m === 'pickup') return 'pickup';
-      if (m === 'history') return 'history';
+      if (m === 'repair') return 'repair';
       if (m === 'incoming') return 'incoming';
       if (m === 'triage') return 'triage';
       return 'receive';
@@ -673,12 +690,15 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   },
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the
   // station UX is ready for general rollout. Route + `tech.data_wipe` gate remain.
-  // ── Walk-In (history Monitor — tasks live on Receiving Walk-In `/pickup`) ─
-  // `?category=repairs|sales|pickups` (default repairs). Station deep-links:
-  // `/pickup?job=sales|pickup|repair`. Legacy `?mode=sales` / `?new=true` /
-  // `?openRepair=` redirect to the station from the page itself.
+  // ── Sales (front-desk transaction-history Monitor) ────────────────────────
+  // Formerly "Walk-In". Intake/processing lives on the Walk-In station
+  // (`/pickup?job=sales|pickup|repair`); this page is the observe side — one
+  // overall transaction history hosting the Sales · Pickups · Repairs
+  // categories. `?category=repairs|sales|pickups` (default repairs). Legacy
+  // `?mode=sales` / `?new=true` / `?openRepair=` redirect to the station from
+  // the page itself (`useWalkInTaskRedirect`).
   {
-    id: 'walk-in', label: 'Walk-In', href: WALK_IN, icon: ShoppingCart, kind: 'main', requires: 'walk_in.view',
+    id: 'walk-in', label: 'Sales', href: WALK_IN, icon: ShoppingCart, kind: 'main', requires: 'walk_in.view',
     modes: [
       { id: 'repairs',  label: 'Repairs',  icon: Wrench,     to: () => ({ pathname: WALK_IN, params: { category: null, mode: null, tab: null } }) },
       { id: 'sales',    label: 'Sales',    icon: DollarSign, to: () => ({ pathname: WALK_IN, params: { category: 'sales', mode: null, tab: null } }) },

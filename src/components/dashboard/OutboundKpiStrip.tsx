@@ -34,13 +34,11 @@
  * (`splitOutboundAttention`); this file only renders it.
  *
  * Interaction (Monitor filter-only — no durable selection, contextual-display.md):
- * in shipped mode an attention tile that maps to a real outbound state
- * (`filterState`, e.g. exceptions) click-to-toggles the board's `?ostatus` via the
- * SHARED `useOutboundStatusFilter` — the same param the toolbar legend drives, so a
- * filter set from either surface lights the other. Unshipped attention (blocked,
- * backlog) has no honest `?ostatus`, so those tiles stay read-only (the board lanes
- * are the filter there). Every tile explains its numerator/denominator on hover via
- * `HoverTooltip`.
+ * attention tiles that map to a real board state click-to-toggle via a SHARED
+ * URL hook so a filter set from either the strip or the toolbar lights the other:
+ *   • shipped → `?ostatus` via `useOutboundStatusFilter`
+ *   • unshipped → `?ustatus` via `useToShipStatusFilter` (PENDING / TESTED / BLOCKED)
+ * Every tile explains its numerator/denominator on hover via `HoverTooltip`.
  *
  * Loading contract (unchanged): the counts source shares the WARM table cache while
  * the throughput trend is a SEPARATE, cold `useOperationsRoi` fetch. Both resolve
@@ -54,7 +52,6 @@ import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useShippedScanOutData, ZERO_OUTBOUND_METRICS } from '@/hooks/useShippedScanOutData';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { useOperationsRoi, type OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
 import { KpiTile, DeltaChip, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
 import {
   resolveOutboundMetrics,
@@ -63,16 +60,21 @@ import {
 } from '@/lib/dashboard/outbound-metrics';
 import type { OutboundState } from '@/lib/outbound-state';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
+import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
+import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CheckCircle, RefreshCw } from '@/components/Icons';
-import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/_cn';
+import type { FulfillmentState } from '@/lib/unshipped-state';
 
 const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0 };
 
 /** The shipped board's `?ostatus` filter, threaded to attention tiles that map to
  *  a real outbound state. Absent in unshipped mode. */
 type OutboundFilter = { active: OutboundState | null; toggle: (state: OutboundState) => void };
+
+/** The To Ship board's `?ustatus` filter — Pending / Tested / Blocked lanes. */
+type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
 
 /**
  * The one resolved shape both modes flow through. Because counts + trend come from
@@ -82,8 +84,10 @@ type OutboundFilter = { active: OutboundState | null; toggle: (state: OutboundSt
 interface OutboundStripData {
   mode: 'shipped' | 'unshipped';
   metrics: ComputedMetric[];
-  /** Shipped-mode click-to-filter; absent in unshipped (board lanes are the filter). */
+  /** Shipped-mode click-to-filter; absent in unshipped. */
   filter?: OutboundFilter;
+  /** Unshipped-mode click-to-filter; absent in shipped. */
+  toShipFilter?: ToShipFilter;
   /** Skeleton tile count — holds the grid geometry so it never reflows on settle. */
   reservedSlots: number;
   /** Combined gate: true while EITHER the counts source OR the (gated) ROI fetch is cold. */
@@ -98,26 +102,26 @@ interface OutboundStripData {
 const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
 const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
-/**
- * Permission-gated ROI with a REAL pending flag. A disabled React-Query stays
- * `status: 'pending'` forever, so we read `isLoading` (pending ∧ actively
- * fetching) — false when the user lacks `operations.view`, true only on a genuine
- * cold fetch. That keeps the strip from waiting on a query that will never run.
- */
-function useGatedRoi(): { roi: OperationsRoiData | null; pending: boolean } {
-  const { isLoaded, has } = useAuth();
-  const enabled = isLoaded && has('operations.view');
-  const query = useOperationsRoi({ enabled });
-  return { roi: query.data?.hasData ? query.data : null, pending: enabled && query.isLoading };
-}
-
 /** One metric as a house `KpiTile`. Attention items (severity > 0) tone their hero
  *  by intent and carry a status dot; trend items (severity 0 + delta) carry a
- *  `DeltaChip`. A tile that maps to an outbound state click-to-filters the board. */
-function MetricKpiTile({ metric, filter }: { metric: ComputedMetric; filter?: OutboundFilter }) {
+ *  `DeltaChip`. A tile that maps to a board state click-to-filters that board. */
+function MetricKpiTile({
+  metric,
+  filter,
+  toShipFilter,
+}: {
+  metric: ComputedMetric;
+  filter?: OutboundFilter;
+  toShipFilter?: ToShipFilter;
+}) {
   const tone = metricIntentTextClass(metric.intent);
-  const clickable = Boolean(metric.filterState && filter);
-  const active = Boolean(metric.filterState && filter?.active === metric.filterState);
+  const shippedClickable = Boolean(metric.filterState && filter);
+  const toShipClickable = Boolean(metric.filterUstatus && toShipFilter);
+  const clickable = shippedClickable || toShipClickable;
+  const active = Boolean(
+    (metric.filterState && filter?.active === metric.filterState) ||
+      (metric.filterUstatus && toShipFilter?.active === metric.filterUstatus),
+  );
 
   // Tone the hero only for genuine problems (warn/bad); a neutral backlog stays
   // default ink so pressure never masquerades as failure.
@@ -131,9 +135,15 @@ function MetricKpiTile({ metric, filter }: { metric: ComputedMetric; filter?: Ou
         className={cn('mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest', tone)}
       >
         <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
-        {metric.status}
+        {active ? 'Filtered' : metric.status}
       </span>
     ) : undefined;
+
+  const onOpen = shippedClickable
+    ? () => filter?.toggle(metric.filterState as OutboundState)
+    : toShipClickable
+      ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState)
+      : undefined;
 
   const tile = (
     <KpiTile
@@ -142,7 +152,7 @@ function MetricKpiTile({ metric, filter }: { metric: ComputedMetric; filter?: Ou
       valueClassName={toneHero ? tone : undefined}
       footer={footer}
       active={active}
-      onOpen={clickable ? () => filter?.toggle(metric.filterState as OutboundState) : undefined}
+      onOpen={onOpen}
       className="h-full"
     />
   );
@@ -234,7 +244,7 @@ function OutboundStripLayout(data: OutboundStripData): ReactNode {
     <div className={TILE_BAND_CLASS}>
       {tiles.map((metric) => (
         <div key={metric.id} className={TILE_CELL_CLASS}>
-          <MetricKpiTile metric={metric} filter={data.filter} />
+          <MetricKpiTile metric={metric} filter={data.filter} toShipFilter={data.toShipFilter} />
         </div>
       ))}
     </div>
@@ -243,7 +253,7 @@ function OutboundStripLayout(data: OutboundStripData): ReactNode {
 
 function ShippedStrip() {
   const { total, metrics, isPending, isError, refetch } = useShippedScanOutData();
-  const { roi, pending: roiPending } = useGatedRoi();
+  const { roi, pending: roiPending } = useGatedOperationsRoi();
   const filter = useOutboundStatusFilter();
 
   return OutboundStripLayout({
@@ -259,7 +269,8 @@ function ShippedStrip() {
 
 function UnshippedStrip() {
   const query = useQuery(unshippedQueueCountsQuery());
-  const { roi, pending: roiPending } = useGatedRoi();
+  const { roi, pending: roiPending } = useGatedOperationsRoi();
+  const toShipFilter = useToShipStatusFilter();
   const { data } = query;
 
   const unshipped = {
@@ -278,7 +289,8 @@ function UnshippedStrip() {
       unshipped,
       roi,
     }),
-    reservedSlots: 2,
+    reservedSlots: 3,
+    toShipFilter,
     isPending: query.isPending || roiPending,
     isError: query.isError,
     refetch: query.refetch,

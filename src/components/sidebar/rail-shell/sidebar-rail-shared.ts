@@ -61,7 +61,8 @@ export interface SidebarRailShellProps<TRow> {
    * instead of waiting the full (heavy) authoritative query, then reconciles
    * over it. Seed-only; never the source of truth. Backed by Upstash via
    * `/api/receiving/rail-snapshot` (see `rail-snapshot-client.ts`). Memoize it —
-   * the seed effect keys on its identity.
+   * the seed effect keys on its identity. Snapshot-enabled rails keep settled
+   * chrome instead of showing the pulse skeleton while the seed resolves.
    */
   loadSnapshot?: () => Promise<TRow[] | null>;
   /**
@@ -120,9 +121,9 @@ export interface SidebarRailShellProps<TRow> {
   staggerReveal?: boolean;
   /**
    * Stagger entrance axis.
-   *   - `sidebar` (default) — opacity + y settle; safe in scrolling sidebar rails.
+   *   - `sidebar` (default) — visible y settle; safe in scrolling sidebar rails.
    *   - `rise` — taller y settle for full-width workbench cards.
-   *   - `slide` — horizontal scan-bar language; never inside `overflow-y-auto`.
+   *   - `slide` — visible, clipped-safe horizontal settle for sidebar rails.
    */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
 

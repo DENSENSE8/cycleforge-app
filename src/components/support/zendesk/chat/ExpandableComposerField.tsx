@@ -1,6 +1,12 @@
 'use client';
 
-import { useState, type ChangeEvent, type KeyboardEventHandler, type ReactNode } from 'react';
+import {
+  useState,
+  type ChangeEvent,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { Maximize2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
@@ -21,6 +27,7 @@ export interface ExpandableComposerFieldProps {
   textareaClassName?: string;
   className?: string;
   onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
+  inputRef?: Ref<HTMLTextAreaElement>;
   disabled?: boolean;
   /** Overlay title — e.g. "Compose reply". */
   expandTitle?: string;
@@ -44,6 +51,7 @@ export function ExpandableComposerField({
   textareaClassName,
   className,
   onKeyDown,
+  inputRef,
   disabled,
   expandTitle = 'Compose message',
   expandFooter,
@@ -62,6 +70,7 @@ export function ExpandableComposerField({
     <>
       <div className={cn('group relative', className)}>
         <textarea
+          ref={inputRef}
           {...sharedProps}
           rows={rows}
           className={cn(

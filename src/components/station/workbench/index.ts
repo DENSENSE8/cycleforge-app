@@ -31,6 +31,11 @@ export {
   resolveTimelineSections,
   type WorkspaceTimelineAnchor,
 } from './WorkspaceTimelineTab';
+export { StationUnitJourneys } from './StationUnitJourneys';
+export {
+  mergeStationUnitJourneys,
+  type SerialJourneyBucket,
+} from './merge-station-unit-journeys';
 export {
   STATION_WORKBENCH_COLUMN,
   STATION_WORKBENCH_HEADER_COLUMN,

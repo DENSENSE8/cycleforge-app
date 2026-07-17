@@ -1,19 +1,20 @@
 'use client';
 
 /**
- * Walk-In history sidebar — category jump + station deep-links.
- * Replaces the former repairs/sales task sidebar on `/walk-in`.
+ * Sales sidebar — Walk-In station deep-links.
+ *
+ * The transaction-category facets live in the page chrome (`SalesWorkspaceHeader`
+ * → `WorkbenchChromeHeader` tabs), the same law as Dashboard's To Ship · Packed ·
+ * Shipped. This sidebar deliberately does NOT mirror them: one facet control per
+ * surface, never a second mode rail for the same job.
+ *
+ * What's left is the one thing a history Monitor can't do — start work. Sales is
+ * observe-only; every action here hands off to the station.
  */
 
-import { useCallback } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { DollarSign, Package, ShoppingCart, Wrench } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import {
-  DEFAULT_WALK_IN_HISTORY_CATEGORY,
-  parseWalkInHistoryCategory,
-  type WalkInHistoryCategory,
-} from '@/lib/walk-in/history-categories';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import { sectionLabel, cardTitle } from '@/design-system/tokens/typography/presets';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -46,59 +47,15 @@ const STATION_LINKS: Array<{
 
 export function WalkInHistorySidebar() {
   const router = useRouter();
-  const pathname = usePathname() ?? '/walk-in';
-  const searchParams = useSearchParams();
-  const category = parseWalkInHistoryCategory(
-    searchParams.get('category') ?? searchParams.get('tab'),
-  );
-
-  const setCategory = useCallback(
-    (next: WalkInHistoryCategory) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('mode');
-      params.delete('tab');
-      if (next === DEFAULT_WALK_IN_HISTORY_CATEGORY) params.delete('category');
-      else params.set('category', next);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    },
-    [pathname, router, searchParams],
-  );
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-surface-card">
       <div className={`border-b border-border-hairline ${SIDEBAR_GUTTER} pt-4 pb-3`}>
-        <p className={`${sectionLabel} text-emerald-600`}>Walk-In</p>
-        <h2 className={`mt-1 ${cardTitle}`}>History</h2>
+        <p className={`${sectionLabel} text-emerald-600`}>Sales</p>
+        <h2 className={`mt-1 ${cardTitle}`}>Transaction history</h2>
         <p className="mt-1 text-role-micro text-text-soft">
-          Recently completed front-desk work. Start a new job on the station.
+          Every completed front-desk transaction. Start a new job on the station.
         </p>
-      </div>
-
-      <div className={`space-y-1 border-b border-border-hairline ${SIDEBAR_GUTTER} py-3`}>
-        {(
-          [
-            ['repairs', 'Repairs picked up'],
-            ['sales', 'Sales'],
-            ['pickups', 'Local pickups'],
-          ] as const
-        ).map(([id, label]) => {
-          const active = category === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setCategory(id)}
-              className={`flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition-colors ${
-                active
-                  ? 'bg-emerald-50 text-emerald-800'
-                  : 'text-text-soft hover:bg-surface-canvas hover:text-text-default'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
       </div>
 
       <div className={`min-h-0 flex-1 space-y-2 overflow-y-auto ${SIDEBAR_GUTTER} py-3`}>

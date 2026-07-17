@@ -6,6 +6,7 @@ import { LinkedTicketsPanel } from '@/components/linkage/LinkedTicketsPanel';
 import { Link2, Unlink } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { AddValueChipFace } from '@/components/ui/CopyChip';
+import { TicketStnLinkPopover } from '@/components/support/link/TicketStnLinkPopover';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import type { SupportContextBundle } from '@/lib/support/context-types';
@@ -26,7 +27,6 @@ export function LinkageStrip({
   const { has, isLoaded } = useAuth();
   const canZendesk = !isLoaded || has('integrations.zendesk');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [trackingDraft, setTrackingDraft] = useState('');
   const [trackingOpen, setTrackingOpen] = useState(false);
   const { linkage, ticket, linkable } = bundle;
 
@@ -65,41 +65,6 @@ export function LinkageStrip({
     },
   });
 
-  const linkTracking = useMutation({
-    mutationFn: async (trackingNumber: string) => {
-      const ticketId = ticket?.providerTicketId;
-      if (ticketId == null) throw new Error('No ticket to attach tracking to');
-      // `reference`, NOT `anchor`. The anchor path re-decides what the ticket is
-      // ABOUT and throws 409 ("already linked to another item") whenever the
-      // ticket already has one — which is every ticket that reached this strip
-      // with a carton or order resolved. Attaching an extra STN must leave the
-      // anchor alone. The route mints the STN from a raw tracking number here
-      // exactly as the tracking anchor did, so pasting still works unchanged.
-      const res = await fetch('/api/support/tickets/link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticketId,
-          reference: { trackingNumber },
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || data?.details || 'Could not link tracking');
-      }
-      return data as { shipmentId: number; isPrimary: boolean; added: boolean };
-    },
-    onSuccess: () => {
-      invalidateSupportContextCaches(qc);
-      toast.success('Tracking linked');
-      setTrackingDraft('');
-      setTrackingOpen(false);
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Could not link tracking');
-    },
-  });
-
   const order = linkage.order?.orderId ?? null;
   const tracking =
     linkage.trackings.find((t) => t.isPrimary)?.tracking ??
@@ -124,6 +89,7 @@ export function LinkageStrip({
         serial={serial}
         dense
         hideWhenEmpty={false}
+        hideTickets
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -165,52 +131,11 @@ export function LinkageStrip({
         ) : null}
 
         {canLinkTracking ? (
-          <div className="relative flex flex-wrap items-center gap-2">
-            {!trackingOpen ? (
-              <DashedLinkChip
-                label="Link tracking"
-                onClick={() => setTrackingOpen(true)}
-              />
-            ) : (
-              <form
-                className="flex items-center gap-1.5 rounded-lg border border-dashed border-blue-400 bg-surface-canvas px-2 py-1"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const trk = trackingDraft.trim();
-                  if (!trk || linkTracking.isPending) return;
-                  linkTracking.mutate(trk);
-                }}
-              >
-                <input
-                  value={trackingDraft}
-                  onChange={(e) => setTrackingDraft(e.target.value)}
-                  placeholder="Paste tracking…"
-                  autoFocus
-                  className="w-[11rem] bg-transparent text-role-caption font-semibold text-text-default outline-none placeholder:text-text-faint"
-                />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  type="submit"
-                  loading={linkTracking.isPending}
-                  disabled={!trackingDraft.trim()}
-                >
-                  Link
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  type="button"
-                  onClick={() => {
-                    setTrackingOpen(false);
-                    setTrackingDraft('');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </form>
-            )}
-          </div>
+          <DashedLinkChip
+            label="Link tracking"
+            onClick={() => setTrackingOpen(true)}
+            aria-expanded={trackingOpen}
+          />
         ) : null}
       </div>
 
@@ -228,6 +153,15 @@ export function LinkageStrip({
         <p className="text-role-caption text-text-faint">
           No linked order or tracking yet — paste a tracking number when linking a ticket.
         </p>
+      ) : null}
+
+      {trackingOpen && ticket?.providerTicketId != null ? (
+        <TicketStnLinkPopover
+          open
+          onClose={() => setTrackingOpen(false)}
+          ticketId={ticket.providerTicketId}
+          ticketLabel={`Ticket ${ticket.label}`}
+        />
       ) : null}
     </div>
   );

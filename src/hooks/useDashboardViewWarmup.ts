@@ -19,15 +19,22 @@ interface UseDashboardViewWarmupArgs {
   orderView: DashboardOrderView;
   /** Included so a search change re-warms the active view (matches prior deps). */
   searchQuery: string;
+  /**
+   * Off while a non-outbound dashboard domain is active (e.g. `?mode=inbound`),
+   * so we never prefetch order data that domain doesn't render. Defaults on.
+   */
+  enabled?: boolean;
 }
 
 export function useDashboardViewWarmup({
   orderView,
   searchQuery,
+  enabled = true,
 }: UseDashboardViewWarmupArgs): void {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!enabled) return;
     // Prefetch the active view immediately so it loads as fast as possible.
     void warmActiveView(queryClient, window.location.search);
 
@@ -41,5 +48,5 @@ export function useDashboardViewWarmup({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [queryClient, orderView, searchQuery]);
+  }, [queryClient, orderView, searchQuery, enabled]);
 }

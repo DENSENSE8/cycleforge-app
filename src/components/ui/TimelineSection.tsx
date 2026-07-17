@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { EventTimeline, type TimelineGroupMode, type TimelineGroupView } from './EventTimeline';
 import type { TimelineItem, TimelineGroupKey } from '@/lib/timeline/types';
+import { sectionLabel, microBadge } from '@/design-system/tokens/typography/presets';
 
 /**
  * The drop-in activity-timeline block for any detail panel: a quiet section
@@ -13,6 +14,9 @@ import type { TimelineItem, TimelineGroupKey } from '@/lib/timeline/types';
  *
  * Owns nothing domain-specific; callers map their source through a
  * `*ToTimeline` adapter and hand the items here.
+ *
+ * Header type comes from the design-system typography SoT (`sectionLabel` /
+ * `microBadge`) — never hand-roll eyebrow tracking here.
  */
 export interface TimelineSectionProps {
   items: TimelineItem[];
@@ -28,6 +32,16 @@ export interface TimelineSectionProps {
   groupKeyOf?: (item: TimelineItem) => TimelineGroupKey | null;
   /** Rich (relative + hover-absolute) timestamps, forwarded to {@link EventTimeline}. */
   richTime?: boolean;
+  /**
+   * Station floor: with {@link refInline}, enables two-line anatomy (title
+   * primary; chip · time · actor secondary). Alone: single-line meta trail.
+   */
+  metaTrail?: boolean;
+  /**
+   * Station floor: with {@link metaTrail}, SerialChip / id chip on the secondary
+   * meta line. Forwarded to {@link EventTimeline}.
+   */
+  refInline?: boolean;
   /** Serial mode: collapse each band behind a chevron, forwarded to {@link EventTimeline}. */
   collapsibleGroups?: boolean;
   /** Serial mode: custom band header, forwarded to {@link EventTimeline}. */
@@ -66,6 +80,8 @@ export function TimelineSection({
   groupMode = 'time',
   groupKeyOf,
   richTime = false,
+  metaTrail = false,
+  refInline = false,
   collapsibleGroups = false,
   renderGroupHeader,
   onSelectItem,
@@ -73,11 +89,9 @@ export function TimelineSection({
 }: TimelineSectionProps) {
   return (
     <section className={className}>
-      <header className="mb-3 flex items-center justify-between">
-        <h3 className="text-role-eyebrow font-bold uppercase tracking-[0.14em] text-text-faint">
-          {title}
-        </h3>
-        {headerRight ? <div className="text-role-micro font-medium text-text-faint">{headerRight}</div> : null}
+      <header className="mb-3 flex items-center justify-between gap-2">
+        <h3 className={sectionLabel}>{title}</h3>
+        {headerRight ? <div className={`${microBadge} font-medium text-text-faint`}>{headerRight}</div> : null}
       </header>
       {loading ? (
         <TimelineSkeleton />
@@ -89,6 +103,8 @@ export function TimelineSection({
           groupMode={groupMode}
           groupKeyOf={groupKeyOf}
           richTime={richTime}
+          metaTrail={metaTrail}
+          refInline={refInline}
           collapsibleGroups={collapsibleGroups}
           renderGroupHeader={renderGroupHeader}
           onSelectItem={onSelectItem}

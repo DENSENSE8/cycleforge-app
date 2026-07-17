@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Link2, Search, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
-import { supportContextQueryKey } from '@/hooks/useSupportContext';
+import { invalidateSupportContextCaches } from '@/hooks';
 import type { SupportContextLinkable } from '@/lib/support/context-types';
 import {
   parseTicketIdQuery,
@@ -242,11 +242,5 @@ export function TicketLinkPopover({
   );
 }
 
-/** Invalidate support-context caches after link/unlink (exported for hosts). */
-export function invalidateSupportContextCaches(qc: ReturnType<typeof useQueryClient>) {
-  void qc.invalidateQueries({ queryKey: ['support-context'] });
-  void qc.invalidateQueries({ queryKey: ['order-linkage'] });
-  void qc.invalidateQueries({ queryKey: ['support-ticket'] });
-  void qc.invalidateQueries({ queryKey: ['zendesk', 'ticket'] });
-  void qc.invalidateQueries({ queryKey: supportContextQueryKey({}) });
-}
+/** Backward-compatible export for existing support-link hosts. */
+export { invalidateSupportContextCaches };

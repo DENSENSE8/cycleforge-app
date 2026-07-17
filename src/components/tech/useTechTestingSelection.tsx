@@ -34,6 +34,7 @@ export interface TechTestingSelection {
   testingSelectedRows: ReceivingLineRow[];
   testingClaimRow: ReceivingLineRow | null;
   setTestingClaimRow: ReceivingLineBulkSelection['setClaimRow'];
+  toggleTestingSelect: () => void;
   exitTestingSelect: () => void;
   /** History row already opens via `dispatchSelectLine`; no URL hop needed. */
   openTestingLine: () => void;
@@ -44,7 +45,15 @@ export function useTechTestingSelection(
   /** True when Testing top-mode is active and no line panel is open. */
   browseActive: boolean,
 ): TechTestingSelection {
-  const { selectMode, selectedRows, claimRow, setClaimRow, exitSelectMode, bulkActions } =
+  const {
+    selectMode,
+    selectedRows,
+    claimRow,
+    setClaimRow,
+    toggleSelectMode,
+    exitSelectMode,
+    bulkActions,
+  } =
     useReceivingLineBulkSelection({
       scope: TESTING_SELECTION_SCOPE,
       active: browseActive,
@@ -60,6 +69,7 @@ export function useTechTestingSelection(
     testingSelectedRows: selectedRows,
     testingClaimRow: claimRow,
     setTestingClaimRow: setClaimRow,
+    toggleTestingSelect: toggleSelectMode,
     exitTestingSelect: exitSelectMode,
     openTestingLine,
     testingBulkActions: bulkActions,

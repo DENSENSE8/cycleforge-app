@@ -16,8 +16,10 @@ export const UNBOX_SURFACE_ROUTE = getSurface('unbox').route;
 export const TRIAGE_SURFACE_ROUTE = getSurface('triage').route;
 /** Canonical route of the Incoming surface (`/incoming`). */
 export const INCOMING_SURFACE_ROUTE = getSurface('incoming').route;
-/** Canonical route of the Walk-In front-desk station (`/pickup`). */
+/** Canonical route of the Local Pickup receiving mode (`/pickup`). */
 export const PICKUP_SURFACE_ROUTE = getSurface('pickup').route;
+/** Canonical route of the Repair receiving mode (`/repair`). */
+export const REPAIR_SURFACE_ROUTE = getSurface('repair').route;
 /** Canonical route of the Receiving History surface (`/receiving/history`). */
 export const HISTORY_SURFACE_ROUTE = getSurface('history').route;
 
@@ -32,6 +34,7 @@ const GRADUATED_ROUTES: ReadonlyArray<string> = [
   TRIAGE_SURFACE_ROUTE,
   INCOMING_SURFACE_ROUTE,
   PICKUP_SURFACE_ROUTE,
+  REPAIR_SURFACE_ROUTE,
 ];
 
 /**

@@ -30,8 +30,9 @@ const idMap = new Map<string, string>([
 test('a receiving node seeds every receiving surface, bound to the re-minted id', () => {
   const seeds = buildTemplateSurfaceSeeds([nodes[0]], idMap);
   const keys = seeds.map((s) => s.surfaceKey).sort();
-  // All surfaces whose workflowNodeType === 'receiving' (unbox/triage/incoming/pickup/history).
-  assert.deepEqual(keys, ['history', 'incoming', 'pickup', 'triage', 'unbox']);
+  // All surfaces whose workflowNodeType === 'receiving'
+  // (unbox/triage/incoming/pickup/repair/history).
+  assert.deepEqual(keys, ['history', 'incoming', 'pickup', 'repair', 'triage', 'unbox']);
   for (const s of seeds) assert.equal(s.workflowNodeId, 'n-recv-1');
 });
 

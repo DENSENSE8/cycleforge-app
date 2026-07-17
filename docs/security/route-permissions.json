@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-16T16:46:14Z",
-  "totalRoutes": 858,
+  "generatedAt": "2026-07-17T07:08:04Z",
+  "totalRoutes": 859,
   "summary": {
     "permissionGated": 731,
     "authenticatedNoPermission": 45,
-    "anonymousIntentional": 80,
+    "anonymousIntentional": 81,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -7613,6 +7613,16 @@
       "gate": "withAuth",
       "permission": "warranty.view",
       "exemptReason": null
+    },
+    {
+      "path": "/api/webhooks/ebay/marketplace-account-deletion/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "signature",
+      "permission": null,
+      "exemptReason": "webhook (gated by signature)"
     },
     {
       "path": "/api/webhooks/fedex/route.ts",

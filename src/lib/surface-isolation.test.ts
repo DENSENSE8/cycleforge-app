@@ -29,10 +29,11 @@ test('isTestingApiView recognises testing feeds only', () => {
   assert.equal(isTestingApiView('recent'), false);
 });
 
-test('stripCrossSurfaceParams removes testing view on receiving paths', () => {
-  const params = new URLSearchParams('view=testing&mode=receive&recvId=1');
+test('stripCrossSurfaceParams removes testing state on receiving paths', () => {
+  const params = new URLSearchParams('view=testing&testTab=returns&mode=receive&recvId=1');
   const next = stripCrossSurfaceParams('/unbox', params);
   assert.equal(next.get('view'), null);
+  assert.equal(next.get('testTab'), null);
   assert.equal(next.get('recvId'), '1');
 });
 

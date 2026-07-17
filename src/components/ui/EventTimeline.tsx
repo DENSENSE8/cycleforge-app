@@ -6,6 +6,7 @@ import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import type { TimelineItem, TimelineTone, TimelineRef, TimelineGroupKey } from '@/lib/timeline/types';
 import { TIMELINE_OTHER_BAND_KEY } from '@/lib/timeline/types';
+import { isRawStatusTrailSubtitle } from '@/lib/timeline/station-subtitle';
 import { ChevronRight } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -181,6 +182,18 @@ export interface EventTimelineProps {
    */
   richTime?: boolean;
   /**
+   * Put time · actor immediately after the verb (flex gap) instead of far-right
+   * justify-between. Alone: single-line trail. With {@link refInline}: Station
+   * two-line anatomy (title primary; chip · time · actor secondary).
+   */
+  metaTrail?: boolean;
+  /**
+   * With {@link metaTrail}: Station two-line anatomy — id {@link CopyChip}
+   * (serial last-4) on the secondary meta line, not beside the title.
+   * Without metaTrail: legacy inline-on-title-row behavior.
+   */
+  refInline?: boolean;
+  /**
    * Serial mode only: render each band collapsed behind a chevron header (the
    * latest band opens by default), so a multi-unit record reads as a tidy tree
    * instead of a wall of rows. Default `false` ⇒ today's always-expanded bands,
@@ -306,6 +319,8 @@ export function EventTimeline({
   groupMode = 'time',
   groupKeyOf,
   richTime = false,
+  metaTrail = false,
+  refInline = false,
   collapsibleGroups = false,
   renderGroupHeader,
   onSelectItem,
@@ -352,6 +367,8 @@ export function EventTimeline({
               density={density}
               groupMode="time"
               richTime={richTime}
+              metaTrail={metaTrail}
+              refInline={refInline}
             />
           );
 
@@ -436,12 +453,48 @@ export function EventTimeline({
         const showDay = groupByDay && (i === 0 || dayKey !== fmt(items[i - 1]?.at, 'EEE, MMM d'));
         const isLatest = highlightLatest && i === 0;
         const tone = item.tone ?? 'info';
+        // Station floor: title alone is primary; chip · time · actor is secondary.
+        const stationAnatomy = metaTrail && refInline;
+        const timeNode = richTime ? (
+          <HoverTooltip
+            label={absTimestamp(item.at)}
+            focusable={false}
+            className="cursor-default border-b border-dotted border-border-default"
+          >
+            {time}
+          </HoverTooltip>
+        ) : (
+          time
+        );
+        const metaBits = (
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-role-micro font-medium tabular-nums text-text-faint">
+            {stationAnatomy && item.ref ? (
+              <span className="-my-0.5 inline-flex shrink-0 items-center">
+                <TimelineRefChip refItem={item.ref} />
+              </span>
+            ) : null}
+            <span className="shrink-0 whitespace-nowrap">
+              {timeNode}
+              {item.actor ? <span className="text-text-faint"> · </span> : null}
+              {item.actor ? <span className="text-text-soft">{item.actor}</span> : null}
+            </span>
+          </span>
+        );
+        // Station omits raw PREV → NEXT machine trails (duplicate the title dialect).
+        const footnote =
+          item.subtitle && !(stationAnatomy && isRawStatusTrailSubtitle(item.subtitle))
+            ? item.subtitle
+            : null;
 
         return (
           <motion.li key={item.id} variants={row} className="relative pl-5">
             {showDay ? (
               <div
-                className={`${d.day} mb-1.5 pl-px text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint`}
+                className={
+                  stationAnatomy
+                    ? `${d.day} mb-1 pl-px text-role-micro font-medium uppercase tracking-[0.12em] text-text-faint`
+                    : `${d.day} mb-1.5 pl-px text-role-micro font-bold uppercase tracking-[0.12em] text-text-faint`
+                }
               >
                 {dayKey}
               </div>
@@ -456,7 +509,7 @@ export function EventTimeline({
               ) : (
                 <span
                   className={`absolute -left-[18px] ${d.dotTop} h-[9px] w-[9px] rounded-full ring-[3px] ring-white ${DOT_TONE[tone]}`}
-                  style={isLatest ? { boxShadow: `0 0 0 4px ${DOT_HALO[tone]}` } : undefined}
+                  style={isLatest && !stationAnatomy ? { boxShadow: `0 0 0 4px ${DOT_HALO[tone]}` } : undefined}
                 />
               )}
 
@@ -487,35 +540,47 @@ export function EventTimeline({
                     : undefined
                 }
               >
-                <div className="flex items-baseline justify-between gap-3">
-                  <span
-                    className={`text-role-caption tracking-tight ${
-                      isLatest ? 'font-bold text-text-default' : 'font-semibold text-text-muted'
-                    }`}
+                {stationAnatomy ? (
+                  <>
+                    <div
+                      className={`text-role-caption tracking-tight ${
+                        isLatest ? 'font-bold text-text-default' : 'font-semibold text-text-muted'
+                      }`}
+                    >
+                      {item.title}
+                    </div>
+                    <div className="mt-0.5">{metaBits}</div>
+                  </>
+                ) : (
+                  <div
+                    className={
+                      metaTrail
+                        ? 'flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5'
+                        : 'flex items-baseline justify-between gap-3'
+                    }
                   >
-                    {item.title}
-                  </span>
-                  <span className="shrink-0 whitespace-nowrap text-role-micro font-medium tabular-nums text-text-faint">
-                    {richTime ? (
-                      <HoverTooltip
-                        label={absTimestamp(item.at)}
-                        focusable={false}
-                        className="cursor-default border-b border-dotted border-border-default"
-                      >
-                        {time}
-                      </HoverTooltip>
-                    ) : (
-                      time
-                    )}
-                    {item.actor ? <span className="text-text-faint"> · </span> : null}
-                    {item.actor ? <span className="text-text-soft">{item.actor}</span> : null}
-                  </span>
-                </div>
-
-                {item.subtitle ? (
-                  <div className="mt-0.5 text-role-micro font-medium tabular-nums text-text-faint">
-                    {item.subtitle}
+                    <span
+                      className={`text-role-caption tracking-tight ${
+                        isLatest ? 'font-bold text-text-default' : 'font-semibold text-text-muted'
+                      }`}
+                    >
+                      {item.title}
+                    </span>
+                    {refInline && item.ref ? (
+                      <span className="-my-0.5 inline-flex shrink-0 items-center">
+                        <TimelineRefChip refItem={item.ref} />
+                      </span>
+                    ) : null}
+                    <span className="shrink-0 whitespace-nowrap text-role-micro font-medium tabular-nums text-text-faint">
+                      {timeNode}
+                      {item.actor ? <span className="text-text-faint"> · </span> : null}
+                      {item.actor ? <span className="text-text-soft">{item.actor}</span> : null}
+                    </span>
                   </div>
+                )}
+
+                {footnote ? (
+                  <div className="mt-0.5 text-role-micro font-medium text-text-faint">{footnote}</div>
                 ) : null}
 
                 {item.changes?.length ? (
@@ -532,7 +597,7 @@ export function EventTimeline({
                   </ul>
                 ) : null}
 
-                {item.ref ? (
+                {!stationAnatomy && !refInline && item.ref ? (
                   <div className="mt-1 -ml-1.5">
                     <TimelineRefChip refItem={item.ref} />
                   </div>

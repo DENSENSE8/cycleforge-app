@@ -18,6 +18,7 @@ import {
   TRIAGE_SURFACE_ROUTE,
   INCOMING_SURFACE_ROUTE,
   PICKUP_SURFACE_ROUTE,
+  REPAIR_SURFACE_ROUTE,
   HISTORY_SURFACE_ROUTE,
   receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
@@ -101,6 +102,7 @@ function basePathForMode(mode: ReceivingMode): string {
   if (mode === 'triage') return TRIAGE_SURFACE_ROUTE;
   if (mode === 'incoming') return INCOMING_SURFACE_ROUTE;
   if (mode === 'pickup') return PICKUP_SURFACE_ROUTE;
+  if (mode === 'repair') return REPAIR_SURFACE_ROUTE;
   if (mode === 'history') return HISTORY_SURFACE_ROUTE;
   return '/receiving';
 }
@@ -112,6 +114,7 @@ function isGraduatedMode(mode: ReceivingMode): boolean {
     mode === 'triage' ||
     mode === 'incoming' ||
     mode === 'pickup' ||
+    mode === 'repair' ||
     mode === 'history'
   );
 }
@@ -127,8 +130,24 @@ export function useReceivingMode(): ReceivingModeState {
   const onTriageRoute = (pathname ?? '').startsWith(TRIAGE_SURFACE_ROUTE);
   const onIncomingRoute = (pathname ?? '').startsWith(INCOMING_SURFACE_ROUTE);
   const onPickupRoute = (pathname ?? '').startsWith(PICKUP_SURFACE_ROUTE);
+  const onRepairRoute = (pathname ?? '').startsWith(REPAIR_SURFACE_ROUTE);
   const onHistoryRoute = (pathname ?? '').startsWith(HISTORY_SURFACE_ROUTE);
   const rawMode = searchParams.get('mode');
+
+  /** Legacy `?mode=` values, for URLs that predate the graduated routes. */
+  const modeFromParam = (raw: string | null): ReceivingMode =>
+    raw === 'pickup'
+      ? 'pickup'
+      : raw === 'repair'
+        ? 'repair'
+        : raw === 'history'
+          ? 'history'
+          : raw === 'incoming'
+            ? 'incoming'
+            : raw === 'triage'
+              ? 'triage'
+              : 'receive';
+
   const mode: ReceivingMode = onUnboxRoute
     ? 'receive'
     : onTriageRoute
@@ -137,17 +156,11 @@ export function useReceivingMode(): ReceivingModeState {
         ? 'incoming'
         : onPickupRoute
           ? 'pickup'
-          : onHistoryRoute
-            ? 'history'
-            : rawMode === 'pickup'
-              ? 'pickup'
-              : rawMode === 'history'
-                ? 'history'
-                : rawMode === 'incoming'
-                  ? 'incoming'
-                  : rawMode === 'triage'
-                    ? 'triage'
-                    : 'receive';
+          : onRepairRoute
+            ? 'repair'
+            : onHistoryRoute
+              ? 'history'
+              : modeFromParam(rawMode);
 
   // In-surface param updates (staff, sub-views) must stay on the current
   // surface's route, not hardcode `/receiving`.

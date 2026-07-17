@@ -11,14 +11,6 @@ export function isAttentionOnly(searchParams: Pick<URLSearchParams, 'get'>): boo
   return v === '1' || v === 'true';
 }
 
-/** Flat list vs lane stack for To Ship. */
-export const SURFACE_PARAM = 'surface';
-export type OutboundSurface = 'lanes' | 'list';
-
-export function parseOutboundSurface(raw: string | null | undefined): OutboundSurface {
-  return raw === 'list' ? 'list' : 'lanes';
-}
-
 /** localStorage key for column preset labels (not the hidden set itself). */
 export const OUTBOUND_COLUMN_PRESET_KEY = 'outbound-queue-column-preset';
 

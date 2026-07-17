@@ -5,33 +5,15 @@ import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { TestingTerminalInput } from './types';
 
 /**
- * Testing terminal — most tabs share Pass · Print (mode-default). Claim tab
- * swaps to Send / Add note (or File claim when failed with no ticket).
+ * Testing terminal — most tabs share Pass · Print (mode-default). Ticket tab
+ * exposes File claim when testing failed and no ticket exists; ticket replies
+ * are owned by the shared SupportTicketDetail composer.
  */
 export function resolveTestingTerminal(
   kind: string,
   input: TestingTerminalInput,
 ): TerminalActionVm | null {
-  if (kind === 'claim') {
-    if (input.claimTicketId != null && input.claimReply) {
-      const reply = input.claimReply;
-      const isPublic = reply.isPublic;
-      return {
-        label: isPublic ? 'Send to customer' : 'Add note',
-        title: isPublic
-          ? 'Send a public reply that emails the customer'
-          : 'Add an internal note — not emailed',
-        disabled: !reply.body.trim() || reply.sending,
-        loading: reply.sending,
-        onClick: () => void reply.send(),
-        icon: <Send className="h-4 w-4 shrink-0" />,
-        // Staff theme via StationTerminalDock assignedTechId (accent = operator tone).
-        tone: 'accent',
-        maxWidth: 'max-w-[45rem]',
-        fullWidth: true,
-        docked: false,
-      };
-    }
+  if (kind === 'ticket') {
     if (input.claimFailedNoTicket && input.onFileClaim) {
       return {
         label: 'File claim',
@@ -45,7 +27,58 @@ export function resolveTestingTerminal(
         docked: false,
       };
     }
-    return null;
+    if (input.ticketId == null) return null;
+
+    const bridge = input.ticketBridge;
+    const hasDraft = bridge?.hasDraft ?? false;
+    const isPublic = bridge?.isPublic ?? false;
+    const submitting = bridge?.submitting ?? false;
+    const label = !hasDraft
+      ? 'Reply'
+      : isPublic
+        ? submitting
+          ? 'Sending…'
+          : 'Send reply'
+        : submitting
+          ? 'Saving…'
+          : 'Add note';
+
+    return {
+      label,
+      title: !bridge
+        ? 'Ticket composer is loading'
+        : !bridge.canPost
+          ? 'You need helpdesk access to post'
+          : !hasDraft
+            ? 'Focus the ticket reply composer'
+            : isPublic
+              ? 'Send this reply to the customer'
+              : 'Post this internal note',
+      disabled: !bridge || !bridge.canPost || submitting,
+      disabledReason: !bridge
+        ? 'Ticket composer unavailable'
+        : !bridge.canPost
+          ? 'Missing helpdesk access'
+          : null,
+      loading: submitting,
+      onClick: () => {
+        if (!bridge) return;
+        if (!bridge.hasDraft) {
+          bridge.focus();
+          return;
+        }
+        bridge.submit();
+      },
+      icon: hasDraft ? (
+        <Send className="h-4 w-4 shrink-0" />
+      ) : (
+        <Ticket className="h-4 w-4 shrink-0" />
+      ),
+      tone: 'accent',
+      maxWidth: 'max-w-[45rem]',
+      fullWidth: true,
+      docked: false,
+    };
   }
 
   if (kind !== 'mode-default') return null;

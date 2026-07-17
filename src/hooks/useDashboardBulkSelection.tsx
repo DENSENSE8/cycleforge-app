@@ -6,10 +6,11 @@
  *
  * The two tables share one selection scope (only one mounts per `?view`); FBA +
  * Warranty opt out. This hook owns the select-mode state, the view-flip resets,
- * and the Copy / Print / Send / Delete bulk actions. The toggle now lives in
- * each board's own top-right toolbar (via {@link BoardSelectToggle}) rather than
- * the global header, so this hook exposes `toggleSelectMode` for the board to
- * drive; the floating action bar is rendered by the page from `selectionActions`.
+ * and the Copy / Print / Send / Delete bulk actions. The Select toggle lives in
+ * workbench chrome (`WorkbenchChromeHeader` trailing slot) so it stays top-right
+ * on Dashboard and Shipping; this hook exposes `toggleSelectMode` for that
+ * chrome control. The floating action bar is rendered by the page from
+ * `selectionActions`.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

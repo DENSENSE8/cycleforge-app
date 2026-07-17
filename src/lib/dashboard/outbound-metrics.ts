@@ -15,6 +15,7 @@
 import type { MetricIntent } from '@/design-system/components/monitor';
 import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
 import type { OutboundState } from '@/lib/outbound-state';
+import type { FulfillmentState } from '@/lib/unshipped-state';
 
 export type OutboundMode = 'shipped' | 'unshipped';
 
@@ -103,6 +104,12 @@ export interface ComputedMetric {
    * have no honest state filter, so they stay tooltip-only.
    */
   filterState?: OutboundState;
+  /**
+   * When set, the tile toggles the To Ship / Shipping Pending board's `?ustatus`
+   * (via `useToShipStatusFilter`). Maps ready → TESTED, awaiting → PENDING,
+   * blocked → BLOCKED. Mutually exclusive with {@link filterState}.
+   */
+  filterUstatus?: FulfillmentState;
 }
 
 export interface OutboundMetricDef {
@@ -123,6 +130,43 @@ function fmtHours(h: number): string {
 }
 
 /**
+ * Shared ROI tiles — Dashboard Outbound + Shipping Pending both compose these
+ * so "Packed this week" / "Units stuck" stay one compute, not a fork.
+ */
+export function computeRoiPackedMetric(roi: OperationsRoiData | null): ComputedMetric | null {
+  if (!roi || roi.unitsThisWeek <= 0) return null;
+  const peak = Math.max(roi.unitsThisWeek, roi.unitsLastWeek, 1);
+  return {
+    id: 'packed',
+    label: 'Packed this week',
+    value: roi.unitsThisWeek.toLocaleString(),
+    fraction: share(roi.unitsThisWeek, peak),
+    // A volume count is not a health state — the calm neutral value reads as
+    // "this is how much", and the DeltaChip alone carries the up/down trend.
+    intent: 'neutral',
+    // Pure trend, never an alarm: severity 0 so it lands in the trend zone,
+    // carried by its honest week-over-week delta.
+    severity: 0,
+    delta: roi.pctChange,
+    tooltip: `Units packed this week (${roi.unitsThisWeek.toLocaleString()}) vs last week (${roi.unitsLastWeek.toLocaleString()}).`,
+  };
+}
+
+export function computeRoiStuckMetric(roi: OperationsRoiData | null): ComputedMetric | null {
+  if (!roi || roi.unitsStuck <= 0) return null;
+  return {
+    id: 'stuck',
+    label: 'Units stuck',
+    value: roi.unitsStuck.toLocaleString(),
+    fraction: 1,
+    intent: 'warn',
+    severity: 2,
+    status: 'Blocked / error',
+    tooltip: `Units currently stuck in a blocked or error state across the workflow.`,
+  };
+}
+
+/**
  * The registry. Order = display priority; the strip shows the first N non-null
  * for the active mode.
  */
@@ -131,24 +175,7 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
     id: 'packed',
     label: 'Packed this week',
     modes: ['shipped', 'unshipped'],
-    compute: ({ roi }) => {
-      if (!roi || roi.unitsThisWeek <= 0) return null;
-      const peak = Math.max(roi.unitsThisWeek, roi.unitsLastWeek, 1);
-      return {
-        id: 'packed',
-        label: 'Packed this week',
-        value: roi.unitsThisWeek.toLocaleString(),
-        fraction: share(roi.unitsThisWeek, peak),
-        // A volume count is not a health state — the calm neutral value reads as
-        // "this is how much", and the DeltaChip alone carries the up/down trend.
-        intent: 'neutral',
-        // Pure trend, never an alarm: severity 0 so it lands in the trend zone,
-        // carried by its honest week-over-week delta.
-        severity: 0,
-        delta: roi.pctChange,
-        tooltip: `Units packed this week (${roi.unitsThisWeek.toLocaleString()}) vs last week (${roi.unitsLastWeek.toLocaleString()}).`,
-      };
-    },
+    compute: ({ roi }) => computeRoiPackedMetric(roi),
   },
   {
     id: 'ontime',
@@ -268,12 +295,13 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         label: 'Ready to pack',
         value: unshipped.tested.toLocaleString(),
         fraction: share(unshipped.tested, denom),
-        intent: 'good',
-        // Ready-to-pack is available good work, not a problem — dropped from the
-        // attention strip (the board's Tested lane already surfaces it).
-        severity: 0,
-        status: 'Tested',
-        tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}.`,
+        intent: 'neutral',
+        // Packable work — shown so the strip mirrors the three board lanes and
+        // click-to-filters `?ustatus=TESTED` (same waist as Shipping Pending).
+        severity: 1,
+        status: 'In queue',
+        tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}. Click to filter the board.`,
+        filterUstatus: 'TESTED',
       };
     },
   },
@@ -289,12 +317,12 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         label: 'Awaiting test',
         value: unshipped.pending.toLocaleString(),
         fraction: share(unshipped.pending, denom),
-        intent: 'neutral',
-        // The test bottleneck — the pile to work down. A focus item (sev 1), calm
-        // tone: it's pressure, not a failure.
+        intent: 'warn',
+        // The test bottleneck — the pile to work down. A focus item (sev 1).
         severity: 1,
-        status: 'In queue',
-        tooltip: `Awaiting test ÷ open queue · ${unshipped.pending}/${denom}.`,
+        status: 'Backlog',
+        tooltip: `Awaiting test ÷ open queue · ${unshipped.pending}/${denom}. Click to filter the board.`,
+        filterUstatus: 'PENDING',
       };
     },
   },
@@ -313,8 +341,9 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         // Check immediately — even 1 blocked unit needs a human, so it always
         // sorts to the front regardless of its tiny share.
         severity: 3,
-        status: 'Needs attention',
-        tooltip: `Blocked ÷ open queue · ${unshipped.blocked}/${unshipped.total}.`,
+        status: 'Check now',
+        tooltip: `Blocked ÷ open queue · ${unshipped.blocked}/${unshipped.total}. Click to filter the board.`,
+        filterUstatus: 'BLOCKED',
       };
     },
   },
@@ -322,19 +351,7 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
     id: 'stuck',
     label: 'Units stuck',
     modes: ['shipped', 'unshipped'],
-    compute: ({ roi }) => {
-      if (!roi || roi.unitsStuck <= 0) return null;
-      return {
-        id: 'stuck',
-        label: 'Units stuck',
-        value: roi.unitsStuck.toLocaleString(),
-        fraction: 1,
-        intent: 'warn',
-        severity: 2,
-        status: 'Blocked / error',
-        tooltip: `Units currently stuck in a blocked or error state across the workflow.`,
-      };
-    },
+    compute: ({ roi }) => computeRoiStuckMetric(roi),
   },
 ];
 
@@ -356,9 +373,10 @@ export function resolveOutboundMetrics(ctx: OutboundMetricCtx): ComputedMetric[]
  *     `delta` ("what's down from previous weeks"). Today only throughput has a
  *     real baseline; more join once the ROI endpoint returns prior-period values.
  *
- * Pure status with neither severity nor delta (delivered, in-transit, ready) is
- * dropped — it's not "what needs you", it lives on the board. When BOTH zones are
- * empty the strip shows an all-clear.
+ * Pure status with neither severity nor delta (delivered, in-transit) is
+ * dropped on shipped — it lives on the board. Unshipped lane buckets
+ * (blocked / ready / awaiting) stay visible so they can click-to-filter.
+ * When BOTH zones are empty the strip shows an all-clear.
  */
 export interface OutboundAttention {
   attention: ComputedMetric[];
