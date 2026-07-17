@@ -20,7 +20,7 @@ import {
 
 Reference implementation: `LineEditPanel` (Unbox). Sibling adopters:
 `TestingPanel`, `TriagePanel`, `ShippingScanWorkspace` / `UpNextActionDock`,
-`ActivePackerWorkspace`, `RepairIntakeForm`.
+`ActivePackerWorkspace`, `RepairIntakeForm`, `LocalPickupEditPanel`.
 
 ---
 
@@ -29,10 +29,15 @@ Reference implementation: `LineEditPanel` (Unbox). Sibling adopters:
 Unbox, Testing, Shipping, and Packing expose a **Timeline** section tab via
 [`WorkspaceTimelineTab`](../../../src/components/station/workbench/WorkspaceTimelineTab.tsx):
 
-1. **Carrier block** — `CarrierTrackingSection` (hero + re-poll + carrier events);
-   PO path uses Incoming details; order/shipping uses journey `dim=tracking|order`.
-2. **Unit journeys** — one `SerialJourneySection` per serial (explicit list or
-   carton fetch via `useCartonSerials`).
+1. **Spine switcher at top** — house [`SectionTabsSlider`](../../../src/design-system/components/SectionTabsSlider.tsx)
+   (**Units** default · **Tracking**). Single-spine cases hide the bar.
+2. **Units** — [`StationUnitJourneys`](../../../src/components/station/workbench/StationUnitJourneys.tsx)
+   only (two-line anatomy; SerialChip last-4 · clock · actor; raw `PREV → NEXT` omitted).
+3. **Tracking** — full [`CarrierTrackingSection`](../../../src/components/sidebar/receiving/incoming-details/CarrierTrackingSection.tsx)
+   (`stationCompact`: hero + events). Not shown on the Units spine.
+
+PO path uses Incoming details; order/shipping uses journey `dim=tracking|order`.
+Serials: explicit list or carton fetch via `useCartonSerials`.
 
 Unbox replaced the former Tracking tab with Timeline. Support (team notes /
 activity) and Ticket (customer helpdesk) are sibling SectionTabsSlider tabs —
@@ -68,7 +73,7 @@ Overlays (photo peek, modals) compose **around** `StationWorkbench`, not inside 
 
 ## Introspective reuse (new station checklist)
 
-1. Add one row to `WORKSPACE_MODES` (if receiving-family chrome) + `STATION_TERMINAL_REGISTRY`
+1. Add one row to `WORKSPACE_MODES` only for receiving-family chrome; every docked adopter adds `STATION_TERMINAL_REGISTRY`
 2. Thin adapter: controller → `CartonContextCard` props
 3. Tab defs with visibility gates → `buildSectionTabs()`
 4. Terminal resolver in `{station}/terminal/` — tab id → `TerminalActionVm`

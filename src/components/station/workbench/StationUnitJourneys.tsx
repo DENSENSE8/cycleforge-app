@@ -4,8 +4,12 @@
  * Station-density unit journeys for {@link WorkspaceTimelineTab}.
  *
  * One {@link TimelineSection} / {@link EventTimeline} feed for the carton —
- * not N Operations-style {@link SerialJourneySection} embeds. Unit identity is
- * the emerald {@link SerialChip} (last-4 via CopyChip SoT) on each row.
+ * not N Operations-style {@link SerialJourneySection} embeds.
+ *
+ * Station two-line anatomy (`metaTrail` + `refInline`):
+ *   1. Primary — event outcome ("Tested — Fail")
+ *   2. Secondary — SerialChip last-4 · clock · actor
+ * Raw PREV → NEXT machine trails are omitted (duplicate the title dialect).
  */
 
 import { useMemo } from 'react';
@@ -83,6 +87,8 @@ export function StationUnitJourneys({
       items={items}
       loading={loading}
       density="compact"
+      metaTrail
+      refInline
       emptyMessage="No unit events yet."
       headerRight={
         !loading && count > 0 ? (

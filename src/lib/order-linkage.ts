@@ -1,7 +1,9 @@
 /**
  * Closed-loop linkage resolver — given ANY one of {order#, tracking#, serial#},
- * return the fully-composed loop for a single operational order:
+ * return the composed loop for a single operational order:
  *   order  ↔  tracking[] (multi-shipment)  ↔  serial[]  ↔  linked support tickets.
+ * A registered tracking with no ORDER still returns its truthful partial loop
+ * (tracking + linked tickets), rather than erasing known graph edges.
  *
  * This is the thin wrapper the linkage SoT modules never had (each half existed
  * independently). It COMPOSES the canonical sources — it does not re-derive them:
@@ -20,7 +22,7 @@ import { type OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { listLinksForOwner } from '@/lib/shipping/shipment-links';
 import { normalizeSerial } from '@/lib/neon/serial-units-queries';
-import { normalizeTrackingKey } from '@/lib/tracking-format';
+import { normalizeTrackingNumber } from '@/lib/tracking-format';
 import { formatSupportTicketLabel } from '@/lib/support/tickets';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 
@@ -77,12 +79,23 @@ interface OrderAnchorRow {
   sku: string | null;
 }
 
+export interface OrderLinkageDeps {
+  query: typeof tenantQuery;
+  listShipmentLinks: typeof listLinksForOwner;
+}
+
+const defaultDeps: OrderLinkageDeps = {
+  query: tenantQuery,
+  listShipmentLinks: listLinksForOwner,
+};
+
 const ORDER_COLS = `o.id, o.order_id, o.shipment_id, o.product_title, o.sku`;
 
 /** Resolve the operational `orders.id` from whichever identifier was supplied. */
 async function resolveOrderAnchor(
   orgId: OrgId,
   input: OrderLinkageInput,
+  deps: OrderLinkageDeps,
 ): Promise<{ row: OrderAnchorRow; matchedBy: NonNullable<OrderLinkage['matchedBy']> } | null> {
   const orderQ = (input.order ?? '').trim();
   const trackingQ = (input.tracking ?? '').trim();
@@ -90,7 +103,7 @@ async function resolveOrderAnchor(
 
   if (orderQ) {
     const digits = orderQ.replace(/\D/g, '') || '-1';
-    const r = await tenantQuery<OrderAnchorRow>(
+    const r = await deps.query<OrderAnchorRow>(
       orgId,
       `SELECT ${ORDER_COLS} FROM orders o
         WHERE o.organization_id = $1 AND (o.order_id ILIKE $2 OR CAST(o.id AS TEXT) = $3)
@@ -101,10 +114,10 @@ async function resolveOrderAnchor(
   }
 
   if (trackingQ) {
-    const key = normalizeTrackingKey(trackingQ);
+    const key = normalizeTrackingNumber(trackingQ);
     if (key) {
       // Primary: tracking → STN → shipment_links(owner ORDER) → order.
-      const r = await tenantQuery<OrderAnchorRow>(
+      const r = await deps.query<OrderAnchorRow>(
         orgId,
         `SELECT ${ORDER_COLS}
            FROM shipping_tracking_numbers stn
@@ -116,7 +129,7 @@ async function resolveOrderAnchor(
       );
       if (r.rows[0]) return { row: r.rows[0], matchedBy: 'tracking' };
       // Fallback: the orders.shipment_id primary-tracking cache.
-      const r2 = await tenantQuery<OrderAnchorRow>(
+      const r2 = await deps.query<OrderAnchorRow>(
         orgId,
         `SELECT ${ORDER_COLS}
            FROM shipping_tracking_numbers stn
@@ -133,7 +146,7 @@ async function resolveOrderAnchor(
     const norm = normalizeSerial(serialQ);
     if (norm) {
       // Primary: inventory-v2 allocation.
-      const r = await tenantQuery<OrderAnchorRow>(
+      const r = await deps.query<OrderAnchorRow>(
         orgId,
         `SELECT ${ORDER_COLS}
            FROM order_unit_allocations oua
@@ -145,7 +158,7 @@ async function resolveOrderAnchor(
       );
       if (r.rows[0]) return { row: r.rows[0], matchedBy: 'serial' };
       // Fallback: legacy tech_serial_numbers via shipment_id.
-      const r2 = await tenantQuery<OrderAnchorRow>(
+      const r2 = await deps.query<OrderAnchorRow>(
         orgId,
         `SELECT ${ORDER_COLS}
            FROM tech_serial_numbers tsn
@@ -162,10 +175,14 @@ async function resolveOrderAnchor(
 }
 
 /** Tickets linked to any of the loop's shipments (STN) via the SHIPMENT bridge. */
-async function getLinkedTicketsForShipments(orgId: OrgId, stnIds: number[]): Promise<LinkedTicket[]> {
+async function getLinkedTicketsForShipments(
+  orgId: OrgId,
+  stnIds: number[],
+  deps: OrderLinkageDeps,
+): Promise<LinkedTicket[]> {
   const ids = stnIds.filter((n) => Number.isFinite(n));
   if (ids.length === 0) return [];
-  const r = await tenantQuery<{
+  const r = await deps.query<{
     zendesk_ticket_id: string | number | null;
     support_ticket_id: string | number | null;
     external_ticket_id: string | null;
@@ -209,13 +226,13 @@ async function getLinkedTicketsForShipments(orgId: OrgId, stnIds: number[]): Pro
 }
 
 /**
- * Resolve the full closed loop for a single order from any one identifier.
- * Returns an empty (null-order) result when nothing matches — never throws for
- * a miss (callers render a teaching empty state).
+ * Resolve a closed loop from any one identifier. Registered STNs without an
+ * ORDER return a partial tracking/ticket loop; a true miss remains empty.
  */
 export async function resolveOrderLinkage(
   orgId: OrgId,
   input: OrderLinkageInput,
+  deps: OrderLinkageDeps = defaultDeps,
 ): Promise<OrderLinkage> {
   const empty: OrderLinkage = {
     matchedBy: null,
@@ -225,13 +242,48 @@ export async function resolveOrderLinkage(
     tickets: [],
   };
 
-  const anchor = await resolveOrderAnchor(orgId, input);
-  if (!anchor) return empty;
+  const anchor = await resolveOrderAnchor(orgId, input, deps);
+  if (!anchor) {
+    const trackingKey = normalizeTrackingNumber((input.tracking ?? '').trim());
+    if (!trackingKey) return empty;
+    const stn = await deps.query<{
+      id: number;
+      tracking_number_raw: string | null;
+      carrier: string | null;
+      latest_status_category: string | null;
+      is_delivered: boolean | null;
+    }>(
+      orgId,
+      `SELECT id, tracking_number_raw, NULLIF(carrier, 'UNKNOWN') AS carrier,
+              latest_status_category, is_delivered
+         FROM shipping_tracking_numbers
+        WHERE organization_id = $1 AND tracking_number_normalized = $2
+        LIMIT 1`,
+      [orgId, trackingKey],
+    );
+    const row = stn.rows[0];
+    if (!row) return empty;
+    const trackings: LinkageTracking[] = [{
+      shipmentId: Number(row.id),
+      tracking: row.tracking_number_raw,
+      isPrimary: true,
+      carrier: row.carrier,
+      statusCategory: row.latest_status_category,
+      isDelivered: row.is_delivered,
+    }];
+    return {
+      matchedBy: 'tracking',
+      order: null,
+      trackings,
+      serials: [],
+      tickets: await getLinkedTicketsForShipments(orgId, [Number(row.id)], deps),
+    };
+  }
   const { row, matchedBy } = anchor;
   const orderPk = Number(row.id);
 
   // trackings — multi-shipment SoT, with the primary-cache fallback.
-  const links = await listLinksForOwner(orgId, 'ORDER', orderPk);
+  const links = await deps.listShipmentLinks(orgId, 'ORDER', orderPk);
   let trackings: LinkageTracking[] = links.map((l) => ({
     shipmentId: Number(l.shipment_id),
     tracking: l.tracking_number,
@@ -241,7 +293,7 @@ export async function resolveOrderLinkage(
     isDelivered: l.is_delivered,
   }));
   if (trackings.length === 0 && row.shipment_id != null) {
-    const r = await tenantQuery<{
+    const r = await deps.query<{
       id: number;
       tracking_number_raw: string | null;
       carrier: string | null;
@@ -266,7 +318,7 @@ export async function resolveOrderLinkage(
   }
 
   // serials — inventory-v2 allocations, with the tech_serial_numbers fallback.
-  const sres = await tenantQuery<{ serial_unit_id: number; serial: string | null; state: string | null }>(
+  const sres = await deps.query<{ serial_unit_id: number; serial: string | null; state: string | null }>(
     orgId,
     `SELECT su.id AS serial_unit_id,
             COALESCE(su.unit_uid, su.normalized_serial) AS serial,
@@ -281,7 +333,7 @@ export async function resolveOrderLinkage(
     .filter((s) => !!s.serial)
     .map((s) => ({ serialUnitId: Number(s.serial_unit_id), serial: String(s.serial), state: s.state }));
   if (serials.length === 0 && row.shipment_id != null) {
-    const tsn = await tenantQuery<{ serial_number: string | null }>(
+    const tsn = await deps.query<{ serial_number: string | null }>(
       orgId,
       `SELECT DISTINCT serial_number FROM tech_serial_numbers
         WHERE shipment_id = $1 AND serial_number IS NOT NULL`,
@@ -295,6 +347,7 @@ export async function resolveOrderLinkage(
   const tickets = await getLinkedTicketsForShipments(
     orgId,
     trackings.map((t) => t.shipmentId),
+    deps,
   );
 
   return {

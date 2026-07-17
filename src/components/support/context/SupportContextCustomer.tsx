@@ -8,15 +8,18 @@ import { TicketLinkPopover } from './TicketLinkPopover';
 import { DashedLinkChip } from './LinkageStrip';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 
 export function SupportContextCustomer({
   bundle,
   embedded = false,
   receivingId,
+  onBridgeChange,
 }: {
   bundle: SupportContextBundle;
   embedded?: boolean;
   receivingId?: number;
+  onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { has, isLoaded } = useAuth();
@@ -64,6 +67,7 @@ export function SupportContextCustomer({
         embedded={embedded}
         receivingId={receivingId ?? bundle.linkable?.receivingId ?? undefined}
         hideLinkedContext
+        onComposerBridgeChange={onBridgeChange}
       />
     </div>
   );

@@ -4,7 +4,6 @@
  * `/receiving` right pane — thin composition layer. Headerless; driven entirely
  * by the sidebar's mode pills (`?mode=`) + selection state.
  *
- *   ?mode=pickup (/pickup)  → WalkInStationPane (Sales / Local Pickup / Repair)
  *   workspace open          → ReceivingLineWorkspace (focused line editor)
  *   no selection, receive   → ReceivingLinesTable (history)
  *
@@ -27,7 +26,6 @@ import {
   RECEIVING_SELECTION_SCOPE,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
-import { WalkInStationPane } from '@/components/walk-in/WalkInStationPane';
 import { useReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
 import { useReceivingDashboardMode } from '@/components/receiving/useReceivingDashboardMode';
 import { useReceivingWorkspacePane } from '@/components/receiving/useReceivingWorkspacePane';
@@ -53,7 +51,7 @@ export default function ReceivingDashboard() {
   const { user } = useAuth();
   const staffId = String(user?.staffId ?? '');
 
-  const { mode, isPickupMode, isTriageMode, isIncomingMode, isTableOnlyMode, incomingView } =
+  const { mode, isTriageMode, isIncomingMode, isTableOnlyMode, incomingView } =
     useReceivingDashboardMode();
 
   const { workspace, setWorkspace, nav, setNav, scanInFlight } = useReceivingWorkspacePane();
@@ -88,16 +86,6 @@ export default function ReceivingDashboard() {
       router.replace(`/receiving?${params.toString()}`);
     }
   }, [isTriageMode, router, searchParams, setWorkspace, setNav]);
-
-  if (isPickupMode) {
-    return (
-      <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,#f8fbfb_0%,#ffffff_16%)]">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <WalkInStationPane />
-        </div>
-      </div>
-    );
-  }
 
   // Triage (label "Receiving") deliberately shares the SAME right pane as Unbox:
   // the selected carton opens in the full ReceivingLineWorkspace, so identifying

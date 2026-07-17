@@ -3,6 +3,10 @@
 /**
  * Shipping workspace attention strip — Monitor KPIs for Pending / FBA / History
  * on `/test` Shipping mode. Same tile anatomy as OutboundKpiStrip.
+ *
+ * Pending tiles that map to a fulfillment lane click-to-toggle `?ustatus` via
+ * {@link useToShipStatusFilter} — the same param the toolbar exact filters use —
+ * so the board under the strip collapses to that lane.
  */
 
 import { useMemo, type ReactNode } from 'react';
@@ -21,45 +25,65 @@ import {
   type ShippingHistoryCounts,
 } from '@/lib/tech/shipping-metrics';
 import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
+import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
+import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CheckCircle, RefreshCw } from '@/components/Icons';
 import { useTechLogs, type TechRecord } from '@/hooks/useTechLogs';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import { computeWeekRange, toPSTDateKey } from '@/utils/date';
+import type { FulfillmentState } from '@/lib/unshipped-state';
 import { cn } from '@/utils/_cn';
 
 const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
 const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0 };
 
-function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
+type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
+
+function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShipFilter?: ToShipFilter }) {
   const tone = metricIntentTextClass(metric.intent);
   const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
-  const footer: ReactNode = metric.status ? (
-    <span
-      className={cn(
-        'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
-        tone,
-      )}
-    >
-      <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
-      {metric.status}
-    </span>
-  ) : undefined;
+  const clickable = Boolean(metric.filterUstatus && toShipFilter);
+  const active = Boolean(metric.filterUstatus && toShipFilter?.active === metric.filterUstatus);
+  // DeltaChip wins when present (Packed WoW); otherwise status footer.
+  const footer: ReactNode =
+    metric.delta !== undefined
+      ? undefined
+      : metric.status
+        ? (
+            <span
+              className={cn(
+                'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
+                tone,
+              )}
+            >
+              <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
+              {active ? 'Filtered' : metric.status}
+            </span>
+          )
+        : undefined;
 
   const tile = (
     <KpiTile
       label={metric.label}
       value={metric.value}
       valueClassName={toneHero ? tone : undefined}
+      delta={metric.delta}
+      invertDelta={metric.deltaInvert}
+      deltaVsLabel="vs last wk"
       footer={footer}
+      active={active}
+      onOpen={
+        clickable ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState) : undefined
+      }
       className="h-full"
     />
   );
 
   if (!metric.tooltip) return tile;
   return (
-    <HoverTooltip label={metric.tooltip} focusable className="block h-full">
+    <HoverTooltip label={metric.tooltip} focusable={!clickable} className="block h-full">
       {tile}
     </HoverTooltip>
   );
@@ -91,7 +115,7 @@ function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
 function StripAllClear({ mode }: { mode: ShippingWorkspaceTab }) {
   const copy =
     mode === 'pending'
-      ? { title: 'The queue is clear.', hint: 'Blocked units and the test backlog surface here.' }
+      ? { title: 'The queue is clear.', hint: 'Blocked units, backlog, and week throughput surface here.' }
       : mode === 'fba'
         ? { title: 'Nothing needs attention.', hint: 'Labeled, packed, and out-of-stock FBA items surface here.' }
         : { title: 'No scan-outs in view.', hint: 'Today and week throughput surface here.' };
@@ -182,6 +206,7 @@ function StripLayout({
   isError,
   reservedSlots,
   onRetry,
+  toShipFilter,
 }: {
   mode: ShippingWorkspaceTab;
   metrics: ComputedMetric[];
@@ -189,6 +214,7 @@ function StripLayout({
   isError: boolean;
   reservedSlots: number;
   onRetry: () => void;
+  toShipFilter?: ToShipFilter;
 }) {
   if (isError) return <StripError onRetry={onRetry} />;
   if (isPending) return <StripSkeleton reservedSlots={reservedSlots} />;
@@ -199,7 +225,7 @@ function StripLayout({
     <div className={TILE_BAND_CLASS}>
       {tiles.map((metric) => (
         <div key={metric.id} className={TILE_CELL_CLASS}>
-          <MetricKpiTile metric={metric} />
+          <MetricKpiTile metric={metric} toShipFilter={toShipFilter} />
         </div>
       ))}
     </div>
@@ -208,6 +234,8 @@ function StripLayout({
 
 function PendingStrip() {
   const query = useQuery(unshippedQueueCountsQuery());
+  const { roi, pending: roiPending } = useGatedOperationsRoi();
+  const toShipFilter = useToShipStatusFilter();
   const data = query.data;
   const unshipped = {
     total: data?.total ?? 0,
@@ -220,14 +248,16 @@ function PendingStrip() {
     unshipped,
     fba: ZERO_SHIPPING_FBA,
     history: ZERO_SHIPPING_HISTORY,
+    roi,
   });
   return (
     <StripLayout
       mode="pending"
       metrics={metrics}
-      isPending={query.isPending}
+      isPending={query.isPending || roiPending}
       isError={query.isError}
-      reservedSlots={2}
+      reservedSlots={4}
+      toShipFilter={toShipFilter}
       onRetry={() => {
         void query.refetch();
       }}
@@ -242,6 +272,7 @@ function FbaStrip() {
     unshipped: EMPTY_UNSHIPPED,
     fba,
     history: ZERO_SHIPPING_HISTORY,
+    roi: null,
   });
   return (
     <StripLayout
@@ -272,6 +303,7 @@ function HistoryStrip({ techId }: { techId?: number }) {
     unshipped: EMPTY_UNSHIPPED,
     fba: ZERO_SHIPPING_FBA,
     history,
+    roi: null,
   });
   return (
     <StripLayout

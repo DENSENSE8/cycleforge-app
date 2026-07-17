@@ -34,8 +34,8 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
       pairing: 'mode-default',
       checklist: 'mode-default',
       manuals: 'mode-default',
-      // Resolved further in TestingPanel → claim-reply | file-claim | none
-      claim: 'claim',
+      // Resolved further in TestingPanel → file-claim | none
+      ticket: 'ticket',
       timeline: 'none',
     },
   },
@@ -54,6 +54,13 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
     hasSectionTabs: false,
     defaultKind: 'mode-default',
     tabs: {},
+  },
+  pickup: {
+    hasSectionTabs: true,
+    tabs: {
+      item: 'mode-default',
+      add: 'add-item',
+    },
   },
 };
 

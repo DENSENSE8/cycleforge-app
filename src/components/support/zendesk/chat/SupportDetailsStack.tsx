@@ -25,7 +25,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 /**
  * The support "details stack" — a small tabbed popover anchored to a header
- * button (sits just left of the open-in-Zendesk link). Holds the secondary
+ * button (between the Links control and open-in-Zendesk). Holds the secondary
  * ticket detail that doesn't belong in the always-visible header: a Details tab
  * (requester, id, status/priority, timestamps) and a Tags tab (the ONLY place
  * ticket tags are shown/edited).
@@ -51,14 +51,13 @@ export function SupportDetailsStack({ ticket }: { ticket: ZendeskTicket }) {
           aria-label="Ticket details"
           aria-expanded={open}
           className={cn(
-            // Inline with the title row — no mt that would stack/tall the header.
-            'ds-raw-button relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition',
+            'ds-raw-button relative inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition',
             open
-              ? 'border-blue-300 bg-blue-50 text-blue-700'
-              : 'border-border-soft bg-surface-card text-text-soft hover:bg-surface-hover hover:text-text-muted',
+              ? 'bg-blue-50 text-blue-700 ring-blue-200'
+              : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover hover:text-text-default',
           )}
         >
-          <Layers className="h-3.5 w-3.5" />
+          <Layers className="h-4 w-4" />
           {tagCount > 0 ? (
             <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-surface-inverse-raised px-1 text-role-micro text-white">
               {tagCount}

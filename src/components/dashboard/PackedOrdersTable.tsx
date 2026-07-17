@@ -16,11 +16,8 @@ import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
-import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { createPortal } from 'react-dom';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { useEventBridge } from '@/hooks';
@@ -32,13 +29,11 @@ import type { ShippedOrder } from '@/types/orders';
 
 export interface PackedOrdersTableProps {
   selectMode?: boolean;
-  onToggleSelectMode?: () => void;
   toolbarPortalTarget?: HTMLElement | null;
 }
 
 export function PackedOrdersTable({
   selectMode = false,
-  onToggleSelectMode,
   toolbarPortalTarget,
 }: PackedOrdersTableProps) {
   const pathname = usePathname();
@@ -97,22 +92,13 @@ export function PackedOrdersTable({
 
   const toolbar = (
     <div className="flex items-center gap-2">
-      <StaffFilterButton align="start" />
-      <ToolbarControlsDisclosure>
-        <HoverTooltip label="Configure columns" asChild>
-          <span className="inline-flex">
-            <ColumnConfigButton variant="toolbar" />
-          </span>
-        </HoverTooltip>
-        <TableOptionsMenu
-          showDensity
-          showColumnPresets
-          savedViews={{ storageKey: PACKED_SAVED_VIEWS_KEY, paramKeys: PACKED_VIEW_PARAMS }}
-        />
-      </ToolbarControlsDisclosure>
-      {onToggleSelectMode ? (
-        <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-      ) : null}
+      <StaffFilterButton iconOnly />
+      <ColumnConfigButton variant="toolbar" />
+      <TableOptionsMenu
+        showDensity
+        showColumnPresets
+        savedViews={{ storageKey: PACKED_SAVED_VIEWS_KEY, paramKeys: PACKED_VIEW_PARAMS }}
+      />
     </div>
   );
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useEventBridge } from '@/hooks';
 import { type TechRecord } from '@/hooks/useTechLogs';
 import { useTechTableController } from '@/hooks/station/useTechTableController';
@@ -27,7 +26,6 @@ import { formatTechCopyRow, TECH_COPY_HEADER } from '@/lib/station/format-statio
 import { TECH_HISTORY_SELECTION_SCOPE } from '@/lib/selection/station-scopes';
 import { ContextualEmptyState } from '@/components/ui/ContextualEmptyState';
 import { useStaffFilter, STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { useSearchParams } from 'next/navigation';
 
 const TECH_LANE_ICON: Record<TechLaneIconKey, React.ComponentType<{ className?: string }>> = {
@@ -151,21 +149,12 @@ export function TechTable({
     [getRowKey, openDetails],
   );
 
-  const portaledControls =
-    toolbarPortalTarget != null
-      ? createPortal(
-          <ColumnConfigButton variant="toolbar" />,
-          toolbarPortalTarget,
-        )
-      : null;
-
   // Flag-gated cutover: the unified virtualized shell (week band + ⋮ menu + density
   // + per-staff columns) once `NEXT_PUBLIC_STATION_VIRTUAL_LIST=1`; the legacy
   // `StationWeekTable` stays the default until bake-in. Same rows either way.
   if (STATION_VIRTUAL_LIST) {
     return (
       <>
-        {portaledControls}
         <StationHistoryTable<TechRecord>
           loading={loading}
           isRefreshing={isRefreshing}
@@ -183,6 +172,7 @@ export function TechTable({
           savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
           emptyMessage="No tech records found"
           firstRunEmpty={<ContextualEmptyState state="no-work" />}
+          toolbarPortalTarget={toolbarPortalTarget}
           pipeline={{
             records: orderedRecords,
             lanes: TECH_LANES,
@@ -208,7 +198,6 @@ export function TechTable({
 
   return (
     <>
-      {portaledControls}
       <StationWeekTable
         loading={loading}
         isRefreshing={isRefreshing}
@@ -222,6 +211,11 @@ export function TechTable({
         scrollRef={scrollRef}
         renderRow={renderRow}
         tableId="tech"
+        toolbarPortalTarget={toolbarPortalTarget}
+        savedViews={{
+          storageKey: SAVED_VIEW_STORAGE_KEY.tech_history,
+          paramKeys: SAVED_VIEW_PARAM_KEYS.tech_history,
+        }}
       />
     </>
   );

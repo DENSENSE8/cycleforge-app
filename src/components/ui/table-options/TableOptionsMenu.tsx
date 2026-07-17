@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Check, Plus, SlidersHorizontal, Star, Trash2 } from '@/components/Icons';
+import { Check, MoreHorizontal, Plus, Trash2 } from '@/components/Icons';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { useSavedViews } from '@/hooks/useSavedViews';
 import { useTableColumnConfig } from '@/components/ui/table-column-config/TableColumnConfig';
@@ -248,13 +248,14 @@ export function TableOptionsMenu({
 }: TableOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const { density, setDensity } = useTableDensity();
-  const savedActive = Boolean(savedViews);
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <ToolbarButton active={open} aria-label="Table options">
-          {savedActive ? <Star className="h-3.5 w-3.5 shrink-0 opacity-70" /> : <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 opacity-70" />}
+        <ToolbarButton iconOnly active={open} aria-label="Table options">
+          <HoverTooltip label="Table options" focusable={false}>
+            <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
+          </HoverTooltip>
         </ToolbarButton>
       </Popover.Trigger>
       <Popover.Portal>

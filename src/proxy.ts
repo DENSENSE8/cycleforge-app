@@ -136,6 +136,12 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   ['/incoming/', '/m/receiving'],
   // Walk-In station + Receiving History surfaces (operator-surfaces refactor Phase 9)
   // → the mobile receiving shell (same feed, its bottom nav labels itself).
+  //
+  // FOH/BOH split (lane 05·P6): the Walk-In station decoupled from Receiving on
+  // desktop (own nav key + `walk_in.view` gate), but the phone rewrite STAYS on
+  // `/m/receiving` — there is no `/m/walk-in` shell, and inventing one is out of
+  // scope here. Revisit with lane 02's mobile pass; until then a phone hitting
+  // `/pickup` gets the receiving feed exactly as it does today.
   ['/pickup', '/m/receiving'],
   ['/pickup/', '/m/receiving'],
   ['/receiving/history', '/m/receiving'],
@@ -208,6 +214,17 @@ function resolveMobileUaRewrite(pathname: string, ua: string | null): string | n
  * search params like History's `?q=`/`?field=`/`?scope=` ride along). Exact path
  * only — sub-routes (`/receiving/lines/[id]`, `/receiving/history`,
  * `/receiving/unfound`, …) keep their URLs.
+ *
+ * FOH/BOH split redirect matrix (lane 05·P5) — this function is the single
+ * source for the `/receiving?mode=` legacy family:
+ *   `?mode=pickup`  → `/pickup`             (Local Pickup mode)
+ *   `?mode=repair`  → `/repair`             (Repair mode)
+ *   `?mode=history` → `/receiving/history`  (unchanged HERE — lane 04 repoints
+ *                     it at the `/dashboard` inbound mode once that mode exists;
+ *                     pointing at it now would land on the dashboard default)
+ * The rest of the matrix:
+ *   `/pickup?job=…`  → `resolveWalkInJobRedirect` below
+ *   `/walk-in?mode=sales` / `?category=` → in-page (`useWalkInTaskRedirect`)
  */
 function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/receiving') return null;
@@ -221,13 +238,32 @@ function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextReque
           ? '/incoming'
           : mode === 'pickup'
             ? '/pickup'
-            : mode === 'history'
-              ? '/receiving/history'
-              : null;
+            : mode === 'repair'
+              ? '/repair'
+              : mode === 'history'
+                ? '/receiving/history'
+                : null;
   if (!dest) return null;
   const next = url.clone();
   next.pathname = dest;
   next.searchParams.delete('mode'); // being on the surface route IS the mode
+  return next;
+}
+
+/**
+ * Walk-In job-switcher redirect. `/pickup?job=repair` was how the short-lived
+ * "Walk-In station" addressed its Repair job; Repair is now its own Receiving
+ * mode at `/repair`. `?job=sales` had no mode of its own — Sales lives on the
+ * `/walk-in` Sales page — so it lands there. Any other `?job=` (incl. `pickup`,
+ * the default) is just Local Pickup: strip the param and stay.
+ */
+function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/pickup' && url.pathname !== '/pickup/') return null;
+  const job = url.searchParams.get('job');
+  if (job === null) return null;
+  const next = url.clone();
+  next.pathname = job === 'repair' ? '/repair' : job === 'sales' ? '/walk-in' : '/pickup';
+  next.searchParams.delete('job'); // the route IS the mode now
   return next;
 }
 
@@ -441,6 +477,7 @@ export function proxy(req: NextRequest): NextResponse {
     const surfaceRedirect =
       resolveAuditLogRedirect(req.nextUrl) ??
       resolveReceivingSurfaceRedirect(req.nextUrl) ??
+      resolveWalkInJobRedirect(req.nextUrl) ??
       resolvePackSurfaceRedirect(req.nextUrl) ??
       resolveTestSurfaceRedirect(req.nextUrl) ??
       resolveTestingHistoryViewRedirect(req.nextUrl);

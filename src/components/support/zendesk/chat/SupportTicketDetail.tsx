@@ -13,15 +13,15 @@ import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportContext } from '@/hooks/useSupportContext';
 import type { SupportContextBundle } from '@/lib/support/context-types';
 import type { ZendeskComment } from '@/lib/zendesk';
-import { EmptyState, IconButton, Spinner } from '@/design-system/primitives';
-import { RightPaneOverlay, RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
-import { Link2, Upload, X } from '@/components/Icons';
+import { EmptyState, Spinner } from '@/design-system/primitives';
+import { Link2, Upload } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
 import { SupportChatHeader } from './SupportChatHeader';
 import { SupportChatThread } from './SupportChatThread';
 import { SupportChatComposer } from './SupportChatComposer';
-import { SupportContextHub } from '@/components/support/context';
+import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
 
 /** Image attachment urls on a single Zendesk comment (full-res `content_url`). */
@@ -61,8 +61,8 @@ function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): strin
  * Chat-style ticket detail: sticky header (requester + Zendesk pickers + staff
  * assignment) → scrollable conversation → sticky composer.
  *
- * Support Context (Linkage + Team + Activity) lives in a right slide-over opened
- * from the header — not under the thread — so the Zendesk composer stays alone.
+ * Support Context (Linkage + Team + Activity) lives in the global detail-stack
+ * slide-over ({@link SupportContextDetailPanel}) opened from the header.
  *
  * Owns ONE photo gallery aggregated across all message attachments + linked
  * photos, so clicking any photo opens the shared in-app PhotoViewerModal (no new
@@ -78,6 +78,7 @@ export function SupportTicketDetail({
   receivingId,
   /** Hide linked-context strip (when already shown by SupportContextHub). */
   hideLinkedContext = false,
+  onComposerBridgeChange,
 }: {
   ticketId: number;
   onBack?: () => void;
@@ -86,6 +87,8 @@ export function SupportTicketDetail({
   embedded?: boolean;
   receivingId?: number;
   hideLinkedContext?: boolean;
+  /** Exposes the embedded composer to a station terminal dock. */
+  onComposerBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
 }) {
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
   const ticket = bundle?.ticket;
@@ -171,8 +174,7 @@ export function SupportTicketDetail({
   const requester = requesterFrom(ticket);
 
   return (
-    <RightPaneOverlayHost className="relative flex h-full min-h-0 flex-col bg-surface-canvas/40">
-    <div {...dz.rootProps} className="relative flex h-full min-h-0 flex-col">
+    <div {...dz.rootProps} className="relative flex h-full min-h-0 flex-col bg-surface-canvas/40">
       <SupportChatHeader
         ticket={ticket}
         onBack={onBack}
@@ -199,45 +201,17 @@ export function SupportTicketDetail({
         staging={staging}
         hideSendBar={embedded}
         receivingId={receivingId}
+        onBridgeChange={onComposerBridgeChange}
       />
 
       {showContext ? (
-        <RightPaneOverlay
+        <SupportContextDetailPanel
+          ticketId={ticketId}
+          anchor={contextAnchor}
           open={contextOpen}
           onClose={() => setContextOpen(false)}
-          align="right"
-          anchor="pane"
-          width={420}
-          aria-label="Support context"
-        >
-          <div className="flex h-full min-h-0 flex-col bg-surface-card">
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border-hairline px-4 py-3">
-              <div>
-                <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-                  Ticket #{ticketId}
-                </p>
-                <h2 className="text-role-body font-bold tracking-tight text-text-default">
-                  Support context
-                </h2>
-              </div>
-              <IconButton
-                icon={<X className="h-4 w-4" />}
-                ariaLabel="Close support context"
-                onClick={() => setContextOpen(false)}
-                className="-mr-1 -mt-0.5 rounded-lg p-1.5 hover:bg-surface-sunken"
-              />
-            </div>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <SupportContextHub
-                anchor={contextAnchor}
-                variant={embedded ? 'station' : 'workbench'}
-                defaultSegment="activity"
-                hideCustomerSegment
-                className="h-full rounded-none border-0 shadow-none"
-              />
-            </div>
-          </div>
-        </RightPaneOverlay>
+          embedded={embedded}
+        />
       ) : null}
 
       {/* Full-panel drop overlay while dragging an OS file over the ticket. */}
@@ -266,6 +240,5 @@ export function SupportTicketDetail({
         ) : null}
       </AnimatePresence>
     </div>
-    </RightPaneOverlayHost>
   );
 }

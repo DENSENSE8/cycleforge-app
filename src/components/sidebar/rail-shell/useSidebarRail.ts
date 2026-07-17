@@ -119,9 +119,10 @@ export function useSidebarRail<TRow>({
   // First-mount cold-reload seed. Fetches the viewer's last-known rows (a fast
   // server read) and paints them while the heavy authoritative query resolves —
   // so a reload fills in quickly instead of waiting the full round-trip. Async
-  // (unlike the old localStorage seed), so a cold reload shows a brief skeleton
-  // then the seed, then reconciles. One-shot: once live data or a key change
-  // arrives, the mirror effect above owns `localRows`.
+  // (unlike the old localStorage seed). Snapshot-enabled rails keep their
+  // settled chrome visible while the seed races the authoritative fetch, then
+  // reconcile in place. One-shot: once live data or a key change arrives, the
+  // mirror effect above owns `localRows`.
   const seededRef = useRef(false);
   useEffect(() => {
     if (seededRef.current || !loadSnapshot) return;
@@ -430,7 +431,11 @@ export function useSidebarRail<TRow>({
     hadRowsForKeyRef.current = true;
   }
 
-  const showSkeleton = isPending && rows.length === 0 && !hadRowsForKeyRef.current;
+  const showSkeleton =
+    isPending &&
+    rows.length === 0 &&
+    !hadRowsForKeyRef.current &&
+    !loadSnapshot;
 
   const focusRow = useCallback((idx: number) => {
     const btn = listRef.current?.querySelector<HTMLButtonElement>(`button[data-rail-row][data-rail-index="${idx}"]`);

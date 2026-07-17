@@ -2,6 +2,7 @@ export * from './tokens';
 export * from './themes';
 export * from './foundations';
 export * from './primitives';
+export * from './shells';
 export * from './components';
 export * from './hooks';
 export * from './providers';

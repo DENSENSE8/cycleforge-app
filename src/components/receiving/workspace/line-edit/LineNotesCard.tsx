@@ -13,6 +13,7 @@ import {
   buildStaffStampText,
   focusTextEnd,
   formatUnitPriceForNotes,
+  NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS,
   NOTE_DOWNLOAD_INSERT_BTN,
   NOTE_DOWNLOAD_SYNC_BTN,
   NOTE_OVERLAY_ICON,
@@ -260,7 +261,7 @@ export function LineNotesCard({
           onChange={(e) => onNotesChange(e.target.value)}
           onBlur={handleBlur}
           placeholder="Notes for this carton — printed on the label and saved"
-          className={`w-full resize-none rounded-lg border border-border-soft px-3 text-role-caption text-text-default placeholder:text-text-faint py-1.5 pr-20 pb-6 ${NOTES_TEXTAREA_FOCUS}`}
+          className={`block w-full resize-none rounded-lg border border-border-soft px-3 text-role-caption text-text-default placeholder:text-text-faint py-1.5 pr-20 ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS} ${NOTES_TEXTAREA_FOCUS}`}
         />
 
         {/* Top-left repeat-previous; top-right insert rail; bottom-right push-to-PO. */}
@@ -287,7 +288,7 @@ export function LineNotesCard({
         {/* Bottom-left: a light "Saved" confirmation that fades in on blur-save. */}
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute bottom-2.5 left-3 flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
+          className={`pointer-events-none absolute bottom-1.5 left-3 flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
             savedFlash ? 'opacity-100' : 'opacity-0'
           }`}
         >
@@ -295,7 +296,7 @@ export function LineNotesCard({
         </div>
 
         {showSyncToPo ? (
-          <div className="pointer-events-none absolute bottom-2.5 right-1.5 flex items-center gap-0.5">
+          <div className="pointer-events-none absolute bottom-1.5 right-1.5 z-10">
             <div className="pointer-events-auto">
               <HoverTooltip label="Push this note to the synced PO" asChild>
                 {/* ds-raw-button */}

@@ -1,10 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { type ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { workflowStage, workflowStageDot } from '@/lib/receiving/workflow-stages';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
-import { TestingRailFeedToggle, type TestingRailFeed } from './TestingRailFeedToggle';
 import { filterReceivingRailRows } from '@/components/sidebar/tech/filter-receiving-rail-rows';
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 
@@ -31,13 +30,6 @@ function getTestingStatusDotLabel(row: ReceivingLineRow): string {
 /** Full invalidation triggers — module-scope so the shell's refresh-listener
  * effect keeps a stable identity and subscribes once (a fresh array literal each
  * render made it re-subscribe, risking a dropped event mid-swap). */
-const TESTING_QUEUE_REFRESH_EVENTS = [
-  'receiving-entry-added',
-  'receiving-serial-scanned',
-  'app-refresh-data',
-  'testing-result-recorded',
-];
-
 const TESTING_TESTED_REFRESH_EVENTS = [
   'app-refresh-data',
   'testing-result-recorded',
@@ -71,10 +63,9 @@ interface Props {
 }
 
 /**
- * Sidebar activity rail for the Testing workspace. A sticky pill toggle switches
- * between the recently-tested log (`view=testing`, default) and the needs-test
- * queue (`view=needs-test`, backed by assignments). On `/test` the signed-in
- * `testerId` is always required so the rail stays personal (never all-staff).
+ * Compact personal recently-tested rail for the Testing workspace. Pending and
+ * Returns are full tables in the main workbench; this rail stays a quick-reopen
+ * map and never duplicates those queues.
  */
 export function TestingRecentRail({
   selectedLineId,
@@ -83,10 +74,8 @@ export function TestingRecentRail({
   testerId = null,
   filterText = '',
 }: Props) {
-  const [feed, setFeed] = useState<TestingRailFeed>('tested');
   const scopedTesterId =
     Number.isFinite(testerId) && (testerId as number) > 0 ? (testerId as number) : null;
-  const isQueue = feed === 'queue';
   const trimmedFilter = filterText.trim();
 
   const queryKey = useMemo(
@@ -94,11 +83,11 @@ export function TestingRecentRail({
       [
         'receiving-lines-table',
         'rail',
-        feed,
+        'tested',
         scopedTesterId != null ? String(scopedTesterId) : 'none',
         trimmedFilter,
       ] as const,
-    [feed, scopedTesterId, trimmedFilter],
+    [scopedTesterId, trimmedFilter],
   );
 
   const fetchFn = async (): Promise<ApiResponse> => {
@@ -109,7 +98,7 @@ export function TestingRecentRail({
     }
     const params = new URLSearchParams({ limit: '500', offset: '0' });
     params.set('include', 'serials');
-    params.set('view', isQueue ? 'needs-test' : 'testing');
+    params.set('view', 'testing');
     params.set('tester', String(scopedTesterId));
     const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
     if (!res.ok) throw new Error('fetch failed');
@@ -120,26 +109,24 @@ export function TestingRecentRail({
   };
 
   return (
-    <>
-      <TestingRailFeedToggle value={feed} onChange={setFeed} />
-      <RecentActivityRailBase
+    <RecentActivityRailBase
         selectedLineId={selectedLineId}
         selectedRow={selectedRow}
         limit={limit}
         queryKey={queryKey}
         fetchFn={fetchFn}
         updateEvent="receiving-line-updated"
-        refreshEvents={isQueue ? TESTING_QUEUE_REFRESH_EVENTS : TESTING_TESTED_REFRESH_EVENTS}
+        refreshEvents={TESTING_TESTED_REFRESH_EVENTS}
         navigateEvent="testing-navigate-rail"
-        eyebrowTitle={isQueue ? 'To Test' : 'Tested'}
-        eyebrowSuffix={isQueue ? 'Your Queue' : 'You'}
+        eyebrowTitle="Recent"
+        eyebrowSuffix="You"
         getStatusDot={getTestingStatusDot}
         getStatusDotLabel={getTestingStatusDotLabel}
         renderQuantity={(row) => {
           const tested = getTestedQty(row);
           const received = row.quantity_received;
           return (
-            <span className={tested >= received && received > 0 ? 'text-emerald-600' : 'text-text-muted'}>
+            <span className={tested >= received && received > 0 ? 'text-text-success' : 'text-text-muted'}>
               {tested}/{received}
             </span>
           );
@@ -150,6 +137,5 @@ export function TestingRecentRail({
           total: row.quantity_received,
         })}
       />
-    </>
   );
 }

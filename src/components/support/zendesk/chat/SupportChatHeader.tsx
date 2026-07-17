@@ -22,11 +22,8 @@ import { initials, requesterFrom } from './support-chat-utils';
 const UNASSIGNED = 'unassigned';
 
 /**
- * Chat header. Two separate concerns, deliberately split:
- *   - the ZENDESK row (status / priority / Zendesk assignee) updates the ticket
- *     in Zendesk;
- *   - the Staff row assigns the ticket to one of OUR staff, dropping a
- *     notification into their inbox bell — it never touches Zendesk.
+ * Chat header. Zendesk row (status / priority / Zendesk assignee) updates the ticket
+ * in the external helpdesk; the staff assign control on the right notifies our staff inbox.
  */
 export function SupportChatHeader({
   ticket,
@@ -57,7 +54,6 @@ export function SupportChatHeader({
   const url = hideExternalLink ? null : zendeskTicketUrl(ticket.id);
   const requester = requesterFrom(ticket);
   const reqName = requester.name || requester.email || 'Requester';
-
   // Inline title (subject) edit — click the title, confirm with the checkmark.
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -71,7 +67,11 @@ export function SupportChatHeader({
     setEditingTitle(false);
   };
 
-  // Our own staff roster for the in-website follow-up assignment.
+  const assigneeOptions: SelectOption[] = [
+    { value: UNASSIGNED, label: 'Unassigned' },
+    ...agents.map((a) => ({ value: String(a.id), label: a.name, sublabel: a.email ?? undefined })),
+  ];
+
   const [staff, setStaff] = useState<StaffMember[]>([]);
   useEffect(() => {
     let alive = true;
@@ -84,11 +84,6 @@ export function SupportChatHeader({
       alive = false;
     };
   }, []);
-
-  const assigneeOptions: SelectOption[] = [
-    { value: UNASSIGNED, label: 'Unassigned' },
-    ...agents.map((a) => ({ value: String(a.id), label: a.name, sublabel: a.email ?? undefined })),
-  ];
 
   const staffOptions: SelectOption[] = [
     { value: UNASSIGNED, label: 'Unassigned' },
@@ -194,25 +189,22 @@ export function SupportChatHeader({
               label={contextBadge ? `Support context · ${contextBadge}` : 'Support context'}
               asChild
             >
-              <button
-                type="button"
+              <IconButton
+                icon={<Link2 className="h-4 w-4" />}
                 onClick={onOpenContext}
-                aria-label="Support context"
+                ariaLabel="Support context"
                 aria-pressed={contextOpen}
+                size="md"
                 className={cn(
-                  'inline-flex h-8 max-w-[9.5rem] items-center gap-1.5 rounded-lg px-2 text-text-muted ring-1 ring-inset transition',
+                  'rounded-lg ring-1 ring-inset',
                   contextOpen
                     ? 'bg-blue-50 text-blue-700 ring-blue-200'
                     : 'bg-surface-card ring-border-soft hover:text-text-default',
                 )}
-              >
-                <Link2 className="h-4 w-4 shrink-0" />
-                <span className="truncate text-role-micro font-bold uppercase tracking-wider">
-                  {contextBadge ?? 'Links'}
-                </span>
-              </button>
+              />
             </HoverTooltip>
           ) : null}
+          <SupportDetailsStack ticket={ticket} />
           {url ? (
             <HoverTooltip label="Open in Zendesk" asChild>
               <a
@@ -235,25 +227,8 @@ export function SupportChatHeader({
           compact ? 'mt-2' : 'mt-3',
         )}
       >
-        {/* In-website staff assignment — notifies that staffer's inbox bell. */}
-        <div className="flex items-center gap-2">
-          <span className="text-role-micro font-bold uppercase tracking-widest text-text-faint">Staff</span>
-          <ZendeskSelect
-            value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
-            options={staffOptions}
-            placeholder="Assign staff"
-            size="dense"
-            disabled={assign.isPending}
-            onChange={(v) => {
-              const staffId = v === UNASSIGNED ? null : Number(v);
-              const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
-              assign.mutate({ id: ticket.id, staffId, staffName });
-            }}
-          />
-        </div>
-
-        {/* Zendesk ticket fields + details — pinned to the header's right edge. */}
-        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        {/* Zendesk ticket fields — external/helpdesk controls on the left. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <ZendeskSelect
             value={String(ticket.status)}
             options={STATUS_OPTIONS}
@@ -276,12 +251,25 @@ export function SupportChatHeader({
             options={assigneeOptions}
             placeholder="Agent"
             size="dense"
-            align="right"
             disabled={update.isPending}
             onChange={(v) => update.mutate({ id: ticket.id, patch: { assignee_id: v === UNASSIGNED ? null : Number(v) } })}
           />
-          <SupportDetailsStack ticket={ticket} />
         </div>
+
+        <ZendeskSelect
+          value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
+          options={staffOptions}
+          placeholder="Assign staff"
+          size="dense"
+          align="right"
+          disabled={assign.isPending}
+          className="ml-auto"
+          onChange={(v) => {
+            const staffId = v === UNASSIGNED ? null : Number(v);
+            const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
+            assign.mutate({ id: ticket.id, staffId, staffName });
+          }}
+        />
       </div>
     </div>
   );

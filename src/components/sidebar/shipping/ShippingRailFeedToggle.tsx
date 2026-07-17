@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Shipping rail feed pills (Up Next / Out of Stock) pinned at the top of the
- * scrollable rail — mirrors {@link TestingRailFeedToggle}.
+ * Shipping-only rail feed pills (Up Next / Out of Stock) pinned at the top of
+ * the scrollable rail. Testing queues live in main-pane workbench tabs.
  */
 
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';

@@ -40,6 +40,7 @@ export interface ReceivingLineBulkSelection {
   /** Single-line claim row opened from the "Create support ticket" action. */
   claimRow: ReceivingLineRow | null;
   setClaimRow: React.Dispatch<React.SetStateAction<ReceivingLineRow | null>>;
+  toggleSelectMode: () => void;
   exitSelectMode: () => void;
   bulkActions: SelectionAction<ReceivingLineRow>[];
 }
@@ -62,6 +63,10 @@ export function useReceivingLineBulkSelection({
     emitToggleAll(scope, 'none');
     setSelectMode(false);
   }, [scope]);
+  const toggleSelectMode = useCallback(() => {
+    if (selectMode) exitSelectMode();
+    else setSelectMode(true);
+  }, [exitSelectMode, selectMode]);
 
   const handleCopyDetails = useCallback(
     (rows: ReceivingLineRow[]) => {
@@ -235,11 +240,19 @@ export function useReceivingLineBulkSelection({
     active
       ? {
           active: selectMode,
-          onToggle: () => (selectMode ? exitSelectMode() : setSelectMode(true)),
+          onToggle: toggleSelectMode,
         }
       : null,
-    [active, selectMode, exitSelectMode],
+    [active, selectMode, toggleSelectMode],
   );
 
-  return { selectMode, selectedRows, claimRow, setClaimRow, exitSelectMode, bulkActions };
+  return {
+    selectMode,
+    selectedRows,
+    claimRow,
+    setClaimRow,
+    toggleSelectMode,
+    exitSelectMode,
+    bulkActions,
+  };
 }

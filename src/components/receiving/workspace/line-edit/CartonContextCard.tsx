@@ -65,6 +65,7 @@ export function CartonContextCard({
   showStaffPhotoRow = true,
   listingLink,
   setListingLink,
+  showListing = true,
   listingEditorOpen,
   setListingEditorOpen,
   listingOpenHref,
@@ -72,6 +73,8 @@ export function CartonContextCard({
   poOpenHref,
   trackingOpenHref,
   poDisplay,
+  showOrderIdentity = true,
+  poEditable = true,
   linkedOrderNumber = null,
   poEditorOpen,
   setPoEditorOpen,
@@ -119,6 +122,8 @@ export function CartonContextCard({
   showStaffPhotoRow?: boolean;
   listingLink: string;
   setListingLink: (v: string) => void;
+  /** Hide the listing slot for stations whose active entity has no storefront listing. */
+  showListing?: boolean;
   listingEditorOpen: boolean;
   setListingEditorOpen: Dispatch<SetStateAction<boolean>>;
   listingOpenHref: string | null | undefined;
@@ -130,6 +135,10 @@ export function CartonContextCard({
   trackingOpenHref: string | null | undefined;
   /** Already-trimmed PO# (number ?? id) for the chip + editor seed. */
   poDisplay: string;
+  /** Hide the PO/order identifier slot when the station has no identity yet. */
+  showOrderIdentity?: boolean;
+  /** Disable the PO/identifier editor for read-only station adapters. */
+  poEditable?: boolean;
   /**
    * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-4,
    * copy-only) ONLY when the carton has no PO# of its own — never clobbers a
@@ -290,7 +299,10 @@ export function CartonContextCard({
   // top row is chips + pencils only.
   // The PO# editor is suppressed once the carton is an imported return — a
   // return is keyed by its order number (shown on the listing chip), not a PO.
-  const anyBelow = (trackingEditorsOpen && !isLocalPickup) || listingEditorOpen || (poEditorOpen && !isReturn);
+  const anyBelow =
+    (trackingEditorsOpen && !isLocalPickup) ||
+    (showListing && listingEditorOpen) ||
+    (poEditable && poEditorOpen && !isReturn);
 
   // Platform/Type pill options come straight from the org catalog (active rows,
   // org sort order) — so renames, hides, reorders, and custom entries the org
@@ -400,38 +412,40 @@ export function CartonContextCard({
                 Its hover menu offers Copy, then Edit. It is labeled by the
                 canonical platform (SoT) with the matching tone so it reads
                 consistently with the Platform pill. The only wide chip. */}
-            <IdentityLinkChip
-              grow
-              openHref={listingOpenHref}
-              openTitle="Open listing in new tab"
-              linkOptions={listingLinkOptions}
-              // An explicit pasted URL wins; otherwise fall back to the derived
-              // storefront href (listingOpenHref) so the chip reads as a real,
-              // copyable/openable Listing instead of "----".
-              value={listingLink || listingOpenHref || ''}
-              // Imported return → the platform label; otherwise the platform /
-              // Unfound / Listing label (or "----" when nothing's bound yet).
-              display={listingChipDisplay}
-              // Platform tone ONLY when there's an actual listing to open. With
-              // no link the chip isn't a live link, so it reads gray rather than
-              // painting a platform color it can't act on.
-              underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
-              iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
-              disableCopy={!(listingLink.trim() || listingOpenHref)}
-              onEdit={() => {
-                setListingEditorOpen((v) => {
-                  const next = !v;
-                  if (next) queueMicrotask(() => listingRef.current?.focus());
-                  return next;
-                });
-              }}
-              editOpen={listingEditorOpen}
-              editLabel="Edit listing URL"
-              actionsInMenu
-              chipAction="open"
-              showExternalIcon
-              menuFirstAction="copy"
-            />
+            {showListing ? (
+              <IdentityLinkChip
+                grow
+                openHref={listingOpenHref}
+                openTitle="Open listing in new tab"
+                linkOptions={listingLinkOptions}
+                // An explicit pasted URL wins; otherwise fall back to the derived
+                // storefront href (listingOpenHref) so the chip reads as a real,
+                // copyable/openable Listing instead of "----".
+                value={listingLink || listingOpenHref || ''}
+                // Imported return → the platform label; otherwise the platform /
+                // Unfound / Listing label (or "----" when nothing's bound yet).
+                display={listingChipDisplay}
+                // Platform tone ONLY when there's an actual listing to open. With
+                // no link the chip isn't a live link, so it reads gray rather than
+                // painting a platform color it can't act on.
+                underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
+                iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
+                disableCopy={!(listingLink.trim() || listingOpenHref)}
+                onEdit={() => {
+                  setListingEditorOpen((v) => {
+                    const next = !v;
+                    if (next) queueMicrotask(() => listingRef.current?.focus());
+                    return next;
+                  });
+                }}
+                editOpen={listingEditorOpen}
+                editLabel="Edit listing URL"
+                actionsInMenu
+                chipAction="open"
+                showExternalIcon
+                menuFirstAction="copy"
+              />
+            ) : null}
 
             {/* PO# — or the originating ORDER# for a return: an imported RETURN
                 shows its Zoho order#, and a serial-resolved return (scanned unit
@@ -439,29 +453,31 @@ export function CartonContextCard({
                 lifted into this slot. Either way it's a copy chip SEPARATE from
                 the listing link, and — not being a Zoho PO — copy-only: no Zoho
                 open, no inline editor. Normal bound POs keep open + edit. */}
-            <IdentityLinkChip
-              openHref={orderCopyOnly ? undefined : poOpenHref}
-              openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
-              value={effectiveOrder}
-              display={effectiveOrder ? getLast4(effectiveOrder) : '----'}
-              tone="id"
-              underlineClass="border-border-emphasis"
-              disableCopy={!effectiveOrder}
-              onEdit={
-                orderCopyOnly
-                  ? undefined
-                  : () => {
-                      setPoEditorOpen((v) => {
-                        const next = !v;
-                        if (next) queueMicrotask(() => poInputRef.current?.focus());
-                        return next;
-                      });
-                    }
-              }
-              editOpen={orderCopyOnly ? false : poEditorOpen}
-              editLabel={orderCopyOnly ? undefined : 'Edit PO#'}
-              actionsInMenu
-            />
+            {showOrderIdentity ? (
+              <IdentityLinkChip
+                openHref={orderCopyOnly ? undefined : poOpenHref}
+                openTitle={orderCopyOnly ? 'Order number' : 'Open PO in Zoho'}
+                value={effectiveOrder}
+                display={effectiveOrder ? getLast4(effectiveOrder) : '----'}
+                tone="id"
+                underlineClass="border-border-emphasis"
+                disableCopy={!effectiveOrder}
+                onEdit={
+                  orderCopyOnly || !poEditable
+                    ? undefined
+                    : () => {
+                        setPoEditorOpen((v) => {
+                          const next = !v;
+                          if (next) queueMicrotask(() => poInputRef.current?.focus());
+                          return next;
+                        });
+                      }
+                }
+                editOpen={orderCopyOnly || !poEditable ? false : poEditorOpen}
+                editLabel={orderCopyOnly || !poEditable ? undefined : 'Edit PO#'}
+                actionsInMenu
+              />
+            ) : null}
 
             {/* Tracking# — chip click copies; hover menu opens carrier tracking
                 or edits the primary/extra tracking values. Suppressed for pickup. */}

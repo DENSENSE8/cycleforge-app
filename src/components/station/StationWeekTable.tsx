@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { SkeletonList } from '@/design-system';
 import { Loader2 } from '@/components/Icons';
 import DateRangeHeader from '@/components/ui/DateRangeHeader';
@@ -10,6 +11,8 @@ import { sumDaySectionCounts } from '@/components/station/station-table-logic';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import type { TableId } from '@/lib/tables/table-columns';
+import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
+import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 
 export interface StationWeekTableProps<T> {
   loading: boolean;
@@ -34,6 +37,9 @@ export interface StationWeekTableProps<T> {
    * primitives drop columns this staffer has hidden for this table.
    */
   tableId?: TableId;
+  /** Portal display controls into the owning workspace chrome. */
+  toolbarPortalTarget?: HTMLElement | null;
+  savedViews?: { storageKey: string; paramKeys: readonly string[] };
 }
 
 /**
@@ -55,6 +61,8 @@ export function StationWeekTable<T>({
   scrollRef,
   renderRow,
   tableId,
+  toolbarPortalTarget = null,
+  savedViews,
 }: StationWeekTableProps<T>) {
   if (loading) {
     return (
@@ -70,51 +78,68 @@ export function StationWeekTable<T>({
   }
 
   const weekCount = sumDaySectionCounts(daySections);
+  const optionsMenu = savedViews ? <TableOptionsMenu savedViews={savedViews} /> : null;
+  const portaledControls =
+    tableId && toolbarPortalTarget
+      ? createPortal(
+          <div className="flex items-center gap-2">
+            <ColumnConfigButton variant="toolbar" />
+            {optionsMenu}
+          </div>,
+          toolbarPortalTarget,
+        )
+      : null;
 
   const body = (
-    <div className="relative flex h-full w-full bg-surface-card">
-      {isRefreshing && (
-        <div className="absolute right-2 top-2 z-30">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />
-        </div>
-      )}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <DateRangeHeader
-          count={weekCount}
-          columns={tableId ? <ColumnConfigButton iconOnly /> : undefined}
-          weekRange={weekRange}
-          weekOffset={weekOffset}
-          onPrevWeek={onPrevWeek}
-          onNextWeek={onNextWeek}
-        />
-        <div ref={scrollRef} data-testid="column-table-body" className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar w-full">
-          {daySections.length === 0 ? (
-            firstRunEmpty ? (
-              <div className="mx-auto animate-in fade-in zoom-in duration-300 py-10">
-                {firstRunEmpty}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-40 text-center">
-                <p className="font-medium italic text-text-soft opacity-20">{emptyMessage}</p>
-              </div>
-            )
-          ) : (
-            <div className="flex flex-col w-full">
-              {daySections.map(([date, records]) => (
-                <div key={date} className="flex flex-col">
-                  <DateGroupHeader date={date} total={records.length} />
-                  {records.map((record, index) => renderRow(record, index, date))}
+    <>
+      {portaledControls}
+      <div className="relative flex h-full w-full bg-surface-card">
+        {isRefreshing && (
+          <div className="absolute right-2 top-2 z-30">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />
+          </div>
+        )}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <DateRangeHeader
+            count={weekCount}
+            rightSlot={toolbarPortalTarget ? undefined : optionsMenu}
+            columns={tableId && !toolbarPortalTarget ? <ColumnConfigButton iconOnly /> : undefined}
+            weekRange={weekRange}
+            weekOffset={weekOffset}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+          />
+          <div ref={scrollRef} data-testid="column-table-body" className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar w-full">
+            {daySections.length === 0 ? (
+              firstRunEmpty ? (
+                <div className="mx-auto animate-in fade-in zoom-in duration-300 py-10">
+                  {firstRunEmpty}
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-40 text-center">
+                  <p className="font-medium italic text-text-soft opacity-20">{emptyMessage}</p>
+                </div>
+              )
+            ) : (
+              <div className="flex flex-col w-full">
+                {daySections.map(([date, records]) => (
+                  <div key={date} className="flex flex-col">
+                    <DateGroupHeader date={date} total={records.length} />
+                    {records.map((record, index) => renderRow(record, index, date))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 
   return tableId ? (
-    <TableColumnConfigProvider tableId={tableId}>{body}</TableColumnConfigProvider>
+    <TableColumnConfigProvider tableId={tableId}>
+      <TableDensityProvider tableId={tableId}>{body}</TableDensityProvider>
+    </TableColumnConfigProvider>
   ) : (
     body
   );

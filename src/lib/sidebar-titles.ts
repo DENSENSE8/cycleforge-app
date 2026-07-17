@@ -14,7 +14,9 @@ export const SIDEBAR_TITLES: Record<string, string> = {
   fba: 'FBA prep',
   receiving: 'Receiving',
   repair: 'Repair',
-  'walk-in': 'Walk-In',
+  // The `/walk-in` main page is the front-desk transaction history — renamed
+  // "Sales". Local Pickup / Repair work lives in Receiving modes.
+  'walk-in': 'Sales',
   'work-orders': 'Work Orders',
   replenish: 'Replenish',
   inventory: 'Inventory',

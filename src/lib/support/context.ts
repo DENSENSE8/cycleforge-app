@@ -44,6 +44,12 @@ import {
   type TimelineItem,
 } from '@/lib/timeline';
 import { getTicketEntity } from '@/lib/zendesk-links';
+import { listTicketShipmentReferences } from '@/lib/support/ticket-link';
+import { fetchSerialsForLines } from '@/lib/receiving/serial-projection';
+import {
+  loadSupportContextSerialSeed,
+  loadTicketShipmentSeed,
+} from '@/lib/support/context-linkage-seeds';
 
 export type {
   SupportContextBundle,
@@ -299,6 +305,7 @@ export async function resolveSupportContext(
   let ticketScan = (input.ticket ?? '').trim() || null;
   let ticketRow: SupportTicketRow | null = null;
   let providerTicketId: number | null = null;
+  let ticketShipmentIds: number[] = [];
 
   // ── Ticket anchor: reverse-resolve to receiving / shipment ───────────────
   if (ticketScan) {
@@ -350,6 +357,20 @@ export async function resolveSupportContext(
     }
   }
 
+  // Ticket references are a many-STN surface. The primary entity lookup above
+  // only follows the ticket's anchor, so explicitly seed any SHIPMENT references
+  // before resolving the order loop.
+  if (providerTicketId != null && Number.isFinite(providerTicketId) && providerTicketId > 0) {
+    const ticketSeed = await loadTicketShipmentSeed(
+      orgId,
+      providerTicketId,
+      tracking,
+      { listReferences: listTicketShipmentReferences },
+    ).catch(() => ({ tracking, shipmentIds: [] }));
+    tracking = ticketSeed.tracking;
+    ticketShipmentIds = ticketSeed.shipmentIds;
+  }
+
   // ── Tracking → STN → carton ──────────────────────────────────────────────
   let shipmentId: number | null = null;
   if (tracking) {
@@ -382,11 +403,31 @@ export async function resolveSupportContext(
   }
 
   // ── Linkage (order loop) ─────────────────────────────────────────────────
-  const linkage = await resolveOrderLinkage(orgId, {
+  let linkage = await resolveOrderLinkage(orgId, {
     order: orderQ,
     tracking,
     serial: null,
   }).catch(() => emptyLinkage);
+
+  // Return/warranty contexts can carry the outbound order only through the
+  // unit allocation. Pay the serial lookup cost solely when order/tracking did
+  // not resolve an order, then reuse order-linkage's existing serial waist.
+  if (!linkage.order && (lineId != null || receivingId != null)) {
+    const serialSeed = await loadSupportContextSerialSeed(orgId, {
+      lineId,
+      receivingId,
+    }, {
+      query: tenantQuery,
+      fetchSerials: fetchSerialsForLines,
+    }).catch(() => null);
+    if (serialSeed) {
+      linkage = await resolveOrderLinkage(orgId, {
+        order: orderQ,
+        tracking,
+        serial: serialSeed,
+      }).catch(() => linkage);
+    }
+  }
 
   if (!tracking && linkage.trackings[0]?.tracking) {
     tracking = linkage.trackings[0].tracking;
@@ -395,6 +436,7 @@ export async function resolveSupportContext(
     ...new Set(
       [
         shipmentId,
+        ...ticketShipmentIds,
         ...linkage.trackings.map((t) => t.shipmentId),
       ].filter((n): n is number => n != null && Number.isFinite(n)),
     ),

@@ -1,55 +1,57 @@
 'use client';
 
 /**
- * Categorized Walk-In history — recently completed front-desk work.
- * Category via `?category=repairs|sales|pickups` (default repairs).
+ * Sales — the overall front-desk transaction history.
+ *
+ * Archetype: **Monitor** (contextual-display.md) — observe-only, org-scoped, no
+ * durable selection; the category is an ephemeral URL filter
+ * (`?category=all|sales|pickups|repairs`, default `all`). Active intake lives on
+ * the Walk-In station (`/pickup?job=`), so nothing here edits.
+ *
+ * Composition is the golden workbench recipe (`DashboardScrollShell` +
+ * `WORKBENCH_CHROME_COLUMN` + `WORKBENCH_BODY_COLUMN`), identical to
+ * `DashboardOrdersView`: pinned tab chrome OUTSIDE the scroll port, then a body
+ * of KPI strip (scrolls away) → full-bleed day-banded feed. The day bands are
+ * therefore the only sticky layer inside the port — no offset math.
+ *
+ * All four tabs render ONE feed filtered by kind; there is no per-category table.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
-import { RepairTable } from '@/components/repair';
-import { Button } from '@/design-system/primitives';
-import { ExternalLink } from '@/components/Icons';
+import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
+import {
+  WORKBENCH_BODY_COLUMN,
+  WORKBENCH_CHROME_COLUMN,
+} from '@/components/dashboard/workbench-shell';
+import { SalesWorkspaceHeader } from '@/components/walk-in/SalesWorkspaceHeader';
+import { SalesKpiStrip } from '@/components/walk-in/SalesKpiStrip';
+import { SalesTransactionsFeed } from '@/components/walk-in/SalesTransactionsFeed';
+import { useWalkInTransactions } from '@/hooks/useWalkInTransactions';
 import {
   DEFAULT_WALK_IN_HISTORY_CATEGORY,
   WALK_IN_HISTORY_ITEMS,
   parseWalkInHistoryCategory,
   type WalkInHistoryCategory,
 } from '@/lib/walk-in/history-categories';
+import {
+  countTransactions,
+  filterTransactions,
+  summarizeTransactions,
+} from '@/lib/walk-in/transactions';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
-import { formatMoney } from '@/components/work-orders/localPickupStore';
-import { formatCentsToDollars } from '@/lib/square/client';
-import { toPSTDateKey, formatDateKeyMedium } from '@/utils/date';
 
-type SaleRow = {
-  id: string;
-  customer_name: string | null;
-  total: number | null;
-  status: string;
-  order_source: string;
-  created_at: string;
-  line_items: Array<{ name: string; quantity: string }>;
-};
-
-type PickupOrderRow = {
-  id: number;
-  pickup_date: string;
-  customer_name: string | null;
-  status: string;
-  item_count: number;
-  total_value: string;
-  completed_at: string | null;
-  created_at: string;
+const EMPTY_MESSAGE: Record<WalkInHistoryCategory, string> = {
+  all: 'No front-desk transactions yet.',
+  sales: 'No walk-in sales yet.',
+  pickups: 'No completed local pickups yet.',
+  repairs: 'No repairs picked up yet.',
 };
 
 function categoryFromParams(searchParams: URLSearchParams): WalkInHistoryCategory {
   const category = searchParams.get('category');
   if (category) return parseWalkInHistoryCategory(category);
-  // Legacy tab/mode without category → repairs history (or sales tab label).
+  // Legacy tab/mode without category stays category-scoped; anything else → all.
   if (searchParams.get('mode') === 'sales') return 'sales';
   return parseWalkInHistoryCategory(searchParams.get('tab'));
 }
@@ -59,6 +61,7 @@ export function WalkInHistoryHub() {
   const pathname = usePathname() ?? '/walk-in';
   const searchParams = useSearchParams();
   const category = categoryFromParams(searchParams);
+  const { rows, isLoading, isError, refetch } = useWalkInTransactions();
 
   const setCategory = useCallback(
     (next: WalkInHistoryCategory) => {
@@ -78,206 +81,48 @@ export function WalkInHistoryHub() {
     [pathname, router, searchParams],
   );
 
-  return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-hairline px-4 py-2.5">
-        <div className="min-w-0">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-            Walk-In
-          </p>
-          <h2 className="text-role-caption font-black uppercase tracking-tight text-text-default">
-            Recent activity
-          </h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => router.push(walkInStationHref('pickup'))}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Open station
-          </Button>
-          <div className="w-[min(100%,22rem)]">
-            <HorizontalButtonSlider
-              items={WALK_IN_HISTORY_ITEMS}
-              value={category}
-              onChange={(id) => setCategory(id as WalkInHistoryCategory)}
-              variant="segmented"
-              className="w-full"
-              aria-label="Walk-In history category"
-            />
-          </div>
-        </div>
-      </div>
+  const counts = useMemo(() => countTransactions(rows), [rows]);
+  const visible = useMemo(() => filterTransactions(rows, category), [rows, category]);
+  const rollup = useMemo(() => summarizeTransactions(visible), [visible]);
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {category === 'repairs' ? (
-          <RepairTable filter="done" />
-        ) : category === 'sales' ? (
-          <SalesHistoryTable />
-        ) : (
-          <PickupsHistoryTable />
-        )}
-      </div>
-    </div>
+  const openStation = useCallback(
+    () => router.push(walkInStationHref('pickup')),
+    [router],
   );
-}
 
-function SalesHistoryTable() {
-  const { data: rows = [], isLoading } = useQuery<SaleRow[]>({
-    queryKey: ['walk-in-history-sales'],
-    queryFn: async () => {
-      const res = await fetch('/api/walk-in/sales?orderSource=walk_in_sale&limit=100', {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error('Failed to load sales');
-      const data = (await res.json()) as { rows?: SaleRow[] };
-      return data.rows ?? [];
-    },
-    staleTime: 60_000,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <LoadingSpinner size="lg" className="text-emerald-600" />
-      </div>
-    );
-  }
+  const categoryLabel =
+    WALK_IN_HISTORY_ITEMS.find((item) => item.id === category)?.label ?? 'All';
 
   return (
-    <WorkbenchTablePane>
-      <div className="overflow-auto">
-        <table className="w-full min-w-[40rem] text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-border-hairline bg-surface-card text-role-micro uppercase tracking-wider text-text-soft">
-            <tr>
-              <th className="px-4 py-2.5 font-bold">When</th>
-              <th className="px-4 py-2.5 font-bold">Customer</th>
-              <th className="px-4 py-2.5 font-bold">Items</th>
-              <th className="px-4 py-2.5 font-bold text-right">Total</th>
-              <th className="px-4 py-2.5 font-bold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-text-faint">
-                  No recent walk-in sales
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                const day = toPSTDateKey(row.created_at);
-                const itemSummary = row.line_items
-                  ?.slice(0, 2)
-                  .map((li) => `${li.quantity}× ${li.name}`)
-                  .join(', ');
-                const more =
-                  (row.line_items?.length ?? 0) > 2
-                    ? ` +${row.line_items.length - 2}`
-                    : '';
-                return (
-                  <tr
-                    key={row.id}
-                    className="border-b border-border-hairline/80 hover:bg-surface-canvas/50"
-                  >
-                    <td className="px-4 py-2.5 tabular-nums text-text-soft">
-                      {day ? formatDateKeyMedium(day, { weekday: 'none' }) : '—'}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-text-default">
-                      {row.customer_name?.trim() || 'Walk-in'}
-                    </td>
-                    <td className="max-w-[18rem] truncate px-4 py-2.5 text-text-soft">
-                      {itemSummary || '—'}
-                      {more}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-default">
-                      {row.total != null ? formatCentsToDollars(row.total) : '—'}
-                    </td>
-                    <td className="px-4 py-2.5 text-text-soft">{row.status}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </WorkbenchTablePane>
-  );
-}
+    <DashboardScrollShell
+      chrome={
+        <div className={WORKBENCH_CHROME_COLUMN}>
+          <SalesWorkspaceHeader
+            category={category}
+            onSelectCategory={setCategory}
+            counts={counts}
+            onOpenStation={openStation}
+          />
+        </div>
+      }
+    >
+      <div className={WORKBENCH_BODY_COLUMN}>
+        <div className="mb-4">
+          <SalesKpiStrip
+            rollup={rollup}
+            isLoading={isLoading}
+            label={category === 'all' ? 'Transactions' : categoryLabel}
+          />
+        </div>
 
-function PickupsHistoryTable() {
-  const { data: rows = [], isLoading } = useQuery<PickupOrderRow[]>({
-    queryKey: ['walk-in-history-pickups'],
-    queryFn: async () => {
-      const res = await fetch('/api/local-pickup-orders?status=COMPLETED&limit=100', {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error('Failed to load pickups');
-      const data = (await res.json()) as { orders?: PickupOrderRow[] };
-      return data.orders ?? [];
-    },
-    staleTime: 60_000,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <LoadingSpinner size="lg" className="text-emerald-600" />
+        <SalesTransactionsFeed
+          rows={visible}
+          isLoading={isLoading}
+          isError={isError}
+          refetch={refetch}
+          emptyMessage={EMPTY_MESSAGE[category]}
+        />
       </div>
-    );
-  }
-
-  return (
-    <WorkbenchTablePane>
-      <div className="overflow-auto">
-        <table className="w-full min-w-[36rem] text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-border-hairline bg-surface-card text-role-micro uppercase tracking-wider text-text-soft">
-            <tr>
-              <th className="px-4 py-2.5 font-bold">Pickup date</th>
-              <th className="px-4 py-2.5 font-bold">Customer</th>
-              <th className="px-4 py-2.5 font-bold text-right">Items</th>
-              <th className="px-4 py-2.5 font-bold text-right">Total</th>
-              <th className="px-4 py-2.5 font-bold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-text-faint">
-                  No completed local pickups
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b border-border-hairline/80 hover:bg-surface-canvas/50"
-                >
-                  <td className="px-4 py-2.5 tabular-nums text-text-soft">
-                    {row.pickup_date
-                      ? formatDateKeyMedium(row.pickup_date, { weekday: 'none' })
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-2.5 font-medium text-text-default">
-                    {row.customer_name?.trim() || '—'}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-text-soft">
-                    {row.item_count}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-text-default">
-                    {formatMoney(Number(row.total_value) || 0)}
-                  </td>
-                  <td className="px-4 py-2.5 text-text-soft">{row.status}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </WorkbenchTablePane>
+    </DashboardScrollShell>
   );
 }

@@ -139,6 +139,50 @@ for (const combo of LIST_COMBOS) {
   });
 }
 
+test('needs-test return_scope partitions return and standard cartons', () => {
+  const build = (scope: 'returns' | 'standard') =>
+    buildReceivingLinesListSql({
+      query: parseReceivingLinesQuery(
+        new URLSearchParams(`view=needs-test&return_scope=${scope}`),
+      ),
+      orgId: ORG,
+      viewerStaffId: NaN,
+      universalIncoming: false,
+      applyScannedZohoExclusion: true,
+    });
+
+  assert.match(build('returns').list.sql, /COALESCE\(r\.is_return, false\) = true/);
+  assert.match(build('standard').list.sql, /COALESCE\(r\.is_return, false\) = false/);
+});
+
+test('testing history scopes membership and verdict rollup to the requested week', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(
+      new URLSearchParams(
+        'view=testing&tester=12&weekStart=2026-06-01&weekEnd=2026-06-07',
+      ),
+    ),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+
+  assert.match(built.list.sql, /tr\.tested_by = \$2/);
+  assert.match(
+    built.list.sql,
+    /tr\.created_at >= \(\$3::date AT TIME ZONE 'America\/Los_Angeles'\)/,
+  );
+  assert.match(
+    built.list.sql,
+    /tr\.created_at < \(\(\$4::date \+ 1\) AT TIME ZONE 'America\/Los_Angeles'\)/,
+  );
+  assert.match(built.list.sql, /GROUP BY tr\.receiving_line_id/);
+  assert.doesNotMatch(built.list.sql, /EXISTS \(SELECT 1 FROM testing_results/);
+  assert.deepEqual(built.list.params, [ORG, 12, '2026-06-01', '2026-06-07', 200, 0]);
+  assert.deepEqual(built.count.params, [ORG, 12, '2026-06-01', '2026-06-07']);
+});
+
 // Layer 1 (rail read-after-write): the `unboxRailColumnRead` flag swaps the
 // view=unbox_opened MEMBERSHIP predicate (the WHERE arm) — not the timestamp
 // join, which keeps reading ops_events for display. Off (default) = legacy

@@ -2,10 +2,13 @@ import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePag
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 
 /**
- * `/pickup` — Walk-In front-desk station (Sales · Local Pickup · Repair).
- * Job sub-mode via `?job=sales|pickup|repair` (default pickup). A Workbench
- * surface (list → select → edit), not a scan bench. Bare `/pickup` derives the
- * `pickup` mode path-first. Legacy `/receiving?mode=pickup` redirects here.
+ * `/pickup` — Local Pickup, a Receiving mode with its own graduated route (like
+ * `/unbox` and `/triage`). Front-desk pickup is receiving work: the operator
+ * switches to it from the receiving mode rail, so this mounts the receiving
+ * shell rather than a separate counter station. Repair is its sibling mode
+ * (`/repair`); Sales is not a receiving mode at all — it lives on `/walk-in`.
+ *
+ * Legacy `/receiving?mode=pickup` and `/pickup?job=…` redirect here (proxy).
  *
  * Wrapped in `SurfaceGate` (composition + flag → SurfaceRenderer, else the
  * legacy tree — the safe default).
@@ -13,7 +16,7 @@ import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 export default function PickupPage() {
   return (
     <SurfaceGate surfaceKey="pickup">
-      <ReceivingSurfacePage mobileTitle="Walk-In" />
+      <ReceivingSurfacePage mobileTitle="Local Pickup" />
     </SurfaceGate>
   );
 }

@@ -2,20 +2,20 @@
 
 /**
  * Shipping workspace chrome — tabs left (Pending · FBA | History), filters +
- * controls portal right. Mirrors OutboundWorkspaceHeader for `/test` Shipping.
+ * controls portal right · Select far-right. Mirrors OutboundWorkspaceHeader
+ * for `/test` Shipping.
  */
 
-import { useMemo, type Ref } from 'react';
+import { useMemo, type ReactNode, type Ref } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
-  OutboundAllFilterButton,
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
-import { OutboundSavedViewChips } from '@/components/dashboard/OutboundSavedViewChips';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { SearchField } from '@/design-system/primitives/SearchField';
+import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
+import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -31,6 +31,9 @@ export interface ShippingWorkspaceHeaderProps {
   tab: ShippingWorkspaceTab;
   onSelectTab: (tab: ShippingWorkspaceTab) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
+  /** Select pencil — always far-right in chrome. */
+  selectMode?: boolean;
+  onToggleSelectMode?: () => void;
   className?: string;
 }
 
@@ -38,6 +41,8 @@ export function ShippingWorkspaceHeader({
   tab,
   onSelectTab,
   controlsSlotRef,
+  selectMode = false,
+  onToggleSelectMode,
   className,
 }: ShippingWorkspaceHeaderProps) {
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
@@ -58,6 +63,45 @@ export function ShippingWorkspaceHeader({
       })),
     [queueCounts?.total],
   );
+  const chromeByTab: Record<
+    ShippingWorkspaceTab,
+    { search?: ReactNode; right?: ReactNode }
+  > = {
+    pending: {
+      search: (
+        <ToolbarSearchToggle
+          value={searchQuery}
+          onChange={setSearch}
+          onClear={() => setSearch('')}
+          placeholder="Filter orders…"
+          tone="blue"
+        />
+      ),
+      right: <OutboundExactFilters mode="unshipped" />,
+    },
+    fba: {
+      right: (
+        <Link
+          href="/outbound?mode=fba"
+          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
+        >
+          FBA station
+          <ChevronRight className="h-3.5 w-3.5 opacity-70" />
+        </Link>
+      ),
+    },
+    history: {
+      right: (
+        <StaffFilterButton
+          iconOnly
+          allLabel="All technicians"
+          allToken="all"
+          meLabel="You"
+        />
+      ),
+    },
+  };
+  const chrome = chromeByTab[tab];
 
   return (
     <WorkbenchChromeHeader
@@ -70,48 +114,12 @@ export function ShippingWorkspaceHeader({
       className={className}
       // Scoped list filter over ?search= (pending list reads it directly);
       // only shown where the tab's list actually filters on it.
-      search={
-        tab === 'pending' ? (
-          <SearchField
-            value={searchQuery}
-            onChange={setSearch}
-            onClear={() => setSearch('')}
-            placeholder="Filter orders…"
-            tone="blue"
-            size="compact"
-            className="w-40 shrink-0 lg:w-56"
-          />
+      search={chrome.search}
+      right={chrome.right}
+      trailing={
+        onToggleSelectMode ? (
+          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
         ) : undefined
-      }
-      right={
-        <>
-          {tab === 'pending' ? (
-            <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-              <OutboundExactFilters mode="unshipped" />
-              <OutboundAllFilterButton mode="unshipped" />
-              <OutboundSavedViewChips mode="unshipped" />
-            </div>
-          ) : null}
-
-          {tab === 'fba' ? (
-            <Link
-              href="/outbound?mode=fba"
-              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
-            >
-              FBA station
-              <ChevronRight className="h-3.5 w-3.5 opacity-70" />
-            </Link>
-          ) : null}
-
-          {tab === 'history' ? (
-            <StaffFilterButton
-              align="start"
-              allLabel="All technicians"
-              allToken="all"
-              meLabel="You"
-            />
-          ) : null}
-        </>
       }
     />
   );

@@ -6,9 +6,9 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import {
   STAGGER_REVEAL_STEP,
   staggerRevealContainer,
-  staggerRevealItem,
   staggerRevealRiseItem,
   staggerRevealSidebarItem,
+  staggerRevealSidebarSlideItem,
 } from '@/design-system/primitives/StaggerReveal';
 import { useSidebarRail } from './rail-shell/useSidebarRail';
 import { RailEditPencil } from './rail-shell/RailEditPencil';
@@ -72,9 +72,9 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   const reduceMotion = useReducedMotion();
   const staggerItemVariants: Variants | undefined = staggerReveal
     ? reduceMotion
-      ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } }, exit: { opacity: 0 } }
+      ? { hidden: { opacity: 1 }, show: { opacity: 1, transition: { duration: 0.001 } }, exit: { opacity: 0 } }
       : staggerRevealMotion === 'slide'
-        ? staggerRevealItem
+        ? staggerRevealSidebarSlideItem
         : staggerRevealMotion === 'rise'
           ? staggerRevealRiseItem
           : staggerRevealSidebarItem
@@ -177,7 +177,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
               })}
             </AnimatePresence>
           </motion.ul>
-          {rows.length === 0 ? (
+          {rows.length === 0 && !isFetching ? (
             <p className={`${SIDEBAR_GUTTER} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
           ) : null}
         </>

@@ -9,8 +9,8 @@ import { Truck, Wrench } from '@/components/Icons';
  *   testing  → {@link TestingSidebarPanel} (receiving scan + personal Tested /
  *              To Test rail + filter). Right pane = TestingHistoryList when no
  *              line is selected; TestingPanel when a line is open.
- *   shipping → {@link ShippingSidebarPanel} (order scan + last-50 personal
- *              ship-out rail + filter). Right pane = Shipping workspace
+ *   shipping → {@link ShippingSidebarPanel} (order scan + last-25 personal
+ *              TECH-scan rail + filter). Right pane = Shipping workspace
  *              (Pending · FBA | History); rail row opens shipped-order preview.
  */
 export type TechSidebarTopMode = 'testing' | 'shipping';

@@ -60,11 +60,13 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
     nextParams.set('staffId', techId);
     if (next === 'testing') {
       nextParams.set('view', 'testing');
+      nextParams.delete('ship');
       nextParams.delete('search');
       nextParams.delete('searchOpen');
     } else {
       const v = nextParams.get('view');
       if (v === 'testing' || v === 'testing-history') nextParams.delete('view');
+      nextParams.delete('testTab');
     }
     const nextSearch = nextParams.toString();
     router.replace(nextSearch ? `${basePath}?${nextSearch}` : basePath);

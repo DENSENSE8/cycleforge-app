@@ -49,6 +49,13 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
 - **Random card soup** — decorative grids of nested cards for ordinary collections.
 - **Nested cards-as-rows** — e.g. `SectionCard` inside a list of `SectionCard`s.
 - **Second visual language** beside Kinetic Ledger tokens.
+- **Hand-rolled `<table>` / tab band / row markup** for a tabular ops surface. **Do:** compose the golden
+  page recipe — `DashboardScrollShell` + `WORKBENCH_CHROME_COLUMN`/`WORKBENCH_BODY_COLUMN` +
+  `WorkbenchChromeHeader` (tabs) + `KpiTile` + `DateGroupHeader`/`groupRowsBy` day bands + `RowTitle` /
+  `RowMetaColumns` / `ChipColumns` / `LedgerValue`. Golden page: `DashboardOrdersView.tsx`.
+  *Extending an existing hand-rolled table is not "matching siblings" — it is growing a fork. Migrate the
+  region to the recipe instead, and resolve every per-kind label/hue through a registry
+  (`workflow-stages.ts`-style), never a map inlined in the view.*
 - **Hand-rolling the card shell** — never re-type `rounded-2xl border border-border-soft
   bg-surface-card shadow-sm`. Compose **`Panel`** (generic static surface — its default *is* that
   shell; props: `padding`/`radius`/`elevation`/`borderless`), **`SectionCard`** (`@/design-system/

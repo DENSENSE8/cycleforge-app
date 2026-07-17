@@ -41,6 +41,9 @@ test('defaults: empty search params', () => {
   assert.equal(q.wantsPrioritySort, false);
   assert.equal(q.hideZohoReceived, false);
   assert.equal(q.testerId, 0);
+  assert.equal(q.returnScope, 'all');
+  assert.equal(q.weekStart, '');
+  assert.equal(q.weekEnd, '');
   assert.equal(q.includeSerials, false);
   assert.equal(q.inboundSourceParam, '');
   assert.equal(q.incomingLinkParam, '');
@@ -120,8 +123,20 @@ test('qa/disposition/workflow filters: uppercased raw strings; validity gate is 
 
 test('week params: ignored entirely (Wave-2 dead-arm removal)', () => {
   const q = parse('week_start=2026-06-01&week_end=2026-06-07');
-  assert.equal('weekStart' in q, false);
-  assert.equal('weekEnd' in q, false);
+  assert.equal(q.weekStart, '');
+  assert.equal(q.weekEnd, '');
+});
+
+test('testing week params: camel-case ISO dates parse and malformed values no-op', () => {
+  const q = parse('view=testing&weekStart=2026-06-01&weekEnd=2026-06-07');
+  assert.equal(q.weekStart, '2026-06-01');
+  assert.equal(q.weekEnd, '2026-06-07');
+  const bad = parse('view=testing&weekStart=2026-13-01&weekEnd=2026-13-07');
+  assert.equal(bad.weekStart, '');
+  assert.equal(bad.weekEnd, '');
+  const partial = parse('view=testing&weekStart=2026-06-01');
+  assert.equal(partial.weekStart, '');
+  assert.equal(partial.weekEnd, '');
 });
 
 test('view: known views parse; unknown → null (default scoping)', () => {
@@ -136,6 +151,12 @@ test('view: known views parse; unknown → null (default scoping)', () => {
   // Removed view (Wave-2 dead arm): old deep links degrade to default scoping.
   assert.equal(parse('view=recent').view, null);
   assert.equal(parse('view=recent').viewRaw, 'recent');
+});
+
+test('return_scope partitions the testing queue and invalid values show all', () => {
+  assert.equal(parse('return_scope=returns').returnScope, 'returns');
+  assert.equal(parse('return_scope=STANDARD').returnScope, 'standard');
+  assert.equal(parse('return_scope=other').returnScope, 'all');
 });
 
 test('delivery_state: trimmed + uppercased raw string, no validity gate here', () => {

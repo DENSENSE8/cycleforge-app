@@ -1,13 +1,43 @@
 # Front-of-house / back-of-house surface split
 
-**Status:** Planning — refine before build  
+**Status:** Phase 0 decisions frozen 2026-07-16 — split into per-surface child plans  
 **Created:** 2026-07-16  
 **Related:**
 - [studio-driven-operator-surfaces-refactor-plan.md](./studio-driven-operator-surfaces-refactor-plan.md)
 - [display-convergence-log.md](./display-convergence-log.md)
 - [../master-connections-and-refactor/staff/06-local-pickup.md](../master-connections-and-refactor/staff/06-local-pickup.md)
+- **Child plan docs:** [`foh-boh-surface-split/`](./foh-boh-surface-split/) — per-surface plans (this refactor is split for independent monitoring)
 
 This is a **design inventory**, not an implementation ticket. Use it to refine product decisions, spot reuse, and cut overlap before writing code.
+
+## Phase 0 — Decision record (frozen 2026-07-16)
+
+Frozen with the product owner. Downstream child plans inherit these — refine **within** each child doc, don't re-litigate here.
+
+| # | Question | Decision | Rationale |
+|---|---|---|---|
+| 1 | Deliverable shape | **Split into per-surface plan docs** (see Child plan docs) so each page is built + monitored independently | Owner monitors surfaces separately; matches one-lane-per-initiative |
+| 2 | Sales boundary | Station `/pickup?job=sales` = intake cart (act); the Sales main page = the **history** side (observe) | Station-vs-Monitor archetype split; reuse `SalesEditPanel` + `WalkInHistoryHub` |
+| 3 | Front-desk history home | Rename `/walk-in` main → **"Sales"** = one **overall transaction history** hosting Sales · Pickups · Repairs categories | Owner: "renamed to sales as overall history display for all transactions" |
+| 4 | Walk-In station URL | **Open — leaning Sales namespace**; resolved in [02](./foh-boh-surface-split/02-walk-in-station.md) (recommend keep `/pickup`, decouple identity only) | Owner left open, noted "sales page would be best" |
+| 5 | Inbound History home | **`/dashboard`, as a new mode** (beside Orders/Shipping) — not a receiving-rail pill, not a `/inbound` route | Owner: "in the dashboard page, under a different mode, like receiving mode" |
+| 6 | Kiosk layout | **Deferred** (non-goal this pass) | Explicit later phase |
+| 7 | `SURFACE_REGISTRY` keys | Retarget the `pickup` key `pageKey`→`walk_in`, `permission`→`walk_in.view` (repair job also checks `repair.view`); no new `sales` surface yet | Minimal decouple; owned by [05](./foh-boh-surface-split/05-nav-permission-redirects.md) |
+| 8 | Job switcher | Keep in-page `WalkInJobSwitcher`; jobs stay sub-modes, not L2 master-nav modes | Component exists; lowest churn |
+
+## Child plan docs
+
+Each is independently monitorable. Sequence respects dependencies — Walk-In Station + Inbound History must ship **before** the Receiving rail drops their pills.
+
+| # | Plan | Surface | Status | Depends on |
+|---|---|---|---|---|
+| 01 | [Receiving BOH slim](./foh-boh-surface-split/01-receiving-boh-slim.md) | Receiving station rail | Not started | 02, 04 |
+| 02 | [Walk-In Station](./foh-boh-surface-split/02-walk-in-station.md) | `/pickup` intake bench | Not started | 05 |
+| 03 | [Sales (main history)](./foh-boh-surface-split/03-sales-main-history.md) | `/walk-in` → Sales monitor | Not started | 05 |
+| 04 | [Inbound History → Dashboard mode](./foh-boh-surface-split/04-inbound-history-dashboard-mode.md) | `/dashboard` new mode | Not started | 05 |
+| 05 | [Nav · permission · redirects](./foh-boh-surface-split/05-nav-permission-redirects.md) | shared registries | ✅ Built 2026-07-16 | — |
+
+**Recommended build order: 05 → 02 → 04 → 03 → 01** (connective tissue first; Receiving rail slim last, after its graduated surfaces exist).
 
 ---
 
@@ -102,7 +132,9 @@ Chrome pattern is locked (Scanned · Unboxed tabs). **Route home** is comparativ
 | **2c** `/dashboard` Inbound domain | beside Outbound tabs | One Ops hub | Mixes inbound cartons with outbound orders; needs domain switcher; permission mashup | Reuse `DashboardScrollShell` / header; **not** outbound tables |
 | **2d** Defer | — | Decide after Walk-In graduation | Risk of History staying as Receiving mode forever | — |
 
-**Recommendation to challenge later:** start with **2a** (chrome + remove from rail), then rename route to **2b** if URL semantics matter. Avoid **2c** unless you explicitly want a unified Ops Dashboard product.
+**DECIDED 2026-07-16 — 2c, as a `/dashboard` mode.** Owner: "under a different mode, like receiving mode." Keep inbound cartons in their own domain switch, distinct from outbound orders. Spec: [04-inbound-history-dashboard-mode](./foh-boh-surface-split/04-inbound-history-dashboard-mode.md).
+
+**Original recommendation (superseded):** start with **2a** (chrome + remove from rail), then rename route to **2b** if URL semantics matter. Avoid **2c** unless you explicitly want a unified Ops Dashboard product.
 
 Do **not** merge with Walk-In/Sales history — different APIs and jobs.
 
@@ -192,7 +224,7 @@ Expand each section below before implementation. Check off when the planning art
 
 ### TODO-1 — Freeze open decisions
 
-**Status:** pending
+**Status:** ✅ complete — frozen 2026-07-16 (see [Phase 0 — Decision record](#phase-0--decision-record-frozen-2026-07-16) at top). Refactor split into 5 child plan docs.
 
 **Deliverable:** One-page decision record answering items 1–7 in Open decisions checklist.
 
@@ -209,13 +241,17 @@ Expand each section below before implementation. Check off when the planning art
 
 | Question | Decision | Rationale |
 |---|---|---|
-| | | |
+| _Full record_ | See [Phase 0 — Decision record](#phase-0--decision-record-frozen-2026-07-16) (8 rows) | — |
+| Deliverable shape | Split into per-surface child plan docs | Monitor surfaces separately |
+| Front-desk history | `/walk-in` → **"Sales"** = overall transaction history (all categories) | Owner call |
+| Inbound History | `/dashboard` as a new mode (like a receiving mode) | Owner call |
+| Station URL | Open — leaning Sales namespace; resolved in [02](./foh-boh-surface-split/02-walk-in-station.md) | Owner left open |
 
 ---
 
 ### TODO-2 — Nav + permission blueprint
 
-**Status:** pending
+**Status:** ✅ built 2026-07-16 — superseded by [05](./foh-boh-surface-split/05-nav-permission-redirects.md), which shipped the whole blueprint (station nav row, Sales relabel, `walk_in` route key + gate, `SURFACE_REGISTRY` retarget, redirect matrix). The `/receiving?mode=history` leg waits on 04's mode.
 
 **Deliverable:** Paper diff for `sidebar-navigation.ts` + permission matrix + redirect matrix.
 
@@ -297,18 +333,22 @@ Expand each section below before implementation. Check off when the planning art
 
 ## Success criteria for “plan ready to build”
 
-- [ ] Sales vs Walk-In station job boundary written in one sentence.
-- [ ] History route option chosen (2a/2b/2c).
-- [ ] Every row in Overlap register has an owner decision.
-- [ ] Reuse map marked Compose / Relocate / Delete for each asset.
-- [ ] No new parallel primitives proposed (headers compose `WorkbenchChromeHeader`; station reuses `WalkInStation*`).
+- [x] Sales vs Walk-In station job boundary written in one sentence. — Station `?job=sales` = intake cart; Sales main page = transaction history.
+- [x] History route option chosen (2a/2b/2c). — Inbound History → **2c as a `/dashboard` mode**; front-desk history → "Sales".
+- [~] Every row in Overlap register has an owner decision. — Core rows decided in Phase 0; residual rows tracked in child docs.
+- [x] Reuse map marked Compose / Relocate / Delete for each asset. — Per child-doc reuse maps.
+- [x] No new parallel primitives proposed (headers compose `WorkbenchChromeHeader`; station reuses `WalkInStation*`).
 
 ---
 
 ## Suggested implementation phases (after planning freeze)
 
-1. **Phase 0** — Decision freeze (this doc TODO-1).
-2. **Phase 1** — Nav + permission (TODO-2).
-3. **Phase 2** — Shell extraction (TODO-3).
-4. **Phase 3** — Inbound History chrome (TODO-4).
-5. **Phase 4** — Pre-build audit (TODO-5) → then implementation tickets.
+**Phase 0 complete.** The refactor now proceeds through the child plan docs (each independently monitorable). Recommended build order **05 → 02 → 04 → 03 → 01**:
+
+1. **Phase 0** ✅ — Decision freeze (TODO-1 + Phase 0 record above).
+2. **[05] Nav · permission · redirects** — shared registries (was TODO-2).
+3. **[02] Walk-In Station** — shell extraction off `ReceivingSurfacePage` (was TODO-3).
+4. **[04] Inbound History → Dashboard mode** — chrome + relocate (was TODO-4).
+5. **[03] Sales (main history)** — relabel `/walk-in` → Sales.
+6. **[01] Receiving BOH slim** — drop pickup + history pills (last; gated on 02 + 04).
+7. **Pre-build audit** (TODO-5) folded into each child doc's Acceptance + `npm run verify`.

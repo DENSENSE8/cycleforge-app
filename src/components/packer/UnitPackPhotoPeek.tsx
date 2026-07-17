@@ -24,9 +24,12 @@ interface TimelinePhotoRow {
 export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   serialUnitId,
   preferSource = 'packing',
+  showEmptyState = true,
 }: {
   serialUnitId: number;
   preferSource?: 'packing' | 'testing' | 'unbox' | 'all';
+  /** Inline photo tabs teach when empty; pane-corner overlays stay absent. */
+  showEmptyState?: boolean;
 }) {
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
@@ -67,6 +70,7 @@ export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   }, [query.data, preferSource]);
 
   if (cards.length === 0) {
+    if (!showEmptyState) return null;
     return (
       <div className="flex items-center gap-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-3 py-4 text-role-caption text-text-faint">
         <Camera className="h-4 w-4 shrink-0" />

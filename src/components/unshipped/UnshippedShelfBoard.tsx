@@ -2,8 +2,11 @@
 
 /**
  * Unshipped · Shelf Board — To Ship fulfillment queue as PENDING / TESTED /
- * BLOCKED swimlanes (drag-reorder, drag-resize, 1/2-up). Same SwimlaneBoard
- * system as before; toolbar portals into the unified outbound header.
+ * BLOCKED swimlanes (drag-reorder, drag-resize). Same SwimlaneBoard system as
+ * before; toolbar portals into the unified outbound header.
+ *
+ * Search flattens to one shared results table so empty lanes don't bury hits.
+ * Clearing search restores the pipeline lane board.
  *
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
@@ -11,10 +14,9 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Clock, Layers, List, Zap } from '@/components/Icons';
+import { useSearchParams } from 'next/navigation';
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Clock, Zap } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import {
   SwimlaneBoard,
   type SwimlaneLaneBodyContext,
@@ -27,10 +29,8 @@ import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scop
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
-import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { UNSHIPPED_VIEW_PARAMS } from '@/components/unshipped/outbound-sidebar-shared';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import {
@@ -39,11 +39,6 @@ import {
   type FulfillmentState,
 } from '@/lib/unshipped-state';
 import { FULFILLMENT_BOARD_LANES, type FulfillmentLaneIconKey } from '@/lib/order-lifecycle';
-import {
-  parseOutboundSurface,
-  SURFACE_PARAM,
-  type OutboundSurface,
-} from '@/lib/dashboard/outbound-queue-prefs';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
 import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
 import { dispatchCloseShippedDetails } from '@/utils/events';
@@ -96,15 +91,18 @@ type FulfillmentRow = ShippedOrder & {
   is_urgent?: boolean | null;
 };
 
-function rowState(row: ShippedOrder): BoardLane {
+function rowState(row: ShippedOrder, focusLane: BoardLane | null): BoardLane {
   const r = row as FulfillmentRow;
-  // Urgent takes precedence — an urgent row lives in the Urgent lane, not its
-  // status lane, so the Urgent lane is its own table.
-  if (r.is_urgent) return 'URGENT';
-  return deriveFulfillmentState({
+  const fulfillment = deriveFulfillmentState({
     hasTechScan: Boolean(r.has_tech_scan),
     outOfStock: r.out_of_stock,
   });
+  // When a KPI / toolbar lane filter is on, keep matching rows in that lane —
+  // including urgent ones — so click-to-filter never hides the work it selected.
+  // Without a focus lane, urgent still takes precedence into its own board lane.
+  if (focusLane && focusLane !== 'URGENT') return fulfillment;
+  if (r.is_urgent) return 'URGENT';
+  return fulfillment;
 }
 
 export interface UnshippedShelfBoardProps {
@@ -117,7 +115,6 @@ export interface UnshippedShelfBoardProps {
   searchResultLabel?: string;
   clearSearchLabel?: string;
   selectMode?: boolean;
-  onToggleSelectMode?: () => void;
   footer?: React.ReactNode;
   toolbarPortalTarget?: HTMLElement | null;
 }
@@ -132,13 +129,10 @@ export function UnshippedShelfBoard({
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
-  onToggleSelectMode,
   footer,
   toolbarPortalTarget,
 }: UnshippedShelfBoardProps) {
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const focusLane = useMemo((): BoardLane | null => {
@@ -146,32 +140,9 @@ export function UnshippedShelfBoard({
     if (raw === 'PENDING' || raw === 'TESTED' || raw === 'BLOCKED' || raw === 'URGENT') return raw;
     return null;
   }, [searchParams]);
-  const surface: OutboundSurface = parseOutboundSurface(searchParams.get(SURFACE_PARAM));
   const visibleLanes = useMemo(
     () => (focusLane ? UNSHIPPED_LANES.filter((l) => l.id === focusLane) : UNSHIPPED_LANES),
     [focusLane],
-  );
-
-  const replaceParam = useCallback(
-    (mutator: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
-      mutator(params);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname || '/dashboard'}?${qs}` : pathname || '/dashboard', {
-        scroll: false,
-      });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const setSurface = useCallback(
-    (next: OutboundSurface) => {
-      replaceParam((params) => {
-        if (next === 'lanes') params.delete(SURFACE_PARAM);
-        else params.set(SURFACE_PARAM, next);
-      });
-    },
-    [replaceParam],
   );
 
   useEventBridge({
@@ -271,79 +242,54 @@ export function UnshippedShelfBoard({
 
   const getRowDate = useCallback((r: ShippedOrder) => r.created_at || r.deadline_at, []);
 
-  const headerPersistentEndSlot = useMemo(() => <StaffFilterButton align="start" />, []);
+  const headerPersistentEndSlot = useMemo(
+    () => <StaffFilterButton iconOnly />,
+    [],
+  );
   const dashboardScrollRef = useDashboardScrollParentOptional();
   const pageScroll = Boolean(dashboardScrollRef);
 
-  /** Secondary controls — tucked behind disclosure on the lane board. */
+  /** Display controls — always visible on the toolbar (Select lives in chrome). */
   const headerEndSlot = useMemo(
     () => (
       <div className="flex items-center gap-2">
-        <HoverTooltip
-          label={surface === 'list' ? 'Lane stack (grouped by stage)' : 'Flat pick list (no lanes)'}
-          asChild
-        >
-          <ToolbarButton
-            iconOnly
-            active={surface === 'list'}
-            onClick={() => setSurface(surface === 'list' ? 'lanes' : 'list')}
-            aria-pressed={surface === 'list'}
-            aria-label={surface === 'list' ? 'Switch to lane stack' : 'Switch to flat list'}
-          >
-            {surface === 'list' ? <Layers className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
-          </ToolbarButton>
-        </HoverTooltip>
-        <HoverTooltip label="Configure columns" asChild>
-          <span className="inline-flex">
-            <ColumnConfigButton variant="toolbar" />
-          </span>
-        </HoverTooltip>
-        <HoverTooltip label="Table options" asChild>
-          <span className="inline-flex">
-            <TableOptionsMenu
-              showDensity
-              showColumnPresets
-              savedViews={{ storageKey: 'unshipped_saved_views', paramKeys: UNSHIPPED_VIEW_PARAMS }}
-            />
-          </span>
-        </HoverTooltip>
+        <ColumnConfigButton variant="toolbar" />
+        <TableOptionsMenu
+          showDensity
+          showColumnPresets
+          savedViews={{ storageKey: 'unshipped_saved_views', paramKeys: UNSHIPPED_VIEW_PARAMS }}
+        />
       </div>
     ),
-    [surface, setSurface],
+    [],
   );
 
-  /** Always-visible far-right Select — outside the disclosure. */
-  const headerTrailingSlot = useMemo(
-    () =>
-      onToggleSelectMode ? (
-        <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-      ) : null,
-    [selectMode, onToggleSelectMode],
+  // Search answers "find this order" — flatten to one shared results table so
+  // empty Urgent/Tested/Blocked lanes don't push hits below the fold. Clearing
+  // search restores the pipeline lane board (not a permanent flat-list mode).
+  const isSearching = Boolean(searchValue.trim());
+
+  const searchToolbar = (
+    <div className="flex items-center gap-2">
+      {headerPersistentEndSlot}
+      {headerEndSlot}
+    </div>
   );
 
   return (
     <TableColumnConfigProvider tableId="orders">
       <TableDensityProvider tableId="orders" urlSync={false}>
-        {surface === 'list' ? (
+        {isSearching ? (
           <div className="flex min-w-0 flex-col">
             {toolbarPortalTarget
-              ? createPortal(
-                  <div className="flex items-center gap-2">
-                    {headerPersistentEndSlot}
-                    <ToolbarControlsDisclosure>{headerEndSlot}</ToolbarControlsDisclosure>
-                    {headerTrailingSlot}
-                  </div>,
-                  toolbarPortalTarget,
-                )
+              ? createPortal(searchToolbar, toolbarPortalTarget)
               : (
                 <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-soft px-3 py-1.5">
-                  {headerPersistentEndSlot}
-                  <ToolbarControlsDisclosure>{headerEndSlot}</ToolbarControlsDisclosure>
-                  {headerTrailingSlot}
+                  {searchToolbar}
                 </div>
               )}
             <div className={toolbarPortalTarget ? 'py-1' : 'p-4'}>
-              {pageScroll ? <div className="shrink-0 h-1" aria-hidden /> : null}
+              {pageScroll ? <div className="h-1 shrink-0" aria-hidden /> : null}
               <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>
                 <OrdersQueueTable
                   records={records}
@@ -384,7 +330,7 @@ export function UnshippedShelfBoard({
             key={focusLane ?? 'all-lanes'}
             prefsKey="unshippedBoard"
             lanes={visibleLanes}
-            bucket={rowState}
+            bucket={(row) => rowState(row, focusLane)}
             records={records}
             // Single-column vertical stack only — no multi-up toggle, grid, or FLIP.
             maxColumns={1}
@@ -394,8 +340,6 @@ export function UnshippedShelfBoard({
             defaultSort="priority"
             headerPersistentEndSlot={headerPersistentEndSlot}
             headerEndSlot={headerEndSlot}
-            headerTrailingSlot={headerTrailingSlot}
-            collapsibleControls
             getRowDate={getRowDate}
             renderLaneBody={renderLaneBody}
             footerSlot={footer}

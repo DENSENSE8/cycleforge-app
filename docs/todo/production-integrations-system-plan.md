@@ -282,7 +282,7 @@ Legend: ✅ production-ready · 🟡 partial · 🔴 gap/plan · ⬜ not in cata
 | Nextiva | ✅ `/api/integrations/nextiva/webhook/[token]` | Finish client + sync |
 | ShipStation | 🟡 verify helper exists | `SHIPSTATION_WEBHOOK_SECRET` + store route |
 | UPS/FedEx/USPS | dormant in carriers doc | Enable per org when vault configured |
-| eBay | ⬜ | Platform notifications (deferred — polling OK for v1) |
+| eBay | ✅ `/api/webhooks/ebay/marketplace-account-deletion` (MAD / Production keyset unlock) | Broader Platform Notifications topics deferred — polling OK for v1 |
 
 ### 4.6 Outbound webhooks (enterprise, P7)
 

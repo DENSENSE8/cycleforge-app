@@ -56,6 +56,48 @@ The **RuName** is a registered redirect name, **not** a literal URL. Per environ
 Register a **separate RuName per environment**; set its accept/decline/privacy URLs in
 the portal. The app must be approved for every scope requested (see below).
 
+### Marketplace Account Deletion / Closure (Production keyset unlock)
+
+eBay **hard-blocks new Production keysets** until this is configured. It is an
+**application-level** webhook on the shared Cycle Forge eBay app (not per-tenant).
+
+| Portal field | Value |
+|---|---|
+| Notification endpoint URL | `https://app.cycleforge.ai/api/webhooks/ebay/marketplace-account-deletion` |
+| Verification token | Same as `EBAY_VERIFICATION_TOKEN` (32–80 chars, `[A-Za-z0-9_-]`) |
+
+**Who can configure it:** an eBay Developer Program team member with **Admin**
+(or equivalent) access on the application under
+[developer.ebay.com](https://developer.ebay.com) → Application Keys →
+Marketplace account deletion/closure. Viewer/support-only portal roles cannot
+save the endpoint.
+
+**Not the same as OAuth `account_role`:** Cycle Forge's `seller` | `buyer`
+discriminator (`ebay_accounts.account_role`) is about which scopes a connected
+store granted. MAD notifications fire when an **eBay user** deletes/closes their
+eBay account; we purge every matching `ebay_accounts` row (both roles) by
+`ebay_user_id`.
+
+Implementation: `GET/POST /api/webhooks/ebay/marketplace-account-deletion`
+(`src/lib/ebay/marketplace-account-deletion.ts`). GET answers the challenge
+hash; POST verifies `X-EBAY-SIGNATURE` against the **raw request body** and
+deletes tokens.
+
+1. Deploy the route + set `EBAY_VERIFICATION_TOKEN` +
+   `EBAY_MARKETPLACE_DELETION_ENDPOINT_URL` in Vercel Production.
+2. Set **Production** `EBAY_APP_ID` + `EBAY_CERT_ID` + `EBAY_ENVIRONMENT=PRODUCTION`
+   (same keyset you're unlocking — sandbox creds will fail signature verify).
+3. Paste the exact URL + token in the portal and **Save** (eBay GETs the
+   challenge; hash must match).
+4. eBay sends a test POST notification — must return **200** (not 412).
+5. Production keyset unlocks once verification succeeds.
+
+**412 from the portal?** Signature verification failed. Check Vercel logs for
+`[ebay/marketplace-account-deletion]`. Common causes: Production App ID/Cert ID
+not set or mismatched (sandbox creds on a Production endpoint); wrong
+`EBAY_ENVIRONMENT`; or `EBAY_VERIFICATION_TOKEN` / endpoint URL mismatch on
+the GET challenge (POST can still fail separately).
+
 ## Scopes
 
 Default (`src/lib/ebay/oauth-config.ts`):
@@ -79,6 +121,8 @@ set via the `EBAY_SCOPES` env var (space-separated) once approved — no redeplo
 | `EBAY_RU_NAME` | The registered RuName used as `redirect_uri` (per environment). |
 | `EBAY_ENVIRONMENT` | `PRODUCTION` (default) or `SANDBOX`. |
 | `EBAY_SCOPES` | Optional space-separated scope override. |
+| `EBAY_VERIFICATION_TOKEN` | MAD challenge token (32–80 `[A-Za-z0-9_-]`). Same value in the portal. **Sensitive**. |
+| `EBAY_MARKETPLACE_DELETION_ENDPOINT_URL` | Exact public HTTPS URL used in the challenge hash. Default: `https://app.cycleforge.ai/api/webhooks/ebay/marketplace-account-deletion`. |
 | `INTEGRATION_KMS_KEY` | base64 32-byte AES-256-GCM key. **Required in production** — tokens + OAuth state are stored plaintext without it (dev only). Generate: `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"` |
 | `CRON_SECRET` | Bearer secret for the hourly refresh cron (`/api/cron/ebay/refresh-tokens`). |
 | `EBAY_REFRESH_TOKEN_USAV` | Transitional USAV bootstrap refresh token (env fallback only). |

@@ -30,9 +30,7 @@ import { ShippedLaneTable } from '@/components/shipped/dashboard-table/ShippedLa
 import { SwimlaneBoard, type SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
-import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { PaneHeader } from '@/components/ui/pane-header';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
@@ -69,10 +67,8 @@ export interface DashboardShippedTableProps {
   testedBy?: number;
   /** Mobile tech/packer: one scroll column, no extra shell wrappers; WeekHeader matches other mobile week tables. */
   embedded?: boolean;
-  /** Pencil multi-select: rows render checkboxes; the page owns the action bar. */
+  /** Pencil multi-select: rows render checkboxes; chrome owns the Select toggle. */
   selectMode?: boolean;
-  /** Flip select-mode. When set, the board/list toolbar shows a Select toggle. */
-  onToggleSelectMode?: () => void;
   bannerTitle?: DashboardSearchSectionProps['bannerTitle'];
   bannerSubtitle?: DashboardSearchSectionProps['bannerSubtitle'];
   searchEmptyTitle?: DashboardSearchSectionProps['searchEmptyTitle'];
@@ -92,7 +88,6 @@ export function DashboardShippedTable({
   testedBy,
   embedded = false,
   selectMode = false,
-  onToggleSelectMode,
   bannerTitle,
   bannerSubtitle,
   searchEmptyTitle = 'No shipped orders found',
@@ -210,17 +205,12 @@ export function DashboardShippedTable({
         activeRange={period.activeRange}
         onClear={period.onClear}
       />
-      <ToolbarControlsDisclosure>
-        <ColumnConfigButton variant="toolbar" />
-        {onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : null}
-        <TableOptionsMenu
-          showDensity
-          showColumnPresets
-          savedViews={{ storageKey: 'shipped_saved_views', paramKeys: SHIPPED_VIEW_PARAMS }}
-        />
-      </ToolbarControlsDisclosure>
+      <ColumnConfigButton variant="toolbar" />
+      <TableOptionsMenu
+        showDensity
+        showColumnPresets
+        savedViews={{ storageKey: 'shipped_saved_views', paramKeys: SHIPPED_VIEW_PARAMS }}
+      />
     </div>
   );
 
@@ -312,13 +302,9 @@ export function DashboardShippedTable({
               onClear={period.onClear}
             />
           }
-          collapsibleControls
           headerEndSlot={
             <div className="flex items-center gap-2">
               <ColumnConfigButton variant="toolbar" />
-              {onToggleSelectMode ? (
-                <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-              ) : null}
               <TableOptionsMenu
                 showDensity
                 showColumnPresets

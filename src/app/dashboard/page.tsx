@@ -28,12 +28,15 @@ import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
 import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
+import { DashboardInboundView } from '@/components/dashboard/DashboardInboundView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
+import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
 
 function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const domain = getDashboardDomainFromSearch(searchParams);
   const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
 
   // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
@@ -44,14 +47,17 @@ function DashboardPageContent() {
     router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
   }, [router, searchParams]);
 
+  const isInbound = domain === 'inbound';
+
   const { selectionEnabled, selectMode, toggleSelectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection(orderView);
 
+  // Inbound rows are cartons, not orders — never resolve/open the order panel there.
   const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
-    useDashboardSelectedOrder(detailsEnabled);
+    useDashboardSelectedOrder(detailsEnabled && !isInbound);
 
   useDashboardRealtime();
-  useDashboardViewWarmup({ orderView, searchQuery });
+  useDashboardViewWarmup({ orderView, searchQuery, enabled: !isInbound });
 
   const refreshDashboard = useCallback(() => {
     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
@@ -59,6 +65,17 @@ function DashboardPageContent() {
 
   if (searchParams.has('warranty')) {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
+  }
+
+  // Inbound (`?mode=inbound`) is the other dashboard domain — receiving cartons.
+  // It owns its whole region (own chrome + own table) and never mounts the
+  // outbound order panel, so the two domains can't intermix rows.
+  if (isInbound) {
+    return (
+      <div className="flex min-h-0 w-full flex-1">
+        <DashboardInboundView />
+      </div>
+    );
   }
 
   return (

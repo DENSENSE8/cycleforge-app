@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
-import { ShippingStaffShippedRail } from '@/components/sidebar/shipping/ShippingStaffShippedRail';
+import { ShippingStaffScanHistoryRail } from '@/components/sidebar/shipping/ShippingStaffScanHistoryRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useIsMobile } from '@/hooks';
 
@@ -17,8 +17,8 @@ interface Props {
 
 /**
  * Tech sidebar for Shipping mode — order / FNSKU scan band plus the History
- * feed rail (same deduped tech-log rows as the History tab). Pick one to reopen
- * Shipping preview. Shares the shell anatomy of
+ * feed rail (the signed-in staffer's latest 25 TECH station scans). Pick one
+ * to reopen Shipping preview. Shares the shell anatomy of
  * {@link TestingSidebarPanel} (scan band, scrollable rail, bottom filter).
  */
 export function ShippingSidebarPanel({
@@ -42,7 +42,7 @@ export function ShippingSidebarPanel({
       {!isMobile ? <ShippingScanBand {...scanBandProps} /> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <ShippingStaffShippedRail techId={techId} filterText={railFilter} />
+        <ShippingStaffScanHistoryRail techId={techId} filterText={railFilter} />
       </div>
 
       <TechRailSearchBar

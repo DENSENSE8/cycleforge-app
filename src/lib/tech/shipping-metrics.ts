@@ -5,7 +5,12 @@
  */
 
 import type { MetricIntent } from '@/design-system/components/monitor';
-import type { ComputedMetric } from '@/lib/dashboard/outbound-metrics';
+import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
+import {
+  computeRoiPackedMetric,
+  computeRoiStuckMetric,
+  type ComputedMetric,
+} from '@/lib/dashboard/outbound-metrics';
 import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
 export type { ComputedMetric };
@@ -32,6 +37,8 @@ export interface ShippingMetricCtx {
   unshipped: { total: number; pending: number; tested: number; blocked: number };
   fba: ShippingFbaCounts;
   history: ShippingHistoryCounts;
+  /** Org ROI rollup — Pending packed/stuck tiles; null when ungated / no data. */
+  roi?: OperationsRoiData | null;
 }
 
 export interface ShippingMetricDef {
@@ -71,7 +78,11 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
         share(unshipped.tested, unshipped.total),
         'neutral',
         1,
-        { status: 'In queue', tooltip: `Tested / ready units awaiting pack (${unshipped.tested}).` },
+        {
+          status: 'In queue',
+          tooltip: `Tested / ready units awaiting pack (${unshipped.tested}). Click to filter the board.`,
+          filterUstatus: 'TESTED',
+        },
       );
     },
   },
@@ -88,7 +99,11 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
         share(unshipped.pending, unshipped.total),
         'warn',
         1,
-        { status: 'Backlog', tooltip: `Pending units still awaiting test (${unshipped.pending}).` },
+        {
+          status: 'Backlog',
+          tooltip: `Pending units still awaiting test (${unshipped.pending}). Click to filter the board.`,
+          filterUstatus: 'PENDING',
+        },
       );
     },
   },
@@ -105,9 +120,26 @@ export const SHIPPING_METRICS: ShippingMetricDef[] = [
         share(unshipped.blocked, unshipped.total),
         'bad',
         3,
-        { status: 'Check now', tooltip: `Blocked units needing attention (${unshipped.blocked}).` },
+        {
+          status: 'Check now',
+          tooltip: `Blocked units needing attention (${unshipped.blocked}). Click to filter the board.`,
+          filterUstatus: 'BLOCKED',
+        },
       );
     },
+  },
+  // Org-wide ROI (same compute as Dashboard Outbound) — display-only; no board filter.
+  {
+    id: 'stuck',
+    label: 'Units stuck',
+    modes: ['pending'],
+    compute: ({ roi }) => computeRoiStuckMetric(roi ?? null),
+  },
+  {
+    id: 'packed',
+    label: 'Packed this week',
+    modes: ['pending'],
+    compute: ({ roi }) => computeRoiPackedMetric(roi ?? null),
   },
 
   // ── FBA (ship-readiness) ────────────────────────────────────────────────
@@ -248,7 +280,11 @@ export function resolveShippingMetrics(ctx: ShippingMetricCtx): ComputedMetric[]
     .filter((m): m is ComputedMetric => m != null);
 }
 
-/** Attention (severity > 0) left, then remaining tiles — mirrors outbound strip zoning. */
+/**
+ * Attention (severity > 0) left, then trend/rest — mirrors outbound zoning.
+ * Severity-0 tiles with an honest `delta` (packed WoW) sort after attention;
+ * other severity-0 tiles follow.
+ */
 export function splitShippingAttention(metrics: ComputedMetric[]): {
   attention: ComputedMetric[];
   rest: ComputedMetric[];
@@ -256,8 +292,9 @@ export function splitShippingAttention(metrics: ComputedMetric[]): {
   const attention = metrics
     .filter((m) => m.severity > 0)
     .sort((a, b) => b.severity - a.severity);
-  const rest = metrics.filter((m) => m.severity <= 0);
-  return { attention, rest };
+  const trend = metrics.filter((m) => m.severity <= 0 && m.delta !== undefined);
+  const other = metrics.filter((m) => m.severity <= 0 && m.delta === undefined);
+  return { attention, rest: [...trend, ...other] };
 }
 
 export const ZERO_SHIPPING_FBA: ShippingFbaCounts = {

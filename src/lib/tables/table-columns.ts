@@ -32,7 +32,7 @@ export interface TableColumnSpec {
 }
 
 /** Stable ids for every shared list table that supports column config. */
-export type TableId = 'receiving' | 'orders' | 'shipped' | 'tech' | 'packer';
+export type TableId = 'receiving' | 'orders' | 'shipped' | 'tech' | 'testing' | 'packer';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -59,6 +59,7 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   orders: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   shipped: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
+  testing: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   packer: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
 };
 

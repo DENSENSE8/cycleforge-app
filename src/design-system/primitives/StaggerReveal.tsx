@@ -45,14 +45,31 @@ export const staggerRevealItem: Variants = {
 };
 
 /**
- * Sidebar-rail stagger — opacity + a short upward settle only (no `x`). Safe
- * inside `overflow-y-auto` scroll bodies: nothing translates past the left edge.
- * Pair with {@link staggerRevealContainer} on the list parent.
+ * Sidebar-rail stagger — rows are legible from first paint while a short upward
+ * settle preserves the cascade. Safe inside `overflow-y-auto` scroll bodies:
+ * nothing translates past the left edge. Pair with
+ * {@link staggerRevealContainer} on the list parent.
  */
 export const staggerRevealSidebarItem: Variants = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 1, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: motionBezier.easeOut } },
   // Left-edge exit matches scan/dismiss CRUD presence (`framerPresence.sidebarRailRow`).
+  exit: {
+    opacity: 0,
+    x: -12,
+    pointerEvents: 'none' as const,
+    transition: { duration: 0.2, ease: motionBezier.easeOut },
+  },
+};
+
+/**
+ * Horizontal sidebar-rail stagger — the scan-in language without hiding rows
+ * or translating far enough to clip status dots against the scrolling rail.
+ * Steady-state add/delete presence remains owned by `sidebarRailRow`.
+ */
+export const staggerRevealSidebarSlideItem: Variants = {
+  hidden: { opacity: 1, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: 'spring', damping: 25, stiffness: 120 } },
   exit: {
     opacity: 0,
     x: -12,

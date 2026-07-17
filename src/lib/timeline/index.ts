@@ -18,3 +18,7 @@ export {
   type TicketLinkTimelineRow,
 } from './support-context-timeline';
 export { collapseTimeline } from './collapse';
+export {
+  isRawStatusTrailSubtitle,
+  softenStatusTrailSubtitle,
+} from './station-subtitle';

@@ -11,7 +11,6 @@ export const UNSHIPPED_VIEW_PARAMS = [
   'staff',
   'late',
   'attention',
-  'surface',
 ] as const;
 
 /** Shipped board saved views — matches DashboardShippedTable. */
@@ -23,7 +22,7 @@ export const SHIPPED_VIEW_PARAMS = [
   'exceptions',
 ] as const;
 
-/** Packed tab — staff + surface only (exact staged list). */
+/** Packed tab — staff only (exact staged list). */
 export const PACKED_VIEW_PARAMS = ['staff'] as const;
 
 export const UNSHIPPED_SAVED_VIEWS_KEY = 'unshipped_saved_views';

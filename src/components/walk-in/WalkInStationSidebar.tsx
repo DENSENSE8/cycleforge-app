@@ -6,18 +6,22 @@
 
 import { LocalPickupSidebarList } from '@/components/work-orders/LocalPickupSidebarList';
 import { SalesCartSidebar } from '@/components/walk-in/SalesCartSidebar';
+import { WalkInJobDenied } from '@/components/walk-in/WalkInJobDenied';
 import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
 import { WalkInJobSwitcher } from '@/components/walk-in/WalkInJobSwitcher';
-import { useWalkInJob } from '@/hooks/useWalkInJob';
+import { useWalkInJob, useWalkInJobAccess } from '@/hooks/useWalkInJob';
 
 export function WalkInStationSidebar() {
   const { job, setJob } = useWalkInJob();
+  const { allowed, requires } = useWalkInJobAccess(job);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <WalkInJobSwitcher job={job} onChange={setJob} />
       <div className="min-h-0 flex-1 overflow-hidden">
-        {job === 'sales' ? (
+        {!allowed && requires ? (
+          <WalkInJobDenied requires={requires} />
+        ) : job === 'sales' ? (
           <SalesCartSidebar />
         ) : job === 'repair' ? (
           <RepairSidebarPanel embedded hideSectionHeader />

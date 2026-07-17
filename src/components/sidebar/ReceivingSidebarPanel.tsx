@@ -41,7 +41,6 @@ import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanne
 import { ReceivingHistorySearchSection } from '@/components/sidebar/receiving/ReceivingHistorySearchSection';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
 import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSidebarPanel';
-import { WalkInStationSidebar } from '@/components/walk-in/WalkInStationSidebar';
 
 import { ReceivingModeSwitcher } from '@/components/sidebar/receiving/ReceivingModeSwitcher';
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
@@ -109,7 +108,6 @@ export function ReceivingSidebarPanel() {
     returns,
     setPendingCandidates,
     dismissReturn,
-    clearReturns,
     resetSerialInputs,
   } = useSerialScan({ poContext, armedLineId, staffId });
 
@@ -203,14 +201,6 @@ export function ReceivingSidebarPanel() {
     submitTrackingScan,
   });
 
-  // Pickup mode clears the whole unbox session (PO + serial inputs + returns).
-  useEffect(() => {
-    if (mode === 'pickup') {
-      clearScanSession();
-      clearReturns();
-    }
-  }, [mode, clearScanSession, clearReturns]);
-
   // ── Rail edit mode (pencil bulk select / delete) ─────────────────────────
   const {
     railEditMode,
@@ -257,11 +247,7 @@ export function ReceivingSidebarPanel() {
       >
         {!masterNavEnabled && <ReceivingModeSwitcher mode={mode} onChange={updateMode} />}
 
-        {mode === 'pickup' ? (
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <WalkInStationSidebar />
-          </div>
-        ) : mode === 'incoming' ? (
+        {mode === 'incoming' ? (
           // Incoming = Zoho-sourced expected work. Sidebar owns the search +
           // facet controls; the right-pane table renders the rows only.
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

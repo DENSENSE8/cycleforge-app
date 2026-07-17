@@ -3,45 +3,40 @@
 /**
  * Local-pickup main-pane editor.
  *
- * Anchored on the receiving workspace shell (`ReceivingLineWorkspace`): a
- * sticky {@link PaneHeader} (Pickup chip + product identity + prev/next + the
- * [+ Add item] CTA) over a scrollable single-column body that edits the
- * currently-selected staged line. Selection + cart live in the shared
- * {@link localPickupStore}; the slim sidebar list (`LocalPickupSidebarList`)
- * drives `selectedKey`, this pane edits whatever it points at.
+ * Composes the Unbox-family StationWorkbench SoT: a compact utility toolbar,
+ * shared entity-context header, Item/Add SectionTabs displays, and one
+ * tab-aware terminal action. Selection + cart live in the shared
+ * {@link localPickupStore}; the slim sidebar list drives `selectedKey`.
  *
  * Replaces the old `LocalPickupCatalogPanel` browse grid — adding is now a
- * search popover, and the big pane is the editor (mirroring how receiving
- * focuses a single line in the main pane).
+ * focused catalog display, while the Item display edits one staged line.
  */
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  ChevronDown,
-  ChevronUp,
-  Package,
-  Plus,
-  ShoppingCart,
-  X,
-} from '@/components/Icons';
-import {
-  PaneHeader,
-  PaneHeaderIconBadge,
-  PaneHeaderLabel,
-} from '@/components/ui/pane-header';
+import { Package, Plus, ShoppingCart, X } from '@/components/Icons';
+import { PaneHeaderActionBar } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
-import { receivingIdentityBandClass } from '@/components/layout/header-shell';
+import { SectionTabsSlider } from '@/design-system/components';
+import { Button, EmptyState, IconButton } from '@/design-system/primitives';
+import { StationWorkbench } from '@/components/station/workbench';
+import {
+  StationTerminalDock,
+  useStationTerminalAction,
+} from '@/components/station/terminal';
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
 import {
   EcwidProductSearchInline,
   type EcwidProductSelection,
 } from '@/components/receiving/unfound/EcwidProductSearchInline';
+import { PickupEntityContextHeader } from './PickupEntityContextHeader';
+import { buildPickupTabs } from './build-pickup-tabs';
+import { resolvePickupTerminal } from './terminal/pickup-terminal';
 import {
   addLine,
   closeReview,
   getSelectedLine,
+  openReview,
   patchLine,
   removeLine,
   selectLine,
@@ -51,11 +46,13 @@ import {
 } from './localPickupStore';
 import { LocalPickupReviewPanel } from './LocalPickupReviewPanel';
 
+type PickupView = 'item' | 'add';
+
 export function LocalPickupEditPanel() {
   const cartState = useLocalPickupCart();
   const { cart, selectedKey, reviewOpen } = cartState;
   const selected = getSelectedLine(cartState);
-  const [addOpen, setAddOpen] = useState(false);
+  const [view, setView] = useState<PickupView>('item');
 
   // Keep a selection alive whenever there are staged items (e.g. after
   // navigating away and back, or after the sidebar cleared it).
@@ -64,6 +61,12 @@ export function LocalPickupEditPanel() {
       selectLine(cart[0].key);
     }
   }, [cart, selectedKey]);
+
+  // Sidebar selection always returns focus to the Item display. Opening Add
+  // does not change selectedKey, so the catalog remains mounted until a pick.
+  useEffect(() => {
+    if (selectedKey) setView('item');
+  }, [selectedKey]);
 
   // Reuse the unfound carton's product lookup (Ecwid catalog search + the
   // "Product not added yet?" manual-title path) so pickup can stage items that
@@ -76,7 +79,7 @@ export function LocalPickupEditPanel() {
       image_url: sel.image_url,
       category: null,
     });
-    setAddOpen(false);
+    setView('item');
   };
 
   const index = selected ? cart.findIndex((l) => l.key === selected.key) : -1;
@@ -89,128 +92,95 @@ export function LocalPickupEditPanel() {
     if (canNext) selectLine(cart[index + 1].key);
   };
 
-  return (
-    <div className="flex h-full w-full flex-col bg-surface-canvas">
-      <PaneHeader
-        className={`z-20 border-b-0 bg-surface-card backdrop-blur-none ${receivingIdentityBandClass}`}
-        rowClassName="w-full px-3"
-        leftSlot={
-          <>
-            <PaneHeaderIconBadge
-              Icon={ShoppingCart}
-              bg="bg-purple-50"
-              tint="text-purple-600"
-            />
-            <PaneHeaderLabel
-              eyebrow={
-                <>
-                  Pickup
-                  {selected && cart.length > 1 ? (
-                    <span className="ml-1 text-text-soft">
-                      · Item {index + 1} of {cart.length}
-                    </span>
-                  ) : null}
-                </>
-              }
-              value={selected ? selected.product_title : 'New intake'}
-              valueTitle={selected?.product_title}
-            />
-          </>
-        }
-        rightSlot={
-          <>
-            {cart.length > 1 ? (
-              <div className="flex items-center gap-1">
-                <HoverTooltip label="Previous item" asChild>
-                  <IconButton
-                    onClick={goPrev}
-                    disabled={!canPrev}
-                    ariaLabel="Previous item"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-soft hover:bg-surface-sunken hover:text-text-default"
-                    icon={<ChevronUp className="h-4 w-4" />}
-                  />
-                </HoverTooltip>
-                <HoverTooltip label="Next item" asChild>
-                  <IconButton
-                    onClick={goNext}
-                    disabled={!canNext}
-                    ariaLabel="Next item"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-soft hover:bg-surface-sunken hover:text-text-default"
-                    icon={<ChevronDown className="h-4 w-4" />}
-                  />
-                </HoverTooltip>
-              </div>
-            ) : null}
-            {/* ds-raw-button: solid emerald CTA — no green Button variant (primary=blue, brand=navy); className override unreliable vs variant bg */}
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-role-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add item
-            </button>
-          </>
+  const terminalVm = useStationTerminalAction({
+    surface: 'pickup',
+    mode: 'pickup',
+    tabId: view,
+    build: (kind) =>
+      resolvePickupTerminal(kind, {
+        itemCount: cart.length,
+        onAddItem: () => setView('add'),
+        onReview: openReview,
+        addIcon: <Plus className="h-4 w-4" />,
+        reviewIcon: <ShoppingCart className="h-4 w-4" />,
+      }),
+  });
+
+  const tabs = buildPickupTabs({
+    itemCount: cart.length,
+    itemContent: selected ? (
+      <LocalPickupLineEditor key={selected.key} line={selected} />
+    ) : (
+      <EmptyState
+        className="min-h-[20rem]"
+        icon={<ShoppingCart className="h-7 w-7 text-text-faint" />}
+        title="No items yet"
+        description="Add a product to start this local pickup. It will appear in the sidebar and open here for intake details."
+        action={
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Plus />}
+            onClick={() => setView('add')}
+          >
+            Add item
+          </Button>
         }
       />
+    ),
+    addContent: (
+      <EcwidProductSearchInline
+        showHeader
+        receivingId={0}
+        popoverMode="search"
+        searchFieldOverride="zoho_catalog"
+        onSelect={handleAddSelection}
+        onClose={() => setView('item')}
+      />
+    ),
+  });
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {addOpen ? (
-          // Add item — inline picker (the modal popover was retired). Reuses the
-          // Zoho-catalog search; selecting maps onto a cart line and closes it.
-          <div className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6">
-            <EcwidProductSearchInline
-              showHeader
-              receivingId={0}
-              popoverMode="search"
-              searchFieldOverride="zoho_catalog"
-              onSelect={handleAddSelection}
-              onClose={() => setAddOpen(false)}
-            />
-          </div>
-        ) : selected ? (
-          <div className="mx-auto w-full max-w-3xl px-4 py-5 pb-24 sm:px-6">
-            <LocalPickupLineEditor key={selected.key} line={selected} />
-          </div>
-        ) : (
-          <PickupEmptyState onAdd={() => setAddOpen(true)} />
-        )}
-      </div>
-
+  return (
+    <>
+      <StationWorkbench
+        className="w-full"
+        toolbar={
+          <PaneHeaderActionBar
+            variant="header"
+            actions={[]}
+            leftSlot={
+              <span className="text-role-eyebrow font-black uppercase tracking-widest text-text-muted">
+                Local Pickup
+                {selected && cart.length > 1 ? (
+                  <span className="ml-1 text-text-soft">
+                    · Item {index + 1} of {cart.length}
+                  </span>
+                ) : null}
+              </span>
+            }
+            onPrev={cart.length > 1 ? goPrev : undefined}
+            onNext={cart.length > 1 ? goNext : undefined}
+            prevDisabled={!canPrev}
+            nextDisabled={!canNext}
+            prevTitle="Previous item"
+            nextTitle="Next item"
+          />
+        }
+        entityContext={<PickupEntityContextHeader selected={selected} />}
+        tabs={
+          <SectionTabsSlider
+            tabs={tabs}
+            value={view}
+            onChange={(id) => setView(id as PickupView)}
+            ariaLabel="Local Pickup displays"
+          />
+        }
+        dock={<StationTerminalDock vm={terminalVm} />}
+      />
       {reviewOpen ? (
         <LocalPickupReviewPanel mode="finalize" onClose={closeReview} />
       ) : null}
-    </div>
-  );
-}
-
-// ── Empty state ──────────────────────────────────────────────────────────────
-
-function PickupEmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="flex h-full items-center justify-center px-6">
-      <div className="max-w-sm text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
-          <ShoppingCart className="h-8 w-8 text-emerald-300" />
-        </div>
-        <p className="text-role-caption font-black uppercase tracking-tight text-text-muted">
-          No items yet
-        </p>
-        <p className="mt-1 text-role-micro text-text-faint">
-          Add products to start a local pickup intake. Each item lands in the
-          sidebar and opens here for editing.
-        </p>
-        {/* ds-raw-button: solid emerald CTA — no green Button variant; override unreliable vs variant bg */}
-        <button
-          type="button"
-          onClick={onAdd}
-          className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-role-caption font-bold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add item
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 

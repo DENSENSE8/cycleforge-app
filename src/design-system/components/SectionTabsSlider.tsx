@@ -13,10 +13,13 @@
  *   (e.g. Units once a serial is scanned) animates its pill in.
  * - With a single tab there is no bar — it renders exactly like the plain
  *   display, and the switcher only appears once a second display exists.
+ * - Nested / `hidden`-panel instances gate `layoutId` until the tablist is
+ *   actually on-screen — otherwise Framer measures 0×0 and the pill flies in
+ *   from the viewport top-left.
  */
 
-import { useId, type ReactNode } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
 import { operatorAccentClasses } from '@/utils/operator-accent';
@@ -33,6 +36,39 @@ export interface SectionTab {
 function resolveActiveTabId(tabIds: string[], value: string): string | undefined {
   if (tabIds.some((id) => id === value)) return value;
   return tabIds[0];
+}
+
+/**
+ * True once the tablist has a real on-screen box. `hidden` ancestors (parent
+ * SectionTabsSlider panels) report 0×0 — enabling layoutId then makes the
+ * active pill shared-layout from the viewport origin.
+ */
+function useTablistLayoutReady(listRef: RefObject<HTMLElement | null>): boolean {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      const id = requestAnimationFrame(() => setReady(true));
+      return () => cancelAnimationFrame(id);
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && entry.intersectionRatio > 0) {
+          // One frame after visible so layout has settled before layoutId binds.
+          requestAnimationFrame(() => setReady(true));
+        } else {
+          setReady(false);
+        }
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [listRef]);
+
+  return ready;
 }
 
 export function SectionTabsSlider({
@@ -56,12 +92,18 @@ export function SectionTabsSlider({
 }) {
   const reduce = useReducedMotion();
   const pillId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
+  const layoutReady = useTablistLayoutReady(listRef);
   const activeId = resolveActiveTabId(
     tabs.map((t) => t.id),
     value,
   );
   const activeTab = tabs.find((t) => t.id === activeId);
   const showPills = tabs.length > 1;
+  // Namespace layoutIds per slider instance so nested Timeline spines don't
+  // morph against the workbench SectionTabsSlider pill. Gate until on-screen
+  // so a `hidden` parent doesn't leave a 0×0 shared-layout origin.
+  const indicatorLayoutId = layoutReady && !reduce ? `${pillId}-active` : undefined;
 
   return (
     <div className={className ? `space-y-4 ${className}` : 'space-y-4'}>
@@ -69,50 +111,53 @@ export function SectionTabsSlider({
         <div className="flex min-h-8 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             {showPills ? (
-              <div
-                role="tablist"
-                aria-label={ariaLabel}
-                className="inline-flex items-center gap-1 rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft"
-              >
-                <AnimatePresence initial={false}>
-                  {tabs.map((tab) => {
-                    const active = tab.id === activeId;
-                    const Icon = tab.icon;
-                    return (
-                      <motion.div
-                        key={tab.id}
-                        style={{ transformOrigin: 'center' }}
-                        initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
-                        transition={{ duration: 0.18, ease: motionBezier.easeOut }}
-                      >
-                        <HoverTooltip label={tab.label} placement="below" focusable={false} asChild>
-                          <button
-                            type="button"
-                            role="tab"
-                            aria-selected={active}
-                            aria-label={tab.label}
-                            onClick={() => onChange(tab.id)}
-                            className={`relative flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
-                              active ? 'text-white' : 'text-text-muted hover:text-text-default'
-                            }`}
-                          >
-                            {active ? (
-                              <motion.span
-                                layoutId={`${pillId}-active`}
-                                className={`absolute inset-0 rounded-lg ${operatorAccentClasses.activePill}`}
-                                transition={framerTransition.sliderIndicator}
-                              />
-                            ) : null}
-                            <Icon className="relative z-10 h-4 w-4" />
-                          </button>
-                        </HoverTooltip>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
+              <LayoutGroup id={pillId}>
+                <div
+                  ref={listRef}
+                  role="tablist"
+                  aria-label={ariaLabel}
+                  className="inline-flex items-center gap-1 rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft"
+                >
+                  <AnimatePresence initial={false}>
+                    {tabs.map((tab) => {
+                      const active = tab.id === activeId;
+                      const Icon = tab.icon;
+                      return (
+                        <motion.div
+                          key={tab.id}
+                          style={{ transformOrigin: 'center' }}
+                          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+                          transition={{ duration: 0.18, ease: motionBezier.easeOut }}
+                        >
+                          <HoverTooltip label={tab.label} placement="below" focusable={false} asChild>
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={active}
+                              aria-label={tab.label}
+                              onClick={() => onChange(tab.id)}
+                              className={`relative flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
+                                active ? 'text-white' : 'text-text-muted hover:text-text-default'
+                              }`}
+                            >
+                              {active ? (
+                                <motion.span
+                                  layoutId={indicatorLayoutId}
+                                  className={`absolute inset-0 rounded-lg ${operatorAccentClasses.activePill}`}
+                                  transition={framerTransition.sliderIndicator}
+                                />
+                              ) : null}
+                              <Icon className="relative z-10 h-4 w-4" />
+                            </button>
+                          </HoverTooltip>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              </LayoutGroup>
             ) : null}
             {showActiveLabel && activeTab ? (
               <span className="truncate text-role-eyebrow font-black uppercase tracking-widest text-text-muted">

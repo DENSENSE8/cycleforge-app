@@ -15,7 +15,11 @@ import {
   UNBOX_SURFACE_ROUTE,
   receivingSurfaceBasePath,
 } from '@/lib/receiving/surface-path';
+import { DASHBOARD_INBOUND_MODE } from '@/lib/dashboard/dashboard-domains';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+
+/** Dashboard route — hosts the inbound-cartons mode (`?mode=inbound`). */
+const DASHBOARD_SURFACE_ROUTE = '/dashboard';
 
 /** Canonical Testing station route (`/test`). */
 export const TESTING_SURFACE_ROUTE = '/test';
@@ -24,7 +28,7 @@ export const TESTING_SURFACE_ROUTE = '/test';
 export const TESTING_SURFACE_LEGACY_ROUTE = '/tech';
 
 /** Query params owned exclusively by the Testing surface. */
-export const TESTING_SCOPED_PARAMS = ['view'] as const;
+export const TESTING_SCOPED_PARAMS = ['view', 'testTab'] as const;
 
 /** API `view=` values that belong on `/api/testing/receiving-lines` only. */
 export const TESTING_API_VIEWS = ['testing', 'needs-test'] as const;
@@ -64,6 +68,13 @@ export function resolveLiveReceivingMode(
   searchParams: URLSearchParams | { get: (key: string) => string | null },
 ): ReceivingMode {
   const path = pathname ?? '';
+  // Inbound History graduated to a `/dashboard` mode (`?mode=inbound`); the
+  // lines table it mounts is the same History feed (view=activity), so the
+  // dashboard's inbound domain resolves to `history` here. Every other
+  // `/dashboard` mode is outbound orders and never reaches this table.
+  if (path.startsWith(DASHBOARD_SURFACE_ROUTE)) {
+    return searchParams.get('mode') === DASHBOARD_INBOUND_MODE ? 'history' : 'receive';
+  }
   if (path.startsWith(UNBOX_SURFACE_ROUTE)) return 'receive';
   if (path.startsWith(TRIAGE_SURFACE_ROUTE)) return 'triage';
   if (path.startsWith(INCOMING_SURFACE_ROUTE)) return 'incoming';

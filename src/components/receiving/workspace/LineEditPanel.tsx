@@ -13,7 +13,7 @@
  * own controller, so the carton/identity logic lives in exactly one place.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
 import {
   staggerRevealContainer,
@@ -157,18 +157,46 @@ export function LineEditPanel({
     onLoadZohoNotes: () => c.syncCartonFromZoho(),
   });
 
-  const [checklistBridge, setChecklistBridge] = useState<ChecklistTabBridge | null>(null);
-  const [unitsBridge, setUnitsBridge] = useState<UnitsTabBridge | null>(null);
-  const [supportBridge, setSupportBridge] = useState<ConversationTabBridge | null>(null);
+  // Tab bodies register imperative bridges (checkAll, openPrebox, …). Keep the
+  // latest snapshot in refs so callback identity churn doesn't loop setState;
+  // bump the tick only when dock-visible fields change.
+  const checklistBridgeRef = useRef<ChecklistTabBridge | null>(null);
+  const [checklistBridgeTick, setChecklistBridgeTick] = useState(0);
+  const unitsBridgeRef = useRef<UnitsTabBridge | null>(null);
+  const [unitsBridgeTick, setUnitsBridgeTick] = useState(0);
+  const supportBridgeRef = useRef<ConversationTabBridge | null>(null);
+  const [supportBridgeTick, setSupportBridgeTick] = useState(0);
 
   const onChecklistBridge = useCallback((bridge: ChecklistTabBridge | null) => {
-    setChecklistBridge(bridge);
+    const prev = checklistBridgeRef.current;
+    checklistBridgeRef.current = bridge;
+    if (
+      Boolean(prev) !== Boolean(bridge) ||
+      prev?.allDone !== bridge?.allDone ||
+      prev?.itemCount !== bridge?.itemCount
+    ) {
+      setChecklistBridgeTick((t) => t + 1);
+    }
   }, []);
   const onUnitsBridge = useCallback((bridge: UnitsTabBridge | null) => {
-    setUnitsBridge(bridge);
+    const prev = unitsBridgeRef.current;
+    unitsBridgeRef.current = bridge;
+    if (Boolean(prev) !== Boolean(bridge) || prev?.serialCount !== bridge?.serialCount) {
+      setUnitsBridgeTick((t) => t + 1);
+    }
   }, []);
   const onConversationBridge = useCallback((bridge: ConversationTabBridge | null) => {
-    setSupportBridge(bridge);
+    const prev = supportBridgeRef.current;
+    supportBridgeRef.current = bridge;
+    if (
+      Boolean(prev) !== Boolean(bridge) ||
+      prev?.hasDraft !== bridge?.hasDraft ||
+      prev?.isPublic !== bridge?.isPublic ||
+      prev?.submitting !== bridge?.submitting ||
+      prev?.canPost !== bridge?.canPost
+    ) {
+      setSupportBridgeTick((t) => t + 1);
+    }
   }, []);
 
   const buildTerminal = useCallback(
@@ -177,10 +205,10 @@ export function LineEditPanel({
         row,
         poNote,
         bridges: {
-          checklist: checklistBridge,
-          units: unitsBridge,
-          support: supportBridge,
-          conversation: supportBridge,
+          checklist: checklistBridgeRef.current,
+          units: unitsBridgeRef.current,
+          support: supportBridgeRef.current,
+          conversation: supportBridgeRef.current,
         },
         focusSerialScan: () => {
           const focus = () => {
@@ -226,7 +254,7 @@ export function LineEditPanel({
           handleReceive: (mode) => void c.handleReceive(mode),
         },
       }),
-    [row, poNote, c, checklistBridge, unitsBridge, supportBridge],
+    [row, poNote, c, checklistBridgeTick, unitsBridgeTick, supportBridgeTick],
   );
 
   const terminalVm = useStationTerminalAction({

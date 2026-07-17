@@ -3,8 +3,8 @@
 /**
  * The tech dashboard's right pane, swapped by sidebar mode:
  *   - receiving ........ the inbound receiving feed
- *   - testing .......... TestingLineWorkspace (history browse when no line;
- *                        Pass/Test-Again panel when a line is open)
+ *   - testing .......... Testing workbench (Pending · Returns | History) with
+ *                        the focused line panel crossfading over it
  *   - history (default)  Shipping workspace (Pending · FBA | History), OVER which a
  *     scanned/active order — or an Up Next preview — crossfades and back.
  * Pure presentational; state comes from the dashboard's hooks.
@@ -30,6 +30,7 @@ interface TechRightPaneProps {
   testingLineId: number | null;
   onTestingLineChange: React.Dispatch<React.SetStateAction<number | null>>;
   testingSelectMode: boolean;
+  onToggleTestingSelect: () => void;
   onOpenTestingLine: () => void;
   activeOrderPane: TechActiveOrderPane | null;
   onCloseActiveOrder: () => void;
@@ -44,6 +45,7 @@ export function TechRightPane({
   testingLineId,
   onTestingLineChange,
   testingSelectMode,
+  onToggleTestingSelect,
   onOpenTestingLine,
   activeOrderPane,
   onCloseActiveOrder,
@@ -58,13 +60,14 @@ export function TechRightPane({
   }
 
   if (rightViewMode === 'testing') {
-    // Testing mode → history browse when no line; Pass/Test-Again when open.
+    // Testing mode → queue/history workbench; focused line crossfades over it.
     return (
       <TestingLineWorkspace
         staffId={techId}
         selectedLineId={testingLineId}
         onSelectedLineChange={onTestingLineChange}
         testingSelectMode={testingSelectMode}
+        onToggleTestingSelect={onToggleTestingSelect}
         onOpenTestingLine={onOpenTestingLine}
       />
     );

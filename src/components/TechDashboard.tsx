@@ -5,12 +5,12 @@
  *
  * Logic lives in focused hooks under `@/components/tech/`:
  *   - useTechRightView ........... `?view=` → right-pane mode
- *   - useTechTestingSelection .... Testing browse pencil multi-select + actions
+ *   - useTechTestingSelection .... Testing workbench pencil multi-select + actions
  *   - useTechOrderPanes .......... active-order + Up Next preview (event bridges)
  *   - useTechDetailOverlays ...... selected log + repair panel (event bridges)
  *
  * Render is pure composition: <TechRightPane> (the mode-swapped right pane) +
- * the testing browse selection bar, then the page-level <TechDashboardOverlays>.
+ * the testing table selection bar, then the page-level <TechDashboardOverlays>.
  */
 
 import { useState } from 'react';
@@ -45,6 +45,7 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     testingSelectedRows,
     testingClaimRow,
     setTestingClaimRow,
+    toggleTestingSelect,
     exitTestingSelect,
     openTestingLine,
     testingBulkActions,
@@ -73,6 +74,7 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               testingLineId={testingLineId}
               onTestingLineChange={setTestingLineId}
               testingSelectMode={testingSelectMode}
+              onToggleTestingSelect={toggleTestingSelect}
               onOpenTestingLine={openTestingLine}
               activeOrderPane={activeOrderPane}
               onCloseActiveOrder={() => setActiveOrderPane(null)}

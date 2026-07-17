@@ -1,21 +1,20 @@
 'use client';
 
 /**
- * Local-pickup sidebar — the slim selectable item list.
+ * Local-pickup sidebar — the staged-cart picker for the Local Pickup job.
  *
- * The pickup counterpart to the receiving sidebar's line list: each staged
- * product is a compact, selectable row (photo · title · qty · condition ·
- * Complete/Missing badge). Clicking a row points the shared store's
- * `selectedKey` at it, which drives the main-pane editor
- * (`LocalPickupEditPanel`). The footer carries the subtotal + the
- * "Log N items" submit. Adding happens in the main pane's popover, so this
- * panel is pure list + submit (no inline editing).
+ * A thin adapter over {@link WalkInCartSidebar}: this file owns only what is
+ * pickup-specific — dollar-string money, the condition + parts-state trailing
+ * cells, and the review/finalize submit. Clicking a row points the shared
+ * store's `selectedKey` at it, which drives the main-pane editor
+ * (`LocalPickupEditPanel`). Adding happens in the main pane's Add display, so
+ * this panel is pure list + submit (no inline editing).
  */
 
-import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Package, ShoppingCart } from '@/components/Icons';
+import { Check, ShoppingCart } from '@/components/Icons';
 import { getSidebarIntakeSubmitButtonClass } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
+import { WalkInCartRow, WalkInCartSidebar } from '@/components/walk-in/WalkInCartSidebar';
 import {
   conditionLabel,
   formatMoney,
@@ -23,7 +22,6 @@ import {
   parseMoney,
   selectLine,
   useLocalPickupCart,
-  type CartLine,
 } from './localPickupStore';
 
 export function LocalPickupSidebarList() {
@@ -31,137 +29,65 @@ export function LocalPickupSidebarList() {
 
   const subtotal = cart.reduce((sum, l) => sum + parseMoney(l.total), 0);
   const unitCount = cart.reduce((sum, l) => sum + l.quantity, 0);
-  const canSubmit = cart.length > 0;
-  const submitClass = getSidebarIntakeSubmitButtonClass('green');
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-      <div className="border-b border-border-hairline px-3 py-2.5">
-        <p className="text-role-eyebrow uppercase tracking-widest text-emerald-500">
-          Walk-In
-        </p>
-        <h3 className="mt-0.5 text-role-caption font-black uppercase tracking-tight text-text-default">
-          Local Pickup
-        </h3>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2.5">
-        {cart.length === 0 ? (
-          <div className="mt-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas/60 p-4 text-center">
-            <ShoppingCart className="mx-auto mb-1 h-5 w-5 text-text-faint" />
-            <p className="text-role-micro font-bold text-text-faint">
-              Add items from the panel →
-            </p>
+    <WalkInCartSidebar
+      eyebrow="Walk-In"
+      title="Local Pickup"
+      isEmpty={cart.length === 0}
+      subtotal={cart.length > 0 ? formatMoney(subtotal) : null}
+      error={submitError}
+      footer={
+        successMessage ? (
+          <div
+            role="status"
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-emerald-50 px-3 text-role-caption font-bold text-emerald-700 ring-1 ring-inset ring-emerald-200"
+          >
+            <Check className="h-4 w-4" />
+            {successMessage}
           </div>
         ) : (
-          <div className="space-y-1.5">
-            <AnimatePresence initial={false}>
-              {cart.map((line) => (
-                <PickupListRow
-                  key={line.key}
-                  line={line}
-                  active={line.key === selectedKey}
-                  onSelect={() => selectLine(line.key)}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
-
-      <div className="border-t border-border-hairline bg-surface-card px-3 py-2.5">
-        <div className="space-y-2">
-          {cart.length > 0 ? (
-            <div className="flex items-center justify-between border-b border-border-hairline pb-2">
-              <span className="text-role-micro uppercase tracking-wider text-text-soft">
-                Subtotal
-              </span>
-              <span className="text-sm font-black text-emerald-600">
-                {formatMoney(subtotal)}
-              </span>
-            </div>
-          ) : null}
           <Button
+            type="button"
             onClick={() => openReview()}
-            disabled={!canSubmit}
-            className={`flex w-full items-center justify-center gap-2 ${submitClass}`}
+            disabled={cart.length === 0}
+            icon={<ShoppingCart />}
+            className={`w-full ${getSidebarIntakeSubmitButtonClass('green')}`}
           >
-            {successMessage ? (
-              <>
-                <Check className="h-4 w-4" /> {successMessage}
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="h-4 w-4" />
-                {cart.length > 0
-                  ? `Review ${unitCount} Item${unitCount === 1 ? '' : 's'}`
-                  : 'Add Products'}
-              </>
-            )}
+            {cart.length > 0
+              ? `Review ${unitCount} Item${unitCount === 1 ? '' : 's'}`
+              : 'No items to review'}
           </Button>
-          {submitError ? (
-            <p className="text-center text-role-eyebrow font-bold text-red-600">
-              {submitError}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface PickupListRowProps {
-  line: CartLine;
-  active: boolean;
-  onSelect: () => void;
-}
-
-function PickupListRow({ line, active, onSelect }: PickupListRowProps) {
-  const isMissing = line.partsStatus === 'MISSING_PARTS';
-
-  return (
-    <motion.button
-      type="button"
-      onClick={onSelect}
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -6 }}
-      transition={{ duration: 0.18 }}
-      className={`ds-raw-button w-full rounded-xl border p-2 text-left transition-colors ${
-        active
-          ? 'border-emerald-300 bg-emerald-50/70 ring-1 ring-emerald-200'
-          : 'border-border-soft bg-surface-card hover:bg-surface-hover'
-      }`}
+        )
+      }
     >
-      <div className="flex items-center gap-2">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-card">
-          {line.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={line.image_url} alt="" className="h-full w-full object-contain" />
-          ) : (
-            <Package className="h-5 w-5 text-text-faint" />
-          )}
-        </div>
-        <p className="min-w-0 flex-1 truncate text-role-caption font-bold leading-snug text-text-default">
-          {line.product_title}
-        </p>
-      </div>
-      <div className="mt-1.5 flex items-center gap-2 text-role-eyebrow">
-        <span className="font-black text-emerald-700">
-          {line.total ? `$${line.total}` : '$0'}
-        </span>
-        <span className="font-black text-text-soft">x{line.quantity}</span>
-        <span className="font-black text-text-soft">
-          {conditionLabel(line.conditionGrade)}
-        </span>
-        <span
-          className={`ml-auto font-black ${
-            isMissing ? 'text-amber-500' : 'text-emerald-600'
-          }`}
-        >
-          {isMissing ? 'Missing' : 'Complete'}
-        </span>
-      </div>
-    </motion.button>
+      {cart.map((line) => (
+        <WalkInCartRow
+          key={line.key}
+          imageUrl={line.image_url}
+          title={line.product_title}
+          price={line.total ? `$${line.total}` : '$0'}
+          quantity={line.quantity}
+          active={line.key === selectedKey}
+          onSelect={() => selectLine(line.key)}
+          meta={
+            <>
+              <span className="font-black text-text-soft">
+                {conditionLabel(line.conditionGrade)}
+              </span>
+              <span
+                className={`ml-auto font-black ${
+                  line.partsStatus === 'MISSING_PARTS'
+                    ? 'text-amber-500'
+                    : 'text-emerald-600'
+                }`}
+              >
+                {line.partsStatus === 'MISSING_PARTS' ? 'Missing' : 'Complete'}
+              </span>
+            </>
+          }
+        />
+      ))}
+    </WalkInCartSidebar>
   );
 }

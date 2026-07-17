@@ -78,6 +78,17 @@ test('level metrics carry a board filter; rate/trend metrics do not', () => {
   for (const m of Object.values(byId)) assert.ok(m.tooltip, `${m.id} needs a tooltip`);
 });
 
+test('unshipped lane metrics carry filterUstatus for click-to-filter', () => {
+  const unshipped = resolveOutboundMetrics(
+    baseCtx({ mode: 'unshipped', unshipped: { total: 33, pending: 12, tested: 21, blocked: 3 }, roi: roi() }),
+  );
+  const byId = Object.fromEntries(unshipped.map((m) => [m.id, m]));
+  assert.equal(byId.ready?.filterUstatus, 'TESTED');
+  assert.equal(byId.awaiting?.filterUstatus, 'PENDING');
+  assert.equal(byId.blocked?.filterUstatus, 'BLOCKED');
+  assert.equal(byId.ready?.filterState, undefined);
+});
+
 test('mode filters the registry (no unshipped ids leak into shipped)', () => {
   const shipped = resolveOutboundMetrics(
     baseCtx({ shipped: { ...ZERO_OUTBOUND_METRICS, delivered: 20, inTransit: 5, exceptions: 15 }, roi: roi() }),

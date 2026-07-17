@@ -45,7 +45,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { ArrowUpDown, Check, ChevronDown, ChevronUp, ColumnsOne, ColumnsThree, ColumnsTwo, GripVertical } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarSegmentGroup, type ToolbarSegmentItem } from '@/components/ui/ToolbarButton';
-import { ToolbarControlsDisclosure } from '@/components/ui/ToolbarControlsDisclosure';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -137,19 +136,13 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
   totalLabel?: string;
   /** Header band start slot (e.g. `<ColumnConfigButton/>`), inside the band. */
   headerStartSlot?: ReactNode;
-  /** Header band end slot (e.g. week nav), left of the column toggle. */
+  /** Header band end slot (columns / options / layout toggles). */
   headerEndSlot?: ReactNode;
   /** Always-visible right-side slot rendered LEFT of the layout controls (e.g. the
-   *  board staff filter). Unlike `headerEndSlot` it is never hidden by
-   *  `collapsibleControls` — it is the one primary filter that stays on the bar. */
+   *  board staff filter). */
   headerPersistentEndSlot?: ReactNode;
-  /** Always-visible trailing slot rendered AFTER the disclosure cluster (e.g.
-   *  Select rows). Never tucked behind `collapsibleControls`. */
+  /** Always-visible trailing slot rendered AFTER the end cluster (e.g. Select). */
   headerTrailingSlot?: ReactNode;
-  /** When true, the layout cluster (column-count slider + `headerEndSlot`) is
-   *  tucked behind a `ToolbarControlsDisclosure` gear that slides them in/out —
-   *  so the resting toolbar is just start-slot + persistent filter + the gear. */
-  collapsibleControls?: boolean;
   /** Rendered in each lane header's control cluster (sort / date / staff), right-aligned. */
   laneHeaderSlot?: ReactNode;
   /** When set, each lane header shows a date-range picker filtering on this field.
@@ -536,7 +529,6 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
   headerEndSlot,
   headerPersistentEndSlot,
   headerTrailingSlot,
-  collapsibleControls = false,
   footerSlot,
   laneHeaderSlot,
   getRowDate,
@@ -715,17 +707,11 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
     </>
   );
 
-  /** The right cluster: the always-on persistent filter, then the layout controls —
-   *  optionally tucked behind the slide-in disclosure so the bar stays quiet —
-   *  then the always-visible trailing slot (e.g. Select). */
+  /** The right cluster: persistent filter · layout / display controls · trailing (Select). */
   const headerEndCluster = (
     <>
       {headerPersistentEndSlot}
-      {collapsibleControls ? (
-        <ToolbarControlsDisclosure>{headerControls}</ToolbarControlsDisclosure>
-      ) : (
-        headerControls
-      )}
+      {headerControls}
       {headerTrailingSlot}
     </>
   );

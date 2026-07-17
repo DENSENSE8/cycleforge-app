@@ -4,9 +4,7 @@
  * Outbound workspace chrome — one unified header bar for Dashboard · Outbound.
  *
  * Left:  lifecycle tabs (To Ship count only).
- * Right: [◀ exact filters…] [All N] | staff / table controls portal.
- *
- * Expand/collapse sits immediately left of All only — not next to the tabs.
+ * Right: [⚡] [⫶] | staff / columns / options portal | Select (far right).
  */
 
 import { useMemo, type Ref } from 'react';
@@ -16,13 +14,12 @@ import {
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
 import {
-  OutboundAllFilterButton,
   OutboundExactFilters,
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
-import { OutboundSavedViewChips } from '@/components/dashboard/OutboundSavedViewChips';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { SearchField } from '@/design-system/primitives/SearchField';
+import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
+import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 
@@ -37,6 +34,9 @@ export interface OutboundWorkspaceHeaderProps {
   orderView: DashboardOrderView;
   onSelectView: (view: DashboardOrderView) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
+  /** Select pencil — always far-right in chrome (not portaled from the table). */
+  selectMode?: boolean;
+  onToggleSelectMode?: () => void;
   className?: string;
 }
 
@@ -44,6 +44,8 @@ export function OutboundWorkspaceHeader({
   orderView,
   onSelectView,
   controlsSlotRef,
+  selectMode = false,
+  onToggleSelectMode,
   className,
 }: OutboundWorkspaceHeaderProps) {
   const active = isLifecycleView(orderView) ? orderView : 'unshipped';
@@ -77,23 +79,20 @@ export function OutboundWorkspaceHeader({
       className={className}
       // Scoped list filter over ?search= (header slot) — the ⌘K pill stays global.
       search={
-        <SearchField
+        <ToolbarSearchToggle
           value={searchQuery}
           onChange={setSearch}
           onClear={() => setSearch('')}
           placeholder="Filter orders…"
           tone="blue"
-          size="compact"
-          className="w-40 shrink-0 lg:w-56"
         />
       }
-      // [◀ filters] [All N] [saved view chips]
-      right={
-        <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-          <OutboundExactFilters mode={active} />
-          <OutboundAllFilterButton mode={active} />
-          <OutboundSavedViewChips mode={active} />
-        </div>
+      // [⚡] [⫶ lane/status] — All + saved views live in filter / table options.
+      right={<OutboundExactFilters mode={active} />}
+      trailing={
+        onToggleSelectMode ? (
+          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
+        ) : undefined
       }
     />
   );
