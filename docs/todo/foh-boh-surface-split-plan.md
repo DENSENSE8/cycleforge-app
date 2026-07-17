@@ -1,6 +1,6 @@
 # Front-of-house / back-of-house surface split
 
-**Status:** Phase 0 decisions frozen 2026-07-16 — split into per-surface child plans  
+**Status:** Partially shipped · direction refined 2026-07-17 (see Revision below) — split into per-surface child plans  
 **Created:** 2026-07-16  
 **Related:**
 - [studio-driven-operator-surfaces-refactor-plan.md](./studio-driven-operator-surfaces-refactor-plan.md)
@@ -9,6 +9,66 @@
 - **Child plan docs:** [`foh-boh-surface-split/`](./foh-boh-surface-split/) — per-surface plans (this refactor is split for independent monitoring)
 
 This is a **design inventory**, not an implementation ticket. Use it to refine product decisions, spot reuse, and cut overlap before writing code.
+
+---
+
+## ⚠️ Revision 2026-07-17 — direction refined + what shipped
+
+**Supersedes the "Walk-In own station" framing below** (Locked product direction; Target IA §Walk-In
+station; and the archetype specifics of Phase 0 rows 2 / 7 / 8). Two things changed since the 16 Jul
+freeze: the **owner refined the counter's archetype**, and **implementation moved past the frozen
+record**. Reconcile child docs 02 / 03 / 05 to this before building further.
+
+### Refined direction (owner, 2026-07-17)
+
+- **The counter is a *form*, not a scanner station.** No scanner ⇒ not a Station (contextual-display
+  Q1). `/walk-in` (Sales) becomes a **sidebar-less iPad kiosk**: a service picker — **Sales · Local
+  Pickup · Repair** — where each service is its own form wired to its platform (**Square · Zoho ·
+  Ecwid**) via capability facades.
+- **Local Pickup + Repair are *Receiving modes*, not Walk-In-station jobs.** They run the **exact Unbox
+  flow** on the floor — photos → identify → pair in Zoho → place → print unit label. Cart icon = Local
+  Pickup, wrench = Repair, as peer modes of Unbox.
+- **This retires the `?job=` switcher and the "Walk-In as its own `kind:'station'`" idea.** Kept: the
+  Sales relabel; Inbound History → a `/dashboard` mode; Walk-In vs Receiving history stay separate.
+
+### What already shipped (`eb78be34`, `3ea08956`)
+
+| Change | Evidence | State |
+|---|---|---|
+| Local Pickup + Repair are peer **Receiving rail modes** (cart / wrench); Walk-In pill + History dropped from the rail | `receiving-sidebar-shared.ts` `RECEIVING_MODE_ITEMS`; `sidebar-navigation.ts` receiving `modes[]` + path-based `resolveMode` | ✅ |
+| Own routes `/unbox /triage /incoming /pickup /repair`; `?job=` model deleted ("the jobs ARE modes") | route pages exist; nav comment (~L527) | ✅ |
+| Walk-In main → **Sales** (label; `id:'walk-in'` kept for bookmarks; `requires: 'walk_in.view'`) | `sidebar-navigation.ts`; `SalesWorkspaceHeader.tsx` | ✅ |
+| Panels adopt `StationWorkbench` | `LocalPickupEditPanel`, `RepairIntakeForm`, `RepairTable` (adopters listed in `.claude/rules/display/station-workbench.md`) | ✅ |
+| Inbound History → `/dashboard` mode | rail no longer lists `history`; the `/dashboard` Scanned/Unboxed mode is **not built**; `/receiving/history` still resolves | 🟡 |
+
+### Still to build (against the refined direction)
+
+| # | Item | Child doc |
+|---|---|---|
+| R1 | Promote `pickup`/`repair` to first-class `WORKSPACE_MODES` rows + `STATION_TERMINAL_REGISTRY` — today the `WorkspaceMode` union is only `unbox\|triage\|testing`, so they render but aren't docked workbench modes | 01 |
+| R2 | `/walk-in` Sales → sidebar-less **kiosk form** (service picker + one form module per service, Unbox-style split) | 03 |
+| R3 | Wire Sales / Pickup / Repair to **Square / Zoho / Ecwid** behind capability facades (connectors already exist) — capability-noun copy, never hardcoded brand sentences | 03 |
+| R4 | Retire the stale `src/lib/walk-in/jobs.ts` `?job=` SoT (`WALK_IN_JOBS`, `WALK_IN_STATION_PATH`, `walkInStationHref`) — grep consumers first | 05 |
+| R5 | Build the `/dashboard` **Inbound** mode (Scanned · Unboxed) via the dashboard chrome recipe; then retire the `/receiving/history` fallback | 04 |
+| R6 | Mobile: `/pickup` still rewrites to `/m/receiving`, no `/m/walk-in` (explicitly deferred in `proxy.ts`) | — |
+
+### Conflicts — resolution status
+
+1. ✅ **Sales = form vs history — RESOLVED (owner, 07-17): both, split by surface.** `/walk-in` (Sales)
+   stays the **staff transaction-history** monitor; the **customer intake is a separate route**
+   (`/kiosk`), authed as a **device principal**, not a staff member. Auth model owned by
+   [06](./foh-boh-surface-split/06-walk-in-kiosk-auth.md); forms + platform wiring by doc 03.
+   *(Refines R2: `/walk-in` is not the kiosk.)*
+2. ✅ **`/pickup` permission — RESOLVED: `receiving.view` (as shipped).** Verified 07-17 — code gates
+   `receiving.view` (`getSidebarRouteKey('/pickup') → 'receiving'`), the standalone `walk_in` station
+   nav row is gone, and `SURFACE_REGISTRY.pickup` is receiving work. This reverts Phase 0 #7 and doc
+   05's P1–P3 — **[doc 05 reconciled 07-17](./foh-boh-surface-split/05-nav-permission-redirects.md)**
+   (documents the revert; P4–P6 stand). `walk_in.*` is reserved for the `/walk-in` Sales + `/kiosk`
+   surfaces.
+3. **Job switcher (#8).** "Keep `WalkInJobSwitcher`" is moot — the `?job=` model is already deleted in
+   code. Update doc 02.
+
+---
 
 ## Phase 0 — Decision record (frozen 2026-07-16)
 
@@ -35,20 +95,24 @@ Each is independently monitorable. Sequence respects dependencies — Walk-In St
 | 02 | [Walk-In Station](./foh-boh-surface-split/02-walk-in-station.md) | `/pickup` intake bench | Not started | 05 |
 | 03 | [Sales (main history)](./foh-boh-surface-split/03-sales-main-history.md) | `/walk-in` → Sales monitor | Not started | 05 |
 | 04 | [Inbound History → Dashboard mode](./foh-boh-surface-split/04-inbound-history-dashboard-mode.md) | `/dashboard` new mode | Not started | 05 |
-| 05 | [Nav · permission · redirects](./foh-boh-surface-split/05-nav-permission-redirects.md) | shared registries | ✅ Built 2026-07-16 | — |
+| 05 | [Nav · permission · redirects](./foh-boh-surface-split/05-nav-permission-redirects.md) | shared registries | ✅ Reconciled 2026-07-17 (P1–P3 reverted to `receiving`; P4–P6 stand) | — |
+| 06 | [Walk-In kiosk auth](./foh-boh-surface-split/06-walk-in-kiosk-auth.md) | `/kiosk` device principal | Planning (greenfield) | 05, 03 |
 
-**Recommended build order: 05 → 02 → 04 → 03 → 01** (connective tissue first; Receiving rail slim last, after its graduated surfaces exist).
+**Recommended build order: 05 → 02 → 04 → 03 → 01** (connective tissue first; Receiving rail slim last, after its graduated surfaces exist). **06** slots after 05 + alongside 03 (shares the connector wiring).
 
 ---
 
 ## Locked product direction
 
+> **⚠️ Two rows below were reversed by the [2026-07-17 revision](#-revision-2026-07-17--direction-refined--what-shipped).**
+> Struck-through cells are superseded — read the revision block, not these.
+
 | Decision | Lock |
 |---|---|
-| Walk-In station | **Dedicated station-division** item in master nav (peer of Receiving / Packing / Testing / Shipping) |
-| Current main "Walk-In" (`/walk-in`) | **Rename to Sales**, stay under **main** |
-| Receiving | BOH only: Incoming · Triage · Unbox (labeling / processing / putaway handoff) — **no** Walk-In mode pill |
-| History chrome | Lifecycle facets **Scanned · Unboxed** via `WorkbenchChromeHeader` (same law as Dashboard To Ship · Packed · Shipped) |
+| Walk-In counter | ~~Dedicated station-division item~~ → a **sidebar-less iPad kiosk *form*** (Sales · Local Pickup · Repair service picker). Not a scanner Station. |
+| Current main "Walk-In" (`/walk-in`) | **Rename to Sales** ✅ done (label; `id` kept). Job refined: → the **kiosk form** page. |
+| Receiving | ~~BOH only: Incoming · Triage · Unbox — no Walk-In pill~~ → **owns Local Pickup + Repair as peer processing modes** of Unbox (cart / wrench). ✅ rail shipped. |
+| History chrome | Lifecycle facets **Scanned · Unboxed** via `WorkbenchChromeHeader` (same law as Dashboard To Ship · Packed · Shipped) — now a `/dashboard` mode. |
 | Walk-In vs Receiving History | **Keep separate domains** forever |
 
 ### Explain 1b (own station item)

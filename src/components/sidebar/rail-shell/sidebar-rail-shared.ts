@@ -105,6 +105,11 @@ export interface SidebarRailShellProps<TRow> {
   eyebrowSuffix?: string;
   /** Right-aligned eyebrow slot (e.g. a refresh button). Takes precedence over `eyebrowSuffix`. */
   eyebrowAction?: ReactNode;
+  /**
+   * When true, hides the "TITLE · N" eyebrow band (and its inline edit pencil).
+   * Used when the workbench chrome already owns tabs + select toggle.
+   */
+  hideEyebrow?: boolean;
   emptyText?: string;
   /**
    * When true, selects the first row once data loads if nothing is selected yet.

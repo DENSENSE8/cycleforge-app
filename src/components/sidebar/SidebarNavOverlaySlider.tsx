@@ -15,7 +15,7 @@ interface SidebarNavOverlaySliderProps {
 /**
  * Sticky nav pills over a scrolling sidebar body — pairs
  * `sidebarNavOverlayBandClass` with `HorizontalButtonSlider overlay` so active
- * pill shadows aren't clipped (same contract as UnboxViewToggle).
+ * pill shadows aren't clipped (same contract as the former UnboxViewToggle).
  */
 export function SidebarNavOverlaySlider({
   items,

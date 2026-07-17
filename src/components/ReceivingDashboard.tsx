@@ -17,7 +17,6 @@
  */
 
 import { useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,8 +45,6 @@ function formatReceivingCopyRow(r: ReceivingLineRow): string {
 export default function ReceivingDashboard() {
   useRealtimeInvalidation({ receiving: true });
   useRealtimeToasts('receiving');
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
   const staffId = String(user?.staffId ?? '');
 
@@ -78,14 +75,10 @@ export default function ReceivingDashboard() {
     setNav(null);
     dispatchReceivingWorkspaceClose();
     window.dispatchEvent(new CustomEvent('receiving-clear-line'));
-    // Triage stays in triage (its rail auto-selects the next top); Unbox close
-    // returns to the History tab as a "back to list".
-    if (!isTriageMode) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('mode', 'history');
-      router.replace(`/receiving?${params.toString()}`);
-    }
-  }, [isTriageMode, router, searchParams, setWorkspace, setNav]);
+    // Triage stays in triage (its rail auto-selects the next top). Unbox
+    // browse-first — clear selection and return to the workbench feed (no
+    // jump to History).
+  }, [setWorkspace, setNav]);
 
   // Triage (label "Receiving") deliberately shares the SAME right pane as Unbox:
   // the selected carton opens in the full ReceivingLineWorkspace, so identifying

@@ -1,6 +1,7 @@
 /**
  * Guard: Unbox empty-pane-first — rail pending stub + optimistic unmatched pane
  * open at scan t=0; no Opening / Triage skeleton / keep-prior policy.
+ * Unbox browse+overlay shell lives in UnboxLineWorkspace.
  *
  * Run: `tsx --test src/components/receiving/ReceivingRightPane.pending.guard.test.ts`
  */
@@ -12,6 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 const SRC = readFileSync(fileURLToPath(new URL('./ReceivingRightPane.tsx', import.meta.url)), 'utf8');
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+const UNBOX_SRC = readFileSync(
+  fileURLToPath(new URL('./unbox/UnboxLineWorkspace.tsx', import.meta.url)),
+  'utf8',
+);
+const UNBOX_CODE = UNBOX_SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
 const SCAN_SRC = readFileSync(
   fileURLToPath(new URL('../sidebar/receiving/useTrackingScan.ts', import.meta.url)),
@@ -33,9 +40,14 @@ test('ReceivingRightPane does not import ReceivingWorkspaceSkeleton', () => {
   assert.equal(CODE.includes('ReceivingWorkspaceSkeleton'), false);
 });
 
-test('ReceivingRightPane remounts workspace shell on scan-driven open', () => {
-  assert.match(CODE, /scanDriven/);
-  assert.match(CODE, /scan-\$/);
+test('ReceivingRightPane routes Unbox to UnboxLineWorkspace', () => {
+  assert.equal(CODE.includes('UnboxLineWorkspace'), true);
+  assert.match(CODE, /mode === 'receive'/);
+});
+
+test('UnboxLineWorkspace remounts workspace shell on scan-driven open', () => {
+  assert.match(UNBOX_CODE, /scanDriven/);
+  assert.match(UNBOX_CODE, /scan-\$/);
 });
 
 test('useTrackingScan opens optimistic unmatched pane at Unbox t=0', () => {

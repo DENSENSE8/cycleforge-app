@@ -6,8 +6,8 @@
  * keeps the pane authoritative across the full lifecycle:
  *   - workspace open/close/update + nav-state (dispatched by the sidebar)
  *   - the skeleton loader's grace-delay show / lingered clear around a scan
- *   - "never blank" auto-open of the most-recent line in Unbox mode
- *   - delete recovery (line or whole carton) onto the next survivor
+ *   - browse-first Unbox (no never-blank auto-open)
+ *   - delete recovery onto an empty browse pane
  *
  * Reads the live `?mode=` so a client-side mode switch is honored without a
  * render lag. Extracted from ReceivingDashboard; behaviour is unchanged.
@@ -169,20 +169,12 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     };
   }, [searchParams]);
 
-  // Keep the right pane from ever sitting BLANK in Unbox/Receive mode: open the
-  // MOST RECENT unboxing line — the same row the Recent rail auto-selects from
-  // its `view=activity` query — whenever nothing is open. Re-runs on `workspace`
-  // so it covers first mount, a workspace close, and a client-side mode switch
-  // back to Unbox.
-  //
-  // Targeting the most-recent row (not a localStorage "last opened") means BOTH
-  // this effect and the rail's auto-select resolve to the SAME line, so the
-  // outcome is deterministic regardless of which fires first. Uses
-  // dispatchSelectLine so the sidebar selectedLine + rail highlight stay in sync.
+  // Browse-first for Unbox: do NOT auto-open the most-recent line. Operators
+  // land on the Unboxed/Queue/Viewed feed (like Testing) and open a line via
+  // click or scan. Deep-link `openReceivingId` still opens via the effect above.
   const workspaceRef = useRef<WorkspaceState | null>(null);
   workspaceRef.current = workspace;
-  // Guards the "never blank" effect while a delete-recovery is choosing the next
-  // line, so the two don't race and momentarily reopen the just-deleted line.
+  // Guards delete-recovery while choosing the next line so it doesn't race.
   const recoveringRef = useRef(false);
   // Any mode switch must drop the focused workspace from state — even though
   // ReceivingRightPane hides the overlay via isTableOnlyMode / presence keys,
@@ -199,84 +191,20 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     setScanInFlight(null);
   }, [searchParams]);
 
-  useEffect(() => {
-    const liveMode = searchParams.get('mode') ?? 'receive';
-    if (liveMode !== 'receive') return;
-    // Defer to the cmd+k deep-link (openReceivingId) for the initial open so the
-    // two don't race to fill the pane; resume auto-open once the param clears.
-    if (searchParams.get('openReceivingId')) return;
-    if (workspace || recoveringRef.current) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await fetch(
-          // Unbox surface only — activity includes triage-unboxed lines and
-          // excludes lineless unfound cartons opened here.
-          `/api/receiving-lines?limit=1&offset=0&view=unbox_opened&include=serials`,
-          { cache: 'no-store' },
-        );
-        const data = await res.json().catch(() => null);
-        // Re-check after the await: the rail's auto-select (or an operator click)
-        // may have already opened a workspace — never clobber it.
-        if (cancelled || workspaceRef.current || recoveringRef.current) return;
-        const rows = Array.isArray(data?.receiving_lines)
-          ? (data.receiving_lines as ReceivingLineRow[])
-          : [];
-        const recent = rows[0] ?? null;
-        if (recent) dispatchSelectLine(recent);
-      } catch {
-        /* network blip — the rail's auto-select still covers the common case */
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams, workspace]);
-
   // Recover the right pane after the line it's showing is removed — the single
-  // line, or the whole carton it belongs to. In Receive mode, drop onto the
-  // most-recent remaining activity line (skipping anything just deleted);
-  // otherwise fall back to an empty pane.
+  // line, or the whole carton it belongs to. Browse-first Unbox: clear to the
+  // feed (no auto-open replacement). Triage / other modes: close the workspace.
   const recoverRightPane = useCallback(
     (isDeleted: (row: ReceivingLineRow) => boolean) => {
-      // Own the next pick so the "never blank" effect doesn't race us and reopen
-      // the just-deleted line while we look up its replacement.
+      void isDeleted; // kept for call-site symmetry with prior auto-open recovery
       recoveringRef.current = true;
-      // Clear immediately so the dead line can't linger during the lookup.
       setWorkspace(null);
       setNav(null);
-      if ((searchParams.get('mode') ?? 'receive') !== 'receive') {
-        recoveringRef.current = false;
-        dispatchReceivingWorkspaceClose();
-        return;
-      }
-      void (async () => {
-        try {
-          const res = await fetch(
-            `/api/receiving-lines?limit=5&offset=0&view=unbox_opened&include=serials`,
-            { cache: 'no-store' },
-          );
-          const data = await res.json().catch(() => null);
-          const rows = Array.isArray(data?.receiving_lines)
-            ? (data.receiving_lines as ReceivingLineRow[])
-            : [];
-          // Guard against an eventually-consistent read still returning the
-          // just-deleted line/carton — never re-open something we removed.
-          const next = rows.find((r) => !isDeleted(r)) ?? null;
-          if (workspaceRef.current) return; // operator already moved on
-          if (next) dispatchSelectLine(next);
-          else dispatchReceivingWorkspaceClose();
-        } catch {
-          dispatchReceivingWorkspaceClose();
-        } finally {
-          recoveringRef.current = false;
-        }
-      })();
+      dispatchReceivingWorkspaceClose();
+      window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+      recoveringRef.current = false;
     },
-    [searchParams],
+    [],
   );
 
   // Single line removed (e.g. last item pulled from an unmatched carton).

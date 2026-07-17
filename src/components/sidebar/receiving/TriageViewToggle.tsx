@@ -2,8 +2,7 @@
 
 /**
  * Triage sub-view pills (Triage / Prioritize / Unfound) pinned above the rail.
- * Mirrors {@link UnboxViewToggle}. URL-backed via `triview` (handled by
- * {@link useReceivingMode}).
+ * URL-backed via `triview` (handled by {@link useReceivingMode}).
  */
 
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';

@@ -36,7 +36,8 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   const {
     queryKey,
     selectedId,
-    eyebrowTitle, eyebrowSuffix, eyebrowAction, emptyText = 'No recent activity yet.',
+    eyebrowTitle, eyebrowSuffix, eyebrowAction, hideEyebrow = false,
+    emptyText = 'No recent activity yet.',
     staggerReveal = false,
     staggerRevealMotion = 'sidebar',
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
@@ -83,26 +84,28 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
 
   return (
     <section className="min-w-0 border-t border-border-hairline bg-surface-card">
-      <div className={`flex items-center justify-between ${SIDEBAR_GUTTER} py-1`}>
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          {eyebrowTitle} · {topCount}
-        </p>
-        <div className="flex items-center gap-2">
-          {eyebrowAction
-            ? eyebrowAction
-            : eyebrowSuffix && (
-                // leading-none: without it the 8.5px suffix inherits the base
-                // line-height (1.5 ≈ 12.75px), taller than the 9px/lh-1.2 eyebrow
-                // title — which made the suffixed rail (Unfound) ~2px taller than
-                // the action-button rail (Found). Tight leading lets the title
-                // govern the row height so both eyebrows align.
-                <p className="text-[8.5px] font-bold uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
-              )}
-          {editMode.enabled ? (
-            <RailEditPencil active={editMode.active} onToggle={editMode.toggleActive} />
-          ) : null}
+      {!hideEyebrow ? (
+        <div className={`flex items-center justify-between ${SIDEBAR_GUTTER} py-1`}>
+          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+            {eyebrowTitle} · {topCount}
+          </p>
+          <div className="flex items-center gap-2">
+            {eyebrowAction
+              ? eyebrowAction
+              : eyebrowSuffix && (
+                  // leading-none: without it the 8.5px suffix inherits the base
+                  // line-height (1.5 ≈ 12.75px), taller than the 9px/lh-1.2 eyebrow
+                  // title — which made the suffixed rail (Unfound) ~2px taller than
+                  // the action-button rail (Found). Tight leading lets the title
+                  // govern the row height so both eyebrows align.
+                  <p className="text-[8.5px] font-bold uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
+                )}
+            {editMode.enabled ? (
+              <RailEditPencil active={editMode.active} onToggle={editMode.toggleActive} />
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
       {showSkeleton ? (
         <div className={`space-y-1 ${SIDEBAR_GUTTER} py-2`}>
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 w-full animate-pulse rounded-md bg-surface-sunken" />)}

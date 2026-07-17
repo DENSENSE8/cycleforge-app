@@ -75,3 +75,4 @@
 - `2026-07-17T07:52:21.158Z` · **main** · main · agent · Reuse Unbox SupportContextHub ticket display in Testing and retire duplicate claim-thread composer — partial
 - `2026-07-17T07:53:09.370Z` · **main** · main · agent · Removed duplicate ticket identity from Support Linkage — partial
 - `2026-07-17T08:00:23.759Z` · **main** · main · agent · Wire Testing ticket dock to shared SupportChatComposer focus and submit bridge; cover internal/public/file-claim actions — partial
+- `2026-07-17T17:14:48.392Z` · **main** · main · agent · Unbox workbench: moved Unboxed/Queue/Viewed tabs+feed to right-pane (TestingLineWorkspace pattern), browse-first, KPI strip, workbenchPaneSettle crossfade — ok

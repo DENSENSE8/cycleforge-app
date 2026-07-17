@@ -396,7 +396,7 @@ const FEEDS = {
     // / UNBOX_SCAN_OPENED). Absent param = ALL staff (unchanged default).
     // Window capped at UNBOX_SIDEBAR_LIMIT.
     usesStaffFilter: true,
-    autoSelectFirstWhenEmpty: true,
+    autoSelectFirstWhenEmpty: false,
     limit: UNBOX_SIDEBAR_LIMIT,
     refreshEvents: UNBOX_REFRESH,
     rowTitleMode: 'adaptive-po',
@@ -414,7 +414,7 @@ const FEEDS = {
     sort: 'priority',
     postFilter: notUnmatched,
     usesStaffFilter: true,
-    autoSelectFirstWhenEmpty: true,
+    autoSelectFirstWhenEmpty: false,
     limit: 50,
     refreshEvents: [...UNBOX_REFRESH, 'receiving-triage-refresh'],
     rowTitleMode: 'adaptive-po',
@@ -444,7 +444,7 @@ const FEEDS = {
     status: 'receiving',
     view: 'viewed',
     getActivityAt: getViewedAt,
-    autoSelectFirstWhenEmpty: true,
+    autoSelectFirstWhenEmpty: false,
     refreshEvents: UNBOX_REFRESH,
   },
   /** Triage default — Prioritize ∪ Unfound, newest-scanned first. */

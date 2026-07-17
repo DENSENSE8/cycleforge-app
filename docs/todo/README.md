@@ -25,6 +25,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-LOGIN | `org-login-gate-EXECUTION-PROMPT.md` |
 | WS-ONB | `onboarding-foundational-plan.md` |
 | WS-POLY | `schema-wide-polymorphic-refactor-plan.md`, `polymorphic-tables-database-refactor-plan.md`, `polymorphic-receiving-carton-EXECUTION-PROMPT.md` |
+| WS-REVIEW | `packer-review-station-plan.md` (packer photo bridge · guided slip/box capture · `pack_verification_events` · `/review?mode=packer` · EOD box counting) |
 | WS-ROI | `highest-roi-ops-ui-execution-plan.md` |
 | WS-SAAS | `saas-commercialization-plan.md`, `saas-production-readiness-audit-2026-07-08.md` |
 | WS-SERIAL | `serial-label-pairing-split-combine-plan.md` |
