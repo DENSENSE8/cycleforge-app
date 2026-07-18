@@ -9,7 +9,9 @@
  * be promoted to a Zoho-linked one, but nothing was wired to do that.
  *
  * This helper re-runs the same Zoho tracking search that lookup-po does,
- * and if it now finds a PO, promotes the receiving in place:
+ * and if it now finds a PO, promotes the receiving in place (or absorbs an
+ * empty Incoming PO shell onto this carton when the unique index would
+ * collide):
  *   • receiving_carton.source           → 'zoho_po'
  *   • receiving_carton.zoho_purchaseorder_id → matched PO id
  *   • receiving_line             → imported from the Zoho PO
@@ -18,12 +20,13 @@
  *
  * Trigger points:
  *   • Hourly cron sweep (src/app/api/cron/reconcile-unmatched/route.ts)
- *   • Manually from the unfound queue UI ("Retry Zoho lookup" — Phase 4)
- *   • After mailbox triage marks a PO uploaded (Phase 4)
+ *   • Manually from the unfound queue UI ("Retry Zoho lookup")
+ *   • After mailbox triage marks a PO uploaded
  *
  * Failures are non-fatal — anything that goes wrong leaves the receiving
- * as 'unmatched' and the helper returns { promoted: false, reason }. The
- * caller decides whether to retry.
+ * as 'unmatched' (except busy-shell attach, which redirects to the shell)
+ * and the helper returns { promoted: false, reason }. The caller decides
+ * whether to retry.
  */
 
 import pool from '@/lib/db';
@@ -31,8 +34,18 @@ import {
   searchPurchaseReceivesByTracking,
   searchPurchaseOrdersByTracking,
 } from '@/lib/zoho';
+import { ZohoRateLimitError } from '@/lib/zoho/httpClient';
 import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 import { resolveReceivingExceptionsByReceivingId } from '@/lib/tracking-exceptions';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { claimOrAbsorbZohoPoShell } from '@/lib/receiving/claim-zoho-po-shell';
+import { attachBoxToReceiving } from '@/lib/receiving/attach-box';
+import type { TxClient } from '@/lib/receiving/relink-po';
+import {
+  canonicalizeTrackingKey,
+  pickMirrorPoIdFromCandidates,
+} from '@/lib/zoho/call-reduction';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 export interface ReconcileResult {
   receivingId: number;
@@ -45,6 +58,10 @@ export interface ReconcileResult {
   exceptionsResolved?: number;
   /** Short reason explaining why promotion was skipped or failed. */
   reason?: string;
+  /** Stable machine code for UI branching (e.g. ZOHO_RATE_LIMITED). */
+  code?: string;
+  /** Human-readable error for toasts when reason alone is not enough. */
+  error?: string;
 }
 
 interface ReceivingSnapshot {
@@ -58,6 +75,57 @@ function last8Digits(tracking: string | null | undefined): string | null {
   const digits = String(tracking || '').replace(/\D/g, '');
   if (digits.length < 8) return null;
   return digits.slice(-8);
+}
+
+function isRateLimit(err: unknown): boolean {
+  return err instanceof ZohoRateLimitError || (err as { name?: string })?.name === 'ZohoRateLimitError';
+}
+
+/**
+ * Match an unmatched carton's tracking against `zoho_po_mirror` before any
+ * live Zoho search. Exact Reference# first; unique last-8 suffix as fallback
+ * (same digit window the live search uses).
+ */
+async function findMirrorPoIdForTracking(
+  orgId: OrgId,
+  trackingRaw: string | null | undefined,
+  last8: string,
+): Promise<string | null> {
+  const canon = canonicalizeTrackingKey(trackingRaw);
+  if (!canon && !last8) return null;
+
+  const { rows } = await tenantQuery<{
+    zoho_purchaseorder_id: string;
+    ref_canon: string | null;
+  }>(
+    orgId,
+    `SELECT zoho_purchaseorder_id,
+            NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '')
+              AS ref_canon
+       FROM zoho_po_mirror
+      WHERE COALESCE(reference_number, '') <> ''
+        AND (
+          NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '') = $1
+          OR right(
+               NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), ''),
+               8
+             ) = $2
+        )
+      ORDER BY last_synced_at DESC NULLS LAST
+      LIMIT 25`,
+    [canon || null, last8],
+  );
+
+  const exactPoIds: string[] = [];
+  const suffixPoIds: string[] = [];
+  for (const row of rows) {
+    const id = String(row.zoho_purchaseorder_id || '').trim();
+    if (!id) continue;
+    const ref = String(row.ref_canon || '');
+    if (canon && ref === canon) exactPoIds.push(id);
+    else if (ref.length >= 8 && ref.slice(-8) === last8) suffixPoIds.push(id);
+  }
+  return pickMirrorPoIdFromCandidates({ exactPoIds, suffixPoIds });
 }
 
 export async function reconcileUnmatchedReceiving(
@@ -95,30 +163,86 @@ export async function reconcileUnmatchedReceiving(
     };
   }
 
-  // ─── Re-query Zoho ──────────────────────────────────────────────────────
-  // Same fallback chain as lookup-po: purchase_receives first (closer to
-  // operator's mental model), then purchase_orders. Both throws are
-  // swallowed — "no match" and "outage" both leave the receiving unmatched
-  // (the caller can retry on the next cron tick).
+  // ─── Local mirror first (0 Zoho calls) ──────────────────────────────────
   const zohoPoIds = new Set<string>();
-  try {
-    const receives = await searchPurchaseReceivesByTracking(last8).catch(() => []);
-    for (const r of receives) {
-      const poId = String(r.purchaseorder_id || '');
-      if (poId) zohoPoIds.add(poId);
+  const orgId = rec.organization_id;
+  if (orgId) {
+    try {
+      const mirrorPoId = await findMirrorPoIdForTracking(
+        orgId as OrgId,
+        rec.receiving_tracking_number,
+        last8,
+      );
+      if (mirrorPoId) zohoPoIds.add(mirrorPoId);
+    } catch {
+      // Soft failure — fall through to live Zoho search.
     }
-    if (zohoPoIds.size === 0) {
-      const pos = await searchPurchaseOrdersByTracking(last8).catch(() => []);
-      for (const po of pos) {
-        if (po.purchaseorder_id) zohoPoIds.add(po.purchaseorder_id);
+  }
+
+  // ─── Re-query Zoho only when mirror missed ──────────────────────────────
+  // Same fallback chain as lookup-po: purchase_receives first, then
+  // purchase_orders. Soft misses stay empty; hard rate-limits surface so the
+  // Auto-match button can toast (not pretend "no match").
+  if (zohoPoIds.size === 0) {
+    try {
+      let receives: Awaited<ReturnType<typeof searchPurchaseReceivesByTracking>> = [];
+      try {
+        receives = await searchPurchaseReceivesByTracking(last8);
+      } catch (err) {
+        if (isRateLimit(err)) {
+          const message = err instanceof Error ? err.message : 'Zoho rate limit reached';
+          return {
+            receivingId,
+            promoted: false,
+            reason: 'zoho_rate_limited',
+            code: 'ZOHO_RATE_LIMITED',
+            error: message,
+          };
+        }
+        // Soft failure on receives — fall through to PO search.
       }
+      for (const r of receives) {
+        const poId = String(r.purchaseorder_id || '');
+        if (poId) zohoPoIds.add(poId);
+      }
+      if (zohoPoIds.size === 0) {
+        try {
+          const pos = await searchPurchaseOrdersByTracking(last8);
+          for (const po of pos) {
+            if (po.purchaseorder_id) zohoPoIds.add(po.purchaseorder_id);
+          }
+        } catch (err) {
+          if (isRateLimit(err)) {
+            const message = err instanceof Error ? err.message : 'Zoho rate limit reached';
+            return {
+              receivingId,
+              promoted: false,
+              reason: 'zoho_rate_limited',
+              code: 'ZOHO_RATE_LIMITED',
+              error: message,
+            };
+          }
+          // Soft failure — treat as no match.
+        }
+      }
+    } catch (err) {
+      if (isRateLimit(err)) {
+        const message = err instanceof Error ? err.message : 'Zoho rate limit reached';
+        return {
+          receivingId,
+          promoted: false,
+          reason: 'zoho_rate_limited',
+          code: 'ZOHO_RATE_LIMITED',
+          error: message,
+        };
+      }
+      return {
+        receivingId,
+        promoted: false,
+        reason: `zoho lookup threw: ${err instanceof Error ? err.message : 'unknown'}`,
+        error: err instanceof Error ? err.message : 'Zoho lookup failed',
+      };
     }
-  } catch (err) {
-    return {
-      receivingId,
-      promoted: false,
-      reason: `zoho lookup threw: ${err instanceof Error ? err.message : 'unknown'}`,
-    };
   }
 
   if (zohoPoIds.size === 0) {
@@ -128,13 +252,10 @@ export async function reconcileUnmatchedReceiving(
   const poIds = Array.from(zohoPoIds);
   const primaryPoId = poIds[0]!;
 
-  // ─── Promote in place ───────────────────────────────────────────────────
-  // Same UPDATE pattern lookup-po uses on its preassigned-receiving branch
-  // (route.ts:410-420). The WHERE clause guards against a race where the
-  // row got promoted between our SELECT and UPDATE — if it did, we just
-  // skip the promotion and treat the existing zoho_purchaseorder_id as
-  // authoritative.
+  // ─── Promote in place (or absorb empty PO shell) ────────────────────────
+  let winningReceivingId = receivingId;
   let promoted = false;
+
   try {
     const promoteRes = await pool.query<{ id: number }>(
       `UPDATE receiving_carton
@@ -146,44 +267,132 @@ export async function reconcileUnmatchedReceiving(
         RETURNING id`,
       [primaryPoId, receivingId],
     );
-    promoted = promoteRes.rowCount! > 0;
+    promoted = (promoteRes.rowCount ?? 0) > 0;
   } catch (err) {
-    // A unique-index conflict on (zoho_purchaseorder_id) WHERE source='zoho_po'
-    // means another `receiving` row already owns this PO. Leaving the
-    // unmatched row as-is is safer than merging — the operator can decide.
-    return {
-      receivingId,
-      promoted: false,
-      reason: `promote update failed: ${err instanceof Error ? err.message : 'unknown'}`,
-    };
+    const pgCode = (err as { code?: string } | null)?.code;
+    if (pgCode !== '23505' || !orgId) {
+      return {
+        receivingId,
+        promoted: false,
+        reason: `promote update failed: ${err instanceof Error ? err.message : 'unknown'}`,
+        error: err instanceof Error ? err.message : 'Promote failed',
+      };
+    }
+    // Unique conflict — absorb empty shell or attach onto busy shell.
+    const claim = await withTenantTransaction(orgId, async (client) =>
+      claimOrAbsorbZohoPoShell(
+        {
+          orgId,
+          workingReceivingId: receivingId,
+          zohoPurchaseorderId: primaryPoId,
+        },
+        client as unknown as TxClient,
+      ),
+    );
+
+    if (claim.action === 'absorb' || claim.action === 'already') {
+      promoted = true;
+      winningReceivingId = receivingId;
+    } else if (claim.action === 'conflict') {
+      // Busy shell owns the PO — attach this box's tracking and re-parent scans.
+      const tracking = (rec.receiving_tracking_number || '').trim();
+      if (tracking && orgId) {
+        await attachBoxToReceiving({
+          receivingId: claim.shellReceivingId,
+          trackingNumber: tracking,
+          staffId: null,
+          organizationId: orgId,
+        }).catch((attachErr) => {
+          console.warn(
+            `[reconcile-unmatched] attach-box to shell failed receiving=${receivingId} shell=${claim.shellReceivingId}:`,
+            attachErr instanceof Error ? attachErr.message : attachErr,
+          );
+        });
+      }
+      await pool.query(
+        `UPDATE receiving_scans
+            SET receiving_id = $1, source = 'zoho_po'
+          WHERE receiving_id = $2
+            AND ($3::uuid IS NULL OR organization_id = $3::uuid)`,
+        [claim.shellReceivingId, receivingId, orgId],
+      ).catch(() => undefined);
+      try {
+        await pool.query(
+          `INSERT INTO unfound_overlay
+             (organization_id, source_kind, source_id, checked, checked_at)
+           VALUES ($1, 'unmatched_receiving', $2, TRUE, NOW())
+           ON CONFLICT (organization_id, source_kind, source_id) DO UPDATE
+             SET checked = TRUE,
+                 checked_at = COALESCE(unfound_overlay.checked_at, NOW())`,
+          [orgId, String(receivingId)],
+        );
+      } catch { /* best-effort */ }
+
+      winningReceivingId = claim.shellReceivingId;
+      promoted = true;
+    } else {
+      // free after race — unlikely; leave unmatched
+      return {
+        receivingId,
+        promoted: false,
+        reason: 'promote update failed: unique conflict unresolved',
+      };
+    }
   }
 
   if (!promoted) {
-    return {
-      receivingId,
-      promoted: false,
-      reason: 'row no longer unmatched (race)',
-    };
+    // Soft miss on UPDATE (race) — try absorb in case a shell already holds the PO
+    // without throwing (e.g. concurrent promote already claimed it between SELECT).
+    if (orgId) {
+      const claim = await withTenantTransaction(orgId, async (client) =>
+        claimOrAbsorbZohoPoShell(
+          {
+            orgId,
+            workingReceivingId: receivingId,
+            zohoPurchaseorderId: primaryPoId,
+          },
+          client as unknown as TxClient,
+        ),
+      );
+      if (claim.action === 'absorb' || claim.action === 'already') {
+        promoted = true;
+        winningReceivingId = receivingId;
+      } else if (claim.action === 'conflict') {
+        winningReceivingId = claim.shellReceivingId;
+        promoted = true;
+        const tracking = (rec.receiving_tracking_number || '').trim();
+        if (tracking) {
+          await attachBoxToReceiving({
+            receivingId: claim.shellReceivingId,
+            trackingNumber: tracking,
+            staffId: null,
+            organizationId: orgId,
+          }).catch(() => undefined);
+        }
+      }
+    }
+    if (!promoted) {
+      return {
+        receivingId,
+        promoted: false,
+        reason: 'row no longer unmatched (race)',
+      };
+    }
   }
 
-  // ─── Import Zoho lines ──────────────────────────────────────────────────
-  // The Zoho import is tenant-scoped (opens a withTenantTransaction under the
-  // receiving's org), so it needs the receiving row's organization_id. Legacy
-  // rows without one are skipped non-fatally — promotion already succeeded and
-  // a later reconcile tick can import lines once the org is backfilled.
+  // ─── Import Zoho lines onto the winning carton ──────────────────────────
   let linesImported = 0;
-  if (!rec.organization_id) {
+  if (!orgId) {
     console.warn(
       `[reconcile-unmatched] receiving=${receivingId} has no organization_id; skipping Zoho line import`,
     );
   } else {
     try {
       const importResult = await importZohoPurchaseOrderToReceiving(
-        rec.organization_id,
+        orgId,
         primaryPoId,
+        { receivingId: winningReceivingId },
       );
-      // importZohoPurchaseOrderToReceiving's return shape varies; count rows
-      // defensively. We only care about a rough number for telemetry.
       if (importResult && typeof importResult === 'object') {
         const maybeLines = (importResult as { linesImported?: number; lines?: unknown[] })
           .linesImported;
@@ -195,23 +404,17 @@ export async function reconcileUnmatchedReceiving(
             : 0;
       }
     } catch (err) {
-      // Promotion succeeded but line import failed. The receiving row now has
-      // source='zoho_po' and the right PO id; the next mark-received-po call
-      // (or another reconcile tick) will sync the lines. Log + continue.
       console.warn(
-        `[reconcile-unmatched] line import failed for receiving=${receivingId} po=${primaryPoId}:`,
+        `[reconcile-unmatched] line import failed for receiving=${winningReceivingId} po=${primaryPoId}:`,
         err instanceof Error ? err.message : err,
       );
     }
   }
 
-  // ─── Close open tracking exceptions for this receiving ──────────────────
   const exceptionsResolved = await resolveReceivingExceptionsByReceivingId(
-    receivingId,
+    winningReceivingId,
   ).catch(() => 0);
 
-  // ─── Mark the overlay row checked so it falls out of the unfound queue ──
-  // Best-effort — if the overlay row doesn't exist yet, INSERT it as checked.
   try {
     await pool.query(
       `INSERT INTO unfound_overlay
@@ -220,17 +423,17 @@ export async function reconcileUnmatchedReceiving(
        ON CONFLICT (organization_id, source_kind, source_id) DO UPDATE
          SET checked = TRUE,
              checked_at = COALESCE(unfound_overlay.checked_at, NOW())`,
-      [rec.organization_id, String(receivingId)],
+      [orgId, String(winningReceivingId)],
     );
   } catch (err) {
     console.warn(
-      `[reconcile-unmatched] overlay check failed for receiving=${receivingId}:`,
+      `[reconcile-unmatched] overlay check failed for receiving=${winningReceivingId}:`,
       err instanceof Error ? err.message : err,
     );
   }
 
   return {
-    receivingId,
+    receivingId: winningReceivingId,
     promoted: true,
     zohoPurchaseorderId: primaryPoId,
     linesImported,
@@ -240,16 +443,10 @@ export async function reconcileUnmatchedReceiving(
 
 /**
  * Sweep recent unmatched receivings, retrying Zoho lookup for each.
- *
- * Returns per-row results so the cron caller can log the summary. Caps the
- * batch at `limit` (default 50) per invocation so a 7-day backlog never
- * blocks the cron window.
  */
 export async function sweepUnmatchedReceivings(
   options: {
-    /** Cutoff age in days; rows older than this are skipped. Default 7. */
     maxAgeDays?: number;
-    /** Max rows to process per call. Default 50. */
     limit?: number;
   } = {},
 ): Promise<{

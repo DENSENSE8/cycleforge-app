@@ -106,7 +106,6 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
             onPairingToggle={onPairingToggle}
             onItemDescFeedback={onItemDescFeedback}
             onItemDescSaved={onItemDescSaved}
-            activeStep={activeStep as never}
           />
           <WorkspaceNotesCard
             row={row}

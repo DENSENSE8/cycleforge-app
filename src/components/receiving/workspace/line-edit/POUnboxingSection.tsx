@@ -20,7 +20,6 @@ import { UnfoundMatchStrip } from './UnfoundMatchStrip';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 import type { UnboxLineController } from './unbox-line-controller';
-import type { ReceivingStepKey } from '../derive-receiving-step-states';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 
 interface POUnboxingSectionProps {
@@ -35,7 +34,6 @@ interface POUnboxingSectionProps {
   onItemDescFeedback?: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved?: (lineId: number, zohoNotes: string | null) => void;
   includeLinkedPoItems?: boolean;
-  activeStep?: ReceivingStepKey | null;
   /**
    * Hide the "PO items · N" header + the internal Edit-PO pencil — the parent
    * (the unbox tab row) owns them. Package Pairing is then controlled via
@@ -59,7 +57,6 @@ export function POUnboxingSection({
   onItemDescFeedback,
   onItemDescSaved,
   includeLinkedPoItems = true,
-  activeStep = null,
   suppressItemsHeader = false,
   pairingOpen: pairingOpenProp,
   onPairingToggle,
@@ -119,7 +116,6 @@ export function POUnboxingSection({
       suppressHeader={suppressItemsHeader}
       onItemDescFeedback={onItemDescFeedback}
       onItemDescSaved={onItemDescSaved}
-      activeStep={activeStep}
     />
   );
 

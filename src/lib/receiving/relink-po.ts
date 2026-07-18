@@ -16,6 +16,7 @@
  */
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recomputeCartonSourceLink } from './carton-source-link';
+import { claimOrAbsorbZohoPoShell } from './claim-zoho-po-shell';
 
 export type RelinkScope = 'line' | 'carton' | 'both';
 
@@ -144,16 +145,58 @@ export async function relinkReceivingPo(
     }
 
     // ── CARTON header rewrite (explicit override of upgrade-only) ────────────
+    // Absorb an empty Incoming PO shell when the unique index would otherwise
+    // throw; return 409 when another matched carton has real work.
     if (scope === 'carton' || scope === 'both') {
-      await client.query(
-        `UPDATE receiving_carton
-            SET zoho_purchaseorder_id = $1,
-                zoho_purchaseorder_number = $2,
-                source = 'zoho_po',
-                updated_at = NOW()
-          WHERE id = $3 AND organization_id = $4`,
-        [zohoPurchaseorderId, poNumber, receivingId, orgId],
+      const claim = await claimOrAbsorbZohoPoShell(
+        {
+          orgId,
+          workingReceivingId: receivingId,
+          zohoPurchaseorderId,
+          zohoPurchaseorderNumber: poNumber,
+        },
+        client,
       );
+      if (claim.action === 'conflict') {
+        return {
+          ok: false,
+          status: claim.status,
+          error: claim.error,
+          receivingId,
+          linesUpdated,
+          poId: zohoPurchaseorderId,
+          poNumber,
+        };
+      }
+      if (claim.action === 'free') {
+        try {
+          await client.query(
+            `UPDATE receiving_carton
+                SET zoho_purchaseorder_id = $1,
+                    zoho_purchaseorder_number = $2,
+                    source = 'zoho_po',
+                    updated_at = NOW()
+              WHERE id = $3 AND organization_id = $4`,
+            [zohoPurchaseorderId, poNumber, receivingId, orgId],
+          );
+        } catch (err) {
+          // Last-resort: unique index race → never bubble as withAuth INTERNAL.
+          const pgCode = (err as { code?: string } | null)?.code;
+          if (pgCode === '23505') {
+            return {
+              ok: false,
+              status: 409,
+              error: 'PO already linked to another carton',
+              receivingId,
+              linesUpdated,
+              poId: zohoPurchaseorderId,
+              poNumber,
+            };
+          }
+          throw err;
+        }
+      }
+      // absorb | already — header already correct (absorb stamped it; already was us).
     }
 
     // Re-derive the carton's representative source link. No-op for a real-Zoho

@@ -15,7 +15,7 @@
 // tables are written through `withTenantTransaction(orgId, …)` so the
 // `app.current_org` GUC is set and RLS can enforce isolation. The previously
 // hardcoded DOGFOOD_ORG_ID stamp is gone — see git history for the Phase-A3 debt.
-import { withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
@@ -42,6 +42,7 @@ import type { PoolClient } from 'pg';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { isLocalPickupPo } from '@/lib/receiving/fulfillment-mode';
+import { shouldSkipPoDetailFetch } from '@/lib/zoho/call-reduction';
 
 type AnyRow = Record<string, unknown>;
 type WorkflowStatus = 'EXPECTED' | 'MATCHED';
@@ -651,8 +652,42 @@ export type BulkSyncSummary = {
   line_items_synced: number;
   /** How many POs were skipped because po.date < po_date_floor. */
   skipped_pre_floor: number;
+  /**
+   * How many POs were skipped because local `receiving_line_zoho` already
+   * mirrors the list row's last-modified stamp (avoids a detail GET per PO).
+   */
+  skipped_unchanged: number;
   errors: Array<{ purchaseorder_id: string; error: string }>;
 };
+
+/**
+ * True when this org already has line rows for the PO whose stored Zoho
+ * last-modified stamp matches the list payload — safe to skip the detail GET.
+ */
+async function isLocalReceivingPoFresh(
+  orgId: OrgId,
+  zohoPurchaseOrderId: string,
+  listLastModified: string | null,
+): Promise<boolean> {
+  const { rows } = await tenantQuery<{
+    line_count: number;
+    max_last_modified: string | null;
+  }>(
+    orgId,
+    `SELECT COUNT(*)::int AS line_count,
+            MAX(zoho_last_modified_time) AS max_last_modified
+       FROM receiving_line_zoho
+      WHERE organization_id = $1
+        AND zoho_purchaseorder_id = $2`,
+    [orgId, zohoPurchaseOrderId],
+  );
+  const row = rows[0];
+  return shouldSkipPoDetailFetch({
+    listLastModified,
+    localLineCount: Number(row?.line_count ?? 0),
+    localMaxLastModified: row?.max_last_modified ?? null,
+  });
+}
 
 export async function syncZohoPurchaseOrdersToReceiving(
   orgId: OrgId,
@@ -689,6 +724,7 @@ export async function syncZohoPurchaseOrdersToReceiving(
     linked: 0,
     line_items_synced: 0,
     skipped_pre_floor: 0,
+    skipped_unchanged: 0,
     errors: [],
   };
 
@@ -728,6 +764,15 @@ export async function syncZohoPurchaseOrdersToReceiving(
         asString(poRow.purchaseorder_id, poRow.purchase_order_id, poRow.id) ?? 'unknown';
 
       try {
+        // List payloads are header-only (no line_items). Skip the per-PO detail
+        // GET when local lines already carry the same last-modified stamp —
+        // this is the main rate-limit saver on the 15m incoming-po-sync cron.
+        const listLm = getZohoLastModifiedTime(poRow);
+        if (zohoId !== 'unknown' && (await isLocalReceivingPoFresh(orgId, zohoId, listLm))) {
+          summary.skipped_unchanged++;
+          continue;
+        }
+
         const result = await importZohoPurchaseOrderToReceiving(orgId, zohoId);
         summary.line_items_synced += result.line_items_synced;
         summary.linked += result.line_items_linked;

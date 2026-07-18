@@ -100,17 +100,22 @@ export function useUnfoundRefetchActions(
       });
       const data = await res.json().catch(() => ({}));
       setLastCheckedAt(Date.now());
-      const { state, promote } = classifyZohoRetry(res.ok, data);
+      const { state, promote, winningReceivingId } = classifyZohoRetry(res.ok, data, res.status);
       setZoho(state);
+      if (state.status === 'error' && state.message) {
+        toast.error(state.message);
+      }
       if (promote) {
         // Toast carries the result across the pane remount below.
         toast.success(state.message ?? 'Matched to a PO');
         invalidateReceivingFeeds(queryClient);
-        await promoteInPlace(receivingId);
+        await promoteInPlace(winningReceivingId ?? receivingId);
       }
     } catch (err) {
       setLastCheckedAt(Date.now());
-      setZoho({ status: 'error', message: err instanceof Error ? err.message : 'Re-check failed' });
+      const message = err instanceof Error ? err.message : 'Re-check failed';
+      setZoho({ status: 'error', message });
+      toast.error(message);
     }
   }, [receivingId, busy, queryClient]);
 

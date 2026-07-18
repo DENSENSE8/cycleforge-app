@@ -34,6 +34,13 @@ A hardened wrapper around the Zoho Inventory REST API: **80 req/min rate limiter
 `createPurchaseReceive` (auto-resolves `bill_id` for billed POs),
 `searchPurchaseOrdersByTracking`, `searchItemBySku`, `getStockInfo`, `listWarehouses`, etc.
 
+**Call-volume guards (rate-limit hygiene):**
+- Incoming PO sync skips a detail GET when local `receiving_line_zoho` already
+  mirrors the list row's last-modified stamp (`skipped_unchanged` in the cron summary).
+- Unfound reconcile checks `zoho_po_mirror` before live tracking search.
+- Tracking / PO-number search filters run sequentially and stop on the first hit.
+- Scan-serial does **not** write Zoho — Receive owns the single PO description/notes PUT.
+
 ## The two sync directions
 
 ### Inbound — PO mirror + reconcile (`src/lib/zoho/po-mirror-sync.ts`)

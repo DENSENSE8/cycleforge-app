@@ -46,11 +46,31 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     reconcileUnmatchedReceiving(receivingId),
   );
 
+  if (result.code === 'ZOHO_RATE_LIMITED') {
+    return NextResponse.json(
+      {
+        success: false,
+        promoted: false,
+        receiving_id: result.receivingId,
+        reason: result.reason ?? null,
+        code: result.code,
+        error:
+          result.error ||
+          'Zoho rate limit reached — try again after the daily cap resets',
+        zoho_purchaseorder_id: null,
+        lines_imported: 0,
+      },
+      { status: 429 },
+    );
+  }
+
   return NextResponse.json({
     success: true,
     receiving_id: result.receivingId,
     promoted: result.promoted,
     reason: result.reason ?? null,
+    code: result.code ?? null,
+    error: result.error ?? null,
     zoho_purchaseorder_id: result.zohoPurchaseorderId ?? null,
     lines_imported: result.linesImported ?? 0,
   });
@@ -65,8 +85,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       return r?.receiving_id ?? null;
     },
     extra: ({ response }) => {
-      const r = response as { promoted?: boolean; reason?: string | null } | null;
-      return { promoted: r?.promoted ?? false, reason: r?.reason ?? null };
+      const r = response as {
+        promoted?: boolean;
+        reason?: string | null;
+        code?: string | null;
+      } | null;
+      return {
+        promoted: r?.promoted ?? false,
+        reason: r?.reason ?? null,
+        code: r?.code ?? null,
+      };
     },
   },
 });

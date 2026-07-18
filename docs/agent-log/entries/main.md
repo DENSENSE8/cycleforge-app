@@ -76,3 +76,8 @@
 - `2026-07-17T07:53:09.370Z` · **main** · main · agent · Removed duplicate ticket identity from Support Linkage — partial
 - `2026-07-17T08:00:23.759Z` · **main** · main · agent · Wire Testing ticket dock to shared SupportChatComposer focus and submit bridge; cover internal/public/file-claim actions — partial
 - `2026-07-17T17:14:48.392Z` · **main** · main · agent · Unbox workbench: moved Unboxed/Queue/Viewed tabs+feed to right-pane (TestingLineWorkspace pattern), browse-first, KPI strip, workbenchPaneSettle crossfade — ok
+- `2026-07-17T22:46:11.035Z` · **main** · main · agent · Fix PO shell collision on relink/Zoho sync; More Actions Photos bidirectional move; toast Zoho rate-limit instead of INTERNAL — ok
+- `2026-07-17T22:46:36.388Z` · **main** · main · agent · Focus serial input when switching PO lines in accordion — ok
+- `2026-07-17T22:50:50.325Z` · **main** · main · agent · Cut Zoho rate-limit pressure: skip unchanged incoming-po detail GETs, mirror-first unfound match, sequential search stop-on-hit — ok
+- `2026-07-17T22:57:33.775Z` · **main** · main · agent · Attempt Zoho+local receive for POs 13-14846-06962, 02-14876-13796, 05-14909-79883 — blocked by Zoho 5k daily API cap; all three already UNBOXED locally — blocked
+- `2026-07-17T23:04:45.086Z` · **main** · main · agent · PO 13-14846-06962: operator Zoho GUI received → local UNBOXED→DONE (2 lines) + mirror stamped received — ok
