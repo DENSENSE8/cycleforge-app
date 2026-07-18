@@ -10,6 +10,7 @@
 import { ReceivingAuditModal } from '../ReceivingAuditModal';
 import { ReceivingClaimModal } from '../ReceivingClaimModal';
 import { SendPhotoNoteModal } from '../SendPhotoNoteModal';
+import { MovePhotosBetweenPoModal } from './MovePhotosBetweenPoModal';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { UnboxLineController } from './unbox-line-controller';
 
@@ -32,6 +33,11 @@ export function LineEditModals({ row, c }: LineEditModalsProps) {
         open={c.photoNoteOpen}
         row={row}
         onClose={() => c.setPhotoNoteOpen(false)}
+      />
+      <MovePhotosBetweenPoModal
+        open={c.movePhotosOpen}
+        row={row}
+        onClose={() => c.setMovePhotosOpen(false)}
       />
       <ReceivingClaimModal
         open={c.claimModalOpen}

@@ -97,6 +97,7 @@ export function useReceivingLineCore(
   );
   const [auditOpen, setAuditOpen] = useState(false);
   const [photoNoteOpen, setPhotoNoteOpen] = useState(false);
+  const [movePhotosOpen, setMovePhotosOpen] = useState(false);
   const [copyingAll, setCopyingAll] = useState(false);
   const [phoneSharing, setPhoneSharing] = useState(false);
   const { getClient: getAblyClient } = useAblyClient();
@@ -518,6 +519,7 @@ export function useReceivingLineCore(
     priorityTier,
     auditOpen, setAuditOpen,
     photoNoteOpen, setPhotoNoteOpen,
+    movePhotosOpen, setMovePhotosOpen,
     copyingAll,
     phoneSharing,
     // composed carton hooks

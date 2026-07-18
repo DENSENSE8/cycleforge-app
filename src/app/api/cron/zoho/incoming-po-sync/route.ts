@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
         // Aggregate per-org summaries into the shape callers already expect.
         const totals = {
           processed: 0, created: 0, updated: 0, linked: 0,
-          line_items_synced: 0, skipped_pre_floor: 0, failed: 0,
+          line_items_synced: 0, skipped_pre_floor: 0, skipped_unchanged: 0, failed: 0,
         };
         const errors: BulkSyncSummary['errors'] = [];
         for (const r of perOrg) {
@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
             totals.linked += r.result.linked;
             totals.line_items_synced += r.result.line_items_synced;
             totals.skipped_pre_floor += r.result.skipped_pre_floor;
+            totals.skipped_unchanged += r.result.skipped_unchanged;
             totals.failed += r.result.failed;
             if (errors.length < 25) errors.push(...r.result.errors);
           } else {
@@ -166,6 +167,7 @@ export async function GET(req: NextRequest) {
       linked: summary.linked,
       line_items_synced: summary.line_items_synced,
       skipped_pre_floor: summary.skipped_pre_floor,
+      skipped_unchanged: summary.skipped_unchanged,
       failed: summary.failed,
       first_errors: summary.errors.slice(0, 3),
       elapsedMs,
@@ -183,6 +185,7 @@ export async function GET(req: NextRequest) {
         linked: summary.linked,
         line_items_synced: summary.line_items_synced,
         skipped_pre_floor: summary.skipped_pre_floor,
+        skipped_unchanged: summary.skipped_unchanged,
         failed: summary.failed,
       },
       errors: summary.errors.slice(0, 25),

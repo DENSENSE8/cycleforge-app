@@ -24,28 +24,74 @@ export interface RefetchOutcome {
   state: RefetchState;
   /** True = a successful match → promote-in-place / invalidate feeds. */
   promote: boolean;
+  /** Winning carton id when promote redirected onto a PO shell. */
+  winningReceivingId?: number;
 }
 
+const RATE_LIMIT_FALLBACK =
+  'Zoho rate limit reached — try again after the daily cap resets';
+
 /** Map a POST /unfound-queue/retry-pair response to a card state. */
-export function classifyZohoRetry(ok: boolean, data: unknown): RefetchOutcome {
+export function classifyZohoRetry(
+  ok: boolean,
+  data: unknown,
+  httpStatus?: number,
+): RefetchOutcome {
   const d = (data ?? {}) as {
     success?: boolean;
     promoted?: boolean;
     zoho_purchaseorder_id?: unknown;
+    receiving_id?: unknown;
     error?: string;
+    message?: string;
+    code?: string;
+    reason?: string;
   };
+
+  const rateLimited =
+    d.code === 'ZOHO_RATE_LIMITED' ||
+    d.reason === 'zoho_rate_limited' ||
+    httpStatus === 429;
+
+  if (rateLimited) {
+    return {
+      state: {
+        status: 'error',
+        message: d.error || d.message || RATE_LIMIT_FALLBACK,
+      },
+      promote: false,
+    };
+  }
+
   if (!ok || !d.success) {
-    return { state: { status: 'error', message: d.error || 'Re-check failed' }, promote: false };
+    return {
+      state: {
+        status: 'error',
+        message: d.error || d.message || 'Re-check failed',
+      },
+      promote: false,
+    };
   }
   if (d.promoted) {
     const poId = d.zoho_purchaseorder_id ? String(d.zoho_purchaseorder_id) : '';
+    const winning =
+      d.receiving_id != null && Number.isFinite(Number(d.receiving_id))
+        ? Number(d.receiving_id)
+        : undefined;
     return {
-      state: { status: 'matched', message: poId ? `Matched to PO ${poId}` : 'Matched to a PO' },
+      state: {
+        status: 'matched',
+        message: poId ? `Matched to PO ${poId}` : 'Matched to a PO',
+      },
       promote: true,
+      winningReceivingId: winning,
     };
   }
   return {
-    state: { status: 'no-match', message: 'Still no PO match — try again later, or link a PO manually.' },
+    state: {
+      status: 'no-match',
+      message: 'Still no PO match — try again later, or link a PO manually.',
+    },
     promote: false,
   };
 }

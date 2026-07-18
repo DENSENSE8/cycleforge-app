@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { ChevronLeft, Copy, History, Info, Link2, MoreVertical, RefreshCw, Ticket } from '@/components/Icons';
+import { ChevronLeft, Copy, History, Info, Link2, MoreVertical, RefreshCw, Ticket, ArrowLeftRight } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -24,6 +24,7 @@ const UNBOX_INLINE_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> =
 const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
   'audit',
   'copy',
+  'movePhotos',
   'photoNote',
 ];
 
@@ -103,6 +104,13 @@ export function LineEditToolbar({
       disabled,
       title: "Send this PO's photos to a support ticket",
       ariaLabel: 'Send photos to a support ticket',
+    },
+    movePhotos: {
+      label: 'Photos',
+      icon: <ArrowLeftRight className="h-3.5 w-3.5" />,
+      disabled,
+      title: 'Move photos between this carton and another PO',
+      ariaLabel: 'Move photos between purchase orders',
     },
     pair: {
       label: 'Pair',

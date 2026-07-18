@@ -92,6 +92,11 @@ interface Props {
   resultSlot?: ReactNode;
   /** When false, serial input does not steal focus on mount (step-aware unbox). */
   autoFocusInput?: boolean;
+  /**
+   * Re-run autofocus when this changes (e.g. active PO line id). Needed because
+   * the unbox workspace stays mounted across sibling-line switches.
+   */
+  focusKey?: string | number | null;
   /** Shared ref for programmatic focus (units dock → overview scan handoff). */
   externalInputRef?: RefObject<HTMLInputElement | null>;
   /** Nested inside {@link PoLinesAccordion} — skip duplicate card chrome. */
@@ -130,6 +135,7 @@ export function SerialCard({
   notesId,
   showSavedChips = true,
   autoFocusInput = true,
+  focusKey = null,
   externalInputRef,
   embedded = false,
   editingSerial = null,
@@ -232,7 +238,7 @@ export function SerialCard({
       el.focus({ preventScroll: true });
     }, 0);
     return () => window.clearTimeout(t);
-  }, [autoFocusInput, disabled, isSubmitting, editing, editingSerial]);
+  }, [autoFocusInput, disabled, isSubmitting, editing, editingSerial, focusKey]);
 
   const beginEdit = (s: SavedSerial) => {
     setEditing(s);

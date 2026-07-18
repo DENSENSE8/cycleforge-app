@@ -2,6 +2,7 @@ import { toast } from '@/lib/toast';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { ReceivingAuditModal } from '@/components/receiving/workspace/ReceivingAuditModal';
 import { SendPhotoNoteModal } from '@/components/receiving/workspace/SendPhotoNoteModal';
+import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { TestingController } from './testing-panel-types';
 
@@ -33,6 +34,11 @@ export function TestingPanelModals({
         open={c.photoNoteOpen}
         row={row}
         onClose={() => c.setPhotoNoteOpen(false)}
+      />
+      <MovePhotosBetweenPoModal
+        open={c.movePhotosOpen}
+        row={row}
+        onClose={() => c.setMovePhotosOpen(false)}
       />
     </>
   );
