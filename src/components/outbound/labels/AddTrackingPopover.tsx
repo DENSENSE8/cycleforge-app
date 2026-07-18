@@ -11,6 +11,7 @@ import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useAddTrackingNav } from '@/components/outbound/labels/add-tracking-context';
+import { orderRowConditionLabel } from '@/lib/conditions';
 
 interface SkuResolution {
   title: string | null;
@@ -181,7 +182,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
           <div className="mb-3 rounded-xl bg-surface-canvas px-3 py-2">
             <p className="truncate text-role-caption font-bold text-text-default">{record.product_title || 'Unknown product'}</p>
             <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
-              {[platformLabel, record.order_id ? `#${record.order_id}` : null, `${record.condition || 'N/A'} · ×${qty}`]
+              {[platformLabel, record.order_id ? `#${record.order_id}` : null, `${orderRowConditionLabel(record.condition)} · ×${qty}`]
                 .filter(Boolean)
                 .join('  ·  ')}
             </p>

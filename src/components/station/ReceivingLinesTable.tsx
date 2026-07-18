@@ -200,6 +200,7 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
         isMobile={isMobile}
         isIncoming={isIncomingMode}
         isHistory={isHistoryMode}
+        activityAxis={historyAxis}
         selectMode={selectMode}
         isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
         onSelect={() => handleSelectRow(row)}
@@ -257,6 +258,7 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
         isMobile={isMobile}
         isIncomingMode={isIncomingMode}
         isHistoryMode={isHistoryMode}
+        activityAxis={historyAxis}
         selectMode={selectMode}
         selectedId={selectedId}
         selectedIds={selectedIds}

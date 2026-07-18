@@ -19,9 +19,9 @@ import { useTodayPlan } from '@/components/fba/hooks/useTodayPlan';
 import {
   fbaWorkspaceScanChrome,
   getStaffThemeById,
-  stationScanInputBorderClass,
   type StationTheme,
 } from '@/utils/staff-colors';
+import { STATION_SCAN_BAR_BOTTOM_RULE_CLASS } from '@/components/station/scan-bar/tokens';
 import { useFbaPlanFlows } from './useFbaPlanFlows';
 import { useFbaSelectMode } from './useFbaSelectMode';
 import { useFbaScanRouting } from './useFbaScanRouting';
@@ -92,7 +92,7 @@ export function useFbaStationInput({
   }, [workspaceThemeProp, staffIdRaw]);
   const workspaceChrome = fbaWorkspaceScanChrome[stationTheme];
   const scanOutlineClass =
-    inputBorderClassName ?? stationScanInputBorderClass[stationTheme];
+    inputBorderClassName ?? STATION_SCAN_BAR_BOTTOM_RULE_CLASS[stationTheme];
 
   const planParam = searchParams.get('plan');
   const openPlanId = useMemo(() => {

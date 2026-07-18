@@ -26,14 +26,17 @@ type SyncTab = 'sync' | 'backfill';
 export function OrdersSyncPopover({
   onRefresh,
   triggerVariant = 'sidebar',
+  iconOnly = false,
 }: {
   onRefresh?: () => void;
   /**
    * `sidebar` (default) — the full-width blue fill for a SidebarShell slot.
-   * `header` — a compact rounded-pill matching workbench-chrome controls
+   * `header` — a compact control matching workbench-chrome
    * (`WorkbenchChromeHeader` right cluster), for the labels-station header.
    */
   triggerVariant?: 'sidebar' | 'header';
+  /** Header only — square icon control (RefreshCw) with no "Import" label. */
+  iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<SyncTab>('sync');
@@ -46,21 +49,28 @@ export function OrdersSyncPopover({
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
           {triggerVariant === 'header' ? (
-            /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone. The visible "Import" label carries the affordance, so no native title is needed. */
+            /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone. */
             <button
               type="button"
-              aria-label="Sync & backfill orders"
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95"
+              aria-label={sync.isTransferring ? 'Syncing orders' : 'Import orders'}
+              // ds-allow-title: Radix Trigger asChild — HoverTooltip would disturb the Slot clone.
+              title={sync.isTransferring ? 'Syncing…' : 'Import orders'}
+              className={
+                iconOnly
+                  ? 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-transparent text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default active:scale-95'
+                  : 'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95'
+              }
             >
               {sync.isTransferring ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              {/* Explicit white — the button is a fixed blue fill in every theme. */}
-              <span className="text-role-eyebrow font-bold uppercase tracking-widest text-white">
-                {sync.isTransferring ? 'Syncing…' : 'Import'}
-              </span>
+              {!iconOnly ? (
+                <span className="text-role-eyebrow font-bold uppercase tracking-widest text-white">
+                  {sync.isTransferring ? 'Syncing…' : 'Import'}
+                </span>
+              ) : null}
             </button>
           ) : (
             /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone + title. */

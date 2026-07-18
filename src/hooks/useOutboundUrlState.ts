@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   OUTBOUND_MODE_SCOPED_PARAMS,
-  OUTBOUND_PATH,
+  SHIPPING_PATH,
   parseOutboundMode,
   parseOutboundSort,
   type OutboundMode,
@@ -38,7 +38,13 @@ export function useOutboundUrlState() {
     [searchParams],
   );
 
-  const basePath = pathname?.startsWith(OUTBOUND_PATH) ? OUTBOUND_PATH : pathname || OUTBOUND_PATH;
+  // Prefer the shipping station path; never keep a client URL on legacy /outbound.
+  const basePath =
+    pathname === '/outbound' ||
+    pathname?.startsWith('/outbound/') ||
+    pathname?.startsWith(SHIPPING_PATH)
+      ? SHIPPING_PATH
+      : pathname || SHIPPING_PATH;
 
   const replaceParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {

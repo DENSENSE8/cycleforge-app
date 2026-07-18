@@ -31,6 +31,8 @@ const SEGMENT_SCOPE: Record<string, SearchEntityType[]> = {
   testing: ['SERIAL_UNIT'],
   repair: ['REPAIR'],
   fba: ['FBA_SHIPMENT'],
+  shipping: ['ORDER'], // first-class Shipping surface
+  outbound: ['ORDER'], // legacy alias
 };
 
 /**

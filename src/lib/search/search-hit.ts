@@ -15,6 +15,12 @@
  */
 
 import type { SearchEntityType } from '@/lib/search/build-search-text';
+import {
+  buildOrderJourneyHref,
+  buildSerialJourneyHref,
+  buildTrackingJourneyHref,
+  buildUnitJourneyHref,
+} from '@/lib/serial/serial-journey';
 
 export type SearchHitEntityType = 'order' | 'unit' | 'receiving' | 'sku' | 'repair' | 'fba';
 
@@ -132,14 +138,49 @@ export function looksLikeIdentifier(query: string): boolean {
 }
 
 /**
- * Header Enter / "See all" handoff. Order-heavy queries go **directly** to the
- * `/o` workbench (master-nav Search map + full detail) — never through `/search`
- * first (that flash was the old in-content two-column fork). Cross-entity
- * queries keep the thin `/search` launcher.
+ * Minimal hit shape for journey handoff — works with SearchHit and AiSearchHit.
+ */
+type JourneyHandoffHit = {
+  id: number;
+  entityType: string;
+  facets?: Record<string, string | null> | null;
+};
+
+/**
+ * Map a search hit → Operations ▸ History Trace when a journey dimension can
+ * be resolved. Returns null when no Trace anchor exists — callers must not
+ * open an empty Trace (action simply does not render).
  *
- * `previewHits` is the live dropdown set (may be empty while still fetching);
- * an identifier with no hit yet still opens `/o/{query}?mode=search&q=` because
- * {@link OrderFullPageView} resolves human order numbers.
+ * Unit hits use `dim=unit&unit={id}` (server resolves serial_units.id) so we
+ * never depend on a serial facet / search-index backfill.
+ */
+export function journeyHandoffHref(hit: JourneyHandoffHit): string | null {
+  const facets = hit.facets ?? undefined;
+  switch (hit.entityType) {
+    case 'order':
+      return buildOrderJourneyHref(hit.id);
+    case 'unit':
+      return buildUnitJourneyHref(hit.id);
+    case 'receiving': {
+      const tracking = facets?.tracking_number?.trim();
+      return tracking ? buildTrackingJourneyHref(tracking) : null;
+    }
+    case 'repair': {
+      const serial = facets?.serial_number?.trim();
+      return serial ? buildSerialJourneyHref(serial) : null;
+    }
+    default: {
+      // Any other entity that carries a tracking facet can still open Trace.
+      const tracking = facets?.tracking_number?.trim();
+      return tracking ? buildTrackingJourneyHref(tracking) : null;
+    }
+  }
+}
+
+/**
+ * Header Enter / "See all" handoff. Order-heavy → `/o` Search map. Cross-entity
+ * → thin `/search` launcher. Journey Trace is a **secondary** action
+ * (`journeyHandoffHref` / ⌘Enter) — never the Enter default.
  */
 export function globalSearchHandoffHref(
   query: string,

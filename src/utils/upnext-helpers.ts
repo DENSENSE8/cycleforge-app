@@ -113,7 +113,7 @@ export function buildFbaWorkOrderRow(item: FBAQueueItem): WorkOrderRow {
     title: String(item.plan_title || item.shipment_ref || `Pending shipment #${item.shipment_id}`),
     subtitle: [item.fnsku, item.asin, item.sku].filter(Boolean).join(' • '),
     recordLabel: String(item.shipment_ref || `Row #${item.shipment_id}`),
-    sourcePath: '/outbound?mode=fba',
+    sourcePath: '/shipping?mode=fba',
     techId: item.assigned_tech_id ?? null,
     techName: item.assigned_tech_name ?? null,
     packerId: item.assigned_packer_id ?? null,

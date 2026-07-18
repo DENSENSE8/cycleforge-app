@@ -61,6 +61,7 @@ export function CartonContextCard({
   staffId,
   isUnmatched,
   classifyPending = false,
+  showClassifyControls = true,
   onMakeClaim,
   showStaffPhotoRow = true,
   listingLink,
@@ -116,6 +117,11 @@ export function CartonContextCard({
    * surface, expanded. Set only for unclassified unfound cartons.
    */
   classifyPending?: boolean;
+  /**
+   * When false, hide the classify toggle + platform/type/urgency pills from
+   * this header (triage moves them into the Overview SectionTabsSlider tab).
+   */
+  showClassifyControls?: boolean;
   /** Opens the claim modal. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
@@ -352,8 +358,10 @@ export function CartonContextCard({
             {/* Urgency · Platform · Type — one shared pill primitive, all
                 collapse-to-active. Clicking any opens it full-width and
                 unrenders the trailing chip cluster (the options take the freed
-                row); selecting collapses back and rerenders them. */}
-            {showStaffPhotoRow ? (
+                row); selecting collapses back and rerenders them. Triage hides
+                these controls (showClassifyControls=false) — classify lives in
+                the Overview tab. */}
+            {showClassifyControls && showStaffPhotoRow ? (
               <HoverTooltip label={classifyOpen ? 'Hide classification' : 'Show classification'} asChild>
                 <button
                   type="button"
@@ -371,7 +379,7 @@ export function CartonContextCard({
                 </button>
               </HoverTooltip>
             ) : null}
-            {classifyOpen ? (
+            {showClassifyControls && classifyOpen ? (
               <>
             {showStaffPhotoRow ? (
               <InlinePillPicker

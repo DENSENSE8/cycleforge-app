@@ -26,6 +26,7 @@ export function serialJourneyFilters(serial: string): JourneyUrlFilters {
     order: null,
     serial: serial.trim() || null,
     tracking: null,
+    unit: null,
     from: null,
     until: null,
     stations: [],
@@ -47,6 +48,39 @@ export function buildSerialJourneyHref(serial: string): string {
   p.set('dim', 'serial');
   const v = serial.trim();
   if (v) p.set('serial', v);
+  return `/operations?${p.toString()}`;
+}
+
+/** Operations ▸ History focused on an order id (numeric pk or human order_id). */
+export function buildOrderJourneyHref(orderId: string | number): string {
+  const p = new URLSearchParams();
+  p.set('mode', 'history');
+  p.set('dim', 'order');
+  const v = String(orderId).trim();
+  if (v) p.set('order', v);
+  return `/operations?${p.toString()}`;
+}
+
+/** Operations ▸ History focused on a carrier tracking number. */
+export function buildTrackingJourneyHref(tracking: string): string {
+  const p = new URLSearchParams();
+  p.set('mode', 'history');
+  p.set('dim', 'tracking');
+  const v = tracking.trim();
+  if (v) p.set('tracking', v);
+  return `/operations?${p.toString()}`;
+}
+
+/**
+ * Operations ▸ History focused on a serial_units.id (search unit hits carry the
+ * numeric id, not the serial string — server resolves via dim=unit).
+ */
+export function buildUnitJourneyHref(unitId: string | number): string {
+  const p = new URLSearchParams();
+  p.set('mode', 'history');
+  p.set('dim', 'unit');
+  const v = String(unitId).trim();
+  if (v) p.set('unit', v);
   return `/operations?${p.toString()}`;
 }
 

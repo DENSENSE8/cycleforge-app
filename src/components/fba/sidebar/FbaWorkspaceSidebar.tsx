@@ -86,7 +86,6 @@ export function FbaWorkspaceSidebar() {
           className={cn(
             receivingScanBandClass,
             FBA_SCAN_BAND_HALO[stationTheme],
-            SIDEBAR_GUTTER,
           )}
         >
           <div className="min-w-0 flex-1">

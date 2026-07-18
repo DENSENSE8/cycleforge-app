@@ -32,6 +32,17 @@ interface LineCartonContextSectionProps {
   onToggleTicketView?: () => void;
   /** True while the inline ticket editor is open. */
   ticketViewActive?: boolean;
+  /**
+   * When false, never auto-expand platform/type/priority pills in the header
+   * (triage moves classify into the Overview SectionTabsSlider tab).
+   * Default true = unbox behavior (expand when classify is pending).
+   */
+  expandClassifyWhenPending?: boolean;
+  /**
+   * When false, hide the header classify toggle + platform/type/urgency pills
+   * entirely (triage). Default true.
+   */
+  showClassifyControls?: boolean;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -44,13 +55,19 @@ export function LineCartonContextSection({
   linkedOrderNumber = null,
   onToggleTicketView,
   ticketViewActive = false,
+  expandClassifyWhenPending = true,
+  showClassifyControls = true,
 }: LineCartonContextSectionProps) {
   // An unfound carton whose intake kind isn't set yet: the unbox stepper's
   // Classify dot is active, so surface the classify pills (platform + type)
   // right here in the header — expanded — instead of hiding them behind the
   // sliders toggle. Matched cartons (identity resolved by their PO) and
   // already-classified unfound cartons keep the condensed one-row default.
-  const classifyPending = classifyLineSource(row) === 'unmatched' && !isIntakeClassified(row);
+  // Triage opts out (classify lives in the Overview tab).
+  const classifyPending =
+    expandClassifyWhenPending &&
+    classifyLineSource(row) === 'unmatched' &&
+    !isIntakeClassified(row);
 
   return (
     <CartonContextCard
@@ -58,6 +75,7 @@ export function LineCartonContextSection({
       staffId={staffId}
       isUnmatched={row.receiving_source === 'unmatched'}
       classifyPending={classifyPending}
+      showClassifyControls={showClassifyControls}
       showStaffPhotoRow
       onMakeClaim={() => c.setClaimModalOpen(true)}
       listingLink={c.listingLink}

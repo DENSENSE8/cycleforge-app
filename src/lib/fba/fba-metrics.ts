@@ -1,6 +1,6 @@
 /**
  * FBA board KPI registry — pure stage-count + metric resolvers for the FBA
- * outbound workspace (`/outbound?mode=fba`). Sibling of
+ * outbound workspace (`/shipping?mode=fba`). Sibling of
  * `lib/tech/shipping-metrics.ts` / `lib/dashboard/outbound-metrics.ts`;
  * composes the same `ComputedMetric` shape so Monitor `KpiTile`s stay one
  * family. Counts are over the loaded board slice (mode + week filtered), not

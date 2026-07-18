@@ -173,7 +173,7 @@ const importEbayOrder: ActionDefinition = {
  * Rate-shop an order row via the ShipStation v2 engine. Like attach-tracking,
  * this needs UI (a rate list to pick from), so the descriptor advertises the
  * intent and a rate-shop sheet owns the flow: it POSTs the order-anchored
- * /api/outbound/rates ({ orderId }) — or /api/shipping/rates with an explicit
+ * /api/shipping/order-rates ({ orderId }) — or /api/shipping/rates with an explicit
  * spec when there is no order — renders the RateQuoteResult, and hands the
  * picked rateId to `shipstation.buy_label`. Body omitted → descriptor-only
  * (window event `station:rate-shop` with { orderId }).
@@ -182,7 +182,7 @@ const shipstationRateShop: ActionDefinition = {
   id: 'shipstation.rate_shop',
   label: 'Rate shop',
   icon: 'Truck',
-  endpoint: { method: 'POST', path: '/api/outbound/rates' },
+  endpoint: { method: 'POST', path: '/api/shipping/order-rates' },
   // body omitted — the rate-shop sheet builds { orderId } / the explicit spec.
   permission: 'shipping.buy_label',
   appliesTo: ['order_ref'],
@@ -193,7 +193,7 @@ const shipstationRateShop: ActionDefinition = {
 /**
  * Buy the picked rate — IRREVERSIBLE (charges the carrier account). The
  * rate-shop sheet supplies the rateId + a clientEventId idempotency key and
- * POSTs the order-anchored /api/outbound/labels/purchase ({ orderId, rateId,
+ * POSTs the order-anchored /api/shipping/order-labels/purchase ({ orderId, rateId,
  * clientEventId }) — or the generic /api/shipping/labels when there is no
  * order. Descriptor-only (same `station:rate-shop` sheet completes the
  * purchase); `confirm: 'soft'` because money moves.
@@ -202,7 +202,7 @@ const shipstationBuyLabel: ActionDefinition = {
   id: 'shipstation.buy_label',
   label: 'Buy label',
   icon: 'Tag',
-  endpoint: { method: 'POST', path: '/api/outbound/labels/purchase' },
+  endpoint: { method: 'POST', path: '/api/shipping/order-labels/purchase' },
   // body omitted — the sheet builds { orderId, rateId, clientEventId }.
   permission: 'shipping.buy_label',
   appliesTo: ['order_ref'],

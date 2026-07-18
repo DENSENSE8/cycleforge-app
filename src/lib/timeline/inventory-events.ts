@@ -14,6 +14,9 @@ export interface InventoryTimelineRow {
   sku: string | null;
   prev_status: string | null;
   next_status: string | null;
+  /** Bin barcode (locations.barcode) when the event carried a bin_id. */
+  bin_barcode?: string | null;
+  bin_name?: string | null;
   payload?: Record<string, unknown> | null;
 }
 
@@ -52,9 +55,16 @@ const EVENT_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   NOTE: { title: 'Note', tone: 'muted' },
 };
 
+/** Events where the in-row chip should be the bin (serial stays in the band header). */
+const BIN_REF_EVENTS = new Set(['PUTAWAY', 'MOVED']);
+
 function pretty(eventType: string): string {
   const s = eventType.replace(/[._-]+/g, ' ').trim();
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function binHref(barcode: string): string {
+  return `/inventory/location/${encodeURIComponent(barcode)}`;
 }
 
 /**
@@ -62,6 +72,9 @@ function pretty(eventType: string): string {
  * `EventTimeline`. The secondary line carries the unit (serial/SKU) and the
  * prev→next status transition when present, so a verdict reads
  * "Tested — Pass · IN_TEST → TESTED · SERIAL123".
+ *
+ * PUTAWAY / MOVED prefer a bin chip (deep-link to the location page) when a
+ * barcode is present — the serial already bands the Trace.
  */
 export function inventoryEventsToTimeline(rows: InventoryTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {
@@ -69,15 +82,24 @@ export function inventoryEventsToTimeline(rows: InventoryTimelineRow[]): Timelin
     const title = mapped?.title ?? pretty(r.event_type);
     const tone = mapped?.tone ?? 'muted';
 
-    const subtitle =
+    const statusTrail =
       r.prev_status && r.next_status && r.prev_status !== r.next_status
         ? `${r.prev_status} → ${r.next_status}`
         : undefined;
-    // The unit identifier becomes a last-4 CopyChip (serial = emerald barcode,
-    // sku = yellow pencil), matching how ids render everywhere else.
+    const binLabel = r.bin_name?.trim() || r.bin_barcode?.trim() || null;
+    const subtitle = [statusTrail, binLabel && BIN_REF_EVENTS.has(r.event_type) ? binLabel : null]
+      .filter(Boolean)
+      .join(' · ') || undefined;
+
     let ref: TimelineItem['ref'];
-    if (r.serial_number) ref = { value: r.serial_number, kind: 'serial' };
-    else if (r.sku) ref = { value: r.sku, kind: 'sku' };
+    const barcode = r.bin_barcode?.trim();
+    if (BIN_REF_EVENTS.has(r.event_type) && barcode) {
+      ref = { value: barcode, kind: 'bin', href: binHref(barcode) };
+    } else if (r.serial_number) {
+      ref = { value: r.serial_number, kind: 'serial' };
+    } else if (r.sku) {
+      ref = { value: r.sku, kind: 'sku' };
+    }
 
     return {
       id: `inv:${r.id}`,

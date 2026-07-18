@@ -73,10 +73,10 @@ export function MobileReceivingUnitRow({
   const qtyText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyColor =
     qtyExpected > 1
-      ? 'text-yellow-600'
+      ? 'text-text-warning'
       : row.quantity_expected && row.quantity_received >= row.quantity_expected
         ? 'text-emerald-600'
-        : 'text-text-soft';
+        : 'text-text-muted';
 
   const dot = getStatusDotBg(row.workflow_status, row.quantity_received, row.quantity_expected);
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');

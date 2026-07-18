@@ -3,8 +3,9 @@
 import type React from 'react';
 import { motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system';
-import { RowTitle, RowMetaColumns } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { SOURCE_DOT_BG, SOURCE_DOT_LABEL, type SourceDotType } from '@/utils/source-dot';
+import { orderRowQtyTone } from '@/lib/condition-tone';
 
 /**
  * Shared station-row shell: zebra grid + source-dot title + qty/condition meta
@@ -43,8 +44,8 @@ export function StationRecordShell({
       <div className="flex min-w-0 flex-col">
         <RowTitle dot={SOURCE_DOT_BG[dotType]} dotTitle={SOURCE_DOT_LABEL[dotType]} title={title} />
         <RowMetaColumns
-          qty={<span className={quantity > 1 ? 'text-yellow-600' : undefined}>{quantity}</span>}
-          condition={condition}
+          qty={<span className={orderRowQtyTone(quantity)}>{quantity}</span>}
+          condition={<RowConditionMeta condition={condition} />}
         />
       </div>
       {chipGrid}

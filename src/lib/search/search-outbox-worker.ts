@@ -232,22 +232,22 @@ const defaultDeps: SearchOutboxDeps = {
          (organization_id, entity_type, entity_id, title, subtitle,
           search_text, embedding, embedded_at, embedded_model, status,
           condition_grade, source_platform, tracking_number, carrier,
-          happened_at, updated_at)
+          serial_number, happened_at, updated_at)
        SELECT $1,
               t.entity_type, t.entity_id, t.title, t.subtitle, t.search_text,
               t.embedding_text::vector(${EMBEDDING_DIMS}),
               CASE WHEN t.embedding_text IS NULL THEN NULL ELSE now() END,
               t.embedded_model,
               t.status, t.condition_grade, t.source_platform,
-              t.tracking_number, t.carrier, t.happened_at,
+              t.tracking_number, t.carrier, t.serial_number, t.happened_at,
               now()
        FROM UNNEST(
          $2::text[], $3::bigint[], $4::text[], $5::text[], $6::text[],
          $7::text[], $8::text[], $9::text[], $10::text[], $11::timestamptz[],
-         $12::text[], $13::text[], $14::text[]
+         $12::text[], $13::text[], $14::text[], $15::text[]
        ) AS t(entity_type, entity_id, title, subtitle, search_text,
               embedding_text, status, condition_grade, source_platform, happened_at,
-              embedded_model, tracking_number, carrier)
+              embedded_model, tracking_number, carrier, serial_number)
        ON CONFLICT (organization_id, entity_type, entity_id)
        DO UPDATE SET
          title           = EXCLUDED.title,
@@ -264,6 +264,7 @@ const defaultDeps: SearchOutboxDeps = {
          source_platform = EXCLUDED.source_platform,
          tracking_number = EXCLUDED.tracking_number,
          carrier         = EXCLUDED.carrier,
+         serial_number   = EXCLUDED.serial_number,
          happened_at     = EXCLUDED.happened_at,
          updated_at      = now()`,
       [
@@ -281,6 +282,7 @@ const defaultDeps: SearchOutboxDeps = {
         docs.map((d) => d.embeddedModel),
         docs.map((d) => d.facets.trackingNumber),
         docs.map((d) => d.facets.carrier),
+        docs.map((d) => d.facets.serialNumber),
       ],
     );
   },

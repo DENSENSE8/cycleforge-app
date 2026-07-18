@@ -180,8 +180,8 @@ const config: Config = {
                 'fill-fulfillment': themed('--ds-color-fill-fulfillment'),
             },
             fontFamily: {
-                sans: ['var(--ds-font-sans)', 'DM Sans', 'Inter', 'system-ui', 'sans-serif'],
-                mono: ['var(--ds-font-mono)', 'SFMono-Regular', 'SF Mono', 'Consolas', 'monospace'],
+                sans: ['var(--ds-font-sans)', 'IBM Plex Sans', 'system-ui', 'sans-serif'],
+                mono: ['var(--ds-font-mono)', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
             },
             fontSize: {
                 // Legacy px scale (mini/eyebrow/micro/caption/label) RETIRED

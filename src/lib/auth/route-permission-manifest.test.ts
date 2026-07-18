@@ -434,11 +434,11 @@ test('regression: the image-type registry route is permission-gated', () => {
   assert.equal(route.permission, 'photos.view');
 });
 
-test('regression: shipping.buy_label gates the outbound rate-shop + label-purchase routes (ShipStation)', () => {
+test('regression: shipping.buy_label gates the order-anchored rate-shop + label-purchase routes (ShipStation)', () => {
   const paths = routesGatedBy('shipping.buy_label').map((r) => r.path);
-  assert.ok(paths.includes('/api/outbound/rates/route.ts'), 'shipping.buy_label should gate rate-shop');
+  assert.ok(paths.includes('/api/shipping/order-rates/route.ts'), 'shipping.buy_label should gate rate-shop');
   assert.ok(
-    paths.includes('/api/outbound/labels/purchase/route.ts'),
+    paths.includes('/api/shipping/order-labels/purchase/route.ts'),
     'shipping.buy_label should gate label purchase',
   );
 });
@@ -446,7 +446,7 @@ test('regression: shipping.buy_label gates the outbound rate-shop + label-purcha
 test('regression: shipping.void_label gates the label-void route', () => {
   const paths = routesGatedBy('shipping.void_label').map((r) => r.path);
   assert.ok(
-    paths.includes('/api/outbound/labels/void/route.ts'),
+    paths.includes('/api/shipping/order-labels/void/route.ts'),
     'shipping.void_label should gate label void',
   );
 });

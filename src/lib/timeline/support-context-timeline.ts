@@ -23,11 +23,14 @@ export interface TicketLinkTimelineRow {
   kind: 'linked' | 'unlinked';
   ticketLabel: string;
   actorName?: string | null;
+  /** Optional deep-link into the support workbench / Zendesk. */
+  href?: string | null;
 }
 
 function ticketLinkEventsToTimeline(rows: TicketLinkTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {
     const tone: TimelineTone = r.kind === 'linked' ? 'success' : 'muted';
+    const href = r.href?.trim() || undefined;
     return {
       id: `ticket-link:${r.id}`,
       at: r.at,
@@ -35,7 +38,7 @@ function ticketLinkEventsToTimeline(rows: TicketLinkTimelineRow[]): TimelineItem
       tone,
       subtitle: r.ticketLabel,
       actor: r.actorName ?? undefined,
-      ref: { kind: 'id' as const, value: r.ticketLabel },
+      ref: { kind: 'ticket' as const, value: r.ticketLabel, href },
       sourceEventType: r.kind === 'linked' ? 'TICKET_LINKED' : 'TICKET_UNLINKED',
     } satisfies TimelineItem;
   });

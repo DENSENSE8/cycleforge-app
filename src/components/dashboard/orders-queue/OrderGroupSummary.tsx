@@ -2,7 +2,7 @@
 
 import { TrackingCountChip } from '@/components/ui/CopyChip';
 import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
-import { RowTitle, RowMetaColumns } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import {
   getOrderPlatformColor,
   getOrderPlatformBorderColor,
@@ -17,6 +17,8 @@ import {
   dashboardOrderRowChipsClass,
 } from '@/lib/dashboard-order-row-layout';
 import { formatSalePrice, type QueueRowRecord } from './helpers';
+import { orderRowQtyTone } from '@/lib/condition-tone';
+import { orderRowConditionLabel, EMPTY_META_DASH } from '@/lib/conditions';
 
 /**
  * Collapsed-header content for a {@link CollapsibleGroupRow} wrapping several
@@ -41,7 +43,12 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
 
   const qtySum = rows.reduce((sum, r) => sum + (parseInt(String(r.quantity || '1'), 10) || 1), 0);
   const conditions = new Set(rows.map((r) => String(r.condition || '').trim()).filter(Boolean));
-  const conditionText = conditions.size === 1 ? [...conditions][0] : conditions.size > 1 ? 'MIXED' : 'N/A';
+  const conditionText =
+    conditions.size === 1
+      ? orderRowConditionLabel([...conditions][0])
+      : conditions.size > 1
+        ? 'MIXED'
+        : EMPTY_META_DASH;
 
   // Combined sale price across the lines that share this order number.
   const priceSum = rows.reduce((sum, r) => {
@@ -68,8 +75,8 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
           title={platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
         />
         <RowMetaColumns
-          qty={<span className={qtySum > 1 ? 'text-text-warning' : 'text-text-soft'}>{qtySum}</span>}
-          condition={<span className="text-text-faint">{conditionText}</span>}
+          qty={<span className={orderRowQtyTone(qtySum)}>{qtySum}</span>}
+          condition={<RowConditionMeta condition={conditionText} />}
           rest={groupPrice ? <span className="normal-case tracking-normal text-text-success">{groupPrice}</span> : null}
         />
       </div>

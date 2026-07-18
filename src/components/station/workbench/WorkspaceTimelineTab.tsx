@@ -47,6 +47,7 @@ function emptyJourneyFilters(partial: Partial<JourneyUrlFilters> & Pick<JourneyU
     order: partial.order ?? null,
     serial: partial.serial ?? null,
     tracking: partial.tracking ?? null,
+    unit: partial.unit ?? null,
     from: null,
     until: null,
     stations: [],

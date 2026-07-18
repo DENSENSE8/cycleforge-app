@@ -11,6 +11,7 @@ import { resolveStationSource } from '@/utils/source-dot';
 import { type TechRecord } from '@/hooks/useTechLogs';
 import { hasUsableProductTitle } from '@/hooks/station/useTechTableController';
 import { normalizeProductTitle } from '@/components/station/tech-record-mappers';
+import { orderRowConditionLabel } from '@/lib/conditions';
 
 export interface TechRecordRowProps {
   record: TechRecord;
@@ -37,9 +38,9 @@ export function TechRecordRow({ record, index, onOpen }: TechRecordRowProps) {
   const rawCondition = String(record.condition || '').trim();
   const conditionLabel = isFbaRow
     ? !rawCondition || /^fba\s*scan$/i.test(rawCondition)
-      ? 'N/A'
-      : rawCondition
-    : displayValues.condition || 'N/A';
+      ? orderRowConditionLabel(null)
+      : orderRowConditionLabel(rawCondition)
+    : orderRowConditionLabel(displayValues.condition);
   const fnskuValue = String(record.fnsku || '').trim();
   const isFnskuRow = Boolean(fnskuValue);
   const { dotType, isSku } = resolveStationSource({

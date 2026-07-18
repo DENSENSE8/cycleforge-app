@@ -159,7 +159,7 @@ export function DashboardShippedTable({
           actionLabel: 'Open Scan-out',
           onAction: () => {
             if (typeof window !== 'undefined') {
-              window.location.assign('/outbound?mode=scan-out');
+              window.location.assign('/shipping?mode=scan-out');
             }
           },
         }

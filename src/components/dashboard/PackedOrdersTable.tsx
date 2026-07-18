@@ -110,7 +110,7 @@ export function PackedOrdersTable({
           Packed orders waiting for dock scan-out land here. Open Scan-out to stage the next package.
         </p>
         <a
-          href="/outbound?mode=scan-out"
+          href="/shipping?mode=scan-out"
           className="ds-raw-button rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-bold text-white hover:bg-blue-700"
         >
           Open Scan-out

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pencil, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { dmSans } from '@/lib/fonts';
+import { ibmPlexSans } from '@/lib/fonts';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 
 export interface OutOfStockFieldProps {
@@ -92,7 +92,7 @@ export function OutOfStockField({
           }}
           placeholder="Describe missing parts..."
           autoFocus={autoFocus}
-          className={`w-full bg-transparent text-sm font-normal text-text-default outline-none placeholder:text-text-soft ${dmSans.className}`}
+          className={`w-full bg-transparent text-sm font-normal text-text-default outline-none placeholder:text-text-soft ${ibmPlexSans.className}`}
         />
       </div>
     );
@@ -119,7 +119,7 @@ export function OutOfStockField({
         ) : null}
       </div>
 
-      <p className={`text-sm font-medium text-text-default ${dmSans.className}`}>
+      <p className={`text-sm font-medium text-text-default ${ibmPlexSans.className}`}>
         {value || 'N/A'}
       </p>
     </div>

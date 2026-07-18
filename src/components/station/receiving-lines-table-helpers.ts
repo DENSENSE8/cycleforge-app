@@ -186,15 +186,70 @@ export function poGroupAnchorMs(group: ReceivingPoGroup): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-/** Short absolute "M/D h:mm" for the history scanned/unboxed timeline. */
-export function fmtShortTs(ts?: string | null): string | null {
-  if (!ts) return null;
-  const d = new Date(ts.includes('T') ? ts : ts.replace(' ', 'T'));
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleString(undefined, {
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+/** Stage stamp shown in the receiving history meta subrow (Unbox / Triage / Done). */
+type ReceivingRowStageStamp = {
+  instant: string;
+  label: 'Scanned' | 'Unboxed' | 'Received';
+  staffName: string | null;
+};
+
+type ReceivingStageStampRow = {
+  scanned_at?: string | null;
+  received_at?: string | null;
+  unboxed_at?: string | null;
+  received_done_at?: string | null;
+  scanned_by_name?: string | null;
+  received_by_name?: string | null;
+  unboxed_by_name?: string | null;
+};
+
+/**
+ * Which lifecycle instant owns the dense row clock for the active history axis.
+ * Does **not** fall back to `created_at` — that is for day-banding only; a missing
+ * stage stamp means omit the meta slot (same rule as OrdersQueue stage time).
+ */
+export function resolveReceivingRowStageStamp(
+  row: ReceivingStageStampRow,
+  axis: ReceivingActivityAxis,
+): ReceivingRowStageStamp | null {
+  if (axis === 'unboxed') {
+    const instant = (row.unboxed_at || '').trim();
+    if (!instant) return null;
+    return {
+      instant,
+      label: 'Unboxed',
+      staffName: (row.unboxed_by_name || '').trim() || null,
+    };
+  }
+  if (axis === 'received') {
+    const done = (row.received_done_at || '').trim();
+    if (done) {
+      return { instant: done, label: 'Received', staffName: null };
+    }
+    const unboxed = (row.unboxed_at || '').trim();
+    if (!unboxed) return null;
+    return {
+      instant: unboxed,
+      label: 'Unboxed',
+      staffName: (row.unboxed_by_name || '').trim() || null,
+    };
+  }
+  const scanned = (row.scanned_at || '').trim();
+  if (scanned) {
+    return {
+      instant: scanned,
+      label: 'Scanned',
+      staffName: (row.scanned_by_name || '').trim() || null,
+    };
+  }
+  const received = (row.received_at || '').trim();
+  if (!received) return null;
+  return {
+    instant: received,
+    label: 'Scanned',
+    staffName:
+      (row.scanned_by_name || '').trim() ||
+      (row.received_by_name || '').trim() ||
+      null,
+  };
 }

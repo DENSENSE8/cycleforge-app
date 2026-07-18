@@ -21,7 +21,7 @@ import { readyTabDisposition } from '@/utils/ready-workspace-state';
 async function fetchReadyHistory(q: string): Promise<AllocationHit[]> {
   const params = new URLSearchParams({ limit: '500' });
   if (q.trim()) params.set('q', q.trim());
-  const response = await fetch(`/api/outbound/ready-queue?${params.toString()}`, {
+  const response = await fetch(`/api/shipping/ready-queue?${params.toString()}`, {
     cache: 'no-store',
   });
   if (!response.ok) throw new Error('Failed to load recently-tested history');

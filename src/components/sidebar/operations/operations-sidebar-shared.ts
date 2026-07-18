@@ -75,10 +75,11 @@ export const OPERATIONS_MODE_SCOPED_PARAMS = [
   'staffId',  // history actor filter
   'station',  // legacy single-station filter (superseded by `stations`)
   // ── Master Operations Journey (History mode) ──
-  'dim',      // journey dimension: order | serial | tracking
+  'dim',      // journey dimension: order | serial | tracking | unit
   'order',    // focused order number
   'serial',   // focused serial
   'tracking', // focused tracking number
+  'unit',     // focused serial_units.id (search handoff)
   'from',     // date range start (ISO)
   'until',    // date range end (ISO)
   'stations', // multi-station filter (CSV)
@@ -104,7 +105,7 @@ export const JOURNEY_DIMENSION_ITEMS: HorizontalSliderItem[] = [
 ];
 
 export function parseJourneyDimension(raw: string | null | undefined): JourneyDimension {
-  return raw === 'serial' || raw === 'tracking' ? raw : 'order';
+  return raw === 'serial' || raw === 'tracking' || raw === 'unit' ? raw : 'order';
 }
 
 /** Station facets — the UI vocab the journey endpoint maps to each spine. */
@@ -131,10 +132,14 @@ export const JOURNEY_TYPE_ITEMS: { id: string; label: string }[] = [
 ];
 
 /** Which URL param carries the focused entity for a given dimension. */
-export const JOURNEY_DIMENSION_PARAM: Record<JourneyDimension, 'order' | 'serial' | 'tracking'> = {
+export const JOURNEY_DIMENSION_PARAM: Record<
+  JourneyDimension,
+  'order' | 'serial' | 'tracking' | 'unit'
+> = {
   order: 'order',
   serial: 'serial',
   tracking: 'tracking',
+  unit: 'unit',
 };
 
 // Analytics time-range options (drive the kpi-table window + granularity).

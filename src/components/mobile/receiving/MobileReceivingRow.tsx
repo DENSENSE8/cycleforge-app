@@ -16,6 +16,9 @@ import { MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPh
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { conditionGradeTextClass } from '@/lib/condition-tone';
+import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { cn } from '@/utils/_cn';
 
 interface MobileReceivingRowProps {
   row: ReceivingLineRow;
@@ -66,8 +69,6 @@ export function MobileReceivingRow({
 
   const condGrade = (row.condition_grade || '').toUpperCase();
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
-  const conditionColor =
-    condGrade === 'BRAND_NEW' ? 'text-yellow-600' : condGrade === 'PARTS' ? 'text-amber-800' : 'text-text-soft';
 
   const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').toString().trim();
   const trackingValue = (row.tracking_number || '').trim();
@@ -96,16 +97,25 @@ export function MobileReceivingRow({
             <span
               className={
                 qtyExpected > 1
-                  ? 'text-yellow-600'
+                  ? 'text-text-warning'
                   : row.quantity_expected && row.quantity_received >= row.quantity_expected
                     ? 'text-emerald-600'
-                    : 'text-text-soft'
+                    : 'text-text-muted'
               }
             >
               {quantityText}
             </span>
           }
-          condition={<span className={conditionColor}>{conditionLabel}</span>}
+          condition={
+            <span
+              className={cn(
+                conditionGradeTextClass(condGrade),
+                conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
+              )}
+            >
+              {conditionLabel}
+            </span>
+          }
           rest={
             showWorkflowIcon ? (
               <HoverTooltip label={workflowLabel} asChild>

@@ -107,24 +107,25 @@ export function TestingScanBar({
 
   const effective: ForcedTestingType = armedMode ?? classifyTestingScan(value);
   const active = testingScanModeMeta(effective);
-  const ActiveIcon = active.Icon;
+  const LeadingIcon = armedMode ? active.Icon : Barcode;
+  const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
 
   return (
-    <div data-testing-scan>
+    <div data-testing-scan className="w-full">
       <ThemedStationScanBar
         value={value}
         onChange={onChange}
         onSubmit={handleSubmit}
         inputRef={inputRef}
         staffId={staffId}
-        placeholder={armedMode ? `Scan ${active.label}…` : 'Scan or pick a route →'}
+        placeholder={armedMode ? `Scan ${active.label}…` : 'Tracking · PO · Serial · SKU'}
         autoFocus
         rightPadClass="pr-36"
         isResolving={isResolving}
         icon={
           <StationScanLeadingIcon
-            Icon={ActiveIcon}
-            tintClassName={active.iconClass}
+            Icon={LeadingIcon}
+            tintClassName={leadingTint}
             ariaLabel={
               armedMode
                 ? `Armed: ${active.label}`

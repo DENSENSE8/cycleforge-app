@@ -90,6 +90,10 @@ const nextConfig: NextConfig = {
             { source: '/sku-stock', destination: '/inventory', permanent: true },
             { source: '/sku-stock/location/:path*', destination: '/inventory/location/:path*', permanent: true },
             { source: '/sku-stock/:sku', destination: '/inventory/sku/:sku', permanent: true },
+            // Shipping surface: `/outbound` → `/shipping` (proxy also normalizes; this
+            // covers static/CDN hits and keeps query strings via Next redirects).
+            { source: '/outbound', destination: '/shipping', permanent: true },
+            { source: '/outbound/', destination: '/shipping', permanent: true },
         ];
     },
     serverExternalPackages: [

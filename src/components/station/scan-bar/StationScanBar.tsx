@@ -8,15 +8,19 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Barcode, Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
+import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 import {
+  STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
   STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
+  STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
   STATION_SCAN_BAR_FLOAT_RAIL_CLASS,
   STATION_SCAN_BAR_ICON_SLOT_CLASS,
   STATION_SCAN_BAR_INPUT_CLASS,
@@ -27,6 +31,7 @@ import {
   STATION_SCAN_BAR_PAD_LEFT_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS,
   STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
+  STATION_SCAN_BAR_SUBMIT_TRACE_CLASS,
 } from './tokens';
 
 export interface StationScanBarProps {
@@ -43,8 +48,15 @@ export interface StationScanBarProps {
   inputClassName?: string;
   rightContentClassName?: string;
   hasRightContent?: boolean;
-  /** Replaces the default `border border-border-hairline` on the `<input>` (e.g. theme stroke from staff-colors). */
+  /**
+   * Bottom-rule chrome classes (e.g. staff theme from
+   * {@link STATION_SCAN_BAR_BOTTOM_RULE_CLASS}). Defaults to a soft hairline rule.
+   */
   inputBorderClassName?: string;
+  /** Staff theme — drives submit center-out trace hue when set. */
+  theme?: StationTheme;
+  /** Override submit-trace fill (e.g. Scan-out emerald confirm). */
+  submitTraceClassName?: string;
   /** Omit left icon slot and use horizontal padding (e.g. labeled fields in FBA sidebar). */
   leadingIcon?: boolean;
   onInputBlur?: () => void;
@@ -77,9 +89,8 @@ function assignRef<T>(node: T, forwarded: Ref<T> | undefined): void {
 }
 
 /**
- * Core scan input — icon slot, hotkey gear, sweep animation, optional right
- * rail. For themed station chrome prefer {@link ThemedStationScanBar}; change
- * padding/height via {@link ./tokens.ts}.
+ * Core scan input — icon slot, hotkey gear, bottom-rule chrome, center-out
+ * submit trace, optional right rail. Prefer {@link ThemedStationScanBar}.
  */
 export function StationScanBar({
   value,
@@ -96,6 +107,8 @@ export function StationScanBar({
   rightContentClassName = '',
   hasRightContent = true,
   inputBorderClassName,
+  theme,
+  submitTraceClassName,
   leadingIcon = true,
   onInputBlur,
   disabled = false,
@@ -108,6 +121,7 @@ export function StationScanBar({
   hotkey = true,
 }: StationScanBarProps) {
   const [scanKey, setScanKey] = useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
   const setInputRef = useCallback(
@@ -138,8 +152,6 @@ export function StationScanBar({
   const modeButtonCount = showModeButtons ? visibleModes.length : 0;
   const hasActiveRightContent = hasRightContent && rightContent != null;
   const showRight = hasActiveRightContent || showPaste || modeButtonCount > 0;
-  // Count every right-rail chip so the input's pr-* clears the glass rail.
-  // mode+paste (or mode+spinner) used to keep pr-28 and clip/overlap icons.
   const rightChipCount =
     modeButtonCount + (showPaste ? 1 : 0) + (hasActiveRightContent ? 1 : 0);
 
@@ -153,48 +165,19 @@ export function StationScanBar({
         : 'pr-24';
   const modeBtnShell = modeButtonCount >= 2 ? STATION_SCAN_BAR_MODE_BTN_COMPACT : STATION_SCAN_BAR_MODE_BTN;
 
+  const traceClass =
+    submitTraceClassName
+    ?? (theme ? STATION_SCAN_BAR_SUBMIT_TRACE_CLASS[theme] : STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS);
+
   return (
     <motion.form
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{
-        type: 'spring',
-        damping: 25,
-        stiffness: 120,
-        opacity: { duration: 0.2 },
-      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: motionBezier.easeOut }}
       onSubmit={handleInternalSubmit}
       className={cn('group relative', className)}
     >
-      <div className="relative isolate rounded-xl">
-        <div className="pointer-events-none absolute inset-0 z-raised overflow-hidden rounded-xl">
-          <AnimatePresence>
-            {scanKey > 0 && (
-              <motion.div
-                key={scanKey}
-                initial={{ x: '-20%', opacity: 0, scaleX: 0.5 }}
-                animate={{
-                  x: '130%',
-                  opacity: [0, 1, 1, 0],
-                  scaleX: [0.8, 1, 1, 0.8],
-                }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: 0.45,
-                  ease: motionBezier.easeOut,
-                }}
-                className="absolute inset-y-0 w-48"
-                style={{
-                  background:
-                    'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), rgba(168, 85, 247, 0.5), rgba(59, 130, 246, 0.4), transparent)',
-                  skewX: '-25deg',
-                  filter: 'blur(8px)',
-                }}
-              />
-            )}
-          </AnimatePresence>
-        </div>
-
+      <div className="relative isolate">
         {leadingIcon ? (
           <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
             {showHotkeyGear ? (
@@ -219,10 +202,38 @@ export function StationScanBar({
             padLeft,
             padRight,
             showHotkeyGear ? 'group-hover:pl-16' : '',
-            inputBorderClassName ?? 'border border-border-hairline',
+            inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
             inputClassName,
           )}
         />
+
+        {/* Center→edges submit confirm on the bottom rule (same hue family). */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-raised h-0.5 overflow-hidden"
+          aria-hidden
+        >
+          <AnimatePresence>
+            {scanKey > 0 ? (
+              <motion.div
+                key={scanKey}
+                initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0, opacity: 0.35 }}
+                animate={
+                  shouldReduceMotion
+                    ? { opacity: [0, 1, 0] }
+                    : { scaleX: [0, 1], opacity: [0.35, 1, 0] }
+                }
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: shouldReduceMotion ? 0.15 : 0.26,
+                  ease: motionBezier.easeOut,
+                  times: shouldReduceMotion ? undefined : [0, 0.55, 1],
+                }}
+                className={cn('absolute inset-y-0 left-0 w-full origin-center', traceClass)}
+              />
+            ) : null}
+          </AnimatePresence>
+        </div>
+
         {showRight ? (
           <div
             className={cn(
@@ -234,40 +245,42 @@ export function StationScanBar({
             {modeButtonCount > 0 ? (
               <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="Scan mode">
                 {visibleModes.includes('plan') ? (
-                  <button
-                    type="button"
-                    onClick={onPlanMode}
-                    aria-pressed={activeMode === 'plan'}
-                    title="Plan mode"
-                    aria-label={activeMode === 'plan' ? 'Plan mode active' : 'Switch to plan mode'}
-                    className={cn(
-                      'ds-raw-button',
-                      modeBtnShell,
-                      activeMode === 'plan'
-                        ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'bg-purple-500/10 text-purple-700')
-                        : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                    )}
-                  >
-                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />
-                  </button>
+                  <HoverTooltip label="Plan mode" asChild>
+                    <button
+                      type="button"
+                      onClick={onPlanMode}
+                      aria-pressed={activeMode === 'plan'}
+                      aria-label={activeMode === 'plan' ? 'Plan mode active' : 'Switch to plan mode'}
+                      className={cn(
+                        'ds-raw-button',
+                        modeBtnShell,
+                        activeMode === 'plan'
+                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'bg-purple-500/10 text-purple-700')
+                          : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                      )}
+                    >
+                      <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+                    </button>
+                  </HoverTooltip>
                 ) : null}
                 {visibleModes.includes('select') ? (
-                  <button
-                    type="button"
-                    onClick={onSelectMode}
-                    aria-pressed={activeMode === 'select'}
-                    title="Select mode"
-                    aria-label={activeMode === 'select' ? 'Select mode active' : 'Switch to select mode'}
-                    className={cn(
-                      'ds-raw-button',
-                      modeBtnShell,
-                      activeMode === 'select'
-                        ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'bg-blue-500/10 text-blue-700')
-                        : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                    )}
-                  >
-                    <Pencil className="h-3.5 w-3.5 shrink-0" />
-                  </button>
+                  <HoverTooltip label="Select mode" asChild>
+                    <button
+                      type="button"
+                      onClick={onSelectMode}
+                      aria-pressed={activeMode === 'select'}
+                      aria-label={activeMode === 'select' ? 'Select mode active' : 'Switch to select mode'}
+                      className={cn(
+                        'ds-raw-button',
+                        modeBtnShell,
+                        activeMode === 'select'
+                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'bg-blue-500/10 text-blue-700')
+                          : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                      )}
+                    >
+                      <Pencil className="h-3.5 w-3.5 shrink-0" />
+                    </button>
+                  </HoverTooltip>
                 ) : null}
               </div>
             ) : null}

@@ -6,6 +6,7 @@ import type {
   CarrierEvent,
   WarrantyEventRow,
   ThreadMessageTimelineRow,
+  TicketLinkTimelineRow,
 } from '@/lib/timeline';
 
 /**
@@ -19,7 +20,14 @@ import type {
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type JourneySource = 'sal' | 'inventory' | 'audit' | 'carrier' | 'warranty' | 'thread';
+export type JourneySource =
+  | 'sal'
+  | 'inventory'
+  | 'audit'
+  | 'carrier'
+  | 'warranty'
+  | 'thread'
+  | 'ticket';
 export const JOURNEY_SOURCES: readonly JourneySource[] = [
   'sal',
   'inventory',
@@ -27,9 +35,10 @@ export const JOURNEY_SOURCES: readonly JourneySource[] = [
   'carrier',
   'warranty',
   'thread',
+  'ticket',
 ];
 
-export type JourneyDimension = 'order' | 'serial' | 'tracking';
+export type JourneyDimension = 'order' | 'serial' | 'tracking' | 'unit';
 
 /** The order/serial/tracking keys the client groups journey bands by. */
 export interface JourneyGroupKeys {
@@ -47,7 +56,8 @@ export type JourneyRaw =
   | StationActivityRow
   | CarrierEvent
   | WarrantyEventRow
-  | ThreadMessageTimelineRow;
+  | ThreadMessageTimelineRow
+  | TicketLinkTimelineRow;
 
 export interface JourneyEvent {
   source: JourneySource;
@@ -131,6 +141,8 @@ export const SOURCE_PREFIX: Record<JourneySource, string> = {
   // Conversation-thread messages (entity mode only — buildBrowseQuery has no
   // thread arm; browse coverage rides the THREAD_MESSAGE ops_events emission).
   thread: 'thread',
+  // Ticket link/unlink moments (entity mode only — ops_events + ticket_links).
+  ticket: 'ticket',
 };
 
 export const DEFAULT_LIMIT = 60;
@@ -368,11 +380,13 @@ export function buildBrowseQuery(
              jsonb_build_object(
                'id', ie.id, 'occurred_at', ie.occurred_at, 'event_type', ie.event_type,
                'actor_name', s.name, 'serial_number', su.serial_number, 'sku', ie.sku,
-               'prev_status', ie.prev_status, 'next_status', ie.next_status, 'payload', ie.payload
+               'prev_status', ie.prev_status, 'next_status', ie.next_status,
+               'bin_barcode', l.barcode, 'bin_name', l.name, 'payload', ie.payload
              )
         FROM inventory_events ie
         LEFT JOIN serial_units su ON su.id = ie.serial_unit_id AND su.organization_id = ie.organization_id
         LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = ie.organization_id
+        LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = ie.organization_id
         LEFT JOIN LATERAL (
           SELECT a.order_id FROM order_unit_allocations a
            WHERE a.serial_unit_id = ie.serial_unit_id AND a.organization_id = ie.organization_id

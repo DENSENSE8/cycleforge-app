@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Loader2 } from '@/components/Icons';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
+import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { inventoryStatusBadgeClass } from './status-classes';
 import type {
     SerialUnitDetailPayload,
@@ -158,10 +159,19 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                 ) : null}
             </section>
 
-            {/* Timeline */}
+            {/* Item Journey — shared cross-spine trail (search deep-link target). */}
+            {unit.serial_number ? (
+                <SerialJourneySection
+                    serialNumber={unit.serial_number}
+                    title="Item Journey"
+                    density="comfortable"
+                />
+            ) : null}
+
+            {/* Raw inventory_events ledger (debug / full payload) */}
             <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
                 <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
-                    <h2 className="text-lg font-medium text-text-default">inventory_events timeline</h2>
+                    <h2 className="text-lg font-medium text-text-default">inventory_events ledger</h2>
                     <span className="text-xs text-text-soft">{events.length} events</span>
                 </header>
                 {events.length === 0 ? (

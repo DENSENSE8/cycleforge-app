@@ -2,16 +2,8 @@ export type StationTheme = 'green' | 'purple' | 'blue' | 'yellow' | 'black' | 'r
 export type TechStationTheme = 'green' | 'purple' | 'blue' | 'yellow';
 export type PackerStationTheme = 'black' | 'red';
 
-/** Visible theme border on the tech {@link StationScanBar} `<input>` only (no outer wrapper). */
-export const techStationScanInputBorderClass: Record<TechStationTheme, string> = {
-  green: 'border-2 border-emerald-500',
-  blue: 'border-2 border-blue-500',
-  purple: 'border-2 border-purple-500',
-  yellow: 'border-2 border-amber-500',
-};
-
 /**
- * Soft 1px outline in the same hue as {@link techStationScanInputBorderClass} (e.g. up-next TabSwitch rail + pill).
+ * Soft 1px outline in the staff tech theme hue (e.g. up-next TabSwitch rail + pill).
  */
 export const techStationLightChromeOutlineClass: Record<TechStationTheme, string> = {
   green: 'border border-emerald-200',
@@ -25,18 +17,6 @@ export function getTechStationLightChromeOutlineClass(
 ): string {
   return techStationLightChromeOutlineClass[getTechThemeById(techId)];
 }
-
-/** Same stroke weights as {@link techStationScanInputBorderClass}, for all {@link StationTheme} (FBA sidebar, staff 7/8, etc.). */
-export const stationScanInputBorderClass: Record<StationTheme, string> = {
-  green: 'border-2 border-emerald-500',
-  blue: 'border-2 border-blue-500',
-  purple: 'border-2 border-purple-500',
-  yellow: 'border-2 border-amber-500',
-  black: 'border-2 border-slate-700', // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
-  red: 'border-2 border-red-500',
-  lightblue: 'border-2 border-sky-500',
-  pink: 'border-2 border-pink-500',
-};
 
 export interface StationThemeColors {
   bg: string;

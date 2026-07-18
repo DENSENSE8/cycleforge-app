@@ -3,8 +3,8 @@
 /**
  * The `/receiving` right-pane column. The History/Incoming table stays mounted
  * (display-toggled) so its cache + scroll survive tab flips; over it the focused
- * line workspace soft-swaps in. Unbox uses UnboxLineWorkspace (browse + overlay
- * crossfade). Triage still uses its own in-flight skeleton + workspace overlay.
+ * line workspace soft-swaps in. Unbox and Triage each own a browse+overlay
+ * crossfade shell (`UnboxLineWorkspace` / `TriageLineWorkspace`).
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,10 +14,8 @@ import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/ReceivingLinesTable';
 import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
-import { EmptyState } from '@/design-system/primitives';
-import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
-import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
+import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWorkspace';
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
 import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
 import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
@@ -29,19 +27,6 @@ import type {
   WorkspaceState,
 } from '@/components/receiving/useReceivingWorkspacePane';
 import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingDetailOverlays';
-
-/**
- * Right-pane empty state per sidebar mode. Keyed by `?mode=` so each mode's copy
- * is structurally tied to that mode. Unbox hosts UnboxLineWorkspace (no empty
- * state here); history / incoming are table-only.
- */
-const RECEIVING_EMPTY_STATE: Partial<Record<string, { title: string; description: string }>> = {
-  triage: {
-    title: 'No carton selected',
-    description:
-      'Pick a carton from the Unfound or Prioritize list, or scan a tracking number to triage it.',
-  },
-};
 
 interface ReceivingRightPaneProps {
   mode: string;
@@ -82,26 +67,6 @@ export function ReceivingRightPane({
   onCloseWorkspace,
 }: ReceivingRightPaneProps) {
   const isUnboxMode = mode === 'receive';
-  const showWorkspace = !!workspace && !isTableOnlyMode && !isUnboxMode;
-  // Triage keeps the dedicated skeleton for scan-in-flight.
-  const showTriageScanLoader =
-    !!scanInFlight && scanInFlight.surface === 'triage' && isTriageMode;
-  const emptyState = isUnboxMode ? undefined : RECEIVING_EMPTY_STATE[mode];
-  // Heavy line-workspace overlay crossfade. Uses the slower, opacity-led
-  // `workbenchPaneSettle` (not the snappy `workbenchPane`): a carton→carton swap
-  // dissolves — the incoming pane rises + fades in over a static, fading-out
-  // outgoing pane, so two full-bleed panes never slide in opposite directions
-  // (the old double-image jitter). The hook collapses it to opacity-only under
-  // prefers-reduced-motion (no local branching).
-  // Key on table-only vs workspace mode so a flip to History/Incoming OR between
-  // Triage/Unbox remounts the presence host — the exiting panel is torn down
-  // immediately instead of crossfading for ~300ms over the now-visible surface
-  // (the bleed). Including `mode` prevents TriagePanel ↔ LineEditPanel ghosting.
-  const workspacePresenceKey = isTableOnlyMode || isUnboxMode ? 'table-only' : `workspace-${mode}`;
-  const workspacePane = useMotionPresence(framerPresence.workbenchPaneSettle);
-  const workspaceTransition = useMotionTransition(
-    isTableOnlyMode || isUnboxMode ? { duration: 0 } : framerTransition.workbenchPaneSettle,
-  );
   // Incoming Email-Triage sub-view swap keeps the snappy canonical crossfade —
   // it fades in over the (display:none) table, so there is no second pane to
   // ghost against and no need for the slower settle.
@@ -128,14 +93,26 @@ export function ReceivingRightPane({
     );
   }
 
+  if (isTriageMode) {
+    return (
+      <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <TriageLineWorkspace
+          staffId={staffId}
+          workspace={workspace}
+          nav={nav}
+          scanInFlight={scanInFlight}
+          onCloseWorkspace={onCloseWorkspace}
+        />
+      </RightPaneOverlayHost>
+    );
+  }
+
   return (
     <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* History/Incoming-POS table — always mounted to keep its react-query
           cache, in-progress search results, and scroll position alive across tab
-          flips. Hidden (not unmounted) in Receiving so the auto-select /
-          first-mount effects don't re-fire on every close. The Incoming view
-          toggle now lives in the sidebar; this pane renders the chosen sub-view
-          full-bleed. */}
+          flips. Hidden (not unmounted) so auto-select / first-mount effects
+          don't re-fire on every close. */}
       <div
         className="absolute inset-0 overflow-hidden"
         style={{ display: showTable ? 'block' : 'none' }}
@@ -157,66 +134,6 @@ export function ReceivingRightPane({
             className="absolute inset-0 z-10 overflow-hidden"
           >
             <EmailTriagePanel />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
-      {/* Empty right pane — per-mode copy from RECEIVING_EMPTY_STATE. */}
-      {!isTableOnlyMode && !showWorkspace && !showTriageScanLoader && emptyState ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <EmptyState
-            title={emptyState.title}
-            description={emptyState.description}
-          />
-        </div>
-      ) : null}
-
-      {/* Triage scan-in-flight skeleton — triage's OWN skeleton (TriagePanel-
-          shaped), full-bleed so it cleanly takes over the triage pane while the
-          carton is being identified. Never renders the unbox display. */}
-      {showTriageScanLoader ? (
-        <div className="absolute inset-0 z-20 overflow-hidden">
-          <TriageWorkspaceSkeleton />
-        </div>
-      ) : null}
-
-      {/* Workspace — overlays everything when a line is active in Triage.
-          Scan-driven opens remount the shell (settle animation) so empty-pane
-          paint has time to ingest; later row updates (matched fill / unmatched
-          receiving_id) change the key when client_event_id / receiving_id
-          shifts. Mode leave still remounts via `workspacePresenceKey`. */}
-      <AnimatePresence initial={false} key={workspacePresenceKey}>
-        {showWorkspace ? (
-          <motion.div
-            key={
-              workspace!.scanDriven
-                ? `scan-${workspace!.row.client_event_id ?? workspace!.row.tracking_number ?? workspace!.row.id}`
-                : `row-${workspace!.row.receiving_id ?? workspace!.row.id}`
-            }
-            initial={workspacePane.initial}
-            animate={workspacePane.animate}
-            exit={workspacePane.exit}
-            transition={workspaceTransition}
-            className="absolute inset-0 z-10"
-          >
-            <ReceivingLineWorkspace
-              row={workspace!.row}
-              staffId={staffId}
-              accordionBootstrap={workspace!.accordionBootstrap}
-              nav={nav}
-              variant={isTriageMode ? 'triage' : 'unbox'}
-              onPrev={() => {
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-table', { detail: 'prev' }),
-                );
-              }}
-              onNext={() => {
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-table', { detail: 'next' }),
-                );
-              }}
-              onClose={onCloseWorkspace}
-            />
           </motion.div>
         ) : null}
       </AnimatePresence>

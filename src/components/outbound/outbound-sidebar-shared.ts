@@ -3,7 +3,8 @@ import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlide
 
 export type OutboundMode = 'labels' | 'scan-out' | 'ready' | 'fba';
 
-export const OUTBOUND_PATH = '/outbound';
+/** Canonical Shipping station path. Legacy `/outbound` permanently redirects here. */
+export const SHIPPING_PATH = '/shipping';
 
 /** Params cleared when switching modes. */
 export const OUTBOUND_MODE_SCOPED_PARAMS = [
@@ -14,6 +15,8 @@ export const OUTBOUND_MODE_SCOPED_PARAMS = [
   'ltab',
   'rtab',
   'ostatus',
+  'ustatus',
+  'attention',
   'fbaMode',
   'openShipmentId',
   'plan',

@@ -35,6 +35,9 @@ export interface InventoryEventRecord {
   sku: string | null;
   bin_id: number | null;
   prev_bin_id: number | null;
+  /** Resolved from locations (LEFT JOIN on bin_id); null when unset. */
+  bin_barcode: string | null;
+  bin_name: string | null;
   prev_status: string | null;
   next_status: string | null;
   notes: string | null;
@@ -104,6 +107,7 @@ export async function readInventorySpine(
   // the many un-migrated callers behave exactly as before.
   let staffJoin = 'LEFT JOIN staff s ON s.id = ie.actor_staff_id';
   let serialJoin = 'LEFT JOIN serial_units su ON su.id = ie.serial_unit_id';
+  let binJoin = 'LEFT JOIN locations l ON l.id = ie.bin_id';
   if (orgId) {
     params.push(orgId);
     where.push(`ie.organization_id = $${params.length}`);
@@ -112,6 +116,7 @@ export async function readInventorySpine(
     // foreign actor_name / serial_number.
     staffJoin = 'LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = ie.organization_id';
     serialJoin = 'LEFT JOIN serial_units su ON su.id = ie.serial_unit_id AND su.organization_id = ie.organization_id';
+    binJoin = 'LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = ie.organization_id';
   }
 
   const order = opts.order === 'desc' ? 'DESC' : 'ASC';
@@ -134,6 +139,8 @@ export async function readInventorySpine(
             ie.sku,
             ie.bin_id,
             ie.prev_bin_id,
+            l.barcode AS bin_barcode,
+            l.name AS bin_name,
             ie.prev_status,
             ie.next_status,
             ie.notes,
@@ -141,6 +148,7 @@ export async function readInventorySpine(
        FROM inventory_events ie
        ${staffJoin}
        ${serialJoin}
+       ${binJoin}
       WHERE ${where.join(' AND ')}
       ORDER BY ie.occurred_at ${order}, ie.id ${order}
       ${limitSql}`;

@@ -35,7 +35,7 @@ import {
  * with a `raw` payload matching each source's existing timeline adapter input.
  */
 
-const DIMENSIONS: readonly JourneyDimension[] = ['order', 'serial', 'tracking'];
+const DIMENSIONS: readonly JourneyDimension[] = ['order', 'serial', 'tracking', 'unit'];
 
 function parseDimension(raw: string | null): JourneyDimension {
   return DIMENSIONS.includes(raw as JourneyDimension) ? (raw as JourneyDimension) : 'order';
@@ -62,6 +62,13 @@ function parseStaffId(raw: string | null): number | null {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
 }
 
+function entityParamForDim(dim: JourneyDimension, searchParams: URLSearchParams): string | null {
+  if (dim === 'order') return searchParams.get('order');
+  if (dim === 'serial') return searchParams.get('serial');
+  if (dim === 'unit') return searchParams.get('unit');
+  return searchParams.get('tracking');
+}
+
 export const GET = withAuth(
   async (request: NextRequest, ctx) => {
     try {
@@ -69,12 +76,7 @@ export const GET = withAuth(
       const orgId = ctx.organizationId;
 
       const dim = parseDimension(searchParams.get('dim'));
-      const entityValue =
-        dim === 'order'
-          ? searchParams.get('order')
-          : dim === 'serial'
-            ? searchParams.get('serial')
-            : searchParams.get('tracking');
+      const entityValue = entityParamForDim(dim, searchParams);
 
       const filters: JourneyFilters = {
         from: searchParams.get('from'),

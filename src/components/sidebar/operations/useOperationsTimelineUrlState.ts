@@ -25,6 +25,7 @@ export interface JourneyUrlFilters {
   order: string | null;
   serial: string | null;
   tracking: string | null;
+  unit: string | null;
   from: string | null;
   until: string | null;
   stations: string[];
@@ -37,12 +38,13 @@ export interface JourneyUrlFilters {
   q: string | null;
 }
 
-const ENTITY_KEYS = ['order', 'serial', 'tracking'] as const;
+const ENTITY_KEYS = ['order', 'serial', 'tracking', 'unit'] as const;
 const FILTER_KEYS = [
   'dim',
   'order',
   'serial',
   'tracking',
+  'unit',
   'from',
   'until',
   'stations',
@@ -108,6 +110,7 @@ export function useOperationsTimelineUrlState(): OperationsTimelineUrlState {
   const order = searchParams.get('order') ?? '';
   const serial = searchParams.get('serial') ?? '';
   const tracking = searchParams.get('tracking') ?? '';
+  const unit = searchParams.get('unit') ?? '';
   const from = searchParams.get('from') ?? '';
   const until = searchParams.get('until') ?? '';
   const stations = useMemo(() => csv(searchParams.get('stations')), [searchParams]);
@@ -118,7 +121,8 @@ export function useOperationsTimelineUrlState(): OperationsTimelineUrlState {
   const view = searchParams.get('view') ?? '';
   const q = searchParams.get('q') ?? '';
 
-  const entityValue = dim === 'order' ? order : dim === 'serial' ? serial : tracking;
+  const entityValue =
+    dim === 'order' ? order : dim === 'serial' ? serial : dim === 'unit' ? unit : tracking;
 
   const replaceParams = useCallback(
     (mutate: (p: URLSearchParams) => void) => {
@@ -219,6 +223,7 @@ export function useOperationsTimelineUrlState(): OperationsTimelineUrlState {
         if (filters.order) p.set('order', filters.order);
         if (filters.serial) p.set('serial', filters.serial);
         if (filters.tracking) p.set('tracking', filters.tracking);
+        if (filters.unit) p.set('unit', filters.unit);
         if (filters.from) p.set('from', filters.from);
         if (filters.until) p.set('until', filters.until);
         if (filters.stations?.length) p.set('stations', filters.stations.join(','));
@@ -248,6 +253,7 @@ export function useOperationsTimelineUrlState(): OperationsTimelineUrlState {
       order: order || null,
       serial: serial || null,
       tracking: tracking || null,
+      unit: unit || null,
       from: from || null,
       until: until || null,
       stations,
@@ -257,7 +263,7 @@ export function useOperationsTimelineUrlState(): OperationsTimelineUrlState {
       sources,
       q: q || null,
     }),
-    [dim, order, serial, tracking, from, until, stations, types, status, staffId, sources, q],
+    [dim, order, serial, tracking, unit, from, until, stations, types, status, staffId, sources, q],
   );
 
   const activeFilterCount =

@@ -3,12 +3,13 @@
 /**
  * ToolbarSearchToggle — icon-first scoped search for workbench chrome.
  *
- * Collapsed: square Search {@link ToolbarButton}. Expanded (click, or when
+ * Collapsed: ghost Search icon. Expanded on hover / focus / click (or when
  * `value` is non-empty): compact {@link SearchField}. Blur with an empty
  * query collapses again so the resting header stays an icon rail.
+ * Pointer leave does not collapse while the field (or a child) holds focus.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -32,33 +33,76 @@ export function ToolbarSearchToggle({
 }) {
   const hasValue = Boolean(value.trim());
   const [expanded, setExpanded] = useState(hasValue);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const valueRef = useRef(value);
+  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  valueRef.current = value;
 
   useEffect(() => {
     if (hasValue) setExpanded(true);
   }, [hasValue]);
 
+  useEffect(() => {
+    return () => {
+      if (collapseTimer.current) clearTimeout(collapseTimer.current);
+    };
+  }, []);
+
+  const clearCollapseTimer = () => {
+    if (collapseTimer.current) {
+      clearTimeout(collapseTimer.current);
+      collapseTimer.current = null;
+    }
+  };
+
+  const expand = () => {
+    clearCollapseTimer();
+    setExpanded(true);
+  };
+
+  const tryCollapse = () => {
+    const root = rootRef.current;
+    if (root?.contains(document.activeElement)) return;
+    if (!valueRef.current.trim()) setExpanded(false);
+  };
+
+  const scheduleCollapse = () => {
+    clearCollapseTimer();
+    collapseTimer.current = setTimeout(tryCollapse, 160);
+  };
+
   if (!expanded) {
     return (
-      <HoverTooltip label={placeholder} asChild>
-        <ToolbarButton
-          iconOnly
-          aria-label={placeholder}
-          aria-expanded={false}
-          onClick={() => setExpanded(true)}
-          className={className}
-        >
-          <Search className="h-3.5 w-3.5" />
-        </ToolbarButton>
-      </HoverTooltip>
+      <div
+        ref={rootRef}
+        className={cn('min-w-0', className)}
+        onMouseEnter={expand}
+        onFocusCapture={expand}
+      >
+        <HoverTooltip label={placeholder} asChild>
+          <ToolbarButton
+            iconOnly
+            aria-label={placeholder}
+            aria-expanded={false}
+            onClick={expand}
+          >
+            <Search className="h-3.5 w-3.5" />
+          </ToolbarButton>
+        </HoverTooltip>
+      </div>
     );
   }
 
   return (
     <div
+      ref={rootRef}
       className={cn('min-w-0', className)}
+      onMouseEnter={clearCollapseTimer}
+      onMouseLeave={scheduleCollapse}
       onBlur={(e) => {
         if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-        if (!hasValue) setExpanded(false);
+        tryCollapse();
       }}
     >
       <SearchField
@@ -73,7 +117,9 @@ export function ToolbarSearchToggle({
         tone={tone}
         size="compact"
         autoFocus
-        className="w-40 shrink-0 lg:w-56"
+        // pr matches ToolbarButton inset so the trailing paste sits on the
+        // same optical column as the collapsed search icon (w-8 centered).
+        className="w-40 shrink-0 pr-2 lg:w-56"
       />
     </div>
   );

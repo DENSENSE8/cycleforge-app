@@ -304,6 +304,18 @@ function resolveTestSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['n
 }
 
 /**
+ * Shipping-surface redirect. The shipping station lives at `/shipping` only —
+ * there is no `/outbound` page. Bare `/outbound` (and `/outbound/`) 308 to
+ * `/shipping`, preserving `?mode=` / FBA params for bookmarks and printed links.
+ */
+function resolveShippingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (url.pathname !== '/outbound' && url.pathname !== '/outbound/') return null;
+  const next = url.clone();
+  next.pathname = '/shipping';
+  return next;
+}
+
+/**
  * Legacy top-level History mode (`?view=testing-history`) now redirects to
  * Testing mode — the tested-lines browse surface is the empty state of
  * TestingLineWorkspace when no line is selected.
@@ -483,6 +495,7 @@ export function proxy(req: NextRequest): NextResponse {
       resolveWalkInJobRedirect(req.nextUrl) ??
       resolvePackSurfaceRedirect(req.nextUrl) ??
       resolveTestSurfaceRedirect(req.nextUrl) ??
+      resolveShippingSurfaceRedirect(req.nextUrl) ??
       resolveTestingHistoryViewRedirect(req.nextUrl);
     if (surfaceRedirect) {
       return applySecurityHeaders(NextResponse.redirect(surfaceRedirect));

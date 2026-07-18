@@ -9,6 +9,7 @@ import { getOrderDisplayValues } from '@/utils/order-display';
 import { resolveStationSource } from '@/utils/source-dot';
 import { type PackerRecord } from '@/hooks/usePackerLogs';
 import { isFbaPackerRecord } from '@/hooks/station/usePackerTableController';
+import { orderRowConditionLabel } from '@/lib/conditions';
 
 export interface PackerRecordRowProps {
   record: PackerRecord;
@@ -68,7 +69,7 @@ export function PackerRecordRow({ record, index, onOpen }: PackerRecordRowProps)
       dotType={dotType}
       title={record.product_title || record.item_number || record.sku || 'Unknown Product'}
       quantity={parseInt(String(record.quantity || '1'), 10) || 1}
-      condition={displayValues.condition || 'N/A'}
+      condition={orderRowConditionLabel(displayValues.condition)}
       chipGrid={chipGrid}
       index={index}
       onClick={() => onOpen(record)}

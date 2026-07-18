@@ -85,7 +85,7 @@ function Segment<T extends string>({
             onClick={() => onChange(o.id)}
             className={`flex-1 rounded-md px-2 py-1 text-role-caption font-bold transition-colors ${
               active
-                ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
+                ? 'bg-surface-accent text-text-accent'
                 : 'text-text-muted hover:bg-surface-hover'
             }`}
           >

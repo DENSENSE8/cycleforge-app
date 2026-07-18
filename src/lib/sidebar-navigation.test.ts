@@ -266,15 +266,19 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarRouteKey('/pickup'), 'receiving');
   assert.equal(getSidebarRouteKey('/repair'), 'receiving');
   assert.equal(getSidebarRouteKey('/receiving/history'), 'receiving');
-  // FBA sub-modes live under Outbound as fbaMode (legacy mode=plan still works).
-  assert.equal(resolveSidebarMode('fba', at('/outbound', 'mode=fba')), 'combine');
-  assert.equal(resolveSidebarMode('fba', at('/outbound', 'mode=fba&fbaMode=plan')), 'plan');
+  // FBA sub-modes live under Shipping as fbaMode (legacy mode=plan still works).
+  assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba')), 'combine');
+  assert.equal(resolveSidebarMode('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarMode('fba', at('/fba', 'mode=plan')), 'plan');
-  // Outbound modes include ready + fba.
-  assert.equal(resolveSidebarMode('outbound', at('/outbound')), 'labels');
+  // Shipping modes include ready + fba (canonical `/shipping`; `/outbound` redirects).
+  assert.equal(resolveSidebarMode('outbound', at('/shipping')), 'labels');
+  assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=ready')), 'ready');
+  assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=fba')), 'fba');
+  assert.equal(resolveSidebarMode('outbound', at('/shipping', 'mode=scan-out')), 'scan-out');
+  // Redirect-window: legacy path still resolves nav key until the edge 308 lands.
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
-  assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=fba')), 'fba');
-  assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=scan-out')), 'scan-out');
+  assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
+  assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
   // Dashboard: three L2 modes on `?mode=`. Shipping (id `outbound`) is the
   // default — both `?shipped` and `?unshipped` (+ legacy `?pending` + bare)
   // resolve to it. Receiving rides `?mode=inbound` (canonical) or the

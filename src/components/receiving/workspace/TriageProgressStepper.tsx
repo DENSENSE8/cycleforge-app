@@ -99,7 +99,7 @@ export function TriageProgressStepper({ row }: { row: ReceivingLineRow }) {
   }
 
   return (
-    <div className={`${receivingScanBandClass} bg-surface-card`}>
+    <div className={`${receivingScanBandClass} bg-surface-card px-3`}>
       <LinearWorkflowStepper
         steps={TRIAGE_STEPS}
         states={states}

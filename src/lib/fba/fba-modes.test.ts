@@ -20,10 +20,10 @@ test('resolveFbaModeFromSearchParams prefers fbaMode over outbound mode', () => 
 });
 
 test('fbaOutboundHref builds outbound FBA deep links', () => {
-  assert.equal(fbaOutboundHref(), '/outbound?mode=fba');
-  assert.equal(fbaOutboundHref({ fbaMode: 'plan' }), '/outbound?mode=fba&fbaMode=plan');
+  assert.equal(fbaOutboundHref(), '/shipping?mode=fba');
+  assert.equal(fbaOutboundHref({ fbaMode: 'plan' }), '/shipping?mode=fba&fbaMode=plan');
   assert.equal(
     fbaOutboundHref({ fbaMode: 'combine', openShipmentId: 42 }),
-    '/outbound?mode=fba&openShipmentId=42',
+    '/shipping?mode=fba&openShipmentId=42',
   );
 });

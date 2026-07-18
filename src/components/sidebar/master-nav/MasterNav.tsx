@@ -17,7 +17,9 @@ import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { useActiveSidebarMode } from './useActiveSidebarMode';
 import { useSidebarModeNav } from './useSidebarModeNav';
 import { useRecentPages } from './useRecentPages';
+import { MAX_RECENT_MODES, useRecentModes } from './useRecentModes';
 import { MasterNavView } from './MasterNavView';
+import type { MasterNavRecentModeChip } from './MasterNavHeader';
 import type { ReactNode } from 'react';
 
 /** Merge a flat nav item with its mode metadata (if the page has modes). */
@@ -75,6 +77,7 @@ export function MasterNav({
   const { pageId, modeId } = useActiveSidebarMode();
   const navigate = useSidebarModeNav();
   const { recents, pushRecent } = useRecentPages();
+  const { recents: recentModeRefs, pushRecent: pushRecentMode } = useRecentModes();
 
   const [open, setOpen] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -88,6 +91,11 @@ export function MasterNav({
   useEffect(() => {
     pushRecent(pageId);
   }, [pageId, pushRecent]);
+
+  // Pin page+mode for header jump chips (name-of-now stays the label).
+  useEffect(() => {
+    pushRecentMode(pageId, modeId);
+  }, [pageId, modeId, pushRecentMode]);
 
   // Close the menu whenever the route resolves to a new page/mode.
   useEffect(() => {
@@ -150,6 +158,48 @@ export function MasterNav({
   );
   const otherPages = useMemo(() => pages, [pages]);
 
+  const handleNavigate = useCallback(
+    (nextPageId: string, nextModeId?: string) => {
+      navigate(nextPageId, nextModeId);
+      setOpen(false);
+      setExpandedKey(null);
+      onNavigate?.();
+    },
+    [navigate, onNavigate],
+  );
+
+  // Header chips: prior modes only (never the one you're on), max 3.
+  // Same-page modes stay on ModeRail — chips are cross-context jumps only.
+  const recentModes = useMemo<MasterNavRecentModeChip[]>(() => {
+    const currentKey = `${pageId}:${modeId ?? ''}`;
+    const railOwnsPage = Boolean(activePage?.modes && activePage.modes.length > 1);
+    const chips: MasterNavRecentModeChip[] = [];
+    for (const ref of recentModeRefs) {
+      if (chips.length >= MAX_RECENT_MODES) break;
+      const key = `${ref.pageId}:${ref.modeId ?? ''}`;
+      if (key === currentKey) continue;
+      if (railOwnsPage && ref.pageId === pageId) continue;
+      const page = pages.find((p) => p.id === ref.pageId);
+      if (!page) continue;
+      const mode = ref.modeId ? page.modes?.find((m) => m.id === ref.modeId) : undefined;
+      // Mode id unknown / gated out — fall back to page chrome when modeless or
+      // when the stored mode no longer exists in the filtered nav.
+      if (ref.modeId && !mode && page.modes && page.modes.length > 0) continue;
+      const icon = mode?.icon ?? page.icon;
+      const label =
+        mode && page.modes && page.modes.length > 1
+          ? `${page.label} · ${mode.label}`
+          : mode?.label ?? page.label;
+      chips.push({
+        key,
+        label,
+        icon,
+        onSelect: () => handleNavigate(ref.pageId, ref.modeId ?? undefined),
+      });
+    }
+    return chips;
+  }, [recentModeRefs, pages, pageId, modeId, activePage, handleNavigate]);
+
   if (!activePage) return null;
 
   // Rail shows only for pages cleared for it (or all, when no allowlist).
@@ -162,15 +212,11 @@ export function MasterNav({
       open={open}
       onOpen={() => setOpen(true)}
       recentPages={recentPages}
+      recentModes={recentModes}
       otherPages={otherPages}
       expandedKey={expandedKey}
       onToggleRow={setExpandedKey}
-      onNavigate={(nextPageId, nextModeId) => {
-        navigate(nextPageId, nextModeId);
-        setOpen(false);
-        setExpandedKey(null);
-        onNavigate?.();
-      }}
+      onNavigate={handleNavigate}
       onRequestClose={closeMenu}
       showModeRail={railOn}
       renderContext={renderContext}

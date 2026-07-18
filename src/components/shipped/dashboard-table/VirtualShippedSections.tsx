@@ -142,7 +142,7 @@ export function VirtualShippedSections({
             ref={virtualizer.measureElement}
             // The active header pins via position:sticky (top:0); every other item
             // is absolutely positioned by the virtualizer transform. No full-bleed
-            // background — the pill inside DateGroupHeader is the only chrome.
+            // band — DateGroupHeader's micro sticky row is the only chrome.
             className={cn(
               'left-0 top-0 w-full',
               pinned ? 'z-sticky' : header ? 'z-raised' : 'z-base',

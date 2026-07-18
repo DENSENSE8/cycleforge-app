@@ -25,7 +25,7 @@ import type { LabelPurchaseResult } from '@/lib/shipping/shipstation/types';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/outbound/labels/purchase
+ * POST /api/shipping/order-labels/purchase
  *
  * Buy a rate-shopped label via ShipStation v2, then wire it into the existing
  * outbound plumbing:
@@ -317,6 +317,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { status: error.isNotConnected ? 400 : 502 },
       );
     }
-    return errorResponse(error, 'POST /api/outbound/labels/purchase');
+    return errorResponse(error, 'POST /api/shipping/order-labels/purchase');
   }
 }, { permission: 'shipping.buy_label' });

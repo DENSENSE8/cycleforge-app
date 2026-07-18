@@ -10,7 +10,8 @@ export interface TriageTerminalInput {
 }
 
 /**
- * Single-action triage terminal — no SectionTabsSlider. Always `mode-default`.
+ * Single-action triage terminal — Save for unbox on every SectionTabsSlider tab.
+ * Always `mode-default`.
  */
 export function resolveTriageTerminal(
   kind: string,

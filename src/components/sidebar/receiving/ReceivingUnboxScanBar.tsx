@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, type FormEvent, type Ref } from 'react';
-import { MapPin, Hash, TicketHelp } from '@/components/Icons';
+import { MapPin, Hash, TicketHelp, Barcode } from '@/components/Icons';
 import {
   StationScanLeadingIcon,
   StationScanModeRail,
@@ -83,7 +83,9 @@ export function ReceivingUnboxScanBar({
 
   const effective: UnboxScanMode = armedMode ?? classifyUnboxScan(value);
   const active = modeMeta(effective);
-  const ActiveIcon = active.Icon;
+  // Un-armed: neutral barcode — mode lives in the right rail + short placeholder.
+  const LeadingIcon = armedMode ? active.Icon : Barcode;
+  const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -99,15 +101,15 @@ export function ReceivingUnboxScanBar({
       onSubmit={handleSubmit}
       inputRef={inputRef ?? fallbackRef}
       staffId={staffId}
-      placeholder={armedMode ? `Scan ${active.label}` : 'Ticket #, Tracking, PO #'}
+      placeholder={armedMode ? `Scan ${active.label}` : 'Ticket · Tracking · PO'}
       autoFocus
       className="w-full"
       rightPadClass="pr-32"
       isResolving={isResolving}
       icon={
         <StationScanLeadingIcon
-          Icon={ActiveIcon}
-          tintClassName={active.iconClass}
+          Icon={LeadingIcon}
+          tintClassName={leadingTint}
           ariaLabel={
             armedMode
               ? `Armed: ${active.label}`

@@ -3,7 +3,10 @@ import test from 'node:test';
 import {
   buildJourneyCsv,
   buildJourneyPrintHtml,
+  buildOrderJourneyHref,
   buildSerialJourneyHref,
+  buildTrackingJourneyHref,
+  buildUnitJourneyHref,
   serialJourneyFilters,
 } from '@/lib/serial/serial-journey';
 import type { TimelineItem } from '@/lib/timeline/types';
@@ -50,6 +53,25 @@ test('buildSerialJourneyHref deep-links into History mode on the serial dim', ()
   assert.equal(qs.get('mode'), 'history');
   assert.equal(qs.get('dim'), 'serial');
   assert.equal(qs.get('serial'), 'SN ABC/123'); // URLSearchParams handles encoding
+});
+
+test('buildOrderJourneyHref / buildTrackingJourneyHref / buildUnitJourneyHref open History on their dims', () => {
+  const orderQs = new URLSearchParams(buildOrderJourneyHref(42).split('?')[1]);
+  assert.equal(orderQs.get('mode'), 'history');
+  assert.equal(orderQs.get('dim'), 'order');
+  assert.equal(orderQs.get('order'), '42');
+
+  const trackQs = new URLSearchParams(
+    buildTrackingJourneyHref('1Z999AA10123456784').split('?')[1],
+  );
+  assert.equal(trackQs.get('mode'), 'history');
+  assert.equal(trackQs.get('dim'), 'tracking');
+  assert.equal(trackQs.get('tracking'), '1Z999AA10123456784');
+
+  const unitQs = new URLSearchParams(buildUnitJourneyHref(9).split('?')[1]);
+  assert.equal(unitQs.get('mode'), 'history');
+  assert.equal(unitQs.get('dim'), 'unit');
+  assert.equal(unitQs.get('unit'), '9');
 });
 
 test('buildJourneyCsv emits a header block, column row, and one line per event', () => {

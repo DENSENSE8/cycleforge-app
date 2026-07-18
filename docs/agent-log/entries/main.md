@@ -86,3 +86,32 @@
 - `2026-07-17T22:57:33.775Z` · **main** · main · agent · Attempt Zoho+local receive for POs 13-14846-06962, 02-14876-13796, 05-14909-79883 — blocked by Zoho 5k daily API cap; all three already UNBOXED locally — blocked
 - `2026-07-17T23:04:45.086Z` · **main** · main · agent · PO 13-14846-06962: operator Zoho GUI received → local UNBOXED→DONE (2 lines) + mirror stamped received — ok
 
+- `2026-07-18T01:30:32.611Z` · **main** · main · agent · Interview-validated and rewrote Search Journey plan: docs/todo/search-journey-handoff-plan.md (main-lane ⌘K→Trace handoff, dim=unit, units journey mount) + journey-hop-emitters-plan.md (parked own-lane); indexed as WS-JOURNEY — done
+- `2026-07-18T01:36:27.992Z` · **main** · main · agent · Normalized StationScanBar chrome: ShippingScanBar + Themed path across Triage/Packing/RMA/ScanOut/Mobile; distilled un-armed Unbox/Testing leading icons — ok
+- `2026-07-18T02:02:18.761Z` · **main** · main · agent · StationScanBar frosted mode rail: py-0 so Unbox/Testing/Shipping icons sit flush top/bottom — ok
+- `2026-07-18T02:12:20.855Z` · **main** · main · agent · Testing sidebar scan band: tighten vertical pad pt-1.5/pb-2 → py-1 — ok
+- `2026-07-18T02:14:02.911Z` · **main** · main · agent · Testing scan bar: flush ScanBandShell like Unbox (no top/bottom pad) — ok
+- `2026-07-18T02:21:39.310Z` · **main** · main · agent · Flush StationScanBar hosts onto ScanBandShell (no py): Shipping, Testing, Packing, ScanOut, DataWipe, RMA, FBA — ok
+- `2026-07-18T02:30:09.493Z` · **main** · main · agent · Quiet Outbound chrome: ghost ToolbarButton, hover-expand search, Urgent in Lane filter, micro sticky DateGroupHeader — ok
+- `2026-07-18T02:31:28.497Z` · **main** · main · agent · Shrink sticky lane expand chip (chevron+count) to micro size matching DateGroupHeader — ok
+- `2026-07-18T02:40:05.834Z` · **main** · main · agent · Switched Kinetic Ledger type SoT to IBM Plex Sans+Mono via next/font (replaced DM Sans/Inter Google import) — ok
+- `2026-07-18T02:42:39.648Z` · **main** · main · agent · Queue meta readability: muted contrast, mono tabular age/late, DateGroupHeader nowrap — ok
+- `2026-07-18T02:46:01.830Z` · **main** · main · agent · Queue meta: SoT condition/qty tones; days-late owns urgency over lane age; shipped/receiving/station rows aligned — ok
+- `2026-07-18T02:49:20.514Z` · **main** · main · agent · Queue polish: omit lane age when days-late; softer RowTitle; warning-token qty/condition SoT — ok
+- `2026-07-18T02:50:38.020Z` · **main** · main · agent · Labels rail: drop order/platform eyebrow + SKU meta — title-only glance rows — ok
+- `2026-07-18T02:52:53.715Z` · **main** · main · agent · Outbound sidebars: drop duplicate queue headlines (legend chip owns the count) — ok
+- `2026-07-18T02:53:56.740Z` · **main** · main · agent · Scan-out sidebar quieter: drop ready-to-scan headline + teaching copy — ok
+- `2026-07-18T02:58:18.948Z` · **main** · main · agent · Empty condition meta uses muted -- SoT (orderRowConditionLabel) instead of N/A — ok
+- `2026-07-18T02:58:30.003Z` · **main** · main · agent · Labels sidebar: printed-only rail with n/n; header Priority/Import/+ icon-only — ok
+- `2026-07-18T03:05:21.711Z` · **main** · main · agent · Master-nav header: name-of-now + recent mode chips (max 3) + chevron hairline — ok
+- `2026-07-18T03:05:40.750Z` · **main** · main · agent · Center-align empty condition -- in fixed meta track (RowConditionMeta) — ok
+- `2026-07-18T03:06:16.112Z` · **main** · main · agent · Graduate Shipping station URL /outbound → /shipping (proxy+next redirect, nav SoT; APIs stay /api/outbound) — ok
+- `2026-07-18T03:09:21.411Z` · **main** · main · agent · StationScanBar: bottom-rule staff chrome + center-out submit trace (replaced box border + purple sweep) — ok
+- `2026-07-18T03:09:35.354Z` · **main** · main · agent · Nudge empty -- left; omit packer placeholder on Tested; hide empty Urgent/Blocked lanes — ok
+- `2026-07-18T03:16:10.029Z` · **main** · main · agent · Station scan band full-bleed: drop side gutter from ScanBandShell + receivingScanBandClass — ok
+- `2026-07-18T03:18:31.223Z` · **main** · main · agent · Remove /outbound routes completely: page deleted; APIs moved to /api/shipping/order-* + ready-queue + mark-staged; /outbound is redirect-only — ok
+- `2026-07-18T03:18:47.877Z` · **main** · main · agent · Labels station: StationScanBar open-by-scan; drop awaiting chip; ghost header icons; Urgent/lane filters like dashboard — ok
+- `2026-07-18T03:40:48.391Z` · **main** · main · agent · Closed full-loop Item Journey via GlobalHeaderSearch: serial facet + journeyHandoffHref → Trace, Item Journey on unit/order landings, bin/ticket chips, PUTAWAY bin refs, scan-out→SHIPPED mirror, ticket spine on journey — ok
+- `2026-07-18T03:45:35.995Z` · **main** · main · agent · Receiving Unbox/Triage row clocks: formatOpsStageTime + MetaFactSlot; kill fmtShortTs; resolveReceivingRowStageStamp — ok
+- `2026-07-18T03:46:15.920Z` · **main** · main · agent · Triage: SectionTabsSlider (Classify/Staging/Pairing) + Unbox-style browse overlay crossfade; enrich staging shelf+lane — ok
+- `2026-07-18T04:02:11.995Z` · **main** · main · agent · Plan A search→journey handoff: Open journey on SearchResultRow, ⌘Enter in header, dim=unit hrefs + tests — ok

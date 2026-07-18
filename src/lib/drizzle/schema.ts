@@ -3089,9 +3089,11 @@ export const unitQualityScores = pgTable('unit_quality_scores', {
  *
  * verdict ∈ PASS | TEST_AGAIN | TESTING_FAILED (CHECK constraint)
  * Writer: src/app/api/serial-units/[id]/test/route.ts
+ * Org-recent index: 2026-07-17c_testing_results_org_recent.sql
  */
 export const testingResults = pgTable('testing_results', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
   /** The serial unit under test — the only serial reference. */
   serialUnitId: integer('serial_unit_id').references(() => serialUnits.id, { onDelete: 'set null' }),
   receivingLineId: integer('receiving_line_id').references(() => receivingLines.id, { onDelete: 'set null' }),
@@ -3103,7 +3105,17 @@ export const testingResults = pgTable('testing_results', {
   notes: text('notes'),
   inventoryEventId: bigint('inventory_event_id', { mode: 'number' }).references(() => inventoryEvents.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  orgIdx: index('idx_testing_results_organization').on(table.organizationId),
+  orgRecentIdx: index('idx_testing_results_org_recent').on(
+    table.organizationId,
+    table.createdAt.desc(),
+    table.id.desc(),
+  ),
+  recentIdx: index('idx_testing_results_recent').on(table.createdAt.desc()),
+  testerIdx: index('idx_testing_results_tester').on(table.testedBy, table.createdAt.desc()),
+  unitIdx: index('idx_testing_results_unit').on(table.serialUnitId, table.createdAt.desc()),
+}));
 
 /**
  * order_unit_allocations — reservation of a specific serialized unit to an
@@ -3558,6 +3570,9 @@ export const entitySearchDocs = pgTable('entity_search_docs', {
   // a carrier + last-4 tracking chip on the order row without a second fetch.
   trackingNumber: text('tracking_number'),
   carrier: text('carrier'),
+  // Serial facet (migration 2026-07-17d) — journey handoff key for unit/repair
+  // hits without a second fetch.
+  serialNumber: text('serial_number'),
   happenedAt: timestamp('happened_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

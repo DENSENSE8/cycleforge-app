@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-17T19:43:45Z",
+  "generatedAt": "2026-07-18T03:17:30Z",
   "totalRoutes": 865,
   "summary": {
     "permissionGated": 737,
@@ -3711,51 +3711,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/outbound/labels/purchase/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "shipping.buy_label",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/outbound/labels/void/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "shipping.void_label",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/outbound/mark-staged/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "shipping.mark_shipped",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/outbound/rates/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "shipping.buy_label",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/outbound/ready-queue/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "shipping.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/pack/ship/route.ts",
       "methods": [
         "POST"
@@ -6008,12 +5963,57 @@
       "exemptReason": null
     },
     {
+      "path": "/api/shipping/mark-staged/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.mark_shipped",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/order-labels/purchase/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/order-labels/void/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.void_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/order-rates/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/shipping/rates/route.ts",
       "methods": [
         "POST"
       ],
       "gate": "withAuth",
       "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/ready-queue/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
       "exemptReason": null
     },
     {

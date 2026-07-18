@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * FBA prep workspace — composed under `/outbound?mode=fba` on the Axis-5
+ * FBA prep workspace — composed under `/shipping?mode=fba` on the Axis-5
  * two-zone workbench shell: pinned `FbaWorkspaceHeader` chrome (Plan · Combine ·
  * Shipped facet tabs + search + week/select controls) over one scroll body of
  * `FbaKpiStrip` (scrolls away) + the full-bleed board / shipped table. Sub-mode

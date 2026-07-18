@@ -71,7 +71,7 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
     showDetails: true,
     navChannel: 'receiving-navigate-table',
     terminalSlice: 'triage',
-    hasSectionTabs: false,
+    hasSectionTabs: true,
   },
   testing: {
     label: 'Testing',

@@ -16,7 +16,7 @@ const AUDIT_SOURCE = 'api.shipping.labels';
 /**
  * POST /api/shipping/labels — buy a quoted rate (operator/station entry).
  *
- * The generic sibling of /api/outbound/labels/purchase: no order anchor — it
+ * The generic sibling of /api/shipping/order-labels/purchase: no order anchor — it
  * buys the exact rate quoted by POST /api/shipping/rates and returns the label.
  * Callers that have an order should prefer the outbound route (it registers
  * tracking, stores the label document, and emails the customer).

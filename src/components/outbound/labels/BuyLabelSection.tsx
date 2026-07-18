@@ -83,7 +83,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
 
   const ratesMutation = useMutation<RatesResponse, Error, void>({
     mutationFn: async () => {
-      const res = await fetch('/api/outbound/rates', {
+      const res = await fetch('/api/shipping/order-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId }),
@@ -101,7 +101,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
 
   const buyMutation = useMutation<BuyResponse, Error, ShippingRateOption>({
     mutationFn: async (rate) => {
-      const res = await fetch('/api/outbound/labels/purchase', {
+      const res = await fetch('/api/shipping/order-labels/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -125,7 +125,7 @@ export function BuyLabelSection({ orderId, orderRef, onChange }: BuyLabelSection
   const voidMutation = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       if (!bought?.labelId) throw new Error('No label to void.');
-      const res = await fetch('/api/outbound/labels/void', {
+      const res = await fetch('/api/shipping/order-labels/void', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

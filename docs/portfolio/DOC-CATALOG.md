@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-07-12T15:55:00.924Z` · Files: **158** · Repo: `cycleforge-app`  
+> Generated: `2026-07-18T01:30:25.870Z` · Files: **191** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,11 +13,11 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `370521de9` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `50a24755c` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
-| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `3f55b275e` | yes |
+| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes |
 | `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes |
 | `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes |
 | `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `370521de9` | yes |
@@ -116,29 +116,38 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-CYCLE-FORGE-ROADMAP-BA36` | `WS-ROADMAP` | [`CYCLE-FORGE-ROADMAP`](../CYCLE-FORGE-ROADMAP) |
 | `DOC-ROOT-DESIGN-SYSTEM-TOKEN-SIMPLIFICATION-2F2A` | `WS-DS` | [`design-system-token-simplification.md`](../design-system-token-simplification.md) |
 | `DOC-ROOT-EDGE-REWRITES-8F0E` | `WS-INT` | [`edge-rewrites.md`](../edge-rewrites.md) |
+| `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` | `WS-DOCS-MISC` | [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md) |
 | `DOC-ROOT-GOOGLE-DRIVE-BACKUP-SETUP-7C9C` | `WS-INT` | [`google-drive-backup-setup.md`](../google-drive-backup-setup.md) |
+| `DOC-ROOT-MAIN-F33A` | `WS-DOCS-MISC` | [`agent-log/entries/main.md`](../agent-log/entries/main.md) |
 | `DOC-ROOT-NANGO-SIDECAR-SETUP-FD76` | `WS-INT` | [`nango-sidecar-setup.md`](../nango-sidecar-setup.md) |
 | `DOC-ROOT-NAS-PHOTOS-WEBSITE-SETUP-C6BD` | `WS-INT` | [`nas-photos-website-setup.md`](../nas-photos-website-setup.md) |
 | `DOC-ROOT-OUTBOUND-DOCUMENTS-PLAN-5DBA` | `WS-SHIP` | [`outbound-documents-plan.md`](../outbound-documents-plan.md) |
 | `DOC-ROOT-OUTBOUND-MEDIA-LIBRARY-INTEGRATION-PLAN-AFFE` | `WS-SHIP` | [`outbound-media-library-integration-plan.md`](../outbound-media-library-integration-plan.md) |
 | `DOC-ROOT-QA-ORG-PLAYBOOK-F4D1` | `WS-PLATFORM` | [`qa-org-playbook.md`](../qa-org-playbook.md) |
+| `DOC-ROOT-README-012D` | `WS-DOCS-MISC` | [`agent-log/README.md`](../agent-log/README.md) |
 | `DOC-ROOT-README-13F9` | `WS-INT` | [`zoho-sync-issues/README.md`](../zoho-sync-issues/README.md) |
 | `DOC-ROOT-README-3DBE` | `WS-PORTFOLIO` | [`archive/README.md`](../archive/README.md) |
 | `DOC-ROOT-README-8EC9` | `WS-PORTFOLIO` | [`README.md`](../README.md) |
+| `DOC-ROOT-README-F525` | `WS-DOCS-MISC` | [`agent-fs/README.md`](../agent-fs/README.md) |
+| `DOC-ROOT-README-F6D4` | `WS-DOCS-MISC` | [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md) |
 | `DOC-ROOT-RECEIVING-ACTOR-ATTRIBUTION-1CF2` | `WS-RECV` | [`receiving-actor-attribution.md`](../receiving-actor-attribution.md) |
 | `DOC-ROOT-RECEIVING-TRIAGE-REDESIGN-PLAN-3997` | `WS-RECV` | [`receiving-triage-redesign-plan.md`](../receiving-triage-redesign-plan.md) |
 | `DOC-ROOT-RECEIVING-TRIAGE-STREAMLINE-PLAN-C2E0` | `WS-RECV` | [`receiving-triage-streamline-plan.md`](../receiving-triage-streamline-plan.md) |
 | `DOC-ROOT-RETURNS-RECEIVING-ORDER-UNIFICATION-PLAN-9DB3` | `WS-RECV` | [`returns-receiving-order-unification-plan.md`](../returns-receiving-order-unification-plan.md) |
+| `DOC-ROOT-SEARCH-AND-DENSE-UI-REFACTOR-PLAN-3E46` | `WS-SEARCH` | [`search-and-dense-ui-refactor-plan.md`](../search-and-dense-ui-refactor-plan.md) |
 | `DOC-ROOT-SECOND-TENANT-ONBOARDING-CHECKLIST-55EF` | `WS-PLATFORM` | [`second-tenant-onboarding-checklist.md`](../second-tenant-onboarding-checklist.md) |
 | `DOC-ROOT-SETTINGS-REGISTRY-5316` | `WS-PLATFORM` | [`settings-registry.md`](../settings-registry.md) |
 | `DOC-ROOT-SHIPSTATION-OUTBOUND-C710` | `WS-SHIP` | [`shipstation-outbound.md`](../shipstation-outbound.md) |
 | `DOC-ROOT-STATION-CHASSIS-REFACTOR-DISCOVERY-8014` | `WS-STATION` | [`station-chassis-refactor-discovery.md`](../station-chassis-refactor-discovery.md) |
+| `DOC-ROOT-TEMPLATE-205D` | `WS-DOCS-MISC` | [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md) |
 | `DOC-ROOT-TESTING-VS-RECEIVING-ISOLATION-C2D2` | `WS-RECV` | [`testing-vs-receiving-isolation.md`](../testing-vs-receiving-isolation.md) |
 | `DOC-ROOT-TIER0-GO-LIVE-RUNBOOK-0230` | `WS-PLATFORM` | [`tier0-go-live-runbook.md`](../tier0-go-live-runbook.md) |
 | `DOC-ROOT-UNIFIED-GLOBAL-SEARCH-CONSOLIDATION-PLAN-9E96` | `WS-SEARCH` | [`unified-global-search-consolidation-plan.md`](../unified-global-search-consolidation-plan.md) |
 | `DOC-ROOT-UNIT-EVENT-BACKFILL-PLAN-33B0` | `WS-SEARCH` | [`unit-event-backfill-plan.md`](../unit-event-backfill-plan.md) |
+| `DOC-ROOT-VERIFIER-4F0C` | `WS-DOCS-MISC` | [`agent-fs/contracts/verifier.md`](../agent-fs/contracts/verifier.md) |
 | `DOC-ROOT-VISUAL-RECEIVING-IDENTIFY-PLAN-B7A8` | `WS-RECV` | [`visual-receiving-identify-plan.md`](../visual-receiving-identify-plan.md) |
 | `DOC-ROOT-ZOHO-FULFILLMENT-SYNC-2DAE` | `WS-SHIP` | [`zoho-fulfillment-sync.md`](../zoho-fulfillment-sync.md) |
+| `DOC-SEC-KIOSK-DEVICE-LOCKDOWN-B2C2` | `WS-SEC` | [`security/kiosk-device-lockdown.md`](../security/kiosk-device-lockdown.md) |
 | `DOC-SKILL-CODE-ARCHITECTURE-LOGIC-IMPROVEMENTS-0B69` | `WS-SKILLS` | [`skills/Code_Architecture_Logic_Improvements.md`](../skills/Code_Architecture_Logic_Improvements.md) |
 | `DOC-SKILL-FEATURE-INTERACTION-MAP-F63F` | `WS-SKILLS` | [`skills/Feature_Interaction_Map.md`](../skills/Feature_Interaction_Map.md) |
 | `DOC-SKILL-FRONTEND-MODERNIZATION-SKILLS-7C4D` | `WS-SKILLS` | [`skills/Frontend_Modernization_Skills.md`](../skills/Frontend_Modernization_Skills.md) |
@@ -156,6 +165,12 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TEN-ROUTES-FCE5` | `WS-TENANCY` | [`tenancy/_analysis/routes.md`](../tenancy/_analysis/routes.md) |
 | `DOC-TEN-SLICE-TEMPLATE-5BE0` | `WS-TENANCY` | [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md) |
 | `DOC-TEN-TABLES-9F18` | `WS-TENANCY` | [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md) |
+| `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md) |
+| `DOC-TODO-02-WALK-IN-STATION-B249` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/02-walk-in-station.md`](../todo/foh-boh-surface-split/02-walk-in-station.md) |
+| `DOC-TODO-03-SALES-MAIN-HISTORY-5253` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/03-sales-main-history.md`](../todo/foh-boh-surface-split/03-sales-main-history.md) |
+| `DOC-TODO-04-INBOUND-HISTORY-DASHBOARD-MODE-7939` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md`](../todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md) |
+| `DOC-TODO-05-NAV-PERMISSION-REDIRECTS-AE24` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/05-nav-permission-redirects.md`](../todo/foh-boh-surface-split/05-nav-permission-redirects.md) |
+| `DOC-TODO-06-WALK-IN-KIOSK-AUTH-F4B9` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md`](../todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md) |
 | `DOC-TODO-AGENTIC-LOOP-EXECUTION-PROMPT-E0EC` | `WS-ALP` | [`todo/agentic-loop-EXECUTION-PROMPT.md`](../todo/agentic-loop-EXECUTION-PROMPT.md) |
 | `DOC-TODO-AGENTIC-LOOP-MASTER-PLAN-C913` | `WS-ALP` | [`todo/agentic-loop-master-plan.md`](../todo/agentic-loop-master-plan.md) |
 | `DOC-TODO-BETA-INTAKE-FUNNEL-PLAN-6D32` | `WS-BETA` | [`todo/beta-intake-funnel-plan.md`](../todo/beta-intake-funnel-plan.md) |
@@ -163,29 +178,47 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-CONNECTIONS-MDX-FORGE-PLAN-2E2B` | `WS-CONN` | [`todo/connections-mdx-forge-plan.md`](../todo/connections-mdx-forge-plan.md) |
 | `DOC-TODO-CONTEXTUAL-MY-DAY-HOME-PLAN-B10C` | `WS-HOME` | [`todo/contextual-my-day-home-plan.md`](../todo/contextual-my-day-home-plan.md) |
 | `DOC-TODO-CYCLEFORGE-SYNC-FROM-USAV-2026-07-10-4707` | `WS-SYNC` | [`todo/cycleforge-sync-from-usav-2026-07-10.md`](../todo/cycleforge-sync-from-usav-2026-07-10.md) |
+| `DOC-TODO-DASHBOARD-MODES-SEARCH-RECEIVING-SHIPPING-10B3` | `WS-TODO-MISC` | [`todo/dashboard-modes-search-receiving-shipping.md`](../todo/dashboard-modes-search-receiving-shipping.md) |
+| `DOC-TODO-DISPLAY-CONVERGENCE-LOG-ABE1` | `WS-TODO-MISC` | [`todo/display-convergence-log.md`](../todo/display-convergence-log.md) |
+| `DOC-TODO-ENTITY-THREADS-CONVERSATION-EXECUTION-PROMPT-46E8` | `WS-TODO-MISC` | [`todo/entity-threads-conversation-EXECUTION-PROMPT.md`](../todo/entity-threads-conversation-EXECUTION-PROMPT.md) |
+| `DOC-TODO-ENTITY-THREADS-CONVERSATION-PLAN-55D2` | `WS-TODO-MISC` | [`todo/entity-threads-conversation-plan.md`](../todo/entity-threads-conversation-plan.md) |
+| `DOC-TODO-FABLE5-DS-PRUNE-ALIGNMENT-PLAN-6A5C` | `WS-TODO-MISC` | [`todo/fable5-ds-prune-alignment-plan.md`](../todo/fable5-ds-prune-alignment-plan.md) |
+| `DOC-TODO-FABLE5-DS-PRUNE-EXECUTION-PROMPT-797D` | `WS-TODO-MISC` | [`todo/fable5-ds-prune-EXECUTION-PROMPT.md`](../todo/fable5-ds-prune-EXECUTION-PROMPT.md) |
 | `DOC-TODO-FBA-SURFACE-SPLIT-PLAN-21E8` | `WS-TODO-MISC` | [`todo/fba-surface-split-plan.md`](../todo/fba-surface-split-plan.md) |
+| `DOC-TODO-FOH-BOH-SURFACE-SPLIT-PLAN-7A2D` | `WS-TODO-MISC` | [`todo/foh-boh-surface-split-plan.md`](../todo/foh-boh-surface-split-plan.md) |
 | `DOC-TODO-GLASS-DESIGN-SYSTEM-776B` | `WS-GLASS` | [`todo/GLASS-DESIGN-SYSTEM.md`](../todo/GLASS-DESIGN-SYSTEM.md) |
 | `DOC-TODO-HIGHEST-ROI-OPS-UI-EXECUTION-PLAN-3D1F` | `WS-ROI` | [`todo/highest-roi-ops-ui-execution-plan.md`](../todo/highest-roi-ops-ui-execution-plan.md) |
 | `DOC-TODO-HOME-OPS-TV-COLLAB-SURFACES-PLAN-2B48` | `WS-TODO-MISC` | [`todo/home-ops-tv-collab-surfaces-plan.md`](../todo/home-ops-tv-collab-surfaces-plan.md) |
 | `DOC-TODO-INTEGRATIONS-OAUTH-CONNECTION-PLAN-281D` | `WS-INT` | [`todo/integrations-oauth-connection-plan.md`](../todo/integrations-oauth-connection-plan.md) |
+| `DOC-TODO-JOURNEY-HOP-EMITTERS-PLAN-B8CE` | `WS-TODO-MISC` | [`todo/journey-hop-emitters-plan.md`](../todo/journey-hop-emitters-plan.md) |
 | `DOC-TODO-NEXTIVA-VOICE-SUPPORT-MODE-PLAN-E13F` | `WS-VOICE` | [`todo/nextiva-voice-support-mode-plan.md`](../todo/nextiva-voice-support-mode-plan.md) |
 | `DOC-TODO-ONBOARDING-FOUNDATIONAL-PLAN-8E4E` | `WS-ONB` | [`todo/onboarding-foundational-plan.md`](../todo/onboarding-foundational-plan.md) |
 | `DOC-TODO-OPS-EVENTS-STATION-WORKFLOW-UNIFICATION-PLAN-2789` | `WS-ENGINE` | [`todo/ops-events-station-workflow-unification-plan.md`](../todo/ops-events-station-workflow-unification-plan.md) |
 | `DOC-TODO-ORG-LOGIN-GATE-EXECUTION-PROMPT-C64B` | `WS-LOGIN` | [`todo/org-login-gate-EXECUTION-PROMPT.md`](../todo/org-login-gate-EXECUTION-PROMPT.md) |
+| `DOC-TODO-PACKER-REVIEW-STATION-PLAN-FCAA` | `WS-TODO-MISC` | [`todo/packer-review-station-plan.md`](../todo/packer-review-station-plan.md) |
 | `DOC-TODO-POLYMORPHIC-RECEIVING-CARTON-EXECUTION-PROMPT-B4CE` | `WS-POLY` | [`todo/polymorphic-receiving-carton-EXECUTION-PROMPT.md`](../todo/polymorphic-receiving-carton-EXECUTION-PROMPT.md) |
 | `DOC-TODO-POLYMORPHIC-TABLES-DATABASE-REFACTOR-PLAN-5AAC` | `WS-POLY` | [`todo/polymorphic-tables-database-refactor-plan.md`](../todo/polymorphic-tables-database-refactor-plan.md) |
 | `DOC-TODO-PRODUCTION-INTEGRATIONS-SYSTEM-PLAN-244D` | `WS-INT` | [`todo/production-integrations-system-plan.md`](../todo/production-integrations-system-plan.md) |
 | `DOC-TODO-README-1DDA` | `WS-PORTFOLIO` | [`todo/README.md`](../todo/README.md) |
+| `DOC-TODO-RECEIVING-CONDITION-SERIAL-UNIFICATION-PLAN-B8F5` | `WS-TODO-MISC` | [`todo/receiving-condition-serial-unification-plan.md`](../todo/receiving-condition-serial-unification-plan.md) |
+| `DOC-TODO-RECEIVING-DOOR-EXCEPTIONS-DECISION-FACTS-PLAN-B550` | `WS-TODO-MISC` | [`todo/receiving-door-exceptions-decision-facts-plan.md`](../todo/receiving-door-exceptions-decision-facts-plan.md) |
+| `DOC-TODO-RECEIVING-INLINE-TICKET-EDITOR-PLAN-A5F0` | `WS-TODO-MISC` | [`todo/receiving-inline-ticket-editor-plan.md`](../todo/receiving-inline-ticket-editor-plan.md) |
+| `DOC-TODO-RECEIVING-SERIAL-IMMEDIATE-DISPLAY-PLAN-8946` | `WS-TODO-MISC` | [`todo/receiving-serial-immediate-display-plan.md`](../todo/receiving-serial-immediate-display-plan.md) |
 | `DOC-TODO-REVERSIBILITY-FIXES-PLAN-41B8` | `WS-INT` | [`todo/reversibility-fixes-plan.md`](../todo/reversibility-fixes-plan.md) |
 | `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` | `WS-SAAS` | [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md) |
 | `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` | `WS-SAAS` | [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md) |
 | `DOC-TODO-SCHEMA-WIDE-POLYMORPHIC-REFACTOR-PLAN-47E1` | `WS-POLY` | [`todo/schema-wide-polymorphic-refactor-plan.md`](../todo/schema-wide-polymorphic-refactor-plan.md) |
+| `DOC-TODO-SEARCH-JOURNEY-HANDOFF-PLAN-C10D` | `WS-TODO-MISC` | [`todo/search-journey-handoff-plan.md`](../todo/search-journey-handoff-plan.md) |
 | `DOC-TODO-SERIAL-LABEL-PAIRING-SPLIT-COMBINE-PLAN-0F7D` | `WS-SERIAL` | [`todo/serial-label-pairing-split-combine-plan.md`](../todo/serial-label-pairing-split-combine-plan.md) |
 | `DOC-TODO-SOURCING-HUB-INTEGRATION-PLAN-ADB6` | `WS-SRC` | [`todo/sourcing-hub-integration-plan.md`](../todo/sourcing-hub-integration-plan.md) |
+| `DOC-TODO-SPACING-TOKEN-LEAKAGE-FIX-PLAN-2FE4` | `WS-TODO-MISC` | [`todo/spacing-token-leakage-fix-plan.md`](../todo/spacing-token-leakage-fix-plan.md) |
 | `DOC-TODO-STUDIO-DRIVEN-OPERATOR-SURFACES-REFACTOR-PLAN-96BF` | `WS-STUDIO` | [`todo/studio-driven-operator-surfaces-refactor-plan.md`](../todo/studio-driven-operator-surfaces-refactor-plan.md) |
 | `DOC-TODO-STUDIO-INTEGRATIONS-MASTER-PLAN-49FD` | `WS-STUDIO` | [`todo/studio-integrations-master-plan.md`](../todo/studio-integrations-master-plan.md) |
 | `DOC-TODO-TECH-SUBSTITUTION-WIRING-PLAN-C0D7` | `WS-SUB` | [`todo/tech-substitution-wiring-plan.md`](../todo/tech-substitution-wiring-plan.md) |
+| `DOC-TODO-TICKET-STN-MANY-LINK-PLAN-1F33` | `WS-TODO-MISC` | [`todo/ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md) |
 | `DOC-TODO-UNBOX-RECEIVE-UX-IMPROVEMENT-PLAN-BA53` | `WS-UNBOX` | [`todo/unbox-receive-ux-improvement-plan.md`](../todo/unbox-receive-ux-improvement-plan.md) |
+| `DOC-TODO-USER-ISSUES-CONSOLE-EXECUTION-PROMPT-5CB0` | `WS-TODO-MISC` | [`todo/user-issues-console-EXECUTION-PROMPT.md`](../todo/user-issues-console-EXECUTION-PROMPT.md) |
+| `DOC-TODO-USER-ISSUES-CONSOLE-PLAN-16C3` | `WS-TODO-MISC` | [`todo/user-issues-console-plan.md`](../todo/user-issues-console-plan.md) |
 | `DOC-TODO-WAREHOUSE-MAP-REACT-FLOW-PLAN-11AB` | `WS-WH` | [`todo/warehouse-map-react-flow-plan.md`](../todo/warehouse-map-react-flow-plan.md) |
 
 ---
@@ -240,6 +273,16 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-DIAG-13-PACKER-STATION-TRACE-0206` — [`diagrams/13-packer-station-trace.md`](../diagrams/13-packer-station-trace.md)
 - `DOC-DIAG-14-FBA-STATION-TRACE-81AB` — [`diagrams/14-fba-station-trace.md`](../diagrams/14-fba-station-trace.md)
 - `DOC-DIAG-README-5821` — [`diagrams/README.md`](../diagrams/README.md)
+
+### `WS-DOCS-MISC` (7)
+
+- `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` — [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md)
+- `DOC-ROOT-MAIN-F33A` — [`agent-log/entries/main.md`](../agent-log/entries/main.md)
+- `DOC-ROOT-README-012D` — [`agent-log/README.md`](../agent-log/README.md)
+- `DOC-ROOT-README-F525` — [`agent-fs/README.md`](../agent-fs/README.md)
+- `DOC-ROOT-README-F6D4` — [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md)
+- `DOC-ROOT-TEMPLATE-205D` — [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md)
+- `DOC-ROOT-VERIFIER-4F0C` — [`agent-fs/contracts/verifier.md`](../agent-fs/contracts/verifier.md)
 
 ### `WS-DS` (2)
 
@@ -361,11 +404,16 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` — [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md)
 - `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` — [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md)
 
-### `WS-SEARCH` (3)
+### `WS-SEARCH` (4)
 
 - `DOC-ROOT-AI-AUTOMATION-OPPORTUNITIES-PLAN-52DE` — [`ai-automation-opportunities-plan.md`](../ai-automation-opportunities-plan.md)
+- `DOC-ROOT-SEARCH-AND-DENSE-UI-REFACTOR-PLAN-3E46` — [`search-and-dense-ui-refactor-plan.md`](../search-and-dense-ui-refactor-plan.md)
 - `DOC-ROOT-UNIFIED-GLOBAL-SEARCH-CONSOLIDATION-PLAN-9E96` — [`unified-global-search-consolidation-plan.md`](../unified-global-search-consolidation-plan.md)
 - `DOC-ROOT-UNIT-EVENT-BACKFILL-PLAN-33B0` — [`unit-event-backfill-plan.md`](../unit-event-backfill-plan.md)
+
+### `WS-SEC` (1)
+
+- `DOC-SEC-KIOSK-DEVICE-LOCKDOWN-B2C2` — [`security/kiosk-device-lockdown.md`](../security/kiosk-device-lockdown.md)
 
 ### `WS-SERIAL` (1)
 
@@ -438,10 +486,34 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (2)
+### `WS-TODO-MISC` (26)
 
+- `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
+- `DOC-TODO-02-WALK-IN-STATION-B249` — [`todo/foh-boh-surface-split/02-walk-in-station.md`](../todo/foh-boh-surface-split/02-walk-in-station.md)
+- `DOC-TODO-03-SALES-MAIN-HISTORY-5253` — [`todo/foh-boh-surface-split/03-sales-main-history.md`](../todo/foh-boh-surface-split/03-sales-main-history.md)
+- `DOC-TODO-04-INBOUND-HISTORY-DASHBOARD-MODE-7939` — [`todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md`](../todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md)
+- `DOC-TODO-05-NAV-PERMISSION-REDIRECTS-AE24` — [`todo/foh-boh-surface-split/05-nav-permission-redirects.md`](../todo/foh-boh-surface-split/05-nav-permission-redirects.md)
+- `DOC-TODO-06-WALK-IN-KIOSK-AUTH-F4B9` — [`todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md`](../todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md)
+- `DOC-TODO-DASHBOARD-MODES-SEARCH-RECEIVING-SHIPPING-10B3` — [`todo/dashboard-modes-search-receiving-shipping.md`](../todo/dashboard-modes-search-receiving-shipping.md)
+- `DOC-TODO-DISPLAY-CONVERGENCE-LOG-ABE1` — [`todo/display-convergence-log.md`](../todo/display-convergence-log.md)
+- `DOC-TODO-ENTITY-THREADS-CONVERSATION-EXECUTION-PROMPT-46E8` — [`todo/entity-threads-conversation-EXECUTION-PROMPT.md`](../todo/entity-threads-conversation-EXECUTION-PROMPT.md)
+- `DOC-TODO-ENTITY-THREADS-CONVERSATION-PLAN-55D2` — [`todo/entity-threads-conversation-plan.md`](../todo/entity-threads-conversation-plan.md)
+- `DOC-TODO-FABLE5-DS-PRUNE-ALIGNMENT-PLAN-6A5C` — [`todo/fable5-ds-prune-alignment-plan.md`](../todo/fable5-ds-prune-alignment-plan.md)
+- `DOC-TODO-FABLE5-DS-PRUNE-EXECUTION-PROMPT-797D` — [`todo/fable5-ds-prune-EXECUTION-PROMPT.md`](../todo/fable5-ds-prune-EXECUTION-PROMPT.md)
 - `DOC-TODO-FBA-SURFACE-SPLIT-PLAN-21E8` — [`todo/fba-surface-split-plan.md`](../todo/fba-surface-split-plan.md)
+- `DOC-TODO-FOH-BOH-SURFACE-SPLIT-PLAN-7A2D` — [`todo/foh-boh-surface-split-plan.md`](../todo/foh-boh-surface-split-plan.md)
 - `DOC-TODO-HOME-OPS-TV-COLLAB-SURFACES-PLAN-2B48` — [`todo/home-ops-tv-collab-surfaces-plan.md`](../todo/home-ops-tv-collab-surfaces-plan.md)
+- `DOC-TODO-JOURNEY-HOP-EMITTERS-PLAN-B8CE` — [`todo/journey-hop-emitters-plan.md`](../todo/journey-hop-emitters-plan.md)
+- `DOC-TODO-PACKER-REVIEW-STATION-PLAN-FCAA` — [`todo/packer-review-station-plan.md`](../todo/packer-review-station-plan.md)
+- `DOC-TODO-RECEIVING-CONDITION-SERIAL-UNIFICATION-PLAN-B8F5` — [`todo/receiving-condition-serial-unification-plan.md`](../todo/receiving-condition-serial-unification-plan.md)
+- `DOC-TODO-RECEIVING-DOOR-EXCEPTIONS-DECISION-FACTS-PLAN-B550` — [`todo/receiving-door-exceptions-decision-facts-plan.md`](../todo/receiving-door-exceptions-decision-facts-plan.md)
+- `DOC-TODO-RECEIVING-INLINE-TICKET-EDITOR-PLAN-A5F0` — [`todo/receiving-inline-ticket-editor-plan.md`](../todo/receiving-inline-ticket-editor-plan.md)
+- `DOC-TODO-RECEIVING-SERIAL-IMMEDIATE-DISPLAY-PLAN-8946` — [`todo/receiving-serial-immediate-display-plan.md`](../todo/receiving-serial-immediate-display-plan.md)
+- `DOC-TODO-SEARCH-JOURNEY-HANDOFF-PLAN-C10D` — [`todo/search-journey-handoff-plan.md`](../todo/search-journey-handoff-plan.md)
+- `DOC-TODO-SPACING-TOKEN-LEAKAGE-FIX-PLAN-2FE4` — [`todo/spacing-token-leakage-fix-plan.md`](../todo/spacing-token-leakage-fix-plan.md)
+- `DOC-TODO-TICKET-STN-MANY-LINK-PLAN-1F33` — [`todo/ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md)
+- `DOC-TODO-USER-ISSUES-CONSOLE-EXECUTION-PROMPT-5CB0` — [`todo/user-issues-console-EXECUTION-PROMPT.md`](../todo/user-issues-console-EXECUTION-PROMPT.md)
+- `DOC-TODO-USER-ISSUES-CONSOLE-PLAN-16C3` — [`todo/user-issues-console-plan.md`](../todo/user-issues-console-plan.md)
 
 ### `WS-UNBOX` (1)
 

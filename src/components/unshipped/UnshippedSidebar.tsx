@@ -13,6 +13,7 @@ import { ShippedFilterDropdown } from '@/components/shipping/shipped-filter/Ship
 import { motion } from 'framer-motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSidebarScope';
+import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
 interface UnshippedSidebarProps {
   showIntakeForm?: boolean;
@@ -47,7 +48,7 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     const q = searchValue.trim() || searchParams.get('search')?.trim();
     if (q) params.set('q', q);
     const qs = params.toString();
-    router.replace(qs ? `/outbound?${qs}` : '/outbound', { scroll: false });
+    router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
   }, [stageParam, searchValue, searchParams, router]);
 
   if (showIntakeForm) {

@@ -38,7 +38,7 @@ export interface FbaParamPatch {
 
 /**
  * URL-driven workspace state: the active FBA sub-mode (`fbaMode`), the refresh
- * token, and the shipped-search box. Writes always land on `/outbound?mode=fba`
+ * token, and the shipped-search box. Writes always land on `/shipping?mode=fba`
  * so FBA stays nested under Outbound (surface split).
  */
 export function useFbaWorkspaceUrlState() {

@@ -65,9 +65,12 @@ test('resolveTerminalKind: unbox tabs each resolve to a distinct kind', () => {
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'support' }), 'support');
 });
 
-test('resolveTerminalKind: triage (no tabs) → mode-default', () => {
+test('resolveTerminalKind: triage tabs → mode-default', () => {
   assert.equal(resolveTerminalKind({ mode: 'triage', tabId: null }), 'mode-default');
   assert.equal(resolveTerminalKind({ mode: 'triage' }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'triage', tabId: 'overview' }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'triage', tabId: 'staging' }), 'mode-default');
+  assert.equal(resolveTerminalKind({ mode: 'triage', tabId: 'pairing' }), 'mode-default');
 });
 
 test('resolveTerminalKind: testing tabs → mode-default / ticket; timeline hides dock', () => {

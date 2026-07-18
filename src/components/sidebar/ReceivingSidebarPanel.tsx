@@ -73,7 +73,7 @@ export function ReceivingSidebarPanel() {
   const orgId = user?.organizationId;
   const staffIdNum = user?.staffId ?? 0;
   const staffId = String(staffIdNum);
-  const { theme: themeColor, inputBorder } = useStationTheme({ staffId: staffIdNum });
+  const { theme: themeColor } = useStationTheme({ staffId: staffIdNum });
 
   // ── Realtime channels + photo-request publisher ──────────────────────────
   const { getClient: getAblyClient } = useAblyClient();
@@ -280,7 +280,7 @@ export function ReceivingSidebarPanel() {
                   setTriageQuery('');
                 }}
                 inputRef={scanInputRef}
-                inputBorderClassName={inputBorder}
+                staffId={staffId}
                 // Triage no longer spins the scan bar either — its loading state
                 // is the right-pane TriageWorkspaceSkeleton (surface-tagged),
                 // matching Unbox. Each mode shows its own skeleton, never a

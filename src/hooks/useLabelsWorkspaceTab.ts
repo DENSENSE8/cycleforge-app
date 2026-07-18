@@ -7,10 +7,10 @@ import {
   normalizeLabelsWorkspaceTabParams,
   type LabelsWorkspaceTab,
 } from '@/utils/labels-workspace-state';
-import { OUTBOUND_PATH } from '@/components/outbound/outbound-sidebar-shared';
+import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
 /**
- * URL SoT for Labels-station workspace tabs on `/outbound` (`?ltab=`).
+ * URL SoT for Labels-station workspace tabs on `/shipping` (`?ltab=`).
  * Does not touch the sidebar `?mode=` (Labels / Ready / FBA / Scan-out).
  */
 export function useLabelsWorkspaceTab() {
@@ -25,7 +25,7 @@ export function useLabelsWorkspaceTab() {
       const params = new URLSearchParams(searchParams.toString());
       normalizeLabelsWorkspaceTabParams(params, nextTab);
       const qs = params.toString();
-      const base = pathname || OUTBOUND_PATH;
+      const base = pathname || SHIPPING_PATH;
       router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
     },
     [pathname, router, searchParams],

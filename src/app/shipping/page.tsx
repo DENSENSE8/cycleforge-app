@@ -9,15 +9,17 @@ import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 
-function OutboundPageContent() {
+/**
+ * `/shipping` — the Shipping operator surface (canonical route).
+ * Sidebar label + `shipping.view` permission + address bar all say shipping.
+ * Legacy `/outbound` is a permanent redirect only (no page remains).
+ *
+ * Surface key stays `outbound` for composition / Studio stability (same pattern
+ * as Packing: route `/pack`, panel id `packer`).
+ */
+function ShippingPageContent() {
   useRealtimeInvalidation({ dashboard: true });
 
-  // Wrapped in `SurfaceGate surfaceKey="outbound"` (operator-surfaces refactor
-  // Phase 9): when the org publishes a composition AND enables the
-  // `surface_composed_render` flag, the data-driven `SurfaceRenderer` renders;
-  // otherwise this proven legacy tree renders unchanged (the safe default).
-  // RightPaneOverlayHost pins Order Sync (and future pane overlays) over the
-  // workspace column — same pattern as ReceivingRightPane / TechDashboard.
   return (
     <SurfaceGate surfaceKey="outbound">
       <div className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
@@ -34,7 +36,7 @@ function OutboundPageContent() {
   );
 }
 
-export default function OutboundPage() {
+export default function ShippingPage() {
   return (
     <Suspense
       fallback={(
@@ -43,7 +45,7 @@ export default function OutboundPage() {
         </div>
       )}
     >
-      <OutboundPageContent />
+      <ShippingPageContent />
     </Suspense>
   );
 }

@@ -3,17 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera } from '@/components/Icons';
-import { StationScanBar } from '@/components/station/StationScanBar';
+import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStationTheme } from '@/hooks/useStationTheme';
 
 /**
- * Mobile scan surface. The input bar IS the canonical desktop {@link StationScanBar}
- * (compact `py-1.5 text-xs` chrome) — we do NOT hand-roll a separate mobile input
- * anymore. The only mobile-specific addition is a small camera toggle tucked into
- * the bar's `rightContent`, which drives the ZXing viewfinder below via
+ * Mobile scan surface. The input bar IS the canonical desktop
+ * {@link ThemedStationScanBar} — we do NOT hand-roll a separate mobile input.
+ * The only mobile-specific addition is a small camera toggle tucked into the
+ * bar's `rightContent`, which drives the ZXing viewfinder below via
  * {@link useBarcodeScanner}.
  *
  * Self-manages its own camera + manual-input state and emits decoded values via
@@ -43,11 +42,7 @@ export function ScanInput({
   const [cameraActive, setCameraActive] = useState(false);
   const [input, setInput] = useState('');
   const scanner = useBarcodeScanner({ dedupMs: 2000 });
-
-  // Same staff-color border as the desktop stations — the StationScanBar's
-  // outer stroke is themed to the logged-in operator via useStationTheme.
   const { user } = useAuth();
-  const { inputBorder } = useStationTheme({ staffId: user?.staffId ?? null });
 
   // Keep the latest onDecode without re-running the decode effect (which is
   // keyed strictly off lastScannedValue — see UniversalScan's race note).
@@ -86,14 +81,14 @@ export function ScanInput({
 
   return (
     <div className="flex flex-col gap-2">
-      <StationScanBar
+      <ThemedStationScanBar
         value={input}
         onChange={setInput}
         onSubmit={() => submit(input)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        inputBorderClassName={inputBorder}
-        inputClassName="!pr-11"
+        staffId={user?.staffId}
+        rightPadClass="pr-11"
         rightContent={
           <HoverTooltip label={cameraActive ? 'Close camera' : 'Scan with camera'} asChild>
             <button

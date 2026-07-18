@@ -2,12 +2,14 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
 import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
+import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import type { OutboundSort } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
@@ -27,14 +29,36 @@ export function LabelsQueueTable({
   onCloseOrder,
   hideHeader = false,
 }: LabelsQueueTableProps) {
+  const searchParams = useSearchParams();
   const query = useQuery(awaitingLabelsQuery({ searchQuery, sort }));
   // Grow-mode inside a DashboardScrollShell (one scroll port, KPI scrolls away);
   // self-scroll boxed otherwise. Mirrors PackedOrdersTable.
   const dashboardScrollRef = useDashboardScrollParentOptional();
   const pageScroll = Boolean(dashboardScrollRef);
 
+  // Same URL waist as Dashboard · To Ship / Shipping · Pending
+  // (`?ustatus` + `?attention` → Urgent).
+  const statusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as
+    | FulfillmentState
+    | '';
+  const urgentOnly =
+    searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
+
   const records = useMemo(() => {
-    const rows = [...(query.data ?? [])];
+    const rows = [...(query.data ?? [])].filter((r) => {
+      const row = r as ShippedOrder & {
+        has_tech_scan?: boolean;
+        out_of_stock?: string | null;
+        is_urgent?: boolean;
+      };
+      const state = deriveFulfillmentState({
+        hasTechScan: Boolean(row.has_tech_scan),
+        outOfStock: row.out_of_stock,
+      });
+      if (statusFilter && state !== statusFilter) return false;
+      if (urgentOnly && !row.is_urgent) return false;
+      return true;
+    });
     if (sort === 'newest') {
       rows.sort((a, b) => {
         const aTs = Date.parse(String(a.created_at || '')) || 0;
@@ -52,7 +76,7 @@ export function LabelsQueueTable({
       return aTs - bTs;
     });
     return rows;
-  }, [query.data, sort]);
+  }, [query.data, sort, statusFilter, urgentOnly]);
 
   const awaitingOrderIds = records.map((r) => Number(r.id));
 

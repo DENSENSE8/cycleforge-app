@@ -23,6 +23,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-GLASS | `GLASS-DESIGN-SYSTEM.md` |
 | WS-HOME | `contextual-my-day-home-plan.md`, **`home-ops-tv-collab-surfaces-plan.md`** (Home triage/collab · Ops TV · Forge on Home) |
 | WS-INT | `integrations-oauth-connection-plan.md`, `production-integrations-system-plan.md`, `reversibility-fixes-plan.md` |
+| WS-JOURNEY | `search-journey-handoff-plan.md` (main: ⌘K → Trace handoff + dim=unit + units journey mount), `journey-hop-emitters-plan.md` (parked, own lane: bin/ship/ticket/RMA hop completeness) |
 | WS-LOGIN | `org-login-gate-EXECUTION-PROMPT.md` |
 | WS-ONB | `onboarding-foundational-plan.md` |
 | WS-POLY | `schema-wide-polymorphic-refactor-plan.md`, `polymorphic-tables-database-refactor-plan.md`, `polymorphic-receiving-carton-EXECUTION-PROMPT.md` |

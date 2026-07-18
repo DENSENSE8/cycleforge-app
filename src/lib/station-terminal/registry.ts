@@ -22,9 +22,13 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
     },
   },
   triage: {
-    hasSectionTabs: false,
+    hasSectionTabs: true,
     defaultKind: 'mode-default',
-    tabs: {},
+    tabs: {
+      overview: 'mode-default',
+      staging: 'mode-default',
+      pairing: 'mode-default',
+    },
   },
   testing: {
     hasSectionTabs: true,

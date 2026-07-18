@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
+import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS, isEmptyMetaDash, orderRowConditionLabel } from '@/lib/conditions';
+import { orderRowConditionTone } from '@/lib/condition-tone';
 
 /**
  * Dashboard / queue / receiving order-row title + meta subrow.
@@ -26,8 +28,10 @@ import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColu
  *     never drift the way a content-width flow does.
  *
  * Typography — CF Type roles (search-and-dense-ui plan §2.4):
- *     title → text-role-data font-semibold text-text-default (role-caption when `small`)
- *     meta  → text-role-eyebrow uppercase text-text-soft (role bakes 600 + tracking)
+ *     title → text-role-data text-text-default (role-caption when `small`;
+ *             role bakes weight 500 — do not stack font-semibold/bold)
+ *     meta  → text-role-eyebrow uppercase text-text-muted (role bakes 600 + tracking;
+ *             muted — not soft/faint — so qty/condition stay scannable at ops density)
  *
  * INVARIANTS:
  *   • RowMetaColumns `indent` MUST equal the RowTitle `dotTrack` width
@@ -85,15 +89,15 @@ export const META_COL = {
  * rows vertically scannable when optional facts (price, days late) vary by row.
  */
 export const META_REST_COL = {
-  /** In-lane age compact label (<1m … 999d). */
-  laneAge: 'w-[1.5rem]',
+  /** In-lane age compact label (<1m … 999d) — sized for mono tabular digits. */
+  laneAge: 'w-[2rem]',
   /** Single tester or packer initials slot (2 chars or `--`). */
   staff: 'w-[1.25rem] justify-center',
   /** Stage stamp (12:16 PM / 3m ago). */
   stageTime: 'w-[4.5rem]',
 } as const;
 
-/** Fixed-width meta fact cell — renders muted `--` when empty and `reserve` is true. */
+/** Fixed-width meta fact cell — renders muted centered `--` when empty and `reserve` is true. */
 export function MetaFactSlot({
   width,
   children,
@@ -110,6 +114,7 @@ export function MetaFactSlot({
     <span
       className={cn(
         'inline-flex shrink-0 items-center tabular-nums normal-case tracking-normal',
+        !hasContent && reserve && 'justify-center',
         width,
         className,
       )}
@@ -117,10 +122,35 @@ export function MetaFactSlot({
       {hasContent ? (
         children
       ) : reserve ? (
-        <span className="text-text-faint" aria-hidden>
-          --
+        <span className="text-text-muted" aria-hidden>
+          {EMPTY_META_DASH}
         </span>
       ) : null}
+    </span>
+  );
+}
+
+/**
+ * Condition fact for order/queue/station meta rows. Empty values render the
+ * house `--` centered in the fixed condition track; real labels stay start-aligned.
+ */
+export function RowConditionMeta({
+  condition,
+  className,
+}: {
+  condition: string | null | undefined;
+  className?: string;
+}) {
+  const label = orderRowConditionLabel(condition);
+  return (
+    <span
+      className={cn(
+        orderRowConditionTone(condition),
+        isEmptyMetaDash(label) && EMPTY_META_DASH_ALIGN_CLASS,
+        className,
+      )}
+    >
+      {label}
     </span>
   );
 }
@@ -167,7 +197,9 @@ export function RowTitle({
       </span>
       <div
         className={cn(
-          'truncate font-semibold text-text-default',
+          // Role utilities already bake weight (500); avoid stacking semibold —
+          // at dense sizes extra weight blooms and fights IBM Plex’s clarity.
+          'truncate text-text-default',
           small ? 'text-role-caption' : 'text-role-data',
           titleClassName,
         )}
@@ -239,13 +271,21 @@ export function RowMetaColumns({
   return (
     <div
       className={cn(
-        'mt-0.5 grid min-w-0 items-center gap-x-1 text-role-eyebrow uppercase text-text-soft',
+        'mt-0.5 grid min-w-0 items-center gap-x-1 text-role-eyebrow uppercase text-text-muted',
         className,
       )}
       style={{ paddingLeft: indent, gridTemplateColumns: tracks.join(' ') }}
     >
-      {showQty ? <span data-col="qty" className="truncate">{qty}</span> : null}
-      {showCondition ? <span data-col="condition" className="truncate">{condition}</span> : null}
+      {showQty ? (
+        <span data-col="qty" className="truncate font-mono tabular-nums normal-case tracking-normal">
+          {qty}
+        </span>
+      ) : null}
+      {showCondition ? (
+        <span data-col="condition" className="min-w-0 truncate">
+          {condition}
+        </span>
+      ) : null}
       {showRest ? (
         <span data-col="rest" className="flex min-w-0 items-center gap-1 truncate">{rest}</span>
       ) : null}

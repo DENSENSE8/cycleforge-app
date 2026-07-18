@@ -529,13 +529,26 @@ export function formatLaneAgeCompact(
   return `${days}d`;
 }
 
-/** Tone for lane-age chips — older ages get hotter. */
+/** Tone for lane-age chips — older ages get hotter; fresh ages stay muted (readable, not urgent). */
 export function getLaneAgeTone(hoursApprox: number | null): string {
-  if (hoursApprox == null) return 'text-text-faint';
+  if (hoursApprox == null) return 'text-text-muted';
   if (hoursApprox >= 48) return 'text-red-600';
   if (hoursApprox >= 24) return 'text-amber-600';
   if (hoursApprox >= 8) return 'text-yellow-700';
-  return 'text-text-faint';
+  return 'text-text-muted';
+}
+
+/**
+ * Lane age beside a days-late fact: prefer omitting lane age in the row
+ * (`showLaneAge = label && daysLate == null`). Kept for callers that still
+ * render both and need a quiet secondary tone.
+ */
+export function getLaneAgeToneBesideDeadline(
+  hoursApprox: number | null,
+  daysLate: number | null,
+): string {
+  if (daysLate != null) return 'text-text-muted';
+  return getLaneAgeTone(hoursApprox);
 }
 
 /** Elapsed hours for tone helpers (null when unparseable). */

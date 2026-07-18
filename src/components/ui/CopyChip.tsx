@@ -118,6 +118,13 @@ export const CHIP_TONES = {
     iconClass: 'text-orange-500',
     dot: 'bg-orange-500',
   },
+  bin: {
+    // Bin / location barcode — Tags glyph, teal family (distinct from tracking MapPin).
+    icon: <Tags className="h-4 w-4 shrink-0" />,
+    underline: 'border-teal-500',
+    iconClass: 'inline-flex items-center justify-center text-teal-600',
+    dot: 'bg-teal-500',
+  },
   price: {
     icon: <DollarSign className="h-4 w-4 shrink-0" />,
     underline: 'border-emerald-500',
@@ -675,6 +682,25 @@ export const TrackingCountChip = ({ count, dense }: { count: number; dense?: boo
 
 export const TicketChip = ({ value, display }: { value: string; display: string }) => (
   <CopyChip value={value} display={display} tone="ticket" />
+);
+
+/** Bin / location barcode chip (teal / Tags). Prefer last-4 display for long barcodes. */
+export const BinChip = ({
+  value,
+  display,
+  dense,
+}: {
+  value: string;
+  display?: string;
+  dense?: boolean;
+}) => (
+  <CopyChip
+    value={value}
+    display={display ?? getLast4(value)}
+    tone="bin"
+    dense={dense}
+    width="w-fit max-w-full"
+  />
 );
 
 /**

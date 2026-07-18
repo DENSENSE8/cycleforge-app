@@ -25,6 +25,7 @@ import {
   META_COL,
   META_REST_COL,
   MetaFactSlot,
+  RowConditionMeta,
 } from '@/components/ui/RowMetaColumns';
 import {
   getOrderPlatformColor,
@@ -44,6 +45,7 @@ import {
 import { isSkuSourceRecord } from '@/utils/source-dot';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { dashboardOrderRowShellClass } from '@/lib/dashboard-order-row-layout';
+import { orderRowQtyTone } from '@/lib/condition-tone';
 import { formatSalePrice, type OrdersQueueMode, type QueueRowRecord, type RowStatusMeta } from './helpers';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -309,8 +311,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const hasTester = testerDisplay && testerDisplay !== '---';
   const hasPacker = packerDisplay && packerDisplay !== '---';
   // Packed (staged) rows always show tester + packer slots so initials stay
-  // column-aligned; StaffInitials renders "--" when unassigned. Other queues
-  // hide the cluster entirely when neither role is set yet.
+  // column-aligned; StaffInitials renders "--" when unassigned. Fulfillment
+  // queues (Pending/Tested/Blocked) only render roles that are actually set —
+  // Tested must not show a ghost packer "--".
   const showStaffCluster = queueMode === 'staged' || hasTester || hasPacker;
   const hasNotes = notesValue.trim().length > 0;
   // "done" dot, shown only once the timestamp is stamped.
@@ -334,6 +337,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     packedAt || (hasTester ? testedAt : null) || record.created_at || record.deadline_at || null;
   const laneAgeLabel = formatLaneAgeCompact(laneAgeSource);
   const laneAgeHours = getLaneAgeHours(laneAgeSource);
+  // Deadline lateness owns the urgency slot — omit lane age when days-late is
+  // present so the meta subrow does not show two aging numbers (`38` + `37d`).
+  const showLaneAge = Boolean(laneAgeLabel) && daysLate === null;
   const { classes: densityClasses } = useTableDensity();
   const isStagedRow = queueMode === 'staged';
 
@@ -525,12 +531,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           // Select mode adds a leading checkbox (w-4 + mr-2 = 1.5rem); shift the
           // meta indent by that same offset so qty stays under the title.
           indent={selectMode ? `calc(${META_COL.indent} + 1.5rem)` : undefined}
-          qty={<span className={qty > 1 ? 'text-text-warning' : 'text-text-soft'}>{qty}</span>}
-          condition={
-            <span className={String(record.condition || '').trim().toLowerCase() === 'new' ? 'text-text-warning' : 'text-text-faint'}>
-              {record.condition || 'N/A'}
-            </span>
-          }
+          qty={<span className={orderRowQtyTone(qty)}>{qty}</span>}
+          condition={<RowConditionMeta condition={record.condition} />}
           // Meta `rest` = fact-only slots (never ghost "---" placeholders).
           // Order is stable so columns scan vertically across rows:
           //   price → daysLate → staff (assigned only) → flags (notes | OOS) → LBL
@@ -547,30 +549,38 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 <span className="normal-case tracking-normal text-text-success">{salePrice}</span>
               ) : null}
               {daysLate !== null ? (
-                <HoverTooltip label={`${daysLate} day${daysLate === 1 ? '' : 's'} late`} focusable={false}>
-                  <span className={cn('tabular-nums', getDaysLateTone(daysLate), densityClasses.metaText)}>
+                <HoverTooltip
+                  label={`${daysLate} day${daysLate === 1 ? '' : 's'} late${
+                    laneAgeLabel ? ` · in lane ${laneAgeLabel}` : ''
+                  }`}
+                  focusable={false}
+                >
+                  <span
+                    className={cn(
+                      'font-mono tabular-nums normal-case tracking-normal',
+                      getDaysLateTone(daysLate),
+                      densityClasses.metaText,
+                    )}
+                  >
                     {daysLate}
                   </span>
                 </HoverTooltip>
               ) : null}
               {queueMode === 'staged' ? (
                 <span className="inline-flex items-center gap-0.5 normal-case tracking-normal">
-                  <MetaFactSlot
-                    width={META_REST_COL.laneAge}
-                    className={cn(
-                      densityClasses.metaText,
-                      laneAgeLabel ? getLaneAgeTone(laneAgeHours) : undefined,
-                    )}
-                  >
-                    {laneAgeLabel ? (
+                  {showLaneAge ? (
+                    <MetaFactSlot
+                      width={META_REST_COL.laneAge}
+                      className={cn('font-mono', densityClasses.metaText, getLaneAgeTone(laneAgeHours))}
+                    >
                       <HoverTooltip
                         label={`In lane ${laneAgeLabel}${stageTimeLabel ? ` · last ${stageTimeLabel.toLowerCase()}` : ''}`}
                         focusable={false}
                       >
                         <span>{laneAgeLabel}</span>
                       </HoverTooltip>
-                    ) : null}
-                  </MetaFactSlot>
+                    </MetaFactSlot>
+                  ) : null}
                   <MetaFactSlot width={META_REST_COL.staff}>
                     {hasTester ? (
                       <HoverTooltip label={`Tested by ${testerDisplay}`} focusable={false}>
@@ -593,14 +603,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 </span>
               ) : (
                 <>
-                  {laneAgeLabel ? (
+                  {showLaneAge ? (
                     <HoverTooltip
                       label={`In lane ${laneAgeLabel}${stageTimeLabel ? ` · last ${stageTimeLabel.toLowerCase()}` : ''}`}
                       focusable={false}
                     >
                       <span
                         className={cn(
-                          'tabular-nums normal-case tracking-normal',
+                          'font-mono tabular-nums normal-case tracking-normal',
                           getLaneAgeTone(laneAgeHours),
                           densityClasses.metaText,
                         )}
@@ -615,16 +625,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                         <HoverTooltip label={`Tested by ${testerDisplay}`} focusable={false}>
                           <StaffInitials staffId={testerId} name={testerDisplay} />
                         </HoverTooltip>
-                      ) : (
-                        <StaffInitials staffId={testerId} name={testerDisplay} />
-                      )}
+                      ) : null}
                       {hasPacker ? (
                         <HoverTooltip label={`Packed by ${packerDisplay}`} focusable={false}>
                           <StaffInitials staffId={packerId} name={packerDisplay} />
                         </HoverTooltip>
-                      ) : (
-                        <StaffInitials staffId={packerId} name={packerDisplay} />
-                      )}
+                      ) : null}
                     </span>
                   ) : null}
                   {stageTimeAndFlagsNode}

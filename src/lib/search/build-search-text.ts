@@ -45,6 +45,11 @@ export interface SearchDocFacets {
   trackingNumber: string | null;
   /** Carrier name (order/receiving) — the tracking chip's leading label. */
   carrier: string | null;
+  /**
+   * Full serial string (SERIAL_UNIT / REPAIR) — journey handoff key for
+   * `/operations?mode=history&dim=serial` without a second fetch.
+   */
+  serialNumber: string | null;
   happenedAt: Date | null;
 }
 
@@ -130,6 +135,7 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       sourcePlatform: strOrNull(row.account_source),
       trackingNumber: strOrNull(row.tracking_number),
       carrier: strOrNull(row.carrier),
+      serialNumber: null,
       happenedAt: dateOrNull(row.order_date, row.created_at),
     },
   };
@@ -164,6 +170,7 @@ function buildSerialUnitDoc(row: SearchSourceRow): BuiltSearchDoc {
       sourcePlatform: null,
       trackingNumber: strOrNull(row.shipping_tracking_number),
       carrier: null,
+      serialNumber: strOrNull(row.serial_number),
       happenedAt: dateOrNull(row.received_at, row.created_at),
     },
   };
@@ -201,6 +208,7 @@ function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
       sourcePlatform: strOrNull(row.source_platform),
       trackingNumber: strOrNull(row.tracking_number),
       carrier: strOrNull(row.carrier),
+      serialNumber: null,
       happenedAt: dateOrNull(row.received_at, row.created_at),
     },
   };
@@ -232,6 +240,7 @@ function buildSkuDoc(row: SearchSourceRow): BuiltSearchDoc {
       sourcePlatform: null,
       trackingNumber: null,
       carrier: null,
+      serialNumber: null,
       happenedAt: dateOrNull(row.updated_at, row.created_at),
     },
   };
@@ -265,6 +274,7 @@ function buildRepairDoc(row: SearchSourceRow): BuiltSearchDoc {
       sourcePlatform: strOrNull(row.source_system),
       trackingNumber: null,
       carrier: null,
+      serialNumber: strOrNull(row.serial_number),
       happenedAt: dateOrNull(row.received_at, row.created_at),
     },
   };
@@ -298,6 +308,7 @@ function buildFbaDoc(row: SearchSourceRow): BuiltSearchDoc {
       sourcePlatform: 'fba',
       trackingNumber: null,
       carrier: null,
+      serialNumber: null,
       happenedAt: dateOrNull(row.shipped_at, row.due_date, row.created_at),
     },
   };

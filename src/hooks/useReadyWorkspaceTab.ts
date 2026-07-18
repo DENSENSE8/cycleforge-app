@@ -7,6 +7,7 @@ import {
   normalizeReadyWorkspaceTabParams,
   type ReadyWorkspaceTab,
 } from '@/utils/ready-workspace-state';
+import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
 /** URL SoT for Ready workbench facets nested under `?mode=ready`. */
 export function useReadyWorkspaceTab() {
@@ -20,7 +21,7 @@ export function useReadyWorkspaceTab() {
       const params = new URLSearchParams(searchParams.toString());
       normalizeReadyWorkspaceTabParams(params, nextTab);
       const qs = params.toString();
-      const base = pathname || '/outbound';
+      const base = pathname || SHIPPING_PATH;
       router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
     },
     [pathname, router, searchParams],

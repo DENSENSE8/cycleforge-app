@@ -53,6 +53,7 @@ const DIM_LABEL: Record<JourneyDimension, string> = {
   order: 'Order',
   serial: 'Serial',
   tracking: 'Tracking',
+  unit: 'Unit',
 };
 
 const FOCUSED_TOGGLE_OPTIONS: ReadonlyArray<{
@@ -67,7 +68,7 @@ const FOCUSED_TOGGLE_OPTIONS: ReadonlyArray<{
 function RecordChip({ dim, value }: { dim: JourneyDimension; value: string }) {
   const v = value.trim();
   if (!v) return null;
-  if (dim === 'serial')
+  if (dim === 'serial' || dim === 'unit')
     return <SerialChip value={v} display={getLast4(v)} width="w-auto" dense />;
   if (dim === 'tracking')
     return <TrackingChip value={v} display={getLast4(v)} dense />;
@@ -162,7 +163,7 @@ export function OperationsHistoryView() {
   // A serial trace → its serial unit; otherwise the record's order.
   const relSignal = useMemo((): { entityType: SurfaceEntityType; entityId: number } | null => {
     if (!focused || !entity) return null;
-    if (url.dim === 'serial' && entity.serialUnitIds[0]) {
+    if ((url.dim === 'serial' || url.dim === 'unit') && entity.serialUnitIds[0]) {
       return { entityType: 'SERIAL_UNIT', entityId: entity.serialUnitIds[0] };
     }
     if (entity.orderId) return { entityType: 'ORDER', entityId: entity.orderId };
@@ -191,7 +192,14 @@ export function OperationsHistoryView() {
               <div className="mt-1 flex items-center gap-1.5">
                 {focused ? (
                   <>
-                    <RecordChip dim={url.dim} value={url.entityValue} />
+                    <RecordChip
+                      dim={url.dim === 'unit' ? 'serial' : url.dim}
+                      value={
+                        url.dim === 'unit' && entity?.serials[0]
+                          ? entity.serials[0]
+                          : url.entityValue
+                      }
+                    />
                     <Button
                       variant="ghost"
                       size="sm"

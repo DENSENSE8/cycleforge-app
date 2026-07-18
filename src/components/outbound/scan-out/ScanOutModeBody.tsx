@@ -17,7 +17,6 @@ export function ScanOutModeBody() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stagedQuery = useQuery(stagedOrdersQuery({ searchQuery: q }));
-  const queueCount = stagedQuery.data?.length ?? 0;
 
   useEffect(() => {
     setSearchInput(q);
@@ -60,23 +59,20 @@ export function ScanOutModeBody() {
         </div>
       }
       headerBelow={
-        <div className={`${SIDEBAR_GUTTER} space-y-2 pb-1`}>
+        <div className={`${SIDEBAR_GUTTER} pb-1`}>
+          {/* Count lives on the “At dock” chip — no second ready-to-scan headline. */}
           <OutboundDockStatusLegend />
-          <p className="text-role-eyebrow font-bold uppercase tracking-widest text-emerald-600">
-            {queueCount} package{queueCount === 1 ? '' : 's'} ready to scan out
-          </p>
         </div>
       }
       bodyClassName="flex min-h-0 flex-1 flex-col"
       footer={
-        <div className={`${SIDEBAR_GUTTER} border-t border-border-hairline bg-surface-card pb-4 pt-3`}>
+        <div className="border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <ScanOutStationBar autoFocus />
         </div>
       }
     >
-      <div className={`${SIDEBAR_GUTTER} text-sm text-text-soft`}>
-        Scan a label below to ship out, or pick a staged package from the queue.
-      </div>
+      {/* Empty scroll body — shell flex-1 keeps the dock bar pinned to the bottom. */}
+      <div aria-hidden className="min-h-0 flex-1" />
     </SidebarShell>
   );
 }

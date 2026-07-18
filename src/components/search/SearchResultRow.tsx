@@ -27,12 +27,15 @@
  * on an exact hit). In operations/keyword scope facets are always present.
  */
 
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import Link from 'next/link';
-import { Search, ChevronRight, Camera } from '@/components/Icons';
+import { useRouter } from 'next/navigation';
+import { Search, ChevronRight, Camera, History } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
 import { TrackingChip, getLast4, getLast4Serial } from '@/components/ui/CopyChip';
 import { formatRelativeTime } from '@/lib/search/search-recents';
+import { journeyHandoffHref } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import { cn } from '@/utils/_cn';
@@ -65,6 +68,11 @@ export interface SearchResultRowProps {
    * caller omits it and the order row renders exactly as before.
    */
   packout?: NearMatchPackout;
+  /**
+   * Show the secondary "Open journey" affordance when the hit has a Trace
+   * anchor. Default true; set false for hosts that own their own journey CTA.
+   */
+  showJourneyAction?: boolean;
 }
 
 // ── Per-density geometry ──────────────────────────────────────────────────────
@@ -113,8 +121,49 @@ function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
   );
 }
 
+/** Secondary CTA — Operations ▸ History Trace. Never changes row height. */
+function JourneyAction({ href, density }: { href: string; density: SearchRowDensity }) {
+  const router = useRouter();
+  if (density === 'dropdown') return null;
+  return (
+    <HoverTooltip label="Open journey" asChild>
+      <IconButton
+        icon={<History className="h-3.5 w-3.5" />}
+        size="xs"
+        tone="neutral"
+        ariaLabel="Open journey"
+        className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          router.push(href);
+        }}
+      />
+    </HoverTooltip>
+  );
+}
+
+function journeyActionFor(
+  hit: AiSearchHit,
+  density: SearchRowDensity,
+  show: boolean | undefined,
+): ReactNode {
+  if (show === false) return null;
+  const href = journeyHandoffHref(hit);
+  if (!href) return null;
+  return <JourneyAction href={href} density={density} />;
+}
+
 /** The Shopify-grade order row. Requires facets (doc-arm hits). */
-function OrderRow({ hit, active, optionId, density = 'compact', onNavigate, packout }: SearchResultRowProps) {
+function OrderRow({
+  hit,
+  active,
+  optionId,
+  density = 'compact',
+  onNavigate,
+  packout,
+  showJourneyAction,
+}: SearchResultRowProps) {
   const facets = hit.facets ?? {};
   const status = orderStatusTone(facets.status);
   const condition = facets.condition_grade;
@@ -193,12 +242,20 @@ function OrderRow({ hit, active, optionId, density = 'compact', onNavigate, pack
           {whenLabel ? `${whenLabel} · ${when}` : when}
         </span>
       )}
+      {journeyActionFor(hit, density, showJourneyAction)}
     </Link>
   );
 }
 
 /** Serial-unit row — leads with a mono serial badge echoing the receiving view. */
-function UnitRow({ hit, active, optionId, density = 'compact', onNavigate }: SearchResultRowProps) {
+function UnitRow({
+  hit,
+  active,
+  optionId,
+  density = 'compact',
+  onNavigate,
+  showJourneyAction,
+}: SearchResultRowProps) {
   // The unit subtitle is `serial · sku · status` by builder contract; the first
   // segment is the serial. Echo the receiving carton chip (last-4 mono badge).
   const serial = (hit.subtitle ?? '').split(' · ')[0]?.trim() || '';
@@ -241,6 +298,7 @@ function UnitRow({ hit, active, optionId, density = 'compact', onNavigate }: Sea
         <Chip key={chip.label} label={chip.label} tone={chip.tone ?? 'gray'} />
       ))}
       <EntityTag entityType={hit.entityType} density={density} />
+      {journeyActionFor(hit, density, showJourneyAction)}
     </Link>
   );
 }
@@ -286,7 +344,14 @@ function EntityTag({ entityType, density }: { entityType: string; density: Searc
 }
 
 /** Generic row (receiving, sku, repair, fba). */
-function GenericRow({ hit, active, optionId, density = 'compact', onNavigate }: SearchResultRowProps) {
+function GenericRow({
+  hit,
+  active,
+  optionId,
+  density = 'compact',
+  onNavigate,
+  showJourneyAction,
+}: SearchResultRowProps) {
   return (
     <Link
       href={hit.href}
@@ -311,6 +376,7 @@ function GenericRow({ hit, active, optionId, density = 'compact', onNavigate }: 
         <Chip key={chip.label} label={chip.label} tone={chip.tone ?? 'gray'} />
       ))}
       <EntityTag entityType={hit.entityType} density={density} />
+      {journeyActionFor(hit, density, showJourneyAction)}
       {density === 'compact' && (
         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
       )}

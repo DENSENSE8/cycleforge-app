@@ -156,6 +156,11 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
 
 export interface UseShippedPanelViewStateOptions {
   initialShipped: ShippedOrder;
+  /**
+   * When true (search deep-link / `?mode=search`), open on the Timeline tab so
+   * Item Journey is journey-first. Dashboard slide-over keeps `shipping`.
+   */
+  journeyFirst?: boolean;
 }
 
 /**
@@ -163,15 +168,19 @@ export interface UseShippedPanelViewStateOptions {
  * (out-of-stock / notes input, mark-as-shipped). Resets to sensible defaults
  * when the underlying order changes.
  */
-export function useShippedPanelViewState({ initialShipped }: UseShippedPanelViewStateOptions) {
-  const [activeSection, setActiveSection] = useState<ShippedActiveSection>('shipping');
+export function useShippedPanelViewState({
+  initialShipped,
+  journeyFirst = false,
+}: UseShippedPanelViewStateOptions) {
+  const defaultSection: ShippedActiveSection = journeyFirst ? 'timeline' : 'shipping';
+  const [activeSection, setActiveSection] = useState<ShippedActiveSection>(defaultSection);
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
 
   // Reset to a sensible default when the underlying order changes (e.g. user
   // navigates to a different order via the panel's up/down arrows).
   useEffect(() => {
-    setActiveSection('shipping');
-  }, [initialShipped.id]);
+    setActiveSection(journeyFirst ? 'timeline' : 'shipping');
+  }, [initialShipped.id, journeyFirst]);
 
   useEffect(() => {
     setActiveInput('none');
