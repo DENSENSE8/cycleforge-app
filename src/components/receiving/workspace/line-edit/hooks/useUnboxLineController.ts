@@ -9,6 +9,7 @@ import {
 } from '../../receiving-label-helpers';
 import { useSerialLookup, type SerialMatchedOrder } from '../../SerialMatchResult';
 import { takeSerialEditHandoff } from '../../serialEditHandoff';
+import { hasItemDescHandoff } from '../../itemDescHandoff';
 import { printProductLabel } from '@/lib/print/printProductLabel';
 import { printAsListedLabel } from '@/lib/print/printAsListedLabel';
 import { printTicketLabel } from '@/lib/print/printTicketLabel';
@@ -175,9 +176,37 @@ export function useUnboxLineController(
   }, [row.id, serialLookup.reset]);
 
   // Consume a serial-edit handoff queued by Edit on a non-active accordion row.
+  // Clear any prior line's edit target so sibling switches don't carry it over.
   useEffect(() => {
     const handoff = takeSerialEditHandoff(row.id);
-    if (handoff) setHeaderSerialEdit(handoff);
+    setHeaderSerialEdit(handoff);
+  }, [row.id]);
+
+  // Sibling PO-line clicks keep the workspace mounted (carton-keyed remount only).
+  // Re-focus the serial scan field on every line switch so the operator can keep
+  // scanning without clicking into the input. Skip the carton's first paint
+  // (SerialCard / stepper owns that) and item-description handoffs (notes icon).
+  const skipSerialFocusOnMountRef = useRef(true);
+  useEffect(() => {
+    if (skipSerialFocusOnMountRef.current) {
+      skipSerialFocusOnMountRef.current = false;
+      return;
+    }
+    if (hasItemDescHandoff(row.id)) return;
+    const focus = () => {
+      const el = serialRef.current;
+      if (!el || el.disabled) return;
+      el.focus({ preventScroll: true });
+    };
+    focus();
+    const t0 = globalThis.setTimeout(focus, 0);
+    // PoLineRow body expand + click-focus on the sibling chrome can land after
+    // the first tick — a short follow-up keeps the caret in Serial.
+    const t1 = globalThis.setTimeout(focus, 50);
+    return () => {
+      globalThis.clearTimeout(t0);
+      globalThis.clearTimeout(t1);
+    };
   }, [row.id]);
 
   // Prefill Zendesk, listing, and serial from Zoho PO notes + line description.

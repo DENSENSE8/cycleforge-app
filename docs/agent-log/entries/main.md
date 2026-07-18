@@ -80,3 +80,9 @@
 - `2026-07-17T19:19:03.981Z` · **main** · main · agent · Added Products Labels UNIT mode with idempotent auto-increment unit_uid issuance, quantity printing, tenant-scoped catalog lookup, and print/event ledger coverage — ok
 - `2026-07-17T19:28:07.582Z` · **main** · main · agent · Hardened auto-unit label issuance after route/cost review: tenant-threaded TSN writes, retry-safe batch logs/events, batch caps, strict validation, catalog short-circuit, and concurrent tail writes — ok
 - `2026-07-17T19:34:30.896Z` · **main** · main · agent · Labels focused flow rebuilt on Unbox overlay pattern: new LabelsOrderWorkspace (StationWorkbench + Print/Documents/Timeline tabs, CartonContextCard waist via ShippingEntityContextHeader adapter), deleted OutboundDocumentsPrintView + ShippedDetailsPanel dual mount (flicker fix), LabelsRecentRail sidebar (labels printed + recently shipped) — ok
+- `2026-07-17T22:46:11.035Z` · **main** · main · agent · Fix PO shell collision on relink/Zoho sync; More Actions Photos bidirectional move; toast Zoho rate-limit instead of INTERNAL — ok
+- `2026-07-17T22:46:36.388Z` · **main** · main · agent · Focus serial input when switching PO lines in accordion — ok
+- `2026-07-17T22:50:50.325Z` · **main** · main · agent · Cut Zoho rate-limit pressure: skip unchanged incoming-po detail GETs, mirror-first unfound match, sequential search stop-on-hit — ok
+- `2026-07-17T22:57:33.775Z` · **main** · main · agent · Attempt Zoho+local receive for POs 13-14846-06962, 02-14876-13796, 05-14909-79883 — blocked by Zoho 5k daily API cap; all three already UNBOXED locally — blocked
+- `2026-07-17T23:04:45.086Z` · **main** · main · agent · PO 13-14846-06962: operator Zoho GUI received → local UNBOXED→DONE (2 lines) + mirror stamped received — ok
+

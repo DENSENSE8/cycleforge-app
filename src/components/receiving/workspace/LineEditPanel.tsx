@@ -379,6 +379,7 @@ export function LineEditPanel({
         share: () => void c.handleShare(),
         audit: () => c.setAuditOpen(true),
         copy: () => void c.handleCopyAll(),
+        movePhotos: () => c.setMovePhotosOpen(true),
         photoNote: () => c.setPhotoNoteOpen(true),
       }}
     />

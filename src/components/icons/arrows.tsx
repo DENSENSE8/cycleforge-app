@@ -46,3 +46,13 @@ export const ArrowUpDown = ({ className = "w-6 h-6" }: { className?: string }) =
         <path d="M7 4v16" />
     </svg>
 );
+
+/** Horizontal swap arrows — move / exchange between two sides. */
+export const ArrowLeftRight = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <path d="m16 3 4 4-4 4" />
+        <path d="M20 7H4" />
+        <path d="m8 21-4-4 4-4" />
+        <path d="M4 17h16" />
+    </svg>
+);

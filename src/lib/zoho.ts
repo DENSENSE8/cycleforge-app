@@ -139,6 +139,8 @@ export async function sumWarehouseReceivedByPoLineItem(
   if (!poId) return new Map();
 
   const totals = new Map<string, number>();
+  /** Dedupe detail GETs when the same receive id appears across pages. */
+  const detailCache = new Map<string, ZohoPurchaseReceive['line_items']>();
   let page = 1;
   const perPage = 200;
   for (;;) {
@@ -154,11 +156,17 @@ export async function sumWarehouseReceivedByPoLineItem(
         pr.purchase_receive_id ?? (pr as { receive_id?: string }).receive_id ?? '',
       ).trim();
       if ((!lines || lines.length === 0) && rid) {
-        try {
-          const detail = await getPurchaseReceiveById(rid);
-          lines = detail.purchasereceive?.line_items;
-        } catch {
-          lines = undefined;
+        if (detailCache.has(rid)) {
+          lines = detailCache.get(rid);
+        } else {
+          try {
+            const detail = await getPurchaseReceiveById(rid);
+            lines = detail.purchasereceive?.line_items;
+            detailCache.set(rid, lines);
+          } catch {
+            lines = undefined;
+            detailCache.set(rid, undefined);
+          }
         }
       }
       for (const raw of lines ?? []) {
@@ -316,28 +324,32 @@ export async function searchPurchaseOrdersByTracking(
   const trimmed = trackingNumber.trim();
   if (!trimmed) return [];
 
-  const [byRef, bySearch] = await withTransitionalZohoOrgIfUnbound(() =>
-    Promise.allSettled([
-      zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
-        '/api/v1/purchaseorders',
-        { reference_number: trimmed, per_page: 10 }
-      ),
-      zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
-        '/api/v1/purchaseorders',
-        { search_text: trimmed, per_page: 10 }
-      ),
-    ]),
-  );
+  // Sequential cheapest→broadest: stop once reference_number hits so we don't
+  // always burn 2 Zoho GETs per unfound retry.
+  const queries: Array<Record<string, string | number>> = [
+    { reference_number: trimmed, per_page: 10 },
+    { search_text: trimmed, per_page: 10 },
+  ];
 
   const seen = new Set<string>();
   const results: ZohoPurchaseOrder[] = [];
 
-  for (const settled of [byRef, bySearch]) {
-    if (settled.status !== 'fulfilled') continue;
-    for (const po of settled.value.purchaseorders || []) {
-      if (!po.purchaseorder_id || seen.has(po.purchaseorder_id)) continue;
-      seen.add(po.purchaseorder_id);
-      results.push(po);
+  for (const params of queries) {
+    try {
+      const page = await withTransitionalZohoOrgIfUnbound(() =>
+        zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
+          '/api/v1/purchaseorders',
+          params,
+        ),
+      );
+      for (const po of page.purchaseorders || []) {
+        if (!po.purchaseorder_id || seen.has(po.purchaseorder_id)) continue;
+        seen.add(po.purchaseorder_id);
+        results.push(po);
+      }
+      if (results.length > 0) break;
+    } catch {
+      // Soft failure on one filter — try the next.
     }
   }
 
@@ -366,40 +378,41 @@ export async function findPurchaseOrderByNumber(
   const key = norm(trimmed);
   if (!key) return null;
 
-  const [byNumber, byRef, bySearch] = await withTransitionalZohoOrgIfUnbound(() =>
-    Promise.allSettled([
-      zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
-        '/api/v1/purchaseorders',
-        { purchaseorder_number: trimmed, per_page: 25 }
-      ),
-      zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
-        '/api/v1/purchaseorders',
-        { reference_number: trimmed, per_page: 25 }
-      ),
-      zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
-        '/api/v1/purchaseorders',
-        { search_text: trimmed, per_page: 25 }
-      ),
-    ]),
-  );
+  const pickExact = (candidates: ZohoPurchaseOrder[]): ZohoPurchaseOrder | null =>
+    candidates.find((po) => norm(po.purchaseorder_number) === key) ??
+    candidates.find((po) => norm(po.reference_number) === key) ??
+    null;
+
+  // Sequential filters: stop as soon as an exact PO#/reference match appears.
+  const queries: Array<Record<string, string | number>> = [
+    { purchaseorder_number: trimmed, per_page: 25 },
+    { reference_number: trimmed, per_page: 25 },
+    { search_text: trimmed, per_page: 25 },
+  ];
 
   const seen = new Set<string>();
   const candidates: ZohoPurchaseOrder[] = [];
-  for (const settled of [byNumber, byRef, bySearch]) {
-    if (settled.status !== 'fulfilled') continue;
-    for (const po of settled.value.purchaseorders || []) {
-      if (!po?.purchaseorder_id || seen.has(po.purchaseorder_id)) continue;
-      seen.add(po.purchaseorder_id);
-      candidates.push(po);
+  for (const params of queries) {
+    try {
+      const page = await withTransitionalZohoOrgIfUnbound(() =>
+        zohoGet<ZohoPagedResponse<ZohoPurchaseOrder> & { purchaseorders?: ZohoPurchaseOrder[] }>(
+          '/api/v1/purchaseorders',
+          params,
+        ),
+      );
+      for (const po of page.purchaseorders || []) {
+        if (!po?.purchaseorder_id || seen.has(po.purchaseorder_id)) continue;
+        seen.add(po.purchaseorder_id);
+        candidates.push(po);
+      }
+      const hit = pickExact(candidates);
+      if (hit) return hit;
+    } catch {
+      // Soft failure on one filter — try the next.
     }
   }
 
-  // Accept ONLY an exact match — prefer the PO number over the reference number.
-  return (
-    candidates.find((po) => norm(po.purchaseorder_number) === key) ??
-    candidates.find((po) => norm(po.reference_number) === key) ??
-    null
-  );
+  return pickExact(candidates);
 }
 
 export async function listPurchaseOrders(params: {

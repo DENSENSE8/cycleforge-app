@@ -48,7 +48,6 @@ export function ActiveLineConditionSerial({
   serialAbsentReason,
   onSerialAbsentChange,
   requireSerialConfirmation,
-  serialStepActive = false,
   serialInputRef,
 }: {
   serials: ActiveRowSerial[];
@@ -68,8 +67,6 @@ export function ActiveLineConditionSerial({
   requireSerialConfirmation: boolean;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null) => void;
-  /** Stepper active step = serial — focus the scan input. */
-  serialStepActive?: boolean;
   /** Programmatic focus target for the dock Add serial handoff. */
   serialInputRef?: RefObject<HTMLInputElement | null>;
   onSubmitSerial: (raw?: string, conditionGrade?: string | null) => void | Promise<void>;
@@ -157,7 +154,8 @@ export function ActiveLineConditionSerial({
           isSubmitting={serialSubmitting}
           disabled={!receivingId}
           embedded
-          autoFocusInput={serialStepActive}
+          autoFocusInput
+          focusKey={lineId}
           externalInputRef={serialInputRef}
           showSavedChips={false}
           editingSerial={editingSerial}
