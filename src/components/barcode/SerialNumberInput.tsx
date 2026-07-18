@@ -5,10 +5,11 @@ import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { LocationSelector } from './LocationSelector';
 import type { BarcodeDensity } from './BarcodePreview';
+import type { BarcodeMode } from './ModeSelector';
 
 interface SerialNumberInputProps {
     sku: string;
-    mode: 'print' | 'sn-to-sku' | 'reprint';
+    mode: BarcodeMode;
     title: string;
     stock: string;
     snInput: string;

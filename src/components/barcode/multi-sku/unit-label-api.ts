@@ -56,11 +56,10 @@ export async function lookupProductInfo(skuValue: string): Promise<ProductInfo> 
 }
 
 /**
- * Allocate the next unit-id for a SKU. Each call atomically increments the
- * per-SKU-per-year sequence (no pre-flight peek). The GS1 Digital Link in the
- * response is intentionally ignored — products labels encode the bare unit id.
+ * Peek at the next unit-id for a SKU without advancing its sequence. The
+ * authoritative id is minted by /api/post-multi-sn when the unit is persisted.
  */
-export async function allocateNextUnitId(
+export async function peekNextUnitId(
   skuValue: string,
   catalogIdHint?: number | null,
 ): Promise<NextUnitId> {
@@ -111,10 +110,12 @@ export async function postMultiSn(payload: {
   qrPayload: string;
   symbology: string;
   serialNumbers: string[];
+  quantity?: number;
   notes: string;
   location: string;
   condition: string;
-  printClass: 'print' | 'sn-to-sku';
+  printClass: 'print' | 'auto-unit' | 'sn-to-sku';
+  clientEventId?: string;
 }): Promise<{ success: boolean; units: IssuedUnit[] }> {
   const res = await fetch('/api/post-multi-sn', {
     method: 'POST',

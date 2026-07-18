@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-17T07:08:04Z",
-  "totalRoutes": 859,
+  "generatedAt": "2026-07-17T19:43:45Z",
+  "totalRoutes": 865,
   "summary": {
-    "permissionGated": 731,
+    "permissionGated": 737,
     "authenticatedNoPermission": 45,
     "anonymousIntentional": 81,
     "serviceToService": 2,
@@ -2684,6 +2684,51 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/devices/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "walk_in.enroll_kiosk",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/enroll/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "walk_in.enroll_kiosk",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/intake/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/pair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (anonymous OK)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/revoke/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "walk_in.enroll_kiosk",
       "exemptReason": null
     },
     {
@@ -5643,6 +5688,17 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/search/recents/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "dashboard.view",
       "exemptReason": null
     },
     {

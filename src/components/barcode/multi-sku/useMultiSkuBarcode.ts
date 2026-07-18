@@ -12,10 +12,14 @@ import { useLabelRecents } from '@/hooks/useLabelRecents';
 import { CONDITION_OPTIONS } from '@/components/receiving/zoho-po-types';
 import { useBarcodeModeStep } from './useBarcodeModeStep';
 import { useSerialList } from './useSerialList';
-import { allocateNextUnitId, lookupProductInfo, postMultiSn, resolveUnitId } from './unit-label-api';
+import { lookupProductInfo, peekNextUnitId, postMultiSn, resolveUnitId } from './unit-label-api';
 
 export type ConditionGrade = (typeof CONDITION_OPTIONS)[number]['value'];
 export type BarcodeLayout = 'vertical' | 'horizontal';
+
+function createClientEventId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 /**
  * Controller for the multi-SKU / serial barcode workspace. Composes
@@ -61,6 +65,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
   const [imageUrl, setImageUrl] = useState('');
   const [skuCatalogId, setSkuCatalogId] = useState<number | null>(null);
   const [condition, setCondition] = useState<ConditionGrade>('BRAND_NEW');
+  const [quantity, setQuantity] = useState(1);
   // Product color (label bottom-right). Prefilled from the title; the Edit-label
   // popover can override it. No DB column yet — print-time only.
   const [colorOverride, setColorOverride] = useState<string | null>(null);
@@ -68,6 +73,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
   const skuInputRef = useRef<HTMLInputElement>(null);
   const snInputRef = useRef<HTMLInputElement>(null);
+  const issueClientEventIdRef = useRef<string | null>(null);
 
   // localStorage recents still feed the Products picker's pinned chips
   // (ProductsSidebarPanel); the desktop "Recent" bottom strip was removed in
@@ -100,14 +106,15 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
   const handleSkuChange = (value: string) => {
     setSku(value);
+    issueClientEventIdRef.current = null;
     setUniqueSku('');
     setGtin('');
     setError('');
   };
 
-  /** Allocate the next unit-id and stash {uniqueSku, gtin}. */
+  /** Peek at the next unit-id and stash {uniqueSku, gtin}. */
   const fetchNextUnitId = useCallback(async (skuValue: string, catalogIdHint?: number | null) => {
-    const data = await allocateNextUnitId(skuValue, catalogIdHint);
+    const data = await peekNextUnitId(skuValue, catalogIdHint);
     setUniqueSku(data.unitId);
     setGtin(data.gtin);
     return data;
@@ -173,6 +180,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
       if (!trimmed) return;
       // Reset to step 1 clean state first.
       setSku(trimmed);
+      issueClientEventIdRef.current = null;
       setUniqueSku('');
       setTitle('');
       setStock('');
@@ -216,7 +224,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
       })();
 
       const unitIdPromise: Promise<unknown> =
-        mode === 'print'
+        mode === 'print' || mode === 'auto-unit'
           ? fetchNextUnitId(trimmed).catch((err) => {
               // Pre-allocation failure is not user-visible here — the click path
               // retries via handleNextStepSn and surfaces a toast then.
@@ -227,8 +235,8 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
       await Promise.all([titlePromise, unitIdPromise]);
 
-      setStep(2);
-      setTimeout(() => snInputRef.current?.focus(), 100);
+      setStep(mode === 'auto-unit' ? 3 : 2);
+      if (mode !== 'auto-unit') setTimeout(() => snInputRef.current?.focus(), 100);
     },
     [mode, fetchNextUnitId, resolveReprintUnit, resetSerials, setStep],
   );
@@ -276,7 +284,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
     const catalogIdHint = await fetchProductInfo(sku);
 
-    if (mode === 'print' && !uniqueSku) {
+    if ((mode === 'print' || mode === 'auto-unit') && !uniqueSku) {
       setIsGenerating(true);
       try {
         await fetchNextUnitId(sku, catalogIdHint);
@@ -289,8 +297,8 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
       }
     }
 
-    setStep(2);
-    setTimeout(() => snInputRef.current?.focus(), 100);
+    setStep(mode === 'auto-unit' ? 3 : 2);
+    if (mode !== 'auto-unit') setTimeout(() => snInputRef.current?.focus(), 100);
   };
 
   const handleNextStepSn = async (pendingSn?: string) => {
@@ -334,6 +342,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
   const handleChangeSku = () => {
     setSku('');
+    issueClientEventIdRef.current = null;
     setUniqueSku('');
     setGtin('');
     setTitle('');
@@ -352,18 +361,22 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
   }> => {
     setIsPosting(true);
     try {
+      issueClientEventIdRef.current ??= createClientEventId();
       return await postMultiSn({
-        sku: uniqueSku,
+        sku: uniqueSku || sku,
         productSku: sku,
         unitId: uniqueSku,
         gtin: gtin || undefined,
         qrPayload: previewPayload.value,
         symbology: previewPayload.symbology,
         serialNumbers,
+        quantity: mode === 'auto-unit' ? quantity : undefined,
         notes,
         location,
         condition,
-        printClass: mode === 'sn-to-sku' ? 'sn-to-sku' : 'print',
+        printClass:
+          mode === 'sn-to-sku' ? 'sn-to-sku' : mode === 'auto-unit' ? 'auto-unit' : 'print',
+        clientEventId: issueClientEventIdRef.current,
       });
     } catch {
       return { success: false, units: [] };
@@ -388,26 +401,28 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
 
     const { success, units } = await issueLabels();
     if (success) {
-      if (mode === 'print') {
+      if (mode === 'print' || mode === 'auto-unit') {
         // Print one label per serial. Each label's DataMatrix encodes that
         // unit's OWN minted unit id (returned by the route).
+        const printSerials = mode === 'auto-unit' ? units.map((unit) => unit.serial) : serialNumbers;
         const uidBySerial = new Map(units.map((u) => [u.serial, u.unitUid]));
         printProductLabels({
-          sku: uniqueSku,
+          sku,
           title,
-          serialNumbers,
+          serialNumbers: printSerials,
           condition,
           color,
-          qrPayloads: serialNumbers.map((s) => uidBySerial.get(s) ?? uniqueSku),
+          qrPayloads: printSerials.map((s) => uidBySerial.get(s) ?? uniqueSku),
         });
       }
 
       // Pin this SKU at the top of the Products picker for one-tap re-fill.
-      pushRecent({ sku: uniqueSku || sku, sn: serialNumbers[0], title });
+      pushRecent({ sku, sn: mode === 'auto-unit' ? undefined : serialNumbers[0], title });
 
       resetSerials();
+      issueClientEventIdRef.current = null;
 
-      if (mode === 'print') {
+      if (mode === 'print' || mode === 'auto-unit') {
         // Refresh the preview to the NEXT unit id (a peek now — server mints the
         // authoritative id per serial at print time, so no double-burn).
         try {
@@ -419,7 +434,7 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
         }
       }
 
-      setStep(2);
+      setStep(mode === 'auto-unit' ? 3 : 2);
     } else {
       setError('Failed to save data');
     }
@@ -473,6 +488,8 @@ export function useMultiSkuBarcode(layout: BarcodeLayout) {
     // condition / color / notes
     condition,
     setCondition,
+    quantity,
+    setQuantity,
     color,
     setColorOverride,
     notes,

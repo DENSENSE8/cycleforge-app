@@ -1,6 +1,9 @@
 # 06 — Walk-In kiosk: unattended device auth
 
-**Status:** Planning (greenfield — no device principal exists yet)
+**Status:** ✅ Built (code-complete) 2026-07-17 — `npm run verify` green. Migration
+`2026-07-17_kiosk_devices.sql` is **UNAPPLIED** (run `npm run db:migrate`); runtime
+acceptance pending a real DB + a tablet. The kiosk **forms + Square/Zoho/Ecwid wiring
+remain doc 03's** (non-goal here — this doc shipped the auth model only).
 **Created:** 2026-07-17
 **Parent:** [../foh-boh-surface-split-plan.md](../foh-boh-surface-split-plan.md)
 **Build order:** after [05](./05-nav-permission-redirects.md) (new route key + gate) and alongside
@@ -110,21 +113,24 @@ happens once and returns the long-lived device credential.
 
 ## Phases
 
-- [ ] **P1** — Route + gate. Add `/kiosk` page (no staff nav) and a `withKioskAuth` middleware that
-  resolves a device token → `{ organizationId, principal:'kiosk', deviceId }`. New `SidebarRouteKey`
-  is **not** needed (it's not in the staff sidebar); coordinate any `ROUTE_PERMISSIONS` /
-  proxy MDM-allowlist entry through [05](./05-nav-permission-redirects.md).
-- [ ] **P2** — `kiosk_devices` migration (tenant-from-birth) + Drizzle model. Token = hashed at rest.
-- [ ] **P3** — Enrollment flow. Manager (staff session, gated by a new `walk_in.enroll_kiosk` or an
-  existing admin perm — see open Q) mints a one-time code; tablet exchanges it for a device token;
-  revoke path.
-- [ ] **P4** — PIN step-up wiring. Privileged kiosk actions call the existing `/api/auth/pin` flow;
-  `recordAudit` records `{ actor: staffId (stepped-up), via: deviceId }`.
-- [ ] **P5** — Capability-scoped writes. Intake create + Square/Zoho/Ecwid calls run under the device
-  principal via `withTenantTransaction(organizationId, …)` and capability facades (shares
-  [03](./03-sales-main-history.md)'s connector work).
-- [ ] **P6** — Lockdown guidance (ops, not code): MDM single-app mode / Guided Access pinned to
-  `/kiosk`; documented in the runbook, not enforced by the app.
+- [x] **P1** — Route + gate. `src/app/kiosk/page.tsx` (chromeless — added to `proxy.ts` `PUBLIC_PATHS`
+  + `AuthContext` `CLIENT_PUBLIC_PATHS`, no staff nav) + `src/lib/auth/withKioskAuth.ts` resolving a
+  device token → `{ organizationId, principal:'kiosk', deviceId }`. No `SidebarRouteKey` added.
+  `withKioskAuth` registered as a recognized gate in `scripts/audit-route-auth.ts`.
+- [x] **P2** — `src/lib/migrations/2026-07-17_kiosk_devices.sql` (tenant-from-birth, pre-auth identity
+  table like `staff_sessions`) + `kioskDevices` Drizzle model. Code + token hashed at rest (SHA-256).
+  **Migration UNAPPLIED** — run `npm run db:migrate`.
+- [x] **P3** — Enrollment flow. New `walk_in.enroll_kiosk` permission gates `POST /api/kiosk/enroll`
+  (mint code) + `POST /api/kiosk/revoke`; `POST /api/kiosk/pair` (public, code-capability) exchanges
+  the code for a device token + sets the `cf_kiosk` cookie.
+- [x] **P4** — PIN step-up wiring. `resolveKioskStepUp()` reuses `verifyStaffPin`; a privileged intake
+  (`staffId` + `pin` on the body) resolves the real `staffId` and `recordAudit` records
+  `{ actor: staffId (stepped-up), via: kiosk_device:<id> }`. Base intake stays anonymous.
+- [x] **P5** — Capability-scoped write path. `POST /api/kiosk/intake` runs under the device principal
+  via `withTenantTransaction(organizationId, …)`. **Seam:** the real intake persistence +
+  Square/Zoho/Ecwid capability-facade calls are [03](./03-sales-main-history.md)'s to compose on top.
+- [x] **P6** — Lockdown guidance: [`docs/security/kiosk-device-lockdown.md`](../../security/kiosk-device-lockdown.md)
+  (MDM single-app mode / Guided Access pinned to `/kiosk`; ops runbook, not app-enforced).
 
 ## Reuse map (compose, don't fork)
 
@@ -156,11 +162,13 @@ the kiosk (capability facades only).
 
 ## Open questions
 
-1. **Route** — `/kiosk` (top-level, cleanest MDM lock) vs `/walk-in/kiosk` (namespaced). Leaning `/kiosk`.
-2. **Enrollment permission** — new `walk_in.enroll_kiosk`, or gate on an existing admin/settings perm?
-3. **Device token lifetime + rotation** — long-lived with server-side revoke only, or periodic refresh?
-4. **Which actions require step-up** — refunds + repair approval + price override for sure; does *every*
-   payment, or only exceptions? (Square's model: base sale is device-authed, refunds need a person.)
+1. ✅ **Route** — **`/kiosk`** (top-level, cleanest MDM lock). Built.
+2. ✅ **Enrollment permission** — **new `walk_in.enroll_kiosk`** (registry). Built.
+3. ✅ **Device token lifetime + rotation** — **long-lived, server-side revoke only** (`kiosk_devices.status`);
+   the `cf_kiosk` cookie sits near the 400-day browser ceiling. Periodic refresh not added (revoke is instant).
+4. **Which actions require step-up** — the wiring exists (`resolveKioskStepUp` + a hard `403 STEPUP_FAILED`);
+   **which** actions demand it (every payment vs exceptions only) is doc 03's per-form decision. Square's
+   model — base sale device-authed, refunds need a person — is the recommended default.
 5. **Offline** — does the kiosk queue an intake when the network drops (station degrade-not-block), or
    hard-require connectivity for the payment leg?
 

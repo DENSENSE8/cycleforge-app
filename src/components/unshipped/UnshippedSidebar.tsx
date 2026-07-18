@@ -6,9 +6,7 @@ import { ShippedFormData } from '@/components/shipped';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
 import { Plus } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
 import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
-import { OutboundFilterDropdown } from '@/components/unshipped/OutboundFilterDropdown';
 import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
 import { FirstScanOnboardingCard } from '@/components/dashboard/FirstScanOnboardingCard';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
@@ -134,27 +132,20 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
           </motion.div>
         </>
       }
-      filter={{
-        label: isPrePack ? 'Order filters' : 'Shipment filters',
-        refinements,
-        activeCount: refinements.length,
-        onClearAll,
-        renderDropdown: (onClose) =>
-          isPrePack ? (
-            <OutboundFilterDropdown onClose={onClose} />
-          ) : (
-            <ShippedFilterDropdown onClose={onClose} />
-          ),
-      }}
-      headerBelow={
-        <motion.div variants={itemVariants} className={`${SIDEBAR_GUTTER} pb-2 pt-1`}>
-          <OrdersSyncPopover
-            onRefresh={() => {
-              window.dispatchEvent(new CustomEvent('dashboard-refresh'));
-              window.dispatchEvent(new CustomEvent('app-refresh-data'));
-            }}
-          />
-        </motion.div>
+      // Pre-pack ("Shipping") lane/staff filtering lives in the workspace
+      // header (OutboundExactFilters funnel + StaffFilterButton) — the single
+      // filter home. Only the shipped scope keeps a sidebar filter, for its
+      // carrier facets that the header doesn't carry.
+      filter={
+        isPrePack
+          ? undefined
+          : {
+              label: 'Shipment filters',
+              refinements,
+              activeCount: refinements.length,
+              onClearAll,
+              renderDropdown: (onClose) => <ShippedFilterDropdown onClose={onClose} />,
+            }
       }
       bodyClassName="flex flex-col no-scrollbar pb-6 space-y-4"
     >

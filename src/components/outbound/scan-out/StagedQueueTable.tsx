@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
+import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
+import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { stagedOrdersQuery } from '@/lib/queries/outbound-queries';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
@@ -15,6 +17,11 @@ interface StagedQueueTableProps {
   onCloseOrder: () => void;
   /** Hide the built-in banner when the mode tab band already labels the queue. */
   hideHeader?: boolean;
+  /**
+   * Skip the one-time "Mike" staging backfill effect. The scan-out dock keeps it
+   * (default); read-only consumers (Labels-station Recent) pass `true`.
+   */
+  disableBackfill?: boolean;
 }
 
 export function StagedQueueTable({
@@ -22,13 +29,19 @@ export function StagedQueueTable({
   onOpenOrder,
   onCloseOrder,
   hideHeader = false,
+  disableBackfill = false,
 }: StagedQueueTableProps) {
   const queryClient = useQueryClient();
   const query = useQuery(stagedOrdersQuery({ searchQuery }));
   const records = useMemo(() => query.data ?? [], [query.data]);
   const backfillStarted = useRef(false);
+  // Grow-mode when inside a DashboardScrollShell (one scroll port, KPI scrolls
+  // away); self-scroll boxed otherwise (the scan-out WorkbenchTablePane).
+  const dashboardScrollRef = useDashboardScrollParentOptional();
+  const pageScroll = Boolean(dashboardScrollRef);
 
   useEffect(() => {
+    if (disableBackfill) return;
     if (typeof window === 'undefined') return;
     if (localStorage.getItem(DOCK_STAGED_BACKFILL_KEY)) return;
     if (backfillStarted.current) return;
@@ -51,11 +64,11 @@ export function StagedQueueTable({
         }
       })
       .catch(() => undefined);
-  }, [queryClient]);
+  }, [queryClient, disableBackfill]);
 
   const countLabel = `${records.length} package${records.length === 1 ? '' : 's'} ready to scan out`;
 
-  return (
+  const table = (
     <OrdersQueueTable
       records={records}
       queueMode="staged"
@@ -80,6 +93,18 @@ export function StagedQueueTable({
       sort="priority"
       onOpenRecord={(record) => onOpenOrder(record)}
       onCloseRecord={() => onCloseOrder()}
+      listShell={pageScroll ? 'monitor' : 'default'}
+      noHorizontalScroll={pageScroll}
+      growToContent={pageScroll}
+      scrollParentRef={pageScroll ? (dashboardScrollRef ?? undefined) : undefined}
+      virtualized={pageScroll}
     />
   );
+
+  // Grow-mode: wrap in the monitor card so the growing list keeps the house shell
+  // (mirrors PackedOrdersTable). Boxed callers own their own WorkbenchTablePane.
+  if (pageScroll) {
+    return <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>{table}</div>;
+  }
+  return table;
 }

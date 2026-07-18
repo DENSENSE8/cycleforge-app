@@ -29,6 +29,7 @@ import { useRecentDetailStacks } from '@/hooks/useRecentDetailStacks';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { removeDetailStack, type DetailStackEntry } from '@/lib/detail-stacks/history-store';
 import { pushSearchRecent, formatRelativeTime } from '@/lib/search/search-recents';
+import { orderSearchHref } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
 
@@ -54,6 +55,12 @@ function currentOrderIdFromParams(orderIdParam: string | string[] | undefined): 
 function isSelectedEntry(entry: DetailStackEntry, currentId: string | null): boolean {
   if (!currentId) return false;
   return entry.id === currentId || entry.label.includes(currentId);
+}
+
+function hitMatchesCurrent(hit: AiSearchHit, currentId: string | null): boolean {
+  if (!currentId) return false;
+  if (String(hit.id) === currentId) return true;
+  return hit.subtitle.includes(currentId) || hit.title.includes(currentId);
 }
 
 function relativeOpenedLabel(at: number): string {
@@ -124,8 +131,8 @@ export function OrderWorkspaceSidebar() {
           scope: 'orders',
           scopeLabel: 'Orders',
           scopeHref: currentOrderId
-            ? `/o/${encodeURIComponent(currentOrderId)}?mode=search&q=${encodeURIComponent(t)}`
-            : `/dashboard?search=${encodeURIComponent(t)}`,
+            ? orderSearchHref(currentOrderId, t)
+            : orderSearchHref(t, t),
         });
         updateQuery(t);
       },
@@ -157,15 +164,37 @@ export function OrderWorkspaceSidebar() {
   }, [currentOrderId]);
 
   const openOrder = useCallback(
-    (id: string) => {
-      const sp = new URLSearchParams();
-      if (mode === 'search') sp.set('mode', 'search');
-      if (mode === 'search' && input.trim()) sp.set('q', input.trim());
-      const qs = sp.toString();
-      router.push(qs ? `/o/${encodeURIComponent(id)}?${qs}` : `/o/${encodeURIComponent(id)}`);
+    (id: string, replace = false) => {
+      const href = orderSearchHref(id, mode === 'search' ? input.trim() || undefined : undefined);
+      // Recent mode: plain /o/id (no search map params).
+      const target =
+        mode === 'search' ? href : `/o/${encodeURIComponent(id)}`;
+      if (replace) router.replace(target);
+      else router.push(target);
     },
     [input, mode, router],
   );
+
+  // Auto-open / canonicalize the top near-match so Enter lands on a real order
+  // with the Search map populated — never leave a dangling identifier path when
+  // retrieval already resolved the DB id.
+  useEffect(() => {
+    if (mode !== 'search' || searching) return;
+    const orderHits = hits.filter((h) => h.entityType === 'order');
+    if (orderHits.length === 0) return;
+
+    const matched = orderHits.find((h) => hitMatchesCurrent(h, currentOrderId));
+    if (matched) {
+      // Path was a human order # / tracking — swap to numeric id for selection.
+      if (currentOrderId !== String(matched.id)) {
+        openOrder(String(matched.id), true);
+      }
+      return;
+    }
+
+    // No current selection in the result set → open the top match.
+    openOrder(String(orderHits[0].id), true);
+  }, [mode, searching, hits, currentOrderId, openOrder]);
 
   const handleSelectHit = useCallback(
     (hit: AiSearchHit, event: ReactMouseEvent) => {

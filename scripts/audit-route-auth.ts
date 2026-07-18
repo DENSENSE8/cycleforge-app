@@ -113,6 +113,9 @@ function detectGate(src: string): { gate: string; permission: string | null } {
   }
   const permMatch = src.match(/withAuth\([^]*?permission\s*:\s*['"]([\w.]+)['"]/);
   if (permMatch) return { gate: 'withAuth', permission: permMatch[1] };
+  // Match the actual call site (`= withKioskAuth(`), not a bare mention in a
+  // doc comment, so a route that merely references the wrapper isn't mislabeled.
+  if (/\bwithKioskAuth\s*\(/.test(src)) return { gate: 'withKioskAuth (device principal)', permission: null };
   if (/\bwithAuth\b/.test(src)) return { gate: 'withAuth (no permission)', permission: null };
   if (/\brequirePermission\b/.test(src)) return { gate: 'requirePermission (page guard)', permission: null };
   const routePermMatch = src.match(/requireRoutePerm\([^,]+,\s*['"]([\w.]+)['"]/);

@@ -122,5 +122,3 @@ export function FbaStatusBadge({
     </span>
   );
 }
-
-export const FBA_STATUS_TOKENS = TOKENS;

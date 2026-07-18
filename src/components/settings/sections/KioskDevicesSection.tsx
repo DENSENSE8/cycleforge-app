@@ -1,0 +1,210 @@
+'use client';
+
+/**
+ * /settings?section=devices — enroll, list, and revoke customer-facing kiosk
+ * tablets (FOH/BOH surface split, doc 06). Manager-only (`walk_in.enroll_kiosk`).
+ *
+ * Enrolling mints a ONE-TIME pairing code shown once here; the manager carries
+ * it to the tablet's /kiosk "Set up this tablet" screen. Only hashes live
+ * server-side — this surface never sees a token.
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+interface KioskDeviceRow {
+  id: number;
+  label: string;
+  status: 'enrolled' | 'active' | 'revoked';
+  lastSeenAt: string | null;
+  createdAt: string;
+  enrolledByStaffId: number | null;
+}
+
+interface FreshCode {
+  deviceId: number;
+  code: string;
+  expiresAt: string;
+}
+
+const STATUS_TONE: Record<KioskDeviceRow['status'], string> = {
+  active: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  enrolled: 'bg-amber-50 text-amber-700 ring-amber-200',
+  revoked: 'bg-gray-100 text-gray-500 ring-gray-200',
+};
+
+const STATUS_LABEL: Record<KioskDeviceRow['status'], string> = {
+  active: 'Paired',
+  enrolled: 'Awaiting pairing',
+  revoked: 'Revoked',
+};
+
+function fmtRelative(when: string | null): string {
+  if (!when) return '—';
+  const ms = Date.now() - new Date(when).getTime();
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+export function KioskDevicesSection() {
+  const [rows, setRows] = useState<KioskDeviceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [label, setLabel] = useState('');
+  const [enrolling, setEnrolling] = useState(false);
+  const [freshCode, setFreshCode] = useState<FreshCode | null>(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const r = await fetch('/api/kiosk/devices', { credentials: 'include', cache: 'no-store' });
+      if (!r.ok) {
+        setErr(r.status === 401 || r.status === 403 ? "You don't have access to this." : 'Could not load devices.');
+        return;
+      }
+      const data = (await r.json()) as { devices: KioskDeviceRow[] };
+      setRows(data.devices || []);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const enroll = useCallback(async () => {
+    const trimmed = label.trim();
+    if (!trimmed) { setErr('Give the tablet a name first.'); return; }
+    setEnrolling(true);
+    setErr(null);
+    try {
+      const r = await fetch('/api/kiosk/enroll', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ label: trimmed }),
+      });
+      if (!r.ok) { setErr('Could not enroll the tablet.'); return; }
+      const data = (await r.json()) as FreshCode;
+      setFreshCode(data);
+      setLabel('');
+      await refresh();
+    } finally {
+      setEnrolling(false);
+    }
+  }, [label, refresh]);
+
+  const revoke = useCallback(async (id: number) => {
+    if (!confirm('Revoke this tablet? Its access dies immediately.')) return;
+    await fetch('/api/kiosk/revoke', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId: id }),
+    });
+    await refresh();
+  }, [refresh]);
+
+  return (
+    <section className="space-y-5">
+      <header>
+        <h1 className="sr-only">Kiosk devices</h1>
+        <p className="text-sm text-text-soft">
+          Customer-facing intake tablets (<code className="rounded bg-surface-sunken px-1">/kiosk</code>). Each
+          authenticates as a device, never a staff account. Enroll one to get a one-time pairing code.
+        </p>
+      </header>
+
+      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+
+      {/* Enroll */}
+      <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+        <p className="text-role-caption font-black uppercase tracking-widest text-text-soft">Enroll a tablet</p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Tablet name (e.g. Front counter iPad)"
+            maxLength={120}
+            className={cn(
+              'flex-1 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm',
+              focusRing('field', 'accent'),
+            )}
+          />
+          <Button type="button" onClick={() => void enroll()} disabled={enrolling}>
+            {enrolling ? 'Enrolling…' : 'Generate code'}
+          </Button>
+        </div>
+
+        {freshCode && (
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
+            <p className="text-role-caption font-black uppercase tracking-widest text-emerald-700">
+              Pairing code — shown once
+            </p>
+            <p className="mt-1 select-all font-mono text-xl font-black tracking-widest text-emerald-800">
+              {freshCode.code}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-emerald-700">
+              On the tablet, open /kiosk → “Set up this tablet” and enter this code before{' '}
+              {new Date(freshCode.expiresAt).toLocaleTimeString()}.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="text-sm text-text-soft">Loading…</div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-canvas text-left text-role-caption uppercase tracking-wider text-text-soft">
+              <tr>
+                <th className="px-3 py-2">Tablet</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Last seen</th>
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-hairline">
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="px-3 py-2 font-medium text-text-default">{row.label}</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-black uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
+                      {STATUS_LABEL[row.status]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-text-soft">{fmtRelative(row.lastSeenAt)}</td>
+                  <td className="px-3 py-2 text-right">
+                    {row.status !== 'revoked' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => void revoke(row.id)}
+                        className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr><td colSpan={4} className="px-3 py-8 text-center text-text-faint">No kiosk tablets enrolled yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}

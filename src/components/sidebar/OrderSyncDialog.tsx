@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, Loader2, X } from '@/components/Icons';
+import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
+import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, IconButton } from '@/design-system/primitives';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
@@ -28,12 +29,6 @@ interface OrderSyncDialogProps {
 }
 
 type TabId = 'sheets' | 'ecwid' | 'exceptions';
-
-const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'sheets', label: 'Google Sheets' },
-  { id: 'ecwid', label: 'Ecwid Direct' },
-  { id: 'exceptions', label: 'Resolved Exceptions' },
-];
 
 function statusDot(status: SyncTaskStatus) {
   if (status === 'running') return <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />;
@@ -358,175 +353,143 @@ export function OrderSyncDialog({
   ecwid,
   exceptions,
 }: OrderSyncDialogProps) {
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('sheets');
 
-  useEffect(() => {
-    setPortalNode(document.body);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !isRunning) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, isRunning, onClose]);
-
-  const tabBadges: Record<TabId, { status: SyncTaskStatus; count: number }> = useMemo(() => ({
-    sheets: {
-      status: sheets.status,
-      count: (sheets.details?.inserted.length ?? sheets.inserted ?? 0)
-        + (sheets.details?.updated.length ?? sheets.updated ?? 0),
-    },
-    ecwid: {
-      status: ecwid.status,
-      count: (ecwid.details?.inserted.length ?? ecwid.inserted ?? 0)
-        + (ecwid.details?.updated.length ?? ecwid.updated ?? 0),
-    },
-    exceptions: {
-      status: exceptions.status,
-      count: exceptions.resolved?.length ?? exceptions.matched ?? 0,
-    },
-  }), [sheets, ecwid, exceptions]);
-
-  // Render nothing at all when closed — avoids AnimatePresence + layoutId
-  // edge cases that left orphaned DOM nodes blocking scroll inside the page's
-  // inner scroll containers. We trade a fade-out for reliability.
-  if (!portalNode || !open) return null;
-
-  const overlay = (
-    <motion.div
-      key="order-sync-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={framerTransition.overlayScrim}
-      className="fixed inset-0 z-panelPopover flex items-center justify-center bg-scrim/40 inset-empty"
-      onClick={() => {
-        if (!isRunning) onClose();
-      }}
-    >
-      <motion.div
-        key="order-sync-card"
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 320, mass: 0.55 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-surface-card shadow-[0_24px_80px_-20px_rgba(15,23,42,0.35)] ring-1 ring-border-soft"
-      >
-            <header className="flex items-start gap-3 border-b border-border-soft px-5 py-3.5">
-              <div className="flex-1 min-w-0">
-                <p className={`${microBadge} text-text-soft`}>Order Sync</p>
-                <h2 className={`${sectionLabel} text-text-default mt-0.5`}>
-                  {isRunning ? 'Importing latest orders' : 'Import complete'}
-                </h2>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <motion.span
-                  key={Math.floor(elapsedMs / 100)}
-                  initial={{ opacity: 0.4 }}
-                  animate={{ opacity: 1 }}
-                  className="text-role-caption font-mono font-semibold text-blue-600 tabular-nums"
-                >
-                  {(elapsedMs / 1000).toFixed(1)}s
-                </motion.span>
-                {isRunning && onCancel ? (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={onCancel}
-                    className="bg-red-50 text-red-700 ring-red-200 ring-inset hover:bg-red-100"
-                  >
-                    Cancel
-                  </Button>
-                ) : null}
-                <IconButton
-                  icon={<X className="w-4 h-4" />}
-                  ariaLabel="Close"
-                  onClick={onClose}
-                  disabled={isRunning}
-                  className="rounded-lg p-1.5 hover:bg-surface-sunken"
-                />
-              </div>
-            </header>
-
-            <nav className="flex items-end gap-1 border-b border-border-soft px-3 pt-2">
-              {TABS.map((tab) => {
-                const isActive = activeTab === tab.id;
-                const meta = tabBadges[tab.id];
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    /* ds-raw-button: segmented tab with animated layoutId underline — not a Button shape */
-                    className={`ds-raw-button relative flex items-center gap-1.5 rounded-t-lg inset-field text-sm font-semibold transition ${
-                      isActive ? 'text-text-default' : 'text-text-soft hover:text-text-muted'
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                    <span className="inline-flex h-4 w-4 items-center justify-center">
-                      {statusDot(meta.status)}
-                    </span>
-                    {meta.count > 0 ? (
-                      <span className="ml-0.5 rounded bg-surface-sunken inset-chip text-role-micro font-bold tabular-nums text-text-muted">
-                        {meta.count}
-                      </span>
-                    ) : null}
-                    {isActive ? (
-                      <motion.span
-                        layoutId="ordersync-active-underline"
-                        className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-blue-600"
-                        transition={{ type: 'spring', damping: 30, stiffness: 380 }}
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={framerTransition.overlayScrim}
-                >
-                  {activeTab === 'sheets' ? (
-                    <TransferTab tab={sheets} label="Google Sheets" />
-                  ) : activeTab === 'ecwid' ? (
-                    <TransferTab tab={ecwid} label="Ecwid Direct" />
-                  ) : (
-                    <ExceptionsTab tab={exceptions} />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <footer className="flex items-center justify-between gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
-              <div className="flex items-center gap-3 text-xs text-text-muted">
-                <span className="inline-flex items-center gap-1.5">
-                  {statusDot(sheets.status)} <span>{statusLabel(sheets.status, sheets.summary)}</span>
-                </span>
-                <span className="text-text-faint">·</span>
-                <span className="inline-flex items-center gap-1.5">
-                  {statusDot(ecwid.status)} <span>{statusLabel(ecwid.status, ecwid.summary)}</span>
-                </span>
-                <span className="text-text-faint">·</span>
-                <span className="inline-flex items-center gap-1.5">
-                  {statusDot(exceptions.status)} <span>{statusLabel(exceptions.status, exceptions.summary)}</span>
-                </span>
-              </div>
-              <Button variant="brand" size="sm" onClick={onClose} disabled={isRunning}>
-                {isRunning ? 'Running…' : 'Close'}
-              </Button>
-            </footer>
-      </motion.div>
-    </motion.div>
+  // Pill TabSwitch SoT — same solid/accent recipe as WorkbenchChromeHeader
+  // (dashboard / Labels top-left). Per-source status stays in the footer.
+  const switchTabs = useMemo(
+    () => [
+      {
+        id: 'sheets' as const,
+        label: 'Google Sheets',
+        count:
+          (sheets.details?.inserted.length ?? sheets.inserted ?? 0) +
+          (sheets.details?.updated.length ?? sheets.updated ?? 0),
+        color: 'blue' as const,
+      },
+      {
+        id: 'ecwid' as const,
+        label: 'Ecwid Direct',
+        count:
+          (ecwid.details?.inserted.length ?? ecwid.inserted ?? 0) +
+          (ecwid.details?.updated.length ?? ecwid.updated ?? 0),
+        color: 'emerald' as const,
+      },
+      {
+        id: 'exceptions' as const,
+        label: 'Resolved Exceptions',
+        count: exceptions.resolved?.length ?? exceptions.matched ?? 0,
+        color: 'gray' as const,
+      },
+    ],
+    [sheets, ecwid, exceptions],
   );
 
-  return createPortal(overlay, portalNode);
+  // Block dismiss while a transfer is in flight (backdrop + Escape); Cancel is
+  // the only intentional abort. Same RightPaneOverlay shell as ReceivingClaimModal.
+  const handleClose = () => {
+    if (!isRunning) onClose();
+  };
+
+  return (
+    <RightPaneOverlay
+      open={open}
+      onClose={handleClose}
+      align="center"
+      resizable
+      storageKey="order-sync-dialog-size"
+      minWidth={480}
+      minHeight={360}
+      closeOnEscape={!isRunning}
+      className="-mt-8 h-[min(86vh,40rem)] w-[min(94vw,48rem)]"
+      aria-label="Order sync"
+    >
+      <header className="flex shrink-0 items-start gap-3 border-b border-border-soft px-5 py-3.5">
+        <div className="min-w-0 flex-1">
+          <p className={`${microBadge} text-text-soft`}>Order Sync</p>
+          <h2 className={`${sectionLabel} mt-0.5 text-text-default`}>
+            {isRunning ? 'Importing latest orders' : 'Import complete'}
+          </h2>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <motion.span
+            key={Math.floor(elapsedMs / 100)}
+            initial={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
+            className="text-role-caption font-mono font-semibold tabular-nums text-blue-600"
+          >
+            {(elapsedMs / 1000).toFixed(1)}s
+          </motion.span>
+          {isRunning && onCancel ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onCancel}
+              className="bg-red-50 text-red-700 ring-inset ring-red-200 hover:bg-red-100"
+            >
+              Cancel
+            </Button>
+          ) : null}
+          <IconButton
+            icon={<X className="h-4 w-4" />}
+            ariaLabel="Close"
+            onClick={handleClose}
+            disabled={isRunning}
+            className="rounded-lg p-1.5 hover:bg-surface-sunken"
+          />
+        </div>
+      </header>
+
+      <div className="shrink-0 border-b border-border-soft px-4 py-2.5">
+        <TabSwitch
+          tabs={switchTabs}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as TabId)}
+          variant="solid"
+          solidTone="accent"
+          countStyle="plain"
+          className="w-full"
+        />
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={framerTransition.overlayScrim}
+          >
+            {activeTab === 'sheets' ? (
+              <TransferTab tab={sheets} label="Google Sheets" />
+            ) : activeTab === 'ecwid' ? (
+              <TransferTab tab={ecwid} label="Ecwid Direct" />
+            ) : (
+              <ExceptionsTab tab={exceptions} />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
+        <div className="flex items-center gap-3 text-xs text-text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            {statusDot(sheets.status)} <span>{statusLabel(sheets.status, sheets.summary)}</span>
+          </span>
+          <span className="text-text-faint">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            {statusDot(ecwid.status)} <span>{statusLabel(ecwid.status, ecwid.summary)}</span>
+          </span>
+          <span className="text-text-faint">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            {statusDot(exceptions.status)} <span>{statusLabel(exceptions.status, exceptions.summary)}</span>
+          </span>
+        </div>
+        <Button variant="brand" size="sm" onClick={handleClose} disabled={isRunning}>
+          {isRunning ? 'Running…' : 'Close'}
+        </Button>
+      </footer>
+    </RightPaneOverlay>
+  );
 }

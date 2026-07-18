@@ -1,9 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
 import { cn } from '@/utils/_cn';
 import { FbaFnskuScanToast } from '@/components/fba/sidebar/FbaFnskuScanToast';
-import { SearchBar } from '@/components/ui/SearchBar';
 import {
   receivingScanBandClass,
   sidebarHeaderBandClass,
@@ -12,17 +10,13 @@ import {
 } from '@/components/layout/header-shell';
 import { FBA_SCAN_BAND_HALO } from '@/components/fba/StationFbaInput';
 import { SidebarSection } from '@/components/layout/SidebarSection';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { FbaWorkspaceScanField } from '@/components/fba/sidebar/FbaWorkspaceScanField';
-import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
-import { FbaShippedTable } from '@/components/fba/FbaShippedTable';
 import {
   FbaCombineRailBody,
   FbaCombineRailPills,
   FbaPlanRailBody,
   FbaPlanRailPills,
 } from '@/components/fba/sidebar/FbaSidebarRails';
-import { FBA_MODE_ITEMS, type FbaMode } from '@/lib/fba/fba-modes';
 import { sidebarSubBandClass } from '@/components/fba/sidebar/fba-sidebar-shared';
 import {
   useFbaPlanData,
@@ -65,10 +59,9 @@ export function FbaWorkspaceSidebarFallback() {
  * live in {@link fba-workspace-hooks}; this component is composition + layout.
  */
 export function FbaWorkspaceSidebar() {
-  const masterNavEnabled = useMasterNavEnabled();
-  const { activeMode, refreshToken, localSearch, setLocalSearch, updateFbaParams } = useFbaWorkspaceUrlState();
+  const { activeMode, refreshToken } = useFbaWorkspaceUrlState();
   const { orgId, staffId, staffName, stationTheme } = useFbaStationIdentity();
-  const { pendingPlans, plansError, modeCounts } = useFbaPlanData({ activeMode, refreshToken, orgId });
+  const { pendingPlans, plansError } = useFbaPlanData({ activeMode, refreshToken, orgId });
   const { planRailView, setPlanRailView, combineRailView, setCombineRailView } = useFbaRailViews();
   const { editorActive } = useFbaWorkspaceBridges(activeMode);
 
@@ -77,35 +70,11 @@ export function FbaWorkspaceSidebar() {
   // hidden in plan mode, which is just scan-to-add + the recent rail.
   const isCombine = activeMode === 'combine';
 
-  // Mode pills with live stage-count badges: Plan = PLANNED, Combine = PACKED.
-  const modeItems = useMemo(
-    () =>
-      FBA_MODE_ITEMS.map((it) =>
-        it.id === 'plan'
-          ? { ...it, count: modeCounts.PLANNED || 0 }
-          : it.id === 'combine'
-            ? { ...it, count: modeCounts.PACKED || 0 }
-            : it,
-      ),
-    [modeCounts],
-  );
-
+  // Plan / Combine / Shipped switching lives in the main-pane content chrome
+  // (`FbaWorkspaceHeader`) — the old sidebar pill row was dead behind the
+  // always-on master nav. The sidebar keeps ambient scan I/O + rails only.
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
-      {!masterNavEnabled && (
-        <div className={sidebarHeaderPillRowClass}>
-          <HorizontalButtonSlider
-            items={modeItems}
-            value={activeMode}
-            onChange={(next) => updateFbaParams({ mode: next as FbaMode })}
-            variant="nav"
-            dense
-            className="w-full"
-            aria-label="FBA mode"
-          />
-        </div>
-      )}
-
       {/* Scan bar — pinned at the top of the working area so it never scrolls
           away. The mode is locked per page: Plan on the plan page (FNSKU adds to
           today's plan, Plan button only) and Select on combine (FNSKU selects
@@ -154,30 +123,17 @@ export function FbaWorkspaceSidebar() {
 
         {isCombine ? <FbaCombineRailBody view={combineRailView} stationTheme={stationTheme} /> : null}
 
-        {/* Shipped: search filter */}
-        {activeMode === 'shipped' && (
-          <div className={`${sidebarSubBandClass} ${SIDEBAR_GUTTER} py-2.5`}>
-            <SearchBar
-              value={localSearch}
-              onChange={setLocalSearch}
-              onClear={() => setLocalSearch('')}
-              placeholder="FNSKU, ASIN, SKU, product…"
-              variant="blue"
-              className="w-full"
-            />
-          </div>
-        )}
-
         {/* Combine review + tracking pairing + active shipments now live in the
             center-right combine workspace on /fba?mode=combine (see fba/page.tsx).
             The sidebar keeps just the scan bar + Recent/Packed rails. */}
 
+        {/* Shipped history table + its search moved to the main pane
+            (FbaOutboundWorkspace Shipped tab + FbaWorkspaceHeader search). */}
         {activeMode === 'shipped' ? (
-          <FbaShippedTable
-            stationTheme={stationTheme}
-            searchQuery={localSearch}
-            embedded
-          />
+          <div className={`${SIDEBAR_GUTTER} py-3 text-sm text-text-soft`}>
+            Shipped FBA shipments live in the main pane — filter them with the
+            search in the top bar.
+          </div>
         ) : null}
 
         {/* Station FNSKU scan toast — hidden when editor is active */}

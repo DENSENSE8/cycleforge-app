@@ -46,6 +46,7 @@ import {
 } from '@/components/Icons';
 import { ADMIN_SECTION_OPTIONS } from '@/components/admin/admin-sections';
 import { isParkedSurfaceBlocked, type ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
+import { parseWalkInHistoryMode } from '@/lib/walk-in/history-modes';
 
 export type SidebarRouteKey =
   | 'home'
@@ -463,17 +464,31 @@ const PACK = '/pack';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Dashboard ─────────────────────────────────────────────────────────────
-  // Bare presence params (`?unshipped` / `?shipped`); first match wins in the
-  // reader. Unshipped + Shipped are ONE nav mode ("Shipping") — the Unshipped/
-  // Shipped split is a top-left TAB inside the main content
+  // Three L2 modes on `?mode=` (SoT `getDashboardModeFromSearch`), left → right:
+  //   • Search   (`?mode=search`)  — global search; sidebar shows per-staff recents.
+  //   • Receiving(`?mode=inbound`) — inbound cartons; Triage (scanned) / Unbox
+  //     (unboxed) table tabs, each with its own KPI + filters. `inbound` is the
+  //     param value (kept for surface-isolation + legacy bookmarks); the pill/id
+  //     is `receiving`. `?mode=receiving` is accepted as an alias by the resolver.
+  //   • Shipping (bare / `?unshipped` / `?shipped`) — outbound orders (default).
+  //     Id stays `outbound` so existing deep-links + tests resolve unchanged.
+  // The Unshipped/Shipped split is a top-left TAB inside the outbound content
   // (`DashboardOrdersView`). Warranty Logger moved to Support (`?mode=warranty`);
-  // legacy `/dashboard?warranty=` redirects there from the dashboard page.
+  // legacy `/dashboard?warranty=` redirects there from the dashboard page. Every
+  // switch clears the other modes' scoped params so each mode opens clean.
   {
     id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
     modes: [
-      { id: 'outbound',  label: 'Shipping',         icon: Send,         to: () => ({ pathname: DASHBOARD, params: { unshipped: '', pending: null, shipped: null, fba: null, warranty: null } }) },
+      { id: 'search',   label: 'Search',   icon: Search, to: () => ({ pathname: DASHBOARD, params: { mode: 'search', q: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, sort: null, rtab: null, open: null } }) },
+      // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
+      // header tab + the table's day-band axis in lockstep (both read `?sort`).
+      { id: 'receiving', label: 'Receiving', icon: Inbox, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest', q: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, dq: null, open: null } }) },
+      { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { mode: null, q: null, type: null, unshipped: '', pending: null, shipped: null, fba: null, warranty: null, dq: null, rtab: null } }) },
     ],
-    resolveMode: () => {
+    resolveMode: ({ params }) => {
+      const m = String(params.get('mode') || '').trim().toLowerCase();
+      if (m === 'search') return 'search';
+      if (m === 'inbound' || m === 'receiving') return 'receiving';
       // `?unshipped`, `?shipped`, legacy `?pending`, or nothing → Shipping.
       return 'outbound';
     },
@@ -690,27 +705,23 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   },
   // Data Wipe (`/wipe`) is temporarily absent from master nav — revisit when the
   // station UX is ready for general rollout. Route + `tech.data_wipe` gate remain.
-  // ── Sales (front-desk transaction-history Monitor) ────────────────────────
+  // ── Sales (front-desk transaction-history hub) ────────────────────────────
   // Formerly "Walk-In". Intake/processing lives on the Walk-In station
-  // (`/pickup?job=sales|pickup|repair`); this page is the observe side — one
-  // overall transaction history hosting the Sales · Pickups · Repairs
-  // categories. `?category=repairs|sales|pickups` (default repairs). Legacy
-  // `?mode=sales` / `?new=true` / `?openRepair=` redirect to the station from
-  // the page itself (`useWalkInTaskRedirect`).
+  // (`/pickup?job=sales|pickup|repair`); this page is the observe side — a
+  // 3-mode hub (Local Pickup · Sales · Repair) whose per-mode header tabs swap
+  // separate tables. `?mode=pickup|sales|repair` (default `sales` dropped); the
+  // per-mode `?tab=` clears on mode switch. Legacy `?category=` maps onto the
+  // new modes; `?new=true` / `?openRepair=` still redirect to the station
+  // (`useWalkInTaskRedirect`).
   {
     id: 'walk-in', label: 'Sales', href: WALK_IN, icon: ShoppingCart, kind: 'main', requires: 'walk_in.view',
     modes: [
-      { id: 'repairs',  label: 'Repairs',  icon: Wrench,     to: () => ({ pathname: WALK_IN, params: { category: null, mode: null, tab: null } }) },
-      { id: 'sales',    label: 'Sales',    icon: DollarSign, to: () => ({ pathname: WALK_IN, params: { category: 'sales', mode: null, tab: null } }) },
-      { id: 'pickups',  label: 'Pickups',  icon: Package,    to: () => ({ pathname: WALK_IN, params: { category: 'pickups', mode: null, tab: null } }) },
+      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, to: () => ({ pathname: WALK_IN, params: { mode: 'pickup', tab: null, category: null } }) },
+      { id: 'sales',  label: 'Sales',        icon: DollarSign,   to: () => ({ pathname: WALK_IN, params: { mode: null, tab: null, category: null } }) },
+      { id: 'repair', label: 'Repair',       icon: Wrench,       to: () => ({ pathname: WALK_IN, params: { mode: 'repair', tab: null, category: null } }) },
     ],
-    resolveMode: ({ params }) => {
-      const c = params.get('category');
-      if (c === 'sales' || c === 'pickups') return c;
-      // Legacy deep-links before redirect fires.
-      if (params.get('mode') === 'sales') return 'sales';
-      return 'repairs';
-    },
+    // Reads the new `?mode=`, falling back to legacy `?category=` for old links.
+    resolveMode: ({ params }) => parseWalkInHistoryMode(params.get('mode') ?? params.get('category')),
   },
   // ── Support ───────────────────────────────────────────────────────────────
   // `?mode=voicemail|calls|warranty|issues`; bare /support = the Zendesk Tickets

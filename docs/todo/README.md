@@ -18,6 +18,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-ALP | `agentic-loop-master-plan.md`, `agentic-loop-EXECUTION-PROMPT.md` |
 | WS-BETA | `beta-intake-funnel-plan.md` |
 | WS-CONN | `connections-mdx-forge-plan.md`, `connections-mdx-forge-EXECUTION-PROMPT.md` — **live:** 74 `CONN-*` in `master-plan.mdx` (`pnpm connections:check`) |
+| WS-DISPLAY | `fable5-ds-prune-alignment-plan.md`, `fable5-ds-prune-EXECUTION-PROMPT.md` — Axis 5 workbench shell prune; Fable 5 audit + outbound FBA/Labels convergence |
 | WS-ENGINE | `ops-events-station-workflow-unification-plan.md` |
 | WS-GLASS | `GLASS-DESIGN-SYSTEM.md` |
 | WS-HOME | `contextual-my-day-home-plan.md`, **`home-ops-tv-collab-surfaces-plan.md`** (Home triage/collab · Ops TV · Forge on Home) |

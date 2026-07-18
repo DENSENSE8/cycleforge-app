@@ -18,20 +18,18 @@ function isMobileUserAgent(): boolean {
 
 /**
  * Returns true while a redirect is in flight (caller should show a spinner).
- * Handles:
- * - `?mode=sales` → `/pickup?job=sales`
- * - `?mode=repairs` / `?new=true` / `?openRepair=` → `/pickup?job=repair` (+ params)
+ * Handles the "start a task" deep-links only — `?mode=` now selects a Sales-hub
+ * mode (Local Pickup · Sales · Repair) and must NOT redirect:
+ * - `?new=true` / `?openRepair=` → `/pickup?job=repair` (+ params)
  * - Mobile `?openRepair=` → `/m/rs/{id}`
  */
 export function useWalkInTaskRedirect(): boolean {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const mode = searchParams.get('mode');
   const openRepair = searchParams.get('openRepair');
   const isNew = searchParams.get('new') === 'true';
-  const wantsStationTask =
-    mode === 'sales' || mode === 'repairs' || isNew || !!openRepair;
+  const wantsStationTask = isNew || !!openRepair;
 
   useEffect(() => {
     if (!wantsStationTask) return;
@@ -44,19 +42,19 @@ export function useWalkInTaskRedirect(): boolean {
       }
     }
 
-    const job: WalkInJob = mode === 'sales' ? 'sales' : 'repair';
+    const job: WalkInJob = 'repair';
     const extra: Record<string, string | null | undefined> = {};
     if (isNew) extra.new = 'true';
     if (openRepair) extra.openRepair = openRepair;
     const search = searchParams.get('search');
     if (search) extra.search = search;
     const tab = searchParams.get('tab');
-    if (job === 'repair' && (tab === 'done' || tab === 'incoming')) {
+    if (tab === 'done' || tab === 'incoming') {
       extra.tab = tab;
     }
 
     router.replace(walkInStationHref(job, extra));
-  }, [isNew, mode, openRepair, router, searchParams, wantsStationTask]);
+  }, [isNew, openRepair, router, searchParams, wantsStationTask]);
 
   return wantsStationTask;
 }

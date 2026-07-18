@@ -23,7 +23,18 @@ type SyncTab = 'sync' | 'backfill';
  * Replaces the old split (main Sync lived in DashboardManagementPanel, Backfill
  * in a standalone AwaitingEbayPanel).
  */
-export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
+export function OrdersSyncPopover({
+  onRefresh,
+  triggerVariant = 'sidebar',
+}: {
+  onRefresh?: () => void;
+  /**
+   * `sidebar` (default) — the full-width blue fill for a SidebarShell slot.
+   * `header` — a compact rounded-pill matching workbench-chrome controls
+   * (`WorkbenchChromeHeader` right cluster), for the labels-station header.
+   */
+  triggerVariant?: 'sidebar' | 'header';
+}) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<SyncTab>('sync');
   const { has } = useAuth();
@@ -34,31 +45,55 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
     <>
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
-          {/* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone + title. */}
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-white shadow-lg shadow-blue-600/10 transition-all hover:bg-blue-700 active:scale-95"
-            // ds-allow-title: single child of a Radix Popover.Trigger asChild — wrapping in HoverTooltip would disturb the Slot's single-child clone.
-            title="Sync & backfill orders"
-          >
-            {sync.isTransferring ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            {/* Explicit white — the button is a fixed blue fill in every theme. */}
-            <span className="text-role-micro uppercase tracking-[0.2em] text-white">
-              {sync.isTransferring ? 'Syncing…' : 'Sync Orders'}
-            </span>
-          </button>
+          {triggerVariant === 'header' ? (
+            /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone. The visible "Import" label carries the affordance, so no native title is needed. */
+            <button
+              type="button"
+              aria-label="Sync & backfill orders"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95"
+            >
+              {sync.isTransferring ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {/* Explicit white — the button is a fixed blue fill in every theme. */}
+              <span className="text-role-eyebrow font-bold uppercase tracking-widest text-white">
+                {sync.isTransferring ? 'Syncing…' : 'Import'}
+              </span>
+            </button>
+          ) : (
+            /* ds-raw-button: single child of a Radix Popover.Trigger asChild — the Slot clones onto this element; a DS Button would disturb the single-child clone + title. */
+            <button
+              type="button"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-white shadow-lg shadow-blue-600/10 transition-all hover:bg-blue-700 active:scale-95"
+              // ds-allow-title: single child of a Radix Popover.Trigger asChild — wrapping in HoverTooltip would disturb the Slot's single-child clone.
+              title="Sync & backfill orders"
+            >
+              {sync.isTransferring ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {/* Explicit white — the button is a fixed blue fill in every theme. */}
+              <span className="text-role-micro uppercase tracking-[0.2em] text-white">
+                {sync.isTransferring ? 'Syncing…' : 'Sync Orders'}
+              </span>
+            </button>
+          )}
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Content
-            align="start"
+            align={triggerVariant === 'header' ? 'end' : 'start'}
             sideOffset={8}
-            // Match the trigger (= the master-nav/sidebar content width) exactly
-            // via Radix's trigger-width var, so the popover never over/under-hangs.
-            style={{ width: 'var(--radix-popover-trigger-width)' }}
+            // Sidebar: match the trigger width via Radix's trigger-width var so the
+            // popover never over/under-hangs. Header: the trigger is a compact pill,
+            // so use a fixed comfortable panel width instead.
+            style={
+              triggerVariant === 'header'
+                ? { width: '20rem' }
+                : { width: 'var(--radix-popover-trigger-width)' }
+            }
             className="z-dropdown rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5 focus:outline-none"
           >
             <div className="mb-3 flex items-center gap-1 rounded-xl bg-surface-sunken p-1">

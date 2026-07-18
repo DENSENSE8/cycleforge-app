@@ -9,6 +9,7 @@ import {
   WorkspaceCard,
   ModernSkuField,
   ProductContextCard,
+  AutoUnitQuantityField,
   NotesCard,
   PreviewCardModern,
   PreviewPlaceholder,
@@ -21,6 +22,7 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
   const { mode } = b;
   const accent = MODE_ACCENT_THEME[mode];
   const showSnCard = !!b.sku.trim() && (mode === 'print' || mode === 'sn-to-sku');
+  const showQuantityCard = !!b.sku.trim() && mode === 'auto-unit';
   const showPreviewCard = b.previewIsReady;
 
   // Print/log is allowed as soon as the user has a SKU and at least one serial.
@@ -28,22 +30,27 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
   // returned), primaryAction falls through to handleNextStepSn which allocates
   // on demand — so we don't leave the button disabled forever.
   const hasRequiredInputs =
-    mode === 'reprint' ? !!b.sku.trim() : !!b.sku.trim() && b.serialNumbers.length > 0;
+    mode === 'reprint' || mode === 'auto-unit'
+      ? !!b.sku.trim()
+      : !!b.sku.trim() && b.serialNumbers.length > 0;
   const primaryDisabled = b.isPosting || b.isGenerating || !hasRequiredInputs;
 
   const primaryLabel = b.isPosting
-    ? mode === 'print'
+    ? mode === 'print' || mode === 'auto-unit'
       ? 'Saving & Printing…'
       : mode === 'reprint'
         ? 'Reprinting…'
         : 'Logging…'
     : mode === 'print'
       ? 'Save & Print Label'
+      : mode === 'auto-unit'
+        ? `Issue & Print ${b.quantity} ${b.quantity === 1 ? 'Unit' : 'Units'}`
       : mode === 'reprint'
         ? 'Reprint Label'
         : 'Log to Database';
 
-  const primaryAction = () => (b.previewIsReady ? b.handleFinalAction() : b.handleNextStepSn());
+  const primaryAction = () =>
+    mode === 'auto-unit' || b.previewIsReady ? b.handleFinalAction() : b.handleNextStepSn();
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface-canvas text-text-default">
@@ -71,6 +78,16 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
 
           {b.sku.trim() && (
             <ProductContextCard title={b.title} stock={b.stock} imageUrl={b.imageUrl} isLoading={b.isLoadingTitle} />
+          )}
+
+          {showQuantityCard && (
+            <WorkspaceCard label="Quantity" tone={accent.tone}>
+              <AutoUnitQuantityField
+                quantity={b.quantity}
+                accent={accent}
+                onChange={b.setQuantity}
+              />
+            </WorkspaceCard>
           )}
 
           {/* Condition + serial share one row — the same scan card the receiving
@@ -113,19 +130,19 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
               accent={accent}
               dataMatrixValue={b.previewPayload.value}
               dataMatrixSymbology={b.previewPayload.symbology}
-              onApplyAndPrint={(draft: ProductLabelDraft) => {
-                b.setCondition(draft.condition as ConditionGrade);
-                b.setColorOverride(draft.color);
-                b.setTitle(draft.title);
-                // Custom one-off print of the current preview with the chosen fields.
-                printProductLabel({
-                  sku: b.uniqueSku || b.sku,
-                  title: draft.title,
-                  qrPayload: b.previewPayload.value,
-                  condition: draft.condition,
-                  color: draft.color,
-                });
-              }}
+              onApplyAndPrint={mode === 'auto-unit' ? undefined : (draft: ProductLabelDraft) => {
+                  b.setCondition(draft.condition as ConditionGrade);
+                  b.setColorOverride(draft.color);
+                  b.setTitle(draft.title);
+                  // Custom one-off print of the current preview with the chosen fields.
+                  printProductLabel({
+                    sku: b.uniqueSku || b.sku,
+                    title: draft.title,
+                    qrPayload: b.previewPayload.value,
+                    condition: draft.condition,
+                    color: draft.color,
+                  });
+                }}
             />
           ) : (
             <PreviewPlaceholder mode={mode} sku={b.sku} />

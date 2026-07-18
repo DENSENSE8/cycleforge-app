@@ -15,8 +15,6 @@ import { IncomingFilterDropdown } from './incoming/IncomingFilterDropdown';
 import { IncomingSyncButtons } from './incoming/IncomingSyncButtons';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { useQueryClient } from '@tanstack/react-query';
-import { SearchBar } from '@/components/ui/SearchBar';
-import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
 export type {
   IncomingDeliveryState,
@@ -42,22 +40,10 @@ export function IncomingSidebarPanel() {
     <>
       <SidebarShell
         className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card"
-        headerAbove={
-          // In-context list filter — local base SearchBar over the Incoming feed.
-          // `filters.search` is derived from `?rh_q` and `setSearch` writes it back,
-          // so deep links hydrate. The global header pill stays global.
-          <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
-            <SearchBar
-              size="compact"
-              variant="blue"
-              value={filters.search}
-              onChange={filters.setSearch}
-              onClear={() => filters.setSearch('')}
-              onSearch={filters.setSearch}
-              placeholder="Filter PO #, tracking, SKU…"
-            />
-          </div>
-        }
+        // Search moved up into the Incoming workbench header (dashboard-style),
+        // alongside the status/sort filter popover. The sidebar keeps the
+        // advanced filter dropdown (PO date range + by-carrier breakdown) that is
+        // too wide for the header.
         filter={{
           label: 'Filters',
           refinements: filters.refinements,

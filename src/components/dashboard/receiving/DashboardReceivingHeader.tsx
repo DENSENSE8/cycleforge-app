@@ -1,20 +1,20 @@
 'use client';
 
 /**
- * Inbound workspace chrome — the one unified header bar for Dashboard · Inbound
- * (receiving cartons). The sibling of {@link OutboundWorkspaceHeader}: same
- * `WorkbenchChromeHeader` primitive, different domain — carton lifecycle facets,
- * never outbound orders.
+ * Dashboard · Receiving chrome — the one pinned top bar for the Receiving mode
+ * (`/dashboard?mode=inbound`). Sibling of {@link InboundWorkspaceHeader}: same
+ * `WorkbenchChromeHeader` primitive, framed as the Triage/Unbox table tabs.
  *
- * Left:  lifecycle facet tabs (Unboxed · Scanned) — the ids ARE the History
- *        `?sort=` values, so the tab, the day-band axis, and the server ORDER BY
- *        can never disagree (SoT: `HISTORY_SORT_OPTIONS` via `dashboard-domains`).
- * Right: [⫶ carton source / search field] | table controls portal.
+ * Left:  Triage · Unbox tabs. The tab id maps onto the History `?sort=` value
+ *        (`dashboard-receiving-tabs.ts`) — Triage = scanned order, Unbox =
+ *        unboxed order — so the tab strip and the table's day-band axis never
+ *        disagree (both read `?sort`).
+ * Right: [⫶ per-tab filter | search field] | table controls portal.
  *
- * The search box + refinements were relocated here from the sidebar's
- * `ReceivingHistorySearchSection`; the `rh_q` / `rh_field` / `rh_scope` param
- * contract (`receiving-history-search.ts`) is unchanged, so deep links and the
- * table's query keys keep working untouched.
+ * Filtering is per-tab: Triage exposes the carton-source scope (All / Unfound)
+ * for the scan/identify step; Unbox drops it (unfound is a triage concern) and
+ * keeps the search-field selector. Both ride the shared `rh_q` / `rh_field` /
+ * `rh_scope` contract, so the table's query keys are unchanged.
  */
 
 import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
@@ -31,10 +31,11 @@ import {
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { useDebounce } from '@/hooks';
 import {
-  DASHBOARD_INBOUND_DEFAULT_FACET,
-  DASHBOARD_INBOUND_FACETS,
-  normalizeDashboardInboundFacet,
-} from '@/lib/dashboard/dashboard-domains';
+  DASHBOARD_RECEIVING_TABS,
+  dashboardReceivingSortDelta,
+  dashboardReceivingTabFromSort,
+  type DashboardReceivingTab,
+} from './dashboard-receiving-tabs';
 import {
   RECEIVING_HISTORY_SEARCH_FIELDS,
   RECEIVING_HISTORY_URL_PARAMS,
@@ -50,17 +51,17 @@ const SCOPE_ITEMS: { id: ReceivingHistorySearchScope; label: string; icon: React
   { id: 'unmatched', label: 'Unfound', icon: AlertTriangle },
 ];
 
-interface InboundWorkspaceHeaderProps {
+interface DashboardReceivingHeaderProps {
   controlsSlotRef?: Ref<HTMLDivElement>;
   className?: string;
 }
 
-export function InboundWorkspaceHeader({ controlsSlotRef, className }: InboundWorkspaceHeaderProps) {
+export function DashboardReceivingHeader({ controlsSlotRef, className }: DashboardReceivingHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const facet = normalizeDashboardInboundFacet(searchParams.get('sort'));
+  const tab: DashboardReceivingTab = dashboardReceivingTabFromSort(searchParams.get('sort'));
   const searchField = useMemo(
     () => normalizeReceivingHistorySearchField(searchParams.get(RECEIVING_HISTORY_URL_PARAMS.field)),
     [searchParams],
@@ -90,16 +91,18 @@ export function InboundWorkspaceHeader({ controlsSlotRef, className }: InboundWo
     replaceParams(setReceivingHistoryUrlParams(searchParams, { q: debouncedDraft }));
   }, [debouncedDraft, replaceParams, searchParams, urlQRaw]);
 
-  const setFacet = useCallback(
+  const setTab = useCallback(
     (id: string) => {
       const next = new URLSearchParams(searchParams.toString());
-      const norm = normalizeDashboardInboundFacet(id);
-      // Default axis stays out of the URL so a plain Inbound link is clean.
-      if (norm === DASHBOARD_INBOUND_DEFAULT_FACET) next.delete('sort');
-      else next.set('sort', norm);
+      const delta = dashboardReceivingSortDelta(id as DashboardReceivingTab);
+      if (delta === null) next.delete('sort');
+      else next.set('sort', delta);
+      // Switching to Unbox clears the Triage-only Unfound scope so it never
+      // leaks into a tab that doesn't offer it.
+      if (id === 'unbox' && searchScope !== 'all') next.delete(RECEIVING_HISTORY_URL_PARAMS.scope);
       replaceParams(next);
     },
-    [replaceParams, searchParams],
+    [replaceParams, searchParams, searchScope],
   );
 
   const setScope = useCallback(
@@ -130,9 +133,9 @@ export function InboundWorkspaceHeader({ controlsSlotRef, className }: InboundWo
 
   const tabs = useMemo(
     () =>
-      DASHBOARD_INBOUND_FACETS.map((option) => ({
-        id: option.id as string,
-        label: option.label as string,
+      DASHBOARD_RECEIVING_TABS.map((t) => ({
+        id: t.id as string,
+        label: t.label,
         color: 'blue' as const,
       })),
     [],
@@ -144,20 +147,20 @@ export function InboundWorkspaceHeader({ controlsSlotRef, className }: InboundWo
     }) > 0;
 
   const [filterOpen, setFilterOpen] = useState(false);
-  // Scope + field each count as one refinement (their `all` is the unfiltered
-  // default, so it doesn't count) — a hot filter dots the trigger.
-  const filterHot = searchScope !== 'all' || searchField !== 'all';
+  // Scope (Triage only) + field each count as one refinement; a hot filter dots
+  // the trigger. Unbox never shows the scope, so only `field` counts there.
+  const scopeHot = tab === 'triage' && searchScope !== 'all';
+  const filterHot = scopeHot || searchField !== 'all';
 
   return (
     <WorkbenchChromeHeader
       tabs={tabs}
-      activeTab={facet}
-      onTabChange={setFacet}
+      activeTab={tab}
+      onTabChange={setTab}
       solidTone="accent"
       controlsSlotRef={controlsSlotRef}
       controlsSlotProps={{ 'data-inbound-controls': '' }}
       className={className}
-      // Scoped list filter over ?rh_q= (header slot) — the ⌘K pill stays global.
       search={
         <SearchField
           value={draft}
@@ -182,23 +185,26 @@ export function InboundWorkspaceHeader({ controlsSlotRef, className }: InboundWo
           open={filterOpen}
           onOpenChange={setFilterOpen}
           hot={filterHot}
-          label="Carton source / search field"
+          label={tab === 'triage' ? 'Carton source / search field' : 'Search field'}
         >
-          <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
-          {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
-            <WorkbenchFilterMenuRow
-              key={id}
-              label={label}
-              active={searchScope === id}
-              leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
-              onClick={() => {
-                setScope(id);
-                setFilterOpen(false);
-              }}
-            />
-          ))}
-
-          <WorkbenchFilterDivider />
+          {tab === 'triage' ? (
+            <>
+              <WorkbenchFilterGroupLabel>Carton source</WorkbenchFilterGroupLabel>
+              {SCOPE_ITEMS.map(({ id, label, icon: Icon }) => (
+                <WorkbenchFilterMenuRow
+                  key={id}
+                  label={label}
+                  active={searchScope === id}
+                  leading={<Icon className="h-3.5 w-3.5 shrink-0" />}
+                  onClick={() => {
+                    setScope(id);
+                    setFilterOpen(false);
+                  }}
+                />
+              ))}
+              <WorkbenchFilterDivider />
+            </>
+          ) : null}
 
           <WorkbenchFilterGroupLabel>Search field</WorkbenchFilterGroupLabel>
           {RECEIVING_HISTORY_SEARCH_FIELDS.map((field) => (

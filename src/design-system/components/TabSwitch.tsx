@@ -112,6 +112,13 @@ export function TabSwitch({
   const trackRef = useRef<HTMLDivElement | null>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [pill, setPill] = useState({ left: 0, width: 0 });
+  // First measured placement must SNAP (no transition), not spring from
+  // {left:0,width:0}. `initial={false}` only suppresses the first commit's
+  // animation; the follow-up measurement still animates, which for a non-first
+  // active tab reads as the pill sweeping across the whole header on mount
+  // (worst for a rightmost default, e.g. Unbox "Unboxed"). Snap once, then
+  // spring on every later tab change.
+  const hasPlacedPillRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
 
   const measurePill = useCallback(() => {
@@ -166,9 +173,15 @@ export function TabSwitch({
     : solid
       ? '0 1px 3px 0 rgb(0 0 0 / 0.22), 0 1px 2px 0 rgb(0 0 0 / 0.10)'
       : activeShadow;
-  const pillTransition = prefersReducedMotion
-    ? { duration: 0.01 }
-    : { type: 'spring' as const, stiffness: 400, damping: 36, mass: 0.78 };
+  // Snap the pill to its first non-zero measurement (mount), spring thereafter.
+  const pillPlaced = hasPlacedPillRef.current;
+  const pillTransition =
+    prefersReducedMotion || !pillPlaced
+      ? { duration: 0 }
+      : { type: 'spring' as const, stiffness: 400, damping: 36, mass: 0.78 };
+  useEffect(() => {
+    if (pill.width > 0) hasPlacedPillRef.current = true;
+  }, [pill.width]);
 
   return (
     <div

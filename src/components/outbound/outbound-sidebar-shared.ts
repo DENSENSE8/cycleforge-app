@@ -9,7 +9,10 @@ export const OUTBOUND_PATH = '/outbound';
 export const OUTBOUND_MODE_SCOPED_PARAMS = [
   'q',
   'open',
+  'new',
   'sort',
+  'ltab',
+  'rtab',
   'ostatus',
   'fbaMode',
   'openShipmentId',

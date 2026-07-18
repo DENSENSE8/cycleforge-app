@@ -35,4 +35,10 @@ export interface IncomingSummary {
   expected_today: number;
   wrong_destination?: number;
   by_carrier?: IncomingCarrierBreakdown[];
+  /** eBay incoming lines still awaiting their Zoho PO link (0 unless Universal Incoming is on). */
+  ebay_pending?: number;
+  /** Total incoming eBay purchasing-account lines (0 unless Universal Incoming is on). */
+  ebay_incoming?: number;
+  /** Whether the org has the eBay purchasing account wired in (drives the eBay tab/KPI). */
+  universal_incoming?: boolean;
 }

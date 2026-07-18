@@ -31,6 +31,12 @@ export function useOutboundUrlState() {
     () => parseOutboundSort(searchParams.get('sort')),
     [searchParams],
   );
+  // New-order entry (`?new=true`) — opens the ShippedIntakeForm as a focused
+  // slide-over over the labels workspace (moved off the dashboard sidebar).
+  const newOpen = useMemo(
+    () => searchParams.get('new') === 'true',
+    [searchParams],
+  );
 
   const basePath = pathname?.startsWith(OUTBOUND_PATH) ? OUTBOUND_PATH : pathname || OUTBOUND_PATH;
 
@@ -87,14 +93,25 @@ export function useOutboundUrlState() {
     [replaceParams],
   );
 
+  const openNew = useCallback(() => {
+    replaceParams((params) => params.set('new', 'true'));
+  }, [replaceParams]);
+
+  const closeNew = useCallback(() => {
+    replaceParams((params) => params.delete('new'));
+  }, [replaceParams]);
+
   return {
     mode,
     q,
     open,
     sort,
+    newOpen,
     updateMode,
     setQ,
     setOpen,
     setSort,
+    openNew,
+    closeNew,
   };
 }

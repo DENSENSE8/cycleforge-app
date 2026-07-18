@@ -5,6 +5,7 @@ export type {
   ChannelDisposition,
   DispositionFacts,
   DispositionRecommendation,
+  ReadyAllocationState,
 } from './types';
 export {
   ALLOCATION_REASON_LABELS,

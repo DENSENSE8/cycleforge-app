@@ -335,12 +335,17 @@ export function ReceivingSidebarPanel() {
               />
             ) : null}
 
-            {/* Triage rail only — Unbox feed list moved to UnboxWorkspaceView. */}
-            {isScanSurface && mode === 'triage' ? (
+            {/* Scan-surface rail. Triage shows its Found/Unfound body; Unbox
+                keeps an always-rendered recent-unbox rail (like TestingRecentRail)
+                — fixed to the Unboxed feed regardless of the right-pane workbench
+                tab, so the operator can see/select recently opened cartons while
+                scanning. The Unboxed/Queue/Viewed tabs themselves live in the
+                right-pane UnboxWorkspaceView. */}
+            {isScanSurface ? (
               <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
                 <ReceivingRailBody
                   mode={mode}
-                  unboxView={unboxView}
+                  unboxView={mode === 'receive' ? 'recent' : unboxView}
                   selectedLine={selectedLine}
                   triageLeadingRow={triageLeadingRow}
                   triageFilterText={mode === 'triage' ? triageListQuery : ''}

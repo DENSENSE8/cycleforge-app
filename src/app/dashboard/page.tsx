@@ -28,15 +28,16 @@ import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
 import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
-import { DashboardInboundView } from '@/components/dashboard/DashboardInboundView';
+import { DashboardReceivingView } from '@/components/dashboard/receiving/DashboardReceivingView';
+import { DashboardSearchView } from '@/components/dashboard/search/DashboardSearchView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
-import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
+import { getDashboardModeFromSearch } from '@/lib/dashboard/dashboard-domains';
 
 function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const domain = getDashboardDomainFromSearch(searchParams);
+  const mode = getDashboardModeFromSearch(searchParams);
   const { detailsEnabled, orderView, searchQuery, setOrderView } = useDashboardSearchController();
 
   // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
@@ -47,17 +48,18 @@ function DashboardPageContent() {
     router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
   }, [router, searchParams]);
 
-  const isInbound = domain === 'inbound';
+  const isOutbound = mode === 'shipping';
 
   const { selectionEnabled, selectMode, toggleSelectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection(orderView);
 
-  // Inbound rows are cartons, not orders — never resolve/open the order panel there.
+  // Only the outbound (Shipping) mode resolves/opens the order panel — receiving
+  // rows are cartons and search rows are hits, never orders.
   const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
-    useDashboardSelectedOrder(detailsEnabled && !isInbound);
+    useDashboardSelectedOrder(detailsEnabled && isOutbound);
 
   useDashboardRealtime();
-  useDashboardViewWarmup({ orderView, searchQuery, enabled: !isInbound });
+  useDashboardViewWarmup({ orderView, searchQuery, enabled: isOutbound });
 
   const refreshDashboard = useCallback(() => {
     window.dispatchEvent(new CustomEvent('dashboard-refresh'));
@@ -67,13 +69,23 @@ function DashboardPageContent() {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
   }
 
-  // Inbound (`?mode=inbound`) is the other dashboard domain — receiving cartons.
-  // It owns its whole region (own chrome + own table) and never mounts the
-  // outbound order panel, so the two domains can't intermix rows.
-  if (isInbound) {
+  // Search (`?mode=search`) — global search results as the visual display; the
+  // sidebar owns the query field + per-staff recents. No order panel.
+  if (mode === 'search') {
     return (
       <div className="flex min-h-0 w-full flex-1">
-        <DashboardInboundView />
+        <DashboardSearchView />
+      </div>
+    );
+  }
+
+  // Receiving (`?mode=inbound`) is the inbound-cartons domain — Triage/Unbox
+  // table tabs. It owns its whole region (own chrome + own table) and never
+  // mounts the outbound order panel, so the two domains can't intermix rows.
+  if (mode === 'receiving') {
+    return (
+      <div className="flex min-h-0 w-full flex-1">
+        <DashboardReceivingView />
       </div>
     );
   }

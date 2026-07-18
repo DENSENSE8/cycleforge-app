@@ -5,10 +5,11 @@ import { Check } from '../Icons';
 import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { Gs1DataMatrix, type Gs1DataMatrixSymbology } from '@/components/barcode/Gs1DataMatrix';
+import type { BarcodeMode } from './ModeSelector';
 export type BarcodeDensity = 'comfortable' | 'compact';
 
 interface BarcodePreviewProps {
-    mode: 'print' | 'sn-to-sku' | 'reprint';
+    mode: BarcodeMode;
     uniqueSku: string;
     sku: string;
     title: string;
@@ -47,11 +48,13 @@ export function BarcodePreview({
     onNotesChange,
     onPrint,
 }: BarcodePreviewProps) {
-    const isPrintMode = mode === 'print' || mode === 'reprint';
+    const isPrintMode = mode === 'print' || mode === 'auto-unit' || mode === 'reprint';
     const comfy = density === 'comfortable';
 
     const ctaLabel = mode === 'print'
         ? 'Save & Print Label'
+        : mode === 'auto-unit'
+        ? 'Issue & Print Units'
         : mode === 'reprint'
         ? 'Reprint Label'
         : 'Log to Database';
@@ -62,7 +65,7 @@ export function BarcodePreview({
             <div className={`flex items-center gap-3 ${comfy ? 'px-7 pt-7 pb-3' : 'px-5 pt-5 pb-3'}`}>
                 <span className={`tabular-nums text-text-soft tracking-widest ${comfy ? 'text-role-micro' : 'text-role-eyebrow'}`}>03</span>
                 <span className={`uppercase text-text-muted ${comfy ? 'text-role-caption tracking-[0.16em]' : 'text-role-eyebrow tracking-[0.18em]'}`}>
-                    {`Review & ${mode === 'print' ? 'Print' : mode === 'reprint' ? 'Reprint' : 'Log'}`}
+                    {`Review & ${mode === 'print' || mode === 'auto-unit' ? 'Print' : mode === 'reprint' ? 'Reprint' : 'Log'}`}
                 </span>
             </div>
 
@@ -154,13 +157,13 @@ export function BarcodePreview({
                 {isPosting ? (
                     <span className="flex items-center justify-center gap-2">
                         <span className="h-3 w-3 border-2 border-glass/30 border-t-white rounded-full animate-spin inline-block" />
-                        {mode === 'print' ? 'Saving & Printing…' : mode === 'reprint' ? 'Reprinting…' : 'Logging…'}
+                        {mode === 'print' || mode === 'auto-unit' ? 'Saving & Printing…' : mode === 'reprint' ? 'Reprinting…' : 'Logging…'}
                     </span>
                 ) : (
                     <span className="flex items-center justify-center gap-2.5">
                         <Check className={comfy ? 'h-5 w-5' : 'h-4 w-4'} />
                         {ctaLabel}
-                        {comfy && (mode === 'print' || mode === 'reprint') && (
+                        {comfy && (mode === 'print' || mode === 'auto-unit' || mode === 'reprint') && (
                             <kbd className="rounded border border-glass/30 bg-glass/10 px-1.5 py-0.5 text-role-eyebrow font-mono font-bold tracking-tighter">⌘P</kbd>
                         )}
                     </span>

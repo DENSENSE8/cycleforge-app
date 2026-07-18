@@ -15,8 +15,8 @@ const QuerySchema = z
 /**
  * GET /api/outbound/ready-queue
  *
- * Post-test channel-allocation queue: TESTED/GRADED units not yet allocated to
- * an order or FBA shipment, scored for FBA vs pre-box/stock.
+ * Recently-tested history with channel-allocation recommendations overlaid on
+ * units that are still eligible for FBA vs pre-box/stock.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const raw = Object.fromEntries(new URL(req.url).searchParams.entries());

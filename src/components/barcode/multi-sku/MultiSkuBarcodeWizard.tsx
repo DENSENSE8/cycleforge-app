@@ -4,6 +4,8 @@ import { SerialNumberInput } from '@/components/barcode/SerialNumberInput';
 import { BarcodePreview } from '@/components/barcode/BarcodePreview';
 import { getSerialLast6 } from '@/utils/sku';
 import type { MultiSkuBarcodeController } from './useMultiSkuBarcode';
+import { AutoUnitQuantityField } from './MultiSkuWorkspaceCards';
+import { MODE_ACCENT_THEME } from './mode-accent';
 
 /**
  * Narrow-column wizard layout (sidebar / mobile). Steps reveal one at a time;
@@ -11,7 +13,8 @@ import type { MultiSkuBarcodeController } from './useMultiSkuBarcode';
  */
 export function MultiSkuBarcodeWizard({ b }: { b: MultiSkuBarcodeController }) {
   const { mode } = b;
-  const showSerialPanel = mode !== 'reprint' && b.step >= 2;
+  const showSerialPanel = mode !== 'reprint' && mode !== 'auto-unit' && b.step >= 2;
+  const showQuantityPanel = mode === 'auto-unit' && b.step >= 2;
   const showPreviewPanel = b.step >= 3;
 
   return (
@@ -53,6 +56,15 @@ export function MultiSkuBarcodeWizard({ b }: { b: MultiSkuBarcodeController }) {
             onNext={b.handleNextStepSn}
             isPosting={b.isPosting}
             onChangeSku={b.handleChangeSku}
+          />
+        ) : null}
+
+        {showQuantityPanel ? (
+          <AutoUnitQuantityField
+            quantity={b.quantity}
+            accent={MODE_ACCENT_THEME[mode]}
+            compact
+            onChange={b.setQuantity}
           />
         ) : null}
 

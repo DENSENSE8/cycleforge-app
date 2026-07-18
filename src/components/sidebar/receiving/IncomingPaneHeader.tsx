@@ -1,16 +1,16 @@
-'use client';
+/**
+ * Incoming sort vocabulary.
+ *
+ * The right-pane header itself moved to the golden workbench recipe
+ * (`incoming/IncomingWorkspaceHeader` — All / Zoho / eBay purchasing-source
+ * tabs + pagination). What remains here is the sort-axis union + labels the
+ * sidebar's Sort control imports, plus the page-size re-export kept for existing
+ * importers.
+ */
 
-import { useCallback } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
-import {
-  PaneHeader,
-  PaneHeaderTitle,
-  PaneHeaderPagination,
-} from '@/components/ui/pane-header';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
 
-/** Sort axis — kept here so the sidebar (which now owns the control) can import the same union. */
+/** Sort axis — the sidebar (which owns the Sort control) imports this union. */
 export type IncomingSort =
   | 'zoho_newest'
   | 'zoho_oldest'
@@ -25,60 +25,7 @@ export const INCOMING_SORT_LABELS: Record<IncomingSort, string> = {
 };
 
 /**
- * Server-side page size for Incoming. The single source of truth now lives in
- * the mode registry (so the table, the descriptor's pagination math, and this
- * header all agree); re-exported here for existing importers.
+ * Server-side page size for Incoming. Single source of truth lives in the mode
+ * registry; re-exported here for existing importers.
  */
 export { INCOMING_PAGE_SIZE };
-
-export interface IncomingPaneHeaderProps {
-  /** Total matching rows across all pages (from `total` in API response). */
-  total: number;
-  /** Current 1-based page index. */
-  page: number;
-}
-
-/**
- * Right-pane header for `mode=incoming`. Owns the pagination URL param
- * (`?page=`) — the table reads it and converts to `limit/offset`. Sort
- * lives in the sidebar (IncomingSidebarPanel); this header is now pure
- * "where am I in the list" navigation.
- *
- * Uses the same 40px {@link PaneHeader} shell as {@link WeekHeader}.
- */
-export function IncomingPaneHeader({ total, page }: IncomingPaneHeaderProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const base = receivingSurfaceBasePath(pathname);
-
-  const totalPages = Math.max(1, Math.ceil(total / INCOMING_PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, page), totalPages);
-
-  const setPage = useCallback(
-    (next: number) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (next <= 1) params.delete('page');
-      else params.set('page', String(next));
-      router.replace(`${base}?${params.toString()}`);
-    },
-    [router, searchParams, base],
-  );
-
-  return (
-    <PaneHeader
-      className="border-b-0"
-      rowClassName="border-b border-border-default"
-      leftSlot={<PaneHeaderTitle>Incoming POs</PaneHeaderTitle>}
-      rightSlot={
-        <PaneHeaderPagination
-          page={safePage}
-          pageSize={INCOMING_PAGE_SIZE}
-          total={total}
-          onPrev={() => setPage(safePage - 1)}
-          onNext={() => setPage(safePage + 1)}
-        />
-      }
-    />
-  );
-}

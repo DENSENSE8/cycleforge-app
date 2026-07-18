@@ -8,6 +8,9 @@
 
 import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'framer-motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { ShippingKpiStrip } from '@/components/tech/shipping/ShippingKpiStrip';
@@ -50,6 +53,13 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { selectMode, toggleSelectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection('unshipped');
 
+  // Tab bodies crossfade as the singular focus surface (chrome + KPI strip stay
+  // put) — same workbenchPane preset family as the receiving right pane.
+  const paneMotionProps = {
+    ...useMotionPresence(framerPresence.workbenchPane),
+    transition: useMotionTransition(framerTransition.workbenchPaneMount),
+  };
+
   return (
     <DashboardScrollShell
       className="h-full"
@@ -77,29 +87,33 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
         </div>
 
         <div className="relative flex min-w-0 flex-col">
-          <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-            {shipTab === 'fba' ? (
-              <div className="flex min-w-0 flex-col gap-3">
-                <p className="text-role-caption text-text-soft">
-                  Recommended FBA to ship — work in progress. Use the FBA station for plan, label, and
-                  hand-off.
-                </p>
-                <FbaShipmentsTable />
-              </div>
-            ) : shipTab === 'history' ? (
-              <TechTable
-                testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
-                staffScope="url-or-self"
-                toolbarPortalTarget={controlsEl}
-              />
-            ) : (
-              <UnshippedTable
-                strictSearchScope
-                selectMode={selectMode}
-                toolbarPortalTarget={controlsEl}
-              />
-            )}
-          </Suspense>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={shipTab} {...paneMotionProps} className="flex min-w-0 flex-col">
+              <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
+                {shipTab === 'fba' ? (
+                  <div className="flex min-w-0 flex-col gap-3">
+                    <p className="text-role-caption text-text-soft">
+                      Shipment-grain FBA lifecycle board. Plan, combine, and hand off at the FBA
+                      station (top-right link).
+                    </p>
+                    <FbaShipmentsTable />
+                  </div>
+                ) : shipTab === 'history' ? (
+                  <TechTable
+                    testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
+                    staffScope="url-or-self"
+                    toolbarPortalTarget={controlsEl}
+                  />
+                ) : (
+                  <UnshippedTable
+                    strictSearchScope
+                    selectMode={selectMode}
+                    toolbarPortalTarget={controlsEl}
+                  />
+                )}
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 

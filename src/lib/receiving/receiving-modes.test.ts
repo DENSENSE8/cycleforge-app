@@ -28,6 +28,7 @@ function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContex
     incomingPoFrom: '',
     incomingPoTo: '',
     incomingPage: 1,
+    incomingSource: 'all',
     isDeliveredUnscannedFacet: false,
     isDeliveredNotUnboxedFacet: false,
     ...overrides,
@@ -146,6 +147,24 @@ test('incoming buildParams forwards facet + sort + date range, defaults search t
   assert.equal(p.get('sort'), 'zoho_oldest');
   assert.equal(p.get('po_from'), '2026-01-01');
   assert.equal(p.get('po_to'), '2026-02-01');
+});
+
+test('incoming buildParams maps the purchasing-source tab to ?inbound (all = no param)', () => {
+  assert.equal(RECEIVING_MODES.incoming.buildParams(ctx()).get('inbound'), null);
+  assert.equal(
+    RECEIVING_MODES.incoming.buildParams(ctx({ incomingSource: 'zoho' })).get('inbound'),
+    'zoho',
+  );
+  assert.equal(
+    RECEIVING_MODES.incoming.buildParams(ctx({ incomingSource: 'ebay' })).get('inbound'),
+    'ebay',
+  );
+});
+
+test('incoming queryKey varies by purchasing source so a tab flip refetches', () => {
+  const all = RECEIVING_MODES.incoming.queryKey(ctx());
+  const ebay = RECEIVING_MODES.incoming.queryKey(ctx({ incomingSource: 'ebay' }));
+  assert.notDeepEqual(all, ebay);
 });
 
 // ── skipWeekFilter ───────────────────────────────────────────────────────────

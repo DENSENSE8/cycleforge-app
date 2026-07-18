@@ -24,6 +24,13 @@ export type AllocationReason =
 
 export type AllocationEntityType = 'SERIAL_UNIT' | 'RECEIVING_LINE';
 
+/** Whether a recently-tested unit can still enter channel allocation. */
+export type ReadyAllocationState =
+  | 'READY'
+  | 'FBA_STAGED'
+  | 'ORDER_ALLOCATED'
+  | 'NOT_READY';
+
 /** Facts fed into the pure recommender — no I/O. */
 export interface DispositionFacts {
   /** Explicit staff/system hold. */
@@ -52,18 +59,26 @@ export interface DispositionRecommendation {
 
 /** One ready-queue row after allocation (display facts attached by the loader). */
 export interface AllocationHit {
+  /** Append-only testing_results id; distinct when the same unit is tested again. */
+  testingResultId: number;
   entityType: AllocationEntityType;
   entityId: number;
   skuCatalogId: number | null;
   /** Display SKU string only — never join key. */
   sku: string | null;
+  serialNumber: string | null;
   fnsku: string | null;
   asin: string | null;
   title: string | null;
   conditionGrade: string | null;
   unitStatus: string | null;
+  verdict: string | null;
+  testedBy: number | null;
+  testedByName: string | null;
   testedAt: string | null;
-  disposition: ChannelDisposition;
+  /** Null when the history row no longer has a channel-allocation destination. */
+  disposition: ChannelDisposition | null;
+  allocationState: ReadyAllocationState;
   reasons: AllocationReason[];
   score: number;
   velocityTier: VelocityTier | null;

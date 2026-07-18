@@ -97,6 +97,14 @@ export function useReceivingModeContext(): ReceivingModeState {
     : 'scanned';
   const incomingPoFrom = isIncomingMode ? (searchParams.get('po_from') || '').trim() : '';
   const incomingPoTo = isIncomingMode ? (searchParams.get('po_to') || '').trim() : '';
+  // Purchasing-source tab (`?inbound=`): which account the incoming order came
+  // from (All / Zoho / eBay). Defaults to `all`; only the two narrowing values
+  // are honored, so junk falls back to the unioned view.
+  const incomingSourceRaw = isIncomingMode
+    ? (searchParams.get('inbound') || '').trim().toLowerCase()
+    : '';
+  const incomingSource: 'all' | 'zoho' | 'ebay' =
+    incomingSourceRaw === 'ebay' ? 'ebay' : incomingSourceRaw === 'zoho' ? 'zoho' : 'all';
   // Pagination — server-side LIMIT 50 + page offset. Page numbers are 1-based in
   // the URL ("?page=2" = second page). Malformed/missing falls back to 1.
   const incomingPageRaw = isIncomingMode ? Number(searchParams.get('page') || '1') : 1;
@@ -125,6 +133,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       incomingPoFrom,
       incomingPoTo,
       incomingPage,
+      incomingSource,
       isDeliveredUnscannedFacet,
       isDeliveredNotUnboxedFacet,
     }),
@@ -139,6 +148,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       incomingPoFrom,
       incomingPoTo,
       incomingPage,
+      incomingSource,
       isDeliveredUnscannedFacet,
       isDeliveredNotUnboxedFacet,
     ],

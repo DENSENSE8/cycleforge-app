@@ -72,9 +72,9 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
     subtitle: [row.order_id, row.serial_number, row.sku, row.account_source]
       .filter(Boolean)
       .join(' · '),
-    // Canonical full-page order view — kept in sync with searchHitHref('ORDER')
-    // so exact-arm and doc-arm hits for the same order deep-link identically.
-    href: `/o/${row.id}`,
+    // Canonical order workbench — kept in sync with searchHitHref('ORDER') /
+    // orderSearchHref so exact-arm and doc-arm hits deep-link identically.
+    href: `/o/${row.id}?mode=search`,
     matchField: 'order',
   }));
 }

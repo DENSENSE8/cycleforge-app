@@ -22,7 +22,7 @@ interface TransactionKindMeta {
   icon: (props: { className?: string }) => JSX.Element;
 }
 
-export const TRANSACTION_KINDS: Record<TransactionKind, TransactionKindMeta> = {
+const TRANSACTION_KINDS: Record<TransactionKind, TransactionKindMeta> = {
   sale: { kind: 'sale', label: 'Sale', dot: 'bg-emerald-600', tabColor: 'emerald', icon: DollarSign },
   pickup: { kind: 'pickup', label: 'Pickup', dot: 'bg-blue-500', tabColor: 'blue', icon: Package },
   repair: { kind: 'repair', label: 'Repair', dot: 'bg-orange-500', tabColor: 'orange', icon: Wrench },

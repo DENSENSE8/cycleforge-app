@@ -651,3 +651,106 @@ recipe is one primitive (`WorkbenchTablePane`). Captured law: **content-chrome t
 = lifecycle facets of one workspace; sidebar mode rail = distinct surfaces.**
 Remaining: browser verification; Dashboard/Shipping `WorkbenchChromeHeader` adoption;
 optional relocate of the shell module to `design-system`.
+
+### 2026-07-17 — Fable 5 prune run planned
+
+- **Execution plan:** [`fable5-ds-prune-alignment-plan.md`](./fable5-ds-prune-alignment-plan.md)
+- **Agent prompt:** [`fable5-ds-prune-EXECUTION-PROMPT.md`](./fable5-ds-prune-EXECUTION-PROMPT.md)
+- **Scope:** P0 FBA content-chrome tabs + KPI strip; Labels header/KPI + mode crossfade;
+  `/test` Shipping tab crossfade; knip/SoT import hygiene. Outbound four-mode switch
+  stays sidebar per refined law.
+
+### 2026-07-17 — Fable 5 prune run: FBA convergence + `/test` Shipping crossfade + prune ✅
+
+- **Audit:** `docs/audit/fable5-ds-prune-report.md` (Phase A findings, full-sweep results,
+  dead-code inventory). Approved scope: full P0+P1+P3, Shipped table → main pane.
+- **FBA (`/outbound?mode=fba`) — the two-zone workbench shell:**
+  - `FbaOutboundWorkspace` rebuilt on `DashboardScrollShell` + `WORKBENCH_CHROME_COLUMN` /
+    `WORKBENCH_BODY_COLUMN` (was nested hand-rolled flex + `StationFba` shell).
+  - **`FbaWorkspaceHeader`** (new) — `WorkbenchChromeHeader` + `TabSwitch` with the
+    Plan · Combine · Shipped facets **top-left in content chrome**. The old sidebar
+    pill row was dead behind the always-on master nav (no visible sub-mode switcher
+    existed at all — content tabs fix a live UX hole). Week pill + Select-all +
+    "N selected" live in the chrome right cluster; selection stays table-owned via
+    the existing `FBA_BOARD_*` window events. Search = DS `ToolbarSearchToggle`
+    (replaces the raw `<input>` + hand-rolled focus recipe).
+  - **`FbaKpiStrip`** (new) + **`lib/fba/fba-metrics.ts`** (new SoT + unit tests) —
+    Monitor `KpiTile`s below chrome, clickable → status facet (replaces both the
+    inline `KpiTile` grid and the `PaneHeaderTabs` status row inside
+    `FbaBoardTable`'s toolbar; OOS still filterable via its tile).
+  - `FbaBoardTable` = **table only, full-bleed in gutters** (toolbar, card wrap, and
+    internal scroll removed; sticky thead docks under chrome at `top-0`; two raw
+    `<button>`s → DS `Button`).
+  - **Shipped tab → main pane** (`FbaShippedTable embedded={false}`; sidebar keeps a
+    teaching line + ambient rails — inverted-sidebar fixed). Sub-mode bodies crossfade
+    via `framerPresence/framerTransition.workbenchPaneSettle` through the hooks bridge.
+  - Combine overlay + FloatingButton hoisted to the pane root (`z-panel` takeover over
+    chrome; same `workspaceActive` fade). Deep-link `openShipmentId` preserved.
+- **`/test` Shipping:** tab body (`pending`/`fba`/`history`) now crossfades
+  (`workbenchPane` + `workbenchPaneMount` via `useMotionPresence`/`useMotionTransition`);
+  FBA-tab copy aligned with the outbound FBA outcome.
+- **Prune (grep-confirmed zero importers):** deleted `components/dashboard/outbound-metrics.ts`
+  (stale duplicate of `lib/dashboard/outbound-metrics.ts`), `OutboundQuickLegend.tsx`,
+  `OutboundShippedLayoutTabs.tsx`, `FbaBoardRegion.tsx` (inlined), `StationFba.tsx`;
+  removed dead exports `FbaPlanRail`/`FbaCombineRail`, `FbaLoadingState`/`FbaEmptyState`,
+  `FBA_STATUS_TOKENS`, `FBA_MODE_ITEMS` (+ de-exported `FBA_MODES`).
+- **Labels convergence: DEFERRED — concurrent session owns it.** A parallel session was
+  actively building `LabelsWorkspaceView` + `LabelsWorkspaceHeader` + `LabelsKpiStrip`
+  and rewiring `OutboundWorkspace` mid-run (files landing 12:01–12:08); per the
+  collision rule this run stood down from the whole Labels/`OutboundWorkspace` surface,
+  including the outbound mode-switch crossfade (same file). Left for that lane.
+- **Verified:** `npm run verify` — Lint ✓, Typecheck ✓, Unit tests + DS guards ✓ (2604
+  pass; `fba-metrics` unit tests added), route-permission/route-auth/tenancy/schema ✓.
+  Dead-code gate ✓ (current 3272 &lt; baseline 3283; no new findings): my two new Props
+  exports de-exported, and — once the concurrent Labels lane went quiet — its three
+  unused exports (`LABELS_WORKSPACE_TAB_PARAM`, `LabelsWorkspaceHeaderProps`,
+  `LabelsWorkspaceViewProps`) were de-exported in place (all used in-file; trivially
+  re-exportable if that lane later needs them). DS ratchets only went
+  down (removed: 1 hand-rolled card shell, 1 hand-rolled focus recipe, 2 raw buttons,
+  1 `PaneHeaderTabs`-as-facet usage, 1 inline KPI grid).
+- **Not browser-verified:** FBA plan/combine scroll + sticky thead under chrome, combine
+  overlay/floating pill over the new shell, Shipped main-pane table, `/test` tab crossfade —
+  want a bench pass.
+
+### 2026-07-17 — Outbound Ready recently-tested convergence
+
+- **Data spine:** `lib/channel-allocation/ready-queue.ts` now starts from the
+  append-only `testing_results` log, newest verdict first, then overlays the
+  existing disposition recommender for units that remain allocatable. FBA-linked,
+  order-allocated, failed, and retest rows stay visible as read-only history.
+- **Axis-5 shell:** `ReadyWorkspaceView` composes `DashboardScrollShell` +
+  `WORKBENCH_CHROME_COLUMN` / `WORKBENCH_BODY_COLUMN`; `ReadyWorkspaceHeader`
+  owns All tested · FBA · Pre-box · Hold facets and scoped search; `ReadyKpiStrip`
+  uses Monitor `KpiTile`s between chrome and the full-bleed table.
+- **Mode law preserved:** Labels · Ready · FBA · Scan out remain distinct sidebar
+  modes. Ready's top tabs filter one recently-tested table, so they are lifecycle
+  facets within that mode rather than a duplicate mode switcher.
+- **Sidebar:** duplicate Ready search removed; teaching copy and FBA-prep link remain.
+
+### 2026-07-17 — Labels focused flow rebuilt on the Unbox browse/overlay pattern ✅
+
+- **Course-correct (user):** on Queue-row click, Labels mounted BOTH the old
+  `OutboundDocumentsPrintView` pane crossfade AND the 420px `ShippedDetailsPanel`
+  slide-over (`LabelsOrderWorkspace` wrapper) at once — the print pane even carried a
+  `pr-[456px]` clearance hack for the always-open overlay. Both deleted; the flow now
+  mirrors Unbox: the Queue/Recent browse workbench stays mounted (visibility-hidden +
+  `inert`, cache/scroll preserved) and ONE focused order workspace crossfades over it
+  at `z-panel` with `workbenchPaneSettle`, keyed on `?open=`.
+- **New `LabelsOrderWorkspace`** (rebuilt in place) — `StationWorkbench` (dock-exempt,
+  Packing precedent) with station tabs top-left via `SectionTabsSlider`:
+  **Print** (full-size label + packing-slip previews on `Panel`, one combined
+  `printOutboundDocuments` job in the frozen toolbar) · **Documents** (writable
+  `OrderDocumentsSection`: attach / marketplace-fetch / delete + Buy label) ·
+  **Timeline** (`OrderTimelineSection`). Entity identity composes the
+  `CartonContextCard` waist via `ShippingEntityContextHeader` + a thin
+  `ShippedOrder → ActiveStationOrder` adapter — no forked identity header.
+- **Deleted:** `OutboundDocumentsPrintView.tsx` (incl. its `ds-allow-spacing`
+  clearance hack); the `ShippedDetailsPanel`-wrapping old workspace. `context="labels"`
+  now has no caller (panel keeps the branch; other contexts live).
+- **Sidebar rails:** `LabelsModeBody` gains `LabelsRecentRail` — two
+  `SidebarRecentRailBase` stacks: "Labels printed" (staged queue, newest
+  `label_printed_at` first) and "Recently shipped · You" (session staffer's
+  SHIP_CONFIRM slice via `/api/orders/recent?staff=`); row select opens the focused
+  workspace through the same `?open=` flow.
+- **Not browser-verified:** overlay crossfade + browse restore, print job from the new
+  toolbar, Documents tray mutations refreshing the Print tab, rail select → overlay.

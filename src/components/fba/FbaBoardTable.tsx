@@ -1,18 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight } from '@/components/Icons';
 import { FnskuChip, CopyChip, getLast4 } from '@/components/ui/CopyChip';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { sectionLabel, SkeletonList } from '@/design-system';
 import { IconButton, Button } from '@/design-system/primitives';
-import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { PaneHeaderTabs } from '@/components/ui/pane-header';
-import { KpiTile } from '@/design-system/components/monitor';
 import type { StationTheme } from '@/utils/staff-colors';
 import { printQueueTableUi } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
-import { formatDateKeyShort, formatWeekRangeCompact } from '@/utils/date';
+import { formatDateKeyShort } from '@/utils/date';
+import type { FbaBoardStatusFilter } from '@/lib/fba/fba-metrics';
 
 import type { FbaBoardItem } from '@/lib/fba/types';
 export type { FbaBoardItem } from '@/lib/fba/types';
@@ -39,22 +37,15 @@ interface FbaBoardTableProps {
   emptyMessage?: string;
   onSelectionChange?: (selected: FbaBoardItem[]) => void;
   onDetailOpen?: (item: FbaBoardItem) => void;
-  weekRange?: { startStr: string; endStr: string };
-  weekOffset?: number;
-  onPrevWeek?: () => void;
-  onNextWeek?: () => void;
-  rightSlot?: ReactNode;
-  /** Extra classes on the scroll body (e.g. pb for floating combine pill). */
+  /** Status facet from the KPI strip (`ALL` = no filter). Owned by the workspace. */
+  statusFilter?: FbaBoardStatusFilter;
+  /** Text filter from the chrome search field. Owned by the workspace. */
+  query?: string;
+  /** Clear filters affordance for the filtered-empty state. */
+  onResetFilters?: () => void;
+  /** Extra classes on the table wrapper (e.g. pb for floating combine pill). */
   contentClassName?: string;
 }
-
-type BoardStatusFilter =
-  | 'ALL'
-  | 'PLANNED'
-  | 'TESTED'
-  | 'PACKED'
-  | 'LABEL_ASSIGNED'
-  | 'OUT_OF_STOCK';
 
 function sortBoardItems(a: FbaBoardItem, b: FbaBoardItem) {
   const aOrder = FBA_STATUS_ORDER[a.item_status.toUpperCase()] ?? 99;
@@ -75,17 +66,12 @@ export function FbaBoardTable({
   emptyMessage,
   onSelectionChange,
   onDetailOpen,
-  weekRange,
-  weekOffset = 0,
-  onPrevWeek,
-  onNextWeek,
-  rightSlot,
+  statusFilter = 'ALL',
+  query = '',
+  onResetFilters,
   contentClassName,
 }: FbaBoardTableProps) {
   const ui = printQueueTableUi[stationTheme];
-
-  const [statusFilter, setStatusFilter] = useState<BoardStatusFilter>('ALL');
-  const [query, setQuery] = useState('');
 
   const sortedItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -101,23 +87,6 @@ export function FbaBoardTable({
       })
       .sort(sortBoardItems);
   }, [items, statusFilter, query]);
-
-  const statusCounts = useMemo(() => {
-    const counts: Record<Exclude<BoardStatusFilter, 'ALL'>, number> = {
-      PLANNED: 0,
-      TESTED: 0,
-      PACKED: 0,
-      LABEL_ASSIGNED: 0,
-      OUT_OF_STOCK: 0,
-    };
-    let units = 0;
-    for (const item of items) {
-      const s = item.item_status.toUpperCase() as keyof typeof counts;
-      if (s in counts) counts[s] += 1;
-      units += Math.max(0, Number(item.actual_qty) || 0);
-    }
-    return { ...counts, units, lines: items.length };
-  }, [items]);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   /** Index in `sortedItems` for the last plain click — shift-click selects the inclusive range from here. */
@@ -324,191 +293,40 @@ export function FbaBoardTable({
     };
   }, [sortedItems, emitSelection]);
 
-  const allVisibleSelected =
-    sortedItems.length > 0 && sortedItems.every((i) => selectedIds.has(i.item_id));
-  const someSelected = selectedIds.size > 0;
-
-  const weekPillLabel =
-    weekRange != null
-      ? formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)
-      : 'All dates';
-
-  const filterTabs: { value: BoardStatusFilter; label: string; count: number }[] = [
-    { value: 'ALL', label: 'All', count: statusCounts.lines },
-    { value: 'PLANNED', label: 'Planned', count: statusCounts.PLANNED },
-    { value: 'TESTED', label: 'Tested', count: statusCounts.TESTED },
-    { value: 'PACKED', label: 'Packed', count: statusCounts.PACKED },
-    { value: 'LABEL_ASSIGNED', label: 'Combined', count: statusCounts.LABEL_ASSIGNED },
-    { value: 'OUT_OF_STOCK', label: 'OOS', count: statusCounts.OUT_OF_STOCK },
-  ];
-
-  const toolbar = (
-    <div className="flex min-w-0 shrink-0 flex-col gap-4 border-b border-border-soft bg-surface-card/95 px-4 py-4 sm:px-6 lg:px-8">
-      {/* KPI strip — Monitor tiles, clickable → status tab */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <KpiTile
-          label="Lines"
-          value={statusCounts.lines}
-          onOpen={() => setStatusFilter('ALL')}
-          className="p-3"
-        />
-        <KpiTile
-          label="Units"
-          value={statusCounts.units}
-          valueClassName="text-text-fulfillment"
-          className="p-3"
-        />
-        <KpiTile
-          label="Planned"
-          value={statusCounts.PLANNED}
-          valueClassName="text-amber-700"
-          onOpen={() => setStatusFilter('PLANNED')}
-          className="p-3"
-        />
-        <KpiTile
-          label="Tested"
-          value={statusCounts.TESTED}
-          valueClassName="text-emerald-700"
-          onOpen={() => setStatusFilter('TESTED')}
-          className="p-3"
-        />
-        <KpiTile
-          label="Packed"
-          value={statusCounts.PACKED}
-          valueClassName="text-blue-700"
-          onOpen={() => setStatusFilter('PACKED')}
-          className="p-3"
-        />
-        <KpiTile
-          label="Combined"
-          value={statusCounts.LABEL_ASSIGNED}
-          valueClassName="text-green-700"
-          onOpen={() => setStatusFilter('LABEL_ASSIGNED')}
-          className="p-3"
-        />
-      </div>
-
-      {/* Top-left status tabs + week + select */}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <PaneHeaderTabs
-          dense
-          tabs={filterTabs}
-          value={statusFilter}
-          onChange={setStatusFilter}
-          className="shrink-0 bg-transparent px-0 py-0"
-        />
-        <div className="h-4 w-px shrink-0 bg-border-hairline" aria-hidden />
-        {weekRange && onPrevWeek && onNextWeek ? (
-          <DateRangePickerPill
-            label={weekPillLabel}
-            count={sortedItems.length}
-            weekNav={{ weekOffset, onPrev: onPrevWeek, onNext: onNextWeek }}
-          />
-        ) : (
-          <span className="rounded-full border border-border-soft bg-surface-canvas px-3 py-1 text-role-caption font-bold tabular-nums text-text-soft">
-            {sortedItems.length}
-          </span>
-        )}
-        <div className="min-w-0 flex-1" />
-        <div className="flex shrink-0 items-center gap-2">
-          {rightSlot}
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-8 px-2.5 text-role-micro uppercase tracking-widest"
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent(FBA_BOARD_TOGGLE_ALL, {
-                  detail: allVisibleSelected ? 'none' : 'all',
-                }),
-              )
-            }
-          >
-            {allVisibleSelected ? 'Clear' : 'Select all'}
-          </Button>
-          {someSelected ? (
-            <span className="text-role-eyebrow uppercase tracking-widest tabular-nums text-text-soft">
-              {selectedIds.size} selected
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex min-w-0 items-center gap-3">
-        <label className="sr-only" htmlFor="fba-board-filter">
-          Filter board
-        </label>
-        <input
-          id="fba-board-filter"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter title, FNSKU, ASIN, SKU, plan…"
-          className="h-9 w-full max-w-md rounded-xl border border-border-soft bg-surface-canvas px-3 text-role-caption font-semibold text-text-default outline-none ring-0 placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-        />
-        {(statusFilter !== 'ALL' || query) && (
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter('ALL');
-              setQuery('');
-            }}
-            className="text-role-eyebrow uppercase tracking-widest text-text-soft hover:text-text-default"
-          >
-            Reset filters
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-        {toolbar}
-        <div className={cn('flex-1 overflow-y-auto px-4 py-4 sm:px-6', contentClassName)}>
-          <SkeletonList count={12} />
-        </div>
+      <div className={cn('flex min-w-0 flex-col py-2', contentClassName)}>
+        <SkeletonList count={12} />
       </div>
     );
   }
 
   if (sortedItems.length === 0) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-        {toolbar}
-        <div className="flex flex-1 items-center justify-center px-6 py-16 text-center">
-          <div className="max-w-sm space-y-2">
-            <p className={sectionLabel}>{emptyMessage || 'No items'}</p>
-            {(statusFilter !== 'ALL' || query) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setStatusFilter('ALL');
-                  setQuery('');
-                }}
-                className="text-role-caption font-black uppercase tracking-widest text-blue-700 hover:underline"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
+      <div className={cn('flex min-w-0 flex-col items-center justify-center px-6 py-16 text-center', contentClassName)}>
+        <div className="max-w-sm space-y-2">
+          <p className={sectionLabel}>{emptyMessage || 'No items'}</p>
+          {(statusFilter !== 'ALL' || query.trim()) && onResetFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 px-2.5 text-role-micro uppercase tracking-widest"
+              onClick={onResetFilters}
+            >
+              Clear filters
+            </Button>
+          ) : null}
         </div>
       </div>
     );
   }
 
+  // Full-bleed inside the workbench gutters (no card wrap, no inner scroll) —
+  // the page scroll port owns scrolling and the sticky thead docks under the
+  // pinned chrome at top-0, per the Axis-5 workbench shell recipe.
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-      {toolbar}
-      <div
-        className={cn(
-          'min-h-0 flex-1 overflow-auto px-4 pb-8 pt-3 sm:px-6 lg:px-8',
-          contentClassName,
-        )}
-      >
-        <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-          <table className="min-w-full border-collapse">
+    <div className={cn('relative flex min-w-0 flex-col', contentClassName)}>
+      <table className="min-w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-surface-card">
               <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
                 <th className="w-10 px-3 py-3">
@@ -631,9 +449,7 @@ export function FbaBoardTable({
                 );
               })}
             </tbody>
-          </table>
-        </div>
-      </div>
+      </table>
     </div>
   );
 }
