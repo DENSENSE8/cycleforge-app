@@ -13,6 +13,7 @@ import {
   SOURCE_DOT_BG,
   SOURCE_DOT_LABEL,
 } from '@/utils/source-dot';
+import { orderRowConditionLabel } from '@/lib/conditions';
 
 export function techRecordRailTitle(record: TechRecord): string {
   return hasUsableProductTitle(record.product_title)
@@ -47,10 +48,10 @@ function conditionLabel(record: TechRecord): string {
     String(record.order_id || '').toUpperCase() === 'FBA';
   const raw = String(record.condition || '').trim();
   if (isFbaRow) {
-    if (!raw || /^fba\s*scan$/i.test(raw)) return 'N/A';
-    return raw;
+    if (!raw || /^fba\s*scan$/i.test(raw)) return orderRowConditionLabel(null);
+    return orderRowConditionLabel(raw);
   }
-  return raw || 'N/A';
+  return orderRowConditionLabel(raw);
 }
 
 export function techRecordToRailVM(record: TechRecord): RailRowVM {

@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * useTriageStaging — shelf assignment for triage (locations catalog).
- * Priority lane is auto-routed on shelf save via `resolveTriageLane` — no UI picker.
+ * useTriageStaging — shelf + lane assignment for triage (locations catalog).
+ * Shelf save auto-routes lane via `resolveTriageLane`; operator can override
+ * lane manually (manual wins — see triage-lane-policy).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
@@ -40,7 +41,27 @@ export function useTriageStaging(row: ReceivingLineRow) {
     setStagingLocationId(row.staging_location_id ?? null);
   }, [row.id, row.staging_location_id]);
 
+  const [priorityLane, setPriorityLane] = useState(row.priority_lane ?? null);
+  useEffect(() => {
+    setPriorityLane(row.priority_lane ?? null);
+  }, [row.id, row.priority_lane]);
+
   const [savingLocation, setSavingLocation] = useState(false);
+  const [savingLane, setSavingLane] = useState(false);
+
+  const selectedLocation = useMemo(
+    () => locations.find((l) => l.id === stagingLocationId) ?? null,
+    [locations, stagingLocationId],
+  );
+
+  const locationLabel = useMemo(() => {
+    if (!selectedLocation) return null;
+    return selectedLocation.room
+      ? `${selectedLocation.room} · ${selectedLocation.name}`
+      : selectedLocation.name;
+  }, [selectedLocation]);
+
+  const isStaged = stagingLocationId != null && !!priorityLane;
 
   const patchStaging = useCallback(
     async (patch: { staging_location_id?: number | null; priority_lane?: string | null }) => {
@@ -71,18 +92,33 @@ export function useTriageStaging(row: ReceivingLineRow) {
     async (locationId: number | null) => {
       setStagingLocationId(locationId);
       setSavingLocation(true);
-      const autoLane = resolveTriageLane(row.priority_lane ?? null, {
+      const autoLane = resolveTriageLane(priorityLane, {
         isReturn: isReturnIntake(row),
         isPriority: !!row.is_priority,
       });
+      if (autoLane) setPriorityLane(autoLane);
       const ok = await patchStaging({
         staging_location_id: locationId,
         ...(autoLane ? { priority_lane: autoLane } : {}),
       });
-      if (!ok) setStagingLocationId(row.staging_location_id ?? null);
+      if (!ok) {
+        setStagingLocationId(row.staging_location_id ?? null);
+        setPriorityLane(row.priority_lane ?? null);
+      }
       setSavingLocation(false);
     },
-    [patchStaging, row],
+    [patchStaging, row, priorityLane],
+  );
+
+  const selectLane = useCallback(
+    async (lane: string | null) => {
+      setPriorityLane(lane);
+      setSavingLane(true);
+      const ok = await patchStaging({ priority_lane: lane });
+      if (!ok) setPriorityLane(row.priority_lane ?? null);
+      setSavingLane(false);
+    },
+    [patchStaging, row.priority_lane],
   );
 
   return {
@@ -91,6 +127,12 @@ export function useTriageStaging(row: ReceivingLineRow) {
     stagingLocationId,
     selectShelf,
     savingLocation,
+    priorityLane,
+    selectLane,
+    savingLane,
+    selectedLocation,
+    locationLabel,
+    isStaged,
   };
 }
 

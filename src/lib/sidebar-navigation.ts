@@ -123,6 +123,7 @@ const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/repair',
   '/pack',
   '/packer',
+  '/shipping',
   '/outbound',
   '/test',
   '/tech',
@@ -166,7 +167,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // hop. Route key still resolves to 'receiving', so the item stays active
   // across every receiving mode (/unbox, /triage, /receiving?mode=…).
   { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: ClipboardList,   kind: 'station', requires: 'receiving.view' },
-  { id: 'outbound',          label: 'Shipping',    href: '/outbound',           icon: Send,            kind: 'station', requires: 'shipping.view' },
+  { id: 'outbound',          label: 'Shipping',    href: '/shipping',           icon: Send,            kind: 'station', requires: 'shipping.view' },
   // Points at the first-class Test surface (`/test`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
@@ -276,6 +277,9 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // panel + station, so it resolves to the `packer` key (legacy `/packer` too).
   if (pathname === '/pack' || pathname.startsWith('/pack/')) return 'packer';
   if (pathname === '/packer' || pathname.startsWith('/packer/')) return 'packer';
+  // `/shipping` is the first-class Shipping surface; it reuses the `outbound`
+  // sidebar panel + station key (legacy `/outbound` too).
+  if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return 'outbound';
   if (pathname === '/outbound' || pathname.startsWith('/outbound/')) return 'outbound';
   if (pathname === '/manuals/library' || pathname.startsWith('/manuals/library/')) return 'manuals-library';
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
@@ -292,6 +296,8 @@ function getFirstPathSegment(path: string): string {
   // Normalize the legacy Testing route (`/tech`) to the canonical `test` segment
   // so the nav item stays active across the migration.
   if (segment === 'tech') return 'test';
+  // Normalize legacy Shipping (`/outbound`) to canonical `/shipping`.
+  if (segment === 'outbound') return 'shipping';
   return segment;
 }
 
@@ -301,7 +307,7 @@ export function isSidebarNavActive(pathname: string | null, href: string): boole
   const hrefSegment = getFirstPathSegment(href);
   const pathnameSegment = getFirstPathSegment(pathname);
 
-  if (hrefSegment === 'test' || hrefSegment === 'pack') {
+  if (hrefSegment === 'test' || hrefSegment === 'pack' || hrefSegment === 'shipping') {
     return pathnameSegment === hrefSegment;
   }
 
@@ -349,6 +355,7 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/pack',               permission: 'packing.view' },
   { prefix: '/packer',             permission: 'packing.view' },
   { prefix: '/packers',            permission: 'packing.view' },
+  { prefix: '/shipping',           permission: 'shipping.view' },
   { prefix: '/outbound',           permission: 'shipping.view' },
   { prefix: '/products',           permission: 'sku_stock.view' },
   { prefix: '/warehouse',          permission: 'sku_stock.view' },
@@ -455,7 +462,7 @@ const PRODUCTS = '/products';
 const TECH = '/test';
 const WALK_IN = '/walk-in';
 const ADMIN = '/admin';
-const OUTBOUND = '/outbound';
+const SHIPPING = '/shipping';
 const SUPPORT = '/support';
 // Packing graduated to its own first-class surface route (`/pack`,
 // operator-surfaces refactor Phase 7); its modes navigate there. Legacy
@@ -583,31 +590,32 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'queue';
     },
   },
-  // ── FBA prep (legacy page nav — surface split hosts under Outbound) ─────
-  // Deep-links still resolve; primary UX is `/outbound?mode=fba&fbaMode=…`.
+  // ── FBA prep (legacy page nav — surface split hosts under Shipping) ─────
+  // Deep-links still resolve; primary UX is `/shipping?mode=fba&fbaMode=…`.
   {
-    id: 'fba', label: 'FBA prep', href: OUTBOUND, icon: Boxes, kind: 'main', requires: 'fba.view',
+    id: 'fba', label: 'FBA prep', href: SHIPPING, icon: Boxes, kind: 'main', requires: 'fba.view',
     modes: [
-      { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', fbaMode: 'plan' } }) },
-      { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', fbaMode: null } }) },
-      { id: 'shipped', label: 'Shipped', icon: Truck,         to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', fbaMode: 'shipped' } }) },
+      { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'plan' } }) },
+      { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: null } }) },
+      { id: 'shipped', label: 'Shipped', icon: Truck,         to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'shipped' } }) },
     ],
     resolveMode: ({ params }) => {
       const v = String(params.get('fbaMode') || params.get('mode') || '').trim().toLowerCase();
       return v === 'plan' || v === 'shipped' ? v : 'combine';
     },
   },
-  // ── Shipping (outbound station) ───────────────────────────────────────────
+  // ── Shipping station ──────────────────────────────────────────────────────
   // `?mode=labels|scan-out|ready|fba`; default `labels` (param cleared).
+  // Nav id stays `outbound` for bookmark/test stability (route is `/shipping`).
   {
-    id: 'outbound', label: 'Shipping', href: OUTBOUND, icon: Send, kind: 'station', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: SHIPPING, icon: Send, kind: 'station', requires: 'shipping.view',
     // Scan out sits last (rightmost) — the dock ship-confirm station is the
     // end-of-line action after labels/ready/fba prep.
     modes: [
-      { id: 'labels',   label: 'Labels',   icon: Printer,       to: () => ({ pathname: OUTBOUND, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'ready',    label: 'Ready',    icon: ClipboardList, to: () => ({ pathname: OUTBOUND, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'fba',      label: 'FBA',      icon: Boxes,         to: () => ({ pathname: OUTBOUND, params: { mode: 'fba', q: null, open: null, sort: null } }) },
-      { id: 'scan-out', label: 'Scan out', icon: Barcode,       to: () => ({ pathname: OUTBOUND, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'labels',   label: 'Labels',   icon: Printer,       to: () => ({ pathname: SHIPPING, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'ready',    label: 'Ready',    icon: ClipboardList, to: () => ({ pathname: SHIPPING, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'fba',      label: 'FBA',      icon: Boxes,         to: () => ({ pathname: SHIPPING, params: { mode: 'fba', q: null, open: null, sort: null } }) },
+      { id: 'scan-out', label: 'Scan out', icon: Barcode,       to: () => ({ pathname: SHIPPING, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');

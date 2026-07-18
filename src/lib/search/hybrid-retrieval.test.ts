@@ -26,6 +26,7 @@ const doc = (entityType: SearchEntityType, id: number, title = `T${id}`): DocHit
   condition_grade: null,
   source_platform: 'ebay',
   tracking_number: null,
+  serial_number: null,
   carrier: null,
   happened_at: null,
 });

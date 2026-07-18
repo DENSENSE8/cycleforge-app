@@ -26,9 +26,9 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     active: 'bg-yellow-500 text-white shadow-sm shadow-yellow-200 ring-yellow-600',
     inactive: 'bg-surface-card text-yellow-800 ring-yellow-200 hover:bg-yellow-50',
     badge: 'bg-yellow-50 text-yellow-700 ring-yellow-200',
-    text: 'text-yellow-600',
+    text: 'text-text-warning',
     chipUnderline: 'border-yellow-500',
-    chipIconClass: 'inline-flex items-center justify-center text-yellow-600',
+    chipIconClass: 'inline-flex items-center justify-center text-text-warning',
   },
   LIKE_NEW: {
     active: 'bg-teal-600 text-white shadow-sm shadow-teal-200 ring-teal-700',
@@ -95,6 +95,28 @@ export function conditionGradeTone(code: string | null | undefined): ConditionGr
 /** Text color class for inline condition labels (meta rows, badges). */
 export function conditionGradeTextClass(code: string | null | undefined): string {
   return conditionGradeTone(code).text;
+}
+
+/**
+ * Marketplace / order-queue condition string tone (NEW / USED / `--` — not only grade codes).
+ * NEW / BRAND_NEW warns; PARTS keeps amber; empty dash + everything else muted for scan.
+ */
+export function orderRowConditionTone(condition: string | null | undefined): string {
+  const normalized = String(condition || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '_');
+  if (!normalized || normalized === 'N/A' || normalized === '--' || normalized === '—' || normalized === '---') {
+    return 'text-text-muted';
+  }
+  if (normalized === 'NEW' || normalized === 'BRAND_NEW') return 'text-text-warning';
+  if (normalized === 'PARTS') return 'text-amber-800';
+  return 'text-text-muted';
+}
+
+/** Qty fact in order/shipped meta — multi-qty warns; single stays muted. */
+export function orderRowQtyTone(qty: number): string {
+  return qty > 1 ? 'text-text-warning' : 'text-text-muted';
 }
 
 /** Underline + icon classes for a {@link CopyChip} condition readout. */

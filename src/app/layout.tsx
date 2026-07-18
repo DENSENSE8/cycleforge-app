@@ -28,6 +28,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
+import { ibmPlexMono, ibmPlexSans } from "@/lib/fonts";
 
 export default async function RootLayout({
     children,
@@ -45,7 +46,11 @@ export default async function RootLayout({
     // theme flash, so the SSR markup (no attrs) intentionally differs from the
     // booted DOM. The flag is scoped to this one element's attributes.
     return (
-        <html lang="en" className="h-full overflow-hidden" suppressHydrationWarning>
+        <html
+            lang="en"
+            className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
+            suppressHydrationWarning
+        >
             <head>
                 <title>{documentTitle}</title>
                 <meta name="description" content={`${PRODUCT_NAME} — Reseller Operations`} />
@@ -73,7 +78,7 @@ export default async function RootLayout({
                     blank shell and the splash flickers off and back on. */}
                 <script dangerouslySetInnerHTML={{ __html: BOOT_SPLASH_SCRIPT }} />
             </head>
-            <body className="antialiased m-0 overflow-hidden bg-surface-card">
+            <body className={`${ibmPlexSans.className} antialiased m-0 overflow-hidden bg-surface-card`}>
                 {/*
                   Pin the app to the visual viewport. Body must NOT carry safe-area
                   padding or min-height:100vh — both caused first-load gaps (URL bar

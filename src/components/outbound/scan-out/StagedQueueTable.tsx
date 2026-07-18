@@ -47,7 +47,7 @@ export function StagedQueueTable({
     if (backfillStarted.current) return;
     backfillStarted.current = true;
 
-    void fetch('/api/outbound/mark-staged', {
+    void fetch('/api/shipping/mark-staged', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ staffName: 'Mike' }),

@@ -3,8 +3,8 @@
 /**
  * A single receiving line rendered as a dashboard-style order row. Built from
  * the shared RowTitle / RowMetaColumns / ReceivingIdentityChips primitives so it
- * lines up with the collapsed PO summary. Re-exported from ReceivingLinesTable
- * for back-compat with existing importers. Extracted unchanged.
+ * lines up with the collapsed PO summary. History Unbox/Triage meta clocks use
+ * the same `formatOpsStageTime` + `MetaFactSlot` language as OrdersQueue.
  */
 
 import { Check } from '@/components/Icons';
@@ -16,18 +16,56 @@ import {
   shouldShowWorkflowStatusIcon,
 } from '@/components/station/receiving-constants';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
-import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, META_COL, META_REST_COL, MetaFactSlot } from '@/components/ui/RowMetaColumns';
 import { DeliveryStateIcon } from '@/components/station/ReceivingDeliveryStateIcon';
 import { IconWithTooltip } from '@/components/ui/IconWithTooltip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { conditionGradeTextClass } from '@/lib/condition-tone';
+import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { cn } from '@/utils/_cn';
 import {
   dashboardOrderRowChipsClass,
   dashboardOrderRowShellClass,
 } from '@/lib/dashboard-order-row-layout';
-import { fmtShortTs } from '@/components/station/receiving-lines-table-helpers';
+import {
+  resolveReceivingRowStageStamp,
+  type ReceivingActivityAxis,
+} from '@/components/station/receiving-lines-table-helpers';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
+import { formatDateTimePST, formatOpsStageTime } from '@/utils/date';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import type { ReceivingLineRow } from './receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
+
+function receivingStageTooltip(
+  row: ReceivingLineRow,
+  stamp: NonNullable<ReturnType<typeof resolveReceivingRowStageStamp>>,
+  axis: ReceivingActivityAxis,
+): string {
+  const primaryAbs = formatDateTimePST(stamp.instant);
+  const parts = [
+    stamp.staffName ? `${stamp.label} ${primaryAbs} by ${stamp.staffName}` : `${stamp.label} ${primaryAbs}`,
+  ];
+  if (axis === 'unboxed') {
+    const scanInstant = (row.scanned_at || row.received_at || '').trim();
+    if (scanInstant) {
+      const scanAbs = formatDateTimePST(scanInstant);
+      const by =
+        (row.scanned_by_name || '').trim() ||
+        (row.received_by_name || '').trim() ||
+        '';
+      parts.push(by ? `Scanned ${scanAbs} by ${by}` : `Scanned ${scanAbs}`);
+    }
+  } else if (axis === 'scanned') {
+    const unboxed = (row.unboxed_at || '').trim();
+    if (unboxed) {
+      const abs = formatDateTimePST(unboxed);
+      const by = (row.unboxed_by_name || '').trim();
+      parts.push(by ? `Unboxed ${abs} by ${by}` : `Unboxed ${abs}`);
+    }
+  }
+  return parts.join(' · ');
+}
 
 export function ReceivingLineOrderRow({
   row,
@@ -38,6 +76,8 @@ export function ReceivingLineOrderRow({
   isIncoming = false,
   isHistory = false,
   selectMode = false,
+  /** History day-band axis — Unbox → `unboxed`, Triage → `scanned`. */
+  activityAxis = 'scanned',
 }: {
   row: ReceivingLineRow;
   isSelected: boolean;
@@ -56,7 +96,13 @@ export function ReceivingLineOrderRow({
   /** Multi-select mode: render a checkbox and treat `isSelected` as "checked".
    *  Click toggles membership instead of opening the workspace. */
   selectMode?: boolean;
+  activityAxis?: ReceivingActivityAxis;
 }) {
+  // Re-render when the operator flips 12h↔24h so wall-clock stamps track the preference.
+  useTimeFormat();
+  const stageStamp = !isIncoming ? resolveReceivingRowStageStamp(row, activityAxis) : null;
+  const stageTimeDisplay = stageStamp ? formatOpsStageTime(stageStamp.instant) : null;
+  const hasStageTime = Boolean(stageTimeDisplay && stageTimeDisplay !== '--:--');
   // Unfound cartons (no Zoho PO) arrive labelled "Unfound PO" from the server
   // (buildUnmatchedEmptyReceivingLine / UNMATCHED_EMPTY_LINE_LABEL).
   const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
@@ -125,38 +171,37 @@ export function ReceivingLineOrderRow({
           indent={selectMode ? `calc(${META_COL.indentWide} + 1.5rem)` : META_COL.indentWide}
           qtyCol={META_COL.qtyColWide}
           qty={
-            <span className={qtyExpected > 1 ? 'text-yellow-600' : row.quantity_expected && row.quantity_received >= row.quantity_expected ? 'text-emerald-600' : 'text-text-soft'}>
+            <span className={qtyExpected > 1 ? 'text-text-warning' : row.quantity_expected && row.quantity_received >= row.quantity_expected ? 'text-emerald-600' : 'text-text-muted'}>
               {quantityText}
             </span>
           }
-          condition={<span className={condGrade === 'BRAND_NEW' ? 'text-yellow-600' : condGrade === 'PARTS' ? 'text-amber-800' : 'text-text-faint'}>{conditionLabel}</span>}
+          condition={
+            <span
+              className={cn(
+                conditionGradeTextClass(condGrade),
+                conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
+              )}
+            >
+              {conditionLabel}
+            </span>
+          }
           rest={
             <div className="flex items-center gap-2">
-              {/* History timeline: door-scan ("scanned at") and unbox times +
-                  who. Gated on data so incoming/expected rows stay clean.
-                  Desktop-only — the mobile table isn't the history surface. */}
-              {!isIncoming && (row.scanned_at || row.received_at || row.unboxed_at) ? (
-                <HoverTooltip
-                  label={[
-                    fmtShortTs(row.scanned_at ?? row.received_at)
-                      ? `Scanned ${fmtShortTs(row.scanned_at ?? row.received_at)}${row.scanned_by_name ? ` by ${row.scanned_by_name}` : ''}`
-                      : '',
-                    fmtShortTs(row.unboxed_at)
-                      ? `Unboxed ${fmtShortTs(row.unboxed_at)}${row.unboxed_by_name ? ` by ${row.unboxed_by_name}` : ''}`
-                      : '',
-                  ].filter(Boolean).join(' · ')}
-                  asChild
-                  focusable={false}
-                >
-                  <span className="hidden items-center gap-1.5 text-role-eyebrow font-semibold text-text-faint sm:inline-flex">
-                    {fmtShortTs(row.scanned_at ?? row.received_at) ? (
-                      <span>↓ {fmtShortTs(row.scanned_at ?? row.received_at)}{row.scanned_by_name ? ` · ${row.scanned_by_name}` : ''}</span>
-                    ) : null}
-                    {fmtShortTs(row.unboxed_at) ? (
-                      <span>📦 {fmtShortTs(row.unboxed_at)}{row.unboxed_by_name ? ` · ${row.unboxed_by_name}` : ''}</span>
-                    ) : null}
-                  </span>
-                </HoverTooltip>
+              {/* Axis-matched stage clock (OrdersQueue MetaFactSlot language).
+                  Unbox tab → unboxed_at; Triage → scanned_at. Absolute + staff
+                  live in the tooltip. Hidden on mobile — history is desktop. */}
+              {hasStageTime && stageStamp ? (
+                <span className="hidden sm:contents">
+                  <MetaFactSlot width={META_REST_COL.stageTime} className="text-text-faint" reserve={false}>
+                    <HoverTooltip
+                      label={receivingStageTooltip(row, stageStamp, activityAxis)}
+                      asChild
+                      focusable={false}
+                    >
+                      <span className="truncate tabular-nums">{stageTimeDisplay}</span>
+                    </HoverTooltip>
+                  </MetaFactSlot>
+                </span>
               ) : null}
               {/* Workflow status icon: shown in the active receive workspace,
                   hidden in History (received is implied; EXPECTED doesn't apply

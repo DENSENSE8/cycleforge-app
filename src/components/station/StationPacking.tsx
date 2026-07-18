@@ -2,13 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Barcode, AlertCircle, Loader2, Package } from '../Icons';
+import { Barcode, AlertCircle, Package } from '../Icons';
 import { getLast4 } from '../ui/CopyChip';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { useLast8TrackingSearch } from '@/hooks/useLast8TrackingSearch';
 import { formatPSTTimestamp } from '@/utils/date';
 import StationGoalBar from './StationGoalBar';
-import { StationScanBar } from './StationScanBar';
+import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { scannedUnitKey } from '@/lib/barcode-routing';
@@ -121,7 +122,7 @@ export default function StationPacking({
     });
   }, [activeOrder, activeFba]);
 
-  const { theme: themeColor, colors: themeColors, inputBorder, inputTheme: activeColor } = useStationTheme({ staffId });
+  const { theme: themeColor, colors: themeColors, inputTheme: activeColor } = useStationTheme({ staffId });
   const { normalizeTrackingQuery, normalizeTracking } = useLast8TrackingSearch();
 
   const { user } = useAuth();
@@ -337,66 +338,54 @@ export default function StationPacking({
   return (
     <div className={`flex flex-col h-full bg-surface-card overflow-hidden ${embedded ? '' : 'border-r border-border-hairline'}`}>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className={`${SIDEBAR_GUTTER} ${embedded ? 'pt-2 pb-1' : 'pt-4 pb-2'} space-y-4`}>
-          {/* Welcome header + goal bar — chrome for the standalone station page only.
-              In the embedded sidebar we keep it minimal (scan bar only), matching the
-              other dashboard sidebars. */}
-          {!embedded && (
-            <>
-              <div className="space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-xl font-black text-text-default tracking-tighter">Welcome, {userName}</h2>
-                  <div className="flex items-center gap-2">
-                    {/* Shared `?staff=` history filter (P1-WORK-02) — swaps whose
-                        pack history the table shows; absent = the signed-in packer. */}
-                    <StaffFilterButton allLabel="My packs" align="end" />
-                    <div className={`p-3 ${themeColors.bg} text-white rounded-2xl shadow-lg ${themeColors.shadow}`}>
-                      <Package className="w-4 h-4" />
-                    </div>
+        {/* Welcome / goal — standalone station page only. */}
+        {!embedded ? (
+          <div className={`${SIDEBAR_GUTTER} space-y-4 pt-4`}>
+            <div className="space-y-0.5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xl font-black text-text-default tracking-tighter">Welcome, {userName}</h2>
+                <div className="flex items-center gap-2">
+                  <StaffFilterButton allLabel="My packs" align="end" />
+                  <div className={`p-3 ${themeColors.bg} text-white rounded-2xl shadow-lg ${themeColors.shadow}`}>
+                    <Package className="w-4 h-4" />
                   </div>
                 </div>
               </div>
-
-              <StationGoalBar
-                count={todayCount}
-                goal={goal}
-                label="PACKED"
-                theme={themeColor}
-              />
-            </>
-          )}
-
-          {/* Mode reminder banner (Fragile / Multi-Item) — standalone station page
-              only. The embedded sidebar stays minimal: the active mode already shows
-              in the master-nav mode rail, so we don't repeat it here. */}
-          {!embedded && packMode !== 'standard' ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption font-semibold text-amber-800">
-              {PACK_MODE_LABELS[packMode]}
             </div>
-          ) : null}
 
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-          >
-            <StationScanBar
-              value={inputValue}
-              onChange={setInputValue}
-              onSubmit={handleSubmit}
-              inputRef={inputRef}
-              placeholder="Tracking, unit QR, FNSKU, FBA, SKU"
-              icon={<Barcode className="h-[17px] w-[17px]" />}
-              iconClassName={activeColor.text}
-              inputBorderClassName={inputBorder}
-              inputClassName={activeColor.ring}
-              autoFocus
-              rightContent={isLoading ? (
-                <Loader2 className={`w-4 h-4 animate-spin ${activeColor.text}`} />
-              ) : null}
+            <StationGoalBar
+              count={todayCount}
+              goal={goal}
+              label="PACKED"
+              theme={themeColor}
             />
-          </motion.div>
 
+            {packMode !== 'standard' ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-role-caption font-semibold text-amber-800">
+                {PACK_MODE_LABELS[packMode]}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Flush 40px scan band — same ScanBandShell as Unbox / Shipping / Testing. */}
+        <ScanBandShell themeColor={themeColor}>
+          <ThemedStationScanBar
+            value={inputValue}
+            onChange={setInputValue}
+            onSubmit={handleSubmit}
+            inputRef={inputRef}
+            staffId={staffId}
+            placeholder="Tracking, unit QR, FNSKU, FBA, SKU"
+            icon={<Barcode className="h-[17px] w-[17px]" />}
+            iconClassName={activeColor.text}
+            autoFocus
+            isResolving={isLoading}
+            className="w-full"
+          />
+        </ScanBandShell>
+
+        <div className={SIDEBAR_GUTTER}>
           {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
             <UnitPhotoRequestStatus
               serialUnitId={lastUnitPhotoRequest.serialUnitId}
@@ -404,12 +393,12 @@ export default function StationPacking({
             />
           ) : null}
 
-          {!embedded && (
-            <p className="text-role-micro font-bold text-text-faint px-1">
+          {!embedded ? (
+            <p className="px-1 text-role-micro font-bold text-text-faint">
               Supports tracking, unit QR, FNSKU/ASIN (10 chars: <code className="font-mono">X00</code> or <code className="font-mono">B0</code> prefix), FBA, and{' '}
               <code className="font-mono">SKU:VALUE</code> scans.
             </p>
-          )}
+          ) : null}
         </div>
 
         <div className={`flex-1 overflow-y-auto no-scrollbar ${SIDEBAR_GUTTER} pb-6 space-y-3`}>

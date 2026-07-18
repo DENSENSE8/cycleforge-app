@@ -5,7 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import type { SidebarPageNav } from '@/lib/sidebar-navigation';
 import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
-import { MasterNavHeader } from './MasterNavHeader';
+import { MasterNavHeader, type MasterNavRecentModeChip } from './MasterNavHeader';
 import { MasterNavDropdown } from './MasterNavDropdown';
 import { ModeRail } from './ModeRail';
 
@@ -27,6 +27,7 @@ export function MasterNavView({
   open,
   onOpen,
   recentPages,
+  recentModes = [],
   otherPages,
   expandedKey,
   onToggleRow,
@@ -41,6 +42,8 @@ export function MasterNavView({
   open: boolean;
   onOpen: () => void;
   recentPages: SidebarPageNav[];
+  /** Prior modes for header jump chips (excludes current; max 3). */
+  recentModes?: MasterNavRecentModeChip[];
   otherPages: SidebarPageNav[];
   expandedKey: string | null;
   onToggleRow: (key: string | null) => void;
@@ -123,10 +126,10 @@ export function MasterNavView({
           className={cn('relative z-20 shrink-0', !open && receivingHeaderHairlineClass)}
         >
           <MasterNavHeader
-            icon={activeMode?.icon ?? activePage.icon}
             label={headerLabel}
             open={open}
             onClick={handleToggle}
+            recentModes={recentModes}
           />
         </div>
         {rail}
@@ -144,10 +147,10 @@ export function MasterNavView({
       <div className={cn('relative z-30 shrink-0', !open && receivingHeaderHairlineClass)}>
         <div ref={headerRef}>
           <MasterNavHeader
-            icon={activeMode?.icon ?? activePage.icon}
             label={headerLabel}
             open={open}
             onClick={handleToggle}
+            recentModes={recentModes}
           />
         </div>
         <AnimatePresence>

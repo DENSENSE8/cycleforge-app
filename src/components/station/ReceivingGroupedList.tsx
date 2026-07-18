@@ -11,7 +11,11 @@
 import { type ReactNode, type RefObject } from 'react';
 import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
-import { poGroupAnchorMs, type ReceivingPoGroup } from '@/components/station/receiving-lines-table-helpers';
+import {
+  poGroupAnchorMs,
+  type ReceivingActivityAxis,
+  type ReceivingPoGroup,
+} from '@/components/station/receiving-lines-table-helpers';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { ReceivingPoSummary } from '@/components/station/ReceivingPoSummary';
 import { VirtualGroupedSections } from '@/components/dashboard/orders-queue/VirtualGroupedSections';
@@ -25,6 +29,8 @@ interface ReceivingGroupedListProps {
   isMobile: boolean;
   isIncomingMode: boolean;
   isHistoryMode: boolean;
+  /** History sort axis — drives which stage stamp the row meta shows. */
+  activityAxis: ReceivingActivityAxis;
   selectMode: boolean;
   selectedId: number | null;
   selectedIds: Set<number>;
@@ -41,6 +47,7 @@ export function ReceivingGroupedList({
   isMobile,
   isIncomingMode,
   isHistoryMode,
+  activityAxis,
   selectMode,
   selectedId,
   selectedIds,
@@ -61,6 +68,7 @@ export function ReceivingGroupedList({
           isMobile={isMobile}
           isIncoming={isIncomingMode}
           isHistory={isHistoryMode}
+          activityAxis={activityAxis}
           selectMode={selectMode}
           isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
           onSelect={() => handleSelectRow(row)}
@@ -84,6 +92,7 @@ export function ReceivingGroupedList({
             isMobile={isMobile}
             isIncoming={isIncomingMode}
             isHistory={isHistoryMode}
+            activityAxis={activityAxis}
             selectMode={selectMode}
             isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
             onSelect={() => handleSelectRow(row)}
@@ -137,6 +146,7 @@ export function ReceivingGroupedList({
                       isMobile={isMobile}
                       isIncoming={isIncomingMode}
                       isHistory={isHistoryMode}
+                      activityAxis={activityAxis}
                       selectMode={selectMode}
                       isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
                       onSelect={() => handleSelectRow(row)}
@@ -172,6 +182,7 @@ export function ReceivingGroupedList({
                         isMobile={isMobile}
                         isIncoming={isIncomingMode}
                         isHistory={isHistoryMode}
+                        activityAxis={activityAxis}
                         selectMode={selectMode}
                         isSelected={selectMode ? selectedIds.has(row.id) : selectedId === row.id}
                         onSelect={() => handleSelectRow(row)}

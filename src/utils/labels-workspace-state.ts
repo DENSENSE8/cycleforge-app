@@ -1,5 +1,5 @@
 /**
- * Labels-station workspace tabs on `/outbound` (labels mode, nested under the
+ * Labels-station workspace tabs on `/shipping` (labels mode, nested under the
  * sidebar `?mode=`). Param: `?ltab=queue|recent` — absent defaults to Queue.
  * Mirrors `shipping-workspace-state.ts` (the golden lifecycle-facet tab SoT).
  */

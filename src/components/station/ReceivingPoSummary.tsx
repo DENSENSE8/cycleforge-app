@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { DeliveryStateIcon } from '@/components/station/ReceivingDeliveryStateIcon';
 import { IconWithTooltip } from '@/components/ui/IconWithTooltip';
 import {
@@ -162,11 +162,11 @@ export function ReceivingPoSummary({
           indent={META_COL.indentWide}
           qtyCol={META_COL.qtyColWide}
           qty={
-            <span className={complete ? 'text-emerald-600' : 'text-yellow-600'}>
+            <span className={complete ? 'text-emerald-600' : 'text-text-warning'}>
               {quantityText}
             </span>
           }
-          condition={<span className="text-text-faint">{conditionLabel}</span>}
+          condition={<RowConditionMeta condition={conditionLabel} />}
           rest={
             <div className="flex items-center gap-2">
               {shouldShowWorkflowStatusIcon({ isHistory, isIncoming }) ? (

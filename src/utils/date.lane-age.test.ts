@@ -4,6 +4,7 @@ import {
   formatLaneAgeCompact,
   getLaneAgeHours,
   getLaneAgeTone,
+  getLaneAgeToneBesideDeadline,
 } from '@/utils/date';
 
 describe('formatLaneAgeCompact', () => {
@@ -40,10 +41,16 @@ describe('getLaneAgeHours / tone', () => {
   });
 
   it('heats tone for older ages', () => {
-    assert.equal(getLaneAgeTone(null), 'text-text-faint');
-    assert.equal(getLaneAgeTone(2), 'text-text-faint');
+    assert.equal(getLaneAgeTone(null), 'text-text-muted');
+    assert.equal(getLaneAgeTone(2), 'text-text-muted');
     assert.equal(getLaneAgeTone(12), 'text-yellow-700');
     assert.equal(getLaneAgeTone(30), 'text-amber-600');
     assert.equal(getLaneAgeTone(60), 'text-red-600');
+  });
+
+  it('keeps lane age muted when days-late already owns urgency', () => {
+    assert.equal(getLaneAgeToneBesideDeadline(60, 38), 'text-text-muted');
+    assert.equal(getLaneAgeToneBesideDeadline(60, null), 'text-red-600');
+    assert.equal(getLaneAgeToneBesideDeadline(12, null), 'text-yellow-700');
   });
 });

@@ -6,6 +6,7 @@
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import { stripConditionPrefix } from '@/utils/upnext-helpers';
+import { orderRowConditionLabel } from '@/lib/conditions';
 
 export function shippedOutRailTitle(order: Order): string {
   const title = stripConditionPrefix(order.product_title, order.condition).trim();
@@ -19,7 +20,7 @@ export function shippedOutRailTitle(order: Order): string {
 export function shippedOutToDenseRailVM(order: Order): RailRowVM {
   const title = shippedOutRailTitle(order);
   const qty = Math.max(1, parseInt(String(order.quantity || '1'), 10) || 1);
-  const condition = String(order.condition || '').trim() || 'N/A';
+  const condition = orderRowConditionLabel(order.condition);
   return {
     title,
     titleAttr: title,

@@ -2,7 +2,7 @@
 
 /**
  * FBA board KPI strip — Monitor tiles over the loaded board slice on
- * `/outbound?mode=fba`. Same tile anatomy as `ShippingKpiStrip` /
+ * `/shipping?mode=fba`. Same tile anatomy as `ShippingKpiStrip` /
  * `OutboundKpiStrip`; counts + tones resolve through the
  * {@link resolveFbaBoardMetrics} SoT, never inline maps. Tiles that map to a
  * board status facet click-to-toggle the filter (house Monitor-filter

@@ -10,32 +10,31 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
 /**
  * Day-group header shown between each day's rows in every list/board table.
  *
- * It renders a single left-aligned **date + qty pill** — the same rounded-pill
- * language as the {@link DateRangeHeader} period pill — so the day separator and
- * the table's range header read as one family. The row is `position: sticky`, so
- * as a day's rows scroll past, the pill docks to the top of the scroll container
- * and *is* the live date header.
+ * Micro sticky label (date + qty) — quiet chrome so lane headers and rows stay
+ * primary. Sticky so as a day's rows scroll past, the label docks to the top of
+ * the scroll container and *is* the live date header.
  *
- * When `animate` is on (dense queue / swimlane Show more), the sticky row + pill
+ * When `animate` is on (dense queue / swimlane Show more), the sticky row + label
  * use the same layout spring as chip columns / order rows so the top-left date
  * reflows with the list; the qty count crossfades when the day total changes.
  *
  * One component for every table (packer / tech / shipped / orders / receiving /
- * repair / sales, desktop + mobile) and the swim-lane board lanes. There is no
- * longer a full-bleed "band" variant — the pill is the only day header.
+ * repair / sales, desktop + mobile) and the swim-lane board lanes.
  */
 
-/** Sticky row wrapper — left-aligned, holds the floating date+qty pill. */
-export const dayGroupChipRowClass = 'flex items-center px-3 py-1.5';
+/** Sticky row wrapper — left-aligned micro date+qty; soft fill so rows don't bleed under. */
+export const dayGroupChipRowClass =
+  'flex items-center bg-surface-card/90 px-3 py-0.5 backdrop-blur-[2px]';
 
-/** The date + qty pill — matches the DateRangeHeader period pill. */
+/** Quiet micro date + qty — no border/shadow pill; sticky row is enough chrome.
+ *  `whitespace-nowrap` keeps WED/JUN intact (no mid-weekday clip under tight parents). */
 export const dayGroupChipClass =
-  'inline-flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1 shadow-sm';
+  'inline-flex items-center gap-1.5 whitespace-nowrap text-role-micro font-semibold uppercase tracking-wide text-text-muted';
 
 interface DateGroupHeaderProps {
   date: string;
   total: number;
-  /** Optional controls rendered inside the pill, right of the count (e.g. a print button). */
+  /** Optional controls rendered right of the count (e.g. a print button). */
   actions?: ReactNode;
   /**
    * Stick to the top of the scroll container as the day's rows scroll past.
@@ -50,7 +49,7 @@ interface DateGroupHeaderProps {
   stickyTopClass?: string;
   className?: string;
   /**
-   * Layout + count crossfade so the date pill moves/updates with row expand
+   * Layout + count crossfade so the date label moves/updates with row expand
    * (Show more) and chip-column reflow. Off for virtualized remounts / print.
    */
   animate?: boolean;
@@ -76,23 +75,21 @@ export function DateGroupHeader({
           key={total}
           {...countPresence}
           transition={{ opacity: mountTransition, y: mountTransition }}
-          className="text-role-caption font-bold tabular-nums text-text-soft"
+          className="font-mono tabular-nums text-text-soft"
         >
           {total}
         </motion.span>
       </AnimatePresence>
     </span>
   ) : (
-    <span className="text-role-caption font-bold tabular-nums text-text-soft">{total}</span>
+    <span className="font-mono tabular-nums text-text-soft">{total}</span>
   );
 
   const labelEl = (
     <>
-      <span className="text-role-caption font-black uppercase tracking-widest text-text-default">
-        {formatDateWithOrdinal(date)}
-      </span>
-      <span aria-hidden className="text-text-faint">
-        •
+      <span className="text-text-muted">{formatDateWithOrdinal(date)}</span>
+      <span aria-hidden className="text-text-soft">
+        ·
       </span>
       {countEl}
       {actions}

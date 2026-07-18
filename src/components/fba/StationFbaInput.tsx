@@ -76,7 +76,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
         transition={{ type: 'spring', damping: 25, stiffness: 120 }}
         className={
           fbaScanOnly && !sidebarHeaderBand
-            ? `rounded-xl px-1.5 py-1 ${FBA_SCAN_BAND_HALO[c.stationTheme]}`
+            ? `${FBA_SCAN_BAND_HALO[c.stationTheme]}`
             : undefined
         }
       >
@@ -100,6 +100,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
             onChange={c.handleInputChange}
             onSubmit={c.handleFormSubmit}
             inputRef={c.inputRef}
+            theme={c.stationTheme}
             inputBorderClassName={c.scanOutlineClass}
             placeholder={
               fbaScanOnly ? 'FNSKU (X00…) or ASIN (B0…)' : 'FNSKU, ASIN, tracking, RS-, serial'
@@ -112,7 +113,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
             inputClassName={
               fbaScanOnly
                 ? undefined
-                : '!py-2.5 !text-sm focus:border-violet-400 focus:ring-2 focus:ring-violet-500/20'
+                : '!py-2.5 !text-sm focus:border-b-violet-600 focus:ring-0'
             }
             showModeButtons={showModeToggle}
             visibleModes={['plan', 'select']}

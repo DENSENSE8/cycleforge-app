@@ -3,7 +3,7 @@
  * sold → label → test → pack → dock pipeline.
  *
  * **Surface ownership (2026-06):**
- * - `AWAITING_LABEL` → Outbound · Labels (`/outbound`)
+ * - `AWAITING_LABEL` → Shipping · Labels (`/shipping`)
  * - `PENDING` / `TESTED` / `BLOCKED` → Dashboard · Unshipped (`deriveFulfillmentState`)
  * - `PACKED_STAGED` → Outbound · Scan-out; seam color shared with `outbound-state.ts`
  * - Post-dock states → `outbound-state.ts` on Dashboard · Shipped
@@ -120,28 +120,6 @@ export const ZERO_UNSHIPPED_COUNTS: UnshippedCounts = {
   PACKED_STAGED: 0,
   BLOCKED: 0,
 };
-
-/** Bucket rows by derived pre‑dock state — feeds the unshipped status legend counts. */
-export function countUnshippedStates(
-  rows: ReadonlyArray<{
-    shipment_id?: number | string | null;
-    has_tech_scan?: boolean | null;
-    packed_at?: string | null;
-    out_of_stock?: string | null;
-  }>,
-): UnshippedCounts {
-  const counts: UnshippedCounts = { ...ZERO_UNSHIPPED_COUNTS };
-  for (const r of rows) {
-    const state = deriveUnshippedState({
-      shipmentId: r.shipment_id,
-      hasTechScan: Boolean(r.has_tech_scan),
-      packedAt: r.packed_at,
-      outOfStock: r.out_of_stock,
-    });
-    counts[state] += 1;
-  }
-  return counts;
-}
 
 export interface UnshippedStateMeta {
   label: string;

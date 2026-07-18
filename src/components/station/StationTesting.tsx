@@ -1,19 +1,15 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { ShippingRecentRail } from '@/components/sidebar/shipping/ShippingRecentRail';
-import { Barcode, Loader2, Package, MapPin, Settings } from '../Icons';
-import { StationScanBar } from './StationScanBar';
-import { STATION_SCAN_BAR_MODE_BTN_ARMED } from '@/components/station/scan-bar';
+import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
+import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { ActiveOrderScanFeedback } from './ActiveOrderScanFeedback';
-import { getStationInputMode, type StationInputMode, useStationTestingController } from '@/hooks/useStationTestingController';
+import { type StationInputMode, useStationTestingController } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { useIsMobile } from '@/hooks';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
@@ -39,7 +35,7 @@ export default function StationTesting({
   onComplete,
   embedded = false,
 }: StationTestingProps) {
-  const { theme: themeColor, inputBorder } = useStationTheme({ staffId });
+  const { theme: themeColor } = useStationTheme({ staffId });
   const [manualMode, setManualMode] = useState<StationInputMode | null>(null);
   const isMobile = useIsMobile();
 
@@ -175,58 +171,6 @@ export default function StationTesting({
     [inputValue, manualMode, forcedTypeForManualMode, handleSubmit, setManualMode]
   );
 
-  const trimmedInput = inputValue.trim();
-  const detectedMode = trimmedInput ? getStationInputMode(inputValue) : null;
-  const autoMode: StationInputMode =
-    detectedMode ??
-    // Display behavior: once an order is active (including FNSKU-loaded),
-    // the next expected input is a serial number.
-    (activeOrder ? 'serial' : 'tracking');
-  // Manual mode is a hard override for display and submit routing.
-  const effectiveMode: StationInputMode =
-    manualMode ??
-    (trimmedInput && detectedMode
-      ? detectedMode
-      : autoMode);
-  const isTrackingArmed = manualMode === 'tracking';
-  const isFbaArmed = manualMode === 'fba';
-  const isRepairArmed = manualMode === 'repair';
-  const isSerialArmed = manualMode === 'serial';
-
-  const modeBadge = (() => {
-    switch (effectiveMode) {
-      case 'tracking':
-        return {
-          label: 'Tracking',
-          Icon: MapPin,
-          leftDisplayClassName: 'text-blue-600 group-hover:text-blue-700',
-        };
-      case 'fba':
-        return {
-          label: 'FBA',
-          Icon: Package,
-          leftDisplayClassName: 'text-violet-600 group-hover:text-violet-700',
-        };
-      case 'repair':
-        return {
-          label: 'Repair',
-          Icon: Settings,
-          leftDisplayClassName: 'text-amber-600 group-hover:text-amber-700',
-        };
-      case 'serial':
-      default:
-        return {
-          label: 'Serial',
-          Icon: Barcode,
-          leftDisplayClassName: 'text-emerald-600 group-hover:text-emerald-700',
-        };
-    }
-  })();
-  const ActiveModeIcon = modeBadge.Icon;
-  const modeButtonBaseClass =
-    'relative h-6 w-6 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-emphasis/60';
-  const inactiveModeButtonClass = 'relative z-base text-text-soft hover:bg-surface-sunken hover:text-text-default';
-
   const toggleMode = useCallback(
     (nextMode: StationInputMode) => {
       const togglingOff = manualMode === nextMode;
@@ -269,150 +213,43 @@ export default function StationTesting({
     ],
   );
 
-  /* ── Scan bar block (shared between desktop-top and mobile-bottom) ── */
-  const scanBarBlock = (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-      className="space-y-2"
-    >
-      <StationScanBar
-        value={inputValue}
-        onChange={setInputValue}
-        onSubmit={handleFormSubmit}
-        inputRef={inputRef}
-        inputBorderClassName={inputBorder}
-        placeholder="ORDERS, FNSKU, RS, SN"
-        autoFocus
-        icon={(
-          <HoverTooltip label={`Current mode: ${modeBadge.label}`} asChild>
-            <span
-              className="flex items-center justify-center"
-              role="status"
-              aria-label={`Current input mode: ${modeBadge.label}`}
-            >
-              <ActiveModeIcon className={`h-[17px] w-[17px] transition-colors ${modeBadge.leftDisplayClassName}`} />
-            </span>
-          </HoverTooltip>
-        )}
-        inputClassName={`focus:ring-4 focus:ring-${themeColor}-500/10 focus:border-${themeColor}-500 pr-32`}
-        rightContentClassName="right-1.5 gap-0.5"
-        rightContent={(
-          <>
-            {isLoading && (
-              <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
-            )}
-            <div className="flex items-center gap-0">
-              <HoverTooltip
-                label={
-                  isTrackingArmed
-                    ? 'Tracking armed — next Enter/scan. Click again to cancel.'
-                    : 'Tracking (next Enter/scan; or send now if field has text)'
-                }
-                asChild
-              >
-                <IconButton
-                  icon={<MapPin className="h-3.5 w-3.5" />}
-                  onClick={() => toggleMode('tracking')}
-                  aria-pressed={isTrackingArmed}
-                  ariaLabel={
-                    isTrackingArmed
-                      ? 'Tracking armed for next Enter or scan. Click again to cancel.'
-                      : 'Arm tracking: next Enter or scan uses tracking. If the field already has text, send now.'
-                  }
-                  className={`${modeButtonBaseClass} ${isTrackingArmed ? `${STATION_SCAN_BAR_MODE_BTN_ARMED} text-blue-700 bg-blue-50` : inactiveModeButtonClass}`}
-                />
-              </HoverTooltip>
-              <HoverTooltip
-                label={
-                  isFbaArmed
-                    ? 'FBA armed — next Enter/scan. Click again to cancel.'
-                    : 'FBA (next Enter/scan; or send now if field has text)'
-                }
-                asChild
-              >
-                <IconButton
-                  icon={<Package className="h-3.5 w-3.5" />}
-                  onClick={() => toggleMode('fba')}
-                  aria-pressed={isFbaArmed}
-                  ariaLabel={
-                    isFbaArmed
-                      ? 'FBA armed for next Enter or scan. Click again to cancel.'
-                      : 'Arm FBA: next Enter or scan uses FNSKU. If the field already has text, send now.'
-                  }
-                  className={`${modeButtonBaseClass} ${isFbaArmed ? `${STATION_SCAN_BAR_MODE_BTN_ARMED} text-violet-700 bg-violet-50` : inactiveModeButtonClass}`}
-                />
-              </HoverTooltip>
-              <HoverTooltip
-                label={
-                  isRepairArmed
-                    ? 'Repair armed — next Enter/scan. Click again to cancel.'
-                    : 'Repair (next Enter/scan; or send now if field has text)'
-                }
-                asChild
-              >
-                <IconButton
-                  icon={<Settings className="h-3.5 w-3.5" />}
-                  onClick={() => toggleMode('repair')}
-                  aria-pressed={isRepairArmed}
-                  ariaLabel={
-                    isRepairArmed
-                      ? 'Repair armed for next Enter or scan. Click again to cancel.'
-                      : 'Arm repair: next Enter or scan uses RS- ID. If the field already has text, send now.'
-                  }
-                  className={`${modeButtonBaseClass} ${isRepairArmed ? `${STATION_SCAN_BAR_MODE_BTN_ARMED} text-amber-700 bg-amber-50` : inactiveModeButtonClass}`}
-                />
-              </HoverTooltip>
-              <HoverTooltip
-                label={
-                  isSerialArmed
-                    ? 'Serial armed — next Enter/scan. Click again to cancel.'
-                    : 'Serial (next Enter/scan; or send now if field has text)'
-                }
-                asChild
-              >
-                <IconButton
-                  icon={<Barcode className="h-3.5 w-3.5" />}
-                  onClick={() => toggleMode('serial')}
-                  aria-pressed={isSerialArmed}
-                  ariaLabel={
-                    isSerialArmed
-                      ? 'Serial armed for next Enter or scan. Click again to cancel.'
-                      : 'Arm serial: next Enter or scan adds a serial. If the field already has text, send now.'
-                  }
-                  className={`${modeButtonBaseClass} ${isSerialArmed ? `${STATION_SCAN_BAR_MODE_BTN_ARMED} text-emerald-700 bg-emerald-50` : inactiveModeButtonClass}`}
-                />
-              </HoverTooltip>
-            </div>
-          </>
-        )}
-      />
-    </motion.div>
+  /* ── Flush 40px scan band (same ScanBandShell as Unbox / Shipping). ── */
+  const scanBar = (
+    <ShippingScanBar
+      value={inputValue}
+      onChange={setInputValue}
+      onSubmit={handleFormSubmit}
+      inputRef={inputRef}
+      staffId={staffId}
+      isResolving={isLoading}
+      armedMode={manualMode}
+      onToggleMode={toggleMode}
+      idleFallbackMode={activeOrder ? 'serial' : 'tracking'}
+    />
+  );
+
+  const feedbackBelow = (
+    <div className={SIDEBAR_GUTTER}>
+      <ActiveOrderScanFeedback activeOrder={activeOrder} />
+      {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+        <UnitPhotoRequestStatus
+          serialUnitId={lastUnitPhotoRequest.serialUnitId}
+          unitKey={lastUnitPhotoRequest.unitKey}
+        />
+      ) : null}
+    </div>
   );
 
   return (
     <div className={`flex flex-col h-full bg-surface-card overflow-hidden ${embedded ? '' : 'border-r border-border-hairline'}`}>
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* ── Compact scan band (~40px). Desktop only — on mobile the scan bar
-              docks at the bottom (see footer below), so nothing renders up here.
-              Scan + active-order strip sit flush on SIDEBAR_GUTTER (6px); the
-              gutter gives focus rings + card shadows their breathing room before
-              the column’s overflow-hidden edge. ── */}
         {!isMobile && (
-          <div className={`shrink-0 min-w-0 space-y-2 ${SIDEBAR_GUTTER} py-1.5`}>
-            {scanBarBlock}
-            <ActiveOrderScanFeedback activeOrder={activeOrder} />
-            {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest && (
-              <UnitPhotoRequestStatus
-                serialUnitId={lastUnitPhotoRequest.serialUnitId}
-                unitKey={lastUnitPhotoRequest.unitKey}
-              />
-            )}
+          <div className="shrink-0 min-w-0">
+            <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
+            {feedbackBelow}
           </div>
         )}
 
-        {/* ── Scrollable recent rail — same shell as TestingSidebarPanel. ── */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <ShippingRecentRail
             techId={userId}
@@ -428,21 +265,10 @@ export default function StationTesting({
           />
         </div>
 
-        {/* Mobile: scan bar docked at bottom, above safe area. Feedback
-            strip sits just above the scan bar so it remains in the tech's
-            line of sight after a scan. */}
         {isMobile && (
-          <div className={`flex-shrink-0 space-y-2 border-t border-border-hairline bg-surface-card ${SIDEBAR_GUTTER} pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-3`}>
-            <div className="min-w-0 space-y-2 px-1.5 pb-2 sm:pb-0">
-              <ActiveOrderScanFeedback activeOrder={activeOrder} />
-              {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest && (
-                <UnitPhotoRequestStatus
-                  serialUnitId={lastUnitPhotoRequest.serialUnitId}
-                  unitKey={lastUnitPhotoRequest.unitKey}
-                />
-              )}
-              {scanBarBlock}
-            </div>
+          <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            {feedbackBelow}
+            <ScanBandShell themeColor={themeColor}>{scanBar}</ScanBandShell>
           </div>
         )}
       </div>

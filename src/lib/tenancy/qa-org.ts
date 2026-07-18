@@ -57,7 +57,7 @@ export const QA_STATION_STAFF: ReadonlyArray<QaStationStaffSeed> = [
   { name: 'QA Receiver', role: 'receiver', homePath: '/receiving' },
   { name: 'QA Packer', role: 'packer', homePath: '/packing' },
   { name: 'QA Technician', role: 'technician', homePath: '/tech' },
-  { name: 'QA Shipper', role: 'shipper', homePath: '/outbound' },
+  { name: 'QA Shipper', role: 'shipper', homePath: '/shipping' },
 ];
 
 export function resolveQaOrgId(): OrgId {

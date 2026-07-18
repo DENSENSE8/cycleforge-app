@@ -13,7 +13,7 @@ const QuerySchema = z
   .strict();
 
 /**
- * GET /api/outbound/ready-queue
+ * GET /api/shipping/ready-queue
  *
  * Recently-tested history with channel-allocation recommendations overlaid on
  * units that are still eligible for FBA vs pre-box/stock.
@@ -32,7 +32,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ ok: true, hits, count: hits.length });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to load ready queue';
-    console.error('Error in GET /api/outbound/ready-queue:', error);
+    console.error('Error in GET /api/shipping/ready-queue:', error);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }, { permission: 'shipping.view' });

@@ -75,7 +75,7 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
     <div className="flex h-full flex-col overflow-hidden bg-surface-card">
       {/* Header band — scan bar pinned above the scroll body (never scrolls away). */}
       <div className="border-b border-border-hairline">
-        <div className="mx-auto w-full max-w-2xl space-y-3 px-4 py-4 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl space-y-3 px-4 pt-4 sm:px-6">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-200">
               <ShieldCheck className="h-4 w-4" />
@@ -89,19 +89,22 @@ export function DataWipeStation({ staffId, userName }: DataWipeStationProps) {
               </p>
             </div>
           </div>
+        </div>
 
-          <ThemedStationScanBar
-            staffId={staffId}
-            value={c.inputValue}
-            onChange={c.setInputValue}
-            onSubmit={c.handleScan}
-            inputRef={c.inputRef}
-            placeholder="Scan unit serial or printed label"
-            icon={<Barcode className="h-[17px] w-[17px]" />}
-            autoFocus
-            isResolving={c.isResolving}
-          />
+        <ThemedStationScanBar
+          staffId={staffId}
+          value={c.inputValue}
+          onChange={c.setInputValue}
+          onSubmit={c.handleScan}
+          inputRef={c.inputRef}
+          placeholder="Scan unit serial or printed label"
+          icon={<Barcode className="h-[17px] w-[17px]" />}
+          autoFocus
+          isResolving={c.isResolving}
+          className="w-full"
+        />
 
+        <div className="mx-auto w-full max-w-2xl px-4 pb-3 sm:px-6">
           <p className="px-1 text-role-micro font-bold text-text-faint">
             Scan a device serial or its printed unit label, pick the erasure method, then record{' '}
             <span className="text-emerald-600">Wiped</span> or{' '}

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Labels-station Workbench on `/outbound` (labels mode) — the golden
+ * Labels-station Workbench on `/shipping` (labels mode) — the golden
  * DashboardScrollShell recipe: pinned chrome (Queue · Recent tabs + station
  * filters + Import) over one scroll body whose KPI strip scrolls away above the
  * grow-mode queue. Sibling of ShippingWorkspaceView / DashboardOrdersView

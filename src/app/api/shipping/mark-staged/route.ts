@@ -8,7 +8,7 @@ import {
 } from '@/lib/outbound/dock-staging';
 
 /**
- * POST /api/outbound/mark-staged — bulk-record DOCK_STAGED for packed packages
+ * POST /api/shipping/mark-staged — bulk-record DOCK_STAGED for packed packages
  * sitting in the outbound lane that have not yet been scanned out.
  *
  * Body (optional): `{ staffId?: number, staffName?: string }` — defaults to the

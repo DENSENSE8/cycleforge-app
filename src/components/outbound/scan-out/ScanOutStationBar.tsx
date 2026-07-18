@@ -7,11 +7,15 @@
  * one-line active result.
  */
 
-import { StationScanBar } from '@/components/station/StationScanBar';
+import { ThemedStationScanBar } from '@/components/station/scan-bar';
+import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { Button } from '@/design-system/primitives';
 import { Barcode, Check, AlertTriangle } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
 import { useScanOutStation, type ActiveScanOut } from '@/components/outbound/scan-out/useScanOutStation';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStationTheme } from '@/hooks/useStationTheme';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
@@ -23,6 +27,8 @@ const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
 };
 
 export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } = {}) {
+  const { user } = useAuth();
+  const { theme: themeColor } = useStationTheme({ staffId: user?.staffId ?? 0 });
   const station = useScanOutStation();
   const active = station.active;
   const label = active?.result?.orderId
@@ -34,11 +40,11 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
     active?.status === 'ok' && active.result?.productTitle ? active.result.productTitle : active?.text ?? '';
 
   return (
-    <div>
+    <div className="min-w-0 shrink-0">
       {active ? (
         <div
           className={cn(
-            'mb-2 flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 ring-inset',
+            `${SIDEBAR_GUTTER} mb-0 flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold`,
             FEEDBACK_TONE[active.status],
           )}
         >
@@ -65,20 +71,26 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
         </div>
       ) : null}
 
-      <StationScanBar
-        value={station.scanValue}
-        onChange={station.setScanValue}
-        onSubmit={station.submit}
-        inputRef={station.inputRef}
-        autoFocus={autoFocus}
-        placeholder="Scan label to ship out…"
-        icon={<Barcode className="h-[17px] w-[17px]" />}
-        iconClassName="text-emerald-600"
-        inputBorderClassName="border-2 border-emerald-200"
-        inputClassName="bg-surface-card focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400"
-        hasRightContent={false}
-        onPaste={(text) => station.setScanValue(text)}
-      />
+      <ScanBandShell themeColor={themeColor}>
+        <ThemedStationScanBar
+          value={station.scanValue}
+          onChange={station.setScanValue}
+          onSubmit={station.submit}
+          inputRef={station.inputRef}
+          staffId={user?.staffId}
+          autoFocus={autoFocus}
+          placeholder="Scan label to ship out…"
+          icon={<Barcode className="h-[17px] w-[17px]" />}
+          iconClassName="text-emerald-600"
+          // Confirm-bench accent: emerald bottom rule + submit trace.
+          inputBorderClassName="border-0 border-b-2 border-b-emerald-500"
+          submitTraceClassName="bg-emerald-500"
+          inputClassName="bg-surface-card"
+          hasRightContent={false}
+          onPaste={(text) => station.setScanValue(text)}
+          className="w-full"
+        />
+      </ScanBandShell>
     </div>
   );
 }

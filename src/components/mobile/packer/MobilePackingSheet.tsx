@@ -76,7 +76,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
 
           <div className="flex items-center gap-2 pl-4">
             <span className="shrink-0 text-role-caption font-black uppercase tracking-widest">
-              <span className={quantity > 1 ? 'text-yellow-600' : 'text-text-muted'}>
+              <span className={quantity > 1 ? 'text-text-warning' : 'text-text-muted'}>
                 {quantity}
               </span>
             </span>

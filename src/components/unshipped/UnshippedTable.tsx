@@ -14,6 +14,7 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
+import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
 /**
  * To Ship fulfillment queue — the dashboard's default lifecycle tab.
@@ -94,7 +95,7 @@ export function UnshippedTable({
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     const qs = params.toString();
-    router.replace(qs ? `/outbound?${qs}` : '/outbound', { scroll: false });
+    router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
   }, [stageParam, searchQuery, router]);
 
   const stageFilter: 'all' | 'pending' | 'tested' =

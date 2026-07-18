@@ -82,7 +82,7 @@ export function ShippingWorkspaceHeader({
     fba: {
       right: (
         <Link
-          href="/outbound?mode=fba"
+          href="/shipping?mode=fba"
           className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
         >
           FBA station

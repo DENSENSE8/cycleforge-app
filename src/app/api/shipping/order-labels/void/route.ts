@@ -18,7 +18,7 @@ import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/outbound/labels/void
+ * POST /api/shipping/order-labels/void
  *
  * Void/refund a purchased label via ShipStation v2. Step-up gated
  * (shipping.void_label) and reason-required (AUDIT_REASON_REQUIRED). The carrier
@@ -112,6 +112,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (error instanceof ShipStationApiError) {
       return NextResponse.json({ ok: false, error: error.message }, { status: error.isNotConnected ? 400 : 502 });
     }
-    return errorResponse(error, 'POST /api/outbound/labels/void');
+    return errorResponse(error, 'POST /api/shipping/order-labels/void');
   }
 }, { permission: 'shipping.void_label' });

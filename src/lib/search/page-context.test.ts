@@ -40,8 +40,9 @@ test('graduated surface routes map to the right AI-search boost', () => {
   assert.deepEqual(pageContextToEntityTypes('/pickup'), ['RECEIVING']);
   assert.deepEqual(pageContextToEntityTypes('/receiving/history?recvId=5'), ['RECEIVING']);
   assert.deepEqual(pageContextToEntityTypes('/incoming'), ['RECEIVING']);
-  // Outbound stays a global/order surface — no dedicated boost (still resolves clean).
-  assert.equal(pageContextToEntityTypes('/outbound'), undefined);
+  // Shipping — order boost (same family as Pack / Dashboard).
+  assert.deepEqual(pageContextToEntityTypes('/shipping'), ['ORDER']);
+  assert.deepEqual(pageContextToEntityTypes('/outbound'), ['ORDER']); // legacy alias
 });
 
 test('full URLs are tolerated (pathname extracted)', () => {

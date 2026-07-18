@@ -37,13 +37,17 @@ import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search
 import { recentRerunHref } from '@/lib/search/search-recents';
 import {
   globalSearchHandoffHref,
+  journeyHandoffHref,
   looksLikeIdentifier,
   orderSearchHref,
 } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
 
-/** Preview / keyboard hit → always attach Search-mode map + query for orders. */
+/**
+ * Preview / keyboard hit → domain deep-link (orders keep Search-mode map).
+ * Journey Trace is secondary (row affordance / ⌘Enter), never the primary href.
+ */
 function hrefForPreviewHit(hit: AiSearchHit, query: string): string {
   if (hit.entityType === 'order') return orderSearchHref(hit.id, query);
   return hit.href;
@@ -261,6 +265,18 @@ export function GlobalHeaderSearch() {
         }
         return;
       }
+      // ⌘/Ctrl+Enter on a highlighted preview hit → Open journey (secondary).
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        const { dropdownOpen: open, dropdownState: st, flatPreviewHits: hits } = navRef.current;
+        if (!open || st !== 'preview' || activeIndex < 1) return;
+        const hit = hits[activeIndex - 1];
+        const journey = hit ? journeyHandoffHref(hit) : null;
+        if (!journey) return;
+        e.preventDefault();
+        setFocused(false);
+        router.push(journey);
+        return;
+      }
       const { dropdownOpen: open, optionCount: count } = navRef.current;
       if (!open || count === 0) return;
       if (e.key === 'ArrowDown') {
@@ -273,7 +289,7 @@ export function GlobalHeaderSearch() {
     };
     el.addEventListener('keydown', onKeyDown);
     return () => el.removeEventListener('keydown', onKeyDown);
-  }, [value, handleClear]);
+  }, [value, handleClear, activeIndex, router]);
 
   const handleSearchSubmit = useCallback(
     (raw: string) => {
@@ -350,7 +366,7 @@ export function GlobalHeaderSearch() {
         onChange={handleChange}
         onSearch={handleSearchSubmit}
         onClear={handleClear}
-        placeholder={contextualSearch?.placeholder ?? 'Search…'}
+        placeholder={contextualSearch?.placeholder ?? 'Order, serial, tracking…'}
         debounceMs={contextualSearch?.debounceMs ?? 320}
         isSearching={contextualSearch?.isSearching ?? previewSearching}
         tone="neutral"

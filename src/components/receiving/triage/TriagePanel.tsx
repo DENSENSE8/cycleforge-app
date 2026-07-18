@@ -4,32 +4,17 @@
  * TriagePanel — the standalone right-pane editor for the **Receiving (triage)**
  * mode: the fast "identify the carton before unbox" pass.
  *
- * Triage used to ride on {@link LineEditPanel} via a `variant='triage'` prop and
- * the `workspace-capabilities` matrix, which masked every unbox-only section.
- * That blended two display archetypes in one region (see
- * `.claude/rules/contextual-display.md`). This panel is the de-blended triage
- * surface: it composes ONLY the cards triage actually uses —
+ * Station Workbench anatomy (same as Unbox / Testing):
+ *   toolbar → condensed CartonContextCard → SectionTabsSlider
+ *   (Classify / Staging / Pairing) → Save-for-unbox dock.
  *
- *   1. Carton context  — classify pills, PO#/tracking/listing chips, photos, claim
- *   2. Package Pairing — pair the inbound/return package to a Zendesk claim,
- *                        repair service, or Ecwid order (read-only PO items once linked)
- *   3. Notes           — operator + Zoho notes (shared {@link WorkspaceNotesCard})
- *   4. Save for unbox  — the terminal action (hands the identified carton to unbox)
- *
- * No label preview, no print·receive, no serial scan — those are unbox-only and
- * simply aren't here, rather than being capability-gated off. All state lives in
- * the shared `useUnboxLineController` (the mode-agnostic carton/identity core), so
- * triage and unbox stay in lock-step on carton data without sharing a JSX shell.
+ * Classify pills live in the Overview tab — not expanded in the entity header.
+ * All state lives in the shared `useUnboxLineController` so triage and unbox
+ * stay in lock-step on carton data without sharing a JSX shell.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  staggerRevealContainer,
-  staggerRevealRiseItem,
-  STAGGER_REVEAL_STEP,
-} from '@/design-system/primitives/StaggerReveal';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
@@ -39,18 +24,24 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
 import { LineEditToolbar } from '../workspace/line-edit/LineEditToolbar';
-import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
 import { ReceivingPhotoPeek } from '../workspace/line-edit/ReceivingPhotoPeek';
 import { LineEditModals } from '../workspace/line-edit/LineEditModals';
+import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { markTriageCompleted, hasTriageBeenCompleted } from '../workspace/TriageProgressStepper';
-import { PoTriageTemplate } from './PoTriageTemplate';
-import { ReturnTriageTemplate } from './ReturnTriageTemplate';
-import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { useTriageStaging } from './useTriageStaging';
 import { WorkflowRecommendationsStrip } from '../WorkflowRecommendationsStrip';
-import { deriveTriageFocusFacts, resolveTriageFocus, TRIAGE_SECTION_ID } from '@/lib/receiving/triage-focus';
+import {
+  deriveTriageFocusFacts,
+  resolveTriageFocus,
+  triageFocusToTab,
+} from '@/lib/receiving/triage-focus';
+import {
+  buildTriageTabs,
+  TriageSectionTabs,
+  type TriageView,
+} from './build-triage-tabs';
 
 export function TriagePanel({
   row,
@@ -61,43 +52,34 @@ export function TriagePanel({
   staffId: string;
   onClose: () => void;
 }) {
-  // Shared, mode-agnostic carton/identity controller — identical to unbox, so
-  // PO#, tracking, classification, photos and pairing stay in sync across modes.
   const c = useUnboxLineController(row, staffId, {});
   const staging = useTriageStaging(row);
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
   const queryClient = useQueryClient();
   const [savingTriage, setSavingTriage] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<TriageView>('overview');
 
   useEffect(() => {
     setActionFeedback(null);
     setTriageSaved(false);
   }, [row.id]);
 
-  // TriageFocusResolver (§3.7) — on open (a fresh scan resolving into this
-  // panel, or a rail click), send attention to the first unmet step. Runs once
-  // per carton (keyed on row.id only) so it doesn't re-fire on every background
-  // refetch of the SAME carton. A short rAF delay lets the stagger-reveal
-  // mount before we scroll to it.
+  // TriageFocusResolver — on open, switch to the first unmet SectionTabsSlider tab.
   useEffect(() => {
     const facts = deriveTriageFocusFacts(
       row,
       row.triage_complete === true || hasTriageBeenCompleted(row.receiving_id),
     );
     const target = resolveTriageFocus(facts);
-    if (target === 'none') return;
     if (target === 'already-staged') {
       toast.success('Already staged for unbox', {
         description: 'Nothing left to do here — open it in Unbox when ready.',
       });
       return;
     }
-    const id = TRIAGE_SECTION_ID[target];
-    const raf = requestAnimationFrame(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-    return () => cancelAnimationFrame(raf);
+    const tab = triageFocusToTab(target);
+    if (tab) setActiveTab(tab);
   }, [row.id]);
 
   const handleSaveForUnbox = useCallback(async () => {
@@ -134,12 +116,6 @@ export function TriagePanel({
     }
   }, [row.receiving_id, row.id, queryClient, onClose]);
 
-  // Keyboard shortcut (Phase 4) — ⌘/Ctrl+Enter saves for unbox from anywhere in
-  // the panel, incl. while a text field has focus (the conventional "submit"
-  // chord). Deliberately the ONLY triage shortcut added: this is a scan-driven
-  // surface (station.md) where the wedge types raw digits/letters into the scan
-  // bar — a bare-key shortcut (e.g. a digit to switch tabs) would corrupt a scan
-  // in flight, so anything that isn't modifier-gated is out of scope here.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.key !== 'Enter') return;
@@ -164,18 +140,19 @@ export function TriagePanel({
     [row.id],
   );
 
-  // Staggered card "settle" — plays once per carton open (the panel is keyed on
-  // the carton in ReceivingRightPane). Reduced-motion collapses to a plain fade.
-  const reduceMotion = useReducedMotion();
-  const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
-  const revealItem: Variants = reduceMotion
-    ? { hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.001 } } }
-    : staggerRevealRiseItem;
-
-  // Intake-kind fork (§3.3) — the unbox/triage split already happened (this
-  // whole panel is de-blended from LineEditPanel); this is the remaining
-  // split, PO vs Return layouts inside triage itself.
-  const Template = isReturnIntake(row) ? ReturnTriageTemplate : PoTriageTemplate;
+  const triageTabs = useMemo(
+    () =>
+      buildTriageTabs({
+        row,
+        staffId,
+        c,
+        staging,
+        onItemDescFeedback: handleItemDescFeedback,
+        onItemDescSaved: handleItemDescSaved,
+        onNotesFeedback: setActionFeedback,
+      }),
+    [row, staffId, c, staging, handleItemDescFeedback, handleItemDescSaved],
+  );
 
   const buildTerminal = useCallback(
     (kind: string) =>
@@ -190,7 +167,7 @@ export function TriagePanel({
   const terminalVm = useStationTerminalAction({
     surface: 'triage',
     mode: 'triage',
-    tabId: null,
+    tabId: activeTab,
     build: buildTerminal,
   });
 
@@ -217,34 +194,30 @@ export function TriagePanel({
               }}
             />
           }
-          children={
-            <motion.div
-              initial="hidden"
-              animate="show"
-              variants={revealContainer}
-              className="space-y-4"
-            >
+          entityContext={
+            <div className="space-y-4">
               <WorkflowRecommendationsStrip row={row} surface="triage" />
-
-              <Template
+              <LineCartonContextSection
                 row={row}
                 staffId={staffId}
                 c={c}
-                staging={staging}
-                revealItem={revealItem}
-                onItemDescFeedback={handleItemDescFeedback}
-                onItemDescSaved={handleItemDescSaved}
+                expandClassifyWhenPending={false}
+                showClassifyControls={false}
               />
-
-              <motion.div variants={revealItem}>
-                <WorkspaceNotesCard row={row} c={c} onActionFeedback={setActionFeedback} />
-              </motion.div>
-
-              <WorkspaceActionFeedbackSlot
-                feedback={actionFeedback}
-                onDismiss={() => setActionFeedback(null)}
-              />
-            </motion.div>
+            </div>
+          }
+          tabs={
+            <TriageSectionTabs
+              tabs={triageTabs}
+              value={activeTab}
+              onChange={(id) => setActiveTab(id as TriageView)}
+            />
+          }
+          feedback={
+            <WorkspaceActionFeedbackSlot
+              feedback={actionFeedback}
+              onDismiss={() => setActionFeedback(null)}
+            />
           }
           dock={<StationTerminalDock vm={terminalVm} />}
         />

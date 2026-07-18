@@ -61,6 +61,7 @@ test('SERIAL_UNIT: items.name-preferred product title wins; serial in subtitle',
   assert.ok(doc.searchText.includes('BIN-A4'));
   assert.equal(doc.facets.conditionGrade, 'USED_FAIR');
   assert.equal(doc.facets.status, 'TESTED');
+  assert.equal(doc.facets.serialNumber, 'ABC-123');
 });
 
 test('RECEIVING: tracking title, line items searchable, source platform facet', () => {

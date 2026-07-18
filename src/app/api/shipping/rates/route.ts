@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/shipping/rates — operator rate-shop from an explicit shipment spec.
  *
- * Unlike /api/outbound/rates (order-anchored), this takes the full shipment
+ * Unlike /api/shipping/order-rates (order-anchored), this takes the full shipment
  * (ship-to address, parcels/dims/weight) in the body — the generic engine
  * entry the station builder's rate-shop action drives. `shipFrom` omitted →
  * the org's warehouse origin. Read-only: no DB mutation, no label purchased,

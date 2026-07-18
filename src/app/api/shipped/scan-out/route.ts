@@ -9,6 +9,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { normalizePSTTimestamp } from '@/utils/date';
 import { normalizeTrackingNumber } from '@/lib/tracking-format';
 import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
+import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 interface TrackingRow {
@@ -218,6 +219,20 @@ export const POST = withAuth(
         order_id: ctxRow?.order_id ?? null,
       },
     });
+
+    // Close the ship gap for units that reached the dock without /api/pack/ship:
+    // best-effort mirror open allocations → SHIPPED (idempotent via transition()).
+    // Never fail the scan-out SAL write if the mirror no-ops or errors.
+    if (activityId != null) {
+      await mirrorLegacyPackToAllocations(
+        {
+          packerLogId: activityId,
+          shipmentId,
+          actorStaffId: ctx.staffId,
+        },
+        orgId as OrgId,
+      ).catch(() => null);
+    }
 
     // Bust the shipped/packer-logs cache so the two tables reflect the move.
     await invalidateCacheTags(['packing-logs', 'shipped']).catch(() => {});

@@ -5,7 +5,7 @@
  * an unmatched carton, cross-referencing the Unfound tab (§3.3/§3.8: unfound is
  * a cross-mode persistent todo, this strip just points at it from the workspace
  * so the operator doesn't have to remember it exists). Copy varies by intake
- * kind — see {@link PoTriageTemplate} / {@link ReturnTriageTemplate}.
+ * kind — see triage Overview tab in {@link buildTriageTabs}.
  */
 
 import { useRouter } from 'next/navigation';

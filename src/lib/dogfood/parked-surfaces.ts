@@ -75,10 +75,10 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
   fba: {
     key: 'fba',
     label: 'FBA prep',
-    href: '/outbound?mode=fba',
-    blurb: 'FBA prep now lives under Outbound (Ready queue + FBA station). Status stays on Dashboard.',
-    primaryCta: { href: '/outbound?mode=fba', label: 'Open FBA prep' },
-    secondaryCta: { href: '/outbound?mode=ready', label: 'Open Ready queue' },
+    href: '/shipping?mode=fba',
+    blurb: 'FBA prep now lives under Shipping (Ready queue + FBA station). Status stays on Dashboard.',
+    primaryCta: { href: '/shipping?mode=fba', label: 'Open FBA prep' },
+    secondaryCta: { href: '/shipping?mode=ready', label: 'Open Ready queue' },
   },
   studio: {
     key: 'studio',

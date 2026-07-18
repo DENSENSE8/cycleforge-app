@@ -2,15 +2,20 @@
 
 /**
  * Labels-station workspace chrome — tabs left (Queue · Recent), station filters
- * (search + sort) and the Import/Sync control right. Mirrors
- * ShippingWorkspaceHeader / the golden WorkbenchChromeHeader recipe for the
- * `/outbound` labels station (docs/todo/display-convergence-log.md → Axis 5).
+ * (search + Urgent/lane like Dashboard · To Ship) and ghost icon-only Priority /
+ * Import / New-order controls right. Mirrors ShippingWorkspaceHeader /
+ * OutboundWorkspaceHeader for `/shipping` labels.
  */
 
 import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
+import {
+  OutboundExactFilters,
+  useToShipFilterHotkeys,
+} from '@/components/dashboard/OutboundFilterStrip';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ArrowUpDown, Plus } from '@/components/Icons';
@@ -46,19 +51,18 @@ interface LabelsWorkspaceHeaderProps {
   className?: string;
 }
 
-/** Compact sort toggle (Priority ⇄ Newest) matching the chrome control cluster. */
+/** Ghost icon-only Priority ⇄ Newest sort toggle (no fill color at rest). */
 function SortToggle({ sort, onToggle }: { sort: OutboundSort; onToggle: () => void }) {
   return (
     <HoverTooltip label={`Sort: ${SORT_LABEL[sort]} — tap to change`} asChild>
-      <button
+      <ToolbarButton
         type="button"
+        iconOnly
         onClick={onToggle}
-        // ds-raw-button: a two-state segmented sort toggle, not a single-variant action Button.
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border-soft bg-surface-card px-3 text-role-caption font-semibold text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
+        aria-label={`Sort: ${SORT_LABEL[sort]}`}
       >
-        <ArrowUpDown className="h-3.5 w-3.5 opacity-70" />
-        {sort === 'newest' ? 'Newest' : 'Priority'}
-      </button>
+        <ArrowUpDown className="h-3.5 w-3.5" />
+      </ToolbarButton>
     </HoverTooltip>
   );
 }
@@ -78,6 +82,7 @@ export function LabelsWorkspaceHeader({
   // so tab badges never drift from the list below.
   const { data: awaiting } = useQuery(awaitingLabelsQuery({ searchQuery: '' }));
   const { data: staged } = useQuery(stagedOrdersQuery({ searchQuery: '' }));
+  useToShipFilterHotkeys(tab === 'queue');
 
   const tabs = useMemo(
     () =>
@@ -109,22 +114,18 @@ export function LabelsWorkspaceHeader({
           tone="blue"
         />
       }
-      right={<SortToggle sort={sort} onToggle={onToggleSort} />}
+      // Same Urgent + lane popover as Dashboard · To Ship / Shipping · Pending.
+      right={tab === 'queue' ? <OutboundExactFilters mode="unshipped" /> : undefined}
       trailing={
         <>
-          {/* ds-raw-button: emerald "create" affordance — DS Button has no success variant (matches the retired sidebar New-order button). */}
-          <button
-            type="button"
-            onClick={onNewOrder}
-            aria-label="New order entry"
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-emerald-500 px-3 text-white shadow-sm transition-colors hover:bg-emerald-600 active:scale-95"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="text-role-eyebrow font-bold uppercase tracking-widest text-white">
-              New order
-            </span>
-          </button>
-          <OrdersSyncPopover triggerVariant="header" />
+          {/* Order: Priority → Import → New order (+) — ghost icon-only. */}
+          <SortToggle sort={sort} onToggle={onToggleSort} />
+          <OrdersSyncPopover triggerVariant="header" iconOnly />
+          <HoverTooltip label="New order" asChild>
+            <ToolbarButton type="button" iconOnly onClick={onNewOrder} aria-label="New order entry">
+              <Plus className="h-3.5 w-3.5" />
+            </ToolbarButton>
+          </HoverTooltip>
         </>
       }
     />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
@@ -15,6 +16,8 @@ import {
   FnskuChip,
   OrderIdChip,
   SkuScanRefChip,
+  TicketChip,
+  BinChip,
   getLast4,
 } from '@/components/ui/CopyChip';
 
@@ -118,25 +121,47 @@ const REF_KIND_LABEL: Record<TimelineRef['kind'], string> = {
   fnsku: 'FNSKU',
   sku: 'SKU',
   id: 'Order',
+  bin: 'Bin',
+  ticket: 'Ticket',
 };
 
 /** Render an identifier through the shared CopyChip family (last-4 + copy). */
 function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
   const v = String(refItem.value || '').trim();
   if (!v) return null;
+  let chip: ReactNode;
   switch (refItem.kind) {
     case 'tracking':
-      return <TrackingChip value={v} display={getLast4(v)} dense fitDisplayWidth />;
+      chip = <TrackingChip value={v} display={getLast4(v)} dense fitDisplayWidth />;
+      break;
     case 'serial':
-      return <SerialChip value={v} width="w-fit max-w-full" dense />;
+      chip = <SerialChip value={v} width="w-fit max-w-full" dense />;
+      break;
     case 'fnsku':
-      return <FnskuChip value={v} width="w-fit max-w-full" />;
+      chip = <FnskuChip value={v} width="w-fit max-w-full" />;
+      break;
     case 'sku':
-      return <SkuScanRefChip value={v} display={getLast4(v)} dense />;
+      chip = <SkuScanRefChip value={v} display={getLast4(v)} dense />;
+      break;
+    case 'bin':
+      chip = <BinChip value={v} dense />;
+      break;
+    case 'ticket':
+      chip = <TicketChip value={v} display={getLast4(v)} />;
+      break;
     case 'id':
     default:
-      return <OrderIdChip value={v} display={v} dense />;
+      chip = <OrderIdChip value={v} display={v} dense />;
+      break;
   }
+  if (refItem.href) {
+    return (
+      <Link href={refItem.href} className="inline-flex min-w-0 max-w-full" onClick={(e) => e.stopPropagation()}>
+        {chip}
+      </Link>
+    );
+  }
+  return chip;
 }
 
 /**

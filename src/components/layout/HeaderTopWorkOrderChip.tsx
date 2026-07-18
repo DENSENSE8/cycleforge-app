@@ -1,15 +1,18 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ClipboardList } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ChevronDown, ClipboardList } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
 import { Popover } from '@/design-system/primitives/Popover';
+import { Button } from '@/design-system/primitives';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { formatDate } from '@/components/work-orders/types';
+import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /**
@@ -20,9 +23,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
  * reuses the work-orders queue's data source and the shared ranking SoT
  * (compareWorkOrderRows) — so this chip never diverges from the queue order.
  *
- * Additive + self-contained: renders nothing when the operator has no actionable
- * assigned work, so it stays invisible until there's something to surface.
- * Mounted alongside HeaderGoalChip in GlobalHeader (see that file).
+ * Visual dialect matches {@link HeaderGoalChip}: quiet hover shell, two-line
+ * stack (state on top, entity below), chevron. Color only for overdue tone.
+ *
+ * Renders nothing when the operator has no actionable assigned work.
  */
 
 interface TopWorkOrder {
@@ -46,8 +50,25 @@ async function fetchMine(): Promise<{ top: TopWorkOrder | null }> {
   return res.json();
 }
 
+/** Compact due face — overdue first, else short date, else calm empty. */
+function dueFace(deadlineAt: string | null): { label: string; tone: string } {
+  if (!deadlineAt) return { label: 'No deadline', tone: 'text-text-soft' };
+  const daysLate = getDaysLateNullable(deadlineAt);
+  if (daysLate !== null && daysLate > 0) {
+    return {
+      label: daysLate === 1 ? '1d late' : `${daysLate}d late`,
+      tone: getDaysLateTone(daysLate),
+    };
+  }
+  return {
+    label: `Due ${formatDate(deadlineAt, '—')}`,
+    tone: 'text-text-soft',
+  };
+}
+
 export function HeaderTopWorkOrderChip() {
   const { user } = useAuth();
+  const router = useRouter();
   const staffId = user?.staffId ?? null;
   const orgId = user?.organizationId ?? '';
   const queryClient = useQueryClient();
@@ -74,31 +95,48 @@ export function HeaderTopWorkOrderChip() {
   const top = data?.top ?? null;
   if (!staffId || !top) return null;
 
+  const due = dueFace(top.deadlineAt);
   const deadlineLabel = top.deadlineAt ? formatDate(top.deadlineAt, 'No deadline') : null;
+  const daysLate = getDaysLateNullable(top.deadlineAt);
 
   return (
     <div className="relative hidden shrink-0 sm:block">
       <HoverTooltip label="Your top work order" asChild>
-        <button
+        <motion.button
           ref={triggerRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
+          whileTap={{ scale: 0.97 }}
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label="Your top work order"
+          aria-label={`Your top work order — ${top.queueLabel}: ${top.title}`}
           className={cn(
-            'ds-raw-button flex max-w-[220px] items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50/70 py-0.5 pl-2 pr-1.5 transition-colors hover:bg-indigo-100/70',
-            open && 'bg-indigo-100',
+            'flex max-w-[240px] items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition-colors',
+            open ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
           )}
         >
-          <ClipboardList className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-          <span className="min-w-0 truncate text-role-caption font-bold tracking-tight text-indigo-900">
-            {top.title}
+          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-muted">
+            <ClipboardList className="h-3.5 w-3.5" />
+          </span>
+          <span className="flex min-w-0 flex-col items-start leading-none">
+            <span className="w-full truncate text-role-caption font-bold tracking-tight text-text-default">
+              {top.queueLabel}
+            </span>
+            <span className="mt-0.5 flex max-w-full items-baseline gap-1 text-role-eyebrow font-semibold">
+              <span className={cn('shrink-0 tabular-nums', due.tone)}>{due.label}</span>
+              <span aria-hidden className="shrink-0 text-text-faint">
+                ·
+              </span>
+              <span className="min-w-0 truncate text-text-soft">{top.title}</span>
+            </span>
           </span>
           <ChevronDown
-            className={cn('h-3 w-3 shrink-0 text-indigo-400 transition-transform duration-200', open && 'rotate-180')}
+            className={cn(
+              'h-3 w-3 shrink-0 text-text-faint transition-transform duration-200',
+              open && 'rotate-180',
+            )}
           />
-        </button>
+        </motion.button>
       </HoverTooltip>
 
       <Popover
@@ -112,7 +150,7 @@ export function HeaderTopWorkOrderChip() {
         className="w-[300px]"
       >
         <div className="border-b border-border-hairline px-3.5 py-3">
-          <p className="text-role-eyebrow uppercase tracking-[0.18em] text-indigo-500">
+          <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
             Your next work order
           </p>
           <p className="mt-1 text-role-body font-bold leading-tight tracking-tight text-text-default">
@@ -126,23 +164,35 @@ export function HeaderTopWorkOrderChip() {
           <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">
             {top.queueLabel}
           </span>
-          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-indigo-600">
+          <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">
             {top.role}
           </span>
           {deadlineLabel ? (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider text-amber-700">
-              Due {deadlineLabel}
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider',
+                daysLate !== null && daysLate > 0
+                  ? 'bg-rose-50 text-rose-700'
+                  : 'bg-surface-sunken text-text-muted',
+              )}
+            >
+              {daysLate !== null && daysLate > 0 ? due.label : `Due ${deadlineLabel}`}
             </span>
           ) : null}
         </div>
         <div className="border-t border-border-hairline px-3.5 py-2.5">
-          <Link
-            href={top.sourcePath}
-            onClick={() => setOpen(false)}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-role-caption font-bold text-white transition-colors hover:bg-indigo-700"
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              setOpen(false);
+              router.push(top.sourcePath);
+            }}
           >
             Open {top.recordLabel}
-          </Link>
+          </Button>
         </div>
       </Popover>
     </div>

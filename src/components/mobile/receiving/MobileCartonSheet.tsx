@@ -13,6 +13,9 @@ import {
   getLast4,
 } from '@/components/ui/CopyChip';
 import { conditionGradeTableLabel, workflowStatusTableLabel } from '@/components/station/receiving-constants';
+import { conditionGradeTextClass } from '@/lib/condition-tone';
+import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { cn } from '@/utils/_cn';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 
@@ -68,12 +71,6 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
   const condGrade = (row.condition_grade || '').toUpperCase();
-  const conditionColor =
-    condGrade === 'BRAND_NEW'
-      ? 'text-yellow-600'
-      : condGrade === 'PARTS'
-        ? 'text-amber-800'
-        : 'text-text-soft';
   const serialsCsv = (row.serials ?? [])
     .map((s) => (s.serial_number || '').trim())
     .filter(Boolean)
@@ -110,7 +107,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
               <span
                 className={
                   qtyExpected > 1 && qtyReceived < qtyExpected
-                    ? 'text-yellow-600'
+                    ? 'text-text-warning'
                     : row.quantity_expected && qtyReceived >= row.quantity_expected
                       ? 'text-emerald-600'
                       : 'text-text-muted'
@@ -119,7 +116,14 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
                 {quantityText}
               </span>
               <span className="text-text-faint">•</span>
-              <span className={conditionColor}>{conditionLabel}</span>
+              <span
+                className={cn(
+                  conditionGradeTextClass(condGrade),
+                  conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
+                )}
+              >
+                {conditionLabel}
+              </span>
             </span>
 
             <div className="ml-auto flex shrink-0 items-center gap-2">

@@ -32,6 +32,7 @@ const SOURCE_LABELS: Record<JourneySource, string> = {
   carrier: 'Carrier',
   warranty: 'Warranty',
   thread: 'Conversation',
+  ticket: 'Tickets',
 };
 
 function startOfTodayISO(): string {
@@ -108,7 +109,10 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
   // 'thread' is entity/Trace-mode only (buildBrowseQuery has no thread arm),
   // so its chip is hidden here — a browse filter that can never match would
   // read as broken.
-  const sourceItems = JOURNEY_SOURCES.filter((s) => s !== 'thread' && (s !== 'audit' || canViewAudit));
+  // thread + ticket are entity/Trace-only (no browse UNION arm).
+  const sourceItems = JOURNEY_SOURCES.filter(
+    (s) => s !== 'thread' && s !== 'ticket' && (s !== 'audit' || canViewAudit),
+  );
 
   const saveCurrent = () => {
     const name = typeof window !== 'undefined' ? window.prompt('Name this view')?.trim() : '';

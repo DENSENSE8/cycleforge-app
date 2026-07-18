@@ -227,7 +227,18 @@ export function SearchField({
     try {
       const text = await navigator.clipboard.readText();
       const trimmed = text.trim();
-      if (trimmed) setDraft(trimmed);
+      if (!trimmed) return;
+      // Flush immediately — don't rely on debounce. Clicking paste blurs the
+      // input, and the unfocused sync effect would otherwise overwrite a
+      // draft-only update with the still-empty parent value.
+      if (debounceTimeoutRef.current != null) {
+        window.clearTimeout(debounceTimeoutRef.current);
+        debounceTimeoutRef.current = null;
+      }
+      justClearedRef.current = false;
+      setDraft(trimmed);
+      committedRef.current = trimmed;
+      onChange(trimmed);
     } catch {
       // clipboard blocked
     }
@@ -249,9 +260,11 @@ export function SearchField({
     ) : pasteOnlyTrailing ? (
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={handlePaste}
         className="inline-flex h-4 w-4 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
-        aria-label="Paste from clipboard"      >
+        aria-label="Paste from clipboard"
+      >
         <Clipboard className="h-4 w-4" />
       </button>
     ) : hasValue ? (
@@ -263,16 +276,19 @@ export function SearchField({
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
           className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-text-faint transition-colors duration-100 ease-out hover:bg-surface-sunken hover:text-text-default active:scale-95"
-          aria-label="Clear search"        >
+          aria-label="Clear search"
+        >
           <X className="h-3.5 w-3.5" />
         </button>
       )
     ) : (
       <button
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={handlePaste}
         className="inline-flex h-4 w-4 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
-        aria-label="Paste from clipboard"      >
+        aria-label="Paste from clipboard"
+      >
         <Clipboard className="h-4 w-4" />
       </button>
     );

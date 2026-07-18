@@ -76,5 +76,6 @@ test('legacy alias paths resolve to the same nav route-key', () => {
   assert.equal(getSidebarRouteKey('/receiving'), 'receiving'); // unbox/triage/incoming/pickup/repair/history bucket
   assert.equal(getSidebarRouteKey('/packer'), 'packer'); // pack
   assert.equal(getSidebarRouteKey('/tech'), 'tech'); // test
+  assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
 });

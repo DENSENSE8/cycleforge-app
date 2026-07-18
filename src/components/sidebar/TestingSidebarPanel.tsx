@@ -6,10 +6,12 @@ import { Barcode, Hash, MapPin, Package, Pencil } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
+import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
 import { TestingScanSessionFeedback } from '@/components/sidebar/receiving/TestingScanSessionFeedback';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useIsMobile } from '@/hooks';
+import { useStationTheme } from '@/hooks/useStationTheme';
 import {
   resolveTestingScan,
   type ResolvedTestingScan,
@@ -100,6 +102,7 @@ export function TestingSidebarPanel({
   staffId,
 }: Props) {
   const isMobile = useIsMobile();
+  const { theme: themeColor } = useStationTheme({ staffId: staffId ? Number(staffId) : 0 });
   const [railFilter, setRailFilter] = useState('');
   const [scanValue, setScanValue] = useState('');
   const [isResolving, setIsResolving] = useState(false);
@@ -318,40 +321,43 @@ export function TestingSidebarPanel({
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
       {!isMobile ? (
-        <div className={`${SIDEBAR_GUTTER} pt-1.5 pb-2`}>
-          {scanBarBlock}
-          <TestingScanSessionFeedback session={session} />
-          {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
-            <div className="mt-1.5">
-              <UnitPhotoRequestStatus
-                serialUnitId={lastUnitPhotoRequest.serialUnitId}
-                unitKey={lastUnitPhotoRequest.unitKey}
-              />
-            </div>
-          ) : null}
-          {!session.line && lastAck ? (() => {
-            const meta = viaAckMeta(lastAck.via);
-            return (
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${meta.chip}`}>
-                  <meta.Icon className="h-3 w-3 shrink-0" />
-                  {meta.label}
-                </span>
-                <span className="min-w-0 shrink-0 truncate font-mono text-role-micro font-bold text-text-muted" title={lastAck.value}>
-                  {lastAck.value}
-                </span>
-                {lastAck.line ? (
-                  <span className="min-w-0 truncate text-role-micro font-semibold text-text-soft">
-                    · {lastAck.line.title}
-                    {typeof lastAck.line.received === 'number'
-                      ? ` · ${lastAck.line.received}/${lastAck.line.expected ?? '?'}`
-                      : ''}
-                  </span>
-                ) : null}
+        <>
+          {/* Flush 40px band — same ScanBandShell geometry as Unbox (no py around the bar). */}
+          <ScanBandShell themeColor={themeColor}>{scanBarBlock}</ScanBandShell>
+          <div className={SIDEBAR_GUTTER}>
+            <TestingScanSessionFeedback session={session} />
+            {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+              <div className="mt-1.5">
+                <UnitPhotoRequestStatus
+                  serialUnitId={lastUnitPhotoRequest.serialUnitId}
+                  unitKey={lastUnitPhotoRequest.unitKey}
+                />
               </div>
-            );
-          })() : null}
-        </div>
+            ) : null}
+            {!session.line && lastAck ? (() => {
+              const meta = viaAckMeta(lastAck.via);
+              return (
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${meta.chip}`}>
+                    <meta.Icon className="h-3 w-3 shrink-0" />
+                    {meta.label}
+                  </span>
+                  <span className="min-w-0 shrink-0 truncate font-mono text-role-micro font-bold text-text-muted" title={lastAck.value}>
+                    {lastAck.value}
+                  </span>
+                  {lastAck.line ? (
+                    <span className="min-w-0 truncate text-role-micro font-semibold text-text-soft">
+                      · {lastAck.line.title}
+                      {typeof lastAck.line.received === 'number'
+                        ? ` · ${lastAck.line.received}/${lastAck.line.expected ?? '?'}`
+                        : ''}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })() : null}
+          </div>
+        </>
       ) : null}
 
       {picker ? (
@@ -427,9 +433,11 @@ export function TestingSidebarPanel({
       />
 
       {isMobile ? (
-        <div className={`flex-shrink-0 border-t border-border-hairline bg-surface-card ${SIDEBAR_GUTTER} pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-3`}>
-          {scanBarBlock}
-          <TestingScanSessionFeedback session={session} />
+        <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className={SIDEBAR_GUTTER}>
+            <TestingScanSessionFeedback session={session} />
+          </div>
+          <ScanBandShell themeColor={themeColor}>{scanBarBlock}</ScanBandShell>
         </div>
       ) : null}
 

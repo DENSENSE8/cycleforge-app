@@ -31,11 +31,23 @@ export interface TimelineChange {
  * behave exactly like ids everywhere else in the app. Adapters pass the raw
  * value + kind; the chip owns the last-4 formatting.
  */
-export type TimelineRefKind = 'tracking' | 'serial' | 'fnsku' | 'id' | 'sku';
+export type TimelineRefKind =
+  | 'tracking'
+  | 'serial'
+  | 'fnsku'
+  | 'id'
+  | 'sku'
+  | 'bin'
+  | 'ticket';
 
 export interface TimelineRef {
   value: string;
   kind: TimelineRefKind;
+  /**
+   * Optional deep-link (bin → `/inventory/location/…`, ticket → support).
+   * When set, the chip wraps a Link; copy-on-click still works via CopyChip.
+   */
+  href?: string;
 }
 
 /**

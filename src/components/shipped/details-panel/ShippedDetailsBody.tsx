@@ -158,7 +158,7 @@ export function ShippedDetailsBody({
               <SerialJourneySection
                 key={sn}
                 serialNumber={sn}
-                title={orderSerials.length > 1 ? `Serial journey · ${sn}` : 'Serial journey'}
+                title={orderSerials.length > 1 ? `Item Journey · ${sn}` : 'Item Journey'}
               />
             ))}
           </div>

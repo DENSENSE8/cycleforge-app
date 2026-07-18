@@ -9,18 +9,22 @@ export const receivingHeaderHairlineClass = 'shadow-[inset_0_-1px_0_0_#d1d5db]';
  * wins over any baked-in `px-*` on the shared band constants below. Single knob:
  * change it here and every section that references it re-aligns together.
  *
- * 6px (px-1.5) is the house sidebar gutter. The recent-activity rail rows, the
- * mode/scan bands, and the section eyebrows all inset to this same line so the
- * panel reads as one column. Decorative leads (status dots, the scan icon)
- * inset *within* their container from this edge — they never add to it.
+ * 6px (px-1.5) is the house sidebar gutter. Recent-activity rail rows, mode
+ * pills, and section eyebrows inset to this line. The **scan band** is the
+ * exception: it is full-bleed (`receivingScanBandClass` / {@link ScanBandShell})
+ * so the staff bottom-rule runs edge-to-edge; content inset lives inside the
+ * scan input (icon + mode rail pads), not on the band.
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
 /** 40px identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
 export const receivingIdentityBandClass = `flex h-[40px] shrink-0 items-center bg-surface-card px-3 ${receivingHeaderHairlineClass}`;
 
-/** 40px scan band — same grid height as all other header bands. */
-export const receivingScanBandClass = `flex h-[40px] shrink-0 items-center px-3 ${receivingHeaderHairlineClass}`;
+/**
+ * 40px scan band — same grid height as other header bands, **full-bleed**
+ * (no side gutter). StationScanBar owns left/right content inset.
+ */
+export const receivingScanBandClass = `flex h-[40px] shrink-0 items-center px-0 ${receivingHeaderHairlineClass}`;
 
 export const sidebarHeaderBandClass = `shrink-0 bg-surface-card ${receivingHeaderHairlineClass}`;
 // 40px pill/tab row — matches the dashboard's HorizontalButtonSlider band height.

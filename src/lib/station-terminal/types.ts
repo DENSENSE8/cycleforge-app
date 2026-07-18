@@ -70,7 +70,7 @@ export interface TerminalActionVm {
 export interface ModeTerminalSliceDef {
   /** Tab id → kind. Modes without tabs leave this empty and use `defaultKind`. */
   tabs: Record<string, string>;
-  /** Kind used when the mode has no section tabs (e.g. triage). */
+  /** Kind used when the mode has no section tabs, or tabId is null. */
   defaultKind?: string;
   hasSectionTabs: boolean;
 }

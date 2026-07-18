@@ -64,6 +64,13 @@ export interface SwimlaneLaneDef<LaneId extends string> {
   icon: React.ComponentType<{ className?: string }>;
   /** Tailwind text class for the lane header icon (defaults to gray). */
   iconClass?: string;
+  /**
+   * When true, omit this lane from the board while it has zero rows (exception /
+   * attention lanes like Urgent / Blocked). Always-visible pipeline lanes leave
+   * this unset. A focused single-lane filter still renders an empty lane so the
+   * filter doesn't look broken.
+   */
+  hideWhenEmpty?: boolean;
 }
 
 /** A selectable sort for the per-lane sort menu. */
@@ -684,6 +691,19 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
     return out;
   }, [records, laneMap, bucket, canonicalOrder, getRowDate]);
 
+  // Drop empty exception/attention lanes (`hideWhenEmpty`) unless the board is
+  // focused on a single lane (KPI / toolbar filter) — then keep the empty shell.
+  const renderOrder = useMemo(() => {
+    const focusedSingleLane = effectiveOrder.length === 1;
+    return effectiveOrder.filter((id) => {
+      const lane = laneById.get(id);
+      if (!lane) return false;
+      if (!lane.hideWhenEmpty) return true;
+      if ((lanesRows[id] ?? []).length > 0) return true;
+      return focusedSingleLane;
+    });
+  }, [effectiveOrder, laneById, lanesRows]);
+
   const isGrid = !singleColumnOnly && columns >= 2;
   /** Full-width grid; single-column boards stay a vertical stack (no multi-up). */
   const gridClass = isGrid
@@ -765,10 +785,10 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
       >
         <div className={`shrink-0 ${toolbarPortalTarget ? 'h-1' : 'h-4'}`} />
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={reorderLanes}>
-          <SortableContext items={effectiveOrder} strategy={isGrid ? rectSortingStrategy : verticalListSortingStrategy}>
+          <SortableContext items={renderOrder} strategy={isGrid ? rectSortingStrategy : verticalListSortingStrategy}>
             <LayoutGroup id={`swimlane-board-${prefsKey}`}>
               <div className={gridClass}>
-                {effectiveOrder.map((id) => {
+                {renderOrder.map((id) => {
                   const lane = laneById.get(id);
                   if (!lane) return null;
                   const laneState = laneMap[id] ?? defaultLaneMap[id];

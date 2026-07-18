@@ -7,31 +7,18 @@
  * carton has no staging context at all (never an empty rule line).
  */
 
-import { Check, MapPin } from '@/components/Icons';
-import { triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
+import { TriageStagingStatusChips } from '@/components/receiving/triage/TriageStagingStatusChips';
 import type { TriageStagingContext } from './useTriageStagingMap';
 
 export function TriageStagingChips({ ctx }: { ctx: TriageStagingContext | undefined }) {
   if (!ctx) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5 border-t border-border-hairline pt-2.5">
-      {ctx.complete ? (
-        <span className="inline-flex items-center gap-1 rounded bg-emerald-50 inset-chip text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200">
-          <Check className="h-2.5 w-2.5" />
-          Staged
-        </span>
-      ) : null}
-      {ctx.locationLabel ? (
-        <span className="inline-flex items-center gap-1 rounded bg-blue-50 inset-chip text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
-          <MapPin className="h-2.5 w-2.5" />
-          {ctx.locationLabel}
-        </span>
-      ) : null}
-      {ctx.lane ? (
-        <span className="inline-flex items-center gap-1 rounded bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
-          {triageLaneLabel(ctx.lane)}
-        </span>
-      ) : null}
+    <div className="border-t border-border-hairline pt-2.5">
+      <TriageStagingStatusChips
+        complete={ctx.complete}
+        locationLabel={ctx.locationLabel}
+        lane={ctx.lane}
+      />
     </div>
   );
 }

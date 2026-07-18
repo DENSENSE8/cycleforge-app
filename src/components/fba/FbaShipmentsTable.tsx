@@ -18,7 +18,7 @@
  * The agreed destination is an item-grain (FNSKU) queue over `FbaBoardItem`
  * (`/api/fba/shipments/active-with-details`) filtered to open work —
  * OUT_OF_STOCK + PLANNED + TESTED + PACKED, sorted by `FBA_STATUS_ORDER` then
- * due date — matching what `/outbound?mode=fba` already renders and what
+ * due date — matching what `/shipping?mode=fba` already renders and what
  * Amazon's Restock tool does (SKU-level, ship-by dates). That grain swap is
  * deferred; when it lands, this file's column schema is the thing that changes,
  * not the shell.
@@ -234,7 +234,7 @@ export default function FbaShipmentsTable() {
           description="Plan your first FBA shipment to track prep, labeling, and hand-off here."
           action={
             <Link
-              href="/outbound?mode=fba"
+              href="/shipping?mode=fba"
               className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90 active:bg-accent-bg/90"
             >
               <Package className="h-4 w-4" />

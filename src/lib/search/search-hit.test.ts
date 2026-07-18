@@ -9,6 +9,7 @@ import {
   facetChips,
   globalSearchHandoffHref,
   isUiEntityType,
+  journeyHandoffHref,
   orderSearchHref,
   searchHitHref,
   searchScopeHref,
@@ -47,6 +48,35 @@ test('orderSearchHref: always opens master-nav Search mode with optional q', () 
   );
 });
 
+test('journeyHandoffHref: order/unit/tracking dims; null when anchor missing', () => {
+  assert.equal(
+    journeyHandoffHref({ id: 42, entityType: 'order' }),
+    '/operations?mode=history&dim=order&order=42',
+  );
+  // Unit hits always use dim=unit&unit={id} — never depend on serial facet.
+  assert.equal(
+    journeyHandoffHref({
+      id: 9,
+      entityType: 'unit',
+      facets: { serial_number: 'SN-ABC-123' },
+    }),
+    '/operations?mode=history&dim=unit&unit=9',
+  );
+  assert.equal(
+    journeyHandoffHref({ id: 9, entityType: 'unit', facets: {} }),
+    '/operations?mode=history&dim=unit&unit=9',
+  );
+  assert.equal(
+    journeyHandoffHref({
+      id: 3,
+      entityType: 'receiving',
+      facets: { tracking_number: '9400111899560000000000' },
+    }),
+    '/operations?mode=history&dim=tracking&tracking=9400111899560000000000',
+  );
+  assert.equal(journeyHandoffHref({ id: 1, entityType: 'sku' }), null);
+});
+
 test('globalSearchHandoffHref: order-heavy skips /search (no flash)', () => {
   assert.equal(
     globalSearchHandoffHref('111-6350504-7603458', [{ id: 99, entityType: 'order' }]),
@@ -70,6 +100,27 @@ test('globalSearchHandoffHref: order-heavy skips /search (no flash)', () => {
       { id: 2, entityType: 'sku' },
     ]),
     '/search?q=bose',
+  );
+});
+
+test('globalSearchHandoffHref: Enter stays on work surfaces (never Trace)', () => {
+  // Identifier with only a unit hit → order Search map (Enter default), not Trace.
+  assert.equal(
+    globalSearchHandoffHref('SN-ABC-12345', [
+      { id: 9, entityType: 'unit', facets: { serial_number: 'SN-ABC-12345' } },
+    ]),
+    '/o/SN-ABC-12345?mode=search&q=SN-ABC-12345',
+  );
+  // Identifier matching an order → /o Search map (journey is secondary / ⌘Enter).
+  assert.equal(
+    globalSearchHandoffHref('9400111899561234567890', [
+      {
+        id: 99,
+        entityType: 'order',
+        facets: { tracking_number: '9400111899561234567890' },
+      },
+    ]),
+    '/o/99?mode=search&q=9400111899561234567890',
   );
 });
 

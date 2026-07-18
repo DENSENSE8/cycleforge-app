@@ -10,7 +10,9 @@ import type {
   CarrierEvent,
   WarrantyEventRow,
   ThreadMessageTimelineRow,
+  TicketLinkTimelineRow,
 } from '@/lib/timeline';
+import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import {
   ENTITY_WINDOW_MS,
   MAX_LIMIT,
@@ -148,16 +150,34 @@ export async function resolveEntity(
     return resolveOrderAnchors(client, orgId, res.rows[0]);
   }
 
-  if (dim === 'serial') {
-    const normalized = normalizeSerial(v);
-    const res = await client.query<{ id: number; serial_number: string }>(
-      `SELECT id, serial_number FROM serial_units
-        WHERE organization_id = $1 AND normalized_serial = $2
-        LIMIT 1`,
-      [orgId, normalized],
-    );
-    if (res.rows.length === 0) return null;
-    const serialUnitId = Number(res.rows[0].id);
+  if (dim === 'serial' || dim === 'unit') {
+    let serialUnitId: number;
+    let serialNumber: string;
+
+    if (dim === 'unit') {
+      if (!/^[0-9]+$/.test(v)) return null;
+      const byId = await client.query<{ id: number; serial_number: string }>(
+        `SELECT id, serial_number FROM serial_units
+          WHERE organization_id = $1 AND id = $2::int
+          LIMIT 1`,
+        [orgId, Number(v)],
+      );
+      if (byId.rows.length === 0) return null;
+      serialUnitId = Number(byId.rows[0].id);
+      serialNumber = byId.rows[0].serial_number;
+    } else {
+      const normalized = normalizeSerial(v);
+      const res = await client.query<{ id: number; serial_number: string }>(
+        `SELECT id, serial_number FROM serial_units
+          WHERE organization_id = $1 AND normalized_serial = $2
+          LIMIT 1`,
+        [orgId, normalized],
+      );
+      if (res.rows.length === 0) return null;
+      serialUnitId = Number(res.rows[0].id);
+      serialNumber = res.rows[0].serial_number;
+    }
+
     const ord = await client.query<{ id: number; order_id: string | null; shipment_id: number | null }>(
       `SELECT o.id, o.order_id, o.shipment_id
          FROM order_unit_allocations oua
@@ -177,12 +197,13 @@ export async function resolveEntity(
       trackingNumbers = trk.rows.map((r) => (r.tracking_number_raw || '').trim()).filter(Boolean);
     }
     return {
+      // URL may say dim=unit; anchors behave as a serial Trace for spines/UI.
       kind: 'serial',
       orderId: order?.id ?? null,
       orderNumber: order?.order_id ?? null,
       shipmentId: order?.shipment_id ?? null,
       serialUnitIds: [serialUnitId],
-      serials: [res.rows[0].serial_number],
+      serials: [serialNumber],
       trackingNumbers,
     };
   }
@@ -364,6 +385,8 @@ export async function readJourneyEntity(
         sku: r.sku,
         prev_status: r.prev_status,
         next_status: r.next_status,
+        bin_barcode: r.bin_barcode,
+        bin_name: r.bin_name,
         payload: r.payload,
       };
       out.push({
@@ -510,6 +533,99 @@ export async function readJourneyEntity(
         group: groupForAnchors(anchors, { serialNumber: r.serial_number, station: null }),
         raw,
       });
+    }
+  }
+
+  // 7) ticket — SHIPMENT ticket link/unlink ops_events + SERIAL_UNIT ticket_links.
+  //    Entity mode only (no browse arm). Reuses Support Context Hub query shapes.
+  if (
+    want('ticket') &&
+    (anchors.shipmentId != null || anchors.serialUnitIds.length > 0)
+  ) {
+    if (anchors.shipmentId != null) {
+      const shipTickets = await client.query<{
+        id: string;
+        occurred_at: string;
+        event_type: string;
+        payload: { zendeskTicketId?: number } | null;
+        actor_name: string | null;
+      }>(
+        `SELECT oe.id::text AS id, oe.occurred_at, oe.event_type, oe.payload,
+                s.name AS actor_name
+           FROM ops_events oe
+           LEFT JOIN staff s ON s.id = oe.actor_staff_id AND s.organization_id = oe.organization_id
+          WHERE oe.organization_id = $1
+            AND lower(oe.entity_type) = 'shipment'
+            AND oe.entity_id = $2
+            AND oe.event_type IN ('TICKET_LINKED', 'TICKET_UNLINKED')
+            AND oe.occurred_at >= $3 AND oe.occurred_at < $4
+          ORDER BY oe.occurred_at DESC
+          LIMIT $5`,
+        [orgId, anchors.shipmentId, from, to, limit],
+      );
+      for (const r of shipTickets.rows) {
+        const zid = r.payload?.zendeskTicketId ?? null;
+        const label = zid != null ? `#${zid}` : '#—';
+        const raw: TicketLinkTimelineRow = {
+          id: `ops:${r.id}`,
+          at: r.occurred_at,
+          kind: r.event_type === 'TICKET_UNLINKED' ? 'unlinked' : 'linked',
+          ticketLabel: label,
+          actorName: r.actor_name,
+          href: zendeskTicketUrl(zid),
+        };
+        out.push({
+          source: 'ticket',
+          id: `ticket:${raw.id}`,
+          at: r.occurred_at,
+          group: groupForAnchors(anchors, { station: 'SUPPORT' }),
+          raw,
+        });
+      }
+    }
+
+    if (anchors.serialUnitIds.length > 0) {
+      const unitTickets = await client.query<{
+        id: number;
+        created_at: string | null;
+        zendesk_ticket_id: string | null;
+        actor_name: string | null;
+        serial_number: string | null;
+      }>(
+        `SELECT tl.id, tl.created_at, tl.zendesk_ticket_id, s.name AS actor_name,
+                su.serial_number
+           FROM ticket_links tl
+           LEFT JOIN staff s ON s.id = tl.created_by AND s.organization_id = tl.organization_id
+           LEFT JOIN serial_units su ON su.id = tl.entity_id AND su.organization_id = tl.organization_id
+          WHERE tl.organization_id = $1
+            AND tl.entity_type = 'SERIAL_UNIT'
+            AND tl.entity_id = ANY($2::bigint[])
+            AND tl.created_at >= $3 AND tl.created_at < $4
+          ORDER BY tl.created_at DESC
+          LIMIT $5`,
+        [orgId, anchors.serialUnitIds, from, to, limit],
+      );
+      for (const r of unitTickets.rows) {
+        const label = r.zendesk_ticket_id ? `#${r.zendesk_ticket_id}` : '#—';
+        const raw: TicketLinkTimelineRow = {
+          id: r.id,
+          at: r.created_at,
+          kind: 'linked',
+          ticketLabel: label,
+          actorName: r.actor_name,
+          href: zendeskTicketUrl(r.zendesk_ticket_id),
+        };
+        out.push({
+          source: 'ticket',
+          id: `ticket:${r.id}`,
+          at: r.created_at,
+          group: groupForAnchors(anchors, {
+            serialNumber: r.serial_number,
+            station: 'SUPPORT',
+          }),
+          raw,
+        });
+      }
     }
   }
 

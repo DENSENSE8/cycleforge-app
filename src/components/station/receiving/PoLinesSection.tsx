@@ -13,6 +13,7 @@ import {
   workflowStatusTableLabel,
   WORKFLOW_BADGE,
 } from '@/components/station/receiving-constants';
+import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 
@@ -55,12 +56,6 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
   const badgeCls = WORKFLOW_BADGE[line.workflow_status] ?? 'bg-surface-sunken text-text-soft';
   const conditionLabel = conditionGradeTableLabel(line.condition_grade);
   const condGrade = (line.condition_grade || '').toUpperCase();
-  const conditionColor =
-    condGrade === 'BRAND_NEW'
-      ? 'text-yellow-600'
-      : condGrade === 'PARTS'
-        ? 'text-amber-800'
-        : 'text-text-soft';
   const skuValue = (line.sku || '').trim();
   const serialsCsv = Array.isArray(line.serials)
     ? line.serials.map((s) => (s.serial_number || '').trim()).filter(Boolean).join(', ')
@@ -105,7 +100,7 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
           </span>
           {condGrade && condGrade !== 'PENDING' ? (
             <span
-              className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ring-border-soft ${conditionColor}`}
+              className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ring-border-soft ${conditionGradeTextClass(condGrade)}`}
             >
               {conditionLabel}
             </span>

@@ -2,7 +2,7 @@
 
 /**
  * Labels-station attention strip — Monitor KPIs for the Queue / Recent facets of
- * the `/outbound` labels station. Same tile anatomy as ShippingKpiStrip; reads
+ * the `/shipping` labels station. Same tile anatomy as ShippingKpiStrip; reads
  * the same awaiting-label / staged feeds the tables + tab counts use (React
  * Query dedupes), so nothing drifts.
  */

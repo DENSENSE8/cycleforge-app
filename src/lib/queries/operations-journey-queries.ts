@@ -45,7 +45,10 @@ export interface JourneyResponse {
 }
 
 function entityValueFor(f: JourneyUrlFilters): string {
-  return f.dim === 'order' ? f.order ?? '' : f.dim === 'serial' ? f.serial ?? '' : f.tracking ?? '';
+  if (f.dim === 'order') return f.order ?? '';
+  if (f.dim === 'serial') return f.serial ?? '';
+  if (f.dim === 'unit') return f.unit ?? '';
+  return f.tracking ?? '';
 }
 
 function appendFilters(p: URLSearchParams, f: JourneyUrlFilters): void {

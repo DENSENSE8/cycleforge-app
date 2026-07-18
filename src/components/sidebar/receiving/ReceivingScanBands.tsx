@@ -12,9 +12,8 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/_cn';
-import { Loader2 } from '@/components/Icons';
-import { receivingScanBandClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { StationScanBar } from '@/components/station/StationScanBar';
+import { receivingScanBandClass } from '@/components/layout/header-shell';
+import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import {
   ReceivingUnboxScanBar,
   type UnboxScanMode,
@@ -28,8 +27,9 @@ interface ScanBandShellProps {
 }
 
 /**
- * Animated, staff-tinted container for a scan bar. Opacity-only entrance so
- * the band is not clipped by sidebar `overflow-hidden` ancestors.
+ * Animated, staff-tinted container for a scan bar. Full-bleed (no side gutter)
+ * so the bottom-rule chrome runs edge-to-edge. Opacity-only entrance so the
+ * band is not clipped by sidebar `overflow-hidden` ancestors.
  */
 export function ScanBandShell({ themeColor, children }: ScanBandShellProps) {
   return (
@@ -37,7 +37,7 @@ export function ScanBandShell({ themeColor, children }: ScanBandShellProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className={cn(receivingScanBandClass, scanBandHaloClass(themeColor), SIDEBAR_GUTTER)}
+      className={cn(receivingScanBandClass, scanBandHaloClass(themeColor))}
     >
       {children}
     </motion.div>
@@ -50,7 +50,7 @@ interface TriageScanBandProps {
   onChange: (next: string) => void;
   onSubmit: () => void;
   inputRef: React.Ref<HTMLInputElement>;
-  inputBorderClassName: string;
+  staffId?: string | number | null;
   isResolving: boolean;
 }
 
@@ -65,24 +65,21 @@ export function TriageScanBand({
   onChange,
   onSubmit,
   inputRef,
-  inputBorderClassName,
+  staffId,
   isResolving,
 }: TriageScanBandProps) {
   return (
     <ScanBandShell themeColor={themeColor}>
-      <StationScanBar
+      <ThemedStationScanBar
         value={value}
         onChange={onChange}
         onSubmit={onSubmit}
         inputRef={inputRef}
+        staffId={staffId}
         placeholder="Scan tracking #"
         autoFocus
         className="w-full"
-        inputBorderClassName={inputBorderClassName}
-        hasRightContent={isResolving}
-        rightContent={
-          isResolving ? <Loader2 className="h-4 w-4 animate-spin text-text-muted" /> : null
-        }
+        isResolving={isResolving}
       />
     </ScanBandShell>
   );

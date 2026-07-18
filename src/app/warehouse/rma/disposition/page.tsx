@@ -37,13 +37,14 @@ import {
   Loader2,
   X,
 } from '@/components/Icons';
-import { StationScanBar } from '@/components/station/scan-bar';
+import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { conditionLabel } from '@/lib/conditions';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 type DispositionCode = 'ACCEPT' | 'HOLD' | 'RTV' | 'REWORK' | 'SCRAP';
 
@@ -110,6 +111,7 @@ interface DispositionResult {
 const AUTO_HIDE_MS = 4000;
 
 function DispositionStationInner() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [scan, setScan] = useState('');
   const [unit, setUnit] = useState<ActiveUnit | null>(null);
@@ -231,8 +233,8 @@ function DispositionStationInner() {
         </div>
       </header>
 
-      <div className="space-y-2">
-        <StationScanBar
+      <div>
+        <ThemedStationScanBar
           value={scan}
           onChange={setScan}
           onSubmit={(e) => {
@@ -240,13 +242,15 @@ function DispositionStationInner() {
             void handleSubmit();
           }}
           inputRef={inputRef}
+          staffId={user?.staffId}
           placeholder="Scan serial number"
           autoFocus
           icon={<Barcode className="h-[17px] w-[17px] text-emerald-600" />}
-          rightContent={loading ? <Loader2 className="h-4 w-4 animate-spin text-text-muted" /> : undefined}
+          isResolving={loading}
+          className="w-full"
         />
         {error && (
-          <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700">
+          <div className="mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700">
             {error}
           </div>
         )}

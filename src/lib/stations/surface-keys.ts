@@ -220,7 +220,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   outbound: {
     key: 'outbound',
     label: 'Shipping',
-    route: '/outbound',
+    route: '/shipping',
     archetype: 'station',
     permission: 'shipping.view',
     pageKey: 'outbound',
@@ -230,6 +230,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     // Was the synthetic 'fulfillment'; pack + outbound now bind to distinct
     // engine nodes (`pack` vs `ship`) so both station drafts seed.
     workflowNodeType: 'ship',
+    // Key stays `outbound` for composition stability; URL graduated to `/shipping`.
     legacy: { pathname: '/outbound', bareResolves: true },
   },
 };

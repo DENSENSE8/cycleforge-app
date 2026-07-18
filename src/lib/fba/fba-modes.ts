@@ -1,8 +1,8 @@
 /**
  * FBA board sub-modes (plan / combine / shipped).
  *
- * Under the FBA surface split these live as `?fbaMode=` on `/outbound?mode=fba`
- * so they do not collide with Outbound's top-level `?mode=` (labels | scan-out |
+ * Under the FBA surface split these live as `?fbaMode=` on `/shipping?mode=fba`
+ * so they do not collide with Shipping's top-level `?mode=` (labels | scan-out |
  * ready | fba). Legacy `?mode=` on `/fba` is still accepted by resolvers during
  * the redirect window.
  *
@@ -20,7 +20,8 @@ export type FbaMode = 'plan' | 'combine' | 'shipped';
 export const FBA_MODE_PARAM = 'fbaMode' as const;
 
 /** Canonical host path for the FBA prep station (no longer a top-level nav item). */
-export const FBA_OUTBOUND_PATH = '/outbound';
+/** Canonical host path for the FBA prep station (under Shipping). */
+export const FBA_OUTBOUND_PATH = '/shipping';
 
 const FBA_MODES: FbaMode[] = ['plan', 'combine', 'shipped'];
 
@@ -47,7 +48,7 @@ export function resolveFbaModeFromSearchParams(
   return 'combine';
 }
 
-/** Build /outbound?mode=fba&… URL for deep links (dashboard, cmd-K, redirects). */
+/** Build /shipping?mode=fba&… URL for deep links (dashboard, cmd-K, redirects). */
 export function fbaOutboundHref(opts?: {
   fbaMode?: FbaMode | null;
   openShipmentId?: string | number | null;

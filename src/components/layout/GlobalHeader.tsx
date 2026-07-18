@@ -14,13 +14,13 @@ import { IconButton } from '@/design-system/primitives';
  * Global desktop header — one persistent bar mounted once in
  * {@link ResponsiveLayout}, above the page's `<main>`.
  *
- * Two zones:
- *   - **Left / center (contextual):** whatever the active page pushes through
- *     {@link useHeader} / {@link usePageHeader} — title, "Select" toggle,
- *     filters, bulk-action triggers. Empty on pages that don't set it.
- *   - **Right (persistent):** {@link GlobalHeaderActions} — inline search (420px
- *     expand-on-focus, Enter → orders board / best match; contextual when a page registers via
- *     {@link usePageHeaderSearch}), notifications, staff switcher, account.
+ * Zone contract (left → right) — facts drive chrome; empty middle is OK when
+ * the station/workbench band below already owns surface context:
+ *   - **Toggle** — sidebar collapse (route-gated)
+ *   - **Pace** — {@link HeaderGoalChip} (station + n/target + ring)
+ *   - **Next** — {@link HeaderTopWorkOrderChip} (queue + due + title; hidden when none)
+ *   - **Context** — page `panelContent` via {@link useHeader} / {@link usePageHeader}
+ *   - **Find / signal / self** — {@link GlobalHeaderActions} (search ⌘K, inbox, account)
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.
  */
@@ -48,7 +48,7 @@ export function GlobalHeader({
   if (!user || isClientPublicPath(pathname)) return null;
 
   return (
-    <header className="sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 border-b border-border-default bg-surface-card/90 px-3 backdrop-blur-md sm:px-4">
+    <header className="sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 border-b border-border-hairline bg-surface-card/95 px-3 backdrop-blur-sm sm:px-4">
       {/* Top-left sidebar toggle — collapses / restores the permanent sidebar. */}
       {canCollapseSidebar && onToggleSidebar && (
         <>

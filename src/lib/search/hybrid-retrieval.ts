@@ -49,6 +49,7 @@ export interface DocHitRow {
   source_platform: string | null;
   tracking_number: string | null;
   carrier: string | null;
+  serial_number: string | null;
   happened_at: Date | string | null;
 }
 
@@ -137,7 +138,7 @@ async function keywordSearchImpl(
   const res = await tenantQuery(
     orgId,
     `SELECT entity_type, entity_id, title, subtitle, status, condition_grade,
-            source_platform, tracking_number, carrier, happened_at,
+            source_platform, tracking_number, carrier, serial_number, happened_at,
             ${rankClause} AS rank
      FROM entity_search_docs
      WHERE organization_id = $1${entityFilter}
@@ -166,7 +167,7 @@ async function vectorSearchImpl(
   const res = await tenantQuery(
     orgId,
     `SELECT entity_type, entity_id, title, subtitle, status, condition_grade,
-            source_platform, tracking_number, carrier, happened_at
+            source_platform, tracking_number, carrier, serial_number, happened_at
      FROM entity_search_docs
      WHERE organization_id = $1${entityFilter}
        AND embedding IS NOT NULL
@@ -177,17 +178,30 @@ async function vectorSearchImpl(
   return res.rows.map(normalizeDocRow);
 }
 
+/** Subtitle SoT for SERIAL_UNIT is `serial · sku · status` — fallback when the
+ *  facet column is null (pre-backfill docs). */
+function serialFromSubtitle(subtitle: string | null): string | null {
+  if (!subtitle) return null;
+  const first = subtitle.split(' · ')[0]?.trim();
+  return first || null;
+}
+
 function normalizeDocRow(row: any): DocHitRow {
+  const subtitle = row.subtitle == null ? null : String(row.subtitle);
+  const entityType = String(row.entity_type) as SearchEntityType;
+  const serialCol = row.serial_number == null ? null : String(row.serial_number);
   return {
-    entity_type: String(row.entity_type) as SearchEntityType,
+    entity_type: entityType,
     entity_id: Number(row.entity_id),
     title: String(row.title ?? ''),
-    subtitle: row.subtitle == null ? null : String(row.subtitle),
+    subtitle,
     status: row.status == null ? null : String(row.status),
     condition_grade: row.condition_grade == null ? null : String(row.condition_grade),
     source_platform: row.source_platform == null ? null : String(row.source_platform),
     tracking_number: row.tracking_number == null ? null : String(row.tracking_number),
     carrier: row.carrier == null ? null : String(row.carrier),
+    serial_number:
+      serialCol || (entityType === 'SERIAL_UNIT' ? serialFromSubtitle(subtitle) : null),
     happened_at: row.happened_at ?? null,
   };
 }
@@ -249,6 +263,7 @@ function docRowToHit(row: DocHitRow, score: number, matchField: string): SearchH
       source_platform: row.source_platform,
       tracking_number: row.tracking_number,
       carrier: row.carrier,
+      serial_number: row.serial_number,
       // ISO string so the row can render a relative date (formatRelativeTime).
       happened_at: row.happened_at ? new Date(row.happened_at).toISOString() : null,
     },

@@ -4,7 +4,8 @@ import { OrderIdChip, TrackingChip, getLast4 } from '@/components/ui/CopyChip';
 import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
-import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
+import { orderRowQtyTone } from '@/lib/condition-tone';
 
 /**
  * Pending-order row for the mobile Picks feed — the phone view of the
@@ -47,13 +48,6 @@ export function PendingOrderRow({
   const quantity = parseInt(String(row.quantity || '1'), 10) || 1;
   const orderId = (row.order_id || '').trim();
   const trackingValue = (row.shipping_tracking_number || '').trim();
-  const conditionLabel = (row.condition || '').trim().toUpperCase() || 'N/A';
-  const condColor =
-    conditionLabel === 'BRAND_NEW' || conditionLabel === 'BRAND NEW'
-      ? 'text-yellow-600'
-      : conditionLabel === 'PARTS'
-        ? 'text-amber-800'
-        : 'text-text-soft';
 
   const daysLate = getDaysLateNullable(deadlineOf(row));
 
@@ -77,11 +71,11 @@ export function PendingOrderRow({
           className="!mt-0 shrink-0"
           indent={META_COL.indentWide}
           qtyCol={META_COL.qtyColWide}
-          qty={<span className={quantity > 1 ? 'text-yellow-600' : 'text-text-default'}>{quantity}</span>}
-          condition={<span className={condColor}>{conditionLabel}</span>}
+          qty={<span className={orderRowQtyTone(quantity)}>{quantity}</span>}
+          condition={<RowConditionMeta condition={row.condition} />}
           rest={
             daysLate !== null ? (
-              <span className={`tabular-nums ${getDaysLateTone(daysLate)}`}>{daysLate}</span>
+              <span className={`font-mono tabular-nums ${getDaysLateTone(daysLate)}`}>{daysLate}</span>
             ) : undefined
           }
         />

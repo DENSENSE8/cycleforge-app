@@ -66,6 +66,7 @@ const URGENT_LANE: SwimlaneLaneDef<BoardLane> = {
   description: 'Operator-flagged urgent / expedited orders',
   icon: Zap,
   iconClass: 'text-amber-500',
+  hideWhenEmpty: true,
 };
 
 const UNSHIPPED_LANES: SwimlaneLaneDef<BoardLane>[] = [
@@ -77,6 +78,8 @@ const UNSHIPPED_LANES: SwimlaneLaneDef<BoardLane>[] = [
     description: FULFILLMENT_STATE_META[lane.id].description,
     icon: LANE_ICON[lane.iconKey],
     iconClass: lane.iconClass,
+    // Exception lane — hide the empty shell so it doesn't sit above Pending/Tested.
+    hideWhenEmpty: lane.id === 'BLOCKED' ? true : undefined,
   })),
 ];
 
@@ -192,14 +195,14 @@ export function UnshippedShelfBoard({
                   ? `Collapse ${collapse.laneLabel} lane to ${collapse.displayCount} rows`
                   : `Expand ${collapse.laneLabel} lane to ${collapse.displayCount} rows`
               }
-              className="ds-raw-button inline-flex h-7 min-w-7 items-center justify-center gap-0.5 rounded-full border border-border-soft bg-surface-card px-1.5 text-text-soft shadow-sm transition hover:bg-surface-sunken hover:text-text-default"
+              className="ds-raw-button inline-flex h-5 items-center justify-center gap-0.5 rounded-md px-1 text-role-micro tabular-nums leading-none text-text-muted transition hover:bg-surface-hover hover:text-text-default"
             >
               {collapse.expanded ? (
-                <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+                <ChevronUp className="h-2.5 w-2.5 shrink-0" />
               ) : (
-                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                <ChevronDown className="h-2.5 w-2.5 shrink-0" />
               )}
-              <span className="text-role-micro tabular-nums leading-none">
+              <span className="tabular-nums text-text-faint">
                 {collapse.displayCount}
               </span>
             </button>

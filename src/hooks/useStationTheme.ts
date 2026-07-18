@@ -3,11 +3,11 @@ import {
   getStaffThemeById,
   getPackerInputTheme,
   stationThemeColors,
-  stationScanInputBorderClass,
   type StationTheme,
   type StationThemeColors,
   type StationInputThemeClasses,
 } from '@/utils/staff-colors';
+import { STATION_SCAN_BAR_BOTTOM_RULE_CLASS } from '@/components/station/scan-bar/tokens';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { useAuth } from '@/contexts/AuthContext';
 import { operatorAccentClasses } from '@/utils/operator-accent';
@@ -20,7 +20,7 @@ export interface ResolvedTheme {
   theme: StationTheme;
   /** Core color classes: bg, hover, light, border, text, shadow. */
   colors: StationThemeColors;
-  /** Scan input border class for this theme. */
+  /** Scan input bottom-rule chrome for this theme. */
   inputBorder: string;
   /** Packer-style input classes (text, bg, ring, border). Always populated. */
   inputTheme: StationInputThemeClasses;
@@ -73,7 +73,7 @@ export function useStationTheme(input: StationTheme | StaffInput): ResolvedTheme
       return {
         theme,
         colors: dynamicThemeColors,
-        inputBorder: stationScanInputBorderClass[theme],
+        inputBorder: STATION_SCAN_BAR_BOTTOM_RULE_CLASS[theme],
         inputTheme: getPackerInputTheme(theme),
       };
     }
@@ -81,7 +81,7 @@ export function useStationTheme(input: StationTheme | StaffInput): ResolvedTheme
     return {
       theme,
       colors: stationThemeColors[theme],
-      inputBorder: stationScanInputBorderClass[theme],
+      inputBorder: STATION_SCAN_BAR_BOTTOM_RULE_CLASS[theme],
       inputTheme: getPackerInputTheme(theme),
     };
   }, [

@@ -726,6 +726,10 @@ optional relocate of the shell module to `design-system`.
   modes. Ready's top tabs filter one recently-tested table, so they are lifecycle
   facets within that mode rather than a duplicate mode switcher.
 - **Sidebar:** duplicate Ready search removed; teaching copy and FBA-prep link remain.
+- **Follow-ups from review:** `open_plan` CTE scoped to `fs.organization_id` only
+  (FNSKU is not a tenant key); staff join org-filtered; authored
+  `2026-07-17c_testing_results_org_recent.sql` for
+  `(organization_id, created_at DESC, id DESC)` — apply via `/db-migrate`.
 
 ### 2026-07-17 — Labels focused flow rebuilt on the Unbox browse/overlay pattern ✅
 

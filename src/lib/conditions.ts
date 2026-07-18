@@ -48,7 +48,8 @@ export const CONDITION_LABELS: Record<ConditionLabelVariant, Record<string, stri
  * ConditionLabelVariant}. Unknown codes fall back to an underscore-stripped
  * upper-case form (matches the legacy hand-rolled maps); empty/nullish codes
  * default to BRAND_NEW (the receiving-line default), except callers that want
- * an "N/A" placeholder should guard for empty before calling.
+ * an empty meta placeholder should guard for empty before calling — prefer
+ * {@link orderRowConditionLabel} / {@link conditionGradeTableLabel}.
  */
 export function conditionLabel(
   code: string | null | undefined,
@@ -58,10 +59,38 @@ export function conditionLabel(
   return CONDITION_LABELS[variant][c] ?? c.replace(/_/g, ' ');
 }
 
-/** Compact list-row label; empty/unknown-less codes read as "N/A". */
+/**
+ * Dense list/table empty meta cell (qty | condition columns). Quieter than
+ * "N/A", keeps fixed-column alignment — same glyph as {@link MetaFactSlot}.
+ */
+export const EMPTY_META_DASH = '--' as const;
+
+/** Nudge empty `--` left of optical center inside the fixed condition track. */
+export const EMPTY_META_DASH_ALIGN_CLASS = 'block w-full text-center -translate-x-1' as const;
+
+/**
+ * Marketplace / order-row condition display. Empty, legacy "N/A", and dash
+ * placeholders collapse to {@link EMPTY_META_DASH}.
+ */
+export function orderRowConditionLabel(condition: string | null | undefined): string {
+  const raw = String(condition || '').trim();
+  if (!raw) return EMPTY_META_DASH;
+  const upper = raw.toUpperCase();
+  if (upper === 'N/A' || raw === EMPTY_META_DASH || raw === '—' || raw === '---') {
+    return EMPTY_META_DASH;
+  }
+  return raw;
+}
+
+/** True when {@link orderRowConditionLabel} would render the empty-meta dash. */
+export function isEmptyMetaDash(value: string | null | undefined): boolean {
+  return orderRowConditionLabel(value) === EMPTY_META_DASH;
+}
+
+/** Compact list-row grade label; empty / legacy N/A read as `--`. */
 export function conditionGradeTableLabel(code: string | null | undefined): string {
   const c = String(code || '').trim().toUpperCase();
-  if (!c) return 'N/A';
+  if (!c || c === 'N/A') return EMPTY_META_DASH;
   return conditionLabel(c, 'table');
 }
 

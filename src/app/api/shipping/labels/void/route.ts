@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/shipping/labels/void — void/refund a purchased label by engine
  * label id (operator/station entry; the generic sibling of
- * /api/outbound/labels/void, which additionally unwinds an order's linkage).
+ * /api/shipping/order-labels/void, which additionally unwinds an order's linkage).
  *
  * The carrier is the source of truth on whether the void is approved
  * (usage/time-window dependent) — a decline maps to 409. LABEL_VOIDED is an

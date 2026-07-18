@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { ExternalLink, Package, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
@@ -187,10 +187,14 @@ function OrderFullPageLoaded({
   onReload: () => void;
   layout: OrderFullPageLayout;
 }) {
+  const searchParams = useSearchParams();
   const [durationData] = useState<DetailsStackDurationData>({});
   // layout reserved for future chrome differences (workbench vs deep-link);
   // both share the tabbed header/body today.
   void layout;
+
+  // Header search deep-links land with `?mode=search` — open Timeline / Item Journey first.
+  const journeyFirst = searchParams.get('mode') === 'search';
 
   const {
     shipped,
@@ -220,6 +224,7 @@ function OrderFullPageLoaded({
   const meta = deriveShippedHeaderMeta(shipped);
   const { activeSection, setActiveSection, activeInput, setActiveInput } = useShippedPanelViewState({
     initialShipped: order,
+    journeyFirst,
   });
   const { copiedAll, copiedOrderId, handleCopyAll, handleCopyOrderId } = useShippedCopyActions(
     shipped,

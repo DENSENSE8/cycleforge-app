@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { Camera } from '@/components/Icons';
-import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
+import { orderRowQtyTone } from '@/lib/condition-tone';
 
 interface MobilePackingRowProps {
   row: PackerLogRow;
@@ -34,13 +35,6 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
   const quantity = parseInt(String(row.quantity || '1'), 10) || 1;
   const orderId = (row.order_id || '').trim();
   const trackingValue = (row.shipping_tracking_number || row.scan_ref || '').trim();
-  const conditionLabel = (row.condition || '').trim().toUpperCase() || 'N/A';
-  const condColor =
-    conditionLabel === 'BRAND_NEW' || conditionLabel === 'BRAND NEW'
-      ? 'text-yellow-600'
-      : conditionLabel === 'PARTS'
-        ? 'text-amber-800'
-        : 'text-text-soft';
   const photoCount = Array.isArray(row.packer_photos_url) ? row.packer_photos_url.length : 0;
   const isExpanded = variant === 'expanded';
 
@@ -53,8 +47,8 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           className="!mt-0 shrink-0"
           indent={META_COL.indentWide}
           qtyCol={META_COL.qtyColWide}
-          qty={<span className={quantity > 1 ? 'text-yellow-600' : 'text-text-default'}>{quantity}</span>}
-          condition={<span className={condColor}>{conditionLabel}</span>}
+          qty={<span className={orderRowQtyTone(quantity)}>{quantity}</span>}
+          condition={<RowConditionMeta condition={row.condition} />}
         />
         <div className="ml-auto min-w-0">
           <ReceivingIdentityChips po={orderId} tracking={trackingValue} includeSku={false} includeSerial={false} asColumns dense />

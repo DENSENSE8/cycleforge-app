@@ -6,6 +6,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
 import { InlineNotice } from '@/design-system/components';
 import type { PackChecklistLineDto, PackKitPartDto, PackCheckDto } from '@/lib/packing/order-pack-checklist';
+import { orderRowConditionLabel } from '@/lib/conditions';
 
 interface PackChecklistLineRowProps {
   line: PackChecklistLineDto;
@@ -99,7 +100,7 @@ export function PackChecklistLineRow({
   onToggleCheckItem,
   variant,
 }: PackChecklistLineRowProps & { onToggleCheckItem: (checkId: number) => void }) {
-  const condLabel = line.condition?.trim() || 'N/A';
+  const condLabel = orderRowConditionLabel(line.condition);
   const sku = line.sku?.trim() ?? '';
   const touchClass = variant === 'mobile' ? 'min-h-[44px]' : '';
 

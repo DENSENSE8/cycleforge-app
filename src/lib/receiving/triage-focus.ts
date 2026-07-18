@@ -47,17 +47,25 @@ export function resolveTriageFocus(facts: TriageFocusFacts): TriageFocusTarget {
   return 'none';
 }
 
+/** SectionTabsSlider tab ids that mirror {@link TriageFocusTarget}. */
+export type TriageFocusTab = 'overview' | 'staging' | 'pairing';
+
 /**
- * Stable DOM anchor ids for the three focusable `TriagePanel` sections —
- * `TriagePanel`'s auto-focus effect calls `document.getElementById` + smooth
- * `scrollIntoView` rather than threading refs through the PO/Return template
- * split. Both templates stamp these onto their section wrappers.
+ * Map a focus target to the triage SectionTabsSlider tab. `already-staged` /
+ * `none` leave the default tab alone (caller skips).
  */
-export const TRIAGE_SECTION_ID: Record<'classify' | 'stage' | 'pair', string> = {
-  classify: 'triage-section-classify',
-  stage: 'triage-section-stage',
-  pair: 'triage-section-pair',
-};
+export function triageFocusToTab(target: TriageFocusTarget): TriageFocusTab | null {
+  switch (target) {
+    case 'classify':
+      return 'overview';
+    case 'stage':
+      return 'staging';
+    case 'pair':
+      return 'pairing';
+    default:
+      return null;
+  }
+}
 
 // ── ReceivingLineRow → TriageFocusFacts ─────────────────────────────────────
 // The single source for each per-step predicate — `TriageProgressStepper` and

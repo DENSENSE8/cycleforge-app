@@ -16,7 +16,7 @@ import type { Parcel, ShipAddress, ShipmentSpec } from '@/lib/shipping/shipstati
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/outbound/rates
+ * POST /api/shipping/order-rates
  *
  * Rate-shop a single order via the ShipStation v2 engine. Ship-to + parcel
  * weight come from the order's stored ShipStation data when it's ShipStation-
@@ -177,6 +177,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { status: error.isNotConnected ? 400 : 502 },
       );
     }
-    return errorResponse(error, 'POST /api/outbound/rates');
+    return errorResponse(error, 'POST /api/shipping/order-rates');
   }
 }, { permission: 'shipping.buy_label' });

@@ -9,11 +9,13 @@ import {
   stationScanBarFocusInputClass,
 } from './tokens';
 
-export interface ThemedStationScanBarProps extends Omit<StationScanBarProps, 'inputBorderClassName'> {
-  /** Staff id — resolves theme-colored border + focus ring. */
+export interface ThemedStationScanBarProps extends Omit<StationScanBarProps, 'inputBorderClassName' | 'theme'> {
+  /** Staff id — resolves theme-colored bottom rule + focus + submit trace. */
   staffId?: string | number | null;
-  /** Override the themed border when a surface needs a one-off stroke. */
+  /** Override the themed bottom rule when a surface needs a one-off stroke. */
   inputBorderClassName?: string;
+  /** Override submit-trace fill (e.g. Scan-out emerald confirm). */
+  submitTraceClassName?: string;
   /** Show a spinner in the right rail (lookup in flight). */
   isResolving?: boolean;
   /** Extra right-padding class when mode rails reserve space (e.g. pr-32, pr-36). */
@@ -21,9 +23,9 @@ export interface ThemedStationScanBarProps extends Omit<StationScanBarProps, 'in
 }
 
 /**
- * Master scan-bar shell: {@link StationScanBar} + staff theme border + focus
- * ring + standard right-rail inset. Domain wrappers (tech, testing, receiving,
- * pack, FBA) should compose this instead of re-wiring theme classes by hand.
+ * Master scan-bar shell: {@link StationScanBar} + staff bottom-rule chrome +
+ * focus brighten + submit center-out trace. Domain wrappers should compose this
+ * instead of re-wiring theme classes by hand.
  */
 export function ThemedStationScanBar({
   staffId,
@@ -33,6 +35,7 @@ export function ThemedStationScanBar({
   rightContent,
   isResolving = false,
   rightPadClass,
+  submitTraceClassName,
   ...props
 }: ThemedStationScanBarProps) {
   const { theme, inputBorder } = useStationTheme({
@@ -50,6 +53,8 @@ export function ThemedStationScanBar({
   return (
     <StationScanBar
       {...props}
+      theme={theme}
+      submitTraceClassName={submitTraceClassName}
       inputBorderClassName={inputBorderClassName ?? inputBorder}
       inputClassName={cn(stationScanBarFocusInputClass(theme), rightPadClass, inputClassName)}
       rightContentClassName={cn(STATION_SCAN_BAR_RIGHT_CONTENT_CLASS, rightContentClassName)}

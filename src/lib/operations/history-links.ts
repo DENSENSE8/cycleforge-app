@@ -10,7 +10,7 @@ import { buildOperationsSignalsHref } from '@/features/signals/signals-url';
  * it's usable server-side and unit-tested. All type imports are erased at build,
  * and the only runtime import (`buildOperationsSignalsHref`) is itself pure.
  *
- * A `JourneyDimension` value ('order' | 'serial' | 'tracking') is also its URL
+ * A `JourneyDimension` value ('order' | 'serial' | 'tracking' | 'unit') is also its URL
  * param name, so the dim doubles as the record-param key.
  */
 

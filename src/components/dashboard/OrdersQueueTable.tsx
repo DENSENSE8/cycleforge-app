@@ -411,10 +411,10 @@ export function OrdersQueueTable({
           ) : (
             <>
               {/* One sticky collapse control on the far right — docks with the
-                  sticky date pill at top-0. NOT re-rendered on every day band. */}
+                  micro sticky date at top-0. NOT re-rendered on every day band. */}
               {dateHeaderEndSlot ? (
                 <div className={`pointer-events-none sticky z-sticky h-0 overflow-visible ${stickyTopClass}`}>
-                  <div className="flex justify-end px-3 pt-1.5">
+                  <div className="flex justify-end px-3 pt-0.5">
                     <div className="pointer-events-auto">{dateHeaderEndSlot}</div>
                   </div>
                 </div>

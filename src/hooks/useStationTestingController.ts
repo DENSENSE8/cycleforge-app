@@ -17,7 +17,6 @@ import { normalizeTrackingKey } from '@/lib/tracking-format';
 import { rebuildSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 
 // Re-export types consumed by external components — import paths unchanged.
-export { getStationInputMode } from '@/lib/station-scan-routing';
 export type { StationInputMode, StationScanType };
 export type { ActiveStationOrder, ResolvedProductManual };
 /** @deprecated Use StationTheme from '@/utils/staff-colors' instead. */

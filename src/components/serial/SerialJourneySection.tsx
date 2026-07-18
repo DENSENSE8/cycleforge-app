@@ -73,7 +73,7 @@ function HeaderAction({
 
 export function SerialJourneySection({
   serialNumber,
-  title = 'Serial journey',
+  title = 'Item Journey',
   density = 'comfortable',
   linkToFull = true,
   exportable = true,

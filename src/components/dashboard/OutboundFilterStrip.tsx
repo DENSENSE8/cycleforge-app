@@ -180,8 +180,9 @@ function ToShipExactFilters() {
     [fromCombos.PENDING, fromCombos.TESTED, fromCombos.BLOCKED, data?.byStage.pending, data?.byStage.tested],
   );
   const allCount = counts.PENDING + counts.TESTED + counts.BLOCKED;
+  const urgentCount = data?.urgent ?? 0;
   const allActive = active == null && !urgentOnly;
-  const laneHot = active != null;
+  const laneHot = active != null || urgentOnly;
 
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1.5">
@@ -201,7 +202,7 @@ function ToShipExactFilters() {
         open={open}
         onOpenChange={setOpen}
         hot={laneHot}
-        label="Lane filters · 1 Pending · 2 Tested · 3 Blocked · A All"
+        label="Lane filters · 1 Pending · 2 Tested · 3 Blocked · 4 Urgent · A All"
       >
         <WorkbenchFilterGroupLabel>Lane</WorkbenchFilterGroupLabel>
         <WorkbenchFilterMenuRow
@@ -215,6 +216,17 @@ function ToShipExactFilters() {
           }}
         />
         <WorkbenchFilterDivider />
+        <WorkbenchFilterMenuRow
+          label="Urgent"
+          count={urgentCount}
+          active={urgentOnly}
+          shortcut="4"
+          leading={<span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />}
+          onClick={() => {
+            toggleUrgent();
+            setOpen(false);
+          }}
+        />
         {UNSHIPPED_ITEMS.map(({ state, short }, i) => {
           const isOn = active === state;
           const m = FULFILLMENT_STATE_META[state];
