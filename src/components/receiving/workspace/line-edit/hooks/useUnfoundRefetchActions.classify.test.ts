@@ -39,6 +39,32 @@ test('zoho: OK but success=false → error', () => {
   assert.equal(state.status, 'error');
 });
 
+test('zoho: rate-limited code → error with server message + no promote', () => {
+  const { state, promote } = classifyZohoRetry(
+    false,
+    {
+      success: false,
+      code: 'ZOHO_RATE_LIMITED',
+      error: 'The API call for this organization has exceeded the maximum call rate limit of 5,000',
+    },
+    429,
+  );
+  assert.equal(state.status, 'error');
+  assert.match(state.message ?? '', /5,000/);
+  assert.equal(promote, false);
+});
+
+test('zoho: promoted returns winning receiving_id for shell redirect', () => {
+  const { promote, winningReceivingId } = classifyZohoRetry(true, {
+    success: true,
+    promoted: true,
+    receiving_id: 77,
+    zoho_purchaseorder_id: 'PO-1',
+  });
+  assert.equal(promote, true);
+  assert.equal(winningReceivingId, 77);
+});
+
 // ── Amazon returns lookup → UI state ───────────────────────────────────────────
 test('amazon: HTTP 403 → unsupported (not enrolled)', () => {
   const { state, promote } = classifyAmazonLookup(403, false, {});

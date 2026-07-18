@@ -19,6 +19,7 @@ import { PairingLinkButton, PairingLinkedBadge } from './PairingLinkButton';
 import { toast } from '@/lib/toast';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { apiErrorMessage } from '@/lib/api-error-message';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface PoCandidate {
@@ -85,9 +86,14 @@ export function PoLinkTab({
             },
           }),
         });
-        const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string; merged?: boolean };
+        const body = (await res.json().catch(() => ({}))) as {
+          success?: boolean;
+          error?: string;
+          message?: string;
+          merged?: boolean;
+        };
         if (!res.ok || !body.success) {
-          toast.error(body.error || `Link failed (${res.status})`);
+          toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
           return;
         }
         toast.success(body.merged ? `Merged into PO ${poLabel}` : `Linked PO ${poLabel}`);
@@ -113,9 +119,13 @@ export function PoLinkTab({
           scope: 'both',
         }),
       });
-      const body = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+      const body = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!res.ok || !body.success) {
-        toast.error(body.error || `Link failed (${res.status})`);
+        toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
         return;
       }
       toast.success(`Linked PO ${poLabel}`);

@@ -16,6 +16,11 @@ export function setItemDescHandoff(lineId: number): void {
   pendingLineId = lineId;
 }
 
+/** True when a pending handoff targets `lineId` (does not consume). */
+export function hasItemDescHandoff(lineId: number): boolean {
+  return pendingLineId === lineId;
+}
+
 /** Return true and clear if a handoff targets `lineId`; otherwise false. */
 export function takeItemDescHandoff(lineId: number): boolean {
   if (pendingLineId === lineId) {

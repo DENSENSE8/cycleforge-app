@@ -355,6 +355,7 @@ export function TestingPanel({
                     ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
                     : undefined,
                 copy: () => void c.handleCopyAll(),
+                movePhotos: () => c.setMovePhotosOpen(true),
                 photoNote: () => c.setPhotoNoteOpen(true),
               }}
             />

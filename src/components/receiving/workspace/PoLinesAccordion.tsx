@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { LayoutGroup, useInView } from 'framer-motion';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
@@ -129,11 +129,14 @@ export function PoLinesAccordion({
 
   // Active row collapse — the chevron toggles the active line's body (slot)
   // closed so a high-qty line (x100 unit rows) doesn't lock the workspace to
-  // a wall of rows. Re-expands whenever the active line changes.
+  // a wall of rows. Re-expands whenever the active line changes (sync during
+  // render so the first paint of the new line isn't collapsed for a frame).
   const [activeCollapsed, setActiveCollapsed] = useState(false);
-  useEffect(() => {
+  const [collapseForLineId, setCollapseForLineId] = useState(activeLineId);
+  if (activeLineId !== collapseForLineId) {
+    setCollapseForLineId(activeLineId);
     setActiveCollapsed(false);
-  }, [activeLineId]);
+  }
   const expandActiveRow = useCallback(() => setActiveCollapsed(false), []);
 
   // Tab-panel visibility gate for framer `layout`. When this accordion sits in a
