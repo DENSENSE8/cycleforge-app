@@ -9,6 +9,7 @@ import { AppearanceSection } from '@/components/settings/sections/AppearanceSect
 import { AboutSection } from '@/components/settings/sections/AboutSection';
 import { SecuritySection } from '@/components/settings/sections/SecuritySection';
 import { SessionsSection } from '@/components/settings/sections/SessionsSection';
+import { KioskDevicesSection } from '@/components/settings/sections/KioskDevicesSection';
 import { CatalogSection } from '@/components/settings/sections/CatalogSection';
 import { LegalSection } from '@/components/settings/sections/LegalSection';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
@@ -53,6 +54,7 @@ export default function SettingsPage() {
           {active === 'receiving' && <SettingsPanel page="receiving" />}
           {active === 'security' && <SecuritySection />}
           {active === 'sessions' && <SessionsSection />}
+          {active === 'devices' && <KioskDevicesSection />}
           {active === 'catalog' && <CatalogSection />}
           {active === 'about' && <AboutSection />}
           {active === 'legal' && <LegalSection />}

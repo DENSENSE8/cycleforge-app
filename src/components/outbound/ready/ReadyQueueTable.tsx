@@ -1,74 +1,78 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Loader2, Package } from '@/components/Icons';
-import { EmptyState } from '@/design-system/primitives';
+import Link from 'next/link';
+import { Loader2, Package, RefreshCw } from '@/components/Icons';
+import { Button, EmptyState } from '@/design-system/primitives';
 import {
   ALLOCATION_REASON_LABELS,
   CHANNEL_DISPOSITION_LABELS,
   type AllocationHit,
   type ChannelDisposition,
+  type ReadyAllocationState,
 } from '@/lib/channel-allocation';
 import { conditionLabel } from '@/lib/conditions';
+import { serialStatusDot, serialStatusLabel } from '@/lib/inventory/serial-status-display';
 import { velocityTierMeta } from '@/lib/velocity-tier-tone';
 import { formatDateTimePST } from '@/utils/date';
 import { fbaOutboundHref } from '@/lib/fba/fba-modes';
-import Link from 'next/link';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-async function fetchReadyQueue(q: string): Promise<AllocationHit[]> {
-  const sp = new URLSearchParams();
-  if (q.trim()) sp.set('q', q.trim());
-  sp.set('limit', '200');
-  const res = await fetch(`/api/outbound/ready-queue?${sp.toString()}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to load ready queue');
-  const json = (await res.json()) as { ok?: boolean; hits?: AllocationHit[] };
-  return json.hits ?? [];
+const DISPOSITION_CLASS: Record<ChannelDisposition, string> = {
+  FBA: 'bg-violet-50 text-violet-700 ring-violet-200',
+  PREBOX_STOCK: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  HOLD: 'bg-amber-50 text-amber-800 ring-amber-200',
+};
+
+const ALLOCATION_STATE_LABEL: Record<ReadyAllocationState, string> = {
+  READY: 'Ready',
+  FBA_STAGED: 'In FBA',
+  ORDER_ALLOCATED: 'Order allocated',
+  NOT_READY: 'Not ready',
+};
+
+interface ReadyQueueTableProps {
+  hits: AllocationHit[];
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  onRetry: () => void;
 }
 
-function dispositionChipClass(d: ChannelDisposition): string {
-  if (d === 'FBA') return 'bg-violet-50 text-violet-700 ring-violet-200';
-  if (d === 'HOLD') return 'bg-amber-50 text-amber-800 ring-amber-200';
-  return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-}
-
-export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['outbound-ready-queue', searchQuery],
-    queryFn: () => fetchReadyQueue(searchQuery),
-    staleTime: 15_000,
-  });
-
-  const hits = data ?? [];
-
-  const counts = useMemo(() => {
-    const c = { FBA: 0, PREBOX_STOCK: 0, HOLD: 0 };
-    for (const h of hits) c[h.disposition] += 1;
-    return c;
-  }, [hits]);
-
+export function ReadyQueueTable({
+  hits,
+  isLoading,
+  isError,
+  isFetching,
+  onRetry,
+}: ReadyQueueTableProps) {
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-card">
-        <Loader2 className="h-6 w-6 animate-spin text-text-faint" />
-        <span className="ml-2 text-role-caption font-semibold text-text-soft">Loading ready queue…</span>
+      <div className="flex min-h-[240px] items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
+        <span className="ml-2 text-role-caption font-semibold text-text-soft">
+          Loading tested history…
+        </span>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-          <p className="text-sm font-bold text-rose-700">Could not load ready queue</p>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="mt-3 text-role-caption font-black uppercase tracking-widest text-rose-600 underline"
+      <div className="flex min-h-[240px] items-center justify-center">
+        <div className="inset-empty rounded-xl border border-dashed border-border-danger bg-surface-danger text-center">
+          <p className="text-role-caption font-bold text-text-danger">
+            Could not load recently-tested history
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<RefreshCw />}
+            onClick={onRetry}
+            className="mt-3"
           >
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -76,81 +80,52 @@ export function ReadyQueueTable({ searchQuery }: { searchQuery: string }) {
 
   if (hits.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center bg-surface-canvas p-6">
+      <div className="flex min-h-[240px] items-center justify-center">
         <EmptyState
           icon={<Package className="h-6 w-6 text-text-faint" />}
-          title="No units ready for allocation"
-          description="Units land here after testing passes (TESTED / GRADED). They sort into FBA prep or pre-box & stock."
-          action={
-            <Link
-              href={fbaOutboundHref()}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-accent-bg px-4 text-role-data font-semibold text-text-inverse shadow-sm transition-colors hover:bg-accent-bg/90"
-            >
-              Open FBA prep
-            </Link>
-          }
+          title="No tested units in this view"
+          description="Completed testing verdicts appear here newest first. Clear the search or choose All tested."
         />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1440px] min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border-soft bg-surface-card/95 px-4 py-4 sm:px-6 lg:px-8">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-            Ready queue · {hits.length}
-            {isFetching ? ' · updating…' : ''}
-          </p>
-          <div className="h-4 w-px shrink-0 bg-border-hairline" aria-hidden />
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            {(
-              [
-                ['FBA', counts.FBA],
-                ['PREBOX_STOCK', counts.PREBOX_STOCK],
-                ['HOLD', counts.HOLD],
-              ] as const
-            ).map(([d, n]) =>
-              n > 0 ? (
-                <span
-                  key={d}
-                  className={cn(
-                    'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
-                    dispositionChipClass(d),
-                  )}
-                >
-                  {CHANNEL_DISPOSITION_LABELS[d]} {n}
-                </span>
-              ) : null,
-            )}
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-auto px-4 pb-8 pt-3 sm:px-6 lg:px-8">
-          <div className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-            <table className="min-w-full border-collapse">
-              <thead className="sticky top-0 z-10 bg-surface-card">
-                <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
-                  <th className="px-3 py-3">Title</th>
-                  <th className="px-3 py-3">Disposition</th>
-                  <th className="px-3 py-3">Reasons</th>
-                  <th className="px-3 py-3">Velocity</th>
-                  <th className="px-3 py-3">Condition</th>
-                  <th className="px-3 py-3">Tested</th>
-                  <th className="px-3 py-3">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-hairline bg-surface-card">
-                {hits.map((hit) => (
-                  <ReadyRow key={`${hit.entityType}-${hit.entityId}`} hit={hit} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <div className="min-w-0 overflow-x-auto" aria-busy={isFetching}>
+      <table className="min-w-full border-collapse">
+        <thead className="sticky top-0 z-10 bg-surface-card">
+          <tr className="border-b border-border-soft text-left text-role-micro uppercase tracking-widest text-text-soft">
+            <th className="px-3 py-3">Product</th>
+            <th className="px-3 py-3">Verdict</th>
+            <th className="px-3 py-3">Destination</th>
+            <th className="px-3 py-3">Reasons</th>
+            <th className="px-3 py-3">Velocity</th>
+            <th className="px-3 py-3">Condition</th>
+            <th className="px-3 py-3">Tested</th>
+            <th className="px-3 py-3">Action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border-hairline bg-surface-card">
+          {hits.map((hit) => (
+            <ReadyRow key={hit.testingResultId} hit={hit} />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
+}
+
+function verdictLabel(verdict: string | null): string {
+  if (verdict === 'PASS') return 'Passed';
+  if (verdict === 'TEST_AGAIN') return 'Retest';
+  if (verdict === 'TESTING_FAILED') return 'Failed';
+  return 'Recorded';
+}
+
+function verdictClass(verdict: string | null): string {
+  if (verdict === 'PASS') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+  if (verdict === 'TESTING_FAILED') return 'bg-rose-50 text-rose-700 ring-rose-200';
+  return 'bg-amber-50 text-amber-800 ring-amber-200';
 }
 
 function ReadyRow({ hit }: { hit: AllocationHit }) {
@@ -159,38 +134,72 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
   const cond = hit.conditionGrade ? conditionLabel(hit.conditionGrade, 'table') : '—';
 
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className="hover:bg-surface-hover">
       <td className="max-w-[280px] px-3 py-3">
-        <p className="truncate text-role-caption font-bold text-gray-900">{hit.title || hit.sku || `Unit #${hit.entityId}`}</p>
-        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
-          {[hit.sku, hit.fnsku, hit.asin].filter(Boolean).join(' · ') || `id ${hit.entityId}`}
+        <p className="truncate text-role-caption font-bold text-text-default">
+          {hit.title || hit.sku || `Unit #${hit.entityId}`}
+        </p>
+        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+          {[hit.sku, hit.serialNumber, hit.fnsku, hit.asin].filter(Boolean).join(' · ') ||
+            `id ${hit.entityId}`}
         </p>
       </td>
       <td className="px-3 py-3">
         <span
           className={cn(
             'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
-            dispositionChipClass(hit.disposition),
+            verdictClass(hit.verdict),
           )}
         >
-          {CHANNEL_DISPOSITION_LABELS[hit.disposition]}
+          {verdictLabel(hit.verdict)}
         </span>
       </td>
       <td className="px-3 py-3">
-        <div className="flex flex-wrap gap-1">
-          {hit.reasons.map((r) => (
+        {hit.disposition ? (
+          <span
+            className={cn(
+              'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+              DISPOSITION_CLASS[hit.disposition],
+            )}
+          >
+            {CHANNEL_DISPOSITION_LABELS[hit.disposition]}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-role-caption font-semibold text-text-muted">
             <span
-              key={r}
-              className="rounded bg-gray-50 px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-widest text-gray-600 ring-1 ring-inset ring-gray-200"
-            >
-              {ALLOCATION_REASON_LABELS[r]}
-            </span>
-          ))}
+              className={cn('h-2 w-2 rounded-full', serialStatusDot(hit.unitStatus))}
+              aria-hidden
+            />
+            {ALLOCATION_STATE_LABEL[hit.allocationState] === 'Not ready'
+              ? serialStatusLabel(hit.unitStatus)
+              : ALLOCATION_STATE_LABEL[hit.allocationState]}
+          </span>
+        )}
+      </td>
+      <td className="px-3 py-3">
+        <div className="flex flex-wrap gap-1">
+          {hit.reasons.length > 0 ? (
+            hit.reasons.map((reason) => (
+              <span
+                key={reason}
+                className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft"
+              >
+                {ALLOCATION_REASON_LABELS[reason]}
+              </span>
+            ))
+          ) : (
+            <span className="text-role-caption text-text-faint">—</span>
+          )}
         </div>
       </td>
       <td className="px-3 py-3">
         {tierMeta ? (
-          <span className={cn('rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ring-border-soft', tierMeta.ring)}>
+          <span
+            className={cn(
+              'rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset ring-border-soft',
+              tierMeta.ring,
+            )}
+          >
             {tierMeta.label}
           </span>
         ) : (
@@ -198,21 +207,29 @@ function ReadyRow({ hit }: { hit: AllocationHit }) {
         )}
       </td>
       <td className="px-3 py-3 text-role-caption font-semibold text-text-soft">{cond}</td>
-      <td className="px-3 py-3 text-role-caption text-text-soft tabular-nums">{testedLabel}</td>
       <td className="px-3 py-3">
-        {hit.disposition === 'FBA' ? (
+        <p className="text-role-caption text-text-soft tabular-nums">{testedLabel}</p>
+        {hit.testedByName ? (
+          <p className="text-role-eyebrow text-text-faint">{hit.testedByName}</p>
+        ) : null}
+      </td>
+      <td className="px-3 py-3">
+        {hit.allocationState === 'READY' && hit.disposition === 'FBA' ? (
           <Link
             href={fbaOutboundHref()}
-            className="text-role-caption font-black uppercase tracking-widest text-violet-700 hover:underline"
+            className={cn(
+              'inline-flex h-8 items-center rounded-lg px-3 text-role-caption font-semibold text-text-fulfillment hover:bg-surface-hover',
+              focusRing('control', 'accent'),
+            )}
           >
             Stage FBA
           </Link>
-        ) : hit.disposition === 'PREBOX_STOCK' ? (
-          <span className="text-role-caption font-black uppercase tracking-widest text-emerald-700">
+        ) : hit.allocationState === 'READY' && hit.disposition === 'PREBOX_STOCK' ? (
+          <span className="text-role-caption font-black uppercase tracking-widest text-text-success">
             Pre-box & stock
           </span>
         ) : (
-          <span className="text-role-caption font-black uppercase tracking-widest text-amber-700">Hold</span>
+          <span className="text-role-caption text-text-faint">History</span>
         )}
       </td>
     </tr>

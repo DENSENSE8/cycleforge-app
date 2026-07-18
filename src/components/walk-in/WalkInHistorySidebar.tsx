@@ -1,20 +1,20 @@
 'use client';
 
 /**
- * Sales sidebar — Walk-In station deep-links.
+ * Sales sidebar — the desk mode rail + Walk-In station deep-links.
  *
- * The transaction-category facets live in the page chrome (`SalesWorkspaceHeader`
- * → `WorkbenchChromeHeader` tabs), the same law as Dashboard's To Ship · Packed ·
- * Shipped. This sidebar deliberately does NOT mirror them: one facet control per
- * surface, never a second mode rail for the same job.
+ * The **mode rail** (`WalkInModeSlider` → `?mode=`) is the surface's primary
+ * navigation: Local Pickup · Sales · Repair. The per-mode **table tabs** live in
+ * the page chrome (`WalkInDeskHeader` → `WorkbenchChromeHeader`) — modes ≠ tabs.
  *
- * What's left is the one thing a history Monitor can't do — start work. Sales is
- * observe-only; every action here hands off to the station.
+ * Below the rail sits the one thing a history Monitor can't do — start work.
+ * Sales is observe-only; every action here hands off to the station.
  */
 
 import { useRouter } from 'next/navigation';
 import { DollarSign, Package, ShoppingCart, Wrench } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { WalkInModeSlider } from '@/components/walk-in/WalkInModeSlider';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import { sectionLabel, cardTitle } from '@/design-system/tokens/typography/presets';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -56,6 +56,9 @@ export function WalkInHistorySidebar() {
         <p className="mt-1 text-role-micro text-text-soft">
           Every completed front-desk transaction. Start a new job on the station.
         </p>
+        <div className="mt-3">
+          <WalkInModeSlider />
+        </div>
       </div>
 
       <div className={`min-h-0 flex-1 space-y-2 overflow-y-auto ${SIDEBAR_GUTTER} py-3`}>

@@ -4507,3 +4507,57 @@ export const userReportedIssues = pgTable('user_reported_issues', {
 
 export type UserReportedIssue = typeof userReportedIssues.$inferSelect;
 export type NewUserReportedIssue = typeof userReportedIssues.$inferInsert;
+
+// kiosk_devices — enrolled customer-facing tablet as an org-scoped device
+// principal (/kiosk). Pre-auth identity table: token/code lookups run on the
+// owner pool by hash (mirrors staff_sessions.sid), so the hash indexes are
+// global partial-unique; management keys lead with organization_id. Only
+// hashes are stored — never the raw pairing code or device token.
+// Migration: 2026-07-17_kiosk_devices.sql
+export const kioskDevices = pgTable('kiosk_devices', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  label: text('label').notNull(),
+  /** CHECK kiosk_devices_status_chk: enrolled | active | revoked */
+  status: text('status').notNull().default('enrolled'),
+  enrollCodeHash: text('enroll_code_hash'),
+  enrollCodeExpiresAt: timestamp('enroll_code_expires_at', { withTimezone: true }),
+  deviceTokenHash: text('device_token_hash'),
+  enrolledByStaffId: integer('enrolled_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  tokenHashUniq: uniqueIndex('ux_kiosk_devices_token_hash').on(table.deviceTokenHash).where(sql`device_token_hash IS NOT NULL`),
+  enrollCodeHashUniq: uniqueIndex('ux_kiosk_devices_enroll_code_hash').on(table.enrollCodeHash).where(sql`enroll_code_hash IS NOT NULL`),
+  orgStatusIdx: index('idx_kiosk_devices_org_status').on(table.organizationId, table.status),
+  orgLiveIdx: index('idx_kiosk_devices_org_live').on(table.organizationId, table.createdAt, table.id),
+}));
+
+export type KioskDevice = typeof kioskDevices.$inferSelect;
+export type NewKioskDevice = typeof kioskDevices.$inferInsert;
+
+// search_recents — per-staff "most recently searched" history (Dashboard Search
+// mode). MRU by (org, staff, scope, lower(query)); newest-first, capped in the
+// domain helper. Tenant-scoped from birth. See
+// src/lib/migrations/2026-07-17b_search_recents.sql.
+export const searchRecents = pgTable('search_recents', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  query: text('query').notNull(),
+  scope: text('scope').notNull().default('global'),
+  scopeLabel: text('scope_label'),
+  scopeHref: text('scope_href'),
+  resultCount: integer('result_count'),
+  topHit: jsonb('top_hit'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  naturalUniq: uniqueIndex('ux_search_recents_natural').on(table.organizationId, table.staffId, table.scope, sql`lower(${table.query})`),
+  staffRecentIdx: index('idx_search_recents_staff_recent').on(table.organizationId, table.staffId, table.createdAt.desc(), table.id.desc()),
+}));
+
+export type SearchRecentRow = typeof searchRecents.$inferSelect;
+export type NewSearchRecentRow = typeof searchRecents.$inferInsert;

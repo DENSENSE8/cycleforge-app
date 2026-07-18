@@ -276,14 +276,18 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=ready')), 'ready');
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=fba')), 'fba');
   assert.equal(resolveSidebarMode('outbound', at('/outbound', 'mode=scan-out')), 'scan-out');
-  // Dashboard: Unshipped + Shipped collapsed into one "Shipping" nav mode; the
-  // Unshipped/Shipped split is now a top-left tab in the main content, so both
-  // `?shipped` and `?unshipped` (+ legacy `?pending` + bare) resolve to Outbound.
+  // Dashboard: three L2 modes on `?mode=`. Shipping (id `outbound`) is the
+  // default — both `?shipped` and `?unshipped` (+ legacy `?pending` + bare)
+  // resolve to it. Receiving rides `?mode=inbound` (canonical) or the
+  // `?mode=receiving` alias; Search rides `?mode=search`.
   // Warranty Logger moved to Support (`?mode=warranty`).
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'shipped=')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'pending=')), 'outbound');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'warranty=')), 'outbound');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=search')), 'search');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=inbound')), 'receiving');
+  assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=receiving')), 'receiving');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
@@ -292,11 +296,13 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarMode('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarMode('tech', at('/tech', 'view=testing')), 'testing');
-  // Sales (former Walk-In main) — transaction-history categories.
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in')), 'repairs');
+  // Sales (former Walk-In main) — 3-mode hub (Local Pickup · Sales · Repair);
+  // bare = Sales default, `?mode=` drives it, legacy `?category=` still maps.
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in')), 'sales');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=pickup')), 'pickup');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=repair')), 'repair');
+  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=pickups')), 'pickup');
   assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=sales')), 'sales');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'category=pickups')), 'pickups');
-  assert.equal(resolveSidebarMode('walk-in', at('/walk-in', 'mode=sales')), 'sales');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the

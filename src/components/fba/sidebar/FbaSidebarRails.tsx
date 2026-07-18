@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { Button } from '@/design-system/primitives';
 import { SidebarRailShell } from '@/components/sidebar/SidebarRailShell';
 import { FbaActiveShipments } from '@/components/fba/sidebar/FbaActiveShipments';
 import { useFbaBoardSelection } from '@/components/fba/hooks/useFbaBoardSelection';
 import { FBA_STATUS_LABEL } from '@/lib/fba/status';
-import { FBA_BOARD_SELECT_BY_FNSKU, FBA_COMBINE_STARTED } from '@/lib/fba/events';
+import { FBA_BOARD_SELECT_BY_FNSKU } from '@/lib/fba/events';
 import type { StationTheme } from '@/utils/staff-colors';
 
 /* ── Item row (planned / tested / packed) ─────────────────────────────── */
@@ -126,16 +126,6 @@ export function FbaPlanRailBody({ view }: { view: FbaPlanRailView }) {
   );
 }
 
-export function FbaPlanRail() {
-  const [view, setView] = useState<FbaPlanRailView>('planned');
-  return (
-    <div>
-      <FbaPlanRailPills view={view} onViewChange={setView} />
-      <FbaPlanRailBody view={view} />
-    </div>
-  );
-}
-
 const COMBINE_PILLS: HorizontalSliderItem[] = [
   { id: 'recent', label: 'Recent' },
   { id: 'packed', label: 'Packed' },
@@ -177,19 +167,3 @@ export function FbaCombineRailBody({
   );
 }
 
-export function FbaCombineRail({ stationTheme = 'green' }: { stationTheme?: StationTheme }) {
-  const [view, setView] = useState<FbaCombineRailView>('recent');
-  // Pressing "Combine items" on the board flips this rail to Packed so more
-  // packed items are easy to select and add to the in-progress combine.
-  useEffect(() => {
-    const handler = () => setView('packed');
-    window.addEventListener(FBA_COMBINE_STARTED, handler);
-    return () => window.removeEventListener(FBA_COMBINE_STARTED, handler);
-  }, []);
-  return (
-    <div>
-      <FbaCombineRailPills view={view} onViewChange={setView} />
-      <FbaCombineRailBody view={view} stationTheme={stationTheme} />
-    </div>
-  );
-}

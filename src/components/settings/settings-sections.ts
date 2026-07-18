@@ -4,7 +4,7 @@ export type SettingsSection =
   | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'about'
   | 'security' | 'organization' | 'billing' | 'integrations' | 'team'
   | 'roles' | 'access' | 'sessions' | 'audit' | 'catalog' | 'legal' | 'receiving'
-  | 'ai';
+  | 'devices' | 'ai';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -37,6 +37,7 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles' },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access' },
   { id: 'sessions',      label: 'Active sessions', description: 'See and revoke devices',                         group: 'Organization', requires: 'admin.view_sessions' },
+  { id: 'devices',       label: 'Kiosk devices', description: 'Enroll & revoke customer intake tablets',          group: 'Organization', requires: 'walk_in.enroll_kiosk' },
   { id: 'audit',         label: 'Audit log',     description: 'Sign-ins, permission denials, role changes',       group: 'Organization', requires: 'admin.view_logs', href: '/settings/audit' },
 ];
 

@@ -12,39 +12,48 @@
  * `docs/todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md`
  * ("keep inbound cartons in their own domain switch").
  *
- * Facet ids ARE the History sort ids (`HISTORY_SORT_OPTIONS`) — the sort axis
- * is the lifecycle facet, so promoting them to tab ids keeps one SoT for the
- * `?sort=` param, the day-band axis, and the server ORDER BY.
- *
- * Pure data + functions (no React) so the page, the header, and the redirect
- * that lane 05 owns all read the same contract.
+ * Pure data + functions (no React) so the page, the sidebar, and surface
+ * isolation all read the same domain/mode contract.
  */
-
-import {
-  HISTORY_DEFAULT_SORT,
-  HISTORY_SORT_OPTIONS,
-  normalizeHistorySort,
-} from '@/lib/receiving/receiving-modes';
 
 type DashboardDomain = 'outbound' | 'inbound';
 
-/** The domain switch rides on `?mode=` (absent = the default outbound domain). */
+/**
+ * The `/dashboard` **mode** axis (the sidebar L2 rail — SoT
+ * `SIDEBAR_PAGE_NAV` dashboard entry). Three modes ride the same `?mode=` param:
+ *   • `search`    — global search (`?mode=search`); sidebar shows per-staff recents.
+ *   • `receiving` — inbound cartons (`?mode=inbound`, alias `?mode=receiving`);
+ *     Triage/Unbox table tabs. Maps onto the `inbound` DOMAIN below.
+ *   • `shipping`  — outbound orders (bare / `?unshipped` / `?shipped`). Default.
+ *
+ * Domain (outbound/inbound — never share a table) is the deeper concept the
+ * page/header/warm read; MODE is the sidebar rail's vocabulary. `receiving` mode
+ * IS the `inbound` domain, so downstream (InboundView, surface-isolation) keeps
+ * reading `?mode=inbound` unchanged.
+ */
+type DashboardMode = 'search' | 'receiving' | 'shipping';
+
+/** The mode axis rides on `?mode=` (absent = the default Shipping/outbound mode). */
 const DASHBOARD_DOMAIN_PARAM = 'mode';
+
+/**
+ * Resolve the active sidebar mode from the URL. Mirrors the dashboard
+ * `resolveMode` in `sidebar-navigation.ts` (whose id is `outbound` for Shipping).
+ */
+export function getDashboardModeFromSearch(
+  searchParams: Pick<URLSearchParams, 'get'>,
+): DashboardMode {
+  const raw = String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase();
+  if (raw === 'search') return 'search';
+  if (raw === DASHBOARD_INBOUND_MODE || raw === 'receiving') return 'receiving';
+  return 'shipping';
+}
 
 /** `?mode=` value that selects the inbound (receiving cartons) domain. */
 export const DASHBOARD_INBOUND_MODE = 'inbound';
 
 /** Mode-level gate: `/dashboard` is `dashboard.view`, but inbound shows receiving data. */
 export const DASHBOARD_INBOUND_PERMISSION = 'receiving.view';
-
-/**
- * Inbound lifecycle facets, in tab order. `id` is both the tab id and the
- * `?sort=` value; `HISTORY_DEFAULT_SORT` is implicit (dropped from the URL).
- */
-export const DASHBOARD_INBOUND_FACETS = HISTORY_SORT_OPTIONS;
-
-/** The implicit default facet — omitted from the URL when active. */
-export const DASHBOARD_INBOUND_DEFAULT_FACET = HISTORY_DEFAULT_SORT;
 
 export function getDashboardDomainFromSearch(
   searchParams: Pick<URLSearchParams, 'get'>,
@@ -53,12 +62,7 @@ export function getDashboardDomainFromSearch(
   return raw === DASHBOARD_INBOUND_MODE ? 'inbound' : 'outbound';
 }
 
-/** Coerce an arbitrary `?sort=` to a valid inbound facet (default on miss). */
-export function normalizeDashboardInboundFacet(raw: string | null | undefined): string {
-  return normalizeHistorySort(raw);
-}
-
-// The mode entry + the `/receiving/history` → inbound redirect (an href builder
-// and the param-clearing domain switch) are lane 05's rows — see
-// `docs/todo/foh-boh-surface-split/05-nav-permission-redirects.md` P5. They land
-// with their call sites; this module deliberately stays at what's wired today.
+// The inbound Triage/Unbox tab contract now lives with its view
+// (`components/dashboard/receiving/dashboard-receiving-tabs.ts`), which reads the
+// `?sort=` axis (HISTORY_SORT_OPTIONS) directly. This module keeps only the
+// domain/mode resolvers the page + surface-isolation share.

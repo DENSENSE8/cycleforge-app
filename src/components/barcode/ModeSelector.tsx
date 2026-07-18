@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Printer, Database, RotateCcw } from '../Icons';
+import { Printer, Database, Hash, RotateCcw } from '../Icons';
 
 // 'bin-labels' was previously bundled here; bin/zone printing now lives at
 // /warehouse (WarehouseSidebarPanel → Labels tab). Keep this union focused
 // on per-SKU barcode workflows.
-export type BarcodeMode = 'print' | 'sn-to-sku' | 'reprint';
+export type BarcodeMode = 'print' | 'auto-unit' | 'sn-to-sku' | 'reprint';
 
 interface ModeSelectorProps {
     mode: BarcodeMode;
@@ -21,7 +21,8 @@ interface ModeSelectorProps {
 }
 
 export const BARCODE_MODES: { id: BarcodeMode; label: string; description: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-    { id: 'print',     label: 'Print',   description: 'New SKU label',     Icon: Printer   },
+    { id: 'print',     label: 'Print',   description: 'Pair OEM serial',    Icon: Printer   },
+    { id: 'auto-unit', label: 'Unit',    description: 'Auto unit labels',   Icon: Hash      },
     { id: 'sn-to-sku', label: 'Log SN',  description: 'Serial → SKU log',  Icon: Database  },
     { id: 'reprint',   label: 'Reprint', description: 'Same label again',  Icon: RotateCcw },
 ];
@@ -36,6 +37,7 @@ const MODES = BARCODE_MODES;
  */
 const MODE_ACCENT: Record<BarcodeMode, { active: string; ring: string }> = {
     'print':     { active: 'bg-blue-600 text-white',    ring: 'ring-blue-200' },
+    'auto-unit': { active: 'bg-orange-600 text-white',  ring: 'ring-orange-200' },
     'sn-to-sku': { active: 'bg-emerald-600 text-white', ring: 'ring-emerald-200' },
     'reprint':   { active: 'bg-violet-700 text-white',  ring: 'ring-violet-200' },
 };

@@ -2,60 +2,22 @@
 
 import { useCallback, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { outboundOrderByIdQuery } from '@/lib/queries/outbound-queries';
 import { LabelsOrderWorkspace } from '@/components/outbound/labels/LabelsOrderWorkspace';
-import { LabelsQueueTable } from '@/components/outbound/labels/LabelsQueueTable';
-import { OutboundDocumentsPrintView } from '@/components/outbound/labels/OutboundDocumentsPrintView';
+import { LabelsWorkspaceView } from '@/components/outbound/labels/LabelsWorkspaceView';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
-import { ReadyQueueTable } from '@/components/outbound/ready/ReadyQueueTable';
+import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
+import { ReadyWorkspaceView } from '@/components/outbound/ready/ReadyWorkspaceView';
 import { FbaOutboundWorkspace } from '@/components/fba/FbaOutboundWorkspace';
-import { ShippedDetailsPanel } from '@/components/shipped/ShippedDetailsPanel';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
-import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
 import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { zIndex } from '@/design-system/tokens/z-index';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
-function StagedOrderDetail({
-  orderId,
-  onClose,
-}: {
-  orderId: number;
-  onClose: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const { data: order, isLoading, isError, refetch } = useQuery(outboundOrderByIdQuery(orderId));
-
-  const handleUpdate = useCallback(() => {
-    bustScanOutCaches(queryClient);
-    void refetch();
-  }, [queryClient, refetch]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-card">
-        <LoadingSpinner size="lg" className="text-emerald-600" />
-      </div>
-    );
-  }
-
-  if (isError || !order) return null;
-
-  return (
-    <ShippedDetailsPanel
-      shipped={order}
-      onClose={onClose}
-      onUpdate={handleUpdate}
-      context="staged"
-    />
-  );
-}
-
 export function OutboundWorkspace() {
-  const { mode, open, q, sort, setOpen } = useOutboundUrlState();
+  const { mode, open, q, setOpen } = useOutboundUrlState();
 
   const handleOpenOrder = useCallback(
     (order: ShippedOrder) => setOpen(Number(order.id)),
@@ -64,19 +26,19 @@ export function OutboundWorkspace() {
 
   const handleCloseDetail = useCallback(() => setOpen(null), [setOpen]);
 
-  // Labels mode: the main pane alternates between the queue list and the
-  // selected order's document print view (docs/outbound-documents-plan.md
-  // Phase 2) — a singular crossfade target, keyed on which "mode" the pane is
-  // in, per the house motion law. The side panel (attach/fetch/delete tray,
-  // under its own Documents tab) still opens independently over the top.
+  // Labels mode: the browse workbench (Queue/Recent) stays mounted; the focused
+  // order workspace (label + packing-slip flow) crossfades OVER it at z-panel —
+  // the Unbox browse/overlay pattern (UnboxLineWorkspace), one singular focus
+  // surface, keyed on the open order id.
   const paneMotionProps = {
-    ...useMotionPresence(framerPresence.workbenchPane),
-    transition: useMotionTransition(framerTransition.workbenchPaneMount),
+    ...useMotionPresence(framerPresence.workbenchPaneSettle),
+    transition: useMotionTransition(framerTransition.workbenchPaneSettle),
   };
 
   // Modes are switched from the sidebar mode rail (outbound ∈ MASTER_NAV_RAIL_PAGES),
-  // not a top tab band — each mode is its own contextual surface: Labels (padded
-  // queue ⇄ print), Scan out (dock Station), Ready (allocation table), FBA (board).
+  // not a top tab band — each mode is its own contextual surface: Labels (tabbed
+  // Queue/Recent workbench ⇄ print), Scan out (dock Station), Ready (allocation
+  // table), FBA (board).
   if (mode === 'fba') {
     return (
       <Suspense
@@ -92,7 +54,7 @@ export function OutboundWorkspace() {
   }
 
   if (mode === 'ready') {
-    return <ReadyQueueTable searchQuery={q} />;
+    return <ReadyWorkspaceView />;
   }
 
   if (mode === 'scan-out') {
@@ -117,37 +79,31 @@ export function OutboundWorkspace() {
     );
   }
 
-  // Labels
+  // Labels — the golden tabbed Queue/Recent workbench (LabelsWorkspaceView)
+  // always mounted (cache + scroll preserved); the focused label/packing-slip
+  // workspace overlays it when an order is opened.
+  const labelsOverlayOpen = Boolean(open);
   return (
-    <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <div className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          {open ? (
-            <motion.div
-              key={`documents-${open}`}
-              {...paneMotionProps}
-              className="flex h-full min-w-0 flex-1"
-            >
-              <OutboundDocumentsPrintView orderId={open} />
-            </motion.div>
-          ) : (
-            <motion.div key="queue" {...paneMotionProps} className="flex h-full min-w-0 flex-1">
-              <WorkbenchTablePane>
-                <LabelsQueueTable
-                  searchQuery={q}
-                  sort={sort}
-                  onOpenOrder={handleOpenOrder}
-                  onCloseOrder={handleCloseDetail}
-                  hideHeader
-                />
-              </WorkbenchTablePane>
-            </motion.div>
-          )}
-        </AnimatePresence>
+    <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
+      <div
+        className={`flex h-full min-h-0 w-full flex-col ${labelsOverlayOpen ? 'pointer-events-none' : ''}`}
+        aria-hidden={labelsOverlayOpen ? true : undefined}
+        inert={labelsOverlayOpen ? true : undefined}
+        style={{ visibility: labelsOverlayOpen ? 'hidden' : 'visible' }}
+      >
+        <LabelsWorkspaceView onOpenLabelOrder={handleOpenOrder} />
       </div>
-      <AnimatePresence>
+
+      <AnimatePresence initial={false} mode="wait">
         {open ? (
-          <LabelsOrderWorkspace key={open} orderId={open} onClose={handleCloseDetail} />
+          <motion.div
+            key={`labels-order-${open}`}
+            {...paneMotionProps}
+            style={{ zIndex: zIndex.panel }}
+            className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
+          >
+            <LabelsOrderWorkspace orderId={open} onClose={handleCloseDetail} />
+          </motion.div>
         ) : null}
       </AnimatePresence>
     </div>

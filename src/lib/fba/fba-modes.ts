@@ -10,12 +10,9 @@
  *   combine — combiner pulls PACKED items and combines under one FBA shipment ID
  *   shipped — shipped / history
  *
- * Pure data — no JSX. The pill UI consumes FBA_MODE_ITEMS via
- * HorizontalButtonSlider.
+ * Pure data — no JSX. The facet tab UI lives in `FbaWorkspaceHeader`
+ * (content-chrome `TabSwitch` via `WorkbenchChromeHeader`).
  */
-
-import { ClipboardList, Package, Truck } from '@/components/Icons';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 
 export type FbaMode = 'plan' | 'combine' | 'shipped';
 
@@ -25,13 +22,7 @@ export const FBA_MODE_PARAM = 'fbaMode' as const;
 /** Canonical host path for the FBA prep station (no longer a top-level nav item). */
 export const FBA_OUTBOUND_PATH = '/outbound';
 
-export const FBA_MODES: FbaMode[] = ['plan', 'combine', 'shipped'];
-
-export const FBA_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'plan',    label: 'Plan',    icon: ClipboardList },
-  { id: 'combine', label: 'Combine', icon: Package },
-  { id: 'shipped', label: 'Shipped', icon: Truck },
-];
+const FBA_MODES: FbaMode[] = ['plan', 'combine', 'shipped'];
 
 /** Resolve the active FBA sub-mode from a raw param value, defaulting to combine. */
 export function resolveFbaMode(raw: string | null | undefined): FbaMode {

@@ -79,15 +79,27 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  * hit opens the same surface regardless of which engine produced it.
  * SERIAL_UNIT uses the inventory workbench's `?unit=` view (ByUnitView →
  * /api/serial-units/:id, which accepts the numeric id).
+ *
+ * Order lookup workbench href — master sidebar (`OrderWorkspaceSidebar` Search
+ * mode) + full-width `/o/[id]`. Always lands in `?mode=search` so the near-match
+ * rail is the map; optional `q` keeps the header pill + sidebar list in sync.
  */
+export function orderSearchHref(orderId: string | number, query?: string): string {
+  const id = encodeURIComponent(String(orderId).trim());
+  const sp = new URLSearchParams();
+  sp.set('mode', 'search');
+  const q = query?.trim();
+  if (q) sp.set('q', q);
+  return `/o/${id}?${sp.toString()}`;
+}
+
 export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
   switch (dbType) {
     case 'ORDER':
-      // Full-page order view (Shopify-style). The dashboard slide-over stays the
-      // in-place experience (row-click + right-rail detail-stack); a search/⌘K
-      // navigation deep-links to the canonical page. Keep this in sync with the
-      // exact-arm href in global-entity-search.ts.
-      return `/o/${entityId}`;
+      // Full-page order workbench with the master-nav Search map open. The
+      // dashboard slide-over stays the in-place board experience; search/⌘K
+      // always deep-links here. Keep in sync with global-entity-search.ts.
+      return orderSearchHref(entityId);
     case 'SERIAL_UNIT':
       return `/inventory/units?unit=${entityId}`;
     case 'RECEIVING':
@@ -117,6 +129,34 @@ export function looksLikeIdentifier(query: string): boolean {
   if (/^\d{3,}$/.test(q)) return true; // bare numeric id / tracking fragment
   // Alphanumeric token with digits (serials, FNSKUs, order ids, LPNs, RS-#).
   return /^[A-Za-z0-9#:_\-\.\/]+$/.test(q) && /\d{2,}/.test(q) && q.length >= 4;
+}
+
+/**
+ * Header Enter / "See all" handoff. Order-heavy queries go **directly** to the
+ * `/o` workbench (master-nav Search map + full detail) — never through `/search`
+ * first (that flash was the old in-content two-column fork). Cross-entity
+ * queries keep the thin `/search` launcher.
+ *
+ * `previewHits` is the live dropdown set (may be empty while still fetching);
+ * an identifier with no hit yet still opens `/o/{query}?mode=search&q=` because
+ * {@link OrderFullPageView} resolves human order numbers.
+ */
+export function globalSearchHandoffHref(
+  query: string,
+  previewHits: ReadonlyArray<{ id: number; entityType: string }> = [],
+): string {
+  const trimmed = query.trim();
+  if (!trimmed) return '/search';
+  const orderHits = previewHits.filter((h) => h.entityType === 'order');
+  const orderOnly =
+    previewHits.length > 0 && previewHits.every((h) => h.entityType === 'order');
+  if (looksLikeIdentifier(trimmed) || orderOnly) {
+    const top = orderHits[0];
+    if (top) return orderSearchHref(top.id, trimmed);
+    if (looksLikeIdentifier(trimmed)) return orderSearchHref(trimmed, trimmed);
+    return `/dashboard?search=${encodeURIComponent(trimmed)}`;
+  }
+  return `/search?q=${encodeURIComponent(trimmed)}`;
 }
 
 /**

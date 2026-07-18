@@ -1,29 +1,8 @@
 'use client';
 
-import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { StationTheme } from '@/utils/staff-colors';
 import { stationThemeColors } from '@/utils/staff-colors';
-
-export function FbaLoadingState({
-  theme,
-  label = 'Loading…',
-}: {
-  theme: StationTheme;
-  label?: string;
-}) {
-  const colors = stationThemeColors[theme];
-  return (
-    <div className="flex h-full min-w-0 flex-1 items-center justify-center bg-surface-canvas">
-      <div className="text-center">
-        <Loader2 className={`mx-auto h-8 w-8 animate-spin ${colors.text}`} />
-        <p className="mt-3 text-xs font-black uppercase tracking-[0.2em] text-text-muted">
-          {label}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export function FbaErrorState({
   message,
@@ -51,21 +30,6 @@ export function FbaErrorState({
           </Button>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-export function FbaEmptyState({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle?: string;
-}) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6 py-20 text-center text-text-soft">
-      <p className="text-xs font-black uppercase tracking-[0.3em]">{title}</p>
-      {subtitle ? <p className="mt-1 text-role-caption">{subtitle}</p> : null}
     </div>
   );
 }

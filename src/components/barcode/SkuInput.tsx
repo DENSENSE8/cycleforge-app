@@ -7,11 +7,12 @@ import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 import type { BarcodeDensity } from './BarcodePreview';
+import type { BarcodeMode } from './ModeSelector';
 
 interface SkuInputProps {
     sku: string;
     uniqueSku: string;
-    mode: 'print' | 'sn-to-sku' | 'reprint';
+    mode: BarcodeMode;
     skuInputRef: React.RefObject<HTMLInputElement>;
     isActive: boolean;
     /** Visual density hint — accepted for parity with the horizontal layout. */

@@ -160,6 +160,7 @@ export const PERMISSIONS = [
   { id: 'work_orders.complete',     category: 'ops', label: 'Complete work order' },
   { id: 'walk_in.view',             category: 'ops', label: 'View walk-ins' },
   { id: 'walk_in.intake',           category: 'ops', label: 'Intake walk-in' },
+  { id: 'walk_in.enroll_kiosk',     category: 'ops', label: 'Enroll / revoke kiosk device' },
   { id: 'stations.manage',          category: 'ops', label: 'Customize station pages (blocks, publish)' },
   { id: 'studio.view',              category: 'ops', label: 'View Operations Studio' },
   // Step-up is enforced on the PUBLISH route only (withAuth stepUp: true) so

@@ -12,6 +12,8 @@ export function comfyHelperHint(mode: BarcodeMode) {
   const text =
     mode === 'reprint'
       ? 'Scan or paste a SKU to bring up its last label.'
+      : mode === 'auto-unit'
+        ? 'Scan a SKU, choose a quantity, and mint trackable house unit IDs.'
       : 'Scan or paste a SKU to load product info.';
   return <p className="mt-2 text-xs text-text-soft">{text}</p>;
 }
@@ -37,6 +39,45 @@ export function WorkspaceCard({ label, children, actions }: WorkspaceCardProps) 
       )}
       {children}
     </section>
+  );
+}
+
+interface AutoUnitQuantityFieldProps {
+  quantity: number;
+  accent: ModeAccent;
+  compact?: boolean;
+  onChange: (quantity: number) => void;
+}
+
+/** Quantity input for minting house unit identities without OEM serials. */
+export function AutoUnitQuantityField({
+  quantity,
+  accent,
+  compact = false,
+  onChange,
+}: AutoUnitQuantityFieldProps) {
+  return (
+    <div className={compact ? 'flex items-center gap-4 border-y border-border-soft inset-field' : 'flex items-center gap-4'}>
+      <div className="min-w-0 flex-1">
+        <p className="text-role-caption font-semibold text-text-default">Labels to issue</p>
+        <p className="mt-1 text-role-micro text-text-soft">
+          Each label creates one trackable unit ID. No manufacturer serial is required.
+        </p>
+      </div>
+      <input
+        type="number"
+        min={1}
+        max={100}
+        inputMode="numeric"
+        aria-label="Number of unit labels"
+        value={quantity}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          onChange(Number.isFinite(next) ? Math.max(1, Math.min(100, Math.trunc(next))) : 1);
+        }}
+        className={`h-11 w-24 shrink-0 rounded-xl border border-border-soft bg-surface-card text-center font-mono text-base font-bold tabular-nums text-text-default ${accent.focusRing}`}
+      />
+    </div>
   );
 }
 
@@ -224,14 +265,14 @@ export function PreviewCardModern({
   dataMatrixSymbology,
   onApplyAndPrint,
 }: PreviewCardModernProps) {
-  const isPrintMode = mode === 'print' || mode === 'reprint';
+  const isPrintMode = mode === 'print' || mode === 'auto-unit' || mode === 'reprint';
 
   if (isPrintMode) {
     return (
       <LabelPreviewCard
         sku={uniqueSku}
         title={title}
-        condition={mode === 'print' ? condition : null}
+        condition={mode === 'print' || mode === 'auto-unit' ? condition : null}
         color={color}
         serialNumber={mode === 'print' ? serialNumbers[0] : null}
         dataMatrixValue={dataMatrixValue}
@@ -287,7 +328,7 @@ export function PreviewPlaceholder({ mode, sku }: PreviewPlaceholderProps) {
         {sku
           ? mode === 'sn-to-sku'
             ? 'Scan at least one serial number to enable the log action.'
-            : 'Generating the next unique SKU for this product…'
+            : 'Generating the next unit ID for this product…'
           : 'Scan a SKU above to begin.'}
       </p>
     </section>

@@ -24,7 +24,8 @@ import { useRef, useState } from 'react';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import DateRangeHeader from '@/components/ui/DateRangeHeader';
-import { IncomingPaneHeader } from '@/components/sidebar/receiving/IncomingPaneHeader';
+import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
+import { IncomingKpiStrip } from '@/components/sidebar/receiving/incoming/IncomingKpiStrip';
 import { computeWeekRange, toPSTDateKey } from '@/utils/date';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
@@ -40,7 +41,11 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout } from '@/lib/station/table-url-params';
-import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchTablePane,
+  WORKBENCH_CHROME_COLUMN,
+  WORKBENCH_GUTTERS,
+} from '@/components/dashboard/workbench-shell';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -233,57 +238,83 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
     );
   }
 
+  // Shared list body — skeleton → teaching empty → grouped list. Rendered inside
+  // whichever scroll port the active mode's shell provides (both pass the same
+  // `scrollRef`, so virtualization + keyboard-nav scroll-into-view are identical).
+  const listBody =
+    isLoading && localRows.length === 0 ? (
+      <div className="p-3">
+        <SkeletonList count={12} type="row" />
+      </div>
+    ) : Object.keys(filteredGroupedRecords).length === 0 ? (
+      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
+      </div>
+    ) : (
+      <ReceivingGroupedList
+        filteredGroupedRecords={filteredGroupedRecords}
+        serverSorted={mode.serverSorted}
+        isMobile={isMobile}
+        isIncomingMode={isIncomingMode}
+        isHistoryMode={isHistoryMode}
+        selectMode={selectMode}
+        selectedId={selectedId}
+        selectedIds={selectedIds}
+        handleSelectRow={handleSelectRow}
+        virtualized={STATION_VIRTUAL_LIST}
+        scrollParentRef={scrollRef}
+      />
+    );
+
+  // Incoming adopts the golden workbench shape (sibling of the Dashboard orders
+  // view): a pinned chrome band = All / Zoho / eBay purchasing-source tabs +
+  // pagination, the KPI attention strip below it, then the list wrapped in the
+  // house table card (`WorkbenchTablePane` → `MONITOR_SECTION_CARD_SCROLL_CLASS`,
+  // the same bordered card the dashboard tables sit in) rather than floating
+  // full-bleed on the canvas. The sidebar (IncomingSidebarPanel) still owns
+  // search + delivery-state filters. `scrollRef` stays on the card's inner scroll
+  // port (identical to History) so virtualization + keyboard-nav are unchanged.
+  if (isIncomingMode) {
+    return (
+      <TableColumnConfigProvider tableId="receiving">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+          <div className={`relative z-header shrink-0 ${WORKBENCH_CHROME_COLUMN}`}>
+            <IncomingWorkspaceHeader
+              total={
+                isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
+                  ? localRows.length
+                  : Number(data?.total ?? 0)
+              }
+              page={incomingPage}
+            />
+          </div>
+          <div className={`shrink-0 ${WORKBENCH_GUTTERS}`}>
+            <IncomingKpiStrip />
+          </div>
+          <WorkbenchTablePane>
+            <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
+              {listBody}
+            </div>
+          </WorkbenchTablePane>
+        </div>
+      </TableColumnConfigProvider>
+    );
+  }
+
   return (
     <TableColumnConfigProvider tableId="receiving">
     <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
       <WorkbenchTablePane>
-        {isIncomingMode ? (
-          // Incoming gets its own purpose-built header — title + count +
-          // pagination. The sidebar (IncomingSidebarPanel) owns search + facet
-          // chips + PO date range + Sort. `total` comes straight from the API
-          // response so the "N of M" label stays in sync with the active filter.
-          <IncomingPaneHeader
-            total={
-              isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
-                ? localRows.length
-                : Number(data?.total ?? 0)
-            }
-            page={incomingPage}
-          />
-        ) : (
-          <DateRangeHeader
-            count={getWeekCount()}
-            columns={<ColumnConfigButton iconOnly />}
-            weekRange={weekRange}
-            weekOffset={weekOffset}
-            onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-            onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-          />
-        )}
+        <DateRangeHeader
+          count={getWeekCount()}
+          columns={<ColumnConfigButton iconOnly />}
+          weekRange={weekRange}
+          weekOffset={weekOffset}
+          onPrevWeek={() => setWeekOffset(weekOffset + 1)}
+          onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+        />
         <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
-          {isLoading && localRows.length === 0 ? (
-            <div className="p-3">
-              <SkeletonList count={12} type="row" />
-            </div>
-          ) : Object.keys(filteredGroupedRecords).length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
-            </div>
-          ) : (
-            <ReceivingGroupedList
-              filteredGroupedRecords={filteredGroupedRecords}
-              serverSorted={mode.serverSorted}
-              isMobile={isMobile}
-              isIncomingMode={isIncomingMode}
-              isHistoryMode={isHistoryMode}
-              selectMode={selectMode}
-              selectedId={selectedId}
-              selectedIds={selectedIds}
-              handleSelectRow={handleSelectRow}
-              virtualized={STATION_VIRTUAL_LIST}
-              scrollParentRef={scrollRef}
-            />
-          )}
+          {listBody}
         </div>
       </WorkbenchTablePane>
     </div>

@@ -112,6 +112,13 @@ export interface ReceivingModeContext {
   incomingPoTo: string;
   incomingPage: number;
   /**
+   * Purchasing-source tab (`?inbound=`): which account the incoming order came
+   * from. `'all'` (default) unions every source; `'zoho'` narrows to Zoho POs;
+   * `'ebay'` narrows to the eBay purchasing account (Universal Incoming). Maps
+   * 1:1 to the server's `?inbound=` facet in `build-sql`.
+   */
+  incomingSource: 'all' | 'zoho' | 'ebay';
+  /**
    * Incoming sub-facet: the shipment-anchored "delivered but not dock-scanned"
    * feed. It bypasses the normal list query, so it owns its own empty copy.
    */
@@ -268,6 +275,9 @@ const incomingMode: ReceivingModeDescriptor = {
     if (ctx.incomingSort) p.set('sort', ctx.incomingSort);
     if (ctx.incomingPoFrom) p.set('po_from', ctx.incomingPoFrom);
     if (ctx.incomingPoTo) p.set('po_to', ctx.incomingPoTo);
+    // Purchasing-source tab → server `?inbound=` facet. `all` is the default
+    // (no param); `zoho`/`ebay` narrow to that account.
+    if (ctx.incomingSource !== 'all') p.set('inbound', ctx.incomingSource);
     return p;
   },
   queryKey(ctx) {
@@ -280,6 +290,7 @@ const incomingMode: ReceivingModeDescriptor = {
       ctx.incomingSort,
       ctx.incomingPoFrom,
       ctx.incomingPoTo,
+      ctx.incomingSource,
       ctx.incomingPage,
     ] as const;
   },

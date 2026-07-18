@@ -298,12 +298,22 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     // PO — the "Needs Zoho link (n)" pill (plan §6.2/§8.2). 0 when the flag is off
     // so the response shape and the legacy Zoho-only tiles are unchanged.
     let ebay_pending = 0;
-    if (await isIncomingUniversal(orgId)) {
-      const er = await tenantQuery<{ ebay_pending: number }>(
+    let ebay_incoming = 0;
+    // `universal_incoming` gates the eBay purchasing-source tab + KPI on the
+    // incoming workbench: when the org has the eBay purchasing account wired in,
+    // the surface offers All / Zoho / eBay; otherwise it stays Zoho-only (no
+    // confusing always-empty eBay tab).
+    const universal_incoming = await isIncomingUniversal(orgId);
+    if (universal_incoming) {
+      const er = await tenantQuery<{ ebay_pending: number; ebay_incoming: number }>(
         orgId,
-        `SELECT COUNT(*) FILTER (
+        `SELECT
+                COUNT(*) FILTER (
                   WHERE rl.inbound_source_type = 'ebay' AND rz.zoho_purchaseorder_id IS NULL
-                )::int AS ebay_pending
+                )::int AS ebay_pending,
+                COUNT(*) FILTER (
+                  WHERE rl.inbound_source_type = 'ebay'
+                )::int AS ebay_incoming
            FROM receiving_line rl
            LEFT JOIN receiving_line_zoho rz
              ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
@@ -313,6 +323,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
         [orgId],
       );
       ebay_pending = er.rows[0]?.ebay_pending ?? 0;
+      ebay_incoming = er.rows[0]?.ebay_incoming ?? 0;
     }
 
     return {
@@ -320,6 +331,8 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
       delivered_not_unboxed,
       delivered_email: deliveredEmail,
       ebay_pending,
+      ebay_incoming,
+      universal_incoming,
       by_carrier,
     };
       },

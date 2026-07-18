@@ -12,7 +12,9 @@ import {
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 
-const TABS: UnboxWorkspaceTab[] = ['recent', 'queue', 'viewed'];
+// Order mirrors TestingWorkspaceHeader — the history-like tab (Unboxed) sits
+// rightmost (emerald, dividerBefore) after the active-work tabs (Queue, Viewed).
+const TABS: UnboxWorkspaceTab[] = ['queue', 'viewed', 'recent'];
 
 export function UnboxWorkspaceHeader({
   tab,
@@ -57,11 +59,11 @@ export function UnboxWorkspaceHeader({
     id,
     label: UNBOX_WORKSPACE_TAB_LABEL[id],
     count: id === 'queue' && typeof queueCount === 'number' && queueCount > 0 ? queueCount : undefined,
-    color: (id === 'recent' ? 'blue' : id === 'queue' ? 'orange' : 'emerald') as
+    color: (id === 'queue' ? 'orange' : id === 'viewed' ? 'blue' : 'emerald') as
       | 'blue'
       | 'orange'
       | 'emerald',
-    dividerBefore: id === 'viewed',
+    dividerBefore: id === 'recent',
   }));
 
   return (

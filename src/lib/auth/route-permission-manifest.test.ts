@@ -584,3 +584,31 @@ test('regression: orders-exceptions/[id] PATCH is orders.create (tracking-only e
   assert.equal(r.permission, 'orders.create');
   assert.ok(r.methods.includes('PATCH'), 'expected PATCH method');
 });
+
+// ── Kiosk device principal (/kiosk — FOH/BOH surface split doc 06) ───────────
+
+test('kiosk enroll + revoke are gated by walk_in.enroll_kiosk', () => {
+  const paths = routesGatedBy('walk_in.enroll_kiosk').map((r) => r.path);
+  assert.ok(paths.includes('/api/kiosk/enroll/route.ts'), 'enroll gated by walk_in.enroll_kiosk');
+  assert.ok(paths.includes('/api/kiosk/revoke/route.ts'), 'revoke gated by walk_in.enroll_kiosk');
+});
+
+test('walk_in.enroll_kiosk is a registered permission', () => {
+  assert.equal(isKnownPermission('walk_in.enroll_kiosk'), true);
+});
+
+test('kiosk intake is a device-principal gate (withKioskAuth), no staff permission', () => {
+  const r = routeByPath('/api/kiosk/intake/route.ts');
+  assert.ok(r, 'intake route should be in the manifest');
+  assert.equal(r.permission, null);
+  assert.ok(r.gate.includes('withKioskAuth'), `expected withKioskAuth gate, got ${r.gate}`);
+  // It is a device-authed WRITE — must never be an ungated (gate: NONE) route.
+  assert.notEqual(r.gate, 'NONE');
+});
+
+test('kiosk pair is public + capability-gated (the pairing code is the capability)', () => {
+  const r = routeByPath('/api/kiosk/pair/route.ts');
+  assert.ok(r, 'pair route should be in the manifest');
+  assert.equal(r.permission, null);
+  assert.ok(r.gate.includes('anonymous'), `expected anonymous gate, got ${r.gate}`);
+});

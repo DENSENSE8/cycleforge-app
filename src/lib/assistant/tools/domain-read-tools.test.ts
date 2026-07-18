@@ -87,7 +87,7 @@ test('get_operations_journey: found path returns trimmed events + href', async (
   assert.equal(data.found, true);
   // Order deep-links go to the full-page order view (/o/[orderId]) — SoT is
   // searchHitHref('ORDER', id) in src/lib/search/search-hit.ts.
-  assert.equal(data.href, '/o/99');
+  assert.equal(data.href, '/o/99?mode=search');
   assert.equal(data.events.length, 1);
 });
 

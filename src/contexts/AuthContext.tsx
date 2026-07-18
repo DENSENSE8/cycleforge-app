@@ -32,6 +32,7 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/m\/signin(?:$|\/)/,
   /^\/not-authorized(?:$|\/)/,
   /^\/m\/enroll\//,
+  /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk — chromeless, no staff nav (must match proxy.ts)
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept — must match proxy.ts
 
   /^\/offline(?:$|\/)/,

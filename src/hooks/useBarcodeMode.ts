@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { BarcodeMode } from '@/components/barcode/ModeSelector';
 
-const MODES: readonly BarcodeMode[] = ['print', 'sn-to-sku', 'reprint'];
+const MODES: readonly BarcodeMode[] = ['print', 'auto-unit', 'sn-to-sku', 'reprint'];
 
 function parseMode(raw: string | null): BarcodeMode {
   if (raw && (MODES as readonly string[]).includes(raw)) return raw as BarcodeMode;
