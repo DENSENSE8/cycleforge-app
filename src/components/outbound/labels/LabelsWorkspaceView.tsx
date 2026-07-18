@@ -35,7 +35,7 @@ interface LabelsWorkspaceViewProps {
 
 export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewProps) {
   const { labelsTab, setLabelsTab } = useLabelsWorkspaceTab();
-  const { q, sort, setQ, setSort } = useOutboundUrlState();
+  const { q, sort, setQ, setSort, openNew } = useOutboundUrlState();
   // Recent (staged) detail is local — it must not touch the Queue tab's `?open=`
   // label-print flow.
   const [recentOpenId, setRecentOpenId] = useState<number | null>(null);
@@ -64,6 +64,7 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
               onSearch={setQ}
               sort={sort}
               onToggleSort={toggleSort}
+              onNewOrder={openNew}
             />
           </div>
         }

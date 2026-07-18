@@ -10,7 +10,6 @@ import {
   getSidebarHref,
   getSidebarRouteKey,
   applyModeTarget,
-  permissionForPath,
   resolveSidebarMode,
 } from '@/lib/sidebar-navigation';
 

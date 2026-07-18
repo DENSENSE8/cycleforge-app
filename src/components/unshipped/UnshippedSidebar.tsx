@@ -1,10 +1,9 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ShippedFormData } from '@/components/shipped';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
-import { Plus } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
 import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
@@ -28,7 +27,6 @@ interface UnshippedSidebarProps {
 
 export default function UnshippedSidebar(props: UnshippedSidebarProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const scope = useOutboundSidebarScope();
   const {
@@ -40,13 +38,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     hideSectionHeader = false,
     searchValue = '',
   } = props;
-  const handleOpenIntakeForm = () => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set('new', 'true');
-    const nextSearch = nextParams.toString();
-    router.replace(nextSearch ? `${pathname || '/dashboard'}?${nextSearch}` : pathname || '/dashboard');
-  };
-
   // ── Stage filter (fulfillment queue only) ─────────────────────────────────
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
@@ -114,22 +105,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
               </p>
             </motion.header>
           ) : null}
-          {/* New order entry — scoped list search now lives in the workspace
-              header toolbar (one search home); the rail keeps create + scope. */}
-          <motion.div
-            variants={itemVariants}
-            className={`${SIDEBAR_GUTTER} ${hideSectionHeader ? 'pt-4' : 'pt-3'} pb-1`}
-          >
-            {/* ds-raw-button — emerald "create" affordance; DS Button has no success variant */}
-            <button
-              type="button"
-              onClick={handleOpenIntakeForm}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-2 text-role-caption font-bold text-white transition-colors hover:bg-emerald-600 disabled:bg-surface-strong"
-              aria-label="Open new order entry form"
-            >
-              <Plus className="h-4 w-4" /> New order
-            </button>
-          </motion.div>
         </>
       }
       // Pre-pack ("Shipping") lane/staff filtering lives in the workspace
