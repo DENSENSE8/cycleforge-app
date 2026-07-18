@@ -2,7 +2,6 @@
 
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { ShippedIntakeForm, type ShippedFormData } from '@/components/shipped';
 import { useAuth } from '@/contexts/AuthContext';
