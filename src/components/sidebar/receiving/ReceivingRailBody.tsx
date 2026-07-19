@@ -68,14 +68,14 @@ export function ReceivingRailBody({
 
   // Unbox (and any other non-triage/history mode that still mounts this rail):
   // short Unboxed recent dock only — browse tabs are right-pane table.
+  // Eyebrow (Unboxed · N + pencil dismiss) stays on the sidebar rail; the
+  // right-pane BoardSelectToggle owns table multi-select, not rail dismiss.
   return (
     <ReceivingFeedRail
       key="rail-unbox-recent"
       feed="unboxRecent"
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
-      // Select lives on UnboxWorkspaceHeader — hide the rail pencil.
-      hideEyebrow
     />
   );
 }
