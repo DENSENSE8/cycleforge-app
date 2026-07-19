@@ -195,9 +195,9 @@ export function ReceivingSidebarPanel() {
     submitTrackingScan,
   });
 
-  // ── Rail edit mode (pencil bulk select / delete) — thin combined Triage
-  // rail only. Browse tabs + edit for Prioritize/Unfound/Done live in the
-  // right-pane TriageWorkspaceView (Unbox parity).
+  // ── Rail edit mode (pencil bulk select / dismiss) — Unbox Unboxed dock +
+  // thin combined Triage rail. Right-pane workbench Select is table multi-select
+  // (separate); the sidebar pencil dismisses rows from this staffer's rail.
   const {
     railEditMode,
     railSelectedIds,
@@ -208,7 +208,7 @@ export function ReceivingSidebarPanel() {
     setManyRailSelected,
     handleRailBulkDismiss,
   } = useRailEditMode({
-    isScanSurface: mode === 'triage',
+    isScanSurface,
     mode,
     unboxView,
     triageView: 'triage',
@@ -240,7 +240,7 @@ export function ReceivingSidebarPanel() {
     // `relative` anchors the edit-mode SelectionActionBar pinned at the bottom.
     <div className="relative flex h-full min-w-0 flex-col overflow-hidden">
       <RailEditModeProvider
-        active={railEditMode && mode === 'triage'}
+        active={railEditMode && isScanSurface}
         selectedIds={railSelectedIds}
         toggle={toggleRailSelected}
         setMany={setManyRailSelected}
@@ -347,8 +347,8 @@ export function ReceivingSidebarPanel() {
           </>
         )}
 
-        {/* Edit-mode bulk actions — triage sidebar only. */}
-        {mode === 'triage' && railEditMode ? (
+        {/* Edit-mode bulk dismiss — Unbox / Triage sidebar rails. */}
+        {isScanSurface && railEditMode ? (
           <ReceivingBulkActionBar
             selectedIds={railSelectedIdList}
             onDismiss={handleRailBulkDismiss}
