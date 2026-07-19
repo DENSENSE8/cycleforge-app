@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
   getSidebarPageNav,
@@ -14,6 +15,7 @@ import {
 } from '@/lib/dogfood/parked-surfaces';
 import { PARKED_SURFACE_ICONS } from '@/components/dogfood/ParkedSurface';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
+import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
 import { useActiveSidebarMode } from './useActiveSidebarMode';
 import { useSidebarModeNav } from './useSidebarModeNav';
 import { MAX_RECENT_MODES, useRecentModes } from './useRecentModes';
@@ -65,10 +67,18 @@ export function MasterNav({
 }) {
   const { pageId, modeId } = useActiveSidebarMode();
   const navigate = useSidebarModeNav();
+  const queryClient = useQueryClient();
   const { recents: recentModeRefs, pushRecent: pushRecentMode } = useRecentModes();
 
   const [open, setOpen] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  const handleRowHover = useCallback(
+    (page: SidebarPageNav) => {
+      prefetchNavData(page.href, queryClient);
+    },
+    [queryClient],
+  );
 
   const closeMenu = useCallback(() => {
     setOpen(false);
@@ -183,10 +193,11 @@ export function MasterNav({
         icon,
         iconLayer: mode ? 'mode' : 'page',
         onSelect: () => handleNavigate(ref.pageId, ref.modeId ?? undefined),
+        onHover: () => prefetchNavData(page.href, queryClient),
       });
     }
     return chips;
-  }, [isModeful, recentModeRefs, pages, pageId, modeId, handleNavigate]);
+  }, [isModeful, recentModeRefs, pages, pageId, modeId, handleNavigate, queryClient]);
 
   if (!activePage) return null;
 
@@ -202,6 +213,7 @@ export function MasterNav({
       expandedKey={expandedKey}
       onToggleRow={setExpandedKey}
       onNavigate={handleNavigate}
+      onRowHover={handleRowHover}
       onRequestClose={closeMenu}
       renderContext={renderContext}
       className={className}

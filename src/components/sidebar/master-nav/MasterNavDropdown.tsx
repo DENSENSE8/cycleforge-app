@@ -31,11 +31,13 @@ interface MasterNavDropdownProps {
   expandedKey: string | null;
   onToggleRow: (key: string | null) => void;
   onNavigate: (pageId: string, modeId?: string) => void;
+  /** Hover hook per page row — warms the destination's data (nav-data-prefetch). */
+  onRowHover?: (page: SidebarPageNav) => void;
   className?: string;
 }
 
 export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownProps>(function MasterNavDropdown(
-  { activePage, activeModeId, otherPages, expandedKey, onToggleRow, onNavigate, className },
+  { activePage, activeModeId, otherPages, expandedKey, onToggleRow, onNavigate, onRowHover, className },
   ref,
 ) {
   const highlightedModeId = activeModeId ?? activePage.modes?.[0]?.id ?? null;
@@ -58,6 +60,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
           <button
             type="button"
             onClick={() => onNavigate(page.id)}
+            onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
             aria-label={`Go to ${page.label}`}
             className={cn(
               'ds-raw-button flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left transition-colors',
