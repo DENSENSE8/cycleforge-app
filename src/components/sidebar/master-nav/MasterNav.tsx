@@ -67,18 +67,10 @@ export function MasterNav({
 }) {
   const { pageId, modeId } = useActiveSidebarMode();
   const navigate = useSidebarModeNav();
-  const queryClient = useQueryClient();
   const { recents: recentModeRefs, pushRecent: pushRecentMode } = useRecentModes();
 
   const [open, setOpen] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-
-  const handleRowHover = useCallback(
-    (page: SidebarPageNav) => {
-      prefetchNavData(page.href, queryClient);
-    },
-    [queryClient],
-  );
 
   const closeMenu = useCallback(() => {
     setOpen(false);
@@ -148,6 +140,15 @@ export function MasterNav({
       onNavigate?.();
     },
     [navigate, onNavigate],
+  );
+
+  // Hovering a destination warms its data (nav-data-prefetch registry) so the
+  // subsequent click paints from cache instead of a skeleton. Deduped by
+  // react-query staleTime, so repeat hovers are free.
+  const queryClient = useQueryClient();
+  const handleRowHover = useCallback(
+    (page: SidebarPageNav) => prefetchNavData(page.href, queryClient),
+    [queryClient],
   );
 
   const isModeful = Boolean(activePage?.modes && activePage.modes.length > 1);
