@@ -822,6 +822,15 @@ export interface ReceivingLinesListResponse {
 type ReceivingLinesFetchPhase = 'full' | 'spine';
 
 /**
+ * Spine paint window. The list SELECT's per-row laterals (photo_count, catalog
+ * title lookups, similarity()) scale with LIMIT, so the paint tier clamps deep
+ * windows (500 → 150 measured ~-0.5s server time on view=activity) and lets the
+ * `full` pass restore the authoritative depth right behind it. 150 comfortably
+ * covers the History tab's current-week slice (~100 rows on a busy week).
+ */
+const SPINE_PAINT_LIMIT = 150;
+
+/**
  * The ONE query-options builder for the receiving/unbox lines table. Every
  * consumer of the table's rows (the table itself via useReceivingLinesQuery,
  * the Unbox KPI strip, prefetchers) MUST build its options here so they share
@@ -841,6 +850,10 @@ export function receivingLinesTableQuery(
   if (phase === 'spine') {
     params.delete('include');
     params.set('phase', 'spine');
+    const limit = Number(params.get('limit'));
+    if (Number.isFinite(limit) && limit > SPINE_PAINT_LIMIT) {
+      params.set('limit', String(SPINE_PAINT_LIMIT));
+    }
   }
   const queryKey =
     phase === 'spine'
