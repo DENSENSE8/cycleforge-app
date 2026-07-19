@@ -113,6 +113,7 @@ export function MasterNavView({
   expandedKey,
   onToggleRow,
   onNavigate,
+  onRowHover,
   onRequestClose,
   renderContext,
   className,
@@ -129,6 +130,8 @@ export function MasterNavView({
   expandedKey: string | null;
   onToggleRow: (key: string | null) => void;
   onNavigate: (pageId: string, modeId?: string) => void;
+  /** Hover hook per dropdown page row — warms the destination's data. */
+  onRowHover?: (page: SidebarPageNav) => void;
   /** Dismiss the open menu (mouse leave / Escape). */
   onRequestClose?: () => void;
   /** The workspace body shown under the header; the dropdown floats over it. */
@@ -258,6 +261,7 @@ export function MasterNavView({
         expandedKey={expandedKey}
         onToggleRow={onToggleRow}
         onNavigate={onNavigate}
+        onRowHover={onRowHover}
         className="max-h-full"
       />
     </div>
@@ -299,6 +303,7 @@ export function MasterNavView({
                 expandedKey={expandedKey}
                 onToggleRow={onToggleRow}
                 onNavigate={onNavigate}
+                onRowHover={onRowHover}
               />
             </div>
           )}

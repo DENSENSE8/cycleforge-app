@@ -17,6 +17,8 @@ export interface MasterNavRecentModeChip {
   /** Heavier stroke for page jumps; lighter for mode jumps. */
   iconLayer?: 'page' | 'mode';
   onSelect: () => void;
+  /** Optional hover hook — warms the destination's data (nav-data-prefetch). */
+  onHover?: () => void;
 }
 
 /**
@@ -84,7 +86,11 @@ export function MasterNavHeader({
           {recentModes.map((mode) => {
             const Icon = mode.icon;
             return (
-              <div key={mode.key} className="flex items-center justify-center px-1">
+              <div
+                key={mode.key}
+                className="flex items-center justify-center px-1"
+                onMouseEnter={mode.onHover}
+              >
                 <HoverTooltip label={mode.label} asChild placement="below">
                   <IconButton
                     size="xs"
