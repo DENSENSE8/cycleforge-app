@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import {
   safeChannelName,
@@ -65,6 +66,11 @@ export function MobileReceivingList({
   surface?: 'triage' | 'unbox';
 } = {}) {
   const { user } = useAuth();
+  // ReceivingSurfacePage mounts this hidden on DESKTOP too (CSS `md:hidden`
+  // visibility selection, deliberately not a JS branch) — gate the feed query on
+  // the real UI mode so an invisible desktop mount never pays the 100-row
+  // authoritative fetch (it was the single heaviest request on /unbox load).
+  const { isMobile } = useUIModeOptional();
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
   const stationBridgeChannel = safeChannelName(() => getStaffStationBridgeChannelName(orgId!, staffId));
@@ -82,9 +88,12 @@ export function MobileReceivingList({
     // refetch on return so the camera ×N badge reconciles past the staleTime
     // window — the optimistic bump in notifyReceivingPhotoChanged covers the gap.
     refetchOnMount: 'always',
+    enabled: isMobile,
     queryFn: async () => {
       const params = new URLSearchParams({
-        limit: '500',
+        // Display windows to ≤20 rows (useFeedWindow) — 100 gives carton-grouping
+        // headroom; the old 500-row window was pure over-fetch on a phone feed.
+        limit: '100',
         offset: '0',
         include: 'serials',
       });
