@@ -222,6 +222,7 @@ export function UnmatchedLineRow({
             alt=""
             className="h-12 w-12 shrink-0 rounded border border-blue-100 object-cover"
             loading="lazy"
+            decoding="async"
           />
         ) : null}
         <div className="min-w-0 flex-1">

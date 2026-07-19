@@ -1,5 +1,5 @@
 import { repairHandle } from '@/lib/barcode-routing';
-import { escapeLabelHtml, printLabel } from '@/lib/print/printLabel';
+import { escapeLabelHtml } from '@/lib/print/labelHtml';
 
 // Repair metadata laid out top/middle/bottom in the shared label's info column.
 const REPAIR_INFO_CSS = `
@@ -66,10 +66,13 @@ export function printRepairLabel(payload: RepairLabelPayload): void {
     </div>`;
 
   // DataMatrix (`REP-{id}` handle) — routeScan() routes to /m/rs/{id}.
-  printLabel({
-    name: 'Label',
-    infoHtml,
-    infoCss: REPAIR_INFO_CSS,
-    dataMatrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+  // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
+  void import('@/lib/print/printLabel').then(({ printLabel }) => {
+    printLabel({
+      name: 'Label',
+      infoHtml,
+      infoCss: REPAIR_INFO_CSS,
+      dataMatrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+    });
   });
 }

@@ -8,14 +8,8 @@
  * surface lives next to its consumer.
  */
 
-import {
-  PackageOpen,
-  ClipboardList,
-  Inbox,
-  ShoppingCart,
-  Wrench,
-} from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { RECEIVING_MODE_ICONS } from '@/lib/nav/station-nav-icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
@@ -24,7 +18,7 @@ import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 
 export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pickup' | 'repair';
 
-// Sidebar order: Incoming → Receiving (triage/scan) → Unbox → Local Pickup → Repair.
+// Sidebar order: Incoming → Arrival (triage) → Unbox → Local Pickup → Repair.
 // Local Pickup + Repair are front-desk receiving work, each its own mode on its
 // own route (`/pickup`, `/repair`) — NOT one "Walk-In" station with a `?job=`
 // switcher. Sales is not a receiving mode; it lives on the Sales page
@@ -37,7 +31,7 @@ export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pic
 // moved off the receiving page to a `/dashboard` mode — plan lane 04. Delete the
 // type member once that cutover lands.
 //
-// `triage` (label "Receiving") is the scan/identify surface that runs BEFORE
+// `triage` (label "Arrival") is the dock scan/identify surface that runs BEFORE
 // unboxing: scan a tracking, see found/unfound + expedited/normal verdict, and
 // route the carton. `receive` (label "Unbox") is the existing unboxing
 // workspace — relabeled only, id unchanged to avoid a wide string rename.
@@ -52,11 +46,11 @@ export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pic
 // off automatically when the operator scans / marks-received (workflow
 // advances past EXPECTED or quantity_received goes positive).
 export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'incoming', label: 'Incoming',     icon: Inbox },
-  { id: 'triage',   label: 'Receiving',    icon: ClipboardList },
-  { id: 'receive',  label: 'Unbox',        icon: PackageOpen },
-  { id: 'pickup',   label: 'Local Pickup', icon: ShoppingCart },
-  { id: 'repair',   label: 'Repair',       icon: Wrench },
+  { id: 'incoming', label: 'Incoming',     icon: RECEIVING_MODE_ICONS.incoming },
+  { id: 'triage',   label: 'Arrival',    icon: RECEIVING_MODE_ICONS.triage },
+  { id: 'receive',  label: 'Unbox',        icon: RECEIVING_MODE_ICONS.receive },
+  { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_MODE_ICONS.pickup },
+  { id: 'repair',   label: 'Repair',       icon: RECEIVING_MODE_ICONS.repair },
 ];
 
 // ── Carton scratch (localStorage) ───────────────────────────────────────────

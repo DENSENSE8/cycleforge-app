@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/pane-header';
 
 interface PanelActionBarProps {
-  /** Retained for back-compat; close lives in the panel header X now, so this isn't rendered. */
+  /** Retained for back-compat; close lives on RightRailHost (backdrop / Esc). */
   onClose?: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -28,7 +28,7 @@ export type PanelActionBarConfig = PanelActionBarProps;
  * inherit the modernized visual (Refresh-style icon+label buttons +
  * prev/next chevrons) without changing their call sites.
  *
- * `onClose` is intentionally ignored — the panel header X owns closing.
+ * `onClose` is intentionally ignored — RightRailHost owns closing (backdrop / Esc).
  */
 export function PanelActionBar({
   onMoveUp,

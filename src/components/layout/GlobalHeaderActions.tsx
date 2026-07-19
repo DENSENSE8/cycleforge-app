@@ -4,12 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnchoredLayer } from '@/design-system';
 import { IconButton } from '@/design-system/primitives';
-import { Inbox, Pencil, Clipboard } from '@/components/Icons';
+import { Inbox, Clipboard } from '@/components/Icons';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
-import { useHeader } from '@/contexts/HeaderContext';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
 import { QuickAccessPopover } from '@/components/quick-access/QuickAccessPopover';
 import { PhoneHistoryPopover } from '@/components/quick-access/PhoneHistoryPopover';
@@ -18,6 +17,7 @@ import { ClipboardHistoryPopover } from '@/components/quick-access/ClipboardHist
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { PhoneSignInQrButton } from '@/components/quick-access/PhoneSignInQrButton';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
+import { HEADER_ICON_WRAP } from './header-shell';
 
 type OpenPopover = 'none' | 'history' | 'inbox' | 'account' | 'clipboard' | 'feedback';
 
@@ -43,7 +43,6 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const isMobile = variant === 'mobile';
   const pathname = usePathname();
   const { user } = useAuth();
-  const { selection } = useHeader();
   const inbox = useActivityInboxOptional();
   const inboxCount = inbox?.items.length ?? 0;
 
@@ -66,22 +65,23 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const displayName = user.name;
   const accountInitial = initials(displayName) || '·';
 
-  const ctrlSize = isMobile ? 'h-10 w-10' : 'h-8 w-8';
+  const iconBtnSize = isMobile ? ('touch' as const) : ('md' as const);
   const iconSize = isMobile ? 'h-5 w-5' : 'h-4 w-4';
   const avatarSize = isMobile ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-role-caption';
+  const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 
   const iconCluster = (
     <>
-      <div ref={clipboardAnchorRef} className="relative">
+      <div ref={clipboardAnchorRef} className={wrapClass}>
         <HoverTooltip label="Clipboard history" asChild>
           <IconButton
             type="button"
+            size={iconBtnSize}
             onClick={() => setPopover((p) => (p === 'clipboard' ? 'none' : 'clipboard'))}
             ariaLabel="Clipboard history"
             aria-expanded={clipboardOpen}
             className={cn(
-              'flex items-center justify-center rounded-full text-text-muted hover:bg-surface-sunken active:scale-95',
-              ctrlSize,
+              'rounded-full text-text-muted hover:bg-surface-sunken',
               clipboardOpen && 'bg-surface-sunken',
             )}
             icon={<Clipboard className={iconSize} />}
@@ -98,25 +98,27 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
         </AnchoredLayer>
       </div>
 
-      <PhoneSignInQrButton className={ctrlSize} iconClassName={iconSize} />
+      <div className={wrapClass}>
+        <PhoneSignInQrButton size={iconBtnSize} iconClassName={iconSize} />
+      </div>
 
-      <div ref={inboxAnchorRef} className="relative">
+      <div ref={inboxAnchorRef} className={wrapClass}>
         <HoverTooltip label="Notifications" asChild>
           <IconButton
             type="button"
+            size={iconBtnSize}
             onClick={() => setPopover((p) => (p === 'inbox' ? 'none' : 'inbox'))}
             ariaLabel="Notifications"
             aria-expanded={inboxOpen}
             className={cn(
-              'relative flex items-center justify-center rounded-full text-text-muted hover:bg-surface-sunken active:scale-95',
-              ctrlSize,
+              'rounded-full text-text-muted hover:bg-surface-sunken',
               inboxOpen && 'bg-surface-sunken',
             )}
             icon={
-              <span className="relative inline-flex shrink-0">
+              <span className={cn('relative inline-flex shrink-0 items-center justify-center', iconSize)}>
                 <Inbox className={iconSize} />
                 {inboxCount > 0 && (
-                  <span className="pointer-events-none absolute -right-1 -top-1 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-role-micro font-bold leading-none tabular-nums text-white ring-1 ring-white">
+                  <span className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 min-w-[12px] items-center justify-center rounded-full bg-rose-600 px-0.5 text-role-micro font-bold leading-none tabular-nums text-white ring-1 ring-white">
                     {inboxCount > 9 ? '9+' : inboxCount}
                   </span>
                 )}
@@ -135,7 +137,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
         </AnchoredLayer>
       </div>
 
-      <div ref={accountAnchorRef} className="relative">
+      <div ref={accountAnchorRef} className={wrapClass}>
         <HoverTooltip label={displayName || `Staff #${user.staffId}`} asChild>
           <button
             type="button"
@@ -190,28 +192,11 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   );
 
   return (
-    <div className={cn('flex items-center', isMobile ? 'gap-1.5' : 'gap-2')}>
-      {!isMobile && selection && (
-        <HoverTooltip label={selection.active ? 'Done selecting' : 'Select'} asChild>
-          <button
-            type="button"
-            onClick={selection.onToggle}
-            aria-pressed={selection.active}
-            aria-label={selection.active ? 'Done selecting' : 'Select'}
-            className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-sunken active:scale-95',
-              selection.active && 'bg-surface-inverse text-white hover:bg-surface-inverse-hover',
-            )}
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-        </HoverTooltip>
-      )}
-
+    <div className={cn('flex h-full items-center', isMobile ? 'gap-1.5' : 'gap-1')}>
       {!isMobile ? (
-        <div className={cn('flex shrink-0 items-center gap-1.5', HEADER_RAIL_WIDTH)}>
+        <div className={cn('flex h-8 shrink-0 items-center gap-1.5', HEADER_RAIL_WIDTH)}>
           <GlobalHeaderSearch />
-          <div className="flex shrink-0 items-center gap-1">{iconCluster}</div>
+          <div className="flex h-8 shrink-0 items-center gap-0.5">{iconCluster}</div>
         </div>
       ) : (
         iconCluster

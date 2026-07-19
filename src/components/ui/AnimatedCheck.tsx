@@ -3,9 +3,9 @@
 import { motion, useReducedMotion } from 'framer-motion';
 
 /**
- * Success checkmark that draws itself on mount: the emerald disc pops in (spring)
- * and the tick strokes on via SVG `pathLength` 0→1. Built for use as a sonner
- * toast `icon` (default ~18px) but works anywhere a success glyph is wanted.
+ * Success checkmark that draws itself on mount: the soft success disc pops in
+ * (spring) and the tick strokes on via SVG `pathLength` 0→1. Built for toast
+ * `icon` slots (default ~18px) but works anywhere a success glyph is wanted.
  *
  * Honors `prefers-reduced-motion` — it renders the final, fully-drawn mark with
  * no scale/draw animation (per the house reduced-motion mandate).
@@ -30,7 +30,7 @@ export function AnimatedCheck({ size = 18 }: { size?: number }) {
         cx="12"
         cy="12"
         r="11"
-        className="fill-emerald-500"
+        className="fill-fill-success"
         initial={reduce ? false : { scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: 'spring', stiffness: 420, damping: 18, mass: 0.7 }}

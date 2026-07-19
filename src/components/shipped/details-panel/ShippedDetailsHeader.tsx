@@ -15,7 +15,6 @@ import {
   PaneHeader,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
-  PaneHeaderCloseButton,
   PaneHeaderTabs,
   PaneHeaderActionBar,
   type PaneHeaderActionBarAction,
@@ -51,7 +50,7 @@ export function ShippedDetailsHeader({
   showExceptionsFallback,
   copiedOrderId,
   onCopyOrderId,
-  onClose,
+  onClose: _onClose,
   actions,
   onMoveUp,
   onMoveDown,
@@ -62,8 +61,8 @@ export function ShippedDetailsHeader({
   onSectionChange,
   onOpenFullPage,
 }: ShippedDetailsHeaderProps) {
-  const showRightSlot = Boolean(onOpenFullPage || onClose);
-
+  // Close lives on RightRailHost (backdrop / Esc); prop retained for call sites.
+  void _onClose;
   return (
     <PaneHeader
       className="shrink-0 border-b-0 bg-surface-card/90 backdrop-blur-xl"
@@ -92,20 +91,15 @@ export function ShippedDetailsHeader({
         </>
       }
       rightSlot={
-        showRightSlot ? (
-          <div className="flex items-center gap-1">
-            {onOpenFullPage ? (
-              <HoverTooltip label="Open full order page" asChild>
-                <IconButton
-                  icon={<ExternalLink className="h-4 w-4" />}
-                  onClick={onOpenFullPage}
-                  ariaLabel="Open full order page"
-                  className="rounded-md p-1.5 hover:bg-surface-sunken"
-                />
-              </HoverTooltip>
-            ) : null}
-            {onClose ? <PaneHeaderCloseButton onClick={onClose} ariaLabel="Close details" /> : null}
-          </div>
+        onOpenFullPage ? (
+          <HoverTooltip label="Open full order page" asChild>
+            <IconButton
+              icon={<ExternalLink className="h-4 w-4" />}
+              onClick={onOpenFullPage}
+              ariaLabel="Open full order page"
+              className="rounded-md p-1.5 hover:bg-surface-sunken"
+            />
+          </HoverTooltip>
         ) : undefined
       }
       belowSlot={

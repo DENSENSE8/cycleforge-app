@@ -94,8 +94,14 @@ Field group = label above, value below:
 - Left-aligned, content order: **title → meta → chips(right)**. Do not center or `flex-1`-stretch row content.
   - Title: `truncate text-caption font-bold text-gray-900`.
   - Meta: `truncate text-eyebrow font-semibold uppercase tracking-widest text-gray-500`.
+- **Queue/station left edge** (`QUEUE_ROW` in `src/components/ui/queue-row-chrome.ts` + `META_COL` in `RowMetaColumns.tsx`):
+  - Stack: `QUEUE_ROW.px` → optional select gutter (`QUEUE_ROW.selectGutter`) → `META_COL` dot track → title.
+  - Meta indent via `metaIndentFor(track, selectMode)` — never hand-rolled `calc` or page-local `px-4`.
+  - Wide track (`indentWide` / `dotTrackWide`) only for received/expected qty surfaces (Receiving).
+  - `CollapsibleGroupRow` nest children: no extra horizontal padding when `showChevron={false}`
+    (`queueGroupNestClass`); nest cue is border + wash only.
 - **Selection is background + ring only, never a size/height shift.** Keep row content identical across states:
-  - selected: `bg-blue-50 ring-1 ring-inset ring-blue-400`
+  - selected: `QUEUE_ROW.selectedClass` (`bg-blue-50 ring-1 ring-inset ring-blue-400`)
   - focused (no click): `bg-gray-50 ring-1 ring-inset ring-gray-200`
   - default: `hover:bg-gray-50`; constant `py-1.5`.
 

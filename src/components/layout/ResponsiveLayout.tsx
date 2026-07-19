@@ -4,8 +4,7 @@ import { type ReactNode, useState, useCallback, useEffect, useRef } from 'react'
 import { Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
-import DashboardSidebar from '@/components/DashboardSidebar';
-import { CommandBar } from '@/components/CommandBar';
+import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
@@ -14,11 +13,36 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
-import { GlobalDesktopSkuScanner } from '@/components/layout/GlobalDesktopSkuScanner';
+import { appContentShellClass } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 import { QuickAccessVisitRecorder } from '@/lib/quick-access/QuickAccessVisitRecorder';
 import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
-import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
+
+// The sidebar is its own chunk: desktop mounts it immediately (the whole shell
+// is client-gated behind `mounted`, so there is no SSR paint to preserve),
+// while mobile routes never download it unless the drawer opens. The fixed-
+// width placeholder keeps the desktop frame from shifting while the chunk
+// lands.
+const DashboardSidebar = dynamic(() => import('@/components/DashboardSidebar'), {
+  ssr: false,
+  loading: () => <aside className="h-full w-64 shrink-0" aria-hidden />,
+});
+
+// On-demand chrome, split out of the shell chunk. All three render nothing
+// until triggered (⌘K, scan event, Ably push), so deferring their JS past
+// hydration changes no behavior — the listeners attach as soon as the split
+// chunk lands, which is still within the first idle moments.
+const CommandBar = dynamic(() => import('@/components/CommandBar').then((m) => m.CommandBar), { ssr: false });
+const GlobalDesktopSkuScanner = dynamic(
+  () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
+  { ssr: false },
+);
+const ReceivingPhoneBridgeMount = dynamic(
+  () => import('@/components/mobile/receiving/ReceivingPhoneBridgeMount').then((m) => m.ReceivingPhoneBridgeMount),
+  { ssr: false },
+);
 
 /**
  * Mount-only component. Subscribes to phone-originated scans on
@@ -49,7 +73,7 @@ function GlobalWedgeScannerMount() {
  */
 function SidebarFallback({ reset }: { reset: () => void }) {
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-border-soft bg-surface-card">
+    <aside className={cn('flex h-full w-64 shrink-0 flex-col border-r border-border-soft', appChromeClass)}>
       <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
         <AlertTriangle className="mx-auto h-5 w-5 text-rose-500" />
         <p className="mt-2 text-role-caption font-bold text-rose-700">Sidebar unavailable</p>
@@ -192,7 +216,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   // deterministically (see `onMobileRoute`), so there's nothing to wait for and
   // the blank would just be an extra refresh flash.
   if (!mounted && !onMobileRoute) {
-    return <div className="flex min-h-0 flex-1 bg-surface-card" aria-hidden="true" />;
+    return <div className={cn('flex min-h-0 flex-1', appChromeClass)} aria-hidden="true" />;
   }
 
   // Drawer overlay is rendered regardless of which branch is active so pages
@@ -264,7 +288,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
             </Suspense>
           </ErrorBoundary>
         )}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+        <div className={cn('relative flex h-full min-w-0 flex-1 flex-col overflow-hidden', appChromeClass)}>
           {!chromeless && (
           <GlobalHeader
             canCollapseSidebar
@@ -272,7 +296,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
             onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
           />
           )}
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
             {children}
           </main>
         </div>
@@ -325,7 +349,7 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   }
 
   if (mobileRouteRestricted) {
-    return <div className="flex min-h-0 flex-1 bg-surface-card" aria-hidden="true" />;
+    return <div className={cn('flex min-h-0 flex-1', appChromeClass)} aria-hidden="true" />;
   }
 
   // ── Mobile layout: content only ──

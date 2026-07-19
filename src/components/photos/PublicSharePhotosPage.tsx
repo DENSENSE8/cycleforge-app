@@ -120,7 +120,7 @@ export default function PublicSharePhotosPage({ token }: { token: string }) {
             className="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.thumbUrl} alt={photo.exportFilename || 'Photo'} className="h-full w-full object-cover" />
+            <img src={photo.thumbUrl} alt={photo.exportFilename || 'Photo'} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           </a>
         ))}
       </div>

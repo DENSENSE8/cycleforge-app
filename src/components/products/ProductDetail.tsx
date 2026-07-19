@@ -93,6 +93,8 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                         <img
                             src={product.image_url}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover"
                         />
                     ) : (

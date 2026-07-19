@@ -79,7 +79,7 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
                 onClick={() => c.openPhoto(index)}
                 className="ds-raw-button relative aspect-square rounded-lg overflow-hidden bg-surface-sunken hover:ring-2 hover:ring-blue-400 transition-all"
               >
-                <img src={photo.url} alt={`SKU photo ${photo.id}`} className="h-full w-full object-cover" loading="lazy" />
+                <img src={photo.url} alt={`SKU photo ${photo.id}`} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 {photo.photoType && (
                   <span className="absolute bottom-1 left-1 rounded bg-scrim/60 px-1.5 py-0.5 text-role-micro font-bold uppercase text-white">{photo.photoType}</span>
                 )}

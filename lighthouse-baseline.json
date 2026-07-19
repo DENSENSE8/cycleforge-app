@@ -1,0 +1,195 @@
+{
+  "tolerance": 3,
+  "routes": {
+    "/signin": {
+      "tier": 1,
+      "min": {
+        "performance": 78,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 78,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 5892,
+        "tbtMs": 32,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/dashboard": {
+      "tier": 1,
+      "min": {
+        "performance": 67,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 67,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 12182,
+        "tbtMs": 69,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/receiving": {
+      "tier": 1,
+      "min": {
+        "performance": 68,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 68,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 11574,
+        "tbtMs": 34,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/triage": {
+      "tier": 1,
+      "min": {
+        "performance": 69,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 69,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 12323,
+        "tbtMs": 30,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/packer": {
+      "tier": 1,
+      "min": {
+        "performance": 77,
+        "accessibility": 93,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 77,
+        "accessibility": 93,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 6335,
+        "tbtMs": 33,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/test": {
+      "tier": 1,
+      "min": {
+        "performance": 69,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 69,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 10336,
+        "tbtMs": 158,
+        "cls": 0.017
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/search": {
+      "tier": 1,
+      "min": {
+        "performance": 68,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 68,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 11874,
+        "tbtMs": 27,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/m/receive": {
+      "tier": 1,
+      "min": {
+        "performance": 77,
+        "accessibility": 93,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 77,
+        "accessibility": 93,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 6361,
+        "tbtMs": 22,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/m/scan": {
+      "tier": 1,
+      "min": {
+        "performance": 76,
+        "accessibility": 95,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 76,
+        "accessibility": 95,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 6964,
+        "tbtMs": 23,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    },
+    "/m/home": {
+      "tier": 1,
+      "min": {
+        "performance": 71,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91
+      },
+      "measured": {
+        "performance": 71,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 91,
+        "lcpMs": 11930,
+        "tbtMs": 37,
+        "cls": 0
+      },
+      "updatedAt": "2026-07-19T09:30:00.000Z"
+    }
+  }
+}

@@ -79,7 +79,7 @@ export function GoalPopover({
             <p className="px-2 pb-1.5 pt-1 text-role-eyebrow font-bold uppercase tracking-wider text-text-faint">Your stations</p>
             {goals.map((gg) => {
               const pct = gg.target <= 0 ? 0 : Math.round((gg.scanCount / gg.target) * 100);
-              const gt = toneFor(pct);
+              const gt = toneFor(pct, gg.scanCount);
               const on = gg.station === active;
               return (
                 // ds-raw-button — multi-line text-left station row

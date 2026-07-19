@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Barcode, ExternalLink, Plus, Reply, SlidersHorizontal, X } from '@/components/Icons';
+import { Barcode, ChevronLeft, ExternalLink, Plus, Reply, SlidersHorizontal, X } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -26,6 +26,9 @@ import {
   formatListingLinkMenuOptions,
   type CartonListingLink,
 } from '@/lib/receiving/listing-links';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { cn } from '@/utils/_cn';
+import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill';
 
 
 /**
@@ -44,6 +47,11 @@ import {
  * anatomy is the display method. The card renders on the frosted glass
  * workspace surface (`WorkspaceCard variant="glass"`) shared by the whole
  * unbox column.
+ *
+ * Bar density (`density="bar"`): classify (left) · listing/PO/tracking · Claim/
+ * Photos (right-justified clusters). Listing uses ExternalLink + platform mark
+ * (same CopyChip anatomy as PO# / tracking). Utilities sit in the trough via
+ * ReceivingStationContextBar.
  *
  * Layout decisions preserved from the original inline implementation:
  *  - The listing chip reads "----" (gray, no platform tone) until a URL or a
@@ -107,10 +115,20 @@ export function CartonContextCard({
   onPrioritySelect,
   onToggleTicketView,
   ticketViewActive = false,
+  onExitToList,
+  exitLabel = 'Back to list',
+  density = 'card',
 }: {
   receivingId: number | null;
   staffId: string;
   isUnmatched: boolean;
+  /**
+   * `card` — glass WorkspaceCard in the scroll body (legacy).
+   * `bar` — flat inline row for the sticky station context trough (no card
+   * chrome; listing = ExternalLink + platform mark, same CopyChip anatomy as
+   * PO# / tracking).
+   */
+  density?: 'card' | 'bar';
   /**
    * The carton still needs its intake kind (unbox stepper's Classify dot is
    * active) — auto-expand the classify pills so this header IS the classify
@@ -201,6 +219,14 @@ export function CartonContextCard({
   onToggleTicketView?: () => void;
   /** True while the inline ticket editor is open — drives aria-pressed + ring. */
   ticketViewActive?: boolean;
+  /**
+   * Far-left back button that closes the active entity so the right pane
+   * crossfades back to this page's list/history display (in-page — NOT a route
+   * change). Wire each adapter's existing close handler; omit to hide the button.
+   */
+  onExitToList?: () => void;
+  /** Tooltip + aria-label for the back button. Default "Back to list". */
+  exitLabel?: string;
 }) {
   const listingRef = useRef<HTMLInputElement>(null);
   const poInputRef = useRef<HTMLInputElement>(null);
@@ -253,6 +279,18 @@ export function CartonContextCard({
     : listingHasTarget
       ? platformValue
         ? platformMeta.label
+        : isUnmatched
+          ? 'Unfound'
+          : 'Listing'
+      : '----';
+  // Bar density: short lettermark (Gw / eB) so listing matches PO#/TRK last-4 width.
+  const listingBarDisplay = isReturn
+    ? platformValue
+      ? platformMeta.mark
+      : 'Return'
+    : listingHasTarget
+      ? platformValue
+        ? platformMeta.mark
         : isUnmatched
           ? 'Unfound'
           : 'Listing'
@@ -335,9 +373,8 @@ export function CartonContextCard({
     .filter((o) => o.value !== 'PICKUP')
     .map((o) => ({ value: o.value, label: o.label }));
 
-  return (
-    <WorkspaceCard variant="glass" bodyClassName="px-0 py-0" overflow="visible">
-      <div className="space-y-2 px-4 pt-2 pb-3">
+  const body = (
+      <div className={cn(density === 'bar' ? 'space-y-1 px-0 py-0' : 'space-y-2 px-4 pt-2 pb-3')}>
         <div className="flex min-w-0 flex-col gap-y-1">
           {/* Condensed identity row — Priority · Platform · Type · listing ·
               PO# · tracking# · Claim · Photos (in that order). Platform/Type
@@ -353,14 +390,30 @@ export function CartonContextCard({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.12 }}
-                  className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+                  className={cn(
+                    'flex min-w-0 flex-1 items-center',
+                    density === 'bar' ? 'flex-nowrap gap-2.5' : 'flex-wrap gap-2',
+                  )}
                 >
-            {/* Urgency · Platform · Type — one shared pill primitive, all
-                collapse-to-active. Clicking any opens it full-width and
-                unrenders the trailing chip cluster (the options take the freed
-                row); selecting collapses back and rerenders them. Triage hides
-                these controls (showClassifyControls=false) — classify lives in
-                the Overview tab. */}
+            {/* Cluster 1 — exit + classify (+ expanded urgency/platform/type). */}
+            <div className="flex shrink-0 items-center gap-2">
+            {/* Far-left — close the active entity and crossfade the right pane
+                back to this page's list/history display (in-page, no navigation).
+                Each adapter passes its mode's existing close handler. Unconditional
+                (not gated by classify/photo props) so it stays the true leftmost
+                element in triage/shipping too, where classify hides. */}
+            {onExitToList ? (
+              <HoverTooltip label={exitLabel} asChild>
+                <IconButton
+                  type="button"
+                  size="md"
+                  onClick={onExitToList}
+                  ariaLabel={exitLabel}
+                  icon={<ChevronLeft className="h-4 w-4" />}
+                  className="shrink-0 rounded-lg text-text-faint hover:bg-surface-hover hover:text-text-muted"
+                />
+              </HoverTooltip>
+            ) : null}
             {showClassifyControls && showStaffPhotoRow ? (
               <HoverTooltip label={classifyOpen ? 'Hide classification' : 'Show classification'} asChild>
                 <button
@@ -369,10 +422,10 @@ export function CartonContextCard({
                   aria-expanded={classifyOpen}
                   aria-pressed={classifyOpen}
                   aria-label={classifyOpen ? 'Hide classification' : 'Show classification'}
-                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors ${
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
                     classifyOpen
-                      ? 'bg-surface-sunken text-text-default ring-border-default'
-                      : 'text-text-faint ring-border-soft hover:bg-surface-hover hover:text-text-muted'
+                      ? 'bg-surface-sunken text-text-default'
+                      : 'text-text-faint hover:bg-surface-hover hover:text-text-muted'
                   }`}
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -415,44 +468,85 @@ export function CartonContextCard({
             />
               </>
             ) : null}
+            </div>
 
-            {/* Listing — the complete platform-colored chip opens the listing.
-                Its hover menu offers Copy, then Edit. It is labeled by the
-                canonical platform (SoT) with the matching tone so it reads
-                consistently with the Platform pill. The only wide chip. */}
+            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: justify end). */}
+            <div
+              className={cn(
+                'flex min-w-0 items-center',
+                density === 'bar'
+                  ? 'ml-auto shrink-0 flex-nowrap justify-end gap-2.5'
+                  : 'flex-wrap gap-2',
+              )}
+            >
+            {/* Cluster 2 — listing · PO · tracking */}
+            <div className="flex shrink-0 items-center gap-2">
+            {/* Listing — bar: ExternalLink + platform mark (CopyChip anatomy).
+                Card: icon-only PlatformMark. Hover menu offers Copy, then Edit. */}
             {showListing ? (
-              <IdentityLinkChip
-                grow
-                openHref={listingOpenHref}
-                openTitle="Open listing in new tab"
-                linkOptions={listingLinkOptions}
-                // An explicit pasted URL wins; otherwise fall back to the derived
-                // storefront href (listingOpenHref) so the chip reads as a real,
-                // copyable/openable Listing instead of "----".
-                value={listingLink || listingOpenHref || ''}
-                // Imported return → the platform label; otherwise the platform /
-                // Unfound / Listing label (or "----" when nothing's bound yet).
-                display={listingChipDisplay}
-                // Platform tone ONLY when there's an actual listing to open. With
-                // no link the chip isn't a live link, so it reads gray rather than
-                // painting a platform color it can't act on.
-                underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
-                iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
-                disableCopy={!(listingLink.trim() || listingOpenHref)}
-                onEdit={() => {
-                  setListingEditorOpen((v) => {
-                    const next = !v;
-                    if (next) queueMicrotask(() => listingRef.current?.focus());
-                    return next;
-                  });
-                }}
-                editOpen={listingEditorOpen}
-                editLabel="Edit listing URL"
-                actionsInMenu
-                chipAction="open"
-                showExternalIcon
-                menuFirstAction="copy"
-              />
+              density === 'bar' ? (
+                <IdentityLinkChip
+                  openHref={listingOpenHref}
+                  openTitle="Open listing in new tab"
+                  linkOptions={listingLinkOptions}
+                  value={listingLink || listingOpenHref || ''}
+                  display={listingBarDisplay}
+                  // Platform tone ONLY when there's an actual listing to open.
+                  underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
+                  iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
+                  disableCopy={!(listingLink.trim() || listingOpenHref)}
+                  onEdit={() => {
+                    setListingEditorOpen((v) => {
+                      const next = !v;
+                      if (next) queueMicrotask(() => listingRef.current?.focus());
+                      return next;
+                    });
+                  }}
+                  editOpen={listingEditorOpen}
+                  editLabel="Edit listing URL"
+                  actionsInMenu
+                  chipAction="open"
+                  menuFirstAction="copy"
+                  showExternalIcon
+                />
+              ) : (
+                <IdentityLinkChip
+                  openHref={listingOpenHref}
+                  openTitle="Open listing in new tab"
+                  linkOptions={listingLinkOptions}
+                  value={listingLink || listingOpenHref || ''}
+                  display={listingChipDisplay}
+                  iconOnly
+                  iconOnlyMark={
+                    <PlatformMark
+                      platformValue={platformValue}
+                      empty={!platformValue}
+                      textClassName={
+                        listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'
+                      }
+                      borderClassName={
+                        listingHasTarget && platformValue ? platformMeta.border : undefined
+                      }
+                    />
+                  }
+                  underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
+                  iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
+                  disableCopy={!(listingLink.trim() || listingOpenHref)}
+                  onEdit={() => {
+                    setListingEditorOpen((v) => {
+                      const next = !v;
+                      if (next) queueMicrotask(() => listingRef.current?.focus());
+                      return next;
+                    });
+                  }}
+                  editOpen={listingEditorOpen}
+                  editLabel="Edit listing URL"
+                  actionsInMenu
+                  chipAction="open"
+                  menuFirstAction="copy"
+                  showExternalIcon
+                />
+              )
             ) : null}
 
             {/* PO# — or the originating ORDER# for a return: an imported RETURN
@@ -460,7 +554,8 @@ export function CartonContextCard({
                 that was previously shipped) shows the closed-loop outbound order#
                 lifted into this slot. Either way it's a copy chip SEPARATE from
                 the listing link, and — not being a Zoho PO — copy-only: no Zoho
-                open, no inline editor. Normal bound POs keep open + edit. */}
+                open, no inline editor. Normal bound POs keep open + edit.
+                Tone `id` → # icon (open lives in hover menu). */}
             {showOrderIdentity ? (
               <IdentityLinkChip
                 openHref={orderCopyOnly ? undefined : poOpenHref}
@@ -487,8 +582,8 @@ export function CartonContextCard({
               />
             ) : null}
 
-            {/* Tracking# — chip click copies; hover menu opens carrier tracking
-                or edits the primary/extra tracking values. Suppressed for pickup. */}
+            {/* Tracking# — tone `tracking` → MapPin. Chip click copies; hover
+                menu opens carrier tracking or edits. Suppressed for pickup. */}
             <div className="flex shrink-0 items-center gap-1">
               {isLocalPickup ? (
                 <FulfillmentPickupPill
@@ -523,10 +618,12 @@ export function CartonContextCard({
                 </>
               )}
             </div>
+            </div>
 
-            {/* Claim — ticket chip replaces the CTA when filed. */}
+            {/* Cluster 3 — Claim · Photos */}
             {showStaffPhotoRow ? (
-              zendeskTrimmed ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {zendeskTrimmed ? (
                 <div className="flex shrink-0 items-center gap-1">
                   <ReceivingTicketChip
                     value={zendeskTrimmed}
@@ -569,26 +666,28 @@ export function CartonContextCard({
                 <HoverTooltip label="File a damage / wrong-item / missing claim for this package" asChild>
                   <Button
                     type="button"
-                    variant="primary"
+                    variant="ghost"
                     size="sm"
                     onClick={onMakeClaim}
                     ariaLabel="File claim"
-                    className="h-8 w-[50.32px] shrink-0 self-center rounded-full bg-orange-50 px-0 text-role-micro uppercase leading-none tracking-wide text-orange-700 shadow-none ring-1 ring-inset ring-orange-200 hover:bg-orange-100 active:bg-orange-100"
+                    className={STATION_CONTEXT_CLAIM_PILL_CLASS}
                   >
                     Claim
                   </Button>
                 </HoverTooltip>
-              ) : null
-            ) : null}
+              ) : null}
 
             {/* Photos — camera + ×N + send-to-phone (+); hover opens gallery when photos exist. */}
-            {showStaffPhotoRow && receivingId != null ? (
+            {receivingId != null ? (
               <ReceivingPhotoButton
                 receivingId={receivingId}
                 staffId={Number(staffId) || 0}
                 poRef={effectiveOrder || null}
               />
             ) : null}
+            </div>
+            ) : null}
+            </div>
                 </motion.div>
               ) : (
                 <motion.div
@@ -825,6 +924,15 @@ export function CartonContextCard({
           ) : null}
         </div>
       </div>
+  );
+
+  if (density === 'bar') {
+    return <div className="min-w-0 flex-1 overflow-visible">{body}</div>;
+  }
+
+  return (
+    <WorkspaceCard variant="glass" bodyClassName="px-0 py-0" overflow="visible">
+      {body}
     </WorkspaceCard>
   );
 }

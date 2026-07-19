@@ -22,6 +22,8 @@ import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/
 import { ClipboardList, Globe } from '@/components/Icons';
 import { CatalogReviewWorkbench } from '@/components/studio/CatalogReviewWorkbench';
 import { CommunityCatalogWorkbench } from '@/components/studio/CommunityCatalogWorkbench';
+import { appCanvasClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 type CatalogMode = 'browse' | 'review';
 
@@ -60,7 +62,7 @@ export function CatalogWorkspace({ canReview }: { canReview: boolean }) {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-surface-canvas">
+    <div className={cn('flex h-full min-h-0 flex-1 flex-col', appCanvasClass)}>
       {items.length > 1 && (
         <div className="border-b border-border-hairline px-3 pt-1 pb-2">
           <HorizontalButtonSlider

@@ -28,7 +28,6 @@ import { TimelineSection } from '@/components/ui/TimelineSection';
 import { Button, IconButton } from '@/design-system/primitives';
 import { IdentifierToggle } from '@/components/ui/IdentifierToggle';
 import { SerialProvenanceHeader } from '@/components/operations/SerialProvenanceHeader';
-import { OperationsResultsView } from '@/components/operations/OperationsResultsView';
 import {
   framerPresence,
   framerTransition,
@@ -44,7 +43,6 @@ import { downloadJourneyCsv, printJourney } from '@/lib/serial/serial-journey';
 import { useOperationsTimelineUrlState } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 import { useOperationsJourney } from '@/hooks/useOperationsJourney';
 import { useOperationsJourneyBrowse } from '@/hooks/useOperationsJourneyBrowse';
-import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
 import { isOperationsHistoryBrowseEnabled } from '@/lib/operations/operations-history-flags';
 import { operationsSignalsBrowseHref } from '@/lib/operations/history-links';
 import type { SurfaceEntityType } from '@/lib/surfaces/registry';
@@ -122,27 +120,19 @@ export function OperationsHistoryView() {
   const showUnitToggle = totalSerials > 1;
   const inUnitView = focusedMode === 'serial';
 
-  // Unified header search (flag): browse a fuzzy ?q= results list, drill into a
-  // record's timeline on click. OFF ⇒ today's paste-a-number entity lookup.
-  const unifiedOn = isUnifiedHeaderSearchEnabled();
-  const browsing = unifiedOn && !focused && !!url.q;
-  // Operations History browse feed (flag): when on, the non-focused/non-results
-  // landing is the org-wide filterable event feed instead of the empty box.
+  // Operations History browse feed (flag): when on, the non-focused landing is
+  // the org-wide filterable event feed instead of the empty box.
   const browseEnabled = isOperationsHistoryBrowseEnabled();
   const panePresence = useMotionPresence(framerPresence.workbenchPane);
   const paneTransition = useMotionTransition(
     framerTransition.workbenchPaneMount,
   );
-  // Region precedence (plan §2.2): Trace (focused) → Search hits (?q= + unified)
-  // → Browse (flag on) → empty. Crossfade the right pane on region change;
-  // stays 'results'/'browse' across query edits so the surface isn't remounted.
+  // Region precedence: Trace (focused) → Browse (flag on) → empty.
   const region = focused
     ? `timeline:${url.entityValue}`
-    : browsing
-      ? 'results'
-      : browseEnabled
-        ? 'browse'
-        : 'empty';
+    : browseEnabled
+      ? 'browse'
+      : 'empty';
 
   const browse = useOperationsJourneyBrowse(url, region === 'browse');
   const browseCount = browse.eventCount;
@@ -215,9 +205,7 @@ export function OperationsHistoryView() {
                   <p className="text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
                     {region === 'browse'
                       ? 'Recent operations — filter in the sidebar or open a record'
-                      : unifiedOn
-                        ? 'Search shipped orders, serials, tracking'
-                        : 'Paste a record number to begin'}
+                      : 'Paste a record number to begin'}
                   </p>
                 )}
               </div>
@@ -239,9 +227,7 @@ export function OperationsHistoryView() {
             exit={panePresence.exit}
             transition={paneTransition}
           >
-            {browsing ? (
-              <OperationsResultsView url={url} />
-            ) : region === 'browse' ? (
+            {region === 'browse' ? (
               <section className="rounded-2xl border border-border-soft bg-surface-card p-5 sm:p-6">
                 {browse.isError ? (
                   <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-10 text-center">
@@ -315,14 +301,11 @@ export function OperationsHistoryView() {
                   <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
                     <History className="mx-auto h-7 w-7 text-text-faint" />
                     <p className="mt-3 text-role-caption font-semibold text-text-muted">
-                      {unifiedOn
-                        ? 'Search shipped orders, serials, or tracking above'
-                        : 'Paste a record number to see its complete timeline'}
+                      Paste a record number to see its complete timeline
                     </p>
                     <p className="mt-1 text-role-micro leading-5 text-text-faint">
-                      {unifiedOn
-                        ? 'Type in the header search — matching records appear here; open one for its full journey across every station.'
-                        : 'Search an order, serial, or tracking number in the sidebar — its full journey across every station appears here.'}
+                      Paste an order, serial, or tracking number in the sidebar — its full
+                      journey across every station appears here.
                     </p>
                   </div>
                 ) : journey.isError ? (

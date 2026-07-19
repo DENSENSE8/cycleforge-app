@@ -93,7 +93,7 @@ export function PackerSidebarPanel() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Mode rail — Standard / Fragile / Multi-Item. Hidden when the master-nav
-          L2 ModeRail is the single switcher (see MASTER_NAV_RAIL_PAGES). */}
+          header mode cluster is the single L2 switcher. */}
       {!masterNavEnabled && (
         <div className={`shrink-0 border-b border-border-hairline ${SIDEBAR_GUTTER} py-1.5`}>
           <HorizontalButtonSlider

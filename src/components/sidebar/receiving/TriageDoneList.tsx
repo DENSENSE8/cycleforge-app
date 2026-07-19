@@ -18,9 +18,11 @@ import { TriageStagingChips } from './TriageStagingChips';
 export function TriageDoneList({
   selectedLineId,
   filterText = '',
+  hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   filterText?: string;
+  hideEyebrow?: boolean;
 }) {
   const stagingMap = useTriageStagingMap();
   return (
@@ -28,6 +30,7 @@ export function TriageDoneList({
       feed="triageDone"
       selectedLineId={selectedLineId}
       filterText={filterText}
+      hideEyebrow={hideEyebrow}
       renderPopoverContext={(row) => (
         <TriageStagingChips
           ctx={row.receiving_id != null ? stagingMap.get(row.receiving_id) : undefined}

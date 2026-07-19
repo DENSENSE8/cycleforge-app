@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { useUploadQueue } from '@/components/mobile/receiving/PhotoUploadQueue';
 

@@ -1,6 +1,5 @@
 import { getLast4 } from '@/components/ui/CopyChip';
 import { receivingHandle, receivingLineHandle } from '@/lib/barcode-routing';
-import { printLabel } from '@/lib/print/printLabel';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
 
@@ -60,10 +59,13 @@ export function printAsListedLabel(payload: AsListedLabelPayload): void {
   const face = asListedPayloadToFace(payload);
   if (!face.matrix.value && !face.center) return;
 
-  printLabel({
-    name: 'As Listed',
-    ...buildFaceInfoHtml(face),
-    dataMatrix: face.matrix,
-    hri: face.hri,
+  // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
+  void import('@/lib/print/printLabel').then(({ printLabel }) => {
+    printLabel({
+      name: 'As Listed',
+      ...buildFaceInfoHtml(face),
+      dataMatrix: face.matrix,
+      hri: face.hri,
+    });
   });
 }

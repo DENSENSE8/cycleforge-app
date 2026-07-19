@@ -1,8 +1,6 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import {
   KpiTile,
   metricIntentTextClass,
@@ -11,7 +9,8 @@ import {
 import { Button } from '@/design-system/primitives';
 import { CheckCircle, RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
+import { useReceivingLinesQuery } from '@/components/station/useReceivingLinesQuery';
 import {
   resolveUnboxMetrics,
   splitUnboxAttention,
@@ -27,14 +26,10 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 import { toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 
 const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
 const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
-
-interface ApiResponse {
-  success: boolean;
-  receiving_lines: ReceivingLineRow[];
-}
 
 function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
   const tone = metricIntentTextClass(metric.intent);
@@ -142,7 +137,10 @@ function recentCounts(rows: ReceivingLineRow[]): UnboxRecentCounts {
   let awaitingTest = 0;
   let stuck = 0;
   for (const row of rows) {
-    const instant = row.unboxed_at ?? row.unbox_opened_at ?? row.scanned_at ?? row.created_at;
+    // "Opened today" counts real unbox stamps only — the shared History feed
+    // (view=activity) also carries scanned-but-never-opened rows, whose door
+    // scan must not inflate an "opened" metric.
+    const instant = row.unboxed_at ?? row.unbox_opened_at;
     let key = '';
     try {
       key = instant ? toPSTDateKey(instant) : '';
@@ -193,55 +191,48 @@ function viewedCounts(rows: ReceivingLineRow[]): UnboxViewedCounts {
   return { total: rows.length, viewedToday, unfinished };
 }
 
-function viewForTab(mode: UnboxWorkspaceTab): string {
-  if (mode === 'queue') return 'scanned';
-  if (mode === 'viewed') return 'viewed';
-  return 'unbox_opened';
-}
-
 export function UnboxKpiStrip({ mode }: { mode: UnboxWorkspaceTab }) {
-  const searchParams = useSearchParams();
-  const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
-
-  const query = useQuery<ApiResponse>({
-    queryKey: ['unbox-workspace-metrics', mode, staffId ?? 'all'],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        limit: '200',
-        offset: '0',
-        include: 'serials',
-        view: viewForTab(mode),
-      });
-      if (mode === 'queue') params.set('sort', 'priority');
-      if (staffId != null && mode !== 'viewed') params.set('staff', String(staffId));
-      const response = await fetch(`/api/receiving-lines?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      if (!response.ok) throw new Error('Failed to load unbox metrics');
-      return response.json();
-    },
-    staleTime: 20_000,
+  // Resolve the SAME URL-driven descriptor + context the table resolves, and
+  // subscribe to the table's own cache entry through the shared spine-first
+  // query layer — the strip fires ZERO independent fetches (the old page-local
+  // 200-row include=serials query was a full duplicate of the table's data).
+  const { mode: tableMode, modeContext } = useReceivingModeContext();
+  const { data, isLoading, isError, refetch } = useReceivingLinesQuery({
+    mode: tableMode,
+    modeContext,
   });
 
   const rows = useMemo(
-    () => (Array.isArray(query.data?.receiving_lines) ? query.data.receiving_lines : []),
-    [query.data],
+    () => (Array.isArray(data?.receiving_lines) ? data.receiving_lines : []),
+    [data],
   );
+
+  const queue = useMemo<UnboxQueueCounts>(() => {
+    if (mode !== 'queue') return ZERO_UNBOX_QUEUE;
+    const counts = queueCounts(rows);
+    // The queue fetch window is capped (limit 50); the server's count query is
+    // the true door-queue depth, so prefer it for the headline number.
+    const serverTotal = Number(data?.total);
+    if (Number.isFinite(serverTotal)) counts.total = Math.max(counts.total, serverTotal);
+    return counts;
+  }, [mode, rows, data?.total]);
 
   const metrics = resolveUnboxMetrics({
     mode,
     recent: mode === 'recent' ? recentCounts(rows) : ZERO_UNBOX_RECENT,
-    queue: mode === 'queue' ? queueCounts(rows) : ZERO_UNBOX_QUEUE,
+    queue,
     viewed: mode === 'viewed' ? viewedCounts(rows) : ZERO_UNBOX_VIEWED,
   });
   const { attention, rest } = splitUnboxAttention(metrics);
   const tiles = [...attention, ...rest];
 
+  useSurfacePaintMark('unbox:kpi', !isLoading);
+
   return (
     <section aria-label="Unbox attention" className="shrink-0">
-      {query.isError ? (
-        <StripError onRetry={() => void query.refetch()} />
-      ) : query.isPending ? (
+      {isError ? (
+        <StripError onRetry={refetch} />
+      ) : isLoading ? (
         <StripSkeleton />
       ) : tiles.length === 0 ? (
         <StripEmpty mode={mode} />

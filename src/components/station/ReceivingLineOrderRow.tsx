@@ -16,7 +16,14 @@ import {
   shouldShowWorkflowStatusIcon,
 } from '@/components/station/receiving-constants';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
-import { RowTitle, RowMetaColumns, META_COL, META_REST_COL, MetaFactSlot } from '@/components/ui/RowMetaColumns';
+import {
+  RowTitle,
+  RowMetaColumns,
+  META_COL,
+  QUEUE_ROW,
+  metaIndentFor,
+} from '@/components/ui/RowMetaColumns';
+import { useTableDensity } from '@/hooks/useTableDensity';
 import { DeliveryStateIcon } from '@/components/station/ReceivingDeliveryStateIcon';
 import { IconWithTooltip } from '@/components/ui/IconWithTooltip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -32,8 +39,8 @@ import {
   type ReceivingActivityAxis,
 } from '@/components/station/receiving-lines-table-helpers';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
-import { formatDateTimePST, formatOpsStageTime } from '@/utils/date';
-import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
+import { formatDateTimePST } from '@/utils/date';
 import type { ReceivingLineRow } from './receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
 
@@ -98,11 +105,7 @@ export function ReceivingLineOrderRow({
   selectMode?: boolean;
   activityAxis?: ReceivingActivityAxis;
 }) {
-  // Re-render when the operator flips 12h↔24h so wall-clock stamps track the preference.
-  useTimeFormat();
   const stageStamp = !isIncoming ? resolveReceivingRowStageStamp(row, activityAxis) : null;
-  const stageTimeDisplay = stageStamp ? formatOpsStageTime(stageStamp.instant) : null;
-  const hasStageTime = Boolean(stageTimeDisplay && stageTimeDisplay !== '--:--');
   // Unfound cartons (no Zoho PO) arrive labelled "Unfound PO" from the server
   // (buildUnmatchedEmptyReceivingLine / UNMATCHED_EMPTY_LINE_LABEL).
   const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
@@ -122,6 +125,7 @@ export function ReceivingLineOrderRow({
   // shows its last 6 chars. Return-intake fallback rows retain their scanned
   // identity in the generated title until the serial projection catches up.
   const serialsCsv = resolveReceivingLineSerialsCsv(row);
+  const { classes: densityClasses } = useTableDensity();
 
   return (
     <div
@@ -138,9 +142,17 @@ export function ReceivingLineOrderRow({
       aria-checked={selectMode ? isSelected : undefined}
       aria-pressed={selectMode ? undefined : isSelected}
       aria-label={`Select receiving line ${row.id}`}
-      className={`${dashboardOrderRowShellClass(isMobile)} border-b border-border-hairline px-3 py-1.5 transition-colors cursor-pointer hover:bg-blue-50/50 ${
-        isSelected ? 'bg-blue-50/80' : index % 2 === 1 ? 'bg-surface-canvas/40' : 'bg-surface-card'
-      }`}
+      className={cn(
+        dashboardOrderRowShellClass(isMobile),
+        'border-b border-border-hairline transition-colors cursor-pointer hover:bg-blue-50/50',
+        QUEUE_ROW.px,
+        densityClasses.rowPadding,
+        isSelected
+          ? QUEUE_ROW.selectedClass
+          : index % 2 === 1
+            ? 'bg-surface-canvas/40'
+            : 'bg-surface-card',
+      )}
     >
       <div className="flex min-w-0 flex-col">
         <RowTitle
@@ -164,12 +176,11 @@ export function ReceivingLineOrderRow({
           title={productTitle}
         />
         <RowMetaColumns
-          // In select mode the title row gains a leading checkbox (w-4 + mr-2 =
-          // 1.5rem), shifting the title text right. Add that same offset to the
-          // meta indent so the qty · condition · rest subrow stays aligned under
-          // the title instead of stranding at the original (un-shifted) x.
-          indent={selectMode ? `calc(${META_COL.indentWide} + 1.5rem)` : META_COL.indentWide}
+          indent={metaIndentFor('wide', selectMode)}
           qtyCol={META_COL.qtyColWide}
+          // Receiving grades include NEW / L-NEW / PARTS — wider than orders'
+          // single-letter A/B so the rest cluster (stage clock) stays column-aligned.
+          condCol={META_COL.poCondCol}
           qty={
             <span className={qtyExpected > 1 ? 'text-text-warning' : row.quantity_expected && row.quantity_received >= row.quantity_expected ? 'text-emerald-600' : 'text-text-muted'}>
               {quantityText}
@@ -188,21 +199,20 @@ export function ReceivingLineOrderRow({
           rest={
             <div className="flex items-center gap-2">
               {/* Axis-matched stage clock (OrdersQueue MetaFactSlot language).
-                  Unbox tab → unboxed_at; Triage → scanned_at. Absolute + staff
-                  live in the tooltip. Hidden on mobile — history is desktop. */}
-              {hasStageTime && stageStamp ? (
-                <span className="hidden sm:contents">
-                  <MetaFactSlot width={META_REST_COL.stageTime} className="text-text-faint" reserve={false}>
-                    <HoverTooltip
-                      label={receivingStageTooltip(row, stageStamp, activityAxis)}
-                      asChild
-                      focusable={false}
-                    >
-                      <span className="truncate tabular-nums">{stageTimeDisplay}</span>
-                    </HoverTooltip>
-                  </MetaFactSlot>
-                </span>
-              ) : null}
+                  Unbox tab → unboxed_at (scan fallback); Triage → scanned_at.
+                  Always reserve the track so Unfound / pending rows stay aligned. */}
+              <span className="hidden sm:contents">
+                <RowStageTimeMeta
+                  instant={stageStamp?.instant}
+                  label={stageStamp?.label ?? 'Scanned'}
+                  tooltip={
+                    stageStamp
+                      ? receivingStageTooltip(row, stageStamp, activityAxis)
+                      : undefined
+                  }
+                  reserve
+                />
+              </span>
               {/* Workflow status icon: shown in the active receive workspace,
                   hidden in History (received is implied; EXPECTED doesn't apply
                   since unfound is still received) and in Incoming. This also

@@ -1,18 +1,10 @@
 import type { ReactNode } from 'react';
+import type { PaintSurface } from '@/lib/observability/paint-timing';
+
+import { formatLaneAgeCompact } from '@/utils/date';
 
 export function railRelativeTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const ms = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return 'now';
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return `${Math.floor(d / 7)}w`;
+  return formatLaneAgeCompact(iso) ?? '—';
 }
 
 /** DESC sort key for a feed's `getActivityAt` axis; missing/invalid → 0 (last). */
@@ -131,6 +123,9 @@ export interface SidebarRailShellProps<TRow> {
    *   - `slide` — visible, clipped-safe horizontal settle for sidebar rails.
    */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
+
+  /** Dev/observability: stamp a paint mark once the rail leaves skeleton state. */
+  contentPaintSurface?: PaintSurface;
 
   getId: (row: TRow) => number;
   /**

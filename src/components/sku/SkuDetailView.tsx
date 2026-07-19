@@ -62,7 +62,7 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
         {data.productImage && (
           <div className="rounded-xl bg-surface-card border border-border-soft overflow-hidden">
-            <img src={data.productImage} alt={data.productTitle || data.sku} className="w-full h-48 object-contain bg-surface-canvas" loading="eager" />
+            <img src={data.productImage} alt={data.productTitle || data.sku} className="w-full h-48 object-contain bg-surface-canvas" loading="eager" decoding="async" fetchPriority="high" />
           </div>
         )}
 

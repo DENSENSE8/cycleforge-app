@@ -115,3 +115,34 @@
 - `2026-07-18T03:45:35.995Z` · **main** · main · agent · Receiving Unbox/Triage row clocks: formatOpsStageTime + MetaFactSlot; kill fmtShortTs; resolveReceivingRowStageStamp — ok
 - `2026-07-18T03:46:15.920Z` · **main** · main · agent · Triage: SectionTabsSlider (Classify/Staging/Pairing) + Unbox-style browse overlay crossfade; enrich staging shelf+lane — ok
 - `2026-07-18T04:02:11.995Z` · **main** · main · agent · Plan A search→journey handoff: Open journey on SearchResultRow, ⌘Enter in header, dim=unit hrefs + tests — ok
+- `2026-07-18T04:03:56.738Z` · **main** · main · agent · Normalized GlobalHeader: WO chip matches goal shell (state-first queue+due), hairline/blur align, ops search placeholder — ok
+- `2026-07-18T04:09:12.337Z` · **main** · main · agent · HeaderFactChip SoT + idle goal tone + hide WO on source path — ok
+- `2026-07-18T04:12:48.283Z` · **main** · main · agent · Kinetic Ledger toast: drop richColors; AppToaster light semantic fills + @/lib/toast duration/close waist — ok
+- `2026-07-18T04:13:56.761Z` · **main** · main · agent · Header pace/next → IconButtons only; removed sidebar–ring hairline — ok
+- `2026-07-18T04:20:05.127Z` · **main** · main · agent · Aligned GlobalHeader icons to shared h-8 hit-boxes; badges anchored to glyphs — ok
+- `2026-07-18T04:22:35.675Z` · **main** · main · agent · Simplify global header search: one-line recents, handoff→dashboard search, remove contextual header + ops browse search — ok
+- `2026-07-18T04:26:31.902Z` · **main** · main · agent · OrdersQueue: always-visible reserved chevron rail (no hover chip slide) — ok
+- `2026-07-18T04:27:49.520Z` · **main** · main · agent · Row stage clocks across Tech/Packer/mobile receiving+packing/PO summary/scan feed/rails; RowStageTimeMeta SoT; skip pending shipping — ok
+- `2026-07-18T04:28:05.787Z` · **main** · main · agent · Desktop shell: soft rounded-tl content corner at sidebar×header join (appContentShellClass); drop GlobalHeader border-b L — ok
+- `2026-07-18T04:35:36.564Z` · **main** · main · agent · Triage polish: Edit PO tab rightSlot, drop double Classify/PO labels, richer staging placement summary — ok
+- `2026-07-18T04:54:54.011Z` · **main** · main · agent · Triage browse workbench: WorkbenchChromeHeader tabs out of sidebar; TriageWorkspaceView underlay + overlay crossfade — ok
+- `2026-07-18T18:01:43.971Z` · **main** · main · agent · App surface SoT: chrome/canvas/wash + Appearance page-background picker; radius join hairline; strip master-nav top hairlines — ok
+- `2026-07-18T20:33:47.362Z` · **main** · main · agent · Unbox one-row station chrome: platform mark listing, next-step peek stepper, ReceivingStationContextBar under GlobalHeader — done
+- `2026-07-19T05:09:12.126Z` · **main** · main · agent · Unbox main pane → ReceivingLinesTable; Unboxed tab → History; WorkbenchChromeHeader search/filters/select; sidebar Unboxed dock only — ok
+- `2026-07-19T05:30:38.248Z` · **main** · main · agent · Unbox table: fix double-gutter align, Unfound scan-time fallback + reserved clock, History-tab click → details Edit panel — ok
+- `2026-07-19T05:35:29.055Z` · **main** · main · agent · Move Receiving History/Incoming Select+columns into workbench chrome; remove GlobalHeader pencil; columns open inward (toolbar) — done
+- `2026-07-19T05:58:49.719Z` · **main** · main · agent · Simplify Unbox station chrome: two-row bar (utils top-right, 720px identity), drop workspace steppers, share→overflow, no prev/next — done
+- `2026-07-19T06:13:36.148Z` · **main** · main · agent · Unbox: mark 7 POs DONE; LineEdit-only selection; details Unbox CTA + no header X app-wide; RightRail overflow clip — done
+- `2026-07-19T06:14:57.614Z` · **main** · main · agent · Incoming Sync menu in workbench header (icon-only); Sync Orders expands via RightPaneOverlay; sidebar keeps email triage only — done
+- `2026-07-19T06:22:27.754Z` · **main** · main · agent · Unbox station chrome: one-row 720px identity+utilities; fix chip hover OPEN menu stacking over workbench — done
+- `2026-07-19T06:22:43.293Z` · **main** · main · agent · Station depth stack: Unbox/Triage appWorkCanvasClass elevated host + hairline; quiet outer shell join; flatten scan float-rail — ok
+- `2026-07-19T06:30:56.097Z` · **main** · main · agent · Unbox chrome: utilities top-right; 720px identity (classify left, chips right); seamless wash, no hairline — done
+- `2026-07-19T06:43:43.488Z` · **main** · main · agent · Station identity: borderless classify; Claim=Photos rounded-lg; soft header corners; CopyChip+external-link chips — done
+- `2026-07-19T06:47:56.145Z` · **main** · main · agent · Align stage-time slots: ReceivingPoSummary/MobileReceiving poCondCol+reserve; OrdersQueue+Shipped → RowStageTimeMeta; guard test — ok
+- `2026-07-19T06:56:18.780Z` · **main** · main · agent · Work canvas depth edge: border-border-soft hairline (readable on mint); band hairline → theme token; single wash host on ReceivingSurfacePage — done
+- `2026-07-19T06:58:23.682Z` · **main** · main · agent · Unify queue-row left-edge SoT (QUEUE_ROW + nest indent + migrate Receiving/Orders/Shipped) — ok
+- `2026-07-19T07:22:54.805Z` · **main** · main · agent · Unbox paint: spine-first receiving-lines (phase=spine tier + shared receivingLinesTableQuery/useReceivingLinesQuery), KPI strip reads table cache (dupe 200-row fetch gone), table code-split + structured skeletons + /unbox loading.tsx, unbox:table mark on default History tab, unbox-paint e2e spec — ok
+- `2026-07-19T07:32:40.286Z` · **main** · main · agent · Pack station Unbox-shaped SoT: Queue=TESTED Unshipped, History=PackerTable, PackOrderPanel overlay; delete ActivePackerWorkspace/PackChecklist/MobilePackerFlow; server-only test shim — done
+- `2026-07-19T07:32:44.932Z` · **main** · main · agent · Station identity trough: sunken rounded channel + tone icons (MapPin/#) + listing ExternalLink anatomy — done
+- `2026-07-19T07:53:18.231Z` · **main** · main · agent · Lighthouse initiative: baseline+audit tooling (pnpm lighthouse:audit, mint script, ratchet), shell provider diet, SidebarContextPanel dynamic split (-1MB gz /signin), print-stack bwip lazy-split, db.ts server-only fence (+5 client-DB leak fixes), Tier-1 loading.tsx, img hygiene; Tier-1 perf 62-71→67-78, TBT<160ms, JS -40..68% — success
+- `2026-07-19T07:53:27.082Z` · **main** · main · agent · Unbox prod A/B measured (isolated clones :3100/:3101): KPI dupe fetch gone, spine-first table (kpi=table 3.32-3.41s vs before kpi 3.87-4.22s + unmarked table); HUD shots saved; fixed forward 3 ticket-refs strays (knip) from perf-lane split -> npm run verify GREEN on full tree — ok

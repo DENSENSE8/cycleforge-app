@@ -2,11 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  CATEGORY_TABS,
   isTabId,
   tabDbType,
-  orderedTabsForScope,
-  defaultTabForScope,
   groupHitsForPreview,
   flattenPreviewGroups,
 } from './search-tabs';
@@ -30,20 +27,6 @@ test('isTabId / tabDbType', () => {
   assert.equal(tabDbType('order'), 'ORDER');
   assert.equal(tabDbType('unit'), 'SERIAL_UNIT');
   assert.equal(tabDbType('all'), undefined); // Overview has no db scope
-});
-
-test('orderedTabsForScope: global is Overview-first, operations is orders-first', () => {
-  assert.equal(orderedTabsForScope('global')[0].id, 'all');
-  const ops = orderedTabsForScope('operations');
-  assert.equal(ops[0].id, 'order');
-  assert.equal(ops[ops.length - 1].id, 'all'); // Overview demoted to last
-  // same set, just reordered
-  assert.equal(ops.length, CATEGORY_TABS.length);
-});
-
-test('defaultTabForScope', () => {
-  assert.equal(defaultTabForScope('global'), 'all');
-  assert.equal(defaultTabForScope('operations'), 'order');
 });
 
 test('groupHitsForPreview: orders first, per-group + total caps respected', () => {

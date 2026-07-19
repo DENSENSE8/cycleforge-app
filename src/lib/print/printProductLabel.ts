@@ -1,9 +1,4 @@
-import { printLabel, buildLabelHtml } from '@/lib/print/printLabel';
 import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
-import {
-  buildProductLabelBitmapCommands,
-  buildProductLabelCommands,
-} from '@/lib/print/productLabelCommands';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -83,15 +78,19 @@ export function printProductLabel(input: PrintProductLabelInput): void {
   if (!built) return;
 
   const { sku, matrix } = built;
-  const html = buildLabelHtml({
-    name: `Label ${sku}`,
-    ...built,
-    dataMatrix: matrix,
-  });
-
   const silent = isSilentPrintEnabled();
 
   void (async () => {
+    // Lazy: the print shell + raw-command builders carry the bwip-js barcode
+    // engine (~250 KB gz); this module's light helpers (deriveColorFromTitle,
+    // resolveTestingLineTitle, unitLabelCore re-exports) ride in station
+    // bundles, so only the actual print action loads the heavy modules.
+    const [{ printLabel, buildLabelHtml }, { buildProductLabelBitmapCommands, buildProductLabelCommands }] =
+      await Promise.all([
+        import('@/lib/print/printLabel'),
+        import('@/lib/print/productLabelCommands'),
+      ]);
+
     if (silent) {
       const labelProfile = getProfileForRole('label');
       if (labelProfile && labelProfile.kind !== 'os') {
@@ -119,6 +118,11 @@ export function printProductLabel(input: PrintProductLabelInput): void {
       return;
     }
 
+    const html = buildLabelHtml({
+      name: `Label ${sku}`,
+      ...built,
+      dataMatrix: matrix,
+    });
     printHtmlInIframe(html, { name: `Label ${sku}` });
   })();
 }

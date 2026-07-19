@@ -82,7 +82,7 @@ export function ReceivingGroupedList({
         index={baseIndex}
         showChevron={false}
         defaultExpanded={selectMode || hasSelected}
-        summary={<ReceivingPoSummary rows={group.rows} isMobile={isMobile} isIncoming={isIncomingMode} isHistory={isHistoryMode} />}
+        summary={<ReceivingPoSummary rows={group.rows} isMobile={isMobile} isIncoming={isIncomingMode} isHistory={isHistoryMode} activityAxis={activityAxis} />}
       >
         {group.rows.map((row, lineIndex) => (
           <ReceivingLineOrderRow
@@ -171,6 +171,7 @@ export function ReceivingGroupedList({
                         isMobile={isMobile}
                         isIncoming={isIncomingMode}
                         isHistory={isHistoryMode}
+                        activityAxis={activityAxis}
                       />
                     }
                   >

@@ -33,14 +33,16 @@ import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable'
 
 export function BoxWorkbenchPanel({
   handlingUnitId,
-  onClose,
+  onClose: _onClose,
   lines,
 }: {
   handlingUnitId: number;
+  /** Close via RightRailHost backdrop / Esc — kept for call-site parity. */
   onClose: () => void;
   /** The scan's receiving lines — used to label each unit's origin line. */
   lines?: ReceivingLineRow[];
 }) {
+  void _onClose;
   const { data, isLoading, isError, error, refetch } = useHandlingUnitDetail(handlingUnitId);
   const box = data?.handling_unit ?? null;
 
@@ -143,7 +145,6 @@ export function BoxWorkbenchPanel({
             })
           }
         />
-        <IconButton ariaLabel="Close box panel" icon={<X className="h-4 w-4" />} onClick={onClose} />
       </div>
 
       {/* Rollup band — k/n tested + progress. */}

@@ -117,7 +117,7 @@ export const MobileReceivingPhotoStrip = memo(function MobileReceivingPhotoStrip
                 className="ds-raw-button relative h-24 w-[4.5rem] shrink-0 overflow-hidden rounded-lg bg-surface-strong shadow-sm active:opacity-90"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.displayUrl} alt="" className="h-full w-full object-cover" />
+                <img src={p.displayUrl} alt={`Photo ${index + 1}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
               </button>
             ))
           )}

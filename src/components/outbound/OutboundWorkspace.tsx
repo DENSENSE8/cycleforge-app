@@ -42,10 +42,10 @@ export function OutboundWorkspace() {
     transition: useMotionTransition(framerTransition.workbenchPaneSettle),
   };
 
-  // Modes are switched from the sidebar mode rail (outbound ∈ MASTER_NAV_RAIL_PAGES),
-  // not a top tab band — each mode is its own contextual surface: Labels (tabbed
-  // Queue/Recent workbench ⇄ print), Scan out (dock Station), Ready (allocation
-  // table), FBA (board).
+  // Modes are switched from the master-nav header mode cluster, not a top tab
+  // band — each mode is its own contextual surface: Labels (tabbed Queue/Recent
+  // workbench ⇄ print), Scan out (dock Station), Ready (allocation table), FBA
+  // (board).
   if (mode === 'fba') {
     return (
       <Suspense

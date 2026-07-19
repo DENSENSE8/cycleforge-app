@@ -37,9 +37,11 @@ import { TriageStagingChips } from './TriageStagingChips';
 export function TriageUnfoundList({
   selectedLineId,
   filterText = '',
+  hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   filterText?: string;
+  hideEyebrow?: boolean;
 }) {
   const exceptionMap = useTriageUnfoundExceptions();
   const stagingMap = useTriageStagingMap();
@@ -80,6 +82,7 @@ export function TriageUnfoundList({
         feed="triageUnfound"
         selectedLineId={selectedLineId}
         filterText={filterText}
+        hideEyebrow={hideEyebrow}
         renderPopoverContext={(row) => {
           // B3: open Zoho-sync exception state for this carton (read-only).
           const ctx = row.receiving_id != null ? exceptionMap?.get(row.receiving_id) : undefined;

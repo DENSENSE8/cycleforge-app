@@ -4,9 +4,8 @@
  * Dashboard · Search sidebar — the signed-in staffer's most-recently-searched
  * list (the map under the master-nav L2 rail).
  *
- * Query typing lives in the global header pill (contextual search, wired by
- * {@link DashboardSearchView} via `usePageHeaderSearch`); this panel never
- * mounts its own search band. Recents are DB-backed + per-staff
+ * Query typing lives in the always-global header pill; this panel never mounts
+ * its own search band. Recents are DB-backed + per-staff
  * (`useStaffSearchRecents` → `search_recents`), so they follow a staffer across
  * devices and survive a cache wipe. Selecting a recent re-runs it by navigating
  * back to the Search mode with `?q=` (the row is a real Link), rendered by the

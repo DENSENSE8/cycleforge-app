@@ -234,7 +234,7 @@ export function PhotoPeekFan({
                 className="absolute inset-0 origin-top-left overflow-hidden rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/10 will-change-transform"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={card.imgUrl} alt={card.alt} loading="lazy" className="h-full w-full object-cover" />
+                <img src={card.imgUrl} alt={card.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 {/* Count badge rides the FRONT card's visible corner. */}
                 {i === 0 && count > 1 ? (
                   <span className="absolute left-1.5 top-1.5 rounded-full bg-scrim/60 inset-chip text-role-micro leading-none text-white tabular-nums backdrop-blur-sm">

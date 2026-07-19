@@ -63,12 +63,19 @@ export default function ReceivingDashboard() {
     enrichOverlayLog,
   } = useReceivingDetailOverlays(isIncomingMode);
 
-  const { selectMode, selectedRows, claimRow, setClaimRow, exitSelectMode, bulkActions } =
-    useReceivingLineBulkSelection({
-      scope: RECEIVING_SELECTION_SCOPE,
-      active: isTableOnlyMode,
-      formatCopyRow: formatReceivingCopyRow,
-    });
+  const {
+    selectMode,
+    selectedRows,
+    claimRow,
+    setClaimRow,
+    exitSelectMode,
+    toggleSelectMode,
+    bulkActions,
+  } = useReceivingLineBulkSelection({
+    scope: RECEIVING_SELECTION_SCOPE,
+    active: isTableOnlyMode,
+    formatCopyRow: formatReceivingCopyRow,
+  });
 
   const closeWorkspace = useCallback(() => {
     setWorkspace(null);
@@ -80,13 +87,13 @@ export default function ReceivingDashboard() {
     // jump to History).
   }, [setWorkspace, setNav]);
 
-  // Triage (label "Receiving") deliberately shares the SAME right pane as Unbox:
+  // Triage (label "Arrival") deliberately shares the SAME right pane as Unbox:
   // the selected carton opens in the full ReceivingLineWorkspace, so identifying
   // a carton before unboxing uses the exact same editor. It is NOT table-only,
   // so it falls through to the workspace-overlay path.
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-[linear-gradient(180deg,#f8fbfb_0%,#ffffff_16%)]">
+    <div className="flex h-full w-full overflow-hidden">
       <ReceivingRightPane
         mode={mode}
         isTableOnlyMode={isTableOnlyMode}
@@ -94,6 +101,7 @@ export default function ReceivingDashboard() {
         isIncomingMode={isIncomingMode}
         incomingView={incomingView}
         selectMode={selectMode}
+        onToggleSelectMode={toggleSelectMode}
         selectedRows={selectedRows}
         bulkActions={bulkActions}
         workspace={workspace}

@@ -3,6 +3,7 @@
 import { forwardRef, Fragment } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from '@/components/Icons';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import type { SidebarNavItem, SidebarPageNav } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
@@ -18,14 +19,13 @@ const PAGE_GROUPS: ReadonlyArray<{ kind: NonNullable<SidebarNavItem['kind']>; la
 ];
 
 /**
- * The master-nav menu (plan §3.4): RECENT pages on top (not the active one),
- * then Main / Stations / More in sidebar nav order. The active page only appears
- * in its group (blue row). Recents may also appear again in their group below.
+ * The master-nav menu (plan §3.4): Main / Stations / More in sidebar nav order.
+ * Recent jumps live in the closed header band — not duplicated here. The active
+ * page only appears in its group (blue row).
  */
 interface MasterNavDropdownProps {
   activePage: SidebarPageNav;
   activeModeId: string | null;
-  recentPages: SidebarPageNav[];
   otherPages: SidebarPageNav[];
   /** `"${section}-${pageId}"` of the row whose modes are expanded, or null. */
   expandedKey: string | null;
@@ -35,7 +35,7 @@ interface MasterNavDropdownProps {
 }
 
 export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownProps>(function MasterNavDropdown(
-  { activePage, activeModeId, recentPages, otherPages, expandedKey, onToggleRow, onNavigate, className },
+  { activePage, activeModeId, otherPages, expandedKey, onToggleRow, onNavigate, className },
   ref,
 ) {
   const highlightedModeId = activeModeId ?? activePage.modes?.[0]?.id ?? null;
@@ -64,7 +64,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
               isPageActive ? 'text-white' : 'rounded-xl hover:bg-surface-canvas',
             )}
           >
-            <PageIcon className={cn('h-[18px] w-[18px] shrink-0', isPageActive ? 'text-white' : 'text-text-muted')} />
+            <PageIcon className={navIconStrokeClass('page', cn('h-[18px] w-[18px] shrink-0', isPageActive ? 'text-white' : 'text-text-muted'))} />
             <span className="min-w-0 flex-1 truncate text-role-body font-semibold">{page.label}</span>
           </button>
           {/* Right: expand / collapse this page's modes (no-op if 0/1 mode). */}
@@ -130,7 +130,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
                             : 'text-text-default hover:bg-blue-600 hover:text-white',
                         )}
                       >
-                        <ModeIcon className="h-4 w-4 shrink-0 opacity-80" />
+                        <ModeIcon className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 opacity-80')} />
                         <span className="min-w-0 flex-1 truncate">{mode.label}</span>
                       </button>
                     </Fragment>
@@ -156,13 +156,6 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
         className,
       )}
     >
-      {recentPages.length > 0 && (
-        <>
-          <p className="px-2.5 pb-1 pt-1.5 text-role-micro font-bold uppercase tracking-widest text-text-muted/70">Recent</p>
-          {recentPages.map((page) => renderRow(page, 'recent'))}
-          <div className="my-1 h-px bg-border-soft" />
-        </>
-      )}
       {PAGE_GROUPS.map((group) => {
         const groupPages = otherPages.filter((p) => (p.kind ?? 'bottom') === group.kind);
         if (groupPages.length === 0) return null;

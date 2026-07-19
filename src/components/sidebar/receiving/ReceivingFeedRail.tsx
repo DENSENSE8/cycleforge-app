@@ -197,6 +197,7 @@ export function ReceivingFeedRail({
       renderPopoverContext={renderPopoverContext}
       renderPopoverActions={renderPopoverActions}
       rowTitleMode={feed.rowTitleMode}
+      contentPaintSurface={feedId === 'unboxRecent' ? 'unbox:sidebar-rail' : undefined}
     />
   );
 }

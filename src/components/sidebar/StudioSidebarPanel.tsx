@@ -19,6 +19,7 @@ import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
 import { StudioLibrary } from '@/components/studio/StudioLibrary';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 
 /**
  * Contextual sidebar for /studio (Operations Studio) — the route's whole
@@ -84,7 +85,7 @@ export function StudioSidebarPanel() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-card">
+    <div className={cn('flex h-full min-h-0 flex-col', appChromeClass)}>
       {/* No own header — the master-nav already renders the "Studio" route title. */}
 
       {/* ─── Combined View dropdown (lens · zoom) ─── */}

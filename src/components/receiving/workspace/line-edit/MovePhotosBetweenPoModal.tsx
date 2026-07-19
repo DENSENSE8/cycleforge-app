@@ -147,34 +147,43 @@ export function MovePhotosBetweenPoModal({
     !busy;
 
   return (
-    <RightPaneOverlay open={open} onClose={onClose} aria-label="Move photos">
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
-          <div className="flex items-center gap-2">
-            <ArrowLeftRight className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-bold text-text-default">Move photos</span>
-          </div>
-          <IconButton
-            onClick={onClose}
-            ariaLabel="Close"
-            icon={<X className="h-4 w-4" />}
-            className="rounded-full p-1.5 text-text-soft hover:bg-surface-hover"
-          />
+    <RightPaneOverlay
+      open={open}
+      onClose={onClose}
+      align="center"
+      resizable
+      storageKey="receiving-move-photos-modal-size"
+      minWidth={460}
+      minHeight={420}
+      className="-mt-8 h-[min(86vh,44rem)] w-[min(94vw,52rem)]"
+      aria-label="Move photos"
+    >
+      <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+        <div className="flex items-center gap-2">
+          <ArrowLeftRight className="h-4 w-4 text-blue-600" />
+          <span className="text-sm font-bold text-text-default">Move photos</span>
         </div>
+        <IconButton
+          onClick={onClose}
+          ariaLabel="Close"
+          icon={<X className="h-4 w-4" />}
+          className="rounded-full p-1.5 text-text-soft hover:bg-surface-hover"
+        />
+      </div>
 
-        <div className="space-y-3 overflow-y-auto px-4 py-3">
-          <PaneHeaderTabs<Direction>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 text-role-data">
+        <PaneHeaderTabs<Direction>
             tabs={[
               { value: 'to', label: 'To another PO' },
               { value: 'from', label: 'From another PO' },
             ]}
             value={direction}
             onChange={setDirection}
-            className="rounded-lg border border-border-soft px-1 py-0.5"
-          />
+          className="rounded-lg border border-border-soft px-1 py-0.5"
+        />
 
-          {/* Pull: pick source PO first */}
-          {(direction === 'from' || (direction === 'to' && photos.photos.length > 0)) && (
+        {/* Pull: pick source PO first */}
+        {(direction === 'from' || (direction === 'to' && photos.photos.length > 0)) && (
             <div className="space-y-2">
               <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 {direction === 'to' ? 'Target purchase order' : 'Source purchase order'}
@@ -280,21 +289,20 @@ export function MovePhotosBetweenPoModal({
           ) : null}
         </div>
 
-        <div className="mt-auto border-t border-border-soft px-4 py-3">
-          <Button
-            variant="primary"
-            size="sm"
-            className="w-full justify-center"
-            loading={busy}
-            disabled={!canMove}
-            onClick={() => void move()}
-            icon={<ArrowLeftRight className="h-4 w-4" />}
-          >
-            {direction === 'to'
-              ? `Move ${photos.selectedPhotoIds.size || ''} to PO`.trim()
-              : `Pull ${photos.selectedPhotoIds.size || ''} onto this carton`.trim()}
-          </Button>
-        </div>
+      <div className="border-t border-border-soft px-4 py-3">
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full justify-center"
+          loading={busy}
+          disabled={!canMove}
+          onClick={() => void move()}
+          icon={<ArrowLeftRight className="h-4 w-4" />}
+        >
+          {direction === 'to'
+            ? `Move ${photos.selectedPhotoIds.size || ''} to PO`.trim()
+            : `Pull ${photos.selectedPhotoIds.size || ''} onto this carton`.trim()}
+        </Button>
       </div>
     </RightPaneOverlay>
   );

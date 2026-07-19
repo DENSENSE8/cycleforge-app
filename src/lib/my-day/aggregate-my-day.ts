@@ -38,7 +38,7 @@ const QUEUE_SURFACE_LINKS: Array<{
   },
   {
     key: 'receiving',
-    label: 'Receiving',
+    label: 'Arrival',
     permission: 'receiving.view',
     href: SURFACE_REGISTRY.triage.route,
     match: (row) =>

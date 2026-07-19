@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
+import { markSurfacePainted } from '@/lib/observability/paint-timing';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import {
   STAGGER_REVEAL_STEP,
@@ -40,6 +41,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     emptyText = 'No recent activity yet.',
     staggerReveal = false,
     staggerRevealMotion = 'sidebar',
+    contentPaintSurface,
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
     renderRowMain, renderPopover,
   } = props;
@@ -53,6 +55,10 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     collapsedGroups, toggleGroup, listRef, focusIndex, setFocusIndex,
     handleKeyDown, handleEditClick, getRowDisabled,
   } = useSidebarRail(props);
+
+  useEffect(() => {
+    if (contentPaintSurface && !showSkeleton) markSurfacePainted(contentPaintSurface);
+  }, [contentPaintSurface, showSkeleton]);
 
   const queryKeySig = JSON.stringify(queryKey);
   const staggerEligibleRef = useRef(true);

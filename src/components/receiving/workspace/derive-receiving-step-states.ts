@@ -126,3 +126,4 @@ export function activeReceivingStepKey(
   const hit = RECEIVING_WORKFLOW_STEPS.find(({ key }) => states[key] === 'active');
   return hit?.key ?? null;
 }
+

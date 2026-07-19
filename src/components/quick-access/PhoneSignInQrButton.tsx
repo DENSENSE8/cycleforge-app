@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import { Smartphone, X } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, type IconButtonSize } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 
@@ -16,9 +16,11 @@ import { cn } from '@/utils/_cn';
 export function PhoneSignInQrButton({
   className,
   iconClassName = 'h-4 w-4',
+  size,
 }: {
   className?: string;
   iconClassName?: string;
+  size?: IconButtonSize;
 }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
@@ -43,10 +45,11 @@ export function PhoneSignInQrButton({
       <HoverTooltip label="Scan to open on your phone" asChild>
         <IconButton
           type="button"
+          size={size}
           onClick={() => setOpen(true)}
           ariaLabel="Show sign-in QR code"
           className={cn(
-            'flex items-center justify-center rounded-full text-text-muted hover:bg-surface-sunken active:scale-95',
+            'rounded-full text-text-muted hover:bg-surface-sunken',
             className,
           )}
           icon={<Smartphone className={iconClassName} />}

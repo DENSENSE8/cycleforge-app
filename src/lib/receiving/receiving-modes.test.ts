@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   getReceivingModeDescriptor,
   resolveReceivingTableMode,
+  resolveUnboxReceivingTableMode,
   RECEIVING_MODES,
   INCOMING_PAGE_SIZE,
   RECEIVING_TABLE_LIMIT,
@@ -14,6 +15,7 @@ import {
   isReceivingView,
   RECEIVING_VIEWS,
 } from '@/lib/receiving/receiving-views';
+import { UNBOX_WORKSPACE_TAB_LABEL } from '@/utils/unbox-workspace-state';
 
 /** A neutral context — no search, no facets, default page. */
 function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContext {
@@ -31,6 +33,8 @@ function ctx(overrides: Partial<ReceivingModeContext> = {}): ReceivingModeContex
     incomingSource: 'all',
     isDeliveredUnscannedFacet: false,
     isDeliveredNotUnboxedFacet: false,
+    staffFilterId: null,
+    listSearch: '',
     ...overrides,
   };
 }
@@ -46,6 +50,18 @@ test('resolveReceivingTableMode maps the URL ?mode= to a table mode', () => {
   assert.equal(resolveReceivingTableMode(undefined), 'receive');
   assert.equal(resolveReceivingTableMode('pickup'), 'receive');
   assert.equal(resolveReceivingTableMode('unfound'), 'receive');
+});
+
+test('resolveUnboxReceivingTableMode maps workbench tabs to table modes', () => {
+  assert.equal(resolveUnboxReceivingTableMode('queue'), 'unbox_queue');
+  assert.equal(resolveUnboxReceivingTableMode('viewed'), 'unbox_viewed');
+  assert.equal(resolveUnboxReceivingTableMode('recent'), 'history');
+});
+
+test('Unbox recent tab label is History (URL id stays recent)', () => {
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.recent, 'History');
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.queue, 'Queue');
+  assert.equal(UNBOX_WORKSPACE_TAB_LABEL.viewed, 'Viewed');
 });
 
 // ── The core invariant: History is the scanned/unpacked log, NOT incoming ────
@@ -73,6 +89,31 @@ test('Receive uses the broad all bucket on a long scroll', () => {
   assert.equal(receive.pageSize, null);
   assert.equal(receive.serverSorted, false);
   assert.equal(receive.groupAxis, 'activity');
+});
+
+test('Unbox Queue requests view=scanned with priority sort', () => {
+  const p = RECEIVING_MODES.unbox_queue.buildParams(ctx());
+  assert.equal(p.get('view'), 'scanned');
+  assert.equal(p.get('sort'), 'priority');
+  assert.equal(RECEIVING_MODES.unbox_queue.skipWeekFilter(ctx()), true);
+});
+
+test('Unbox Viewed requests view=viewed', () => {
+  const p = RECEIVING_MODES.unbox_viewed.buildParams(ctx({ listSearch: '1Z' }));
+  assert.equal(p.get('view'), 'viewed');
+  assert.equal(p.get('search'), '1Z');
+});
+
+test('staff filter forwards on history + unbox modes', () => {
+  assert.equal(
+    RECEIVING_MODES.history.buildParams(ctx({ staffFilterId: 7 })).get('staff'),
+    '7',
+  );
+  assert.equal(
+    RECEIVING_MODES.unbox_queue.buildParams(ctx({ staffFilterId: 7 })).get('staff'),
+    '7',
+  );
+  assert.equal(RECEIVING_MODES.history.buildParams(ctx()).get('staff'), null);
 });
 
 // ── buildParams ──────────────────────────────────────────────────────────────

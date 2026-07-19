@@ -7,7 +7,9 @@ import {
   StationScanModeRail,
   ThemedStationScanBar,
 } from '@/components/station/scan-bar';
-import { looksLikeTicketScan } from '@/lib/support/tickets';
+// From the light scan-parser module — importing via lib/support/tickets drags
+// the server-only tenancy/db (Neon driver) into this client bundle.
+import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 
 export type UnboxScanMode = 'ticket' | 'tracking' | 'order';
 

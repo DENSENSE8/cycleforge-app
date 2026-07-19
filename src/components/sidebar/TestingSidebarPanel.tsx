@@ -5,6 +5,7 @@ import { toast } from '@/lib/toast';
 import { Barcode, Hash, MapPin, Package, Pencil } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
 import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
@@ -319,7 +320,7 @@ export function TestingSidebarPanel({
   );
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
+    <div className={`relative flex h-full w-full flex-col overflow-hidden ${appChromeClass}`}>
       {!isMobile ? (
         <>
           {/* Flush 40px band — same ScanBandShell geometry as Unbox (no py around the bar). */}

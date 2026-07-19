@@ -6,6 +6,7 @@
  * collapsible section is a presentational component under `./connections-panel/`.
  */
 
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { useConnectionsPanel } from './connections-panel/useConnectionsPanel';
 import {
   OrdersSection,
@@ -22,7 +23,7 @@ export function ConnectionsSidebarPanel() {
   const c = useConnectionsPanel();
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-surface-card">
+    <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
       <input
         ref={c.shipStationFileInputRef}
         type="file"

@@ -16,9 +16,8 @@ import { PARKED_SURFACE_ICONS } from '@/components/dogfood/ParkedSurface';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { useActiveSidebarMode } from './useActiveSidebarMode';
 import { useSidebarModeNav } from './useSidebarModeNav';
-import { useRecentPages } from './useRecentPages';
 import { MAX_RECENT_MODES, useRecentModes } from './useRecentModes';
-import { MasterNavView } from './MasterNavView';
+import { MasterNavView, type MasterNavPageModeChip } from './MasterNavView';
 import type { MasterNavRecentModeChip } from './MasterNavHeader';
 import type { ReactNode } from 'react';
 
@@ -52,31 +51,20 @@ function filterPageModes(page: SidebarPageNav, permissions?: ReadonlySet<string>
 export function MasterNav({
   permissions,
   mobileRestricted = false,
-  showModeRail = true,
-  railPageIds,
   renderContext,
   onNavigate,
   className,
 }: {
   permissions?: ReadonlySet<string>;
   mobileRestricted?: boolean;
-  showModeRail?: boolean;
   /** Fired after a page/mode pick (e.g. to close the mobile drawer). */
   onNavigate?: () => void;
-  /**
-   * Restrict the L2 rail to these page ids (the pages whose panels have already
-   * dropped their own pill-row). When omitted, the rail shows for every modeful
-   * page. Used during the phased cutover so un-migrated pages keep their own
-   * switcher instead of getting a doubled one.
-   */
-  railPageIds?: ReadonlySet<string>;
-  /** `panel` mode only: the workspace body shown below the rail when closed. */
+  /** The workspace body shown below the header when closed. */
   renderContext?: () => ReactNode;
   className?: string;
 }) {
   const { pageId, modeId } = useActiveSidebarMode();
   const navigate = useSidebarModeNav();
-  const { recents, pushRecent } = useRecentPages();
   const { recents: recentModeRefs, pushRecent: pushRecentMode } = useRecentModes();
 
   const [open, setOpen] = useState(false);
@@ -86,11 +74,6 @@ export function MasterNav({
     setOpen(false);
     setExpandedKey(null);
   }, []);
-
-  // Pin the page you land on so it's a recent next time you're elsewhere.
-  useEffect(() => {
-    pushRecent(pageId);
-  }, [pageId, pushRecent]);
 
   // Pin page+mode for header jump chips (name-of-now stays the label).
   useEffect(() => {
@@ -121,7 +104,7 @@ export function MasterNav({
       const meta = getParkedSurfaceMeta(pageId);
       const Icon = PARKED_SURFACE_ICONS[pageId];
       const modeful = getSidebarPageNav(pageId);
-      // While blocked: header shows the real label, no mode rail (stand-in UI).
+      // While blocked: header shows the real label (stand-in UI, no mode cluster).
       if (isParkedSurfaceBlocked(pageId)) {
         return {
           id: pageId,
@@ -145,17 +128,6 @@ export function MasterNav({
     return fallbackItem ? toPageNav(fallbackItem) : pages[0];
   }, [pages, pageId]);
 
-  // Recents = fast switch-back only (never the page you're on). Grouped sections
-  // mirror APP_SIDEBAR_NAV order so the active page sits in its real slot (e.g.
-  // Sourcing between Walk-In and Products) with the blue row highlight.
-  const recentPages = useMemo(
-    () =>
-      recents
-        .filter((id) => id !== pageId)
-        .map((id) => pages.find((p) => p.id === id))
-        .filter((p): p is SidebarPageNav => Boolean(p)),
-    [recents, pages, pageId],
-  );
   const otherPages = useMemo(() => pages, [pages]);
 
   const handleNavigate = useCallback(
@@ -168,17 +140,32 @@ export function MasterNav({
     [navigate, onNavigate],
   );
 
-  // Header chips: prior modes only (never the one you're on), max 3.
-  // Same-page modes stay on ModeRail — chips are cross-context jumps only.
+  const isModeful = Boolean(activePage?.modes && activePage.modes.length > 1);
+
+  // Same-page L2 modes feed the hover dropdown under the header trigger.
+  const pageModes = useMemo<MasterNavPageModeChip[]>(() => {
+    if (!isModeful || !activePage.modes) return [];
+    const activeId = modeId ?? activePage.modes[0]?.id;
+    return activePage.modes.map((mode) => ({
+      id: mode.id,
+      label: mode.label,
+      icon: mode.icon,
+      active: mode.id === activeId,
+      group: mode.group,
+      onSelect: () => handleNavigate(activePage.id, mode.id),
+    }));
+  }, [isModeful, activePage, modeId, handleNavigate]);
+
+  // Header chips: prior cross-context jumps only (never the one you're on), max 3.
+  // Same-page modes stay in the hover dropdown — chips are cross-context jumps.
   const recentModes = useMemo<MasterNavRecentModeChip[]>(() => {
     const currentKey = `${pageId}:${modeId ?? ''}`;
-    const railOwnsPage = Boolean(activePage?.modes && activePage.modes.length > 1);
     const chips: MasterNavRecentModeChip[] = [];
     for (const ref of recentModeRefs) {
       if (chips.length >= MAX_RECENT_MODES) break;
       const key = `${ref.pageId}:${ref.modeId ?? ''}`;
       if (key === currentKey) continue;
-      if (railOwnsPage && ref.pageId === pageId) continue;
+      if (isModeful && ref.pageId === pageId) continue;
       const page = pages.find((p) => p.id === ref.pageId);
       if (!page) continue;
       const mode = ref.modeId ? page.modes?.find((m) => m.id === ref.modeId) : undefined;
@@ -194,16 +181,14 @@ export function MasterNav({
         key,
         label,
         icon,
+        iconLayer: mode ? 'mode' : 'page',
         onSelect: () => handleNavigate(ref.pageId, ref.modeId ?? undefined),
       });
     }
     return chips;
-  }, [recentModeRefs, pages, pageId, modeId, activePage, handleNavigate]);
+  }, [isModeful, recentModeRefs, pages, pageId, modeId, handleNavigate]);
 
   if (!activePage) return null;
-
-  // Rail shows only for pages cleared for it (or all, when no allowlist).
-  const railOn = showModeRail && (!railPageIds || railPageIds.has(activePage.id));
 
   return (
     <MasterNavView
@@ -211,14 +196,13 @@ export function MasterNav({
       activeModeId={modeId}
       open={open}
       onOpen={() => setOpen(true)}
-      recentPages={recentPages}
+      pageModes={pageModes}
       recentModes={recentModes}
       otherPages={otherPages}
       expandedKey={expandedKey}
       onToggleRow={setExpandedKey}
       onNavigate={handleNavigate}
       onRequestClose={closeMenu}
-      showModeRail={railOn}
       renderContext={renderContext}
       className={className}
     />

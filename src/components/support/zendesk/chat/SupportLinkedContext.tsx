@@ -90,7 +90,7 @@ export function SupportLinkedContext({
                 onClick={() => onOpenPhoto?.(p.url)}
                 className="ds-raw-button block h-20 w-20 overflow-hidden rounded-lg ring-1 ring-inset ring-border-soft transition hover:opacity-90 hover:ring-2 hover:ring-blue-300"
               >
-                <img src={p.url} alt={p.caption ?? ''} className="h-full w-full object-cover" />
+                <img src={p.url} alt={p.caption ?? 'Linked photo'} loading="lazy" decoding="async" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>

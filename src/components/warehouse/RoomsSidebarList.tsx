@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion, Reorder, useReducedMotion } from 'framer-motion';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
 import { useBinsOverview } from '@/hooks/useBinsOverview';
 import { useRoomFinder } from './roomFinderContext';

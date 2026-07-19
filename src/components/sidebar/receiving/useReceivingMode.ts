@@ -25,9 +25,10 @@ import {
 import { stripCrossSurfaceParams } from '@/lib/surface-isolation';
 import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
+  normalizeTriageWorkspaceTabParams,
   resolveTriageView,
-  type TriageView,
-} from '@/components/sidebar/receiving/TriageSidebarBody';
+  type TriageWorkspaceTab,
+} from '@/utils/triage-workspace-state';
 
 export type UnboxView = 'recent' | 'queue' | 'viewed';
 
@@ -70,7 +71,7 @@ export interface ReceivingModeState {
   /** Unbox sub-view from `?unboxview=` (defaults to `recent`). */
   unboxView: UnboxView;
   /** Triage sub-view from `?triview=` (defaults to `triage`). */
-  triageView: TriageView;
+  triageView: TriageWorkspaceTab;
   /** Triage carton-list filter text from `?triq=` (D1 — finds a carton already scanned in, not a Zoho search). */
   triageQuery: string;
   /**
@@ -86,7 +87,7 @@ export interface ReceivingModeState {
   /** Swap the Unbox `?unboxview=` sub-view. Clears the current line by default. */
   updateUnboxView: (next: UnboxView, opts?: { clearLine?: boolean }) => void;
   /** Swap the Triage `?triview=` sub-view (clears the current line first). */
-  updateTriageView: (next: TriageView) => void;
+  updateTriageView: (next: TriageWorkspaceTab, opts?: { clearLine?: boolean }) => void;
   /** Set (or clear, on empty string) the Triage `?triq=` carton-list filter. */
   updateTriageQuery: (next: string) => void;
 }
@@ -166,7 +167,7 @@ export function useReceivingMode(): ReceivingModeState {
   // surface's route, not hardcode `/receiving`.
   const currentBasePath = receivingSurfaceBasePath(pathname);
 
-  // Triage (label "Receiving") shares the scan-bar + recent-rail sidebar body
+  // Triage (label "Arrival") shares the scan-bar + recent-rail sidebar body
   // with the Unbox workspace (`receive`); only the right pane differs.
   const isScanSurface = mode === 'receive' || mode === 'triage';
 
@@ -243,12 +244,13 @@ export function useReceivingMode(): ReceivingModeState {
     router.replace(`${currentBasePath}?${nextParams.toString()}`);
   };
 
-  const updateTriageView = (next: TriageView) => {
+  const updateTriageView = (next: TriageWorkspaceTab, opts?: { clearLine?: boolean }) => {
     if (next === triageView) return;
-    window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+    if (opts?.clearLine !== false) {
+      window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+    }
     const nextParams = new URLSearchParams(searchParams.toString());
-    if (next === 'triage') nextParams.delete('triview');
-    else nextParams.set('triview', next);
+    normalizeTriageWorkspaceTabParams(nextParams, next);
     router.replace(`${currentBasePath}?${nextParams.toString()}`);
   };
 

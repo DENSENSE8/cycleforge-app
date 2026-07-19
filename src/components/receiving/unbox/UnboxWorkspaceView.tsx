@@ -1,159 +1,128 @@
 'use client';
 
 /**
- * Unbox browse workbench — tabs (Unboxed · Queue · Viewed) + KPI strip + feed
- * list. Mirrors TestingWorkspaceView; feed infra reuses ReceivingFeedRail.
+ * Unbox browse workbench — tabs (Queue · Viewed · History) + KPI strip +
+ * ReceivingLinesTable. Sidebar owns scan I/O + short Unboxed recent dock;
+ * main pane is the table workbench (TestingWorkspaceView pattern).
  */
 
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { SkeletonList } from '@/design-system/components/Skeletons';
+import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
+import { cn } from '@/utils/_cn';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
 } from '@/components/dashboard/workbench-shell';
-import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
-import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
-import { ReceivingFeedRail } from '@/components/sidebar/receiving/ReceivingFeedRail';
-import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
-import {
-  isPendingTriageScanRow,
-} from '@/components/sidebar/receiving/receiving-sidebar-shared';
+// Light leaf modules — NOT the heavy table component, so its board/column/
+// grouping import graph stays out of this route chunk (code-split below).
+import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { UnboxKpiStrip } from '@/components/receiving/unbox/UnboxKpiStrip';
 import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
+import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
-import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
+import { useReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
+import { ContextualSelectionBar } from '@/design-system/components/ContextualSelectionBar';
 
-const EMPTY_COPY: Record<UnboxWorkspaceTab, string> = {
-  recent: 'No cartons opened on Unbox yet. Scan a tracking number to start.',
-  queue: 'No cartons in the door queue. Triage matched POs land here.',
-  viewed: 'Nothing viewed yet. Open a carton to build your recent list.',
-};
-
-function UnboxFeedBody({
-  unboxView,
-  selectedLine,
-}: {
-  unboxView: UnboxWorkspaceTab;
-  selectedLine: ReceivingLineRow | null;
-}) {
-  const selectedLineId = selectedLine?.id ?? null;
-  const selectedRow =
-    selectedLine &&
-    (selectedLine.id > 0 ||
-      selectedLine.receiving_id != null ||
-      isPendingTriageScanRow(selectedLine))
-      ? selectedLine
-      : null;
-
-  if (unboxView === 'queue') {
-    return (
-      <ReceivingFeedRail
-        key="rail-unbox-queue"
-        feed="unboxQueue"
-        scope="unbox"
-        selectedLineId={selectedLineId}
-        selectedRow={selectedRow}
-        hideEyebrow
-        emptyText={EMPTY_COPY.queue}
-      />
-    );
-  }
-
-  if (unboxView === 'viewed') {
-    return (
-      <ReceivingFeedRail
-        key="rail-unbox-viewed"
-        feed="viewed"
-        selectedLineId={selectedLineId}
-        selectedRow={selectedRow}
-        hideEyebrow
-        emptyText={EMPTY_COPY.viewed}
-      />
-    );
-  }
-
+/** Table-card skeleton — same monitor card shell + house row anatomy the real
+ * table renders, shared by the chunk-load fallback and the Suspense fallback. */
+function TableCardSkeleton() {
   return (
-    <ReceivingFeedRail
-      key="rail-unbox-recent"
-      feed="unboxRecent"
-      selectedLineId={selectedLineId}
-      selectedRow={selectedRow}
-      hideEyebrow
-      emptyText={EMPTY_COPY.recent}
-    />
+    <div
+      className={cn(
+        MONITOR_SECTION_CARD_SCROLL_CLASS,
+        'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+      )}
+      aria-busy="true"
+    >
+      <div className="p-3">
+        <SkeletonList count={8} type="row" />
+      </div>
+    </div>
   );
 }
 
-export function UnboxWorkspaceView({
-  selectedLine,
-}: {
+// Code-split the heavy table (board lanes, column config, grouping, deep-link)
+// off the Unbox route chunk: chrome + KPI paint from the small chunk first and
+// the table chunk streams in behind the same structured skeleton.
+const ReceivingLinesTable = dynamic(
+  () => import('@/components/station/ReceivingLinesTable'),
+  { loading: () => <TableCardSkeleton /> },
+);
+
+/** Copy line for a receiving carton/line: PO • SKU • tracking. */
+function formatReceivingCopyRow(r: ReceivingLineRow): string {
+  const po = (r.zoho_purchaseorder_number || r.zoho_purchaseorder_id || '').trim();
+  const sku = (r.sku || '').trim();
+  const tracking = (r.tracking_number || '').trim();
+  return [po && `PO ${po}`, sku && `SKU ${sku}`, tracking && `TRK ${tracking}`]
+    .filter(Boolean)
+    .join(' • ');
+}
+
+export function UnboxWorkspaceView(_props: {
+  /** Kept for UnboxLineWorkspace API; table selection is event-driven. */
   selectedLine: ReceivingLineRow | null;
 }) {
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
-  const {
-    railEditMode,
-    railSelectedIds,
-    railSelectedIdList,
-    railBulkDismissing,
-    toggleRailEditMode,
-    toggleRailSelected,
-    setManyRailSelected,
-    handleRailBulkDismiss,
-  } = useRailEditMode({
-    isScanSurface: true,
-    mode: 'receive',
-    unboxView,
-    triageView: 'triage',
-  });
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+
+  useSurfacePaintMark('unbox:chrome', true);
+
+  const { selectMode, selectedRows, toggleSelectMode, bulkActions } =
+    useReceivingLineBulkSelection({
+      scope: RECEIVING_SELECTION_SCOPE,
+      active: true,
+      formatCopyRow: formatReceivingCopyRow,
+    });
 
   return (
-    <RailEditModeProvider
-      active={railEditMode}
-      selectedIds={railSelectedIds}
-      toggle={toggleRailSelected}
-      setMany={setManyRailSelected}
-      toggleActive={toggleRailEditMode}
-    >
-      <div className="relative flex h-full min-h-0 w-full flex-col">
-        <DashboardScrollShell
-          className="h-full bg-surface-canvas"
-          chrome={
-            <div className={WORKBENCH_CHROME_COLUMN}>
-              <UnboxWorkspaceHeader
-                tab={unboxView}
-                onSelectTab={setUnboxView}
-                selectMode={railEditMode}
-                onToggleSelectMode={toggleRailEditMode}
-              />
-            </div>
-          }
-        >
-          <div className={WORKBENCH_BODY_COLUMN}>
-            <div className="mb-4">
-              <UnboxKpiStrip mode={unboxView} />
-            </div>
-
-            <div className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
-              <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
-                <UnboxFeedBody
-                  key={unboxView}
-                  unboxView={unboxView}
-                  selectedLine={selectedLine}
-                />
-              </Suspense>
-            </div>
+    <div className="relative flex h-full min-h-0 w-full flex-col">
+      <DashboardScrollShell
+        className="h-full bg-transparent"
+        chrome={
+          <div className={WORKBENCH_CHROME_COLUMN}>
+            <UnboxWorkspaceHeader
+              tab={unboxView}
+              onSelectTab={setUnboxView}
+              controlsSlotRef={setControlsEl}
+              selectMode={selectMode}
+              onToggleSelectMode={toggleSelectMode}
+            />
           </div>
-        </DashboardScrollShell>
+        }
+      >
+        <div className={WORKBENCH_BODY_COLUMN}>
+          <div className="mb-4">
+            <UnboxKpiStrip mode={unboxView} />
+          </div>
 
-        {railEditMode ? (
-          <ReceivingBulkActionBar
-            selectedIds={railSelectedIdList}
-            onDismiss={handleRailBulkDismiss}
-            busy={railBulkDismissing}
-          />
-        ) : null}
-      </div>
-    </RailEditModeProvider>
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+            {/* Structured fallback (searchParams suspension path) mirrors the
+                table card + row anatomy — never a bare gray box. The dynamic()
+                chunk-load path shows the same skeleton via its loading option. */}
+            <Suspense fallback={<TableCardSkeleton />}>
+              <ReceivingLinesTable
+                key={unboxView}
+                selectMode={selectMode}
+                embedded
+                toolbarPortalTarget={controlsEl}
+              />
+            </Suspense>
+          </div>
+        </div>
+      </DashboardScrollShell>
+
+      {selectMode ? (
+        <ContextualSelectionBar
+          scope={RECEIVING_SELECTION_SCOPE}
+          rows={selectedRows}
+          actions={bulkActions}
+        />
+      ) : null}
+    </div>
   );
 }

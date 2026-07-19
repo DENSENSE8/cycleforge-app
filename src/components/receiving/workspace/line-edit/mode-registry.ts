@@ -66,7 +66,7 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
     hasSectionTabs: true,
   },
   triage: {
-    label: 'Receiving',
+    label: 'Arrival',
     headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos', 'photoNote'],
     showDetails: true,
     navChannel: 'receiving-navigate-table',

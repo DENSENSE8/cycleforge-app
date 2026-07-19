@@ -38,6 +38,7 @@ interface ReceivingRightPaneProps {
    *  here we only read it to pick which sub-view to render. */
   incomingView: IncomingView;
   selectMode: boolean;
+  onToggleSelectMode: () => void;
   selectedRows: ReceivingLineRow[];
   bulkActions: SelectionAction<ReceivingLineRow>[];
   workspace: WorkspaceState | null;
@@ -56,6 +57,7 @@ export function ReceivingRightPane({
   isIncomingMode,
   incomingView,
   selectMode,
+  onToggleSelectMode,
   selectedRows,
   bulkActions,
   workspace,
@@ -118,7 +120,10 @@ export function ReceivingRightPane({
         style={{ display: showTable ? 'block' : 'none' }}
         aria-hidden={!showTable}
       >
-        <ReceivingLinesTable selectMode={selectMode} />
+        <ReceivingLinesTable
+          selectMode={selectMode}
+          onToggleSelectMode={onToggleSelectMode}
+        />
       </div>
 
       {/* Email Triage worklist — crossfades in over the (hidden) table on

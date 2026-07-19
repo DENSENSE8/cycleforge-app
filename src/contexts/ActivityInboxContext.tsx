@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { useIdleReady } from '@/hooks/useIdleReady';
 import { getInboxChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { toast } from '@/lib/toast';
 
@@ -150,6 +151,11 @@ export function ActivityInboxProvider({
   /** After "Clear all", ignore stale in-flight refreshes until a new realtime push. */
   const inboxSuppressedRef = useRef(false);
   const inboxFetchGenRef = useRef(0);
+  // Seed fetches (tech queue / support followups / staff messages) are not
+  // first-paint critical — defer them past idle so they never compete with the
+  // route's own data for main-thread + connection time. Realtime pushes still
+  // trigger the refresh callbacks directly whenever they land.
+  const idleReady = useIdleReady();
 
   useEffect(() => {
     if (!user) {
@@ -213,8 +219,9 @@ export function ActivityInboxProvider({
   }, [user?.staffId]);
 
   useEffect(() => {
+    if (!idleReady) return;
     void refreshTechQueue();
-  }, [refreshTechQueue]);
+  }, [idleReady, refreshTechQueue]);
 
   const refreshSupportFollowups = useCallback(async () => {
     if (inboxSuppressedRef.current) return;
@@ -259,8 +266,9 @@ export function ActivityInboxProvider({
   }, [user?.staffId]);
 
   useEffect(() => {
+    if (!idleReady) return;
     void refreshSupportFollowups();
-  }, [refreshSupportFollowups]);
+  }, [idleReady, refreshSupportFollowups]);
 
   // Persisted unread staff messages. Seeded on mount and refetched whenever a
   // staff_message push lands (authoritative read model, like the tech queue).
@@ -324,8 +332,9 @@ export function ActivityInboxProvider({
   }, [user?.staffId, refreshSupportFollowups]);
 
   useEffect(() => {
+    if (!idleReady) return;
     void refreshStaffMessages();
-  }, [refreshStaffMessages]);
+  }, [idleReady, refreshStaffMessages]);
 
   const pushRepairStatusChange = useCallback(
     ({

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { AlertTriangle, ChevronRight, Flag, History, Loader2, Package, QrCode, Trash2 } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/design-system/primitives';

@@ -39,7 +39,18 @@ const GATES = [
         {
           name: 'Unit tests + DS guards',
           cmd: 'node',
-          args: ['--test', '--import', 'tsx', '--test-reporter', 'spec', 'src/**/*.test.ts'],
+          // register-server-only-shim: `import 'server-only'` on db/etc. is a Next
+          // client-boundary guard; node:test runs outside the RSC graph.
+          args: [
+            '--test',
+            '--require',
+            './scripts/register-server-only-shim.cjs',
+            '--import',
+            'tsx',
+            '--test-reporter',
+            'spec',
+            'src/**/*.test.ts',
+          ],
         },
         { name: 'Dead-code (knip)', cmd: 'node', args: ['scripts/knip-gate.mjs'] },
         { name: 'Route-permission drift', cmd: 'npx', args: ['tsx', 'scripts/audit-route-auth.ts', '--check'] },

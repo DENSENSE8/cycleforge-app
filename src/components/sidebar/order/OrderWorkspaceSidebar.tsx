@@ -7,12 +7,12 @@
  *   • Recent — orders the operator opened (detail-stack history, kind=order)
  *   • Search — header-pill-driven order near-matches + scoped search recents
  *
- * Selection navigates to `/o/[id]` (path is the SoT). Search lives in the
- * global header via `usePageHeaderSearch` — this panel never mounts its own
- * search band (sidebar-search-bar.guard).
+ * Selection navigates to `/o/[id]` (path is the SoT). Query typing lives in the
+ * always-global header pill; this panel is driven by URL `?q=` and never mounts
+ * its own search band (sidebar-search-bar.guard).
  */
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Box, Clock, Search, X } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -24,11 +24,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AiQuickJumpResults } from '@/components/search/AiQuickJumpResults';
 import { SearchRecentsDropdown } from '@/components/search/SearchRecentsDropdown';
 import { useAiQuickJump } from '@/hooks/useAiQuickJump';
-import { usePageHeaderSearch } from '@/hooks/usePageHeader';
 import { useRecentDetailStacks } from '@/hooks/useRecentDetailStacks';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { removeDetailStack, type DetailStackEntry } from '@/lib/detail-stacks/history-store';
-import { pushSearchRecent, formatRelativeTime } from '@/lib/search/search-recents';
+import { formatRelativeTime } from '@/lib/search/search-recents';
 import { orderSearchHref } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
@@ -80,7 +79,6 @@ export function OrderWorkspaceSidebar() {
 
   const mode = parseMode(searchParams.get('mode'));
   const q = searchParams.get('q') ?? '';
-  const [input, setInput] = useState(q);
 
   const setMode = useCallback(
     (next: string) => {
@@ -96,52 +94,6 @@ export function OrderWorkspaceSidebar() {
     [pathname, router, searchParams],
   );
 
-  const updateQuery = useCallback(
-    (nextQ: string) => {
-      const sp = new URLSearchParams(searchParams.toString());
-      sp.set('mode', 'search');
-      if (nextQ.trim()) sp.set('q', nextQ.trim());
-      else sp.delete('q');
-      router.replace(`${pathname}?${sp.toString()}`);
-    },
-    [pathname, router, searchParams],
-  );
-
-  // Keep local input in sync when URL changes externally.
-  useEffect(() => {
-    setInput(q);
-  }, [q]);
-
-  usePageHeaderSearch(
-    {
-      value: input,
-      onChange: (value) => {
-        setInput(value);
-        updateQuery(value);
-      },
-      onClear: () => {
-        setInput('');
-        updateQuery('');
-      },
-      onSearch: (value) => {
-        const t = value.trim();
-        if (!t) return;
-        pushSearchRecent({
-          query: t,
-          scope: 'orders',
-          scopeLabel: 'Orders',
-          scopeHref: currentOrderId
-            ? orderSearchHref(currentOrderId, t)
-            : orderSearchHref(t, t),
-        });
-        updateQuery(t);
-      },
-      placeholder: 'Search orders, tracking, serials…',
-      debounceMs: 250,
-    },
-    [input, mode, currentOrderId],
-  );
-
   const allStacks = useRecentDetailStacks();
   const orderRecents = useMemo(
     () => allStacks.filter((e) => e.kind === 'order'),
@@ -151,7 +103,7 @@ export function OrderWorkspaceSidebar() {
   const { recents: searchRecents, remove: removeSearchRecent, clear: clearSearchRecents } =
     useSearchRecents({ scope: 'orders', limit: 8 });
 
-  const { hits, searching } = useAiQuickJump(mode === 'search' ? input : '', {
+  const { hits, searching } = useAiQuickJump(mode === 'search' ? q : '', {
     entityTypes: ['ORDER'],
     pageContext: pathname ?? '/o',
     limit: 12,
@@ -165,14 +117,14 @@ export function OrderWorkspaceSidebar() {
 
   const openOrder = useCallback(
     (id: string, replace = false) => {
-      const href = orderSearchHref(id, mode === 'search' ? input.trim() || undefined : undefined);
+      const href = orderSearchHref(id, mode === 'search' ? q.trim() || undefined : undefined);
       // Recent mode: plain /o/id (no search map params).
       const target =
         mode === 'search' ? href : `/o/${encodeURIComponent(id)}`;
       if (replace) router.replace(target);
       else router.push(target);
     },
-    [input, mode, router],
+    [q, mode, router],
   );
 
   // Auto-open / canonicalize the top near-match so Enter lands on a real order
@@ -229,15 +181,14 @@ export function OrderWorkspaceSidebar() {
         />
       ) : (
         <SearchOrdersBody
-          input={input}
+          query={q}
           hits={hits}
           searching={searching}
           activeHitId={activeHitId}
           onSelectHit={handleSelectHit}
           searchRecents={searchRecents}
           onSelectRecent={(query) => {
-            setInput(query);
-            updateQuery(query);
+            router.push(orderSearchHref(query, query));
           }}
           onRemoveRecent={removeSearchRecent}
           onClearRecents={() => clearSearchRecents('orders')}
@@ -316,7 +267,7 @@ function RecentOrdersList({
 }
 
 function SearchOrdersBody({
-  input,
+  query,
   hits,
   searching,
   activeHitId,
@@ -326,7 +277,7 @@ function SearchOrdersBody({
   onRemoveRecent,
   onClearRecents,
 }: {
-  input: string;
+  query: string;
   hits: AiSearchHit[];
   searching: boolean;
   activeHitId: number | null;
@@ -336,7 +287,7 @@ function SearchOrdersBody({
   onRemoveRecent: (id: string) => void;
   onClearRecents: () => void;
 }) {
-  const trimmed = input.trim();
+  const trimmed = query.trim();
 
   if (!trimmed) {
     return (

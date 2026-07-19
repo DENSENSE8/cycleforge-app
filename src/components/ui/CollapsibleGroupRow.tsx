@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown } from '@/components/Icons';
+import { QUEUE_ROW, queueGroupNestClass } from '@/components/ui/queue-row-chrome';
 import { framerPresence, framerTransition } from '@/design-system';
 import { cn } from '@/utils/_cn';
 
@@ -88,7 +89,8 @@ export function CollapsibleGroupRow({
         }}
         aria-expanded={isOpen}
         className={cn(
-          'ds-raw-button flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-blue-50/50',
+          'ds-raw-button flex w-full cursor-pointer items-center gap-2 py-1.5 text-left transition-colors hover:bg-blue-50/50',
+          QUEUE_ROW.px,
           isOpen ? 'bg-blue-50/40' : index != null && index % 2 === 1 ? 'bg-surface-canvas/40' : 'bg-surface-card',
         )}
       >
@@ -115,10 +117,17 @@ export function CollapsibleGroupRow({
             transition={framerTransition.cardExpansion}
             className="overflow-hidden"
           >
-            {/* Indent the child rows past the chevron so the nesting reads as
-                "these belong to the row above". Left padding only — the child
-                rows' right-aligned chips stay flush with the summary's. */}
-            <div className="border-l-2 border-border-hairline bg-surface-canvas/30 pl-5">{children}</div>
+            {/* Nest cue = border + wash. Extra pl only when a chevron is shown
+                (pad past the glyph); when hidden, children share the singleton
+                title edge — see QUEUE_ROW.nest*. */}
+            <div
+              className={cn(
+                'border-l-2 border-border-hairline bg-surface-canvas/30',
+                queueGroupNestClass(showChevron),
+              )}
+            >
+              {children}
+            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>

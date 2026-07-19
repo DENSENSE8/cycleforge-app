@@ -1,70 +1,96 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { MousePointerClick } from 'lucide-react';
 import { ChevronDown } from '@/components/Icons';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
-
-const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
 
 /** Resolved recent mode chip for the closed trigger (icons only; name stays “now”). */
 export interface MasterNavRecentModeChip {
   key: string;
   label: string;
   icon: SidebarIconComponent;
+  /** Heavier stroke for page jumps; lighter for mode jumps. */
+  iconLayer?: 'page' | 'mode';
   onSelect: () => void;
 }
 
 /**
  * Closed master-nav trigger — **name of now**.
- * Label = active mode (or page when modeless). Up to 3 recent-mode icon chips
- * sit before a hairline-separated chevron that opens the menu. Hairlines also
- * separate the chips from each other. No leading icon (ModeRail owns the
- * active-mode glyph).
+ * Label opens the full nav on click; hovering the button opens same-page modes.
+ * Chevron at rest; pointer on hover, while the modes panel is open, or while
+ * the full nav dropdown is open.
  */
 export function MasterNavHeader({
   label,
   open,
   onClick,
+  onTriggerMouseEnter,
+  onTriggerMouseLeave,
+  modesPanelOpen = false,
   recentModes = [],
   className,
 }: {
-  /** Active mode name, or the page name for single-surface pages. */
   label: string;
   open: boolean;
   onClick?: () => void;
-  /** Prior modes (excludes current); cap at 3 upstream. */
+  onTriggerMouseEnter?: () => void;
+  onTriggerMouseLeave?: () => void;
+  /** Same-page modes hover panel is visible — keeps pointer icon while over the panel. */
+  modesPanelOpen?: boolean;
   recentModes?: MasterNavRecentModeChip[];
   className?: string;
 }) {
+  const [triggerHovered, setTriggerHovered] = useState(false);
+  const hasRecents = recentModes.length > 0;
+  // Pointer when hovering modes, modes panel open, or full nav open; chevron only at rest.
+  const showClickIcon = open || triggerHovered || modesPanelOpen;
+
   return (
     <div className={cn('flex h-[40px] w-full min-w-0 items-stretch', className)}>
-      {/* Name of now — opens the menu. */}
       <button
         type="button"
         onClick={onClick}
+        onMouseEnter={() => {
+          setTriggerHovered(true);
+          onTriggerMouseEnter?.();
+        }}
+        onMouseLeave={() => {
+          setTriggerHovered(false);
+          onTriggerMouseLeave?.();
+        }}
         aria-expanded={open}
-        className="ds-raw-button flex min-w-0 flex-1 items-center px-3 text-left transition-colors hover:bg-surface-canvas"
+        aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+        className="ds-raw-button flex min-w-0 shrink items-center gap-1 px-3 text-left transition-colors hover:bg-surface-canvas"
       >
-        <span className="min-w-0 flex-1 truncate text-role-body font-bold tracking-tight text-text-default">
+        <span className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default">
           {label}
+        </span>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-muted" aria-hidden>
+          {showClickIcon ? (
+            <MousePointerClick className="h-4 w-4" strokeWidth={2} />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
         </span>
       </button>
 
-      {recentModes.length > 0 && (
-        <div className="flex shrink-0 items-stretch divide-x divide-border-hairline border-l border-border-hairline">
+      {hasRecents && (
+        <div className="ml-auto flex shrink-0 items-stretch gap-0.5 pr-1">
           {recentModes.map((mode) => {
             const Icon = mode.icon;
             return (
-              <div key={mode.key} className="flex items-center justify-center px-1.5">
+              <div key={mode.key} className="flex items-center justify-center px-1">
                 <HoverTooltip label={mode.label} asChild placement="below">
                   <IconButton
                     size="xs"
                     tone="accent"
                     ariaLabel={mode.label}
-                    icon={<Icon className="h-3.5 w-3.5" />}
+                    icon={<Icon className={navIconStrokeClass(mode.iconLayer ?? 'mode', 'h-3.5 w-3.5')} />}
                     onClick={(e) => {
                       e.stopPropagation();
                       mode.onSelect();
@@ -76,19 +102,6 @@ export function MasterNavHeader({
           })}
         </div>
       )}
-
-      {/* Menu affordance — hairline separates jump chips / name from open. */}
-      <button
-        type="button"
-        onClick={onClick}
-        aria-expanded={open}
-        aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-        className="ds-raw-button flex shrink-0 items-center border-l border-border-hairline px-2.5 text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default"
-      >
-        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={spring} className="shrink-0">
-          <ChevronDown className="h-4 w-4" />
-        </motion.span>
-      </button>
     </div>
   );
 }

@@ -5,7 +5,7 @@
  * Phase 2: optional AI search mode via `searchMode=ask` (future).
  */
 
-import { BUILTIN_IMAGE_TYPES } from '@/lib/photos/image-types';
+import { BUILTIN_IMAGE_TYPES } from '@/lib/photos/image-type-defs';
 import {
   addDaysToDateKey,
   diffDaysDateKey,

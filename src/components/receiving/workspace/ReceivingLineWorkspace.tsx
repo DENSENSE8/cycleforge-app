@@ -1,27 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { LineEditPanel } from './LineEditPanel';
 import { TriagePanel } from '../triage/TriagePanel';
-import { ReceivingProgressStepper, UnfoundProgressStepper } from './ReceivingProgressStepper';
-import { TriageProgressStepper } from './TriageProgressStepper';
-import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
-import { classifyLineSource } from '@/lib/receiving/intake-items-routing';
+import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** Which de-coupled right-pane panel to render. */
 type ReceivingWorkspaceVariant = 'unbox' | 'triage';
 
-const LABEL_PRINTED_KEY = (lineId: number) => `receiving-label-printed:${lineId}`;
-
-function readLabelPrinted(lineId: number): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    return !!window.localStorage.getItem(LABEL_PRINTED_KEY(lineId));
-  } catch {
-    return false;
-  }
-}
 interface NavState {
   currentIndex: number;
   total: number;
@@ -44,12 +31,12 @@ interface Props {
 }
 
 /**
- * Right-pane focused work-item view for a single receiving line. The PO
- * identity hero that used to sit on top has been removed — the global header
- * carries the PO identity. The workspace now leads with the progress stepper,
- * then the `LineEditPanel` body (whose icon-only action bar is the third row).
- * State (current edits, accordion toggles, audit modal) lives entirely inside
- * the panel — the workspace is the container shell.
+ * Right-pane focused work-item view for a single receiving line.
+ *
+ * Unbox leads with {@link ReceivingStationContextBar} inside `LineEditPanel`
+ * (utilities top-right · 720px identity column matching the line body).
+ * Workspace steppers are gone — carton pipeline progress lives in
+ * ReceivingDetailsStack only.
  *
  * Closing dispatches `receiving-workspace-close`; the sidebar reacts by
  * clearing its `selectedLine`/`scanMatchedRows`/`poContext` so both panes
@@ -62,35 +49,7 @@ export function ReceivingLineWorkspace({
   variant = 'unbox',
   onClose,
 }: Props) {
-  // Photos step reads the LIVE per-carton photo cache (same source as the camera
-  // ×N badge), not the denormalized `row.photo_count` snapshot — the snapshot
-  // gets clobbered to 0 when a Condition update re-patches the line, which used
-  // to flip Photos back to "active" even with photos plainly on the carton.
-  const photoCount = useReceivingPhotoCount(
-    row.receiving_id,
-    Math.max(0, Number(row.photo_count ?? 0)),
-  );
-
-  // Print step (the last dot) flips done once a label is printed for THIS line.
-  // Reads the durable `label_printed_at` stamp (receiving_line_testing) OR the
-  // localStorage optimistic hint — so it survives refresh / another device while
-  // still flipping instantly on print. `markReceivingLabelPrinted` dispatches
-  // `receiving-label-printed` after a successful print; we re-read on line change.
-  const [labelPrinted, setLabelPrinted] = useState(
-    () => !!row.label_printed_at || readLabelPrinted(row.id),
-  );
-  useEffect(() => {
-    setLabelPrinted(!!row.label_printed_at || readLabelPrinted(row.id));
-  }, [row.id, row.label_printed_at]);
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ line_id?: number }>).detail;
-      if (detail?.line_id === row.id) setLabelPrinted(true);
-    };
-    window.addEventListener('receiving-label-printed', handler);
-    return () => window.removeEventListener('receiving-label-printed', handler);
-  }, [row.id]);
-
+  useSurfacePaintMark('unbox:workspace', variant === 'unbox');
   // Record this open into the operator's recents (server-backed, per-staff) so
   // the unbox sidebar's "Viewed" pill can list recently-opened lines. Fire-and-
   // forget — a failure never blocks the workspace. Upsert keys on (staff, line),
@@ -103,13 +62,6 @@ export function ReceivingLineWorkspace({
       body: JSON.stringify({ receiving_line_id: row.id, receiving_id: row.receiving_id ?? null }),
     }).catch(() => {});
   }, [row.id, row.receiving_id]);
-
-  // Unbox splits again by source lane: an unfound carton's defining unknown is
-  // its identity, so it gets the Classify-first stepper; a matched PO carton
-  // (identity already resolved) gets the completeness stepper. Same primitive,
-  // different step vocabulary — picked here exactly like the triage fork below.
-  const UnboxStepper =
-    classifyLineSource(row) === 'unmatched' ? UnfoundProgressStepper : ReceivingProgressStepper;
 
   return (
     // Plain wrapper — NO per-line key/crossfade. Switching between sibling lines
@@ -127,33 +79,9 @@ export function ReceivingLineWorkspace({
       // scanned PO# opens the PO workspace and never the Unfound flow.
       data-receiving-source={String(row.receiving_source ?? '')}
     >
-      {/* Step-by-step progress stepper — first row in the workspace now that
-          the PO identity hero has been removed. The global header carries the
-          PO identity; this stepper + the action bar below it form the second
-          and third rows. Triage and unbox are different stations with
-          different jobs (docs/receiving-triage-redesign-plan.md §3.2) — each
-          gets its own stepper rather than sharing the unbox one. Unbox forks
-          once more: matched (Photos→Serial→Print) vs unfound
-          (Classify→Photos→Serial→Print), resolved into UnboxStepper above. */}
-      {variant === 'triage' ? (
-        <TriageProgressStepper row={row} />
-      ) : (
-        <UnboxStepper
-          row={row}
-          photoCount={photoCount}
-          serialCount={Array.isArray(row.serials) ? row.serials.length : 0}
-          serialAbsent={!!row.serial_absent}
-          labelPrinted={labelPrinted}
-          siblingLineCount={nav?.total ?? 1}
-        />
-      )}
-
-      {/* ── Body — two de-coupled panels, one per archetype. Triage (the
-          identify-before-unbox pass) is its own lean composition; Unbox is the
-          full editor that handles both matched (Zoho PO) and unmatched
-          (Ecwid-pick) cartons, branching internally on row.receiving_source so
-          its chrome stays identical across those two flows. */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      {/* overflow-hidden clips scroll children; station chrome hover menus
+          sit in a z-10 sibling above the workbench so they paint over it. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {variant === 'triage' ? (
           <TriagePanel key="triage" row={row} staffId={staffId} onClose={onClose} />
         ) : (

@@ -41,6 +41,45 @@
   --cf-density: 0.92;
 }
 
+/* ─── Page wash (Appearance → Page background / data-app-wash) ─────────────
+   Stops mix theme canvas/surface so dark themes don’t keep light-only hex.
+   Light authoring refs live in src/design-system/tokens/app-surface.ts. */
+:root,
+html[data-app-wash='mint'] {
+  --ds-wash-from: color-mix(in srgb, var(--ds-color-background-canvas) 72%, #f5fbfa);
+  --ds-wash-to: var(--ds-color-background-surface);
+  --ds-wash-stop: 22%;
+}
+html[data-app-wash='cool'] {
+  --ds-wash-from: color-mix(in srgb, var(--ds-color-background-canvas) 70%, #f8fbfb);
+  --ds-wash-to: var(--ds-color-background-surface);
+  --ds-wash-stop: 16%;
+}
+html[data-app-wash='slate'] {
+  --ds-wash-from: var(--ds-color-background-surface);
+  --ds-wash-to: color-mix(in srgb, var(--ds-color-background-canvas) 85%, #f5f7fa);
+  --ds-wash-stop: 100%;
+}
+html[data-app-wash='dawn'] {
+  --ds-wash-from: color-mix(in srgb, var(--ds-color-background-canvas) 80%, #f8fafc);
+  --ds-wash-to: color-mix(in srgb, var(--ds-color-background-canvas) 55%, #eef2f7);
+  --ds-wash-stop: 100%;
+}
+html[data-app-wash='flat'] {
+  --ds-wash-from: var(--ds-color-background-canvas);
+  --ds-wash-to: var(--ds-color-background-canvas);
+  --ds-wash-stop: 100%;
+}
+
+.app-wash {
+  background-color: var(--ds-wash-to);
+  background-image: linear-gradient(
+    180deg,
+    var(--ds-wash-from) 0%,
+    var(--ds-wash-to) var(--ds-wash-stop, 100%)
+  );
+}
+
 /* Theme variable blocks (html[data-theme='dark'|'mono'|'slate']) and the
    dynamic staff-accent classes (.theme-green, …, plus their dark-scheme
    overrides) are generated from the theme registry — see

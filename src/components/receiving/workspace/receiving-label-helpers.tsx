@@ -1,7 +1,6 @@
 'use client';
 
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
-import { buildLabelHtml } from '@/lib/print/printLabel';
 import { buildFaceInfoHtml } from '@/lib/print/labelFace';
 import {
   receivingPayloadToFace,
@@ -9,12 +8,15 @@ import {
   type ReceivingLabelPayload,
 } from '@/lib/print/printReceivingLabel';
 import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
-import {
-  buildReceivingLabelBitmapCommands,
-  buildReceivingLabelCommands,
-} from '@/lib/print/labelCommands';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
+
+// Lazy: the label-render modules carry the bwip-js barcode engine (~250 KB gz).
+// This helper file rides in the unbox/triage station bundles via its light
+// markers (markReceivingLabelPrinted / markReceivingSerialAbsent); only an
+// actual print should pull the print shell + raw-command builders.
+const loadLabelRenderers = () =>
+  Promise.all([import('@/lib/print/printLabel'), import('@/lib/print/labelCommands')]);
 
 const RECEIVING_LABEL_SIZE = resolvePaperSize('2x1');
 
@@ -35,21 +37,25 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
   const face = receivingPayloadToFace(payload);
   if (!face.matrix.value) return;
 
-  // quietZone defaults to a scanner-safe margin in the print shell (this is the
-  // real printed symbol, not the edge-to-edge preview).
-  const html = buildLabelHtml({
-    name: 'Label',
-    ...buildFaceInfoHtml(face),
-    dataMatrix: face.matrix,
-    hri: face.hri,
-  });
-
   // Silent printing OFF (Settings → Hardware) skips every dialog-free path and
   // hands the label to the browser's print dialog so an operator can pick a
   // printer / preview.
   const silent = isSilentPrintEnabled();
 
   void (async () => {
+    const [
+      { buildLabelHtml },
+      { buildReceivingLabelBitmapCommands, buildReceivingLabelCommands },
+    ] = await loadLabelRenderers();
+
+    // quietZone defaults to a scanner-safe margin in the print shell (this is
+    // the real printed symbol, not the edge-to-edge preview).
+    const html = buildLabelHtml({
+      name: 'Label',
+      ...buildFaceInfoHtml(face),
+      dataMatrix: face.matrix,
+      hri: face.hri,
+    });
     if (silent) {
       // Browser-native raw (WebUSB / Web Serial) to the paired label printer.
       //    Sends raw TSPL/ZPL/ESC-POS so the firmware renders the label — no OS

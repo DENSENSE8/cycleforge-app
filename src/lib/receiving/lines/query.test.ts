@@ -45,6 +45,7 @@ test('defaults: empty search params', () => {
   assert.equal(q.weekStart, '');
   assert.equal(q.weekEnd, '');
   assert.equal(q.includeSerials, false);
+  assert.equal(q.phase, 'full');
   assert.equal(q.inboundSourceParam, '');
   assert.equal(q.incomingLinkParam, '');
   assert.equal(q.staffFilterRaw, '');
@@ -238,6 +239,16 @@ test('include=serials: comma-list membership, trimmed entries', () => {
   assert.equal(parse('include=SERIALS').includeSerials, true); // lowercased first
   assert.equal(parse('include=serial').includeSerials, false);
   assert.equal(parse('').includeSerials, false);
+});
+
+test('phase=spine: fast-paint tier forces includeSerials off', () => {
+  assert.equal(parse('').phase, 'full');
+  assert.equal(parse('phase=spine').phase, 'spine');
+  assert.equal(parse('phase=SPINE').phase, 'spine'); // lowercased first
+  assert.equal(parse('phase=junk').phase, 'full'); // junk degrades to full
+  // spine wins over include=serials — the authoritative resolve is skipped.
+  assert.equal(parse('phase=spine&include=serials').includeSerials, false);
+  assert.equal(parse('phase=full&include=serials').includeSerials, true);
 });
 
 test('inbound / link facets: trimmed + lowercased raw strings', () => {

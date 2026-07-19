@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BuiltInImageType, CustomImageType } from '@/lib/photos/image-types';
+import type { BuiltInImageType, CustomImageType } from '@/lib/photos/image-type-defs';
 
 interface ImageTypesResponse {
   builtIn: BuiltInImageType[];

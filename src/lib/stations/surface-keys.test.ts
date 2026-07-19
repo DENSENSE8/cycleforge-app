@@ -66,7 +66,7 @@ test('isSurfaceKey: narrows known keys, rejects the rest', () => {
 test('getSurface: returns the same object as the registry', () => {
   assert.equal(getSurface('unbox'), SURFACE_REGISTRY.unbox);
   assert.equal(getSurface('unbox').route, '/unbox');
-  assert.equal(getSurface('triage').label, 'Receiving');
+  assert.equal(getSurface('triage').label, 'Arrival');
 });
 
 test('surfaceForRoute: exact, nested, and longest-wins', () => {

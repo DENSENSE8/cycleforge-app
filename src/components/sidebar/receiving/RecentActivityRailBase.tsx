@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import type { PaintSurface } from '@/lib/observability/paint-timing';
 import { motion } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { getStaffName } from '@/utils/staff';
@@ -87,6 +88,8 @@ export interface RecentActivityRailBaseProps {
   pinSelectedLead?: boolean;
   /** First-load stagger motion — forwarded to SidebarRailShell. */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
+  /** Dev/observability: stamp paint timing once the rail leaves skeleton. */
+  contentPaintSurface?: PaintSurface;
 
   /**
    * Timestamp the row's relative-time label reads. MUST match the feed's sort
@@ -214,6 +217,7 @@ export function RecentActivityRailBase({
   autoSelectFirstWhenEmpty = false,
   pinSelectedLead = true,
   staggerRevealMotion,
+  contentPaintSurface,
   getActivityAt = getRowActivityAt,
   getStatusDot,
   getStatusDotLabel,
@@ -249,6 +253,7 @@ export function RecentActivityRailBase({
       limit={limit}
       pinSelectedLead={pinSelectedLead}
       staggerRevealMotion={staggerRevealMotion}
+      contentPaintSurface={contentPaintSurface}
       eyebrowTitle={eyebrowTitle}
       eyebrowSuffix={eyebrowSuffix}
       eyebrowAction={eyebrowAction}

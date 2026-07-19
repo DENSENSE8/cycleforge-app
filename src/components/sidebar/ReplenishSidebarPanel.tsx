@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 import { Button } from '@/design-system/primitives';
@@ -155,7 +156,7 @@ export function ReplenishSidebarPanel() {
 
   return (
     <SidebarShell
-      className="font-dm-sans bg-surface-card"
+      className={`font-dm-sans ${appChromeClass}`}
       headerAbove={
         /* In-context list filter — local base SearchBar. The debounced effect
            above mirrors `localSearch` into `?rsku=`. Global header pill stays global. */

@@ -1,4 +1,4 @@
-import { Printer, Barcode, ClipboardList, Boxes } from '@/components/Icons';
+import { SHIPPING_MODE_ICONS } from '@/lib/nav/station-nav-icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 
 export type OutboundMode = 'labels' | 'scan-out' | 'ready' | 'fba';
@@ -27,11 +27,11 @@ export const OUTBOUND_MODE_SCOPED_PARAMS = [
 ] as const;
 
 export const OUTBOUND_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'labels', label: 'Labels', icon: Printer },
-  { id: 'ready', label: 'Ready', icon: ClipboardList },
-  { id: 'fba', label: 'FBA', icon: Boxes },
+  { id: 'labels', label: 'Labels', icon: SHIPPING_MODE_ICONS.labels },
+  { id: 'ready', label: 'Ready', icon: SHIPPING_MODE_ICONS.ready },
+  { id: 'fba', label: 'FBA', icon: SHIPPING_MODE_ICONS.fba },
   // Scan out sits last (rightmost) — dock ship-confirm, the end-of-line action.
-  { id: 'scan-out', label: 'Scan out', icon: Barcode },
+  { id: 'scan-out', label: 'Scan out', icon: SHIPPING_MODE_ICONS['scan-out'] },
 ];
 
 export type OutboundSort = 'priority' | 'newest';

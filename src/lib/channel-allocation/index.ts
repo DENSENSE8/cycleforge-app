@@ -15,4 +15,6 @@ export {
   compareAllocationHits,
   recommendDisposition,
 } from './recommend-disposition';
-export { getReadyQueue, type ReadyQueueQuery, type ReadyQueueDeps } from './ready-queue';
+// ready-queue is deliberately NOT re-exported: it imports tenancy/db (the
+// server-only Neon driver) and this barrel is consumed by client outbound
+// tables. Server callers import '@/lib/channel-allocation/ready-queue' directly.

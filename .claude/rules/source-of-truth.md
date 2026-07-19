@@ -22,9 +22,12 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
+| App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` (`appWorkCanvasClass` owns the depth-edge hairline) |
 | Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `detailStackAsideClassName`, …) |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard`) — Unbox / Triage / Testing / Shipping active-order |
 | Buttons | `src/design-system/primitives` `Button` |
+| Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
+| Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
 
@@ -60,6 +63,7 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 
 - Source: `src/design-system/tokens/z-index.ts`, wired into Tailwind as named utilities
   (`z-panel`, `z-modal`, `z-panelPopover`, `z-toast`, `z-tooltip`).
+- **Toasts:** `@/lib/toast` + `AppToaster` (`toast-theme.ts`) — light semantic fills; never Sonner `richColors`.
 - Never hardcode `z-[NNN]` or inline numeric `zIndex`. Add/adjust a named token instead.
 
 ## Focus affordance

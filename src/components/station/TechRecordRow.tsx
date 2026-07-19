@@ -89,6 +89,8 @@ export function TechRecordRow({ record, index, onOpen }: TechRecordRowProps) {
       chipGrid={chipGrid}
       index={index}
       onClick={() => onOpen(record)}
+      stageInstant={record.created_at || null}
+      stageLabel="Tested"
     />
   );
 }

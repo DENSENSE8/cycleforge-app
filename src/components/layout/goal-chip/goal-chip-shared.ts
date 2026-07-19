@@ -40,7 +40,21 @@ export const TONES = [
   { min: 0, ring: '#E11D48', chip: 'bg-rose-50 text-rose-700 ring-rose-500/20', label: 'Behind' },
 ] as const;
 
-export function toneFor(percent: number) {
+/** Zero progress at day start — calm, not "behind". */
+export const IDLE_TONE = {
+  ring: '#94A3B8',
+  chip: 'bg-surface-sunken text-text-muted ring-border-soft/50',
+  label: 'Not started',
+} as const;
+
+/**
+ * Progress tone for the header goal chip.
+ * Pass `progressValue` (scans done / tasks done) so 0/N reads as idle, not behind.
+ */
+export function toneFor(percent: number, progressValue?: number) {
+  if (progressValue !== undefined && progressValue <= 0 && percent < 100) {
+    return IDLE_TONE;
+  }
   return TONES.find((t) => percent >= t.min) ?? TONES[TONES.length - 1];
 }
 

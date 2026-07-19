@@ -63,6 +63,11 @@ export function PackerRecordRow({ record, index, onOpen }: PackerRecordRowProps)
     );
   }
 
+  const shipOutAt = (record.ship_confirmed_at || '').trim() || null;
+  const packedAt = (record.created_at || '').trim() || null;
+  const stageInstant = shipOutAt || packedAt;
+  const stageLabel = shipOutAt ? 'Shipped out' : 'Packed';
+
   return (
     <StationRecordShell
       animated
@@ -73,6 +78,17 @@ export function PackerRecordRow({ record, index, onOpen }: PackerRecordRowProps)
       chipGrid={chipGrid}
       index={index}
       onClick={() => onOpen(record)}
+      stageInstant={stageInstant}
+      stageLabel={stageLabel}
+      stageTooltipExtra={
+        shipOutAt
+          ? record.shipped_out_by_name
+            ? `by ${record.shipped_out_by_name}`
+            : null
+          : record.packed_by_name
+            ? `by ${record.packed_by_name}`
+            : null
+      }
     />
   );
 }

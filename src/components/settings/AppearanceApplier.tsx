@@ -5,8 +5,8 @@ import { applyAppearance } from '@/lib/settings/appearance';
 
 /**
  * Mounted once at the root layout — applies the saved Appearance settings
- * (density, font scale) to the document on every app load so a user's
- * preferences persist across reloads.
+ * (density, font scale, page wash) to the document on every app load so a
+ * user's preferences persist across reloads.
  */
 export function AppearanceApplier() {
   useEffect(() => { applyAppearance(); }, []);

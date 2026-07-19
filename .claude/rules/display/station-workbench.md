@@ -20,7 +20,7 @@ import {
 
 Reference implementation: `LineEditPanel` (Unbox). Sibling adopters:
 `TestingPanel`, `TriagePanel`, `ShippingScanWorkspace` / `UpNextActionDock`,
-`ActivePackerWorkspace`, `RepairIntakeForm`, `LocalPickupEditPanel`.
+`PackOrderPanel`, `RepairIntakeForm`, `LocalPickupEditPanel`.
 
 ---
 

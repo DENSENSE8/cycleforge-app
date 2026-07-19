@@ -1,8 +1,6 @@
 /**
  * search-tabs — the shared category-tab vocabulary + preview grouping for the
- * one results surface. Promoted out of SearchWorkspace so /search, the header
- * dropdown preview, and operations all order/label categories identically
- * (SoT: one surface, one tab set).
+ * one results surface (Dashboard Search + header dropdown preview).
  */
 
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
@@ -39,25 +37,6 @@ export function isTabId(value: string): value is TabId {
 export function tabDbType(id: TabId): SearchEntityType | undefined {
   const tab = CATEGORY_TABS.find((t) => t.id === id);
   return tab && 'db' in tab ? tab.db : undefined;
-}
-
-export type SearchScope = 'global' | 'operations';
-
-/**
- * Tab order for a scope. Global keeps Overview-first; operations is
- * orders-first (Overview demoted to the end) — the "shipped order search"
- * north star.
- */
-export function orderedTabsForScope(scope: SearchScope): readonly CategoryTab[] {
-  if (scope !== 'operations') return CATEGORY_TABS;
-  const overview = CATEGORY_TABS.find((t) => t.id === 'all')!;
-  const rest = CATEGORY_TABS.filter((t) => t.id !== 'all');
-  return [...rest, overview];
-}
-
-/** Default active tab id for a scope. */
-export function defaultTabForScope(scope: SearchScope): TabId {
-  return scope === 'operations' ? 'order' : 'all';
 }
 
 // ── Header-preview grouping ─────────────────────────────────────────────────

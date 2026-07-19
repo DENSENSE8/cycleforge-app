@@ -6,7 +6,7 @@
  * to sign by hand.
  */
 
-import { escapeLabelHtml } from '@/lib/print/printLabel';
+import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import type { PickupReportData } from '@/lib/shipped/pickup-report';
 

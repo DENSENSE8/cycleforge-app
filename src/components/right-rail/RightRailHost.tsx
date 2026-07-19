@@ -79,7 +79,9 @@ export function RightRailHost() {
             style={isAssistantDock ? assistantDockAsideStyle() : detailStackAsideStyle()}
             className={isAssistantDock ? assistantDockAsideClassName : detailStackAsideClassName}
           >
-            {renderable.node}
+            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+              {renderable.node}
+            </div>
           </motion.aside>
         ) : null}
       </AnimatePresence>

@@ -112,6 +112,8 @@ function RecentRow({
             <img
               src={item.image_url}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = 'none';

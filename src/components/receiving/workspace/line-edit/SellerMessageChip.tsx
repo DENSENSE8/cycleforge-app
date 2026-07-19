@@ -8,7 +8,9 @@ import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { ClaimType } from '@/lib/zendesk-claim-template';
-import { normalizeClaimSellerMessageRefs } from '@/lib/receiving-claim-seller-message';
+// From the light refs module — importing via receiving-claim-seller-message
+// drags the server-only tenancy/db (Neon driver) into this client bundle.
+import { normalizeClaimSellerMessageRefs } from '@/lib/receiving-claim-seller-refs';
 import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-copy';
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
 

@@ -32,7 +32,13 @@ import {
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import { RowTitle, RowMetaColumns, META_COL, RowConditionMeta } from '@/components/ui/RowMetaColumns';
+import {
+  RowTitle,
+  RowMetaColumns,
+  META_COL,
+  RowConditionMeta,
+  metaIndentFor,
+} from '@/components/ui/RowMetaColumns';
 import { DeliveryStateIcon } from '@/components/station/ReceivingDeliveryStateIcon';
 import { IconWithTooltip } from '@/components/ui/IconWithTooltip';
 import {
@@ -46,18 +52,40 @@ import {
   getReceivingPoGroupTitle,
   getReceivingPoIdentityParts,
 } from '@/lib/receiving/po-group-title';
+import {
+  resolveReceivingRowStageStamp,
+  type ReceivingActivityAxis,
+} from '@/components/station/receiving-lines-table-helpers';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
+import { formatDateTimePST } from '@/utils/date';
 import type { ReceivingLineRow } from './receiving-line-row';
+
+function resolvePoGroupStageStamp(rows: ReceivingLineRow[], axis: ReceivingActivityAxis) {
+  let best: ReturnType<typeof resolveReceivingRowStageStamp> = null;
+  let bestMs = -1;
+  for (const row of rows) {
+    const stamp = resolveReceivingRowStageStamp(row, axis);
+    if (!stamp) continue;
+    const ms = Date.parse(stamp.instant);
+    if (!Number.isFinite(ms) || ms <= bestMs) continue;
+    best = stamp;
+    bestMs = ms;
+  }
+  return best;
+}
 
 export function ReceivingPoSummary({
   rows,
   isMobile,
   isIncoming,
   isHistory = false,
+  activityAxis = 'scanned',
 }: {
   rows: ReceivingLineRow[];
   isMobile: boolean;
   isIncoming: boolean;
   isHistory?: boolean;
+  activityAxis?: ReceivingActivityAxis;
 }) {
   const first = rows[0];
   const resolvePlatformMeta = usePlatformMeta();
@@ -119,6 +147,14 @@ export function ReceivingPoSummary({
   const uniformDeliveryState =
     deliveryStates.size === 1 ? [...deliveryStates][0] : null;
 
+  const stageStamp =
+    !isIncoming && isHistory ? resolvePoGroupStageStamp(rows, activityAxis) : null;
+  const stageTooltip = stageStamp
+    ? stageStamp.staffName
+      ? `${stageStamp.label} ${formatDateTimePST(stageStamp.instant)} by ${stageStamp.staffName}`
+      : `${stageStamp.label} ${formatDateTimePST(stageStamp.instant)}`
+    : null;
+
   // Mirror the per-line ChipColumns grid exactly, column-for-column.
   const columns: ChipColumn[] = [
     { key: 'po', width: CHIP_COL.id, node: <OrderIdChip value={poValue} display={getLast4(poValue)} /> },
@@ -159,8 +195,11 @@ export function ReceivingPoSummary({
           title={title}
         />
         <RowMetaColumns
-          indent={META_COL.indentWide}
+          indent={metaIndentFor('wide', false)}
           qtyCol={META_COL.qtyColWide}
+          // Mirror child ReceivingLineOrderRow — PARTS / L-NEW need poCondCol so
+          // the stage clock starts at the same x on bundled PO headers and lines.
+          condCol={META_COL.poCondCol}
           qty={
             <span className={complete ? 'text-emerald-600' : 'text-text-warning'}>
               {quantityText}
@@ -169,6 +208,14 @@ export function ReceivingPoSummary({
           condition={<RowConditionMeta condition={conditionLabel} />}
           rest={
             <div className="flex items-center gap-2">
+              <span className="hidden sm:contents">
+                <RowStageTimeMeta
+                  instant={stageStamp?.instant}
+                  label={stageStamp?.label ?? 'Scanned'}
+                  tooltip={stageStamp ? stageTooltip : undefined}
+                  reserve
+                />
+              </span>
               {shouldShowWorkflowStatusIcon({ isHistory, isIncoming }) ? (
                 <IconWithTooltip
                   Icon={WorkflowIcon}

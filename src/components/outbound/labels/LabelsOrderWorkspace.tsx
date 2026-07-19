@@ -241,7 +241,11 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           </Button>
         </div>
       }
-      entityContext={entityOrder ? <ShippingEntityContextHeader activeOrder={entityOrder} /> : null}
+      entityContext={
+        entityOrder ? (
+          <ShippingEntityContextHeader activeOrder={entityOrder} onExitToList={onClose} />
+        ) : null
+      }
       tabs={
         <SectionTabsSlider
           tabs={tabs}

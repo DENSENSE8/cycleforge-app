@@ -205,8 +205,10 @@ type ReceivingStageStampRow = {
 
 /**
  * Which lifecycle instant owns the dense row clock for the active history axis.
- * Does **not** fall back to `created_at` — that is for day-banding only; a missing
- * stage stamp means omit the meta slot (same rule as OrdersQueue stage time).
+ * Does **not** fall back to `created_at` — that is for day-banding only.
+ * On the unboxed axis, when `unboxed_at` is missing (e.g. Unfound PO that was
+ * door-scanned but never unboxed), fall back to the scan clock so the meta
+ * column stays populated and vertically aligned with sibling rows.
  */
 export function resolveReceivingRowStageStamp(
   row: ReceivingStageStampRow,
@@ -214,11 +216,30 @@ export function resolveReceivingRowStageStamp(
 ): ReceivingRowStageStamp | null {
   if (axis === 'unboxed') {
     const instant = (row.unboxed_at || '').trim();
-    if (!instant) return null;
+    if (instant) {
+      return {
+        instant,
+        label: 'Unboxed',
+        staffName: (row.unboxed_by_name || '').trim() || null,
+      };
+    }
+    const scanned = (row.scanned_at || '').trim();
+    if (scanned) {
+      return {
+        instant: scanned,
+        label: 'Scanned',
+        staffName: (row.scanned_by_name || '').trim() || null,
+      };
+    }
+    const received = (row.received_at || '').trim();
+    if (!received) return null;
     return {
-      instant,
-      label: 'Unboxed',
-      staffName: (row.unboxed_by_name || '').trim() || null,
+      instant: received,
+      label: 'Scanned',
+      staffName:
+        (row.scanned_by_name || '').trim() ||
+        (row.received_by_name || '').trim() ||
+        null,
     };
   }
   if (axis === 'received') {

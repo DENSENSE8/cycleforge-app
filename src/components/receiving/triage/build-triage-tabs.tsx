@@ -2,15 +2,15 @@
 
 /**
  * Build the Triage SectionTabsSlider tab list (Classify / Staging / Pairing).
+ * Tab bar owns labels + Edit-PO rightSlot — tab bodies stay unlabeled.
  */
 
 import type { ReactNode } from 'react';
 import { ClipboardList, MapPin, Link2 } from '@/components/Icons';
-import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
+import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import { LinePoItemsSection } from '../workspace/line-edit/LinePoItemsSection';
 import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
 import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
@@ -30,6 +30,8 @@ export function buildTriageTabs({
   staffId,
   c,
   staging,
+  pairingOpen,
+  onPairingToggle,
   onItemDescFeedback,
   onItemDescSaved,
   onNotesFeedback,
@@ -38,6 +40,8 @@ export function buildTriageTabs({
   staffId: string;
   c: UnboxLineController;
   staging: TriageStagingController;
+  pairingOpen: boolean;
+  onPairingToggle: () => void;
   onItemDescFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved: (lineId: number, zohoNotes: string | null) => void;
   onNotesFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
@@ -56,21 +60,22 @@ export function buildTriageTabs({
       content: (
         <div className="space-y-4">
           <TriageClassifySection row={row} c={c} />
-          {linkedPo ? (
-            <WorkspaceCard variant="glass" overflow="visible">
-              <LinePoItemsSection
-                row={row}
-                staffId={staffId}
-                serialScan={false}
-                openInUnbox
-                editLines={false}
-                c={c}
-                embedded
-                onItemDescFeedback={onItemDescFeedback}
-                onItemDescSaved={onItemDescSaved}
-              />
-            </WorkspaceCard>
-          ) : null}
+          <POUnboxingSection
+            row={row}
+            staffId={staffId}
+            poItems={linkedPo}
+            matching
+            includeLinkedPoItems={false}
+            openInUnbox
+            editLines={false}
+            serialScan={false}
+            c={c}
+            suppressItemsHeader
+            pairingOpen={pairingOpen}
+            onPairingToggle={onPairingToggle}
+            onItemDescFeedback={onItemDescFeedback}
+            onItemDescSaved={onItemDescSaved}
+          />
           <WorkspaceNotesCard row={row} c={c} onActionFeedback={onNotesFeedback} />
           {row.receiving_source === 'unmatched' ? (
             <UnfoundTodoStrip message={unfoundMessage} />
@@ -99,6 +104,8 @@ export function buildTriageTabs({
           editLines={false}
           serialScan={false}
           c={c}
+          suppressItemsHeader
+          pairingOpen
           onItemDescFeedback={onItemDescFeedback}
           onItemDescSaved={onItemDescSaved}
         />
@@ -111,6 +118,7 @@ export function TriageSectionTabs({
   tabs,
   value,
   onChange,
+  rightSlot,
 }: {
   tabs: SectionTab[];
   value: string;
@@ -123,6 +131,7 @@ export function TriageSectionTabs({
       value={value}
       onChange={onChange}
       ariaLabel="Triage displays"
+      rightSlot={rightSlot}
     />
   );
 }

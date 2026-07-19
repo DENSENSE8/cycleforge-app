@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { ViewDropdown } from '@/components/ui/ViewDropdown';
 import { Loader2, RefreshCw, X } from '@/components/Icons';
 import { sectionLabel, dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
@@ -308,7 +309,7 @@ export function GoalsSidebarPanel() {
 
   return (
     <SidebarShell
-      className="bg-surface-card"
+      className={appChromeClass}
       headerAbove={
         <>
           <div className="border-b border-border-soft">

@@ -13,9 +13,12 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import type { IncomingDeliveryState } from '@/components/sidebar/receiving/IncomingSidebarPanel';
 import {
   getReceivingModeDescriptor,
+  getReceivingTableModeDescriptor,
   historySortGroupAxis,
+  resolveUnboxReceivingTableMode,
   type ReceivingModeContext,
   type ReceivingModeDescriptor,
+  type ReceivingTableMode,
 } from '@/lib/receiving/receiving-modes';
 import {
   RECEIVING_HISTORY_URL_PARAMS,
@@ -24,6 +27,9 @@ import {
 } from '@/lib/receiving-history-search';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
+import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
+import { parseStaffParam } from '@/hooks/useStaffFilter';
 
 export interface ReceivingModeState {
   mode: ReceivingModeDescriptor;
@@ -42,16 +48,22 @@ export interface ReceivingModeState {
   modeContext: ReceivingModeContext;
 }
 
+function resolveTableMode(
+  pathname: string,
+  searchParams: Pick<URLSearchParams, 'get'>,
+): ReceivingTableMode {
+  // Unbox workbench tabs own the table mode (Queue / Viewed / History).
+  if (pathname.startsWith(UNBOX_SURFACE_ROUTE)) {
+    return resolveUnboxReceivingTableMode(getUnboxWorkspaceTabFromSearch(searchParams));
+  }
+  return getReceivingModeDescriptor(resolveLiveReceivingMode(pathname, searchParams)).id;
+}
+
 export function useReceivingModeContext(): ReceivingModeState {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
-  // Graduated surfaces (`/incoming`, `/receiving/history`, …) strip `?mode=`;
-  // path owns the mode. Legacy `/receiving?mode=` still falls through.
-  const pageMode = resolveLiveReceivingMode(pathname, searchParams);
-  // The active mode descriptor owns every data-layer decision. Adding a mode =
-  // adding a registry entry; the component just delegates. isIncomingMode
-  // remains only for the presentational fork + the incoming-only effects.
-  const mode = getReceivingModeDescriptor(pageMode);
+  const tableMode = resolveTableMode(pathname, searchParams);
+  const mode = getReceivingTableModeDescriptor(tableMode);
   const isIncomingMode = mode.id === 'incoming';
   const isHistoryMode = mode.id === 'history';
 
@@ -119,6 +131,11 @@ export function useReceivingModeContext(): ReceivingModeState {
   const isDeliveredNotUnboxedFacet =
     isIncomingMode && incomingState === 'DELIVERED_NOT_UNBOXED';
 
+  const staffFilterId = parseStaffParam(
+    searchParams.get('staff') ?? searchParams.get('staffId'),
+  );
+  const listSearch = searchParams.get('search')?.trim() ?? '';
+
   // Single bag of parsed URL state handed to the active descriptor. Memoized so
   // the query key / params stay referentially stable across unrelated re-renders.
   const modeContext = useMemo<ReceivingModeContext>(
@@ -136,6 +153,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       incomingSource,
       isDeliveredUnscannedFacet,
       isDeliveredNotUnboxedFacet,
+      staffFilterId,
+      listSearch,
     }),
     [
       historySearch,
@@ -151,6 +170,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       incomingSource,
       isDeliveredUnscannedFacet,
       isDeliveredNotUnboxedFacet,
+      staffFilterId,
+      listSearch,
     ],
   );
 

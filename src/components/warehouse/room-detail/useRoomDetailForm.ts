@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
 import { useBinsOverview } from '@/hooks/useBinsOverview';
 import { EMPTY_FORM, LETTERS, type FormState } from './room-detail-shared';

@@ -21,7 +21,7 @@
 
 import { useState } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { BottomSheet, ConfirmSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/design-system/primitives';
 

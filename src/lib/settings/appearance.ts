@@ -1,13 +1,17 @@
 /**
- * Appearance settings — UI density and font scale. Theme switching is intentionally
- * deferred; the app is currently dark-only and switching it is a design-system
- * refactor, not a settings checkbox.
- *
- * Values are stored in localStorage and reflected as CSS variables on
- * <html> so any component can read them via var(--ui-density) / etc.
+ * Appearance settings — UI density, font scale, and page wash.
+ * Theme switching lives in staff_preferences (server); wash/density/font are
+ * device-local via localStorage and reflected as attributes/CSS vars on <html>.
  */
 
 import { readMigratedItem } from '@/lib/storage/migrate-key';
+import {
+  applyAppWash,
+  DEFAULT_WASH,
+  resolveWash,
+  WASH_NAMES,
+  type WashName,
+} from '@/design-system/tokens/app-surface';
 
 const KEY = 'cf.appearance';
 const LEGACY_KEY = 'usav.appearance';
@@ -17,11 +21,14 @@ export type Density = 'compact' | 'cozy' | 'comfortable';
 export interface AppearanceSettings {
   density: Density;
   fontScale: number;
+  /** Page wash preset — Unbox/receiving/admin gradient hosts. */
+  pageWash: WashName;
 }
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   density: 'cozy',
   fontScale: 1.0,
+  pageWash: DEFAULT_WASH,
 };
 
 export const FONT_SCALE_OPTIONS = [0.9, 1.0, 1.1, 1.2] as const;
@@ -40,7 +47,8 @@ export function getAppearance(): AppearanceSettings {
     const fontScale = Number.isFinite(fontScaleRaw) && fontScaleRaw >= 0.8 && fontScaleRaw <= 1.4
       ? fontScaleRaw
       : DEFAULT_APPEARANCE.fontScale;
-    return { density, fontScale };
+    const pageWash = resolveWash(parsed.pageWash);
+    return { density, fontScale, pageWash };
   } catch {
     return DEFAULT_APPEARANCE;
   }
@@ -67,4 +75,8 @@ export function applyAppearance(a: AppearanceSettings = getAppearance()): void {
   root.style.setProperty('--ui-font-scale', String(a.fontScale));
   // Scale the root font-size so rem-based components grow proportionally
   root.style.fontSize = `${16 * a.fontScale}px`;
+  applyAppWash(a.pageWash);
 }
+
+/** Re-export wash names for Appearance UI without a second import path. */
+export { WASH_NAMES, type WashName };

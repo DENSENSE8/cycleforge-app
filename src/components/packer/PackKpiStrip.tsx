@@ -1,0 +1,241 @@
+'use client';
+
+/**
+ * Pack workspace attention strip — Ready-to-pack (TESTED) + backlog tiles on
+ * Queue; packed-today on History. Reuses shipping-metrics + queue-counts SoT.
+ */
+
+import { useMemo, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { packerCountsQuery } from '@/lib/queries/station-table-queries';
+import { KpiTile, metricIntentTextClass, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
+import {
+  resolveShippingMetrics,
+  splitShippingAttention,
+  ZERO_SHIPPING_FBA,
+  ZERO_SHIPPING_HISTORY,
+  type ComputedMetric,
+} from '@/lib/tech/shipping-metrics';
+import type { PackWorkspaceTab } from '@/utils/pack-workspace-state';
+import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
+import { useGatedOperationsRoi } from '@/features/operations/workspace/useGatedOperationsRoi';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { CheckCircle, RefreshCw } from '@/components/Icons';
+import { computeWeekRange, getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
+import { useStaffFilter } from '@/hooks/useStaffFilter';
+import type { FulfillmentState } from '@/lib/unshipped-state';
+import { cn } from '@/utils/_cn';
+import { Button } from '@/design-system/primitives';
+
+const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
+const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
+
+type ToShipFilter = { active: FulfillmentState | null; toggle: (state: FulfillmentState) => void };
+
+function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShipFilter?: ToShipFilter }) {
+  const tone = metricIntentTextClass(metric.intent);
+  const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
+  const clickable = Boolean(metric.filterUstatus && toShipFilter);
+  const active = Boolean(metric.filterUstatus && toShipFilter?.active === metric.filterUstatus);
+  const footer: ReactNode =
+    metric.delta !== undefined
+      ? undefined
+      : metric.status
+        ? (
+            <span
+              className={cn(
+                'mt-1.5 inline-flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
+                tone,
+              )}
+            >
+              <span className={cn('h-1.5 w-1.5 rounded-full bg-current', tone)} aria-hidden="true" />
+              {active ? 'Filtered' : metric.status}
+            </span>
+          )
+        : undefined;
+
+  const tile = (
+    <KpiTile
+      label={metric.label}
+      value={metric.value}
+      valueClassName={toneHero ? tone : undefined}
+      delta={metric.delta}
+      invertDelta={metric.deltaInvert}
+      deltaVsLabel="vs last wk"
+      footer={footer}
+      active={active}
+      onOpen={
+        clickable ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState) : undefined
+      }
+      className="h-full"
+    />
+  );
+
+  if (!metric.tooltip) return tile;
+  return (
+    <HoverTooltip label={metric.tooltip} focusable={!clickable} className="block h-full">
+      {tile}
+    </HoverTooltip>
+  );
+}
+
+function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
+  return (
+    <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading packing attention metrics…</span>
+      {Array.from({ length: reservedSlots }).map((_, i) => (
+        <div key={i} className={TILE_CELL_CLASS}>
+          <div className={cn(MONITOR_KPI_TILE_CLASS, 'h-full')}>
+            <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
+            <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
+            <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StripAllClear({ mode }: { mode: PackWorkspaceTab }) {
+  const copy =
+    mode === 'queue'
+      ? { title: 'Nothing ready to pack.', hint: 'Orders land here after the tech scan (TESTED).' }
+      : { title: 'No packs in this week.', hint: 'Scans from the pack station appear in History.' };
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
+      <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
+      <div className="min-w-0">
+        <p className="text-role-caption font-bold text-text-default">{copy.title}</p>
+        <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+          {copy.hint}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StripError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4">
+      <p className="text-role-caption font-semibold text-rose-700">Could not load packing metrics.</p>
+      <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
+        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+function QueueStrip() {
+  const query = useQuery(unshippedQueueCountsQuery());
+  const { roi, pending: roiPending } = useGatedOperationsRoi();
+  const toShipFilter = useToShipStatusFilter();
+  const data = query.data;
+  const unshipped = {
+    total: data?.total ?? 0,
+    pending: data?.byStage.pending ?? 0,
+    tested: data?.byStage.tested ?? 0,
+    blocked: (data?.combos ?? []).reduce((s, c) => s + (c.blocked ? c.count : 0), 0),
+  };
+  const metrics = resolveShippingMetrics({
+    mode: 'pending',
+    unshipped,
+    fba: ZERO_SHIPPING_FBA,
+    history: ZERO_SHIPPING_HISTORY,
+    roi,
+  });
+  const { attention, rest } = splitShippingAttention(metrics);
+  const tiles = [...attention, ...rest];
+
+  if (query.isError) {
+    return <StripError onRetry={() => void query.refetch()} />;
+  }
+  if (query.isPending || roiPending) {
+    return <StripSkeleton reservedSlots={4} />;
+  }
+  if (tiles.length === 0) return <StripAllClear mode="queue" />;
+
+  return (
+    <div className={TILE_BAND_CLASS}>
+      {tiles.map((metric) => (
+        <div key={metric.id} className={TILE_CELL_CLASS}>
+          <MetricKpiTile metric={metric} toShipFilter={toShipFilter} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HistoryStrip({ packerId }: { packerId: number }) {
+  const { staffId } = useStaffFilter({ allToken: 'all' });
+  const weekRange = useMemo(() => computeWeekRange(0), []);
+  const scopeId = staffId ?? (packerId > 0 ? packerId : undefined);
+  const query = useQuery(
+    packerCountsQuery({
+      weekStart: weekRange.startStr,
+      weekEnd: weekRange.endStr,
+      packedBy: scopeId ?? null,
+    }),
+  );
+
+  const todayKey = getCurrentPSTDateKey();
+  const packedToday = useMemo(() => {
+    const byDay = query.data?.byDay ?? {};
+    if (typeof byDay[todayKey] === 'number') return byDay[todayKey];
+    return 0;
+  }, [query.data?.byDay, todayKey]);
+
+  if (query.isError) {
+    return <StripError onRetry={() => void query.refetch()} />;
+  }
+  if (query.isPending) {
+    return <StripSkeleton reservedSlots={2} />;
+  }
+
+  const weekTotal = Number(query.data?.total ?? 0);
+  if (weekTotal <= 0 && packedToday <= 0) return <StripAllClear mode="history" />;
+
+  return (
+    <div className={TILE_BAND_CLASS}>
+      <div className={TILE_CELL_CLASS}>
+        <KpiTile
+          label="Packed today"
+          value={packedToday.toLocaleString()}
+          footer={
+            <span className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+              {toPSTDateKey(new Date())}
+            </span>
+          }
+          className="h-full"
+        />
+      </div>
+      <div className={TILE_CELL_CLASS}>
+        <KpiTile
+          label="This week"
+          value={weekTotal.toLocaleString()}
+          footer={
+            <span className="mt-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+              Pack scans
+            </span>
+          }
+          className="h-full"
+        />
+      </div>
+    </div>
+  );
+}
+
+export function PackKpiStrip({
+  mode,
+  packerId,
+}: {
+  mode: PackWorkspaceTab;
+  packerId: number;
+}) {
+  return (
+    <section aria-label="Packing attention" className="shrink-0">
+      {mode === 'queue' ? <QueueStrip /> : <HistoryStrip packerId={packerId} />}
+    </section>
+  );
+}

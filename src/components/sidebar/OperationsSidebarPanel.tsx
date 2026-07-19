@@ -4,14 +4,13 @@
  * Operations master-page sidebar — the single contextual panel for `/operations`.
  *
  * It owns the five-mode switcher (Live · Analytics · Insights · History · Signals) and,
- * per mode, the contextual search / filters / quick-nav. The right pane
+ * per mode, local filters / quick-nav (History paste-a-number, Signals note filter).
+ * Cross-entity search lives in the global header → Dashboard Search. The right pane
  * (OperationsWorkspace) is purely visual and reacts to the same `?mode=` /
- * `?range=` / `?section=` / `?q=` URL params. Follows the house sidebar-mode
- * contract (see `.claude/skills/sidebar-mode`): mode lives in the URL, search is
- * rendered by SidebarShell, never a parallel switcher.
+ * `?range=` / `?section=` URL params.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/utils/_cn';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -49,13 +48,8 @@ import {
 } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { useOperationsMode } from '@/components/sidebar/operations/useOperationsMode';
 import { useOperationsTimelineUrlState } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
-import { useSearchRecents } from '@/hooks/useSearchRecents';
-import { SearchRecentsDropdown } from '@/components/search/SearchRecentsDropdown';
-import { useOperationsSearchBusy } from '@/components/operations/operations-search-status';
 import { isOperationsHistoryBrowseEnabled } from '@/lib/operations/operations-history-flags';
 import { HistoryBrowseFilters } from '@/components/sidebar/operations/HistoryBrowseFilters';
-import { pushSearchRecent } from '@/lib/search/search-recents';
-import { looksLikeIdentifier } from '@/lib/search/search-hit';
 import type { JourneyDimension } from '@/lib/timeline/journey';
 import {
   parseSignalsView,
@@ -93,8 +87,8 @@ export function OperationsSidebarPanel() {
   const { mode, updateMode } = useOperationsMode();
   const masterNavEnabled = useMasterNavEnabled();
 
-  // The mode rail is suppressed when the master-nav drives mode switching
-  // (operations isn't in MASTER_NAV_RAIL_PAGES today, so it renders its own).
+  // Panel-local mode pills are suppressed when the master-nav header cluster
+  // owns L2 switching (`useMasterNavEnabled`).
   const modeToggle = masterNavEnabled ? null : (
     <OperationsModeToggle value={mode} onChange={(id) => updateMode(id as OperationsMode)} />
   );
@@ -479,32 +473,14 @@ function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
   // Browse-feed filters show when the browse region is on-screen (not focused
   // on a record). The URL setters they drive already exist.
   const showFilters = isOperationsHistoryBrowseEnabled() && !url.focused;
-  const { recents, remove, clear } = useSearchRecents({ scope: 'operations:history' });
-  // Reflect the browse fetch on the header pill's spinner (results pane owns
-  // the fetch; this is the cross-subtree bridge).
-  const searchBusy = useOperationsSearchBusy();
+  // Draft text until Enter — avoid a journey fetch on every keystroke.
+  const [draft, setDraft] = useState(url.entityValue);
+  useEffect(() => {
+    setDraft(url.entityValue);
+  }, [url.entityValue]);
 
-  // Enter on an exact identifier fast-paths straight to that record's timeline
-  // (keeps the paste-a-number reflex); otherwise it commits a ?q= browse and
-  // records a recent (the SearchRecentsDropdown below re-runs them).
-  const handleHistorySearch = (v: string) => {
-    const t = v.trim();
-    if (!t) return;
-    if (looksLikeIdentifier(t)) {
-      url.setEntity(t);
-      return;
-    }
-    pushSearchRecent({
-      query: t,
-      scope: 'operations:history',
-      scopeLabel: 'Operations · History',
-      scopeHref: `/operations?mode=history&q=${encodeURIComponent(t)}`,
-    });
-    url.setQ(t);
-  };
-
-  // In-context list filter (local base SearchBar); the global header pill stays
-  // global (search any order across the app).
+  // Local paste-a-number field — focuses a record's journey timeline. Cross-entity
+  // search lives in the global header → Dashboard Search, not here.
   return (
     <SidebarShell
       headerAbove={
@@ -514,13 +490,18 @@ function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
             <SearchBar
               size="compact"
               variant="blue"
-              value={url.q}
-              onChange={(v) => url.setQ(v)}
-              onClear={() => url.setQ('')}
-              onSearch={handleHistorySearch}
-              placeholder="Filter shipped orders, serials, tracking…"
+              value={draft}
+              onChange={setDraft}
+              onClear={() => {
+                setDraft('');
+                url.setEntity('');
+              }}
+              onSearch={(v) => {
+                const t = v.trim();
+                if (t) url.setEntity(t);
+              }}
+              placeholder="Paste order, serial, or tracking…"
               debounceMs={300}
-              isSearching={searchBusy}
             />
           </div>
         </>
@@ -532,13 +513,6 @@ function HistorySidebar({ modeToggle }: { modeToggle: React.ReactNode }) {
         value={url.dim}
         onChange={(id) => url.setDim(id as JourneyDimension)}
         aria-label="Journey dimension"
-      />
-      <SearchRecentsDropdown
-        recents={recents}
-        onSelect={(entry) => url.setQ(entry.query)}
-        onRemove={remove}
-        onClearAll={() => clear('operations:history')}
-        className="mt-2"
       />
       {showFilters ? <HistoryBrowseFilters url={url} /> : null}
     </SidebarShell>

@@ -12,7 +12,7 @@ import {
 import type { PlatformAccountRow, PlatformRow, TypeRow } from '@/lib/neon/catalog-queries';
 import { SOURCE_PLATFORMS, sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
 import { RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { receivingLabelTypeDisplay } from '@/lib/print/printReceivingLabel';
+import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
 /** A picker option resolved from the catalog (or the built-in fallback). */
@@ -79,6 +79,7 @@ export function usePlatformMeta(): (value: string | null | undefined) => SourceP
       return {
         value: key,
         label: row.label,
+        mark: builtin.mark || row.label.slice(0, 2),
         text: row.tone ?? builtin.text,
         border: builtin.border,
       };

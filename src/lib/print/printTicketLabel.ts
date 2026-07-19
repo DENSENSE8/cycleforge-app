@@ -1,5 +1,4 @@
 import { ticketHandle } from '@/lib/barcode-routing';
-import { printLabel } from '@/lib/print/printLabel';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 
 /**
@@ -44,10 +43,13 @@ export function printTicketLabel(payload: TicketLabelPayload): void {
   const face = ticketPayloadToFace(payload);
   if (!face.matrix.value) return;
 
-  printLabel({
-    name: 'Ticket',
-    ...buildFaceInfoHtml(face),
-    dataMatrix: face.matrix,
-    hri: face.hri,
+  // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
+  void import('@/lib/print/printLabel').then(({ printLabel }) => {
+    printLabel({
+      name: 'Ticket',
+      ...buildFaceInfoHtml(face),
+      dataMatrix: face.matrix,
+      hri: face.hri,
+    });
   });
 }

@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import withBundleAnalyzerInit from "@next/bundle-analyzer";
+
+// ANALYZE=true pnpm build → .next/analyze/client.html (chunk treemap).
+const withBundleAnalyzer = withBundleAnalyzerInit({ enabled: process.env.ANALYZE === "true" });
 
 const withPWA = withPWAInit({
     dest: "public",
@@ -37,6 +41,10 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
     turbopack: {},
+    // Optional build-output override so a production build/serve (e.g. the
+    // Lighthouse audit runbook) can coexist with a running `next dev` in the
+    // same checkout — dev clobbers `.next`. Unset ⇒ default `.next`.
+    distDir: process.env.NEXT_DIST_DIR || '.next',
     outputFileTracingRoot: process.cwd(),
     // Type-check + lint are the gate in CI (.github/workflows/ci.yml runs
     // `eslint src` + `tsc --noEmit`). Running them AGAIN inside `next build`
@@ -126,4 +134,4 @@ const nextConfig: NextConfig = {
     ],
 };
 
-export default withPWA(nextConfig);
+export default withBundleAnalyzer(withPWA(nextConfig));

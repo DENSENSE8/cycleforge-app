@@ -44,6 +44,8 @@ const PACKER_LANES: SwimlaneLaneDef<PackerHistoryLane>[] = PACKER_HISTORY_BOARD_
 
 interface PackerTableProps {
   packedBy: number;
+  /** Portal week / column controls into the pack workbench chrome slot. */
+  toolbarPortalTarget?: HTMLElement | null;
 }
 
 /** Newest-first by pack time (created_at). */
@@ -51,7 +53,7 @@ function byNewestCreated(a: PackerRecord, b: PackerRecord): number {
   return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
 }
 
-export function PackerTable({ packedBy }: PackerTableProps) {
+export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTableProps) {
   // Shared `?staff=` header filter (P1-WORK-02) — the StationPacking header's
   // StaffFilterButton writes it; when set it swaps whose pack history renders.
   // Absent (the default) = the signed-in packer's own logs, unchanged.
@@ -135,6 +137,7 @@ export function PackerTable({ packedBy }: PackerTableProps) {
         getRowKey={(record, index) => (record.id != null ? `pkr-${record.id}` : `pkr-${index}`)}
         tableId="packer"
         virtualized
+        toolbarPortalTarget={toolbarPortalTarget}
         savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
         savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
         emptyMessage="No packer records found"
@@ -175,6 +178,7 @@ export function PackerTable({ packedBy }: PackerTableProps) {
       scrollRef={scrollRef}
       renderRow={renderRow}
       tableId="packer"
+      toolbarPortalTarget={toolbarPortalTarget}
     />
   );
 }

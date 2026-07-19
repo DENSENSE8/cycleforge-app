@@ -27,14 +27,16 @@ const MANIFEST_STATUS_TONE: Record<string, string> = {
 
 export function ManifestWorkbenchPanel({
   manifestRef,
-  onClose,
+  onClose: _onClose,
   lines,
 }: {
   manifestRef: string | number;
+  /** Close via RightRailHost backdrop / Esc — kept for call-site parity. */
   onClose: () => void;
   /** The scan's receiving lines — used to label each unit's origin line. */
   lines?: ReceivingLineRow[];
 }) {
+  void _onClose;
   const { data, isLoading, isError, error, refetch } = useManifestDetail(manifestRef);
   const manifest = data?.manifest ?? null;
   const [addInput, setAddInput] = useState('');
@@ -191,7 +193,6 @@ export function ManifestWorkbenchPanel({
             })
           }
         />
-        <IconButton ariaLabel="Close manifest panel" icon={<X className="h-4 w-4" />} onClick={onClose} />
       </div>
 
       {/* Actions */}

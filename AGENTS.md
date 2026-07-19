@@ -41,6 +41,7 @@ Each concern has one module — never inline or re-derive:
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard`) — Unbox/Triage/Testing/Shipping |
 | Integrations / capabilities | `src/lib/integrations/**` |
 | Cross-entity search | `src/lib/search/hybrid-retrieval.ts` → `SearchHit` |
+| Toasts | `@/lib/toast` + `AppToaster` (never Sonner `richColors`) |
 | Full list | `.claude/rules/source-of-truth.md` |
 
 ## Compose → grow the SoT → compound
@@ -129,6 +130,7 @@ Color only from semantic / theme tokens (`bg-surface-card`, `border-border-soft`
 
 - Tailwind z-index import in `tailwind.config.ts` needs an explicit `.ts` extension (Turbopack) or all `z-*` utilities silently drop in dev.
 - Classes used only in un-scanned files won't generate — update `content` / safelist and restart the dev server.
+- Bundle altitude: pure helpers live in light modules, not beside print engines / `tenancy/db`; barrels never re-export server-only modules to client consumers; `lib/db.ts` is `server-only` (a client path to it is a build error — fix the chain, never drop the guard). Perf tooling: `pnpm lighthouse:audit` (`docs/performance/LIGHTHOUSE.md`).
 - Detail: `.claude/rules/build-gotchas.md`.
 
 ## Verify (when you change code)

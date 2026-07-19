@@ -186,7 +186,9 @@ export default function MobilePurchaseOrderItemDetailPage(
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={normalizePhotoDisplayUrl(p.photoUrl)}
-                  alt=""
+                  alt="Item photo"
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               </Link>

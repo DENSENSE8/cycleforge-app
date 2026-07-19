@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { formatPSTTimestamp } from '@/utils/date';
 import { ClipboardList, Package, FileText } from '@/components/Icons';
 import { AuditLogDailyReport } from './AuditLogDailyReport';
+import { appCanvasClass, appChromeClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 interface StaffEvent {
   id: string;
@@ -91,8 +93,8 @@ export function AuditLogStaffClient() {
   }
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      <div className="border-b border-border-soft bg-surface-card px-6 py-4">
+    <section className={cn('flex h-full min-h-0 w-full flex-col overflow-hidden', appCanvasClass)}>
+      <div className={cn('border-b border-border-soft px-6 py-4', appChromeClass)}>
         <p className="text-role-micro font-bold uppercase tracking-widest text-emerald-700">
           Staff audit
         </p>

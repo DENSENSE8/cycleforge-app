@@ -1,5 +1,5 @@
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-import { Truck, Wrench } from '@/components/Icons';
+import { TECH_MODE_ICONS } from '@/lib/nav/station-nav-icons';
 
 /**
  * Top-level mode for the tech sidebar. Mirrors `ReceivingMode` on the
@@ -21,6 +21,6 @@ export type TechSidebarTopMode = 'testing' | 'shipping';
  * vocabulary stays consistent across the app. Order: Testing (left) · Shipping.
  */
 export const TECH_TOP_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'testing', label: 'Testing', icon: Wrench },
-  { id: 'shipping', label: 'Shipping', icon: Truck },
+  { id: 'testing', label: 'Testing', icon: TECH_MODE_ICONS.testing },
+  { id: 'shipping', label: 'Shipping', icon: TECH_MODE_ICONS.shipping },
 ];

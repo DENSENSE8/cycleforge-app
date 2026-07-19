@@ -8,11 +8,10 @@ import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-sys
 /**
  * The ONE layout shell for every master sidebar.
  *
- * Search is NOT a sidebar concern anymore: the global header pill
- * ({@link GlobalHeaderSearch}) is the single search surface. A panel that wants
- * a contextual filter registers it with the header via `usePageHeaderSearch`
- * (`src/hooks/usePageHeader.ts`) — the sidebar renders NO search band. This is
- * enforced by `sidebar-search-bar.guard.test.ts`.
+ * Search is NOT a sidebar concern: the global header pill
+ * ({@link GlobalHeaderSearch}) is the single search surface. Page-scoped lookup
+ * goes through the AI assistant. The sidebar renders NO search band — enforced
+ * by `sidebar-search-bar.guard.test.ts`.
  *
  * The shell owns the structure so panels supply only slots, never layout:
  *

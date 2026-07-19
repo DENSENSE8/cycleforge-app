@@ -9,81 +9,15 @@ export { looksLikeTicketScan, parseTicketScanValue } from '@/lib/support/ticket-
 
 export type SupportTicketProvider = 'zendesk' | 'internal';
 
-export interface TicketReceivingRef {
-  receivingId: number;
-  lineId?: number;
-  supportTicketId: number;
-}
-
-/** Synthetic line id (`-receiving_id`) for unfound cartons with no receiving_line row. */
-export function isPlaceholderReceivingLineId(lineId: number | null | undefined): boolean {
-  return lineId != null && lineId <= 0;
-}
-
-/** Map placeholder line ids to the real carton id for ticket resolution / linking.
- *  Unmatched stubs use `id = -receiving_id` with `receiving_id` already set.
- *  Pending scan stubs (`scan:…`) use a hashed negative id with `receiving_id`
- *  null — never invent a carton id from that hash. */
-export function normalizeReceivingTicketEntityRefs(args: {
-  lineId?: number | null;
-  receivingId?: number | null;
-}): { lineId: number | null; receivingId: number | null } {
-  let lineId = args.lineId ?? null;
-  let receivingId = args.receivingId ?? null;
-  if (isPlaceholderReceivingLineId(lineId)) {
-    lineId = null;
-  }
-  return { lineId, receivingId };
-}
-
-export type TicketLinkEntityType = 'SHIPMENT' | 'RECEIVING' | 'RECEIVING_LINE';
-
-export interface TicketLinkAnchor {
-  entityType: TicketLinkEntityType;
-  entityId: number;
-}
-
-/**
- * Pick the single primary ticket_links entity for a Zendesk ticket.
- * One ticket → one entity (UNIQUE on org + zendesk_ticket_id).
- *
- * Priority: line > carton > shipment (STN). Prefer the richest receiving
- * context when a carton is open; fall back to SHIPMENT for pre-intake
- * tracking links (support / packing surfaces).
- */
-export function pickTicketLinkAnchor(args: {
-  lineId?: number | null;
-  receivingId?: number | null;
-  shipmentId?: number | null;
-}): TicketLinkAnchor | null {
-  const { lineId, receivingId } = normalizeReceivingTicketEntityRefs({
-    lineId: args.lineId ?? null,
-    receivingId: args.receivingId ?? null,
-  });
-  if (lineId != null) {
-    return { entityType: 'RECEIVING_LINE', entityId: lineId };
-  }
-  if (receivingId != null) {
-    return { entityType: 'RECEIVING', entityId: receivingId };
-  }
-  const shipmentId = args.shipmentId ?? null;
-  if (shipmentId != null && Number.isFinite(shipmentId) && shipmentId > 0) {
-    return { entityType: 'SHIPMENT', entityId: shipmentId };
-  }
-  return null;
-}
-
-/** Entity ref written to ticket_links when filing a claim. */
-export function claimTicketLinkEntity(
-  lineId: number | null | undefined,
-  receivingId: number,
-): { entityType: 'RECEIVING' | 'RECEIVING_LINE'; entityId: number } {
-  const picked = pickTicketLinkAnchor({ lineId, receivingId });
-  if (picked && (picked.entityType === 'RECEIVING' || picked.entityType === 'RECEIVING_LINE')) {
-    return { entityType: picked.entityType, entityId: picked.entityId };
-  }
-  return { entityType: 'RECEIVING', entityId: receivingId };
-}
+// Pure ref helpers (TicketReceivingRef, normalizeReceivingTicketEntityRefs,
+// pickTicketLinkAnchor, …) live in ./ticket-refs so client code can use them
+// without this file's server-only tenancy/db import. Re-exported here so
+// server callers keep their existing import path.
+export * from '@/lib/support/ticket-refs';
+import {
+  normalizeReceivingTicketEntityRefs,
+  type TicketReceivingRef,
+} from '@/lib/support/ticket-refs';
 
 export interface SupportTicketRow {
   id: number;
@@ -466,7 +400,7 @@ export async function getPrimarySupportTicketForReceiving(args: {
 export async function resolveSupportTicketToReceiving(
   orgId: string,
   scanValue: string,
-): Promise<{ receivingId: number; lineId?: number; supportTicketId: number } | null> {
+): Promise<TicketReceivingRef | null> {
   const trimmed = scanValue.trim();
   const digits = trimmed.replace(/^#/, '');
   if (!/^\d{1,12}$/.test(digits)) return null;

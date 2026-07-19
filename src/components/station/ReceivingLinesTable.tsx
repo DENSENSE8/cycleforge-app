@@ -21,12 +21,15 @@
  */
 
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { SkeletonList } from '@/design-system/components/Skeletons';
-import DateRangeHeader from '@/components/ui/DateRangeHeader';
+import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
+import { HistoryWorkspaceHeader } from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
 import { IncomingKpiStrip } from '@/components/sidebar/receiving/incoming/IncomingKpiStrip';
-import { computeWeekRange, toPSTDateKey } from '@/utils/date';
+import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -41,6 +44,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout } from '@/lib/station/table-url-params';
+import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import {
   WorkbenchTablePane,
   WORKBENCH_CHROME_COLUMN,
@@ -60,6 +64,9 @@ import {
   type ReceivingHistoryLane,
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
+import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
+import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
+import { cn } from '@/utils/_cn';
 
 const RECEIVING_LANE_ICON: Record<ReceivingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   inbox: Inbox,
@@ -87,8 +94,6 @@ const RECEIVING_HISTORY_LANES: SwimlaneLaneDef<ReceivingHistoryLane>[] = RECEIVI
   icon: RECEIVING_LANE_ICON[l.iconKey],
   iconClass: l.iconClass,
 }));
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 
 // ── Public re-exports (preserve the historical import surface) ──────────────
 export type { ReceivingView } from '@/lib/receiving/receiving-views';
@@ -110,7 +115,26 @@ export {
 } from '@/components/station/receiving-delivered-unscanned';
 export { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 
-export default function ReceivingLinesTable({ selectMode = false }: { selectMode?: boolean } = {}) {
+export interface ReceivingLinesTableProps {
+  selectMode?: boolean;
+  /** Workbench chrome Select toggle — Incoming / History trailing pencil. */
+  onToggleSelectMode?: () => void;
+  /**
+   * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
+   * own DateRangeHeader / Incoming chrome and portals week + column controls
+   * into {@link toolbarPortalTarget} when provided.
+   */
+  embedded?: boolean;
+  /** Portal target for week pill + column config (Unbox header controls slot). */
+  toolbarPortalTarget?: HTMLElement | null;
+}
+
+export default function ReceivingLinesTable({
+  selectMode = false,
+  onToggleSelectMode,
+  embedded = false,
+  toolbarPortalTarget = null,
+}: ReceivingLinesTableProps = {}) {
   const { isMobile } = useUIModeOptional();
   const searchParams = useSearchParams();
   const [weekOffset, setWeekOffset] = useState(0);
@@ -128,6 +152,8 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
     skipWeekFilter,
     modeContext,
   } = useReceivingModeContext();
+
+  const isUnboxTableMode = mode.id === 'unbox_queue' || mode.id === 'unbox_viewed';
 
   const { data, isLoading, localRows } = useReceivingLinesData({
     mode,
@@ -153,8 +179,8 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
     selectModeRef,
     scrollRef,
     selectedId,
-    // History/Incoming own the chevron channel; Unbox/Triage route it to the rail.
-    tableNavEnabled: isHistoryMode || isIncomingMode,
+    // History / Incoming / Unbox workbench table own the chevron channel.
+    tableNavEnabled: isHistoryMode || isIncomingMode || isUnboxTableMode || embedded,
   });
 
   useReceivingDeepLink({ isLoading, localRows, setSelectedId });
@@ -168,6 +194,11 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
     groupedRecords,
     weekRange,
   });
+
+  // `embedded` = the Unbox workbench host (all three tabs, incl. the default
+  // History tab whose mode id is the shared 'history') — gate the mark on it,
+  // not on the queue/viewed ids, or the default tab never stamps.
+  useSurfacePaintMark('unbox:table', embedded && !isLoading);
 
   const emptyMessage = mode.emptyMessage(modeContext);
 
@@ -268,14 +299,55 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
       />
     );
 
+  // Unbox workbench embeds the table under UnboxWorkspaceHeader — no nested
+  // DateRangeHeader / Incoming chrome. Week + columns portal into the host slot.
+  if (embedded) {
+    const weekCount = getWeekCount();
+    const toolbar =
+      toolbarPortalTarget && (isHistoryMode || !skipWeekFilter) ? (
+        <>
+          <DateRangePickerPill
+            label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+            count={weekCount}
+            weekNav={{
+              weekOffset,
+              onPrev: () => setWeekOffset(weekOffset + 1),
+              onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
+            }}
+          />
+          <ColumnConfigButton variant="toolbar" />
+        </>
+      ) : toolbarPortalTarget ? (
+        <ColumnConfigButton variant="toolbar" />
+      ) : null;
+    const portal =
+      toolbarPortalTarget && toolbar ? createPortal(toolbar, toolbarPortalTarget) : null;
+
+    return (
+      <TableColumnConfigProvider tableId="receiving">
+        {portal}
+        {/* Already inside WORKBENCH_BODY_COLUMN gutters — card only, no second inset. */}
+        <div
+          className={cn(
+            MONITOR_SECTION_CARD_SCROLL_CLASS,
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+          )}
+        >
+          <div
+            ref={scrollRef}
+            data-testid="column-table-body"
+            className="min-h-0 flex-1 overflow-auto"
+          >
+            {listBody}
+          </div>
+        </div>
+      </TableColumnConfigProvider>
+    );
+  }
+
   // Incoming adopts the golden workbench shape (sibling of the Dashboard orders
-  // view): a pinned chrome band = All / Zoho / eBay purchasing-source tabs +
-  // pagination, the KPI attention strip below it, then the list wrapped in the
-  // house table card (`WorkbenchTablePane` → `MONITOR_SECTION_CARD_SCROLL_CLASS`,
-  // the same bordered card the dashboard tables sit in) rather than floating
-  // full-bleed on the canvas. The sidebar (IncomingSidebarPanel) still owns
-  // search + delivery-state filters. `scrollRef` stays on the card's inner scroll
-  // port (identical to History) so virtualization + keyboard-nav are unchanged.
+  // view): pinned chrome + KPI strip + table card. Search / filters / columns /
+  // Select live in the header; the sidebar keeps Incoming PO sync + email triage.
   if (isIncomingMode) {
     return (
       <TableColumnConfigProvider tableId="receiving">
@@ -288,6 +360,8 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
                   : Number(data?.total ?? 0)
               }
               page={incomingPage}
+              selectMode={selectMode}
+              onToggleSelectMode={onToggleSelectMode}
             />
           </div>
           <div className={`shrink-0 ${WORKBENCH_GUTTERS}`}>
@@ -303,23 +377,42 @@ export default function ReceivingLinesTable({ selectMode = false }: { selectMode
     );
   }
 
+  // History — same workbench chrome recipe (All / Unfound tabs · search · filters
+  // · week · columns · Select). Sidebar no longer hosts History search chrome.
+  if (isHistoryMode) {
+    return (
+      <TableColumnConfigProvider tableId="receiving">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
+          <div className={`relative z-header shrink-0 ${WORKBENCH_CHROME_COLUMN}`}>
+            <HistoryWorkspaceHeader
+              weekRange={weekRange}
+              weekOffset={weekOffset}
+              weekCount={getWeekCount()}
+              onPrevWeek={() => setWeekOffset(weekOffset + 1)}
+              onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+              selectMode={selectMode}
+              onToggleSelectMode={onToggleSelectMode}
+            />
+          </div>
+          <WorkbenchTablePane>
+            <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
+              {listBody}
+            </div>
+          </WorkbenchTablePane>
+        </div>
+      </TableColumnConfigProvider>
+    );
+  }
+
   return (
     <TableColumnConfigProvider tableId="receiving">
-    <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
-      <WorkbenchTablePane>
-        <DateRangeHeader
-          count={getWeekCount()}
-          columns={<ColumnConfigButton iconOnly />}
-          weekRange={weekRange}
-          weekOffset={weekOffset}
-          onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-          onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-        />
-        <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
-          {listBody}
-        </div>
-      </WorkbenchTablePane>
-    </div>
+      <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
+        <WorkbenchTablePane>
+          <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
+            {listBody}
+          </div>
+        </WorkbenchTablePane>
+      </div>
     </TableColumnConfigProvider>
   );
 }

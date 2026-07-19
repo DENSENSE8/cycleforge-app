@@ -9,6 +9,7 @@ import {
   type HorizontalSliderItem,
 } from '@/components/ui/HorizontalButtonSlider';
 import { cn } from '@/utils/_cn';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 
 export type RouteShellView = 'actions' | 'history';
 
@@ -88,7 +89,7 @@ export function RouteShell({
   }
 
   return (
-    <div className={cn('flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card', className)}>
+    <div className={cn('flex min-h-0 w-full flex-1 flex-col overflow-hidden', appChromeClass, className)}>
       <div className="shrink-0 border-b border-border-hairline px-2 py-1.5">
         <HorizontalButtonSlider
           items={tabs}

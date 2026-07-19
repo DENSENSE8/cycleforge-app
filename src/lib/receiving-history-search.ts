@@ -1,7 +1,7 @@
 /**
  * Sidebar copy + search parameter normalization for `/receiving?mode=history`.
  * Mirrors the dashboard shipped-tab field/slider model (see `shipped-search.ts`).
- * Slider icons live in `ReceivingHistorySearchSection` (client component).
+ * Search field / scope controls live in `HistoryWorkspaceHeader` (workbench chrome).
  */
 
 export type ReceivingHistorySearchField =
@@ -55,7 +55,6 @@ export interface ReceivingHistoryFieldConfig {
   id: ReceivingHistorySearchField;
   label: string;
   placeholder: string;
-  helperText: string;
 }
 
 export const RECEIVING_HISTORY_SEARCH_FIELDS: ReceivingHistoryFieldConfig[] = [
@@ -63,38 +62,31 @@ export const RECEIVING_HISTORY_SEARCH_FIELDS: ReceivingHistoryFieldConfig[] = [
     id: 'all',
     label: 'All',
     placeholder: 'Search PO #, tracking, SKU, title, or serial #',
-    helperText:
-      'Searches PO #, tracking #, title, SKU, and serial #. Matches are partial and case-insensitive.',
   },
   {
     id: 'po',
     label: 'PO #',
     placeholder: 'Search purchase order #',
-    helperText: 'Matches Zoho PO id, PO number on the line, and carton PO number.',
   },
   {
     id: 'tracking',
     label: 'Tracking #',
     placeholder: 'Search tracking number',
-    helperText: 'Matches carrier tracking on the carton and normalized carrier keys.',
   },
   {
     id: 'sku',
     label: 'SKU',
     placeholder: 'Search SKU or Zoho item id',
-    helperText: 'Matches line SKU and Zoho item id.',
   },
   {
     id: 'product',
     label: 'Product',
     placeholder: 'Search product title',
-    helperText: 'Matches line item name (partial, case-insensitive).',
   },
   {
     id: 'serial',
     label: 'Serial #',
     placeholder: 'Search serial number',
-    helperText: 'Matches serial units captured on receiving lines.',
   },
 ];
 
@@ -127,10 +119,6 @@ export function normalizeReceivingHistorySearchScope(
 
 export function getReceivingHistoryPlaceholder(field: ReceivingHistorySearchField): string {
   return FIELD_MAP[field]?.placeholder ?? FIELD_MAP.all.placeholder;
-}
-
-export function getReceivingHistoryHelperText(field: ReceivingHistorySearchField): string {
-  return FIELD_MAP[field]?.helperText ?? FIELD_MAP.all.helperText;
 }
 
 /** Placeholder packages (no lines yet) only carry tracking — skip merge for these field modes. */

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { Database, MessageSquare, PackageCheck, RefreshCw, Sparkles, Wrench } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { emitAiChatNew, emitAiChatPrompt } from '@/components/ai/ai-chat-events';
@@ -41,7 +42,7 @@ export function AiChatSidebarPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-card">
+    <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>
       <div className={`flex shrink-0 items-center justify-between border-b border-border-hairline ${SIDEBAR_GUTTER} py-2.5`}>
         <p className={`${sectionLabel} text-blue-600`}>AI Chat</p>
         <HoverTooltip label="New chat" asChild>

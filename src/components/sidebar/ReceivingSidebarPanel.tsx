@@ -38,15 +38,12 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { buildPendingScanStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { TrackingScanResult } from '@/components/sidebar/receiving/useTrackingScan';
 import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanner';
-import { ReceivingHistorySearchSection } from '@/components/sidebar/receiving/ReceivingHistorySearchSection';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
 import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSidebarPanel';
 
 import { ReceivingModeSwitcher } from '@/components/sidebar/receiving/ReceivingModeSwitcher';
 import { TriageScanBand, UnboxScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
-import { TriageViewToggle } from '@/components/sidebar/receiving/TriageViewToggle';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
-import { TriageMetricsStrip } from '@/components/sidebar/receiving/TriageMetricsStrip';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 
@@ -91,12 +88,10 @@ export function ReceivingSidebarPanel() {
   const {
     mode,
     unboxView,
-    triageView,
     triageQuery: triageListQuery,
     isScanSurface,
     updateMode,
     updateUnboxView,
-    updateTriageView,
     updateTriageQuery,
   } = useReceivingMode();
 
@@ -200,8 +195,9 @@ export function ReceivingSidebarPanel() {
     submitTrackingScan,
   });
 
-  // ── Rail edit mode (pencil bulk select / delete) — triage sidebar only.
-  // Unbox browse + edit mode live in the right-pane UnboxWorkspaceView.
+  // ── Rail edit mode (pencil bulk select / delete) — thin combined Triage
+  // rail only. Browse tabs + edit for Prioritize/Unfound/Done live in the
+  // right-pane TriageWorkspaceView (Unbox parity).
   const {
     railEditMode,
     railSelectedIds,
@@ -215,7 +211,7 @@ export function ReceivingSidebarPanel() {
     isScanSurface: mode === 'triage',
     mode,
     unboxView,
-    triageView,
+    triageView: 'triage',
   });
 
   // External focus trigger — Quick Access chips dispatch `receiving-focus-scan`
@@ -253,16 +249,14 @@ export function ReceivingSidebarPanel() {
         {!masterNavEnabled && <ReceivingModeSwitcher mode={mode} onChange={updateMode} />}
 
         {mode === 'incoming' ? (
-          // Incoming = Zoho-sourced expected work. Sidebar owns the search +
-          // facet controls; the right-pane table renders the rows only.
+          // Incoming PO sync + email-triage band. Search / filters / Select live
+          // in IncomingWorkspaceHeader on the right pane.
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <IncomingSidebarPanel />
           </div>
         ) : (
           <>
-            {mode === 'history' ? (
-              <ReceivingHistorySearchSection onSwitchToReceiving={() => updateMode('receive')} />
-            ) : mode === 'triage' ? (
+            {mode === 'history' ? null : mode === 'triage' ? (
               // Triage is a scan surface: a tracking-only entry wired to the same
               // submitTrackingScan → lookup-po flow. Scan-only — the input never
               // filters the list (that's History mode); it just resolves + clears.
@@ -311,14 +305,6 @@ export function ReceivingSidebarPanel() {
 
             <ReceivingReturnBanner returns={returns} onDismiss={dismissReturn} />
 
-            {/* Triage sub-view toggles — Unbox tabs live in the right-pane workbench. */}
-            {isScanSurface && mode === 'triage' ? (
-              <>
-                <TriageViewToggle value={triageView} onChange={updateTriageView} />
-                <TriageMetricsStrip />
-              </>
-            ) : null}
-
             {/* Multi-match picker — pinned above the rail so it stays visible. */}
             {scanDriven && !selectedLine && scanMatchedRows.length > 1 ? (
               <ReceivingLinePicker
@@ -335,12 +321,9 @@ export function ReceivingSidebarPanel() {
               />
             ) : null}
 
-            {/* Scan-surface rail. Triage shows its Found/Unfound body; Unbox
-                keeps an always-rendered recent-unbox rail (like TestingRecentRail)
-                — fixed to the Unboxed feed regardless of the right-pane workbench
-                tab, so the operator can see/select recently opened cartons while
-                scanning. The Unboxed/Queue/Viewed tabs themselves live in the
-                right-pane UnboxWorkspaceView. */}
+            {/* Scan-surface rail. Unbox keeps a fixed Unboxed rail; Triage keeps
+                a fixed combined Triage rail — browse tabs live in the right-pane
+                workbench (UnboxWorkspaceView / TriageWorkspaceView). */}
             {isScanSurface ? (
               <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
                 <ReceivingRailBody

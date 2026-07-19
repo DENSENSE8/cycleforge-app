@@ -1,5 +1,9 @@
 import { CartonContextCard } from '@/components/station/entity-context';
-import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import {
+  dispatchLineUpdated,
+  dispatchSelectLine,
+  type ReceivingLineRow,
+} from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import type { TestingController } from './testing-panel-types';
 
@@ -80,6 +84,7 @@ export function TestingCartonHeader({
       }}
       priorityTier={c.priorityTier}
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
+      onExitToList={() => dispatchSelectLine(null)}
     />
   );
 }

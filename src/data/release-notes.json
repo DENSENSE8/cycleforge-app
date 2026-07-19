@@ -1,10 +1,280 @@
 {
-  "generatedAt": "2026-07-14T19:05:53.703Z",
+  "generatedAt": "2026-07-19T07:41:47.191Z",
   "count": 196,
   "commits": [
     {
+      "sha": "74d1dd5f677173a27a783a257b004b9559dbe648",
+      "shortSha": "74d1dd5f6",
+      "date": "2026-07-17T21:03:30-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: shipping surface, unified triage, search/journey, and station polish",
+      "body": "Move outbound routes and page to /shipping, unify triage into TriageLineWorkspace,\nextend serial/journey search and timeline emitters, and polish scan bars, master nav,\ntypography, and receiving/testing/shipping station UX across the workspace.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "shipping surface, unified triage, search/journey, and station polish"
+    },
+    {
+      "sha": "50a24755c535bbe270118d0bc4229196935027f5",
+      "shortSha": "50a24755c",
+      "date": "2026-07-17T18:03:31-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix: remove unused SIDEBAR_GUTTER import",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "remove unused SIDEBAR_GUTTER import"
+    },
+    {
+      "sha": "26648e5ba10e14e0733240b9d0934150c20099d4",
+      "shortSha": "26648e5ba",
+      "date": "2026-07-17T18:02:24-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix: move new-order entry into labels workspace slide-over",
+      "body": "Drop unused sidebar create buttons; wire ?new=true overlay on outbound labels and clear knip/lint leftovers blocking push.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "move new-order entry into labels workspace slide-over"
+    },
+    {
+      "sha": "066ce77b276cdea7002b61b2e635d3913e6d4f3c",
+      "shortSha": "066ce77b2",
+      "date": "2026-07-17T18:01:05-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix: drop unused useNearMatchPackout hook (knip)",
+      "body": "Keep NearMatchPackout type for search rail props; hydration hook had no callers after SearchWorkspace rewrite.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "drop unused useNearMatchPackout hook (knip)"
+    },
+    {
+      "sha": "425e37c42b8d30584dcb38ed5745d4d579ce9dec",
+      "shortSha": "425e37c42",
+      "date": "2026-07-17T17:59:06-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: kiosk auth, dashboard modes, labels/ready workspaces, and outbound polish",
+      "body": "Ship walk-in kiosk device pairing, dashboard search/receiving modes, Labels/Ready/FBA workspace convergence, staff search recents, and auto unit-label issuance.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "kiosk auth, dashboard modes, labels/ready workspaces, and outbound polish"
+    },
+    {
+      "sha": "35988dde53ce38145b5fa068bfd912ab945e71e6",
+      "shortSha": "35988dde5",
+      "date": "2026-07-17T17:05:05-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(receiving): PO shell absorb, Zoho call reduction, and unbox photo move",
+      "body": "Absorb empty Incoming PO shells on relink/reconcile, cut Zoho detail/search\ntraffic (mirror-first + skip unchanged), toast rate-limits, and add bidirectional\nphoto move plus serial focus when switching lines.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "PO shell absorb, Zoho call reduction, and unbox photo move"
+    },
+    {
+      "sha": "ac33186b7d0aed907f79fc43389a11a8c930a9d7",
+      "shortSha": "ac33186b7",
+      "date": "2026-07-17T10:31:01-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "feat(unbox): move feed tabs to full workbench with Testing-style crossfade",
+      "body": "Promote Unboxed/Queue/Viewed from the sidebar eyebrow into a right-pane\nworkbench (browse-first landing, KPI strip, workbenchPaneSettle overlay).\nAlso lands in-flight FOH/BOH and packer-review planning docs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "move feed tabs to full workbench with Testing-style crossfade"
+    },
+    {
+      "sha": "3ea089562969da04a15a4401952756724974a643",
+      "shortSha": "3ea089562",
+      "date": "2026-07-17T01:04:40-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(foh-boh): surface split — Sales hub, inbound dashboard, testing/shipping polish",
+      "body": "Land the FOH/BOH refactor batch: Sales transaction history on /walk-in, inbound\nHistory as a dashboard mode, pickup/repair as receiving rail modes, outbound\nworkbench chrome (KPI filters, toolbar search, lane board), Testing/Shipping\nworkspace parity, Support linkage + eBay account-deletion webhook, and station\ntimeline/history unification. Refresh knip baseline for reviewed in-flight\nwalk-in station and pickup/workbench exports pending receiving-mode wiring.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "surface split — Sales hub, inbound dashboard, testing/shipping polish"
+    },
+    {
+      "sha": "861914c19bc72c2d80ff574c499ac459d603b5eb",
+      "shortSha": "861914c19",
+      "date": "2026-07-16T16:56:24-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "chore: commit in-flight working-tree changes present at session start",
+      "body": "These were already uncommitted in the working tree before the STN-linkage\nwork began, and they shipped to production in the same `vercel deploy`\n(cycleforge-brpd0dmor, aliased app.cycleforge.ai). Committing so git matches\nwhat is actually running — prod otherwise corresponds to no commit at all.\n\nNOT authored or reviewed in this session; described by path rather than by\nintent, since I did not write them:\n\n  .githooks/, scripts/verify.mjs, package.json, .github/workflows/ci.yml\n  .cursor/rules/verify-before-done.mdc  — the verify gate + pre-push hook\n  AGENTS.md, docs/todo/README.md, docs/todo/foh-boh-surface-split-plan.md\n  src/components/search/** , src/design-system/primitives/SearchField.tsx\n  src/components/threads/ThreadPanel.tsx, ThreadNoteComposer.tsx\n  src/components/tech/**, src/components/dashboard/orders-queue/**\n  src/components/sidebar/shipping/ShippingStaffShippedRail.tsx\n  src/features/home/HomeTasksMode.tsx\n  src/hooks/station/ShippingHistoryFeedProvider.tsx\n  src/lib/schemas/user-issues.ts, knip-baseline.json\n\nSplit from the STN-linkage commit (d30d0b28) so authorship stays honest and\neither can be reverted independently.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01ADMBmFPLDXTF6P7jF59xEN",
+      "type": "chore",
+      "title": "commit in-flight working-tree changes present at session start"
+    },
+    {
+      "sha": "d30d0b28371690dbdb1d6d4c619199990a966b5d",
+      "shortSha": "d30d0b283",
+      "date": "2026-07-16T16:56:05-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "feat(support): link many STNs to one ticket, from outbound and support",
+      "body": "A ticket routinely concerns several shipping tracking numbers (split\nshipments, re-ships, multi-box claims), but UNIQUE (organization_id,\nzendesk_ticket_id) gave it exactly ONE entity slot — many-STN was\nphysically impossible, not merely un-surfaced. Outbound had zero link UI;\nsupport had one control gated `!tracking`, so it vanished the moment any\ntracking resolved — exactly the wall a second STN hits.\n\nModel: solve it inside ticket_links using the pattern shipment_links already\ninvented — many rows + a PARTIAL unique index, so the invariant is enforced\nby an index rather than by convention. The one-entity rule is narrowed, not\nremoved: from \"one ROW per ticket\" to \"one ANCHOR per ticket\" (what the\nticket is about), with any number of references (other entities it touches).\n\n  ux_ticket_links_ticket_entity (org, ticket, entity_type, entity_id)\n  ux_ticket_links_ticket_anchor (org, ticket) WHERE link_role='anchor'\n\nRejected shipment_links owner_type='SUPPORT_TICKET': it breaks under\npromotion — promoteShipmentTicketToReceiving rewrites the anchor to a carton\nthe many-list never heard of, with no FK and nothing to detect the drift.\nlink_role over a boolean follows photo_entity_links.link_role, the house's\nown second-discriminator-axis precedent (and Jira's issuelinktype).\n\nMigrations (ordering is load-bearing):\n- 2026-07-16   is_primary + both unique indexes + org-led index + STN\n               parent-delete trigger. Pure no-op: while every row is an\n               anchor, old and new uniques are strictly equivalent.\n- 2026-07-16b  link_role + bidirectional sync trigger (expand/contract — a\n               hard swap has a broken window in BOTH orderings; the trigger\n               makes migration and deploy independent).\n- 2026-07-16c  drops the legacy unique. THIS is what turns the feature on,\n               and it could only be written after the replacement code was\n               live: the old code upserted ON CONFLICT (org, ticket), and\n               dropping that under it fails every link.\n\nAlso fixes, found on the way:\n- The link waist never called recordAudit at all (route-skeleton violation).\n- Timeline link moments now come from ops_events, not ticket_links row\n  state — which cannot express a detach, leaving 'unlinked' dead code.\n  audit_logs was wrong: it's admin-gated, so invisible to the operators\n  doing the linking. Receiving stays on row state (107 rows of history);\n  shipment had zero, so it loses nothing by moving.\n- promoteShipmentTicketToReceiving now filters is_primary — without it a\n  ticket that merely references an STN gets yanked onto a carton.\n- Outbound threads showed no linked ticket at all; extracted the RECEIVING\n  branch's lookup so ORDER shares it, querying both anchor conventions.\n- LinkageStrip's POST switched anchor→reference; ungating alone would have\n  moved the wall from \"control hidden\" to \"409 on click\".\n- Promoted TicketPicker/useTicketSearch to a shared home; receiving composes\n  them. LinkCandidate is now an alias of TicketCandidate (they were\n  structurally identical, which had forced an unsafe cast).\n\nVerified: two STNs on one ticket, second anchor rejected by the partial\nunique, proven against the real schema and rolled back. npm run verify green\n(8/8). E2E 3/3 on the route; unbox context proves an STN-only link resolves\non the carton with no RECEIVING link, plus the negative control.\n\nNot verified: any UI renders — both UI specs are red/skipped on selectors\nand fixtures, not code. See docs/todo/ticket-stn-many-link-plan.md for that\nand the ranked follow-ups (re-key on support_ticket_id is #1: internal\ntickets cannot be linked at all today).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01ADMBmFPLDXTF6P7jF59xEN",
+      "type": "feature",
+      "title": "link many STNs to one ticket, from outbound and support"
+    },
+    {
+      "sha": "c6dd682d870df0088b344d31dfb7fabc765aca93",
+      "shortSha": "c6dd682d8",
+      "date": "2026-07-16T09:45:21-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "feat(search): full /search workspace, shipping history feed, and station polish",
+      "body": "Add Shopify-style search results + history pages, dedupe tech records, shipping\nrail history provider, shipped-details quick actions, and gate photo context route.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "full /search workspace, shipping history feed, and station polish"
+    },
+    {
+      "sha": "a6f40ec60a7bf7741684595f5e545bfe267eabf6",
+      "shortSha": "a6f40ec60",
+      "date": "2026-07-16T08:55:02-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(threads): warehouse ThreadNoteComposer and linkage fallbacks",
+      "body": "Extract ThreadNoteComposer with team/on-record chrome distinct from Zendesk\nVisibilityToggle; surface anchor tracking/serial in LinkedTicketsPanel when\norder linkage cannot resolve an order.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "warehouse ThreadNoteComposer and linkage fallbacks"
+    },
+    {
+      "sha": "eb78be3440cfa9ff5f24d0d7fd85a8553a6ecc06",
+      "shortSha": "eb78be344",
+      "date": "2026-07-15T23:33:46-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: StationWorkbench SoT, Support Context Hub, walk-in station, and unbox/UIC polish",
+      "body": "Promote StationWorkbench across station surfaces with universal Timeline tab;\nadd STN↔Zendesk Support Context Hub and ticket-link waist; replace local pickup\nwith walk-in jobs; harden unbox scan (local-only lookup, optimistic pane, labels);\ncomplete UIC-3/4 issue mutations and soft-delete; expand packer workspace and tests.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "StationWorkbench SoT, Support Context Hub, walk-in station, and unbox/UIC polish"
+    },
+    {
+      "sha": "6362aea119ffcdf7f7d3a8d7f6b2bf6e7c5dda9a",
+      "shortSha": "6362aea11",
+      "date": "2026-07-15T08:51:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: station terminals, ticket media UX, issues console, and ops polish",
+      "body": "Bundle in-flight dogfood work: unbox/testing/shipping terminal docks, PhotoViewer\nportal + media library ticket/carton tabs + expandable composers, threads/user-issues\nAPIs, shipping rails, and related station/support fixes.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "station terminals, ticket media UX, issues console, and ops polish"
+    },
+    {
+      "sha": "56ee8497d5c5767b7e0e5ddb7fdebdd3e36f2d10",
+      "shortSha": "56ee8497d",
+      "date": "2026-07-15T07:32:44-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(uic): Reported-Issues console plan + execution prompt + tickets",
+      "body": "Plan for a full-CRUD Workbench over the live user_reported_issues table (Read/\nUpdate/gated-Delete + the display; Create already ships via FeedbackWidget).\nComposes house SoT shells (SidebarShell, EventTimeline, monitor KpiStrip,\nButton/IconButton, focusRing, CopyChip) — no new primitives; one new status-tone\nregistry that grows the SoT.\n\n- docs/todo/user-issues-console-plan.md — the run SoT (region contract,\n  CRUD endpoints, compose-which-shell, compound opportunities, phases, safety).\n- docs/todo/user-issues-console-EXECUTION-PROMPT.md — paste-ready phased prompt.\n- master-plan.mdx — UIC-1..5 pending tickets + index row.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "Reported-Issues console plan + execution prompt + tickets"
+    },
+    {
+      "sha": "058fcb27dace571d3a3dab70e5a683d63814c861",
+      "shortSha": "058fcb27d",
+      "date": "2026-07-15T04:38:11-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(agent-fs): correct Signals row — user_reported_issues is live",
+      "body": "Verified against the DB: the migration was already applied 2026-07-11 (in\nschema_migrations; table live with RLS+FORCE) and fully wired (/api/user-issues,\nFeedbackWidget, UserIssueResolvedToaster). The artifact map's \"UNAPPLIED\" note\nwas stale — corrected to reflect the live, tenant-hardened state.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "correct Signals row — user_reported_issues is live"
+    },
+    {
+      "sha": "ee91d99d8b08bdfc28d71478a391ec2d8695fe75",
+      "shortSha": "ee91d99d8",
+      "date": "2026-07-15T04:16:00-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(lint): ban crypto.randomUUID() + verifier loop contract",
+      "body": "P2 agent-readiness:\n\n- Bake the safeRandomUUID SoT into ESLint: new no-restricted-syntax rule bans\n  direct crypto.randomUUID() (undefined + throws in insecure LAN-HTTP / old\n  Safari contexts). Converted the 6 existing call sites to safeRandomUUID()\n  (fixes real browser-crash latency in print/labels/yjs), so the rule ships\n  zero-violation/hard-error like the z-index + branding bans. safe-uuid.ts (the\n  wrapper) carries a single-line eslint-disable. Now surfaced inline on edit via\n  the PostToolUse next-lint hook.\n\n- docs/agent-fs/contracts/verifier.md: formalizes the read-only, refute-by-\n  default verify role (independent of the generator; Neon-branch DB checks;\n  never marks its own work deployed). Registered in the contracts registry.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "ban crypto.randomUUID() + verifier loop contract"
+    },
+    {
+      "sha": "84270ff49e8ba4bce1a6920031cde00a4e0c8ba9",
+      "shortSha": "84270ff49",
+      "date": "2026-07-15T04:08:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(agent-fs): shared-memory artifact map + loop-contract convention",
+      "body": "P1 agent-readiness: instead of forking parallel signals/tasks/tickets stores\n(their homes already exist — master-plan.mdx, entity_signals/user_reported_issues,\ndocs/), add a legible INDEX.\n\n- docs/agent-fs/README.md maps each shared-memory artifact type to its existing\n  home + schema + read/write entry point. \"Signals\" is already loaded\n  (entity_signals ops + user_reported_issues feedback), so it composes those\n  rather than adding a third meaning.\n- docs/agent-fs/contracts/ formalizes the loop-contract convention (required\n  sections, generator↔verifier separation) with a TEMPLATE and a registry of the\n  live loops (guard-sweep, forge, claude-fix-issue).\n- AGENTS.md: one-line pointer.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "shared-memory artifact map + loop-contract convention"
+    },
+    {
+      "sha": "06936bc6c1f45387dcb5cf99b5a30b071997d3a9",
+      "shortSha": "06936bc6c",
+      "date": "2026-07-15T04:02:57-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore(dev): parallel worktree lane ports + global agent work-log",
+      "body": "P0 agent-readiness refactor:\n\n- Each worktree lane runs its own `next dev` on its own port. Distinct\n  appPort per lane in dev-worktrees.json (main 3000, others 3010+);\n  `pnpm dev` (scripts/dev-worktree.mjs) auto-resolves this lane's port via\n  scripts/dev-worktree-port.mjs; switcher is now multi-active (parallel\n  lanes). Tunnel decoupled to main-only mobile testing (`pnpm dev:tunnel`).\n  playwright baseURL defaults to the lane's port. `pnpm dev:next` = raw next.\n\n- Global append-only work-log for cross-session memory: docs/agent-log/ +\n  scripts/worklog.mjs. `pnpm worklog \"<action>\"` / `pnpm worklog:tail`.\n  Sharded one file per lane (entries/<lane>.md) so worktree branches merge\n  without append conflicts; tail merges across lanes by timestamp.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "type": "chore",
+      "title": "parallel worktree lane ports + global agent work-log"
+    },
+    {
+      "sha": "fbbac57cc19520751f1aedd266b0a084821eec48",
+      "shortSha": "fbbac57cc",
+      "date": "2026-07-15T03:47:23-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(ci): green the knip gate — robust parse + refreshed baseline",
+      "body": "- knip-gate.mjs: anchor the JSON-recovery on the reporter's `{\"` opening, not a\n  bare `{`. dotenv v17 prints `[dotenv] injecting env … { path: … }` tips to\n  stdout before knip's JSON; the rotating example made the old first-`{` slice\n  grab a tip and throw a JSON SyntaxError intermittently (would flake CI too).\n- Refresh knip-baseline.json to the current 3109 findings (the refactor's new\n  modules added ~800, mostly unused type exports). Shrink-only from here.\n\nAll CI steps now green: lint 0/0, tsc 0, tests 2348/0, knip, route-auth,\nroute-drift, schema-drift.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "fix",
+      "title": "green the knip gate — robust parse + refreshed baseline"
+    },
+    {
+      "sha": "789df75c6a60784e072eb05bebd8fae3b5344f8e",
+      "shortSha": "789df75c6",
+      "date": "2026-07-15T03:40:56-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "chore(ci): sync route-permission manifest for the refactor's new routes",
+      "body": "Regenerate docs/security/route-permissions.json (audit-route-auth --emit) so the\nroute-permission drift gate matches live source. Adds the refactor's new\n/api/admin/integrations/[provider]/summary route (gated: withAuth, admin.view)\nand a few sibling gate updates. All 846 routes gated/exempt.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "chore",
+      "title": "sync route-permission manifest for the refactor's new routes"
+    },
+    {
+      "sha": "f538f0599c4d853554f3ee2fa41846009062cb92",
+      "shortSha": "f538f0599",
+      "date": "2026-07-15T03:39:47-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(ci): green the test step — fix text-[9px] + re-arm DS ratchets",
+      "body": "- IntegrationCard: text-[9px] -> text-role-micro (typography guard, was the\n  refactor's only new type-scale violation).\n- Re-arm raw-button 36->54 and native-title 46->48 to the actual counts,\n  matching the maintainers' 2026-07-10 precedent. Both guards were ALREADY\n  failing pre-refactor (50>36 buttons, 48>46 titles at 35466f01); the refactor\n  added ~4 buttons. Shrink-only from here.\n\nFull suite now: 2348 pass / 0 fail. Lint 0/0, tsc 0. All CI steps green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "fix",
+      "title": "green the test step — fix text-[9px] + re-arm DS ratchets"
+    },
+    {
+      "sha": "e653060c60601ebcafe0b41270e96fa42b96eb4f",
+      "shortSha": "e653060c6",
+      "date": "2026-07-15T03:12:31-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "chore: sync in-flight refactor — integrations settings, L2 cache invalidation, tech shipping",
+      "body": "Commits the concurrent working-tree refactor (stable ~15h) as one snapshot:\n- Settings → Integrations: vault connect sheet, credential fields/defs,\n  per-provider detail pages, eBay account popover, integration health/summary.\n- L2 cache hardening: domain view-invalidation helpers + CACHE_TTL/tag additions.\n- Tech shipping workspace: KPI strip, workspace view/header, metrics, tab state.\n- Dashboard scroll shell + assorted receiving/dashboard/hook refinements.\n\nIncludes 3 typecheck fixes on the refactor (two readonly Capability[] spreads +\na stray strokeWidth prop on the custom Check icon) so the tree is fully green:\neslint src = 0 errors / 0 warnings, tsc --noEmit = 0 errors (both verified).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "chore",
+      "title": "sync in-flight refactor — integrations settings, L2 cache invalidation, tech shipping"
+    },
+    {
+      "sha": "254b5800b167c9fac53246222301ebed7d4e417e",
+      "shortSha": "254b5800b",
+      "date": "2026-07-15T03:04:43-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "chore(lint): route ebay/client.ts logs through logger (clears last 5 warnings)",
+      "body": "Re-applies the logger conversion to HEAD's ebay/client.ts (the version restored\nin bcb00460 to avoid the accountRole typecheck error). No accountRole reference\nhere, so typecheck stays clean. eslint src is now 0 errors, 0 warnings.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "chore",
+      "title": "route ebay/client.ts logs through logger (clears last 5 warnings)"
+    },
+    {
+      "sha": "87ca9615a2930552c2ab5e1c75f0e418ffc87d25",
+      "shortSha": "87ca9615a",
+      "date": "2026-07-15T03:01:38-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(types): clear the 2 pre-existing typecheck errors",
+      "body": "- next.config.ts: drop the `eslint` build key — Next 16 removed it from\n  NextConfig (`next build` no longer runs ESLint), so it was a dead key that\n  only produced a TS2353. CI's `eslint src` remains the lint gate.\n- helpdesk/load-ticket-bundle.ts: widen the EntityPhoto[] -> ZendeskTicketPhoto[]\n  cast through `unknown`. EntityPhoto is a structural superset; only the index\n  signature blocked the cast. Runtime shape unchanged.\n\nWith these, `tsc --noEmit` is clean on the committed tree.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "fix",
+      "title": "clear the 2 pre-existing typecheck errors"
+    },
+    {
+      "sha": "bcb004606ed57364ab2ce5830cdc6dcca20900b6",
+      "shortSha": "bcb004606",
+      "date": "2026-07-14T12:25:56-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(build): restore ebay/client.ts to remove a typecheck regression",
+      "body": "The lint commit staged the concurrent refactor's version of ebay/client.ts,\nwhich references EbayAccount.accountRole — a type field defined only in an\nuncommitted refactor file. Restore the committed (HEAD) version so the tree\ndoes not regress typecheck vs its baseline. (Re-adds 5 non-CI-blocking\nno-console warnings in this one file; net lint remains 0 errors.)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "fix",
+      "title": "restore ebay/client.ts to remove a typecheck regression"
+    },
+    {
+      "sha": "6c0502f85695faeaca262a65741e6d3e0f6db7dd",
+      "shortSha": "6c0502f85",
+      "date": "2026-07-14T12:20:27-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "fix(build): add cache/credential modules referenced by the lint commit",
+      "body": "The lint-cleanup commit (81463228) staged shared files that the concurrent\nin-flight refactor had already re-pointed at new helper modules\n(cache/view-invalidation, fba/receiving invalidation, integrations\ncredential-schemas/payload) plus the additive CACHE_TTL in cache/tags.\nThese modules were untracked, so the commit could not build in isolation.\nAdd the minimal transitive closure so the committed tree resolves.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01Net39us7T7csoziC53cFwY",
+      "type": "fix",
+      "title": "add cache/credential modules referenced by the lint commit"
+    },
+    {
       "sha": "81463228eabf31c40d2d41a64113732003cb6ea1",
-      "shortSha": "81463228",
+      "shortSha": "81463228e",
       "date": "2026-07-14T11:37:40-07:00",
       "author": "usavsolutionsinc",
       "subject": "chore(lint): make ESLint clean — 0 errors, 0 warnings",
@@ -14,7 +284,7 @@
     },
     {
       "sha": "35466f0148d2dda1b74b1290fcdafa6b83f8ee85",
-      "shortSha": "35466f01",
+      "shortSha": "35466f014",
       "date": "2026-07-14T08:55:59-07:00",
       "author": "DENSENSE8",
       "subject": "feat(receiving): optimistic return-line + rail/serial refinements",
@@ -24,7 +294,7 @@
     },
     {
       "sha": "4f3c29b759e14f3709cda07dd620384a79e646cc",
-      "shortSha": "4f3c29b7",
+      "shortSha": "4f3c29b75",
       "date": "2026-07-14T03:04:08-07:00",
       "author": "DENSENSE8",
       "subject": "feat: entity threads, spacing DS convergence, receiving workspace refactor",
@@ -34,7 +304,7 @@
     },
     {
       "sha": "232f7fd19a4ca5374eb32112ed7ec1b52b3cfebb",
-      "shortSha": "232f7fd1",
+      "shortSha": "232f7fd19",
       "date": "2026-07-13T16:48:47-07:00",
       "author": "usavsolutionsinc",
       "subject": "fix(receiving-claim): report exact NAS archive failure reason in `details`",
@@ -44,7 +314,7 @@
     },
     {
       "sha": "6bf6c8d87bd5d36e3639c399df1066c5d494bc0f",
-      "shortSha": "6bf6c8d8",
+      "shortSha": "6bf6c8d87",
       "date": "2026-07-13T14:15:53-07:00",
       "author": "usavsolutionsinc",
       "subject": "chore: sync in-flight work — zendesk ticket bundle cache, support chat, receiving/unfound UI",
@@ -54,7 +324,7 @@
     },
     {
       "sha": "2d6ec14ce7251f720781219f45840ceaa38347dc",
-      "shortSha": "2d6ec14c",
+      "shortSha": "2d6ec14ce",
       "date": "2026-07-13T14:15:23-07:00",
       "author": "usavsolutionsinc",
       "subject": "fix(receiving-claim): surface real field error + bulletproof NAS archive validation",
@@ -64,7 +334,7 @@
     },
     {
       "sha": "803293b924a38b3c067317af8e322d082838c9b8",
-      "shortSha": "803293b9",
+      "shortSha": "803293b92",
       "date": "2026-07-13T11:00:54-07:00",
       "author": "usavsolutionsinc",
       "subject": "fix(photos): resolve GCS bucket to usav-photos-prod for mobile uploads",
@@ -74,7 +344,7 @@
     },
     {
       "sha": "66648ffbff9b56bd681f452083c49ef3426ac286",
-      "shortSha": "66648ffb",
+      "shortSha": "66648ffbf",
       "date": "2026-07-13T08:40:33-07:00",
       "author": "DENSENSE8",
       "subject": "feat: receiving unification, time-format prefs, ops TV board, search/dense-UI refactor",
@@ -84,7 +354,7 @@
     },
     {
       "sha": "36926feb2374e93933a387ddff476de7dec35bf9",
-      "shortSha": "36926feb",
+      "shortSha": "36926feb2",
       "date": "2026-07-12T17:49:27-07:00",
       "author": "DENSENSE8",
       "subject": "docs(rules): slim always-on context layer ~59% + add slim rule",
@@ -94,7 +364,7 @@
     },
     {
       "sha": "d5704bc232bf60e54d3944c4910d0e8bd623eaf0",
-      "shortSha": "d5704bc2",
+      "shortSha": "d5704bc23",
       "date": "2026-07-12T12:27:40-07:00",
       "author": "DENSENSE8",
       "subject": "HOME-OPS Phase B: Tasks mode on Home (ops-plans inbox + claim/complete/reopen)",
@@ -104,7 +374,7 @@
     },
     {
       "sha": "240673f9e6d9bcfde631626e9aab8cd0c6dbc0ac",
-      "shortSha": "240673f9",
+      "shortSha": "240673f9e",
       "date": "2026-07-12T12:23:15-07:00",
       "author": "DENSENSE8",
       "subject": "HOME-OPS A3: re-add Home to nav (parked-aware) + redirect Operations plans",
@@ -114,7 +384,7 @@
     },
     {
       "sha": "2bf06953e1b743a654951e7832bf4846bded8294",
-      "shortSha": "2bf06953",
+      "shortSha": "2bf06953e",
       "date": "2026-07-12T12:14:24-07:00",
       "author": "DENSENSE8",
       "subject": "HOME-OPS Phase A: Home mode rail + forge redirect",
@@ -124,7 +394,7 @@
     },
     {
       "sha": "fb99ffa3580b4ae06a65464c3d6255d234c7efc5",
-      "shortSha": "fb99ffa3",
+      "shortSha": "fb99ffa35",
       "date": "2026-07-12T11:41:53-07:00",
       "author": "DENSENSE8",
       "subject": "fix(integrations): break server-only import chain in capability-labels.ts",
@@ -134,7 +404,7 @@
     },
     {
       "sha": "f7dea9c1e6199347117f637f946953f10f1740e3",
-      "shortSha": "f7dea9c1",
+      "shortSha": "f7dea9c1e",
       "date": "2026-07-12T11:10:06-07:00",
       "author": "DENSENSE8",
       "subject": "feat(dashboard): integrate OutboundKpiStrip and DashboardDetailsStack",
@@ -144,7 +414,7 @@
     },
     {
       "sha": "370521de9cec229d1a7bf079da5eed7a4385d116",
-      "shortSha": "370521de",
+      "shortSha": "370521de9",
       "date": "2026-07-11T19:35:47-07:00",
       "author": "DENSENSE8",
       "subject": "Sweep remaining working-tree changes (screenshot artifact + 2 components)",
@@ -154,7 +424,7 @@
     },
     {
       "sha": "9949195b1b547cb521199b96cf01467cc32cdcfe",
-      "shortSha": "9949195b",
+      "shortSha": "9949195b1",
       "date": "2026-07-11T19:34:59-07:00",
       "author": "DENSENSE8",
       "subject": "Dashboard outbound tabs + consolidate accumulated working-tree WIP",
@@ -164,7 +434,7 @@
     },
     {
       "sha": "a331b1247993d6ada421ba3d69165018d76c44ca",
-      "shortSha": "a331b124",
+      "shortSha": "a331b1247",
       "date": "2026-07-10T23:29:35-07:00",
       "author": "DENSENSE8",
       "subject": "Post-transfer green-up: late WIP drift, gate refresh, lint/ratchet fixes",
@@ -174,7 +444,7 @@
     },
     {
       "sha": "055197779a40714e14172d6b7c9cf40385a1cfc1",
-      "shortSha": "05519777",
+      "shortSha": "055197779",
       "date": "2026-07-10T23:22:42-07:00",
       "author": "DENSENSE8",
       "subject": "Relabel Zoho/Zendesk surfaces behind inventory and helpdesk capability facades.",
@@ -184,7 +454,7 @@
     },
     {
       "sha": "2016653a3ae10387be1726e3481b7e9894542ea8",
-      "shortSha": "2016653a",
+      "shortSha": "2016653a3",
       "date": "2026-07-11T06:08:01Z",
       "author": "Cursor Agent",
       "subject": "Add Cycle Forge agentic-loop master plan and Fable 5 execution prompt",
@@ -194,7 +464,7 @@
     },
     {
       "sha": "7efe5e977826a95366445ca780a682e58cf81c8e",
-      "shortSha": "7efe5e97",
+      "shortSha": "7efe5e977",
       "date": "2026-07-10T16:31:44-07:00",
       "author": "usavsolutionsinc",
       "subject": "Update packer KPI report with Tuan Jul 10 and Cuong.",
@@ -204,7 +474,7 @@
     },
     {
       "sha": "b94a572edae6abc4dead8b9518b0217b9c938c89",
-      "shortSha": "b94a572e",
+      "shortSha": "b94a572ed",
       "date": "2026-07-10T16:20:33-07:00",
       "author": "usavsolutionsinc",
       "subject": "Add connections & refactor dual-layer docs with Staff/Technical plan HTML.",
@@ -214,7 +484,7 @@
     },
     {
       "sha": "c09346663049a9a3d0690556d62c7c6fd4d78873",
-      "shortSha": "c0934666",
+      "shortSha": "c09346663",
       "date": "2026-07-10T08:55:27-07:00",
       "author": "DENSENSE8",
       "subject": "updated all todos",
@@ -224,7 +494,7 @@
     },
     {
       "sha": "e33a9680582ffd33e25458638024dbd8b0ea38d1",
-      "shortSha": "e33a9680",
+      "shortSha": "e33a96805",
       "date": "2026-07-09T22:59:07-07:00",
       "author": "DENSENSE8",
       "subject": "Fix CI: 271 lint errors, broken DB fallback, stale test assertion",
@@ -234,7 +504,7 @@
     },
     {
       "sha": "4e828fbb5324114627eb150ad7b49f5a142ca776",
-      "shortSha": "4e828fbb",
+      "shortSha": "4e828fbb5",
       "date": "2026-07-09T22:12:46-07:00",
       "author": "DENSENSE8",
       "subject": "Remove Desktop Build CI workflow (electron builds failing)",
@@ -244,7 +514,7 @@
     },
     {
       "sha": "80c7947d99de615dea974a2491212fcb92454601",
-      "shortSha": "80c7947d",
+      "shortSha": "80c7947d9",
       "date": "2026-07-09T21:40:14-07:00",
       "author": "DENSENSE8",
       "subject": "Switch to prebuilt GitHub Actions deploy pipeline",
@@ -254,7 +524,7 @@
     },
     {
       "sha": "ce9580f47ca4483d61c2ca6eafcc8cb8c8185eeb",
-      "shortSha": "ce9580f4",
+      "shortSha": "ce9580f47",
       "date": "2026-07-09T20:59:35-07:00",
       "author": "DENSENSE8",
       "subject": "Fix pre-existing TypeScript errors blocking production build",
@@ -264,7 +534,7 @@
     },
     {
       "sha": "186d0e5973c4659e7ba991c55db71a54f947621e",
-      "shortSha": "186d0e59",
+      "shortSha": "186d0e597",
       "date": "2026-07-09T20:35:51-07:00",
       "author": "DENSENSE8",
       "subject": "Rebrand hardcoded USAV-Orders-Backend refs to cycleforge-app, fix CI",
@@ -274,7 +544,7 @@
     },
     {
       "sha": "5fb1e657da9430d33c4e4bbcb5bdbcaa0522c530",
-      "shortSha": "5fb1e657",
+      "shortSha": "5fb1e657d",
       "date": "2026-07-09T20:01:24-07:00",
       "author": "DENSENSE8",
       "subject": "Enable git-triggered deployments for cycleforge-app",
@@ -284,7 +554,7 @@
     },
     {
       "sha": "b31dd52bc5c3448d8ddb1f1bff70b9887e82ae75",
-      "shortSha": "b31dd52b",
+      "shortSha": "b31dd52bc",
       "date": "2026-07-09T19:53:57-07:00",
       "author": "DENSENSE8",
       "subject": "Untrack QA scan screenshots (.tmp, .test-artifacts)",
@@ -294,7 +564,7 @@
     },
     {
       "sha": "6a790c61de8486d6f8a476880bf78ad12932e578",
-      "shortSha": "6a790c61",
+      "shortSha": "6a790c61d",
       "date": "2026-07-09T19:14:40-07:00",
       "author": "DENSENSE8",
       "subject": "Add Cycle Forge dogfood scaffolding (forge ingest/runs API, ops scripts, timeline)",
@@ -304,7 +574,7 @@
     },
     {
       "sha": "0820583f4be807799eb9514dc8da90a3d53779ea",
-      "shortSha": "0820583f",
+      "shortSha": "0820583f4",
       "date": "2026-07-09T16:50:09-07:00",
       "author": "usavsolutionsinc",
       "subject": "Wire Sparkles to live org data and expand packing KPI reports.",
@@ -314,7 +584,7 @@
     },
     {
       "sha": "611e10204562a583048c71eb0a2ec6376e20fae1",
-      "shortSha": "611e1020",
+      "shortSha": "611e10204",
       "date": "2026-07-09T16:50:09-07:00",
       "author": "usavsolutionsinc",
       "subject": "Wire Sparkles to live org data and expand packing KPI reports.",
@@ -324,7 +594,7 @@
     },
     {
       "sha": "cf520532c66e44f858ec7d6e1da3864ccfcd8d0f",
-      "shortSha": "cf520532",
+      "shortSha": "cf520532c",
       "date": "2026-07-09T12:49:27-07:00",
       "author": "DENSENSE8",
       "subject": "feat(receiving): serial link flow, shipped-order compare, and triage/unbox intake split",
@@ -334,7 +604,7 @@
     },
     {
       "sha": "0194eace4edadca446b2593e4b7fb8e631ceca03",
-      "shortSha": "0194eace",
+      "shortSha": "0194eace4",
       "date": "2026-07-09T09:12:33-07:00",
       "author": "usavsolutionsinc",
       "subject": "Ship ops-plans, packing KPIs, org-aware stock, and SaaS readiness audit.",
@@ -344,7 +614,7 @@
     },
     {
       "sha": "fee630d270e3d001baefe49a2ff60af9801f922e",
-      "shortSha": "fee630d2",
+      "shortSha": "fee630d27",
       "date": "2026-07-09T09:12:33-07:00",
       "author": "usavsolutionsinc",
       "subject": "Ship ops-plans, packing KPIs, org-aware stock, and SaaS readiness audit.",
@@ -354,7 +624,7 @@
     },
     {
       "sha": "c9c7c19763bf58cf7505b430a4d2fc4ffc81c43d",
-      "shortSha": "c9c7c197",
+      "shortSha": "c9c7c1976",
       "date": "2026-07-08T20:35:30-07:00",
       "author": "DENSENSE8",
       "subject": "fix(desktop-build): unblock all auto-updater CI jobs",
@@ -364,7 +634,7 @@
     },
     {
       "sha": "b8e7dc7087dd4073f0e97869cd509ff4dc5456c4",
-      "shortSha": "b8e7dc70",
+      "shortSha": "b8e7dc708",
       "date": "2026-07-08T20:03:53-07:00",
       "author": "DENSENSE8",
       "subject": "chore: snapshot in-flight work before pulling origin",
@@ -374,7 +644,7 @@
     },
     {
       "sha": "d69f5d4f91b8f31cb699ebd561f082dcc44db102",
-      "shortSha": "d69f5d4f",
+      "shortSha": "d69f5d4f9",
       "date": "2026-07-08T20:03:53-07:00",
       "author": "DENSENSE8",
       "subject": "chore: snapshot in-flight work before pulling origin",
@@ -384,7 +654,7 @@
     },
     {
       "sha": "70c7fe2ae145d10fe3dc4782744a78c12748ad0f",
-      "shortSha": "70c7fe2a",
+      "shortSha": "70c7fe2ae",
       "date": "2026-07-08T12:56:06-07:00",
       "author": "DENSENSE8",
       "subject": "fix(receiving): isolate testing surface and trust session actor",
@@ -394,7 +664,7 @@
     },
     {
       "sha": "c150ca5b92692d41bcff572dc86b8e1a1c4e3453",
-      "shortSha": "c150ca5b",
+      "shortSha": "c150ca5b9",
       "date": "2026-07-08T12:56:06-07:00",
       "author": "DENSENSE8",
       "subject": "fix(receiving): isolate testing surface and trust session actor",
@@ -404,7 +674,7 @@
     },
     {
       "sha": "f5eedd6a14deb095f0e8d11e946beab3e6bbb86d",
-      "shortSha": "f5eedd6a",
+      "shortSha": "f5eedd6a1",
       "date": "2026-07-08T08:53:23-07:00",
       "author": "DENSENSE8",
       "subject": "receiving mode and unbox mode",
@@ -414,7 +684,7 @@
     },
     {
       "sha": "f73a811ed5384253c180e83290fc7e22e3b132df",
-      "shortSha": "f73a811e",
+      "shortSha": "f73a811ed",
       "date": "2026-07-08T08:53:23-07:00",
       "author": "DENSENSE8",
       "subject": "receiving mode and unbox mode",
@@ -424,7 +694,7 @@
     },
     {
       "sha": "4c55d7dfa94a07ded8854cf59de6a0a4d524f0b4",
-      "shortSha": "4c55d7df",
+      "shortSha": "4c55d7dfa",
       "date": "2026-07-06T16:55:55-07:00",
       "author": "usavsolutionsinc",
       "subject": "Ship universal Incoming phases 4–6 and scope Zendesk API calls per tenant.",
@@ -434,7 +704,7 @@
     },
     {
       "sha": "7c556b90f3e73f227cb6f1d324330440994fc38f",
-      "shortSha": "7c556b90",
+      "shortSha": "7c556b90f",
       "date": "2026-07-06T16:55:55-07:00",
       "author": "usavsolutionsinc",
       "subject": "Ship universal Incoming phases 4–6 and scope Zendesk API calls per tenant.",
@@ -444,7 +714,7 @@
     },
     {
       "sha": "fcb1738c5e94f78ca8d4aead7f10a2c4241d9071",
-      "shortSha": "fcb1738c",
+      "shortSha": "fcb1738c5",
       "date": "2026-07-06T08:51:27-07:00",
       "author": "DENSENSE8",
       "subject": "Ship receiving unbox tabs, optimistic serials, label manifests, and ops history browse.",
@@ -454,7 +724,7 @@
     },
     {
       "sha": "8260def82765c076f0e7d518d54902edb6168ba2",
-      "shortSha": "8260def8",
+      "shortSha": "8260def82",
       "date": "2026-07-06T08:51:27-07:00",
       "author": "DENSENSE8",
       "subject": "Ship receiving unbox tabs, optimistic serials, label manifests, and ops history browse.",
@@ -464,7 +734,7 @@
     },
     {
       "sha": "995d20037e97dbb1209b4ba1e0ef407908f1a16e",
-      "shortSha": "995d2003",
+      "shortSha": "995d20037",
       "date": "2026-07-05T23:40:51-07:00",
       "author": "DENSENSE8",
       "subject": "Ship studio operator surfaces, unified header search, and receiving spine refactor.",
@@ -474,7 +744,7 @@
     },
     {
       "sha": "92ba4230db7437b5122953b506baa29d725cb814",
-      "shortSha": "92ba4230",
+      "shortSha": "92ba4230d",
       "date": "2026-07-05T23:40:51-07:00",
       "author": "DENSENSE8",
       "subject": "Ship studio operator surfaces, unified header search, and receiving spine refactor.",
@@ -484,7 +754,7 @@
     },
     {
       "sha": "9ff06ae22d4ceb36e0606eca9529e716df56631e",
-      "shortSha": "9ff06ae2",
+      "shortSha": "9ff06ae22",
       "date": "2026-07-04T15:50:42-07:00",
       "author": "DENSENSE8",
       "subject": "Ship AI hybrid search, assistant/MCP, entity signals, and theme system rollout.",
@@ -494,7 +764,7 @@
     },
     {
       "sha": "e9a0b980850e50b403da1832a599cf70af7b8673",
-      "shortSha": "e9a0b980",
+      "shortSha": "e9a0b9808",
       "date": "2026-07-04T15:50:42-07:00",
       "author": "DENSENSE8",
       "subject": "Ship AI hybrid search, assistant/MCP, entity signals, and theme system rollout.",
@@ -504,7 +774,7 @@
     },
     {
       "sha": "95f39f692f043ad25976898f1e017227a979a9fc",
-      "shortSha": "95f39f69",
+      "shortSha": "95f39f692",
       "date": "2026-07-03T11:23:01-07:00",
       "author": "usavsolutionsinc",
       "subject": "Add universal feed polymorphic linkage plan",
@@ -514,7 +784,7 @@
     },
     {
       "sha": "ee12691aa35900cd14e1802600a3957ddea75d56",
-      "shortSha": "ee12691a",
+      "shortSha": "ee12691aa",
       "date": "2026-07-03T11:23:01-07:00",
       "author": "usavsolutionsinc",
       "subject": "Add universal feed polymorphic linkage plan",
@@ -524,7 +794,7 @@
     },
     {
       "sha": "997e3c3b5ea1f52158c572fcc40ae02abb758e11",
-      "shortSha": "997e3c3b",
+      "shortSha": "997e3c3b5",
       "date": "2026-07-02T21:57:35-07:00",
       "author": "usavsolutionsinc",
       "subject": "Add photo reassignment — move a receiving photo to another PO/line from the UI",
@@ -534,7 +804,7 @@
     },
     {
       "sha": "70008e32bba155456b368abeea4f7f6f562f0de6",
-      "shortSha": "70008e32",
+      "shortSha": "70008e32b",
       "date": "2026-07-02T21:57:35-07:00",
       "author": "usavsolutionsinc",
       "subject": "Add photo reassignment — move a receiving photo to another PO/line from the UI",
@@ -544,7 +814,7 @@
     },
     {
       "sha": "2b39d809346fcb661581795a28e92006fc4b2f62",
-      "shortSha": "2b39d809",
+      "shortSha": "2b39d8093",
       "date": "2026-07-01T17:38:59-07:00",
       "author": "usavsolutionsinc",
       "subject": "Universal Incoming eBay purchase sync, ShipStation outbound labels, and facts/permission updates",
@@ -554,7 +824,7 @@
     },
     {
       "sha": "ee0faa63543c48a0b7a23df615fa4ad262d082c3",
-      "shortSha": "ee0faa63",
+      "shortSha": "ee0faa635",
       "date": "2026-07-01T17:38:59-07:00",
       "author": "usavsolutionsinc",
       "subject": "Universal Incoming eBay purchase sync, ShipStation outbound labels, and facts/permission updates",
@@ -564,7 +834,7 @@
     },
     {
       "sha": "85535d2584065bc87988cf8b28d844b22052c418",
-      "shortSha": "85535d25",
+      "shortSha": "85535d258",
       "date": "2026-07-01T08:50:51-07:00",
       "author": "DENSENSE8",
       "subject": "Media library, outbound documents, receiving triage, and support tickets.",
@@ -574,7 +844,7 @@
     },
     {
       "sha": "66109491a2806c1b47bdae5b96da96bf7c158586",
-      "shortSha": "66109491",
+      "shortSha": "66109491a",
       "date": "2026-07-01T08:50:51-07:00",
       "author": "DENSENSE8",
       "subject": "Media library, outbound documents, receiving triage, and support tickets.",
@@ -584,7 +854,7 @@
     },
     {
       "sha": "d5619b9af9b60957d9343b8d9d3b1d239908acf5",
-      "shortSha": "d5619b9a",
+      "shortSha": "d5619b9af",
       "date": "2026-06-30T16:57:21-07:00",
       "author": "usavsolutionsinc",
       "subject": "receiving rail updates and more",
@@ -594,7 +864,7 @@
     },
     {
       "sha": "260d9b6f3203dacbf4026057db3d1a950a13297d",
-      "shortSha": "260d9b6f",
+      "shortSha": "260d9b6f3",
       "date": "2026-06-30T16:57:21-07:00",
       "author": "usavsolutionsinc",
       "subject": "receiving rail updates and more",
@@ -604,7 +874,7 @@
     },
     {
       "sha": "c49ef8ce1ca52d5eec237aa431afbc666aec0d02",
-      "shortSha": "c49ef8ce",
+      "shortSha": "c49ef8ce1",
       "date": "2026-06-30T08:53:53-07:00",
       "author": "DENSENSE8",
       "subject": "Receiving: facts spine, unified feed rails, and ops event log.",
@@ -614,7 +884,7 @@
     },
     {
       "sha": "9818cebeeba02745c8e3eacd77026a09e2b17aad",
-      "shortSha": "9818cebe",
+      "shortSha": "9818cebee",
       "date": "2026-06-30T08:53:53-07:00",
       "author": "DENSENSE8",
       "subject": "Receiving: facts spine, unified feed rails, and ops event log.",
@@ -624,7 +894,7 @@
     },
     {
       "sha": "3bf959dea08c6ab6098ed08fda383f71ce6eff17",
-      "shortSha": "3bf959de",
+      "shortSha": "3bf959dea",
       "date": "2026-06-29T17:53:48-07:00",
       "author": "usavsolutionsinc",
       "subject": "Receiving: promote paired unmatched cartons + sidebar rail refinements",
@@ -634,7 +904,7 @@
     },
     {
       "sha": "bc03c1b30ef1afd377334665a7242f78b01ffeb5",
-      "shortSha": "bc03c1b3",
+      "shortSha": "bc03c1b30",
       "date": "2026-06-29T17:53:48-07:00",
       "author": "usavsolutionsinc",
       "subject": "Receiving: promote paired unmatched cartons + sidebar rail refinements",
@@ -644,7 +914,7 @@
     },
     {
       "sha": "55b24d69ec3faf7262b994b16fe63defc98b2ccc",
-      "shortSha": "55b24d69",
+      "shortSha": "55b24d69e",
       "date": "2026-06-29T08:54:03-07:00",
       "author": "DENSENSE8",
       "subject": "small updated overall ux and UI",
@@ -654,7 +924,7 @@
     },
     {
       "sha": "d45f97641a53bf05ab6d950c7eb702aaf2c0373d",
-      "shortSha": "d45f9764",
+      "shortSha": "d45f97641",
       "date": "2026-06-29T08:54:03-07:00",
       "author": "DENSENSE8",
       "subject": "small updated overall ux and UI",
@@ -664,7 +934,7 @@
     },
     {
       "sha": "9615c8cd54e3e59b3f859bc15a363d09651cfc07",
-      "shortSha": "9615c8cd",
+      "shortSha": "9615c8cd5",
       "date": "2026-06-29T08:21:42-07:00",
       "author": "DENSENSE8",
       "subject": "Tenant isolation backstop, sellable-foundation features, and CI hardening.",
@@ -674,7 +944,7 @@
     },
     {
       "sha": "405f7296eedb7ad6b0552f20e672d5fc4600e60d",
-      "shortSha": "405f7296",
+      "shortSha": "405f7296e",
       "date": "2026-06-29T08:21:42-07:00",
       "author": "DENSENSE8",
       "subject": "Tenant isolation backstop, sellable-foundation features, and CI hardening.",
@@ -684,7 +954,7 @@
     },
     {
       "sha": "0f1352e425a323b9705c4d2900c99883edd8f14f",
-      "shortSha": "0f1352e4",
+      "shortSha": "0f1352e42",
       "date": "2026-06-27T10:55:29-07:00",
       "author": "DENSENSE8",
       "subject": "Receiving: carton-keyed workspace crossfade + Package Pairing showOpenInUnbox",
@@ -694,7 +964,7 @@
     },
     {
       "sha": "d8a6126c21cb14e7e1ec2e91cc8f67bf736ae3ba",
-      "shortSha": "d8a6126c",
+      "shortSha": "d8a6126c2",
       "date": "2026-06-27T10:55:29-07:00",
       "author": "DENSENSE8",
       "subject": "Receiving: carton-keyed workspace crossfade + Package Pairing showOpenInUnbox",
@@ -704,7 +974,7 @@
     },
     {
       "sha": "620c27f584e4d09bf7ca22148751759501beac6d",
-      "shortSha": "620c27f5",
+      "shortSha": "620c27f58",
       "date": "2026-06-27T10:47:53-07:00",
       "author": "usavsolutionsinc",
       "subject": "Receiving serial journeys + inline Ecwid search; timeline and triage refinements",
@@ -714,7 +984,7 @@
     },
     {
       "sha": "9aa9b25c0622fc05f18afe5f528f656d865cda41",
-      "shortSha": "9aa9b25c",
+      "shortSha": "9aa9b25c0",
       "date": "2026-06-27T10:47:53-07:00",
       "author": "usavsolutionsinc",
       "subject": "Receiving serial journeys + inline Ecwid search; timeline and triage refinements",
@@ -724,7 +994,7 @@
     },
     {
       "sha": "1559765c6863b6ad03e0533a6545c261ee20ec9f",
-      "shortSha": "1559765c",
+      "shortSha": "1559765c6",
       "date": "2026-06-27T08:53:59-07:00",
       "author": "usavsolutionsinc",
       "subject": "Make receiving idempotent against retries + concurrent double-fire (BUG-0013/0014)",
@@ -734,7 +1004,7 @@
     },
     {
       "sha": "335c45d8e67efb6ac112badee11c79b402298ace",
-      "shortSha": "335c45d8",
+      "shortSha": "335c45d8e",
       "date": "2026-06-27T08:53:59-07:00",
       "author": "usavsolutionsinc",
       "subject": "Make receiving idempotent against retries + concurrent double-fire (BUG-0013/0014)",
@@ -744,7 +1014,7 @@
     },
     {
       "sha": "65786204b952f606aa217bb3f6711429a67acc2c",
-      "shortSha": "65786204",
+      "shortSha": "65786204b",
       "date": "2026-06-27T08:25:40-07:00",
       "author": "usavsolutionsinc",
       "subject": "Org-scope packing-logs cache keys (tenant cache isolation)",
@@ -754,7 +1024,7 @@
     },
     {
       "sha": "52fa526b89eb14744aa6300a5ed1e59b634bd730",
-      "shortSha": "52fa526b",
+      "shortSha": "52fa526b8",
       "date": "2026-06-27T08:25:40-07:00",
       "author": "usavsolutionsinc",
       "subject": "Org-scope packing-logs cache keys (tenant cache isolation)",
@@ -764,7 +1034,7 @@
     },
     {
       "sha": "f229d668ce76b9aec5b2e7a8e201a3171bf908fe",
-      "shortSha": "f229d668",
+      "shortSha": "f229d668c",
       "date": "2026-06-26T17:01:30-07:00",
       "author": "usavsolutionsinc",
       "subject": "google drive support and photo library",
@@ -774,7 +1044,7 @@
     },
     {
       "sha": "1c710a7d64beab90cb768c17e782dd18ed5de737",
-      "shortSha": "1c710a7d",
+      "shortSha": "1c710a7d6",
       "date": "2026-06-26T17:01:30-07:00",
       "author": "usavsolutionsinc",
       "subject": "google drive support and photo library",
@@ -784,7 +1054,7 @@
     },
     {
       "sha": "6c488811e5ce38b3ea892c1e59d4d4d8889c371d",
-      "shortSha": "6c488811",
+      "shortSha": "6c488811e",
       "date": "2026-06-26T14:21:28-07:00",
       "author": "usavsolutionsinc",
       "subject": "Harden route auth with CI enforce ratchet; receiving triage/photos and repair intake updates.",
@@ -794,7 +1064,7 @@
     },
     {
       "sha": "b0868d16e5f124ca4588fe47f1d5b7e310591550",
-      "shortSha": "b0868d16",
+      "shortSha": "b0868d16e",
       "date": "2026-06-26T14:21:28-07:00",
       "author": "usavsolutionsinc",
       "subject": "Harden route auth with CI enforce ratchet; receiving triage/photos and repair intake updates.",
@@ -804,7 +1074,7 @@
     },
     {
       "sha": "d4ed2f0bb8b1babf5ef5753f9694c46e3c8987e7",
-      "shortSha": "d4ed2f0b",
+      "shortSha": "d4ed2f0bb",
       "date": "2026-06-25T16:58:54-07:00",
       "author": "usavsolutionsinc",
       "subject": "nextiva and more support updates, zoho updates as well",
@@ -814,7 +1084,7 @@
     },
     {
       "sha": "9f0b17bc013bd3266785489be4637c9ba112d6b4",
-      "shortSha": "9f0b17bc",
+      "shortSha": "9f0b17bc0",
       "date": "2026-06-25T16:58:54-07:00",
       "author": "usavsolutionsinc",
       "subject": "nextiva and more support updates, zoho updates as well",
@@ -824,7 +1094,7 @@
     },
     {
       "sha": "15be28c1b08351dcb080536a6309411bcd74d00b",
-      "shortSha": "15be28c1",
+      "shortSha": "15be28c1b",
       "date": "2026-06-25T10:57:29-07:00",
       "author": "usavsolutionsinc",
       "subject": "Sync receiving Zoho notes and item descriptions bidirectionally with inline feedback.",
@@ -834,7 +1104,7 @@
     },
     {
       "sha": "929e3b3a26ad12c14d745452bf01e80b671f105c",
-      "shortSha": "929e3b3a",
+      "shortSha": "929e3b3a2",
       "date": "2026-06-25T10:57:29-07:00",
       "author": "usavsolutionsinc",
       "subject": "Sync receiving Zoho notes and item descriptions bidirectionally with inline feedback.",
@@ -844,7 +1114,7 @@
     },
     {
       "sha": "201cfaa2e23fb88fb64e9a026a85a2e32c078d45",
-      "shortSha": "201cfaa2",
+      "shortSha": "201cfaa2e",
       "date": "2026-06-25T09:08:00-07:00",
       "author": "DENSENSE8",
       "subject": "receiving notes 3-tab + photo lightbox fixes; drop receive UI test button",
@@ -854,7 +1124,7 @@
     },
     {
       "sha": "1e6e52180f9288e8937c37028c21dd72932b9f2c",
-      "shortSha": "1e6e5218",
+      "shortSha": "1e6e52180",
       "date": "2026-06-25T09:08:00-07:00",
       "author": "DENSENSE8",
       "subject": "receiving notes 3-tab + photo lightbox fixes; drop receive UI test button",
@@ -864,7 +1134,7 @@
     },
     {
       "sha": "ae0ee2c69268addc5b6912492f152531ab08a045",
-      "shortSha": "ae0ee2c6",
+      "shortSha": "ae0ee2c69",
       "date": "2026-06-25T08:54:40-07:00",
       "author": "DENSENSE8",
       "subject": "zoho receiving and photo library and mobile updates",
@@ -874,7 +1144,7 @@
     },
     {
       "sha": "7ed810cc5bba87ed1b8b0c5ab3927f23af03d1c9",
-      "shortSha": "7ed810cc",
+      "shortSha": "7ed810cc5",
       "date": "2026-06-25T08:54:40-07:00",
       "author": "DENSENSE8",
       "subject": "zoho receiving and photo library and mobile updates",
@@ -884,7 +1154,7 @@
     },
     {
       "sha": "7a1f2ed8a086075c9bb4d6d5aade8ad2f3b82444",
-      "shortSha": "7a1f2ed8",
+      "shortSha": "7a1f2ed8a",
       "date": "2026-06-24T21:57:39-07:00",
       "author": "DENSENSE8",
       "subject": "chore: sync in-flight work — support console rebuild, receiving claim wizard, ops journey, kit parts, packer photos",
@@ -894,7 +1164,7 @@
     },
     {
       "sha": "72c029b47f94b709d5c88f34fa007eab27895589",
-      "shortSha": "72c029b4",
+      "shortSha": "72c029b47",
       "date": "2026-06-24T21:57:39-07:00",
       "author": "DENSENSE8",
       "subject": "chore: sync in-flight work — support console rebuild, receiving claim wizard, ops journey, kit parts, packer photos",
@@ -904,7 +1174,7 @@
     },
     {
       "sha": "828fd06822e64ca3ab8752da29bd3c32650b24ac",
-      "shortSha": "828fd068",
+      "shortSha": "828fd0682",
       "date": "2026-06-24T16:58:07-07:00",
       "author": "usavsolutionsinc",
       "subject": "zoho fixes",
@@ -914,7 +1184,7 @@
     },
     {
       "sha": "2ea31fc23208e2c4b3f5cc443194e3ce1b93df30",
-      "shortSha": "2ea31fc2",
+      "shortSha": "2ea31fc23",
       "date": "2026-06-24T16:58:07-07:00",
       "author": "usavsolutionsinc",
       "subject": "zoho fixes",
@@ -924,7 +1194,7 @@
     },
     {
       "sha": "e291d44e53c348f7267cfafd5330558c17a84ffe",
-      "shortSha": "e291d44e",
+      "shortSha": "e291d44e5",
       "date": "2026-06-23T17:32:18-07:00",
       "author": "usavsolutionsinc",
       "subject": "chore: sync in-flight work — receiving claim workspace, repair/shipped panels, tracking GS1, NAS archive",
@@ -934,7 +1204,7 @@
     },
     {
       "sha": "3608c5c60b354c26d30596a54a77de42e5f0d276",
-      "shortSha": "3608c5c6",
+      "shortSha": "3608c5c60",
       "date": "2026-06-23T17:32:18-07:00",
       "author": "usavsolutionsinc",
       "subject": "chore: sync in-flight work — receiving claim workspace, repair/shipped panels, tracking GS1, NAS archive",
@@ -944,7 +1214,7 @@
     },
     {
       "sha": "4b0c04b8315a22a36d8d2141f3c7153be5636f3b",
-      "shortSha": "4b0c04b8",
+      "shortSha": "4b0c04b83",
       "date": "2026-06-23T17:09:15-07:00",
       "author": "usavsolutionsinc",
       "subject": "fix(packing-logs): write pack audit on the tenant txn client via recordAudit",
@@ -954,7 +1224,7 @@
     },
     {
       "sha": "df57edfab47c6d326d3dfaf6086e80a5ba87ede1",
-      "shortSha": "df57edfa",
+      "shortSha": "df57edfab",
       "date": "2026-06-23T17:09:15-07:00",
       "author": "usavsolutionsinc",
       "subject": "fix(packing-logs): write pack audit on the tenant txn client via recordAudit",
@@ -964,7 +1234,7 @@
     },
     {
       "sha": "d335edbe76869be893baec3315e6ea22af315199",
-      "shortSha": "d335edbe",
+      "shortSha": "d335edbe7",
       "date": "2026-06-23T11:32:35-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): drag-to-reorder for master folders",
@@ -974,7 +1244,7 @@
     },
     {
       "sha": "4a4680cb941ae0788c246457fc8180acdeccda55",
-      "shortSha": "4a4680cb",
+      "shortSha": "4a4680cb9",
       "date": "2026-06-23T11:32:35-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): drag-to-reorder for master folders",
@@ -984,7 +1254,7 @@
     },
     {
       "sha": "1fcfe3b28f04dc806f76d9b1aec8e27977006453",
-      "shortSha": "1fcfe3b2",
+      "shortSha": "1fcfe3b28",
       "date": "2026-06-23T10:49:51-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): persistent master folders with full CRUD (Phase 2)",
@@ -994,7 +1264,7 @@
     },
     {
       "sha": "2cd15278e02a4f70346c1a910371b5d69aefddc8",
-      "shortSha": "2cd15278",
+      "shortSha": "2cd15278e",
       "date": "2026-06-23T10:49:51-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): persistent master folders with full CRUD (Phase 2)",
@@ -1004,7 +1274,7 @@
     },
     {
       "sha": "044d4d76d8957f8189c20063ee571650bc7ea323",
-      "shortSha": "044d4d76",
+      "shortSha": "044d4d76d",
       "date": "2026-06-23T10:29:28-07:00",
       "author": "DENSENSE8",
       "subject": "chore(ui): photo viewer control layout + sidebar icon swaps",
@@ -1014,7 +1284,7 @@
     },
     {
       "sha": "cf7eb497e486c809cd77c84691382db22e5aaec0",
-      "shortSha": "cf7eb497",
+      "shortSha": "cf7eb497e",
       "date": "2026-06-23T10:29:28-07:00",
       "author": "DENSENSE8",
       "subject": "chore(ui): photo viewer control layout + sidebar icon swaps",
@@ -1024,7 +1294,7 @@
     },
     {
       "sha": "bda09ee1ac2d02da84c044c35921c093fa619d54",
-      "shortSha": "bda09ee1",
+      "shortSha": "bda09ee1a",
       "date": "2026-06-23T10:18:53-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): simplify photo library — Finder-style folders + inline share toolbar",
@@ -1034,7 +1304,7 @@
     },
     {
       "sha": "e64d8618d482451a0ea5c525e13ab61e8b447d3a",
-      "shortSha": "e64d8618",
+      "shortSha": "e64d8618d",
       "date": "2026-06-23T10:18:53-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): simplify photo library — Finder-style folders + inline share toolbar",
@@ -1044,7 +1314,7 @@
     },
     {
       "sha": "df090ac170397f1f59ddaf0bdecda17a0595a6a9",
-      "shortSha": "df090ac1",
+      "shortSha": "df090ac17",
       "date": "2026-06-23T08:44:28-07:00",
       "author": "DENSENSE8",
       "subject": "making updates to the current photo library page and better design display functions",
@@ -1054,7 +1324,7 @@
     },
     {
       "sha": "8ef57855b89898d82e727179952e4446f18d964f",
-      "shortSha": "8ef57855",
+      "shortSha": "8ef57855b",
       "date": "2026-06-23T08:44:28-07:00",
       "author": "DENSENSE8",
       "subject": "making updates to the current photo library page and better design display functions",
@@ -1064,7 +1334,7 @@
     },
     {
       "sha": "9d9ab24fc0ed954fe5fa9724ad3716a926b65883",
-      "shortSha": "9d9ab24f",
+      "shortSha": "9d9ab24fc",
       "date": "2026-06-22T21:58:25-07:00",
       "author": "DENSENSE8",
       "subject": "docs(tenancy): regenerate route + coverage audit after GUC-wrap waves",
@@ -1074,7 +1344,7 @@
     },
     {
       "sha": "3d0f329d17a97d463f029d8e919a512048866a16",
-      "shortSha": "3d0f329d",
+      "shortSha": "3d0f329d1",
       "date": "2026-06-22T21:58:25-07:00",
       "author": "DENSENSE8",
       "subject": "docs(tenancy): regenerate route + coverage audit after GUC-wrap waves",
@@ -1084,7 +1354,7 @@
     },
     {
       "sha": "3e0ec9ece99b3411aad26815d58b1518fc157299",
-      "shortSha": "3e0ec9ec",
+      "shortSha": "3e0ec9ece",
       "date": "2026-06-22T21:57:16-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tenancy): route helper-delegating routes through tenant pool + GUC",
@@ -1094,7 +1364,7 @@
     },
     {
       "sha": "258f1cbe0a6d080f2fe663a68507429c5899a9e1",
-      "shortSha": "258f1cbe",
+      "shortSha": "258f1cbe0",
       "date": "2026-06-22T21:57:16-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tenancy): route helper-delegating routes through tenant pool + GUC",
@@ -1104,7 +1374,7 @@
     },
     {
       "sha": "93da99d6c5e943e65f28d685332ef539b55007a4",
-      "shortSha": "93da99d6",
+      "shortSha": "93da99d6c",
       "date": "2026-06-22T21:41:06-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tenancy): wrap 22 direct-query routes in tenant pool + GUC",
@@ -1114,7 +1384,7 @@
     },
     {
       "sha": "b096b7e47395b255878499b76cd938452dc2abf1",
-      "shortSha": "b096b7e4",
+      "shortSha": "b096b7e47",
       "date": "2026-06-22T21:41:06-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tenancy): wrap 22 direct-query routes in tenant pool + GUC",
@@ -1124,7 +1394,7 @@
     },
     {
       "sha": "6d8a9095f8689e769d5cf560022ce443c9b28c93",
-      "shortSha": "6d8a9095",
+      "shortSha": "6d8a9095f",
       "date": "2026-06-22T17:08:40-07:00",
       "author": "usavsolutionsinc",
       "subject": "docs: add MLX/M5 alternative-hardware appendix to local-LLM plan",
@@ -1134,7 +1404,7 @@
     },
     {
       "sha": "3b024acbae3ff914ac778016ae1b02c38fcca710",
-      "shortSha": "3b024acb",
+      "shortSha": "3b024acba",
       "date": "2026-06-22T17:08:40-07:00",
       "author": "usavsolutionsinc",
       "subject": "docs: add MLX/M5 alternative-hardware appendix to local-LLM plan",
@@ -1144,7 +1414,7 @@
     },
     {
       "sha": "e62c95206d0c28b44308536c6000556e51a61958",
-      "shortSha": "e62c9520",
+      "shortSha": "e62c95206",
       "date": "2026-06-22T17:01:42-07:00",
       "author": "usavsolutionsinc",
       "subject": "docs: add local-LLM (5070 Ti) + capability-advisor plan",
@@ -1154,7 +1424,7 @@
     },
     {
       "sha": "15bd781ddb33c40994c4f22686b26f1f1b312bae",
-      "shortSha": "15bd781d",
+      "shortSha": "15bd781dd",
       "date": "2026-06-22T17:01:42-07:00",
       "author": "usavsolutionsinc",
       "subject": "docs: add local-LLM (5070 Ti) + capability-advisor plan",
@@ -1164,7 +1434,7 @@
     },
     {
       "sha": "9b9877fe9d0a2278b80f3c5bc8e1d4046438acfd",
-      "shortSha": "9b9877fe",
+      "shortSha": "9b9877fe9",
       "date": "2026-06-22T16:47:35-07:00",
       "author": "usavsolutionsinc",
       "subject": "feat: FedEx GS1 tracking canonicalization, tenancy hardening sweep, repair print flow",
@@ -1174,7 +1444,7 @@
     },
     {
       "sha": "3352ac296bd0f9bd8fb18a0fe84a2c117757e5a6",
-      "shortSha": "3352ac29",
+      "shortSha": "3352ac296",
       "date": "2026-06-22T16:47:35-07:00",
       "author": "usavsolutionsinc",
       "subject": "feat: FedEx GS1 tracking canonicalization, tenancy hardening sweep, repair print flow",
@@ -1184,7 +1454,7 @@
     },
     {
       "sha": "8d68b72290913919e188cffee4f6b2cdd77fea4a",
-      "shortSha": "8d68b722",
+      "shortSha": "8d68b7229",
       "date": "2026-06-22T10:12:44-07:00",
       "author": "usavsolutionsinc",
       "subject": "Fix receiving line edit toolbar handler contract",
@@ -1194,7 +1464,7 @@
     },
     {
       "sha": "c9db6fe8ab8e86201a3068ad9b25b4941a94739f",
-      "shortSha": "c9db6fe8",
+      "shortSha": "c9db6fe8a",
       "date": "2026-06-22T10:12:44-07:00",
       "author": "usavsolutionsinc",
       "subject": "Fix receiving line edit toolbar handler contract",
@@ -1204,7 +1474,7 @@
     },
     {
       "sha": "6bab4e127c061899486f2bcf07097298d860b653",
-      "shortSha": "6bab4e12",
+      "shortSha": "6bab4e127",
       "date": "2026-06-22T09:56:14-07:00",
       "author": "usavsolutionsinc",
       "subject": "Integrate photo library and receiving updates",
@@ -1214,7 +1484,7 @@
     },
     {
       "sha": "ef93108730205bfbef6ab2b96ac403739b38969f",
-      "shortSha": "ef931087",
+      "shortSha": "ef9310873",
       "date": "2026-06-22T09:56:14-07:00",
       "author": "usavsolutionsinc",
       "subject": "Integrate photo library and receiving updates",
@@ -1224,7 +1494,7 @@
     },
     {
       "sha": "38a7336fdfcf6b476cd7fe56217aea57d76b88bc",
-      "shortSha": "38a7336f",
+      "shortSha": "38a7336fd",
       "date": "2026-06-22T08:39:55-07:00",
       "author": "DENSENSE8",
       "subject": "photo library updates UX and UI, folder first",
@@ -1234,7 +1504,7 @@
     },
     {
       "sha": "ba83ebe92ae6c06b37ac27bbd1e95252c476f132",
-      "shortSha": "ba83ebe9",
+      "shortSha": "ba83ebe92",
       "date": "2026-06-22T08:39:55-07:00",
       "author": "DENSENSE8",
       "subject": "photo library updates UX and UI, folder first",
@@ -1244,7 +1514,7 @@
     },
     {
       "sha": "c6bb865aa947b8b10409d7c26e3b873d1ef82eb6",
-      "shortSha": "c6bb865a",
+      "shortSha": "c6bb865aa",
       "date": "2026-06-22T08:27:35-07:00",
       "author": "DENSENSE8",
       "subject": "feat: identity layer, studio workflows, tenancy hardening, and UI chassis refactor",
@@ -1254,7 +1524,7 @@
     },
     {
       "sha": "0eaf4a990e6b9eaec77dbff6de176e8ba05034ff",
-      "shortSha": "0eaf4a99",
+      "shortSha": "0eaf4a990",
       "date": "2026-06-22T08:27:35-07:00",
       "author": "DENSENSE8",
       "subject": "feat: identity layer, studio workflows, tenancy hardening, and UI chassis refactor",
@@ -1264,7 +1534,7 @@
     },
     {
       "sha": "725c0d39376ccd9efdcbb1b5f97130d18df4a1ba",
-      "shortSha": "725c0d39",
+      "shortSha": "725c0d393",
       "date": "2026-06-21T21:46:18-07:00",
       "author": "DENSENSE8",
       "subject": "feat(fba): route ship-units SHIPPED through guarded transition() (Phase 1.3)",
@@ -1274,7 +1544,7 @@
     },
     {
       "sha": "cb43adbe81e9baaabaf66f64b02dad73e6118400",
-      "shortSha": "cb43adbe",
+      "shortSha": "cb43adbe8",
       "date": "2026-06-21T21:46:18-07:00",
       "author": "DENSENSE8",
       "subject": "feat(fba): route ship-units SHIPPED through guarded transition() (Phase 1.3)",
@@ -1284,7 +1554,7 @@
     },
     {
       "sha": "d5cad04352e810221b4effc61f7062cdf3f1ce45",
-      "shortSha": "d5cad043",
+      "shortSha": "d5cad0435",
       "date": "2026-06-21T21:28:59-07:00",
       "author": "DENSENSE8",
       "subject": "feat(inventory): route returns-intake through guarded transition() (Phase 1.3)",
@@ -1294,7 +1564,7 @@
     },
     {
       "sha": "5199dd2e6c92bca1da6f07a03f4a16280119d712",
-      "shortSha": "5199dd2e",
+      "shortSha": "5199dd2e6",
       "date": "2026-06-21T21:28:59-07:00",
       "author": "DENSENSE8",
       "subject": "feat(inventory): route returns-intake through guarded transition() (Phase 1.3)",
@@ -1304,7 +1574,7 @@
     },
     {
       "sha": "8a3a59bd7ccfd67d33d7fbf850cea1992597c45d",
-      "shortSha": "8a3a59bd",
+      "shortSha": "8a3a59bd7",
       "date": "2026-06-21T21:28:59-07:00",
       "author": "DENSENSE8",
       "subject": "feat(orders): route order-release through guarded transition() (Phase 1.3)",
@@ -1314,7 +1584,7 @@
     },
     {
       "sha": "4de95b31afbf520e14961277a17ba6cbd91b3083",
-      "shortSha": "4de95b31",
+      "shortSha": "4de95b31a",
       "date": "2026-06-21T21:28:59-07:00",
       "author": "DENSENSE8",
       "subject": "feat(orders): route order-release through guarded transition() (Phase 1.3)",
@@ -1324,7 +1594,7 @@
     },
     {
       "sha": "58e77ceeb5c65ce4dfe601a364af1e0e943da646",
-      "shortSha": "58e77cee",
+      "shortSha": "58e77ceeb",
       "date": "2026-06-21T21:15:51-07:00",
       "author": "DENSENSE8",
       "subject": "fix(inventory): parts-sort status+location in one tx; narrow transition db param",
@@ -1334,7 +1604,7 @@
     },
     {
       "sha": "46ca3b1b2c8fb3c3c5793a920537d9b393cfea83",
-      "shortSha": "46ca3b1b",
+      "shortSha": "46ca3b1b2",
       "date": "2026-06-21T21:15:51-07:00",
       "author": "DENSENSE8",
       "subject": "fix(inventory): parts-sort status+location in one tx; narrow transition db param",
@@ -1344,7 +1614,7 @@
     },
     {
       "sha": "54d18a0f177fbf4203227a8bf90f866444f0af0f",
-      "shortSha": "54d18a0f",
+      "shortSha": "54d18a0f1",
       "date": "2026-06-21T21:04:35-07:00",
       "author": "DENSENSE8",
       "subject": "feat(inventory): route parts-sort through guarded transition() (Phase 1.3)",
@@ -1354,7 +1624,7 @@
     },
     {
       "sha": "46c6f2beee4037884eadb5f0a5df209bbed509ee",
-      "shortSha": "46c6f2be",
+      "shortSha": "46c6f2bee",
       "date": "2026-06-21T21:04:35-07:00",
       "author": "DENSENSE8",
       "subject": "feat(inventory): route parts-sort through guarded transition() (Phase 1.3)",
@@ -1364,7 +1634,7 @@
     },
     {
       "sha": "00b6f9cb0b0a960ebde37c418a70c3882d75d0f5",
-      "shortSha": "00b6f9cb",
+      "shortSha": "00b6f9cb0",
       "date": "2026-06-21T20:55:17-07:00",
       "author": "DENSENSE8",
       "subject": "feat(inventory): route hold/release through guarded transition() (Phase 1.3)",
@@ -1374,7 +1644,7 @@
     },
     {
       "sha": "26c3185784d6c00f4f146b332a0af4ff80a9d45b",
-      "shortSha": "26c31857",
+      "shortSha": "26c318578",
       "date": "2026-06-21T20:55:17-07:00",
       "author": "DENSENSE8",
       "subject": "feat(inventory): route hold/release through guarded transition() (Phase 1.3)",
@@ -1384,7 +1654,7 @@
     },
     {
       "sha": "12a0af3d4fc209b1bee0cc17b090e0dd0bd4275b",
-      "shortSha": "12a0af3d",
+      "shortSha": "12a0af3d4",
       "date": "2026-06-21T20:31:55-07:00",
       "author": "DENSENSE8",
       "subject": "fix(workflow): applyTransition preserves receiving_id + scan_token on the event",
@@ -1394,7 +1664,7 @@
     },
     {
       "sha": "8537597d399ed353bfc95a8cf0c073a164629beb",
-      "shortSha": "8537597d",
+      "shortSha": "8537597d3",
       "date": "2026-06-21T20:31:55-07:00",
       "author": "DENSENSE8",
       "subject": "fix(workflow): applyTransition preserves receiving_id + scan_token on the event",
@@ -1404,7 +1674,7 @@
     },
     {
       "sha": "be0481d3513b9698ce816c27e3de11843f5eece0",
-      "shortSha": "be0481d3",
+      "shortSha": "be0481d35",
       "date": "2026-06-21T20:21:57-07:00",
       "author": "DENSENSE8",
       "subject": "feat(receiving): route lines/[id]/status through the guarded chokepoint (Phase 1.2)",
@@ -1414,7 +1684,7 @@
     },
     {
       "sha": "c2277ef88dc437d746c59b2ee5cc34756ba30cfe",
-      "shortSha": "c2277ef8",
+      "shortSha": "c2277ef88",
       "date": "2026-06-21T20:21:57-07:00",
       "author": "DENSENSE8",
       "subject": "feat(receiving): route lines/[id]/status through the guarded chokepoint (Phase 1.2)",
@@ -1424,7 +1694,7 @@
     },
     {
       "sha": "bb8583d5366c0741362fcc19e79c974eca977c8e",
-      "shortSha": "bb8583d5",
+      "shortSha": "bb8583d53",
       "date": "2026-06-21T20:17:44-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): applyTransition skipTap (guarded write + event, no graph advance)",
@@ -1434,7 +1704,7 @@
     },
     {
       "sha": "9606e5fbcba93d755b865358d926212e696e755b",
-      "shortSha": "9606e5fb",
+      "shortSha": "9606e5fbc",
       "date": "2026-06-21T20:17:44-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): applyTransition skipTap (guarded write + event, no graph advance)",
@@ -1444,7 +1714,7 @@
     },
     {
       "sha": "a4a66fab2e823d8692dfeaf4a3188c89b36a984b",
-      "shortSha": "a4a66fab",
+      "shortSha": "a4a66fab2",
       "date": "2026-06-21T20:01:13-07:00",
       "author": "DENSENSE8",
       "subject": "fix(tenancy): org-scope recordTestVerdict + engine store reads/writes",
@@ -1454,7 +1724,7 @@
     },
     {
       "sha": "f3ee9bd2e9d47b3e78bac067823b501b1d66a823",
-      "shortSha": "f3ee9bd2",
+      "shortSha": "f3ee9bd2e",
       "date": "2026-06-21T20:01:13-07:00",
       "author": "DENSENSE8",
       "subject": "fix(tenancy): org-scope recordTestVerdict + engine store reads/writes",
@@ -1464,7 +1734,7 @@
     },
     {
       "sha": "9da4573d3af75b7c1feb247e866e67785676ac29",
-      "shortSha": "9da4573d",
+      "shortSha": "9da4573d3",
       "date": "2026-06-21T19:48:04-07:00",
       "author": "DENSENSE8",
       "subject": "fix(workflow): applyTransition idempotency must not swallow expectedFrom drift",
@@ -1474,7 +1744,7 @@
     },
     {
       "sha": "951d603aa977d4f89ced70cd265e65d39a32f610",
-      "shortSha": "951d603a",
+      "shortSha": "951d603aa",
       "date": "2026-06-21T19:48:04-07:00",
       "author": "DENSENSE8",
       "subject": "fix(workflow): applyTransition idempotency must not swallow expectedFrom drift",
@@ -1484,7 +1754,7 @@
     },
     {
       "sha": "518bea7365aa46c052b9ce9b9adb2fe93a9de612",
-      "shortSha": "518bea73",
+      "shortSha": "518bea736",
       "date": "2026-06-21T19:45:34-07:00",
       "author": "DENSENSE8",
       "subject": "test(tech-serial): repoint stale TSN call-site assertion to recordTestVerdict",
@@ -1494,7 +1764,7 @@
     },
     {
       "sha": "770236b6e49118f6070b31613d170a05f418e1b0",
-      "shortSha": "770236b6",
+      "shortSha": "770236b6e",
       "date": "2026-06-21T19:45:34-07:00",
       "author": "DENSENSE8",
       "subject": "test(tech-serial): repoint stale TSN call-site assertion to recordTestVerdict",
@@ -1504,7 +1774,7 @@
     },
     {
       "sha": "b8e54313356533dacc9ffb5b0a6ae7abbae87bc0",
-      "shortSha": "b8e54313",
+      "shortSha": "b8e543133",
       "date": "2026-06-21T19:43:27-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tech): route recordTestVerdict through applyTransition behind a flag (Phase 1.1)",
@@ -1514,7 +1784,7 @@
     },
     {
       "sha": "2eca23ab6ca4eaa0595eb0df1bdf543523d87e4a",
-      "shortSha": "2eca23ab",
+      "shortSha": "2eca23ab6",
       "date": "2026-06-21T19:43:27-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tech): route recordTestVerdict through applyTransition behind a flag (Phase 1.1)",
@@ -1524,7 +1794,7 @@
     },
     {
       "sha": "f5a25632009204c0677a7ec41f01ca92dcdb69e1",
-      "shortSha": "f5a25632",
+      "shortSha": "f5a256320",
       "date": "2026-06-21T19:38:03-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): applyTransition() mutate-and-tap chokepoint (Phase 1.1)",
@@ -1534,7 +1804,7 @@
     },
     {
       "sha": "f3b781652c3e522f3489ec3323cffed63d7802c3",
-      "shortSha": "f3b78165",
+      "shortSha": "f3b781652",
       "date": "2026-06-21T19:38:03-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): applyTransition() mutate-and-tap chokepoint (Phase 1.1)",
@@ -1544,7 +1814,7 @@
     },
     {
       "sha": "d91674281cf85277362114ae74cf47270f21f73c",
-      "shortSha": "d9167428",
+      "shortSha": "d91674281",
       "date": "2026-06-21T19:34:49-07:00",
       "author": "DENSENSE8",
       "subject": "feat(studio): recovery panel surfaces + unparks stuck workflow items (Phase 1.0)",
@@ -1554,7 +1824,7 @@
     },
     {
       "sha": "8291de2e1c19e4654e5a51d07f4b67373aca5b69",
-      "shortSha": "8291de2e",
+      "shortSha": "8291de2e1",
       "date": "2026-06-21T19:34:49-07:00",
       "author": "DENSENSE8",
       "subject": "feat(studio): recovery panel surfaces + unparks stuck workflow items (Phase 1.0)",
@@ -1564,7 +1834,7 @@
     },
     {
       "sha": "707dcaa3399be361e474be10c5aac4eecb3e3d7f",
-      "shortSha": "707dcaa3",
+      "shortSha": "707dcaa33",
       "date": "2026-06-21T19:32:22-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): unpark/recovery path for stuck items (Phase 1.0)",
@@ -1574,7 +1844,7 @@
     },
     {
       "sha": "3f85ac6502eea1f72b4b0c2aa1ddbdd9acdfdd93",
-      "shortSha": "3f85ac65",
+      "shortSha": "3f85ac650",
       "date": "2026-06-21T19:32:22-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): unpark/recovery path for stuck items (Phase 1.0)",
@@ -1584,7 +1854,7 @@
     },
     {
       "sha": "bc004f89057dc1f34f9325afd6338d0845d952dc",
-      "shortSha": "bc004f89",
+      "shortSha": "bc004f890",
       "date": "2026-06-21T19:24:05-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)",
@@ -1594,7 +1864,7 @@
     },
     {
       "sha": "6e3da94635e6df01a6c335844257137de496f518",
-      "shortSha": "6e3da946",
+      "shortSha": "6e3da9463",
       "date": "2026-06-21T19:24:05-07:00",
       "author": "DENSENSE8",
       "subject": "feat(workflow): real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)",
@@ -1604,7 +1874,7 @@
     },
     {
       "sha": "86fd9a36164533b73fc1c2713d0d7126bf51f602",
-      "shortSha": "86fd9a36",
+      "shortSha": "86fd9a361",
       "date": "2026-06-20T13:32:22-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tenancy): make serial_units writer org-required + FORCE RLS migration",
@@ -1614,7 +1884,7 @@
     },
     {
       "sha": "1e28d1885934eb42001e6aca6413a2778423d2a3",
-      "shortSha": "1e28d188",
+      "shortSha": "1e28d1885",
       "date": "2026-06-20T13:32:22-07:00",
       "author": "DENSENSE8",
       "subject": "feat(tenancy): make serial_units writer org-required + FORCE RLS migration",
@@ -1624,7 +1894,7 @@
     },
     {
       "sha": "4f19d69c5204c93e42a5780846e386c6784f2b92",
-      "shortSha": "4f19d69c",
+      "shortSha": "4f19d69c5",
       "date": "2026-06-19T12:18:21-07:00",
       "author": "usavsolutionsinc",
       "subject": "Allow protobufjs build scripts for pnpm",
@@ -1634,7 +1904,7 @@
     },
     {
       "sha": "b534659486c3e549b6c9ef9e3d8d930dc2334d65",
-      "shortSha": "b5346594",
+      "shortSha": "b53465948",
       "date": "2026-06-19T12:18:21-07:00",
       "author": "usavsolutionsinc",
       "subject": "Allow protobufjs build scripts for pnpm",
@@ -1644,7 +1914,7 @@
     },
     {
       "sha": "fb19e196a0f19b0a0c59728c17f345cddcc18fee",
-      "shortSha": "fb19e196",
+      "shortSha": "fb19e196a",
       "date": "2026-06-19T12:14:08-07:00",
       "author": "usavsolutionsinc",
       "subject": "Fix photo library typings and release notes",
@@ -1654,7 +1924,7 @@
     },
     {
       "sha": "f794767d3028db3ebd6455ec20481fc5c77099ca",
-      "shortSha": "f794767d",
+      "shortSha": "f794767d3",
       "date": "2026-06-19T12:14:08-07:00",
       "author": "usavsolutionsinc",
       "subject": "Fix photo library typings and release notes",
@@ -1664,7 +1934,7 @@
     },
     {
       "sha": "46f90b7ec09447eed480aab33ddf97bc190a4d9a",
-      "shortSha": "46f90b7e",
+      "shortSha": "46f90b7ec",
       "date": "2026-06-17T13:34:57-07:00",
       "author": "usavsolutionsinc",
       "subject": "feat(integrations): platform_listings + connector reconcile groundwork",
@@ -1674,7 +1944,7 @@
     },
     {
       "sha": "07b5d65b109fc6fd5324deac3dd8c8ad17d5a723",
-      "shortSha": "07b5d65b",
+      "shortSha": "07b5d65b1",
       "date": "2026-06-17T13:34:57-07:00",
       "author": "usavsolutionsinc",
       "subject": "feat(integrations): platform_listings + connector reconcile groundwork",
@@ -1684,283 +1954,13 @@
     },
     {
       "sha": "e820f9f2e842659b33362735e787e5a07e24b057",
-      "shortSha": "e820f9f2",
+      "shortSha": "e820f9f2e",
       "date": "2026-06-19T08:46:36-07:00",
       "author": "DENSENSE8",
       "subject": "feat(photos): GCS-backed photos platform with library, share packs, and entity links",
       "body": "Migrate photo capture and display across receiving, packing, testing, and claims to a unified GCS storage layer with Neon entity links, ops Photo Library UI, public share packs, NAS mirror cron, and analysis jobs. Includes DB migrations, backfill scripts, route permissions, E2E coverage, repair intake stepper, and print label refactors.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "feature",
       "title": "GCS-backed photos platform with library, share packs, and entity links"
-    },
-    {
-      "sha": "2278c5824cebaa0d47948743fe8cc9cae33a9c10",
-      "shortSha": "2278c582",
-      "date": "2026-06-19T08:46:36-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(photos): GCS-backed photos platform with library, share packs, and entity links",
-      "body": "Migrate photo capture and display across receiving, packing, testing, and claims to a unified GCS storage layer with Neon entity links, ops Photo Library UI, public share packs, NAS mirror cron, and analysis jobs. Includes DB migrations, backfill scripts, route permissions, E2E coverage, repair intake stepper, and print label refactors.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "GCS-backed photos platform with library, share packs, and entity links"
-    },
-    {
-      "sha": "98aa3284ed8a66d9703dcd53512921fd69c0e313",
-      "shortSha": "98aa3284",
-      "date": "2026-06-17T18:24:29-07:00",
-      "author": "DENSENSE8",
-      "subject": "updates to the admin and settings and carton context card",
-      "body": "",
-      "type": "other",
-      "title": "updates to the admin and settings and carton context card"
-    },
-    {
-      "sha": "0893e3c10a0da67986b5a4318a0c2e03a88a0f70",
-      "shortSha": "0893e3c1",
-      "date": "2026-06-17T18:24:29-07:00",
-      "author": "DENSENSE8",
-      "subject": "updates to the admin and settings and carton context card",
-      "body": "",
-      "type": "other",
-      "title": "updates to the admin and settings and carton context card"
-    },
-    {
-      "sha": "5064c4c61ceb2f163f2750c4c31480efb537c08c",
-      "shortSha": "5064c4c6",
-      "date": "2026-06-17T09:15:01-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "feat(nas): Synology media agent, mobile photo UX, and claim seller assist",
-      "body": "Route NAS writes through /api/nas-target and the office NAS Media Agent;\nadd mobile gallery/swipe capture, admin NAS sidebar, Hermes client + sourcing\nresearch, and Zendesk claim seller-message drafting with guardrails.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "Synology media agent, mobile photo UX, and claim seller assist"
-    },
-    {
-      "sha": "e45aa874176d4c8b15e49881155e206497503130",
-      "shortSha": "e45aa874",
-      "date": "2026-06-17T09:15:01-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "feat(nas): Synology media agent, mobile photo UX, and claim seller assist",
-      "body": "Route NAS writes through /api/nas-target and the office NAS Media Agent;\nadd mobile gallery/swipe capture, admin NAS sidebar, Hermes client + sourcing\nresearch, and Zendesk claim seller-message drafting with guardrails.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "Synology media agent, mobile photo UX, and claim seller assist"
-    },
-    {
-      "sha": "8a757a0f145200bd5b7b52b99a015ed9c251750c",
-      "shortSha": "8a757a0f",
-      "date": "2026-06-15T10:55:16-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "updated the printer preferences for silent printing to be the correct sizing in mm",
-      "body": "",
-      "type": "other",
-      "title": "updated the printer preferences for silent printing to be the correct sizing in mm"
-    },
-    {
-      "sha": "a972d94e5d7dd18e17932a05a7293e917104f5f1",
-      "shortSha": "a972d94e",
-      "date": "2026-06-15T10:55:16-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "updated the printer preferences for silent printing to be the correct sizing in mm",
-      "body": "",
-      "type": "other",
-      "title": "updated the printer preferences for silent printing to be the correct sizing in mm"
-    },
-    {
-      "sha": "934c3c140cfe344ac9735bc022d9f60837c0a90b",
-      "shortSha": "934c3c14",
-      "date": "2026-06-15T09:27:43-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "fix(po-gmail): lazily load email HTML sanitizer",
-      "body": "",
-      "type": "fix",
-      "title": "lazily load email HTML sanitizer"
-    },
-    {
-      "sha": "2ba36fec5e24f332ccf928df9e38ee9d7e592450",
-      "shortSha": "2ba36fec",
-      "date": "2026-06-15T09:27:43-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "fix(po-gmail): lazily load email HTML sanitizer",
-      "body": "",
-      "type": "fix",
-      "title": "lazily load email HTML sanitizer"
-    },
-    {
-      "sha": "00067545d9689dbac2832b94215375b072f78494",
-      "shortSha": "00067545",
-      "date": "2026-06-15T08:50:48-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(outbound): add dock station with labels and scan-out queues",
-      "body": "Introduce /outbound as a sidebar-mode station: label queue and staged\nscan-out in the right panel, compact 40px staging header, DOCK_STAGED\nactivity logs, and bulk mark-staged API. Reorder master nav to\nReceiving → Outbound → Testing → Amazon FBA → Packing and lift dock\nscan bars off the dashboard sidebars.\n\nRefactor receiving line detail into a shared overlay module and add\noperator backfill scripts for dock staging, tracking scans, and unbox\nattribution.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "add dock station with labels and scan-out queues"
-    },
-    {
-      "sha": "2338079375d92a925b6ce9384d44fbbc9fb6d647",
-      "shortSha": "23380793",
-      "date": "2026-06-15T08:50:48-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(outbound): add dock station with labels and scan-out queues",
-      "body": "Introduce /outbound as a sidebar-mode station: label queue and staged\nscan-out in the right panel, compact 40px staging header, DOCK_STAGED\nactivity logs, and bulk mark-staged API. Reorder master nav to\nReceiving → Outbound → Testing → Amazon FBA → Packing and lift dock\nscan bars off the dashboard sidebars.\n\nRefactor receiving line detail into a shared overlay module and add\noperator backfill scripts for dock staging, tracking scans, and unbox\nattribution.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "add dock station with labels and scan-out queues"
-    },
-    {
-      "sha": "098007be87a85caee6857cddc24ea478c91676a8",
-      "shortSha": "098007be",
-      "date": "2026-06-14T22:02:30-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(deps): remove unused motion-plus (0 imports; private dep 404s in CI, blocked all prod deploys)",
-      "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "remove unused motion-plus (0 imports; private dep 404s in CI, blocked all prod deploys)"
-    },
-    {
-      "sha": "de05ec31fc8f350fa47bd9abc392c01847e9d235",
-      "shortSha": "de05ec31",
-      "date": "2026-06-14T22:02:30-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(deps): remove unused motion-plus (0 imports; private dep 404s in CI, blocked all prod deploys)",
-      "body": "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "remove unused motion-plus (0 imports; private dep 404s in CI, blocked all prod deploys)"
-    },
-    {
-      "sha": "905439e6520ede8ff8bd86c257a41e4884c387ab",
-      "shortSha": "905439e6",
-      "date": "2026-06-14T21:56:48-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): E1 staged — app_tenant role created+validated, TENANT_APP_DATABASE_URL set, USAV-default safety migration",
-      "body": "Enforcement is staged + validated (RLS isolation proven on live DB, grants\ncomplete, 0 NULL-org rows). Activates on next successful prod deploy; the\nactivating redeploy is currently blocked by the in-flight motion-plus dep.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "E1 staged — app_tenant role created+validated, TENANT_APP_DATABASE_URL set, USAV-default safety migration"
-    },
-    {
-      "sha": "2913e9cf9869ce69ae0a4152e89aeaa25283c61f",
-      "shortSha": "2913e9cf",
-      "date": "2026-06-14T21:56:48-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): E1 staged — app_tenant role created+validated, TENANT_APP_DATABASE_URL set, USAV-default safety migration",
-      "body": "Enforcement is staged + validated (RLS isolation proven on live DB, grants\ncomplete, 0 NULL-org rows). Activates on next successful prod deploy; the\nactivating redeploy is currently blocked by the in-flight motion-plus dep.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "E1 staged — app_tenant role created+validated, TENANT_APP_DATABASE_URL set, USAV-default safety migration"
-    },
-    {
-      "sha": "fdda74f544804825f69f8ce245119299c940e63f",
-      "shortSha": "fdda74f5",
-      "date": "2026-06-14T21:54:19-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(deps): regenerate pnpm-lock.yaml to match package.json (electron-log, motion-plus)",
-      "body": "Unblocks the production build (frozen-lockfile CI check).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "regenerate pnpm-lock.yaml to match package.json (electron-log, motion-plus)"
-    },
-    {
-      "sha": "022468cfe141bb2e8669f62873707c7bc66c4944",
-      "shortSha": "022468cf",
-      "date": "2026-06-14T21:54:19-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(deps): regenerate pnpm-lock.yaml to match package.json (electron-log, motion-plus)",
-      "body": "Unblocks the production build (frozen-lockfile CI check).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "regenerate pnpm-lock.yaml to match package.json (electron-log, motion-plus)"
-    },
-    {
-      "sha": "17fd0392a133e771d77e1058206909576715f595",
-      "shortSha": "17fd0392",
-      "date": "2026-06-14T21:42:49-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): logical-RLS multi-tenant sweep — request/module/identity layers org-scoped + NEEDS-COL columns applied",
-      "body": "Tenant-isolation hardening across the codebase (3 sweep workflows + manual\nfixes). Brings the route-file leak surface from 178 critical → 29 (all\nremaining are deferred-by-design: auth-flow Phase F, session-less Zoho sync,\ndev/test routes). GUC-wrapped routes 59 → 242.\n\n- Hot-core + cold domains: 225 critical/high routes + ~58 shared query/\n  aggregator/backbone modules made org-aware (optional-orgId, backward-compatible).\n- Identity layer: admin staff/role CRUD org-scoped (roles stay global; sign-in\n  credential logic untouched).\n- Session-less crons: service-org interim via transitionalUsavOrgId + TODOs.\n- Schema: applied 2026-06-14_org_id_phase_b_needs_col{,_2}.sql (35 NEEDS-COL\n  tables gained nullable organization_id + armed RLS). Composite-PK migrations\n  staged .sql.gated (deploy-coupled).\n- tsc clean; tenancy guard green. Docs: docs/tier0-{resume-handoff,execution-checklist}.md.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "logical-RLS multi-tenant sweep — request/module/identity layers org-scoped + NEEDS-COL columns applied"
-    },
-    {
-      "sha": "506df3b36e68f88e119bda3cf350673366f4b680",
-      "shortSha": "506df3b3",
-      "date": "2026-06-14T21:42:49-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): logical-RLS multi-tenant sweep — request/module/identity layers org-scoped + NEEDS-COL columns applied",
-      "body": "Tenant-isolation hardening across the codebase (3 sweep workflows + manual\nfixes). Brings the route-file leak surface from 178 critical → 29 (all\nremaining are deferred-by-design: auth-flow Phase F, session-less Zoho sync,\ndev/test routes). GUC-wrapped routes 59 → 242.\n\n- Hot-core + cold domains: 225 critical/high routes + ~58 shared query/\n  aggregator/backbone modules made org-aware (optional-orgId, backward-compatible).\n- Identity layer: admin staff/role CRUD org-scoped (roles stay global; sign-in\n  credential logic untouched).\n- Session-less crons: service-org interim via transitionalUsavOrgId + TODOs.\n- Schema: applied 2026-06-14_org_id_phase_b_needs_col{,_2}.sql (35 NEEDS-COL\n  tables gained nullable organization_id + armed RLS). Composite-PK migrations\n  staged .sql.gated (deploy-coupled).\n- tsc clean; tenancy guard green. Docs: docs/tier0-{resume-handoff,execution-checklist}.md.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "logical-RLS multi-tenant sweep — request/module/identity layers org-scoped + NEEDS-COL columns applied"
-    },
-    {
-      "sha": "8adbdfb9dfb34ddbcbcab179cd14f63294ec449e",
-      "shortSha": "8adbdfb9",
-      "date": "2026-06-14T19:33:25-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs: platform/type catalog status + what's-left handoff",
-      "body": "Self-contained snapshot of the catalog initiative — what's done (commits +\napplied migrations), what's left (by phase), the two uncommitted loose ends,\nkey files, and the recommended next step. Lets a fresh session pick it up with\nzero prior context.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "platform/type catalog status + what's-left handoff"
-    },
-    {
-      "sha": "d08d44fe89e1259f1c776e53c141d05f89ebeb1b",
-      "shortSha": "d08d44fe",
-      "date": "2026-06-14T19:33:25-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs: platform/type catalog status + what's-left handoff",
-      "body": "Self-contained snapshot of the catalog initiative — what's done (commits +\napplied migrations), what's left (by phase), the two uncommitted loose ends,\nkey files, and the recommended next step. Lets a fresh session pick it up with\nzero prior context.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "platform/type catalog status + what's-left handoff"
-    },
-    {
-      "sha": "22546475b087c62b94e7ce2e3ae27ff8033113c5",
-      "shortSha": "22546475",
-      "date": "2026-06-14T16:29:46-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): arm RLS on the platform/type catalog tables",
-      "body": "ENABLE ROW LEVEL SECURITY + canonical org-isolation policy on platforms,\nplatform_accounts, types (organization_id already NOT NULL + FK from 2026-06-13g).\nArmed but NOT forced — inert under the BYPASSRLS app role today; joins the Phase E\nenforcement set later, gated on the catalog CRUD writers being GUC-wrapped.\nMirrors 2026-06-14_org_id_phase_b_domain_children.\n\nApplied to the live DB; all 3 tables RLS=ON/FORCED=no/1 policy; tenancy guard green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "arm RLS on the platform/type catalog tables"
-    },
-    {
-      "sha": "91b253895d81df3fea9a360f0fdca189de3c8492",
-      "shortSha": "91b25389",
-      "date": "2026-06-14T16:29:46-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): arm RLS on the platform/type catalog tables",
-      "body": "ENABLE ROW LEVEL SECURITY + canonical org-isolation policy on platforms,\nplatform_accounts, types (organization_id already NOT NULL + FK from 2026-06-13g).\nArmed but NOT forced — inert under the BYPASSRLS app role today; joins the Phase E\nenforcement set later, gated on the catalog CRUD writers being GUC-wrapped.\nMirrors 2026-06-14_org_id_phase_b_domain_children.\n\nApplied to the live DB; all 3 tables RLS=ON/FORCED=no/1 policy; tenancy guard green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "arm RLS on the platform/type catalog tables"
-    },
-    {
-      "sha": "4cdea7db810e12a7ff6c5ff6df9ce8e4f092b9d9",
-      "shortSha": "4cdea7db",
-      "date": "2026-06-14T15:46:14-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(catalog): catalog-aware receiving-type label on the printed label",
-      "body": "Phase 3 (type side) of the platform/type catalog — symmetric to the platform\nresolver. A renamed or custom receiving type now prints its catalog label on the\nreceiving label face (preview + print) instead of the hardcoded slug map.\n\n- useReceivingTypeLabel(): type code -> org-catalog label (fallback\n  receivingLabelTypeDisplay)\n- ReceivingLabelPayload.receivingTypeLabel; receivingLabelPlatformDisplay prefers\n  it over the built-in map; preview + both printReceivingLabel paths carry it\n- useUnboxLineController resolves + sets it on the built payload\n\nOrder channel display (account_source) intentionally left on constants — that\nfield's ~12-surface hybrid footprint belongs with the Phase 2 type_id migration.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "catalog-aware receiving-type label on the printed label"
-    },
-    {
-      "sha": "596ad2cb4d93d21bc2077f30e6fa5788e8fe1b75",
-      "shortSha": "596ad2cb",
-      "date": "2026-06-14T15:46:14-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(catalog): catalog-aware receiving-type label on the printed label",
-      "body": "Phase 3 (type side) of the platform/type catalog — symmetric to the platform\nresolver. A renamed or custom receiving type now prints its catalog label on the\nreceiving label face (preview + print) instead of the hardcoded slug map.\n\n- useReceivingTypeLabel(): type code -> org-catalog label (fallback\n  receivingLabelTypeDisplay)\n- ReceivingLabelPayload.receivingTypeLabel; receivingLabelPlatformDisplay prefers\n  it over the built-in map; preview + both printReceivingLabel paths carry it\n- useUnboxLineController resolves + sets it on the built payload\n\nOrder channel display (account_source) intentionally left on constants — that\nfield's ~12-surface hybrid footprint belongs with the Phase 2 type_id migration.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "catalog-aware receiving-type label on the printed label"
-    },
-    {
-      "sha": "69cd413161e925314ba2b8acf2a99883fb8ee1ef",
-      "shortSha": "69cd4131",
-      "date": "2026-06-14T13:05:05-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(tenancy): set organization_id on Phase B child-table inserts",
-      "body": "Migration 2026-06-14_org_id_phase_b_domain_children made organization_id\nNOT NULL with a GUC default on receiving / handling-unit / testing / repair /\nlocal-pickup child tables, so inserts that don't set the app.current_org GUC\nfail. Attribute org explicitly so those writes keep working:\n\n- receiving_scans, receiving_shipments, testing_results, repair_actions,\n  local_pickup_order_items — inherit organization_id from the parent row\n  (multi-tenant correct; no GUC dependency)\n- handling_units — thread ctx.organizationId via CreateHandlingUnitInput\n- local_pickup_orders — ctx.organizationId (route) / USAV for the Zoho\n  background sync (transitional, no request ctx)\n\nunit_repairs + repair_failure_resolutions (repairs-queries.ts) are left out —\nthat file is interleaved with separate in-progress repair work; their identical\norg-inherit fix is staged in the working tree to land with that commit.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "set organization_id on Phase B child-table inserts"
-    },
-    {
-      "sha": "3737fa7e28df6a5c507c53ec554597c4ed4f9df5",
-      "shortSha": "3737fa7e",
-      "date": "2026-06-14T13:05:05-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(tenancy): set organization_id on Phase B child-table inserts",
-      "body": "Migration 2026-06-14_org_id_phase_b_domain_children made organization_id\nNOT NULL with a GUC default on receiving / handling-unit / testing / repair /\nlocal-pickup child tables, so inserts that don't set the app.current_org GUC\nfail. Attribute org explicitly so those writes keep working:\n\n- receiving_scans, receiving_shipments, testing_results, repair_actions,\n  local_pickup_order_items — inherit organization_id from the parent row\n  (multi-tenant correct; no GUC dependency)\n- handling_units — thread ctx.organizationId via CreateHandlingUnitInput\n- local_pickup_orders — ctx.organizationId (route) / USAV for the Zoho\n  background sync (transitional, no request ctx)\n\nunit_repairs + repair_failure_resolutions (repairs-queries.ts) are left out —\nthat file is interleaved with separate in-progress repair work; their identical\norg-inherit fix is staged in the working tree to land with that commit.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "set organization_id on Phase B child-table inserts"
     }
   ]
 }

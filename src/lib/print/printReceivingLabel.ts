@@ -1,8 +1,11 @@
 import { getLast4 } from '@/components/ui/CopyChip';
 import { receivingHandle } from '@/lib/barcode-routing';
-import { printLabel } from '@/lib/print/printLabel';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';
+// receivingLabelTypeDisplay moved to @/lib/receiving/receiving-type-display —
+// it is a pure presentation mapper; keeping it here made every consumer's
+// bundle inherit this module's print/bwip-js graph.
+import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 
 export interface ReceivingLabelPayload {
   /** Numeric receiving id — used to build the QR URL when qrValue is not provided. */
@@ -32,28 +35,6 @@ export interface ReceivingLabelPayload {
   date: string;
 }
 
-/**
- * Human label for the receiving type shown after the platform in the
- * label's top-left. Mirrors `RECEIVING_TYPE_OPTS`' labels. Returns '' for
- * an empty/unknown type so the top-left collapses back to just the platform.
- */
-export function receivingLabelTypeDisplay(code: string | null | undefined): string {
-  const c = String(code ?? '').trim().toUpperCase();
-  switch (c) {
-    case 'PO':
-      return 'PO';
-    case 'RETURN':
-      return 'Return';
-    case 'TRADE_IN':
-      return 'Trade In';
-    case 'PICKUP':
-      return 'Pick Up';
-    case '':
-      return '';
-    default:
-      return c.replace(/_/g, ' ');
-  }
-}
 
 /**
  * Compact platform name for small thermal labels where the full catalog name
@@ -193,10 +174,15 @@ export function printReceivingLabel(payload: ReceivingLabelPayload): void {
   const face = receivingPayloadToFace(payload);
   if (!face.matrix.value) return;
 
-  printLabel({
-    name: 'Label',
-    ...buildFaceInfoHtml(face),
-    dataMatrix: face.matrix,
-    hri: face.hri,
+  // Lazy: `printLabel` drags the bwip-js barcode engine (~250 KB gz). This
+  // module's face-model exports ride in many station bundles; only the actual
+  // print action should pay for the print shell.
+  void import('@/lib/print/printLabel').then(({ printLabel }) => {
+    printLabel({
+      name: 'Label',
+      ...buildFaceInfoHtml(face),
+      dataMatrix: face.matrix,
+      hri: face.hri,
+    });
   });
 }

@@ -1,22 +1,18 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { AnchoredLayer } from '@/design-system';
-import { AnimatedStat } from '@/design-system/components/AnimatedStat';
-import { ChevronDown } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { STATION_LABEL, toneFor } from './goal-chip/goal-chip-shared';
 import { useHeaderGoalChip } from './goal-chip/useHeaderGoalChip';
 import { GoalRing } from './goal-chip/GoalRing';
 import { GoalPopover } from './goal-chip/GoalPopover';
+import { HEADER_ICON_WRAP } from './header-shell';
 
 /**
- * Header goal chip — the daily goal pinned to the {@link GlobalHeader}, following
- * the user across every page. A ring fills with progress; click to open a popover
- * with three modes (scans / recurring / to-do). Checklists are server-backed
- * (staff_todos); recurring done-ness is client-derived from each task's cycle.
- *
- * Thin composition layer — state/logic live under `./goal-chip/`.
+ * Header goal — progress-ring IconButton that opens the daily checklist popover.
+ * Counts / station label live in the tooltip + popover (header face stays button-only).
  */
 export function HeaderGoalChip() {
   const g = useHeaderGoalChip();
@@ -24,41 +20,33 @@ export function HeaderGoalChip() {
   if (!g.user || !g.goals || !g.active || !g.activeGoal || !g.view) return null;
 
   const view = g.view;
-  const tone = toneFor(view.percent);
-  const hasSwitch = g.goals.length > 1;
   const chipCount =
     g.mode === 'scans'
       ? { value: view.scanCount, total: view.target, unit: 'scans' }
       : { value: view.done, total: view.total, unit: 'tasks' };
+  const tone = toneFor(view.percent, chipCount.value);
+  const hasSwitch = g.goals.length > 1;
+  const tip = `${STATION_LABEL[g.active]} · ${chipCount.value}/${chipCount.total} ${chipCount.unit}${
+    g.recurDue ? ' · recurring due' : ''
+  }`;
 
   return (
-    <div ref={g.wrapRef} className="relative shrink-0">
-      <motion.button
-        type="button"
-        onClick={() => g.setOpen((o) => !o)}
-        whileTap={{ scale: 0.97 }}
-        aria-label="Daily goal"
-        aria-expanded={g.open}
-        title={`${STATION_LABEL[g.active]} goal — ${view.percent}%${g.recurDue ? ' · recurring tasks due' : ''}`}
-        className={cn('flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition-colors', g.open ? 'bg-surface-sunken' : 'hover:bg-surface-sunken')}
-      >
-        <GoalRing percent={view.percent} color={tone.ring} />
-        <span className="flex flex-col items-start leading-none">
-          <span className="text-role-caption font-bold tracking-tight text-text-default">{STATION_LABEL[g.active]}</span>
-          <span className="mt-0.5 text-role-eyebrow font-semibold tabular-nums text-text-soft">
-            <AnimatedStat value={chipCount.value} speed="fast" className="inline" />
-            /
-            <AnimatedStat value={chipCount.total} speed="fast" className="inline" /> {chipCount.unit}
-          </span>
-        </span>
-        <ChevronDown className={cn('h-3 w-3 text-text-faint transition-transform duration-200', g.open && 'rotate-180')} />
-      </motion.button>
+    <div ref={g.wrapRef} className={HEADER_ICON_WRAP}>
+      <HoverTooltip label={tip} asChild>
+        <IconButton
+          size="md"
+          ariaLabel={`Daily goal — ${tip}`}
+          aria-expanded={g.open}
+          onClick={() => g.setOpen((o) => !o)}
+          className={cn('rounded-full hover:bg-surface-sunken', g.open && 'bg-surface-sunken')}
+          icon={<GoalRing percent={view.percent} color={tone.ring} size={20} />}
+        />
+      </HoverTooltip>
 
-      {/* in-app reminder: recurring tasks have come due for this station */}
       {g.recurDue && (
-        <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+        <span className="pointer-events-none absolute right-0.5 top-0.5 flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
         </span>
       )}
 
