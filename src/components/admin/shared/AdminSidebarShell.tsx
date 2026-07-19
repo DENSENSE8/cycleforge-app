@@ -14,10 +14,9 @@ interface AdminSidebarShellProps {
 /**
  * Admin sidebar layout — a thin wrapper over the house {@link SidebarShell}.
  *
- * Search is owned by the global header pill (each admin panel registers a
- * contextual filter via `usePageHeaderSearch`); this shell renders NO search
- * band. The `filters` / `stats` / `action` slots are pinned, bordered rows at
- * the top (rendered outside the scroll body so they stay put).
+ * Search is owned by the always-global header pill; this shell renders NO
+ * search band. The `filters` / `stats` / `action` slots are pinned, bordered
+ * rows at the top (rendered outside the scroll body so they stay put).
  */
 export function AdminSidebarShell({
   filters,

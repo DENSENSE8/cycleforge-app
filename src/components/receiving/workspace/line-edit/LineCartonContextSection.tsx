@@ -9,6 +9,7 @@
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
+import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { classifyLineSource } from '@/lib/receiving/intake-items-routing';
@@ -43,6 +44,8 @@ interface LineCartonContextSectionProps {
    * entirely (triage). Default true.
    */
   showClassifyControls?: boolean;
+  /** Forwarded to {@link CartonContextCard} — `bar` for the sticky station chrome. */
+  density?: 'card' | 'bar';
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -57,6 +60,7 @@ export function LineCartonContextSection({
   ticketViewActive = false,
   expandClassifyWhenPending = true,
   showClassifyControls = true,
+  density = 'card',
 }: LineCartonContextSectionProps) {
   // An unfound carton whose intake kind isn't set yet: the unbox stepper's
   // Classify dot is active, so surface the classify pills (platform + type)
@@ -76,6 +80,7 @@ export function LineCartonContextSection({
       isUnmatched={row.receiving_source === 'unmatched'}
       classifyPending={classifyPending}
       showClassifyControls={showClassifyControls}
+      density={density}
       showStaffPhotoRow
       onMakeClaim={() => c.setClaimModalOpen(true)}
       listingLink={c.listingLink}
@@ -136,6 +141,9 @@ export function LineCartonContextSection({
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
       onToggleTicketView={onToggleTicketView}
       ticketViewActive={ticketViewActive}
+      // Close the focused line → the right pane crossfades back to the browse
+      // feed. Unbox + triage share the same window-event close mechanism.
+      onExitToList={() => dispatchReceivingWorkspaceClose()}
     />
   );
 }

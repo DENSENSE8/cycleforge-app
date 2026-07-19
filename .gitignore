@@ -94,3 +94,7 @@ scripts/.shipped-test-snapshot.json
 
 # crush agent local state
 .crush/
+
+# Lighthouse audit output (scripts/lighthouse-audit.mjs) — keep summary.md snapshots in docs, not raw LHR blobs
+/lighthouse/
+/.next-perf/

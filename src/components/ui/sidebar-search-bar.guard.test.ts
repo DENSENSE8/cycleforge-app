@@ -7,10 +7,9 @@ import { test } from 'node:test';
  * Guards the unified-search end state (docs/unified-global-search-consolidation-plan.md).
  *
  * The global header pill (`GlobalHeaderSearch`) is the SINGLE search surface.
- * Master sidebars no longer render a header search band: a panel that wants a
- * contextual filter registers it with the header via `usePageHeaderSearch`
- * (`src/hooks/usePageHeader.ts`). The old per-panel `<SidebarSearchBar>` band and
- * its `sidebarHeaderSearchRowClass` 40px token are deleted.
+ * Master sidebars no longer render a header search band. Page-scoped lookup
+ * goes through the AI assistant. The old per-panel `<SidebarSearchBar>` band
+ * and its `sidebarHeaderSearchRowClass` 40px token are deleted.
  *
  * These tests fail the moment someone reintroduces a sidebar search band.
  */
@@ -33,7 +32,7 @@ test('the deleted SidebarSearchBar component stays deleted', () => {
   assert.ok(
     !existsSync(join(SRC_ROOT, 'components/ui/SidebarSearchBar.tsx')),
     'SidebarSearchBar was removed — sidebars must not render a header search band. ' +
-      'Register a contextual filter with the global header via usePageHeaderSearch instead.',
+      'The global header pill is the single search surface.',
   );
 });
 
@@ -58,8 +57,8 @@ test('SidebarShell exposes no `search` prop (header owns search)', () => {
   const src = readFileSync(join(SRC_ROOT, 'components/layout/SidebarShell.tsx'), 'utf8');
   assert.ok(
     !/\bsearch\??:/.test(src),
-    'SidebarShell must not declare a `search` prop. Panels register their contextual ' +
-      'filter with the global header via usePageHeaderSearch, not through the shell.',
+    'SidebarShell must not declare a `search` prop. The global header pill is ' +
+      'the single search surface — not the shell.',
   );
 });
 

@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Triage right-pane shell — browse (empty / scan skeleton) always mounted;
- * focused carton workspace crossfades over it (UnboxLineWorkspace pattern).
- * Uses the heavier `workbenchPaneSettle` preset for carton→carton swaps.
+ * Triage right-pane shell — browse workbench always mounted; focused carton
+ * workspace crossfades over it (UnboxLineWorkspace pattern). Uses the heavier
+ * `workbenchPaneSettle` preset for carton→carton swaps.
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { EmptyState } from '@/design-system/primitives';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
+import { TriageWorkspaceView } from '@/components/receiving/triage/TriageWorkspaceView';
 import {
   framerPresence,
   framerTransition,
@@ -19,17 +19,13 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
+import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type {
   NavState,
   WorkspaceState,
 } from '@/components/receiving/useReceivingWorkspacePane';
-
-const TRIAGE_EMPTY = {
-  title: 'No carton selected',
-  description:
-    'Pick a carton from the Unfound or Prioritize list, or scan a tracking number to triage it.',
-} as const;
 
 interface TriageLineWorkspaceProps {
   staffId: string;
@@ -48,12 +44,13 @@ export function TriageLineWorkspace({
 }: TriageLineWorkspaceProps) {
   const panePresence = useMotionPresence(framerPresence.workbenchPaneSettle);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneSettle);
+  const row = workspace?.row ?? null;
   const showOverlay = !!workspace;
   const showScanLoader =
     !!scanInFlight && scanInFlight.surface === 'triage' && !showOverlay;
 
   return (
-    <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
+    <div className={cn(appWorkCanvasClass, 'h-full')}>
       <div
         className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
         aria-hidden={showOverlay ? true : undefined}
@@ -63,9 +60,7 @@ export function TriageLineWorkspace({
         {showScanLoader ? (
           <TriageWorkspaceSkeleton />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <EmptyState title={TRIAGE_EMPTY.title} description={TRIAGE_EMPTY.description} />
-          </div>
+          <TriageWorkspaceView selectedLine={row} />
         )}
       </div>
 

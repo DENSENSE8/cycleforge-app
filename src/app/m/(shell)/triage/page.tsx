@@ -7,5 +7,5 @@
 import RedesignedMobileReceive from '@/components/mobile/redesign/Receive';
 
 export default function MobileTriageScanPage() {
-  return <RedesignedMobileReceive surface="triage" title="Triage" />;
+  return <RedesignedMobileReceive surface="triage" title="Arrival" />;
 }

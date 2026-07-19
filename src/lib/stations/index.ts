@@ -59,4 +59,8 @@ export * from './contract';
 // render); per-org compositions are DATA (station_definitions rows).
 export * from './archetype';
 export * from './surface-keys';
-export * from './surface-resolver';
+// surface-resolver is deliberately NOT re-exported: it imports tenancy/db
+// (server-only Neon driver), and this barrel is consumed by client station
+// surfaces — re-exporting it shipped the DB driver in every station bundle.
+// Server callers import '@/lib/stations/surface-resolver' directly
+// (src/app/api/surfaces/[key]/resolve/route.ts).

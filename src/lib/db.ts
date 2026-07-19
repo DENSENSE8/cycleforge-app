@@ -6,6 +6,9 @@
 //
 // Long-running scripts under `scripts/` and the pm2 pipeline use raw `pg`
 // directly and are unaffected by this change.
+// Hard server boundary: importing this module from client-component code is a
+// build error (it was silently shipping the Neon driver in station bundles).
+import 'server-only';
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 import type { Pool as PgPool } from 'pg';

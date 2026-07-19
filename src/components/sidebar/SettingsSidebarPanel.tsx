@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 import { sidebarHeaderBandClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { ChevronDown, PackageOpen, Settings as SettingsIcon } from '@/components/Icons';
 import { SidebarSectionList, type SidebarSection } from '@/components/sidebar/SidebarSectionList';
 import { useAuth } from '@/contexts/AuthContext';
@@ -211,7 +212,7 @@ export function SettingsSidebar() {
 
   if (mode === 'overview') {
     return (
-      <div className="h-full flex flex-col overflow-hidden bg-surface-card">
+      <div className={`h-full flex flex-col overflow-hidden ${appChromeClass}`}>
         <div className="min-h-0 flex-1 overflow-hidden">
           <SidebarSectionList
             sections={visible}
@@ -226,7 +227,7 @@ export function SettingsSidebar() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-surface-card">
+    <div className={`h-full flex flex-col overflow-hidden ${appChromeClass}`}>
       <div className={`${sidebarHeaderBandClass} ${SIDEBAR_GUTTER} py-2`}>
         <button
           type="button"

@@ -12,15 +12,18 @@ import {
  * Station Workbench — named anatomy for Unbox-family station displays.
  *
  * Vertical slots (top → bottom):
- *   1. toolbar       — frozen utility icon bar (refresh / share / overflow / nav)
- *   2. entityContext — CartonContextCard (or adapter) identity row
+ *   1. toolbar       — frozen utility icon bar (optional; Unbox embeds utilities
+ *                      in ReceivingStationContextBar instead)
+ *   2. entityContext — CartonContextCard (or adapter) identity row (optional;
+ *                      Unbox embeds density=bar identity in the station bar)
  *   3. tabs          — SectionTabsSlider (bar + mounted panels) OR plain body
  *   4. children      — extra scroll-body content (triage card stack, siblings)
  *   5. feedback      — inline action / receive feedback bands
  *   6. dock          — StationTerminalDock (tab-aware FloatingButton)
  *
- * Progress steppers stay in the parent shell (ReceivingLineWorkspace) above
- * this workbench — they are workspace chrome, not panel chrome.
+ * Unbox station chrome (utilities top-right · 720px identity column) lives in
+ * ReceivingStationContextBar above this workbench. Carton pipeline stepper
+ * lives only in ReceivingDetailsStack.
  *
  * Overlays (photo peek, modals) compose around StationWorkbench, not inside it.
  */
@@ -64,7 +67,7 @@ export function StationWorkbench({
       )}
     >
       {ambientWash ? (
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
           <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
           <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
           <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />

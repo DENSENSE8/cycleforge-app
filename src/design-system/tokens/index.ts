@@ -7,3 +7,4 @@ export * from './borders';
 export * from './z-index';
 export * from './css-variables';
 export * from './focus-ring';
+export * from './app-surface';

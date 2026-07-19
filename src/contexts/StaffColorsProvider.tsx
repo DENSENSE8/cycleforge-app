@@ -19,6 +19,7 @@
 import { useEffect, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
+import { useIdleReady } from '@/hooks/useIdleReady';
 import {
   setStaffColorCache,
   _subscribeStaffColorCache,
@@ -31,10 +32,14 @@ interface StaffColorRecord {
 }
 
 export function StaffColorsProvider({ children }: { children: React.ReactNode }) {
+  // Color cache is a nice-to-have warmup, not first-paint critical — wait for
+  // idle so this app-wide fetch never races the route's own data.
+  const idleReady = useIdleReady();
   // Reuses the canonical staff React Query key so updates from the admin
   // staff page (which invalidate qk.staff.all) refresh this cache for free.
   const { data } = useQuery<StaffColorRecord[]>({
     queryKey: qk.staff.all,
+    enabled: idleReady,
     queryFn: async () => {
       const r = await fetch('/api/staff?active=false', { cache: 'no-store' });
       if (!r.ok) return [];

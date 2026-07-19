@@ -3,9 +3,10 @@
 /**
  * Testing browse bulk selection for the tech dashboard. A thin wrapper over the
  * shared {@link useReceivingLineBulkSelection} (Copy / Print / Ticket / Send +
- * claim modal + header pencil) — this layer only supplies the tech-specific
- * scope and copy format. Active when Testing mode is showing the history list
- * (no line selected).
+ * claim modal). Select toggles via {@link TestingWorkspaceHeader}
+ * `BoardSelectToggle`. This layer only supplies the tech-specific scope and
+ * copy format. Active when Testing mode is showing the history list (no line
+ * selected).
  */
 
 import { useCallback } from 'react';

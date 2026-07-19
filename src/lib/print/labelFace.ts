@@ -1,4 +1,4 @@
-import { escapeLabelHtml } from '@/lib/print/printLabel';
+import { escapeLabelHtml } from '@/lib/print/labelHtml';
 
 /**
  * One model for the printed 2×1" label *face*, shared by every label in the

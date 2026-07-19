@@ -5,10 +5,12 @@ import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
 import { HeaderGoalChip } from './HeaderGoalChip';
-// P1-WORK-01 (shared header): additive top-priority work-order chip.
 import { HeaderTopWorkOrderChip } from './HeaderTopWorkOrderChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
+import { HEADER_ICON_WRAP } from './header-shell';
+import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 /**
  * Global desktop header — one persistent bar mounted once in
@@ -17,10 +19,13 @@ import { IconButton } from '@/design-system/primitives';
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
  *   - **Toggle** — sidebar collapse (route-gated)
- *   - **Pace** — {@link HeaderGoalChip} (station + n/target + ring)
- *   - **Next** — {@link HeaderTopWorkOrderChip} (queue + due + title; hidden when none)
- *   - **Context** — page `panelContent` via {@link useHeader} / {@link usePageHeader}
+ *   - **Next** — {@link HeaderTopWorkOrderChip} (work-order icon → popover; hidden when none)
+ *   - **Pace** — {@link HeaderGoalChip} (progress ring → checklist popover)
+ *   - **Context** — page `panelContent` via {@link useHeader}
  *   - **Find / signal / self** — {@link GlobalHeaderActions} (search ⌘K, inbox, account)
+ *
+ * No `border-b` here — the desktop `<main>` ({@link appContentShellClass}) owns the
+ * separator as a rounded top edge so the sidebar × header join is soft, not an L.
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.
  */
@@ -48,51 +53,52 @@ export function GlobalHeader({
   if (!user || isClientPublicPath(pathname)) return null;
 
   return (
-    <header className="sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 border-b border-border-hairline bg-surface-card/95 px-3 backdrop-blur-sm sm:px-4">
-      {/* Top-left sidebar toggle — collapses / restores the permanent sidebar. */}
-      {canCollapseSidebar && onToggleSidebar && (
-        <>
-          <HoverTooltip label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'} asChild>
-            <IconButton
-              onClick={onToggleSidebar}
-              ariaLabel={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-              aria-pressed={!sidebarCollapsed}
-              /* Nudged slightly right of the flush content edge. */
-              className="-ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-surface-sunken active:bg-surface-strong sm:-ml-1.5"
-              icon={
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                  aria-hidden
-                >
-                  <rect width="18" height="18" x="3" y="3" rx="2" />
-                  <path d="M9 3v18" />
-                </svg>
-              }
-            />
-          </HoverTooltip>
-          {/* Hairline divider between the sidebar toggle and the goal chip. */}
-          <span aria-hidden className="h-5 w-px shrink-0 bg-surface-strong" />
-        </>
+    // No border-b — {@link appContentShellClass} on `<main>` owns the separator
+    // as a rounded top+left edge so the master-nav × header join is a soft
+    // corner, not a hard L of hairlines.
+    <header
+      className={cn(
+        'sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 px-3 backdrop-blur-sm sm:px-4',
+        appChromeMutedClass,
       )}
+    >
+      {/* Left cluster: equal h-8 icon hit-boxes, vertically centered. */}
+      <div className="flex h-8 shrink-0 items-center gap-0.5">
+        {canCollapseSidebar && onToggleSidebar && (
+          <div className={cn(HEADER_ICON_WRAP, '-ml-1 sm:-ml-1.5')}>
+            <HoverTooltip label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'} asChild>
+              <IconButton
+                size="md"
+                onClick={onToggleSidebar}
+                ariaLabel={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+                aria-pressed={!sidebarCollapsed}
+                className="rounded-md text-text-muted hover:bg-surface-sunken active:bg-surface-strong"
+                icon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                    aria-hidden
+                  >
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <path d="M9 3v18" />
+                  </svg>
+                }
+              />
+            </HoverTooltip>
+          </div>
+        )}
+        <HeaderTopWorkOrderChip />
+        <HeaderGoalChip />
+      </div>
 
-      {/* Daily goal — pinned right of the sidebar toggle, persistent across pages. */}
-      <HeaderGoalChip />
-
-      {/* Top-priority work order for the signed-in operator (P1-WORK-01).
-          Renders nothing when there's no actionable assigned work. */}
-      <HeaderTopWorkOrderChip />
-
-      {/* Contextual zone — fed per page via useHeader()/usePageHeader(). */}
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
 
-      {/* Persistent zone — right inset keeps the staff avatar off the viewport edge. */}
-      <div className="flex shrink-0 items-center pr-0.5 sm:pr-1">
+      <div className="flex h-8 shrink-0 items-center pr-0.5 sm:pr-1">
         <GlobalHeaderActions />
       </div>
     </header>

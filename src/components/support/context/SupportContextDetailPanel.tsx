@@ -1,10 +1,8 @@
 'use client';
 
-import { IconButton } from '@/design-system/primitives';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { SupportContextHub } from '@/components/support/context';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
-import { X } from '@/components/Icons';
 
 export interface SupportContextDetailPanelProps {
   ticketId: number;
@@ -17,6 +15,7 @@ export interface SupportContextDetailPanelProps {
 /**
  * Ticket linkage / team / activity in the global detail-stack shell
  * ({@link DetailStackRailRegistrar} → floating inset card with 12px viewport gap).
+ * Close via backdrop / Esc (RightRailHost) — no header X.
  */
 export function SupportContextDetailPanel({
   ticketId,
@@ -41,12 +40,6 @@ export function SupportContextDetailPanel({
               Support context
             </h2>
           </div>
-          <IconButton
-            icon={<X className="h-4 w-4" />}
-            ariaLabel="Close support context"
-            onClick={onClose}
-            className="-mr-1 -mt-0.5 rounded-lg p-1.5 hover:bg-surface-sunken"
-          />
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
           <SupportContextHub

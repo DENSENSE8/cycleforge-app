@@ -1,19 +1,22 @@
-import { ChevronLeft, Check, Copy, X } from '@/components/Icons';
+import { ChevronLeft, Check, Copy } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { cardTitle, monoValue } from '@/design-system/tokens/typography/presets';
 import type { SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
 
-/** Top bar — back/close, title + copyable SKU, and the Ecwid price/stock badge. */
+/** Top bar — back (page only), title + copyable SKU, and the Ecwid price/stock badge.
+ *  Panel variant closes via RightRailHost backdrop / Esc (no header X). */
 export function SkuDetailHeader({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
   return (
     <div className="flex-shrink-0 flex items-center gap-3 border-b border-border-soft bg-surface-card px-4 py-3">
-      <IconButton
-        icon={c.isPanel ? <X className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        ariaLabel={c.isPanel ? 'Close' : 'Back'}
-        onClick={c.handleClose}
-        className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken text-text-muted hover:bg-surface-strong"
-      />
+      {!c.isPanel ? (
+        <IconButton
+          icon={<ChevronLeft className="h-5 w-5" />}
+          ariaLabel="Back"
+          onClick={c.handleClose}
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-sunken text-text-muted hover:bg-surface-strong"
+        />
+      ) : null}
       <div className="min-w-0 flex-1">
         <h1 className={`${cardTitle} truncate`}>{data.productTitle || data.sku}</h1>
         <button

@@ -2,10 +2,11 @@
 
 /**
  * Rail selector for the receiving sidebar's scrollable body. Picks the right
- * feed for the active mode + Unbox sub-view:
+ * feed for the active mode:
  *   - history → none (the right-pane table is filtered via URL params instead)
- *   - triage  → Triage/Prioritize/Unfound body
- *   - unbox   → Unboxed (unboxRecent) / Queue (scanned) / Viewed (per-staff)
+ *   - triage  → fixed combined Triage feed (browse tabs live in TriageWorkspaceView)
+ *   - unbox   → fixed Unboxed recent dock only (Queue / Viewed / History browse
+ *               lives in UnboxWorkspaceView → ReceivingLinesTable)
  *
  * Unbox rails paint a pending `scan:` stub at submit, then reconcile to
  * `carton:{id}` on resolve. Triage uses a pre-resolve leadingRow plus prepend.
@@ -22,6 +23,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface ReceivingRailBodyProps {
   mode: ReceivingMode;
+  /** Kept for call-site compatibility; Unbox sidebar always shows the recent dock. */
   unboxView: UnboxView;
   selectedLine: ReceivingLineRow | null;
   /** Pre-resolve triage scan stub (tracking #) for the combined Triage tab. */
@@ -32,7 +34,7 @@ interface ReceivingRailBodyProps {
 
 export function ReceivingRailBody({
   mode,
-  unboxView,
+  unboxView: _unboxView,
   selectedLine,
   triageLeadingRow = null,
   triageFilterText,
@@ -58,39 +60,22 @@ export function ReceivingRailBody({
         selectedRow={selectedRow}
         leadingRow={triageLeadingRow}
         filterText={triageFilterText}
+        // Select lives on TriageWorkspaceHeader — hide the rail pencil.
+        hideEyebrow
       />
     );
   }
 
-  if (unboxView === 'queue') {
-    return (
-      <ReceivingFeedRail
-        key="rail-unbox-queue"
-        feed="unboxQueue"
-        scope="unbox"
-        selectedLineId={selectedLineId}
-        selectedRow={selectedRow}
-      />
-    );
-  }
-
-  if (unboxView === 'viewed') {
-    return (
-      <ReceivingFeedRail
-        key="rail-unbox-viewed"
-        feed="viewed"
-        selectedLineId={selectedLineId}
-        selectedRow={selectedRow}
-      />
-    );
-  }
-
+  // Unbox (and any other non-triage/history mode that still mounts this rail):
+  // short Unboxed recent dock only — browse tabs are right-pane table.
   return (
     <ReceivingFeedRail
       key="rail-unbox-recent"
       feed="unboxRecent"
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
+      // Select lives on UnboxWorkspaceHeader — hide the rail pencil.
+      hideEyebrow
     />
   );
 }

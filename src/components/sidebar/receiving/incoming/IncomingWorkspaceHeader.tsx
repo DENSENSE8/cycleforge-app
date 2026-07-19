@@ -2,23 +2,15 @@
 
 /**
  * Incoming workbench chrome — the golden `WorkbenchChromeHeader` recipe applied
- * to the Incoming right pane (the sibling of `InboundWorkspaceHeader` /
- * `OutboundWorkspaceHeader`). Replaces the cramped title+pagination `PaneHeader`
- * and pulls the sidebar's search + quick filters up into the top bar, the same
- * way the dashboard header owns them.
+ * to the Incoming right pane (the sibling of `OutboundWorkspaceHeader`).
  *
- * Left:   purchasing-source tabs — All / Zoho / eBay. Each writes the server
- *         `?inbound=` facet (via `receiving-modes` → build-sql). A house hairline
- *         (`dividerBefore` on Zoho) fences the union tab off from the per-account
- *         tabs. The eBay tab shows only when the org has the eBay purchasing
- *         account wired in (Universal Incoming).
- * Right:  [⌕ search over ?rh_q] · [⫶ status / sort filter popover] · pagination ·
- *         [columns].
+ * Left:   purchasing-source tabs — All / Zoho / eBay.
+ * Right:  [⌕ search] · [⫶ filters] · [⟳ Sync menu] · pagination ·
+ *         [columns toolbar] · [Select trailing].
  *
- * Search + status/sort write the SAME URL params the sidebar and the list read
- * (`?rh_q` / `?state` / `?sort`), so the header, the sidebar, and the table can
- * never disagree. PO date-range + the by-carrier breakdown stay in the sidebar's
- * advanced filter dropdown (too wide for a header popover).
+ * Search + filters write the SAME URL params the list reads (`?rh_q` / `?state` /
+ * `?sort` / `?po_from` / `?po_to`). Sync / import actions live in the header
+ * Sync menu (not the sidebar). The sidebar keeps the POS ↔ Email Triage band only.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -31,15 +23,19 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
+import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { PaneHeaderPagination } from '@/components/ui/pane-header';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useDebounce } from '@/hooks';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
 import { INCOMING_SORT_LABELS, type IncomingSort } from '@/components/sidebar/receiving/IncomingPaneHeader';
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { useIncomingSummary } from './useIncomingSummary';
 import { useIncomingFilters } from './useIncomingFilters';
+import { IncomingSyncMenu } from './IncomingSyncMenu';
 import { TILES } from './incoming-tiles';
 
 type IncomingSourceTab = 'all' | 'zoho' | 'ebay';
@@ -49,11 +45,15 @@ interface IncomingWorkspaceHeaderProps {
   total: number;
   /** Current 1-based page index (`?page=`). */
   page: number;
+  selectMode?: boolean;
+  onToggleSelectMode?: () => void;
 }
 
 export function IncomingWorkspaceHeader({
   total,
   page,
+  selectMode = false,
+  onToggleSelectMode,
 }: IncomingWorkspaceHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,9 +61,6 @@ export function IncomingWorkspaceHeader({
   const base = receivingSurfaceBasePath(pathname);
   const summary = useIncomingSummary();
   const filters = useIncomingFilters();
-  // eBay is a purchasing source only once its account is connected (Universal
-  // Incoming). Shares the 30s summary query the KPI strip uses (react-query
-  // dedupes), so the tab appears/hides in lockstep with the eBay KPI.
   const universalIncoming = summary?.universal_incoming ?? false;
 
   const activeSource: IncomingSourceTab = (() => {
@@ -89,15 +86,12 @@ export function IncomingWorkspaceHeader({
       const params = new URLSearchParams(searchParams.toString());
       if (id === 'all') params.delete('inbound');
       else params.set('inbound', id);
-      // Changing the source changes the result set — start back at page 1.
       params.delete('page');
       router.replace(`${base}?${params.toString()}`);
     },
     [router, searchParams, base],
   );
 
-  // Draft → debounced `?rh_q=` (deep links hydrate the field on mount). Mirrors
-  // the Inbound header so a keystroke doesn't re-query the list on every letter.
   const urlQRaw = searchParams.get(RECEIVING_HISTORY_URL_PARAMS.q) ?? '';
   const [draft, setDraft] = useState(urlQRaw);
   useEffect(() => {
@@ -112,10 +106,6 @@ export function IncomingWorkspaceHeader({
   const [filterOpen, setFilterOpen] = useState(false);
   const filterHot = filters.activeFilterCount > 0;
 
-  // eBay is a purchasing source only once the account is connected; otherwise
-  // the surface is Zoho-only (All === Zoho) and the extra tab would sit empty.
-  // `dividerBefore` on Zoho draws the house hairline that fences the union tab
-  // (All) off from the per-integration tabs (Zoho / eBay).
   const tabs = [
     { id: 'all', label: 'All', color: 'blue' as const },
     { id: 'zoho', label: 'Zoho', color: 'teal' as const, dividerBefore: true },
@@ -124,10 +114,11 @@ export function IncomingWorkspaceHeader({
       : []),
   ];
 
-  // Status rows = the delivery-state tiles (skip the `null` "All issued" default;
-  // the trigger's Clear row handles resetting). Counts come from the summary.
   const statusTiles = TILES.filter((t) => t.state != null);
   const sortKeys = Object.keys(INCOMING_SORT_LABELS) as IncomingSort[];
+  const showCarrierBreakdown = summary?.by_carrier?.some(
+    (c) => c.delivered_unscanned || c.tracking_unavailable || c.in_transit || c.carrier_mismatch,
+  );
 
   return (
     <WorkbenchChromeHeader
@@ -135,9 +126,6 @@ export function IncomingWorkspaceHeader({
       activeTab={activeSource}
       onTabChange={setSource}
       solidTone="accent"
-      // Collapsible search icon (SoT dashboard chrome) — stays a single glyph
-      // until used, so the right cluster never overflows the narrow pane and
-      // pushes the columns button off-page. Draft → debounced `?rh_q=`.
       search={
         <ToolbarSearchToggle
           value={draft}
@@ -156,7 +144,8 @@ export function IncomingWorkspaceHeader({
             open={filterOpen}
             onOpenChange={setFilterOpen}
             hot={filterHot}
-            label="Status / sort"
+            label="Filters"
+            contentClassName="w-80 max-h-[min(70vh,32rem)] overflow-y-auto"
           >
             <WorkbenchFilterGroupLabel>Status</WorkbenchFilterGroupLabel>
             {statusTiles.map((tile) => {
@@ -193,6 +182,74 @@ export function IncomingWorkspaceHeader({
               />
             ))}
 
+            <WorkbenchFilterDivider />
+
+            <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
+            <div className="px-2 pb-2">
+              <DateRangePickerField
+                value={filters.dateRange}
+                onChange={filters.setDateRange}
+                placeholder="Any date"
+              />
+              <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
+                Date in header is when the PO was created
+              </p>
+            </div>
+
+            {showCarrierBreakdown ? (
+              <>
+                <WorkbenchFilterDivider />
+                <WorkbenchFilterGroupLabel>By carrier</WorkbenchFilterGroupLabel>
+                <div className="mx-1 mb-1 overflow-hidden rounded-md ring-1 ring-inset ring-border-soft">
+                  <div className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 bg-surface-canvas px-2 py-1 text-role-micro uppercase tracking-wide text-text-faint">
+                    <span>Carrier</span>
+                    <HoverTooltip label="In transit" asChild>
+                      <span className="text-right tabular-nums">Trans</span>
+                    </HoverTooltip>
+                    <HoverTooltip label="Tracking unavailable" asChild>
+                      <span className="text-right tabular-nums">Unav</span>
+                    </HoverTooltip>
+                    <HoverTooltip label="Delivered · not scanned" asChild>
+                      <span className="text-right tabular-nums">Deliv</span>
+                    </HoverTooltip>
+                    <HoverTooltip label="Carrier mismatch — carrier/number don’t match" asChild>
+                      <span className="text-right tabular-nums">Miss</span>
+                    </HoverTooltip>
+                  </div>
+                  {summary!.by_carrier!.map((c) => (
+                    <div
+                      key={c.carrier}
+                      className="grid grid-cols-[minmax(0,1fr)_2.25rem_2.75rem_2.25rem_2.25rem] items-center gap-x-1 border-t border-border-hairline px-2 py-1 text-role-caption"
+                    >
+                      <span className="truncate font-bold text-text-muted">
+                        {c.carrier === 'UNKNOWN' ? 'Other' : c.carrier}
+                      </span>
+                      <span
+                        className={`text-right font-bold tabular-nums ${c.in_transit ? 'text-blue-600' : 'text-text-faint'}`}
+                      >
+                        {c.in_transit}
+                      </span>
+                      <span
+                        className={`text-right font-bold tabular-nums ${c.tracking_unavailable ? 'text-violet-600' : 'text-text-faint'}`}
+                      >
+                        {c.tracking_unavailable}
+                      </span>
+                      <span
+                        className={`text-right font-bold tabular-nums ${c.delivered_unscanned ? 'text-emerald-600' : 'text-text-faint'}`}
+                      >
+                        {c.delivered_unscanned}
+                      </span>
+                      <span
+                        className={`text-right font-bold tabular-nums ${c.carrier_mismatch ? 'text-red-600' : 'text-text-faint'}`}
+                      >
+                        {c.carrier_mismatch}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
             {filterHot ? (
               <>
                 <WorkbenchFilterDivider />
@@ -208,6 +265,8 @@ export function IncomingWorkspaceHeader({
             ) : null}
           </WorkbenchFilterPopover>
 
+          <IncomingSyncMenu />
+
           <PaneHeaderPagination
             page={safePage}
             pageSize={INCOMING_PAGE_SIZE}
@@ -215,9 +274,15 @@ export function IncomingWorkspaceHeader({
             onPrev={() => setPage(safePage - 1)}
             onNext={() => setPage(safePage + 1)}
           />
+
+          <ColumnConfigButton variant="toolbar" />
         </>
       }
-      trailing={<ColumnConfigButton iconOnly />}
+      trailing={
+        onToggleSelectMode ? (
+          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
+        ) : undefined
+      }
     />
   );
 }

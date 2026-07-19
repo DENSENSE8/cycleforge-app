@@ -26,6 +26,9 @@ export function WorkbenchFilterPopover({
   hot,
   label,
   children,
+  /** Override content width (default `w-56`). Use a wider class when the menu
+   *  hosts date pickers / multi-column tables (e.g. Incoming PO + carrier). */
+  contentClassName,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -33,6 +36,7 @@ export function WorkbenchFilterPopover({
   hot: boolean;
   label: string;
   children: ReactNode;
+  contentClassName?: string;
 }) {
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
@@ -55,7 +59,10 @@ export function WorkbenchFilterPopover({
         <Popover.Content
           align="end"
           sideOffset={6}
-          className="z-dropdown w-56 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={cn(
+            'z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none',
+            contentClassName ?? 'w-56',
+          )}
         >
           {children}
         </Popover.Content>

@@ -12,12 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
  * recent-packs feed ({@link MobilePackingList}, newest pinned at the bottom).
  * Each row's camera CTA jumps to /m/p/{packerLogId}/photos to add packing photos.
  *
- * The scan-driven flow ({@link MobilePackerFlow}) is the `trigger: 'scan'` mode
- * of this station; this surface is the `trigger: 'feed'` mode. The choice is an
- * owner knob on the pack node's config (STATION_CONFIG_SCHEMA `trigger`), edited
- * in the Studio. Until the published-node-config read seam exists on operator
- * surfaces, packing defaults to the feed here. The shared header lives in the
- * shell; the full desktop packer station still lives at /packer.
+ * Scan-driven packing lives on the desktop `/pack` station. This surface is the
+ * mobile `trigger: 'feed'` mode — recent packs only. The shared header lives in
+ * the shell.
  */
 export default function RedesignedMobilePack() {
   const { user } = useAuth();

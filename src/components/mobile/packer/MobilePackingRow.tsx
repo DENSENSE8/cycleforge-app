@@ -7,6 +7,7 @@ import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentity
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
 import { orderRowQtyTone } from '@/lib/condition-tone';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 
 interface MobilePackingRowProps {
   row: PackerLogRow;
@@ -37,6 +38,7 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
   const trackingValue = (row.shipping_tracking_number || row.scan_ref || '').trim();
   const photoCount = Array.isArray(row.packer_photos_url) ? row.packer_photos_url.length : 0;
   const isExpanded = variant === 'expanded';
+  const packedAt = (row.created_at || '').trim() || null;
 
   return (
     <MobileRowCard variant={variant} fresh={fresh} onTap={onTap} dataAttr={{ name: 'packer-row-id', value: row.id }}>
@@ -49,6 +51,15 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           qtyCol={META_COL.qtyColWide}
           qty={<span className={orderRowQtyTone(quantity)}>{quantity}</span>}
           condition={<RowConditionMeta condition={row.condition} />}
+          rest={
+            packedAt ? (
+              <RowStageTimeMeta
+                instant={packedAt}
+                label="Packed"
+                tooltipExtra={row.packed_by_name ? `by ${row.packed_by_name}` : null}
+              />
+            ) : undefined
+          }
         />
         <div className="ml-auto min-w-0">
           <ReceivingIdentityChips po={orderId} tracking={trackingValue} includeSku={false} includeSerial={false} asColumns dense />

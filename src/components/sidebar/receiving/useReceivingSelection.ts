@@ -14,17 +14,14 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { toast } from '@/lib/toast';
-import {
-  dispatchReceivingDetailsOverlay,
-} from '@/utils/events';
-import { receivingLineRowToDetailsSeed } from '@/lib/receiving/receiving-details-overlay';
+import { useRouter } from 'next/navigation';
 import {
   readSelectLineDetail,
   type ReceivingMode,
   type ReceivingSelectLineDetail,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
+import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -51,6 +48,7 @@ export function useReceivingSelection({
   mode,
   clearScanSession,
 }: UseReceivingSelectionArgs): ReceivingSelectionState {
+  const router = useRouter();
   const [selectedLine, setSelectedLine] = useState<ReceivingLineRow | null>(null);
   const [lineAccordionBootstrap, setLineAccordionBootstrap] = useState<'default' | 'all'>(
     'default',
@@ -138,13 +136,9 @@ export function useReceivingSelection({
       const { row, expandFlowSections } = readSelectLineDetail(
         (e as CustomEvent<ReceivingSelectLineDetail>).detail,
       );
-      // History mode: row click is read-only. Open the existing details
-      // overlay (ReceivingDetailsStack) instead of mutating sidebar state.
-      //
-      // Read mode from window.location.search (not modeRef) so a mid-flight
-      // URL flip — e.g. Edit PO setting ?mode=receive immediately before
-      // dispatching select — is honored. The ref lags by a render and
-      // would route the operator back into a fresh details stack.
+      // Browse clicks always open LineEdit (never ReceivingDetailsStack).
+      // Graduated History has no workspace mount — deep-link into Unbox so the
+      // pane opens after navigation (same contract as cmd+k / search hits).
       const liveMode =
         typeof window !== 'undefined'
           ? resolveLiveReceivingMode(
@@ -152,15 +146,12 @@ export function useReceivingSelection({
               new URLSearchParams(window.location.search),
             )
           : modeRef.current;
-      if (liveMode === 'history') {
-        // History is read-only: the only thing a row click does is open the
-        // carton details overlay, which is keyed on receiving_id. A row with no
-        // receiving_id has no carton to open — stop here with feedback so the
-        // click is deterministic instead of a silent dead click.
-        if (row?.receiving_id != null) {
-          dispatchReceivingDetailsOverlay(row.receiving_id, receivingLineRowToDetailsSeed(row));
-        } else if (row != null) {
-          toast.info('No receiving record for this row yet');
+      if (liveMode === 'history' && row != null) {
+        const cartonId = row.receiving_id;
+        if (cartonId != null) {
+          router.replace(`${UNBOX_SURFACE_ROUTE}?openReceivingId=${cartonId}`);
+        } else {
+          router.replace(UNBOX_SURFACE_ROUTE);
         }
         return;
       }
@@ -221,7 +212,7 @@ export function useReceivingSelection({
       window.removeEventListener('receiving-package-updated', handlePackageMeta);
       window.removeEventListener('receiving-workspace-open', handleWorkspaceOpen);
     };
-  }, []);
+  }, [router]);
 
   // Selection must NOT carry across modes. On a genuine mode SWITCH (not the
   // initial mount — that would clobber a deep-linked carton), converge both

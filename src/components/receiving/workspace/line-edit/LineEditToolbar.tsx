@@ -16,12 +16,12 @@ import {
   type WorkspaceMode,
 } from './mode-registry';
 
-/** Unbox: primary toolbar actions; the rest live in the overflow menu. */
+/** Unbox: refresh stays inline; share + the rest live in the overflow menu. */
 const UNBOX_INLINE_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
   'refresh',
-  'share',
 ];
 const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
+  'share',
   'audit',
   'copy',
   'movePhotos',
@@ -29,15 +29,11 @@ const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>>
 ];
 
 /**
- * Frozen utility toolbar — the third header row beneath the global header +
- * progress stepper. Icon-only; the action set is driven by the mode registry
- * (`WORKSPACE_MODES[mode].headerActions`) so every mode renders the SAME header
- * primitive configured by data, not a bespoke toolbar each. Unbox/triage show
- * refresh·share·audit·copy; testing shows audit·pair·copy. Lives outside
- * the scroll surface so it stays locked while the body scrolls under it.
- *
- * Prev/Next dispatch the mode's `navChannel` event (receiving-navigate-table vs
- * testing-navigate-rail), so this component needs no navigation props.
+ * Frozen utility toolbar — icon-only actions driven by the mode registry
+ * (`WORKSPACE_MODES[mode].headerActions`). Unbox embeds this in
+ * {@link ReceivingStationContextBar} (`embedded`); testing/other modes keep
+ * the standalone header band. Unbox: refresh · ⋯ · info (no prev/next).
+ * Testing keeps prev/next via navChannel.
  */
 export function LineEditToolbar({
   mode = 'unbox',
@@ -47,6 +43,7 @@ export function LineEditToolbar({
   pairing = false,
   handlers,
   onBackToBrowse,
+  embedded = false,
 }: {
   /** Drives which header actions + nav channel render. Defaults to unbox. */
   mode?: WorkspaceMode;
@@ -61,6 +58,11 @@ export function LineEditToolbar({
   handlers: Partial<Record<HeaderActionKey, () => void>>;
   /** Testing: return to the tested-lines browse (history empty state). */
   onBackToBrowse?: () => void;
+  /**
+   * Station context bar: flat icon cluster (no full-width header band).
+   * Default false keeps the legacy standalone toolbar band.
+   */
+  embedded?: boolean;
 }) {
   const def = workspaceMode(mode);
   const disabled = receivingId == null;
@@ -196,8 +198,9 @@ export function LineEditToolbar({
 
   return (
     <PaneHeaderActionBar
-      variant="header"
+      variant={embedded ? 'flat' : 'header'}
       iconOnly
+      className={embedded ? 'gap-0.5 px-0 py-0' : undefined}
       leftSlot={
         onBackToBrowse ? (
           <HoverTooltip label="All tested lines" asChild>
@@ -230,11 +233,15 @@ export function LineEditToolbar({
       }
       actions={inlineActions}
       status={zohoSyncing ? 'Syncing' : undefined}
-      onPrev={() =>
-        window.dispatchEvent(new CustomEvent(def.navChannel, { detail: 'prev' }))
+      onPrev={
+        isUnbox
+          ? undefined
+          : () => window.dispatchEvent(new CustomEvent(def.navChannel, { detail: 'prev' }))
       }
-      onNext={() =>
-        window.dispatchEvent(new CustomEvent(def.navChannel, { detail: 'next' }))
+      onNext={
+        isUnbox
+          ? undefined
+          : () => window.dispatchEvent(new CustomEvent(def.navChannel, { detail: 'next' }))
       }
       prevTitle="Previous PO (↑)"
       nextTitle="Next PO (↓)"

@@ -3,7 +3,7 @@
 /**
  * GlobalSearchDropdown — the header search dropdown body (WAI-ARIA combobox).
  * Extracted out of GlobalHeaderSearch so the state machine + keyboard model is
- * testable in isolation. Global mode only; contextual pages get no dropdown.
+ * testable in isolation.
  *
  * Five states, driven by the host (GlobalHeaderSearch owns the query + the
  * flattened option list + activeIndex; this component only renders + reports
@@ -69,7 +69,7 @@ const GROUP_HEADER =
 const FOOTER_LINK =
   'flex items-center gap-1.5 border-t border-border-hairline px-3 py-2 text-role-micro font-semibold text-blue-600 hover:bg-surface-sunken';
 const RECENTS_COMPACT =
-  '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-1';
+  '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-1.5';
 
 export function GlobalSearchDropdown({
   open,
@@ -214,7 +214,7 @@ export function GlobalSearchDropdown({
             </div>
 
             {state === 'recents' && (
-              <Link href="/search/history" onClick={onClose} className={FOOTER_LINK}>
+              <Link href="/dashboard?mode=search" onClick={onClose} className={FOOTER_LINK}>
                 <History className="h-3.5 w-3.5" /> View all recent searches
               </Link>
             )}

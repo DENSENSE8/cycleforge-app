@@ -3,7 +3,7 @@ import { conditionLabel } from '@/components/receiving/zoho-po-types';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { sourcePlatformLabel } from '@/lib/source-platform';
-import { receivingLabelTypeDisplay } from '@/lib/print/printReceivingLabel';
+import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 
 export type ClaimType =
   | 'damage'

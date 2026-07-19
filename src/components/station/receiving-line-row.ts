@@ -209,7 +209,7 @@ export interface ReceivingLineRow {
   priority_lane?: string | null;
   /** Triage pairing-hub outcome — `receiving.pairing_state`: UNFOUND | MATCHED | WAIVED. */
   pairing_state?: string | null;
-  /** `receiving.triage_complete` — set by the real "Save for unbox" transition. Not threaded onto every feed yet; see TriageProgressStepper's client-tracked fallback. */
+  /** `receiving.triage_complete` — set by the real "Save for unbox" transition. Not threaded onto every feed yet; see `triage-complete-local` client-tracked fallback. */
   triage_complete?: boolean | null;
   /** `receiving.triage_completed_at` — when the carton was staged/saved for unbox. */
   triage_completed_at?: string | null;

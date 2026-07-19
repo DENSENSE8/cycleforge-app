@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Right-pane order state for the packer dashboard: a scanned/active order
- * crossfades over the pack history table (mirrors useTechOrderPanes).
+ * Right-pane order state for the packer dashboard: a scanned/selected order
+ * overlays the Queue · History browse workbench (Unbox pattern).
  */
 
 import { useEffect, useState } from 'react';
@@ -30,6 +30,8 @@ export interface PackActiveOrderPane {
   serialUnitId?: number | null;
   unitKey?: string | null;
   packerLogId?: number | null;
+  /** True when the sidebar scan opened the overlay (affects remount key). */
+  scanDriven?: boolean;
 }
 
 export function usePackerOrderPane() {

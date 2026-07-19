@@ -73,6 +73,15 @@ export const receivingLinesQuerySchema = z.object({
   weekStart: z.string(),
   weekEnd: z.string(),
   includeSerials: z.boolean(),
+  /**
+   * `?phase=` fetch tier — `spine` is the fast-paint tier: it forces
+   * {@link includeSerials} off so the expensive authoritative serial resolve
+   * (`fetchSerialsForLines`) is skipped; rows still carry the compact
+   * `serial_projection` read-model as `serials` (build-sql SELECT), so serial
+   * chips render on the first frame. Clients follow up with a `full` fetch
+   * (`include=serials`) to reconcile. Anything other than `spine` = `full`.
+   */
+  phase: z.enum(['full', 'spine']),
   /** Universal-Incoming facet params (trimmed + lowercased raw strings). */
   inboundSourceParam: z.string(),
   incomingLinkParam: z.string(),
@@ -199,7 +208,13 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const weekStart = hasTestingWeek ? weekStartRaw : '';
   const weekEnd = hasTestingWeek ? weekEndRaw : '';
   const include     = String(searchParams.get('include') || '').trim().toLowerCase();
-  const includeSerials = include.split(',').map((s) => s.trim()).includes('serials');
+  // Spine tier (fast paint): `?phase=spine` wins over `include=serials` — the
+  // projection column already rides along in the list SELECT, so the spine
+  // response still shows serial chips without the authoritative resolve.
+  const phaseRaw = String(searchParams.get('phase') || '').trim().toLowerCase();
+  const phase: 'full' | 'spine' = phaseRaw === 'spine' ? 'spine' : 'full';
+  const includeSerials =
+    phase !== 'spine' && include.split(',').map((s) => s.trim()).includes('serials');
   // Universal Incoming facets (flag-gated, plan §6).
   const inboundSourceParam = String(searchParams.get('inbound') || '').trim().toLowerCase();
   const incomingLinkParam = String(searchParams.get('link') || '').trim().toLowerCase();
@@ -234,6 +249,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     weekStart,
     weekEnd,
     includeSerials,
+    phase,
     inboundSourceParam,
     incomingLinkParam,
     staffFilterRaw,

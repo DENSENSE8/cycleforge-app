@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav/MasterNavContext';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SupportTicketQueue } from '@/components/support/zendesk/queue/SupportTicketQueue';
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
 import { CallLogSidebar } from '@/components/support/voice/CallLogSidebar';
@@ -26,8 +27,8 @@ import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
  *   coverage card + claims table + claim detail (`?open=`).
  * - issues    → Reported-Issues list (Workbench); selecting one sets `?issueId=`.
  *
- * The mode rail is suppressed when the master-nav drives mode switching
- * (`support` is in MASTER_NAV_RAIL_PAGES) — same gate Operations uses.
+ * Panel-local mode pills are suppressed when the master-nav drives switching
+ * (`useMasterNavEnabled`) — same gate Operations uses.
  */
 export function SupportSidebarPanel() {
   const { has, isLoaded } = useAuth();
@@ -93,7 +94,7 @@ export function SupportSidebarPanel() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-card">
+    <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>
       {mode === 'warranty' ? (
         canWarranty ? (
           <WarrantyLoggerSidebar

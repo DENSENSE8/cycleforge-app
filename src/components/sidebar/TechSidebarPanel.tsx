@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { stripCrossSurfaceParams } from '@/lib/surface-isolation';
 import { useQueryClient } from '@tanstack/react-query';
 import { sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingSidebarPanel } from '@/components/sidebar/TestingSidebarPanel';
 import { ShippingSidebarPanel } from '@/components/sidebar/ShippingSidebarPanel';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
@@ -77,7 +78,7 @@ export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelPro
   }, [queryClient]);
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
+    <div className={`relative flex h-full w-full flex-col overflow-hidden ${appChromeClass}`}>
       {!masterNavEnabled && (
         <div className={sidebarHeaderPillRowClass}>
           <HorizontalButtonSlider

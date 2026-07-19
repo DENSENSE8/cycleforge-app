@@ -2,7 +2,8 @@
 
 /**
  * Classify controls for the triage Overview tab — platform / type / urgency
- * pickers that used to expand as pills in the carton header.
+ * pickers. The SectionTabsSlider eyebrow owns the "Classify" label — this
+ * body is unlabeled so we don't double the title.
  */
 
 import { useState } from 'react';
@@ -79,7 +80,7 @@ export function TriageClassifySection({
     .map((o) => ({ value: o.value, label: o.label }));
 
   return (
-    <WorkspaceCard label="Classify" variant="glass" overflow="visible">
+    <WorkspaceCard variant="glass" overflow="visible">
       <div className="flex flex-wrap items-center gap-2">
         <InlinePillPicker
           ariaLabel="Urgency"

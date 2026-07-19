@@ -93,13 +93,13 @@ test('globalSearchHandoffHref: order-heavy skips /search (no flash)', () => {
     ]),
     '/o/1?mode=search&q=bose+remote',
   );
-  assert.equal(globalSearchHandoffHref('bose remote', []), '/search?q=bose%20remote');
+  assert.equal(globalSearchHandoffHref('bose remote', []), '/dashboard?mode=search&q=bose%20remote');
   assert.equal(
     globalSearchHandoffHref('bose', [
       { id: 1, entityType: 'order' },
       { id: 2, entityType: 'sku' },
     ]),
-    '/search?q=bose',
+    '/dashboard?mode=search&q=bose',
   );
 });
 

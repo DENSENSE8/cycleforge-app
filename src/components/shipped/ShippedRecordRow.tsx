@@ -12,7 +12,17 @@ import {
   getLast4,
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL } from '@/components/ui/ChipColumns';
-import { RowTitle, RowMetaColumns, META_COL, META_REST_COL, MetaFactSlot, RowConditionMeta } from '@/components/ui/RowMetaColumns';
+import {
+  RowTitle,
+  RowMetaColumns,
+  META_REST_COL,
+  MetaFactSlot,
+  RowConditionMeta,
+  QUEUE_ROW,
+  metaIndentFor,
+} from '@/components/ui/RowMetaColumns';
+import { cn } from '@/utils/_cn';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { CarrierStatusIcon } from '@/components/shipping/ShipmentStatusBadge';
 import { getOrderDisplayValues } from '@/utils/order-display';
 import { getOrderPlatformColor, getOrderPlatformBorderColor, isFbaOrder } from '@/utils/order-platform';
@@ -28,7 +38,6 @@ import {
 } from '@/lib/dashboard-order-row-layout';
 import { isFbaPackerRecord, type DerivedPackerRecord } from '@/lib/shipped-records';
 import { orderRowQtyTone } from '@/lib/condition-tone';
-import { formatOpsStageTime } from '@/utils/date';
 
 function normalizePersonName(value: unknown): string {
   const text = String(value ?? '').replace(/^tech:\s*/i, '').replace(/^packer:\s*/i, '').trim();
@@ -96,7 +105,6 @@ export function ShippedRecordRow({
         : packedAt
           ? 'Packed'
           : null;
-  const stageTimeDisplay = stageTime ? formatOpsStageTime(stageTime) : null;
 
   return (
     <div
@@ -108,9 +116,16 @@ export function ShippedRecordRow({
       tabIndex={0}
       aria-checked={selectMode ? checked : undefined}
       aria-pressed={selectMode ? undefined : selected}
-      className={`${dashboardOrderRowShellClass(isMobile)} border-b border-border-hairline px-4 py-2 transition-colors cursor-pointer hover:bg-blue-50/50 ${
-        (selectMode ? checked : selected) ? 'bg-blue-50/80' : index % 2 === 1 ? 'bg-surface-canvas/40' : 'bg-surface-card'
-      }`}
+      className={cn(
+        dashboardOrderRowShellClass(isMobile),
+        'border-b border-border-hairline py-2 transition-colors cursor-pointer hover:bg-blue-50/50',
+        QUEUE_ROW.px,
+        (selectMode ? checked : selected)
+          ? QUEUE_ROW.selectedClass
+          : index % 2 === 1
+            ? 'bg-surface-canvas/40'
+            : 'bg-surface-card',
+      )}
     >
       <div className="flex flex-col min-w-0">
         <RowTitle
@@ -135,7 +150,7 @@ export function ShippedRecordRow({
           }
         />
         <RowMetaColumns
-          indent={selectMode ? `calc(${META_COL.indent} + 1.5rem)` : undefined}
+          indent={metaIndentFor('default', selectMode)}
           qty={
             <span className={orderRowQtyTone(parseInt(String(record.quantity || '1'), 10) || 1)}>
               {parseInt(String(record.quantity || '1'), 10) || 1}
@@ -161,13 +176,11 @@ export function ShippedRecordRow({
                 <StaffInitials staffId={packerStaffId} name={packerDisplay} />
               )}
             </MetaFactSlot>
-            <MetaFactSlot width={META_REST_COL.stageTime} className="text-text-faint">
-              {stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel ? (
-                <HoverTooltip label={`${stageTimeLabel} ${stageTimeDisplay}`}>
-                  <span className="truncate">{stageTimeDisplay}</span>
-                </HoverTooltip>
-              ) : null}
-            </MetaFactSlot>
+            <RowStageTimeMeta
+              instant={stageTimeLabel ? stageTime : null}
+              label={stageTimeLabel ?? 'Shipped'}
+              reserve
+            />
             <CarrierStatusIcon className="ml-1" carrier={record.carrier} category={record.latest_status_category} statusLabel={record.latest_status_label} description={record.latest_status_description} latestEventAt={record.latest_event_at} hasException={record.has_exception} isTerminal={record.is_terminal} />
           </div>}
         />

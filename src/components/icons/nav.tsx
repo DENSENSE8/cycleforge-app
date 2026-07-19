@@ -76,9 +76,8 @@ export const Packer = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
-// Single spanner — repair / Testing glyph (lucide wrench). Previously a copy of
-// the Settings gear, which made the Testing nav row indistinguishable from
-// Settings; this is the real wrench so the two no longer collide.
+// Single spanner — repair jobs (Receiving repair mode, Walk-In repair, repair
+// photos). Not Testing — that station uses ShieldCheck (StationTesting).
 export const Wrench = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />

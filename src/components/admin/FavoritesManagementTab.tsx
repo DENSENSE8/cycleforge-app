@@ -9,6 +9,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
 import { toast } from '@/lib/toast';
 import { sectionLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
+import { appWashClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 /** Keep in sync with FAVORITE_WORKSPACE_KEYS in src/lib/favorites/sku-favorites.ts. */
 const WORKSPACES = [
@@ -218,7 +220,7 @@ export function FavoritesManagementTab() {
   const tableGridClass = 'grid grid-cols-[160px_minmax(200px,1.5fr)_minmax(160px,1fr)_100px_80px_90px_108px] gap-x-3';
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col bg-[linear-gradient(180deg,#ffffff_0%,#f5f7fa_100%)]">
+    <section className={cn('flex h-full min-h-0 w-full flex-col', appWashClass)}>
       <div className={mainStickyHeaderClass}>
         <div className={`${mainStickyHeaderShellRowClass} flex-wrap gap-y-2 px-4`}>
           <div className="flex items-center gap-4">

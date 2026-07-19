@@ -47,7 +47,7 @@ export function ResultRow({
     >
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-border-soft" />
+        <img src={imageUrl} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-border-soft" />
       ) : (
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-text-faint">
           <Package className="h-4 w-4" />

@@ -18,10 +18,15 @@
  * no clickable URL, no backend hostname. The internal app's scanner
  * (`/m/scan` + `routeScan()`) is the only surface that turns it into
  * navigation.
+ *
+ * The bwip-js encoder (~250 KB gz) loads lazily on first render — statically
+ * importing it here put the whole engine in every station bundle's critical
+ * path. The symbol's box is reserved up front (fixed {@link Gs1DataMatrixProps.size}),
+ * so the async fill never shifts layout.
  */
 
-import { useMemo } from 'react';
-import { renderDataMatrixSvg, type DataMatrixSymbology } from '@/lib/barcode/dataMatrixSvg';
+import { useEffect, useState } from 'react';
+import type { DataMatrixSymbology } from '@/lib/barcode/dataMatrixSvg';
 
 export type Gs1DataMatrixSymbology = DataMatrixSymbology;
 
@@ -55,26 +60,49 @@ export function Gs1DataMatrix({
   ariaLabel,
   quietZone,
 }: Gs1DataMatrixProps) {
-  const svgMarkup = useMemo(() => {
-    try {
-      return renderDataMatrixSvg({
-        value,
-        symbology,
-        barcolor: fgColor.replace('#', ''),
-        backgroundcolor: bgColor.replace('#', ''),
-        quietZone,
+  // null = still encoding (box reserved, empty) · '' = failed · string = SVG.
+  const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSvgMarkup(null);
+    import('@/lib/barcode/dataMatrixSvg')
+      .then(({ renderDataMatrixSvg }) => {
+        if (cancelled) return;
+        try {
+          setSvgMarkup(
+            renderDataMatrixSvg({
+              value,
+              symbology,
+              barcolor: fgColor.replace('#', ''),
+              backgroundcolor: bgColor.replace('#', ''),
+              quietZone,
+            }),
+          );
+        } catch (err) {
+          console.error('[Gs1DataMatrix] failed to render', err);
+          setSvgMarkup('');
+        }
+      })
+      .catch((err) => {
+        console.error('[Gs1DataMatrix] failed to load encoder', err);
+        if (!cancelled) setSvgMarkup('');
       });
-    } catch (err) {
-      console.error('[Gs1DataMatrix] failed to render', err);
-      return null;
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [value, symbology, fgColor, bgColor, quietZone]);
 
   const label =
     ariaLabel ??
     (symbology === 'gs1datamatrix' ? 'GS1 DataMatrix barcode' : 'DataMatrix barcode');
 
-  if (!svgMarkup) {
+  if (svgMarkup === null) {
+    // Encoder still loading — hold the square so the fill never shifts layout.
+    return <div aria-hidden style={{ width: size, height: size, background: bgColor, lineHeight: 0 }} />;
+  }
+
+  if (svgMarkup === '') {
     return (
       <div
         role="img"

@@ -1,5 +1,4 @@
 import { sanitizeSellerMessage } from '@/lib/ai/seller-message-guard';
-import { normalizeReceivingTicketEntityRefs } from '@/lib/support/tickets';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -14,18 +13,10 @@ export interface ClaimSellerMessageRow {
   updatedAt: string;
 }
 
-/** Unfound cartons use synthetic line id `-receiving_id`; seller rows are carton-scoped (line null). */
-export function normalizeClaimSellerMessageRefs(args: {
-  receivingId: number;
-  lineId?: number | null;
-}): { receivingId: number; lineId: number | null } {
-  const { receivingId, lineId } = normalizeReceivingTicketEntityRefs({
-    receivingId: args.receivingId,
-    lineId: args.lineId,
-  });
-  if (receivingId == null) throw new Error('receivingId is required');
-  return { receivingId, lineId };
-}
+// normalizeClaimSellerMessageRefs lives in ./receiving-claim-seller-refs
+// (client-safe, no tenancy/db) and is re-exported here for server callers.
+export { normalizeClaimSellerMessageRefs } from '@/lib/receiving-claim-seller-refs';
+import { normalizeClaimSellerMessageRefs } from '@/lib/receiving-claim-seller-refs';
 
 function mapRow(row: Record<string, unknown>): ClaimSellerMessageRow {
   return {

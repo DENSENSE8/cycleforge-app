@@ -22,11 +22,13 @@ import { StaffInitials } from '@/design-system/components/StaffBadge';
 import {
   RowTitle,
   RowMetaColumns,
-  META_COL,
   META_REST_COL,
   MetaFactSlot,
   RowConditionMeta,
+  QUEUE_ROW,
+  metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import {
   getOrderPlatformColor,
   getOrderPlatformBorderColor,
@@ -37,7 +39,6 @@ import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import { getExternalUrlByItemNumber, skuScanPrefixBeforeColon } from '@/hooks/useExternalItemUrl';
 import {
   formatLaneAgeCompact,
-  formatOpsStageTime,
   getDaysLateTone,
   getLaneAgeHours,
   getLaneAgeTone,
@@ -83,7 +84,7 @@ export interface OrdersQueueTableRowProps {
   /** Skip Framer `layout` (virtualized remounts). Chip-column reflow + Show more
    *  sibling shift use layout; leave on for dense tables. */
   disableLayoutAnimation?: boolean;
-  /** Surface mode — fulfillment enables the hover ops strip. */
+  /** Surface mode — fulfillment enables the trailing quick-actions rail. */
   queueMode?: OrdersQueueMode;
   /** `event` carries `shiftKey` for range-select; structural so both mouse +
    *  keyboard events satisfy it. */
@@ -122,10 +123,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // Row-local "quick actions" expander: the chevron toggles the chip cluster out
   // and the Truck/OOS/Notes/Delete buttons in — in place, without opening the dock.
   const [actionsOpen, setActionsOpen] = useState(false);
-  // A chip hover-menu (platform / order / tracking) is open — keep the row's
-  // hover chrome (chevron + shifted chips) up even though the mouse is over the
-  // menu's body portal (outside the row, so :hover/:focus-within don't hold).
-  const [chipMenuOpen, setChipMenuOpen] = useState(false);
   // Notion-style inline editor: which field is open, anchored to its trigger button,
   // with a local draft. Notes + OOS both persist through `useOrderAssignment`.
   const [editorField, setEditorField] = useState<'oos' | 'notes' | null>(null);
@@ -159,8 +156,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const canShip = has('shipping.mark_shipped');
   const canOos = has('orders.create');
   const canDelete = has('orders.void');
-  // Quick-actions expander is a desktop, hover-driven affordance — mobile has no
-  // hover and keeps its untouched full-width chip layout.
+  // Quick-actions expander is desktop-only (chevron rail + in-place strip).
+  // Mobile keeps the full-width chip layout with no trailing rail.
   const showQuickActions = showOpsStrip && !isMobile && (canShip || canOos || canDelete);
 
   const toggleActions = useCallback((e: React.MouseEvent) => {
@@ -316,22 +313,33 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // Tested must not show a ghost packer "--".
   const showStaffCluster = queueMode === 'staged' || hasTester || hasPacker;
   const hasNotes = notesValue.trim().length > 0;
-  // "done" dot, shown only once the timestamp is stamped.
-  const labelPrintedAt = record.label_printed_at;
-  // Stage time on meta row 2 — tested / packed / ship-out when stamped.
+  // Stage time on meta row 2 — tested / packed / ship-out / label when stamped.
+  // Pending shipping/labels work with no stamp stays empty (no invented clock).
   const testedAt =
     record.test_date_time || record.test_activity_at || null;
   const packedAt = record.packed_at || record.pack_activity_at || null;
   const shippedAt = record.ship_confirmed_at || null;
-  const stageTime = shippedAt || packedAt || (hasTester ? testedAt : null);
-  const stageTimeLabel = shippedAt
-    ? 'Shipped out'
-    : packedAt
-      ? 'Packed'
-      : testedAt
-        ? 'Tested'
-        : null;
-  const stageTimeDisplay = stageTime ? formatOpsStageTime(stageTime) : null;
+  const labelPrintedAt = record.label_printed_at;
+  const stageTime =
+    queueMode === 'labels'
+      ? labelPrintedAt || packedAt || (hasTester ? testedAt : null)
+      : shippedAt || packedAt || (hasTester ? testedAt : null);
+  const stageTimeLabel =
+    queueMode === 'labels'
+      ? labelPrintedAt
+        ? 'Label printed'
+        : packedAt
+          ? 'Packed'
+          : testedAt
+            ? 'Tested'
+            : null
+      : shippedAt
+        ? 'Shipped out'
+        : packedAt
+          ? 'Packed'
+          : testedAt
+            ? 'Tested'
+            : null;
   // Lane age for prioritization (hours in stage) — created_at / tested / packed.
   const laneAgeSource =
     packedAt || (hasTester ? testedAt : null) || record.created_at || record.deadline_at || null;
@@ -372,13 +380,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       onReplaceTracking={queueMode === 'fulfillment' || queueMode === 'labels' ? onReplaceTracking : undefined}
       serialChip={serialChip}
       isMobile={isMobile}
-      onMenuOpenChange={showQuickActions ? setChipMenuOpen : undefined}
     />
   );
 
   const notesFlagsNode =
     hasNotes || hasOutOfStock ? (
-      <span className="inline-flex items-center gap-0.5">
+      <span className="inline-flex shrink-0 items-center gap-0.5">
         {hasNotes ? (
           showQuickActions ? (
             <RowFieldPreview
@@ -387,14 +394,26 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               editable
               onEdit={(e) => openEditor('notes', e)}
             >
-              <span className="inline-flex items-center text-text-muted" aria-label="Order notes">
-                <FileText className="h-3.5 w-3.5" />
+              <span
+                className="inline-flex min-w-0 max-w-[5.5rem] items-center gap-0.5 text-text-muted"
+                aria-label="Order notes"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 truncate text-role-caption font-normal normal-case tracking-normal">
+                  {notesValue.trim()}
+                </span>
               </span>
             </RowFieldPreview>
           ) : (
             <HoverTooltip label={notesValue.trim()} focusable={false}>
-              <span className="inline-flex items-center text-text-muted" aria-label="Order notes">
-                <FileText className="h-3.5 w-3.5" />
+              <span
+                className="inline-flex min-w-0 max-w-[5.5rem] items-center gap-0.5 text-text-muted"
+                aria-label="Order notes"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 truncate text-role-caption font-normal normal-case tracking-normal">
+                  {notesValue.trim()}
+                </span>
               </span>
             </HoverTooltip>
           )
@@ -423,31 +442,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       </span>
     ) : null;
 
-  const hasStageTime = Boolean(
-    stageTimeDisplay && stageTimeDisplay !== '--:--' && stageTimeLabel,
-  );
+  const hasStageTime = Boolean(stageTime && stageTimeLabel);
 
   const stageTimeAndFlagsNode =
     isStagedRow || hasStageTime || notesFlagsNode ? (
       <span className="inline-flex shrink-0 items-center gap-0.5 normal-case tracking-normal">
-        {isStagedRow ? (
-          <MetaFactSlot width={META_REST_COL.stageTime} className="text-text-faint">
-            {hasStageTime ? (
-              <HoverTooltip
-                label={`${stageTimeLabel} ${stageTimeDisplay}`}
-                focusable={false}
-              >
-                <span className="truncate">{stageTimeDisplay}</span>
-              </HoverTooltip>
-            ) : null}
-          </MetaFactSlot>
-        ) : hasStageTime ? (
-          <HoverTooltip
-            label={`${stageTimeLabel} ${stageTimeDisplay}`}
-            focusable={false}
-          >
-            <span className="tabular-nums text-text-faint">{stageTimeDisplay}</span>
-          </HoverTooltip>
+        {isStagedRow || hasStageTime ? (
+          <RowStageTimeMeta
+            instant={stageTime}
+            label={stageTimeLabel ?? 'Staged'}
+            reserve={isStagedRow}
+          />
         ) : null}
         {notesFlagsNode}
       </span>
@@ -490,9 +495,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         'group/row relative',
         dashboardOrderRowShellClass(isMobile),
         'border-b border-border-hairline cursor-pointer transition-colors',
+        QUEUE_ROW.px,
         isStagedRow
-          ? 'px-4 py-2 hover:bg-blue-50/50'
-          : cn('px-3 hover:bg-surface-hover', densityClasses.rowPadding),
+          ? 'py-2 hover:bg-blue-50/50'
+          : cn('hover:bg-surface-hover', densityClasses.rowPadding),
         isStagedRow
           ? (selectMode ? isChecked : isSelected)
             ? 'bg-blue-50/80'
@@ -500,7 +506,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               ? 'bg-surface-canvas/40'
               : 'bg-surface-card'
           : (selectMode ? isChecked : isSelected)
-            ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
+            ? QUEUE_ROW.selectedClass
             : useAlternateStripe
               ? 'bg-surface-card'
               : 'bg-surface-canvas/40',
@@ -528,9 +534,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           title={record.product_title || 'Unknown Product'}
         />
         <RowMetaColumns
-          // Select mode adds a leading checkbox (w-4 + mr-2 = 1.5rem); shift the
-          // meta indent by that same offset so qty stays under the title.
-          indent={selectMode ? `calc(${META_COL.indent} + 1.5rem)` : undefined}
+          indent={metaIndentFor('default', selectMode)}
           qty={<span className={orderRowQtyTone(qty)}>{qty}</span>}
           condition={<RowConditionMeta condition={record.condition} />}
           // Meta `rest` = fact-only slots (never ghost "---" placeholders).
@@ -651,20 +655,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
       {showQuickActions ? (
         <div className="relative flex min-w-0 items-center justify-end">
-          {/* Chips sit flush-right by default; on row hover they slide left (transform
-              only) to make room for the chevron, and fade out when actions open. */}
+          {/* Chips always leave a fixed w-7 rail for the chevron — no hover slide.
+              Fade out only when the quick-actions strip is open. */}
           <motion.div
             animate={{ opacity: actionsOpen ? 0 : 1 }}
             transition={swapTransition}
             aria-hidden={actionsOpen || undefined}
-            className={cn(
-              'min-w-0 transition-transform duration-150 ease-out',
-              actionsOpen
-                ? 'pointer-events-none'
-                : chipMenuOpen
-                  ? '-translate-x-8'
-                  : 'group-hover/row:-translate-x-8 group-focus-within/row:-translate-x-8',
-            )}
+            className={cn('min-w-0 pr-8', actionsOpen && 'pointer-events-none')}
           >
             {chipsNode}
           </motion.div>
@@ -823,8 +820,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             ) : null}
           </AnimatePresence>
 
-          {/* Far-right chevron — slides in on row hover; click reveals quick actions
-              in place (never opens the detail dock). Stays visible while open. */}
+          {/* Fixed trailing rail — always present (quiet at rest). Click toggles
+              quick actions in place; never opens the detail dock. */}
           <HoverTooltip label={actionsOpen ? 'Hide quick actions' : 'Quick actions'} asChild>
             <button
               type="button"
@@ -832,10 +829,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               aria-expanded={actionsOpen}
               aria-label={actionsOpen ? 'Hide quick actions' : 'Show quick actions'}
               className={cn(
-                'ds-raw-button absolute right-0 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition duration-150 hover:bg-surface-hover hover:text-text-default',
-                actionsOpen || chipMenuOpen
-                  ? 'opacity-100 translate-x-0 pointer-events-auto'
-                  : 'opacity-0 translate-x-1 pointer-events-none group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:translate-x-0 group-focus-within/row:pointer-events-auto',
+                'ds-raw-button absolute right-0 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-text-default',
+                actionsOpen && 'bg-surface-hover text-text-default',
               )}
             >
               <ChevronLeft

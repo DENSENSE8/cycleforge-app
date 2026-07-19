@@ -18,6 +18,8 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { zIndex } from '@/design-system/tokens/z-index';
+import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 import type {
   NavState,
   WorkspaceState,
@@ -42,7 +44,7 @@ export function UnboxLineWorkspace({
   const showOverlay = !!workspace;
 
   return (
-    <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
+    <div className={cn(appWorkCanvasClass, 'h-full')}>
       <div
         className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
         aria-hidden={showOverlay ? true : undefined}

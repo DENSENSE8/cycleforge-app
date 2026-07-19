@@ -27,9 +27,9 @@ interface ScanBandShellProps {
 }
 
 /**
- * Animated, staff-tinted container for a scan bar. Full-bleed (no side gutter)
- * so the bottom-rule chrome runs edge-to-edge. Opacity-only entrance so the
- * band is not clipped by sidebar `overflow-hidden` ancestors.
+ * Animated, staff-tinted container for a scan bar. Full-bleed flat chrome
+ * (depth 2 — no card shadow / rounded well). Bottom-rule runs edge-to-edge.
+ * Opacity-only entrance so the band is not clipped by sidebar overflow.
  */
 export function ScanBandShell({ themeColor, children }: ScanBandShellProps) {
   return (

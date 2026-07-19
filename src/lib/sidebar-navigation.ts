@@ -1,7 +1,6 @@
 import {
   Activity,
   AlertCircle,
-  AlertTriangle,
   Archive,
   Barcode,
   BarChart3,
@@ -24,6 +23,7 @@ import {
   MessageSquare,
   Monitor,
   Package,
+  PackageCheck,
   PackageOpen,
   Printer,
   Search,
@@ -35,17 +35,22 @@ import {
   Tags,
   TrendingUp,
   Send,
-  Truck,
   Wrench,
   Zap,
   Warehouse,
   ShelvingUnit,
-  Box,
   Phone,
   Voicemail,
 } from '@/components/Icons';
 import { ADMIN_SECTION_OPTIONS } from '@/components/admin/admin-sections';
 import { isParkedSurfaceBlocked, type ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
+import {
+  PACKING_MODE_ICONS,
+  RECEIVING_MODE_ICONS,
+  SHIPPING_MODE_ICONS,
+  STATION_PAGE_ICONS,
+  TECH_MODE_ICONS,
+} from '@/lib/nav/station-nav-icons';
 import { parseWalkInHistoryMode } from '@/lib/walk-in/history-modes';
 
 export type SidebarRouteKey =
@@ -166,12 +171,12 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // surface — so the primary nav lands on the canonical URL without a redirect
   // hop. Route key still resolves to 'receiving', so the item stays active
   // across every receiving mode (/unbox, /triage, /receiving?mode=…).
-  { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: ClipboardList,   kind: 'station', requires: 'receiving.view' },
-  { id: 'outbound',          label: 'Shipping',    href: '/shipping',           icon: Send,            kind: 'station', requires: 'shipping.view' },
+  { id: 'receiving',         label: 'Receiving',   href: '/unbox',              icon: STATION_PAGE_ICONS.receiving, kind: 'station', requires: 'receiving.view' },
+  { id: 'outbound',          label: 'Shipping',    href: '/shipping',           icon: STATION_PAGE_ICONS.outbound,  kind: 'station', requires: 'shipping.view' },
   // Points at the first-class Test surface (`/test`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
-  { id: 'tech',              label: 'Testing',     href: '/test',               icon: Wrench,          kind: 'station', requires: 'tech.view' },
+  { id: 'tech',              label: 'Testing',     href: '/test',               icon: STATION_PAGE_ICONS.tech,      kind: 'station', requires: 'tech.view' },
   // Data Wipe / FBA / Inventory / Warehouse / Sourcing / Studio / AI Chat /
   // Home are temporarily absent from master nav — dogfood focuses stations +
   // shipping. Routes + mode configs remain for deep-links / preview worktrees.
@@ -182,7 +187,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
-  { id: 'packer',            label: 'Packing',     href: '/pack',               icon: Box,             kind: 'station', requires: 'packing.view' },
+  { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', requires: 'packing.view' },
   // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
@@ -399,7 +404,7 @@ export function permissionForPath(pathname: string): string | null {
 /** A search-param delta map: value to set, or `null` to delete the key. */
 export type SearchParamDelta = Record<string, string | null>;
 
-export interface ModeNavTarget {
+interface ModeNavTarget {
   /** Absolute pathname to land on (a mode may live on a sub-path, e.g. unfound). */
   pathname: string;
   /** Search-param mutations applied on top of the current params. */
@@ -529,27 +534,27 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Receiving ─────────────────────────────────────────────────────────────
   // `?mode=incoming|triage|history|pickup`; bare /receiving = the Unbox
   // workspace (id `receive`) — kept as the default for deep-link + realtime
-  // back-compat. `triage` (label "Receiving") is the scan/identify surface that
+  // back-compat. `triage` (label "Arrival") is the dock scan/identify surface that
   // runs before unboxing; it's the 2nd pill and reachable at ?mode=triage. The
   // former `unfound` mode was relocated to Admin › PO Mailbox.
   {
     // href is the Unbox surface (the receiving station's default); keep it in
     // sync with APP_SIDEBAR_NAV so `getSidebarHref('receiving')` resolves there.
-    id: 'receiving', label: 'Receiving', href: UNBOX, icon: ClipboardList, kind: 'station', requires: 'receiving.view',
+    id: 'receiving', label: 'Receiving', href: UNBOX, icon: STATION_PAGE_ICONS.receiving, kind: 'station', requires: 'receiving.view',
     modes: [
       // Incoming now lives at its own route (`/incoming`).
-      { id: 'incoming', label: 'Incoming',     icon: Inbox,          to: () => ({ pathname: INCOMING, params: { mode: null } }) },
+      { id: 'incoming', label: 'Incoming',     icon: RECEIVING_MODE_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { mode: null } }) },
       // Triage now lives at its own route (`/triage`); dropping `mode` avoids a
       // stale `?mode=` riding onto the surface path.
-      { id: 'triage',   label: 'Receiving',    icon: ClipboardList,  to: () => ({ pathname: TRIAGE, params: { mode: null } }) },
+      { id: 'triage',   label: 'Arrival',    icon: RECEIVING_MODE_ICONS.triage,   to: () => ({ pathname: TRIAGE, params: { mode: null } }) },
       // Unbox now lives at its own route (`/unbox`); dropping `mode` avoids a
       // stale `?mode=` riding onto the surface path.
-      { id: 'receive',  label: 'Unbox',        icon: PackageOpen,    to: () => ({ pathname: UNBOX, params: { mode: null } }) },
+      { id: 'receive',  label: 'Unbox',        icon: RECEIVING_MODE_ICONS.receive,  to: () => ({ pathname: UNBOX, params: { mode: null } }) },
       // Front-desk receiving work — two sibling modes, each on its own route.
       // (They were briefly one "Walk-In" station with a `?job=` switcher; that
       // model is gone — the jobs ARE modes. Sales lives on the Sales page.)
-      { id: 'pickup',   label: 'Local Pickup', icon: ShoppingCart,   to: () => ({ pathname: PICKUP, params: { mode: null, job: null } }) },
-      { id: 'repair',   label: 'Repair',       icon: Wrench,         to: () => ({ pathname: REPAIR, params: { mode: null, job: null } }) },
+      { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_MODE_ICONS.pickup,   to: () => ({ pathname: PICKUP, params: { mode: null, job: null } }) },
+      { id: 'repair',   label: 'Repair',       icon: RECEIVING_MODE_ICONS.repair,   to: () => ({ pathname: REPAIR, params: { mode: null, job: null } }) },
       // History is NOT a receiving mode — it graduated to a `/dashboard` mode
       // (plan lane 04). `/receiving/history` still resolves until that lands.
     ],
@@ -597,7 +602,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     modes: [
       { id: 'plan',    label: 'Plan',    icon: ClipboardList, to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'plan' } }) },
       { id: 'combine', label: 'Combine', icon: Package,       to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: null } }) },
-      { id: 'shipped', label: 'Shipped', icon: Truck,         to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'shipped' } }) },
+      { id: 'shipped', label: 'Shipped', icon: PackageCheck,  to: () => ({ pathname: SHIPPING, params: { mode: 'fba', fbaMode: 'shipped' } }) },
     ],
     resolveMode: ({ params }) => {
       const v = String(params.get('fbaMode') || params.get('mode') || '').trim().toLowerCase();
@@ -608,14 +613,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=labels|scan-out|ready|fba`; default `labels` (param cleared).
   // Nav id stays `outbound` for bookmark/test stability (route is `/shipping`).
   {
-    id: 'outbound', label: 'Shipping', href: SHIPPING, icon: Send, kind: 'station', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: SHIPPING, icon: STATION_PAGE_ICONS.outbound, kind: 'station', requires: 'shipping.view',
     // Scan out sits last (rightmost) — the dock ship-confirm station is the
     // end-of-line action after labels/ready/fba prep.
     modes: [
-      { id: 'labels',   label: 'Labels',   icon: Printer,       to: () => ({ pathname: SHIPPING, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'ready',    label: 'Ready',    icon: ClipboardList, to: () => ({ pathname: SHIPPING, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
-      { id: 'fba',      label: 'FBA',      icon: Boxes,         to: () => ({ pathname: SHIPPING, params: { mode: 'fba', q: null, open: null, sort: null } }) },
-      { id: 'scan-out', label: 'Scan out', icon: Barcode,       to: () => ({ pathname: SHIPPING, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'labels',   label: 'Labels',   icon: SHIPPING_MODE_ICONS.labels,   to: () => ({ pathname: SHIPPING, params: { mode: null, q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'ready',    label: 'Ready',    icon: SHIPPING_MODE_ICONS.ready,    to: () => ({ pathname: SHIPPING, params: { mode: 'ready', q: null, open: null, sort: null, fbaMode: null } }) },
+      { id: 'fba',      label: 'FBA',      icon: SHIPPING_MODE_ICONS.fba,      to: () => ({ pathname: SHIPPING, params: { mode: 'fba', q: null, open: null, sort: null } }) },
+      { id: 'scan-out', label: 'Scan out', icon: SHIPPING_MODE_ICONS['scan-out'], to: () => ({ pathname: SHIPPING, params: { mode: 'scan-out', q: null, open: null, sort: null, fbaMode: null } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
@@ -627,11 +632,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?packMode=fragile|multi`; default `standard` (param cleared). Mirrors the
   // panel's own `?packMode=` derivation so deep-links resolve identically.
   {
-    id: 'packer', label: 'Packing', href: PACK, icon: Box, kind: 'station', requires: 'packing.view',
+    id: 'packer', label: 'Packing', href: PACK, icon: STATION_PAGE_ICONS.packer, kind: 'station', requires: 'packing.view',
     modes: [
-      { id: 'standard', label: 'Standard',   icon: Box,           to: () => ({ pathname: PACK, params: { packMode: null } }) },
-      { id: 'fragile',  label: 'Fragile',    icon: AlertTriangle, to: () => ({ pathname: PACK, params: { packMode: 'fragile' } }) },
-      { id: 'multi',    label: 'Multi-Item', icon: Boxes,         to: () => ({ pathname: PACK, params: { packMode: 'multi' } }) },
+      { id: 'standard', label: 'Standard',   icon: PACKING_MODE_ICONS.standard, to: () => ({ pathname: PACK, params: { packMode: null } }) },
+      { id: 'fragile',  label: 'Fragile',    icon: PACKING_MODE_ICONS.fragile,  to: () => ({ pathname: PACK, params: { packMode: 'fragile' } }) },
+      { id: 'multi',    label: 'Multi-Item', icon: PACKING_MODE_ICONS.multi,    to: () => ({ pathname: PACK, params: { packMode: 'multi' } }) },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('packMode');
@@ -701,10 +706,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // everything else is Shipping (right pane = Pending · FBA | History workspace).
   // Legacy `?view=testing-history` redirects to `?view=testing`.
   {
-    id: 'tech', label: 'Testing', href: TECH, icon: Wrench, kind: 'station', requires: 'tech.view',
+    id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', requires: 'tech.view',
     modes: [
-      { id: 'testing',  label: 'Testing',  icon: Wrench, to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
-      { id: 'shipping', label: 'Shipping', icon: Truck,  to: () => ({ pathname: TECH, params: { view: null } }) },
+      { id: 'testing',  label: 'Testing',  icon: TECH_MODE_ICONS.testing,  to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
+      { id: 'shipping', label: 'Shipping', icon: TECH_MODE_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null } }) },
     ],
     resolveMode: ({ params }) =>
       params.get('view') === 'testing' || params.get('view') === 'testing-history'
@@ -878,12 +883,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'tickets';
     },
   },
-  // ── Admin (grouped section rows — dropdown only, NO L2 rail) ───────────────
+  // ── Admin (grouped section rows — hover modes dropdown + full nav) ─────────
   // 20+ sections derived from ADMIN_SECTION_OPTIONS (single source of truth), so
   // every section is ≤2 taps from the header dropdown and the closed header shows
   // the active section name. The AdminSidebar body keeps its own grouped/described
-  // list (not gated) — admin is intentionally absent from MASTER_NAV_RAIL_PAGES
-  // because 20+ icons don't fit the flush horizontal rail. `?section=<value>`;
+  // list (not gated). Hovering the header trigger lists every section (grouped,
+  // scrollable); clicking opens the full nav. `?section=<value>`;
   // `overview` clears the param so deep-links land cleanly on overview.
   {
     id: 'admin', label: 'Admin', href: ADMIN, icon: ShieldCheck, kind: 'bottom', requires: 'admin.view',

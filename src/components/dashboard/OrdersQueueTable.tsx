@@ -213,7 +213,9 @@ export function OrdersQueueTable({
       : pageScroll
         ? 'overflow-x-clip w-full'
         : `flex-1 ${xScroll} overflow-y-auto no-scrollbar w-full`;
-  const listBodyClass = monitorShell ? 'flex w-full flex-col px-2 pb-6' : 'flex w-full flex-col';
+  // Monitor shell: no extra list inset — rows share QUEUE_ROW.px with Receiving /
+  // other queue surfaces. Card/shell chrome owns breathing room.
+  const listBodyClass = monitorShell ? 'flex w-full flex-col pb-6' : 'flex w-full flex-col';
   const bodyScrollStyle =
     autoHeight && !growToContent && maxBodyHeightPx != null ? { maxHeight: maxBodyHeightPx } : undefined;
   const emptyPadClass = autoHeight || monitorShell ? 'py-10' : 'py-40';

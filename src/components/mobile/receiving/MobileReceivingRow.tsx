@@ -19,6 +19,12 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
+import {
+  resolveReceivingRowStageStamp,
+  type ReceivingActivityAxis,
+} from '@/components/station/receiving-lines-table-helpers';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
+import { formatDateTimePST } from '@/utils/date';
 
 interface MobileReceivingRowProps {
   row: ReceivingLineRow;
@@ -38,12 +44,14 @@ interface MobileReceivingRowProps {
    * suppresses the workflow status icon exactly like the desktop history table.
    */
   display?: ReceivingRowDisplay;
+  /** History axis — defaults to Unbox (`unboxed`) to match desktop history default. */
+  activityAxis?: ReceivingActivityAxis;
 }
 
 /**
  * Mobile receiving row — the phone mirror of a {@link ReceivingLinesTable} row.
  * Uses the SAME primitives so the two can't drift: {@link RowTitle} (status dot
- * + product title), {@link RowMetaColumns} (qty · condition · workflow icon),
+ * + product title), {@link RowMetaColumns} (qty · condition · stage clock),
  * and {@link ReceivingIdentityChips} (PO / SKU / tracking / serial, always
  * rendered as fixed columns — empties read as '----'). The bottom-pinned
  * expanded card adds capture CTA; collapsed rows show gallery + camera buttons on
@@ -58,6 +66,7 @@ export function MobileReceivingRow({
   galleryHref,
   onOpenGallery,
   display = { isHistory: true },
+  activityAxis = 'unboxed',
 }: MobileReceivingRowProps) {
   const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
@@ -66,6 +75,14 @@ export function MobileReceivingRow({
   // Icon mapping + show/hide are the SAME shared decision the desktop table uses.
   const { Icon: WorkflowIcon, tone: workflowIconTone } = getWorkflowIconMeta(workflowLabel);
   const showWorkflowIcon = shouldShowWorkflowStatusIcon(display);
+  const stageStamp = resolveReceivingRowStageStamp(row, activityAxis);
+  const stageTooltip = stageStamp
+    ? [
+        stageStamp.staffName
+          ? `${stageStamp.label} ${formatDateTimePST(stageStamp.instant)} by ${stageStamp.staffName}`
+          : `${stageStamp.label} ${formatDateTimePST(stageStamp.instant)}`,
+      ].join(' · ')
+    : null;
 
   const condGrade = (row.condition_grade || '').toUpperCase();
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
@@ -93,6 +110,8 @@ export function MobileReceivingRow({
           className="!mt-0 shrink-0"
           indent={META_COL.indentWide}
           qtyCol={META_COL.qtyColWide}
+          // Same PARTS / L-New grades as desktop ReceivingLineOrderRow.
+          condCol={META_COL.poCondCol}
           qty={
             <span
               className={
@@ -117,13 +136,21 @@ export function MobileReceivingRow({
             </span>
           }
           rest={
-            showWorkflowIcon ? (
-              <HoverTooltip label={workflowLabel} asChild>
-                <span className="inline-flex items-center">
-                  <WorkflowIcon className={`h-3.5 w-3.5 ${workflowIconTone}`} />
-                </span>
-              </HoverTooltip>
-            ) : undefined
+            <span className="inline-flex items-center gap-1.5">
+              <RowStageTimeMeta
+                instant={stageStamp?.instant}
+                label={stageStamp?.label ?? 'Scanned'}
+                tooltip={stageStamp ? stageTooltip : undefined}
+                reserve
+              />
+              {showWorkflowIcon ? (
+                <HoverTooltip label={workflowLabel} asChild>
+                  <span className="inline-flex items-center">
+                    <WorkflowIcon className={`h-3.5 w-3.5 ${workflowIconTone}`} />
+                  </span>
+                </HoverTooltip>
+              ) : null}
+            </span>
           }
         />
         <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 overflow-hidden">

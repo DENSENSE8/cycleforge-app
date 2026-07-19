@@ -3,13 +3,15 @@
 /**
  * StagingSection — shelf + priority-lane assignment for triage.
  * Auto-routes lane on shelf save; operator can override via lane select.
+ * Placement summary is written for the unboxing person (room · bin · barcode).
+ * SectionTabsSlider owns the "Staging" eyebrow — this card stays unlabeled.
  */
 
 import { useMemo } from 'react';
 import { WorkspaceCard } from '@/design-system/components';
-import { Loader2, MapPin, Flag } from '@/components/Icons';
+import { Loader2, MapPin, Flag, Barcode } from '@/components/Icons';
 import { SELECT_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { TRIAGE_LANE_OPTS } from '@/lib/receiving/triage-lane-policy';
+import { TRIAGE_LANE_OPTS, triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
 import { TriageStagingStatusChips } from './TriageStagingStatusChips';
 import type { TriageStagingController } from './useTriageStaging';
 import type { Location } from '@/lib/neon/location-queries';
@@ -23,6 +25,98 @@ function groupLocationsByRoom(locations: Location[]): { room: string; items: Loc
     else map.set(room, [loc]);
   }
   return Array.from(map.entries()).map(([room, items]) => ({ room, items }));
+}
+
+function formatBinAddress(loc: Location): string | null {
+  if (loc.row_label == null || loc.col_label == null) return null;
+  return `${loc.row_label}-${String(loc.col_label).padStart(2, '0')}`;
+}
+
+function PlacementSummary({
+  location,
+  lane,
+}: {
+  location: Location;
+  lane: string | null;
+}) {
+  const bin = formatBinAddress(location);
+  const room = location.room?.trim() || null;
+  const zone = location.zone_letter?.trim() || null;
+  const barcode = location.barcode?.trim() || null;
+  const binType = location.bin_type?.trim() || null;
+  const description = location.description?.trim() || null;
+
+  // Spoken path for the floor — what an unboxer reads off the shelf label.
+  const spokenPath = [room, bin, barcode ? `scan ${barcode}` : null].filter(Boolean).join(' · ');
+
+  return (
+    <div className="rounded-xl bg-surface-canvas px-3 py-3 ring-1 ring-inset ring-border-soft">
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        Place carton here
+      </p>
+      <p className="mt-1.5 text-role-body font-semibold text-text-default">
+        {spokenPath || location.name}
+      </p>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-role-caption">
+        {room ? (
+          <div>
+            <dt className="text-text-faint">Room / zone</dt>
+            <dd className="font-medium text-text-muted">
+              {room}
+              {zone ? ` · Zone ${zone}` : ''}
+            </dd>
+          </div>
+        ) : null}
+        {bin ? (
+          <div>
+            <dt className="text-text-faint">Bin address</dt>
+            <dd className="font-mono tabular-nums font-medium text-text-muted">{bin}</dd>
+          </div>
+        ) : null}
+        {barcode ? (
+          <div className="col-span-2">
+            <dt className="text-text-faint">Shelf barcode</dt>
+            <dd className="flex items-center gap-1.5 font-mono tabular-nums font-medium text-text-muted">
+              <Barcode className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+              {barcode}
+            </dd>
+          </div>
+        ) : null}
+        {binType ? (
+          <div>
+            <dt className="text-text-faint">Bin type</dt>
+            <dd className="font-medium uppercase tracking-wide text-text-muted">{binType}</dd>
+          </div>
+        ) : null}
+        {lane ? (
+          <div>
+            <dt className="text-text-faint">Priority lane</dt>
+            <dd className="font-medium text-text-muted">{triageLaneLabel(lane)}</dd>
+          </div>
+        ) : null}
+        {location.capacity != null ? (
+          <div>
+            <dt className="text-text-faint">Capacity</dt>
+            <dd className="font-medium tabular-nums text-text-muted">{location.capacity}</dd>
+          </div>
+        ) : null}
+        {description ? (
+          <div className="col-span-2">
+            <dt className="text-text-faint">Notes</dt>
+            <dd className="text-text-muted">{description}</dd>
+          </div>
+        ) : null}
+        <div className="col-span-2">
+          <dt className="text-text-faint">Shelf name</dt>
+          <dd className="font-medium text-text-muted">{location.name}</dd>
+        </div>
+      </dl>
+      <p className="mt-3 text-role-caption text-text-faint">
+        Unboxers find this carton by the shelf barcode or bin address above —
+        stage it before Save for unbox.
+      </p>
+    </div>
+  );
 }
 
 export function StagingSection({ staging }: { staging: TriageStagingController }) {
@@ -47,18 +141,22 @@ export function StagingSection({ staging }: { staging: TriageStagingController }
   ) : null;
 
   return (
-    <WorkspaceCard
-      label="Staging"
-      variant="glass"
-      overflow="visible"
-      actions={savingIndicator ?? undefined}
-    >
+    <WorkspaceCard variant="glass" overflow="visible" actions={savingIndicator ?? undefined}>
       <div className="space-y-4">
         <TriageStagingStatusChips
           complete={isStaged}
           locationLabel={locationLabel}
           lane={priorityLane}
         />
+
+        {selectedLocation ? (
+          <PlacementSummary location={selectedLocation} lane={priorityLane} />
+        ) : (
+          <p className="rounded-xl bg-surface-canvas px-3 py-3 text-role-caption text-text-muted ring-1 ring-inset ring-border-soft">
+            Pick a shelf so inventory and unboxers know exactly where this carton
+            sits (room · bin · barcode).
+          </p>
+        )}
 
         <div className="space-y-1">
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Shelf</p>
@@ -76,40 +174,18 @@ export function StagingSection({ staging }: { staging: TriageStagingController }
               <option value="">{locationsLoading ? 'Loading…' : 'Select a shelf…'}</option>
               {grouped.map(({ room, items }) => (
                 <optgroup key={room} label={room}>
-                  {items.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name}
-                      {loc.barcode ? ` · ${loc.barcode}` : ''}
-                    </option>
-                  ))}
+                  {items.map((loc) => {
+                    const bin = formatBinAddress(loc);
+                    return (
+                      <option key={loc.id} value={loc.id}>
+                        {[loc.name, bin, loc.barcode].filter(Boolean).join(' · ')}
+                      </option>
+                    );
+                  })}
                 </optgroup>
               ))}
             </select>
           </div>
-          {selectedLocation ? (
-            <dl className="mt-2 grid gap-1 text-role-caption text-text-muted">
-              {selectedLocation.room ? (
-                <div className="flex gap-2">
-                  <dt className="shrink-0 text-text-faint">Room</dt>
-                  <dd>{selectedLocation.room}</dd>
-                </div>
-              ) : null}
-              {selectedLocation.barcode ? (
-                <div className="flex gap-2">
-                  <dt className="shrink-0 text-text-faint">Barcode</dt>
-                  <dd className="font-mono tabular-nums">{selectedLocation.barcode}</dd>
-                </div>
-              ) : null}
-              {selectedLocation.row_label != null && selectedLocation.col_label != null ? (
-                <div className="flex gap-2">
-                  <dt className="shrink-0 text-text-faint">Bin</dt>
-                  <dd className="font-mono tabular-nums">
-                    {selectedLocation.row_label}-{selectedLocation.col_label}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          ) : null}
         </div>
 
         <div className="space-y-1">

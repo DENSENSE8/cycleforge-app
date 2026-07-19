@@ -1,15 +1,9 @@
 'use client';
 
 /**
- * SearchResultsSurface — the shared results body for /search AND
- * /operations?mode=history. Extracted out of SearchWorkspace so both surfaces
- * render identically (SoT: one surface, never a per-page search body).
- *
+ * SearchResultsSurface — the shared results body for Dashboard Search mode.
  * Controlled: the host owns the query + active tab (URL state) and passes them
- * in; the surface owns only the retrieval + result rendering. `scope` drives
- * the tab order (operations = orders-first), the pageContext, and — via
- * `onSelectHit` — whether a row navigates (default `<Link>`) or the host
- * intercepts it (operations drills into the record timeline in-page).
+ * in; the surface owns only the retrieval + result rendering.
  */
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
@@ -23,28 +17,22 @@ import { cn } from '@/utils/_cn';
 import {
   CATEGORY_LABELS,
   CATEGORY_TABS,
-  orderedTabsForScope,
   tabDbType,
-  type SearchScope,
   type TabId,
 } from './search-tabs';
 
 export interface SearchResultsSurfaceProps {
   query: string;
-  scope: SearchScope;
+  /** Kept for call-site compatibility; only `global` is used. */
+  scope?: 'global';
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   /**
-   * Row click. Receives the event so a host can intercept the `<Link>` (e.g.
-   * operations drills in-page via event.preventDefault()). When absent, rows
-   * navigate to their deep-link normally.
+   * Row click. Receives the event so a host can intercept the `<Link>`.
+   * When absent, rows navigate to their deep-link normally.
    */
   onSelectHit?: (hit: AiSearchHit, event: ReactMouseEvent) => void;
-  /**
-   * Fires when the in-flight state changes, so a host (operations) can reflect
-   * it on the header pill's spinner. `/search` ignores it (its own field shows
-   * the state).
-   */
+  /** Fires when the in-flight state changes. */
   onLoadingChange?: (loading: boolean) => void;
   /**
    * Fires with the current result set each time a query settles, so a host can
@@ -69,7 +57,6 @@ const GROUPS = CATEGORY_TABS.filter((t) => t.id !== 'all');
 
 export function SearchResultsSurface({
   query,
-  scope,
   activeTab,
   onTabChange,
   onSelectHit,
@@ -87,7 +74,7 @@ export function SearchResultsSurface({
     forKey: '',
   });
   const abortRef = useRef<AbortController | null>(null);
-  const pageContext = scope === 'operations' ? '/operations' : '/search';
+  const pageContext = '/dashboard?mode=search';
 
   // One fetch per (q, tab): Overview pulls a wide cross-entity page; a category
   // tab re-queries with the HARD entityTypes scope so its list is deep.
@@ -134,16 +121,13 @@ export function SearchResultsSurface({
         if ((err as { name?: string }).name === 'AbortError') return;
         setState({ status: 'error', hits: [], usedSemantic: false, forKey: key });
       });
-  }, [q, activeTab, pageContext]);
+  }, [q, activeTab]);
 
-  // Surface the in-flight state to the host (operations header spinner). Reset
-  // to idle on unmount so a drilled-away pane never leaves the pill spinning.
   useEffect(() => {
     onLoadingChange?.(state.status === 'loading');
   }, [state.status, onLoadingChange]);
   useEffect(() => () => onLoadingChange?.(false), [onLoadingChange]);
 
-  // Surface the settled hit set to the host (rep workbench top-match auto-select).
   useEffect(() => {
     if (state.status === 'done') onResults?.(state.hits);
   }, [state.status, state.hits, onResults]);
@@ -162,12 +146,11 @@ export function SearchResultsSurface({
   }, [state.hits]);
 
   const showResults = state.status === 'done' && state.hits.length > 0;
-  const tabs = orderedTabsForScope(scope);
 
   return (
     <div className={cn('space-y-4', className)}>
       <HorizontalButtonSlider
-        items={tabs.map((t) => ({ id: t.id, label: t.label }))}
+        items={CATEGORY_TABS.map((t) => ({ id: t.id, label: t.label }))}
         value={activeTab}
         onChange={(id) => onTabChange(id as TabId)}
         variant="nav"

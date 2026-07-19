@@ -6,9 +6,12 @@ import {
   FONT_SCALE_OPTIONS,
   getAppearance,
   setAppearance,
+  WASH_NAMES,
   type AppearanceSettings,
   type Density,
+  type WashName,
 } from '@/lib/settings/appearance';
+import { WASH_PRESETS } from '@/design-system/tokens/app-surface';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { setTimeFormat } from '@/lib/time-format/store';
@@ -61,6 +64,26 @@ function ThemePreviewMini({ palette }: { palette: ThemePalette }) {
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: vars['fill-danger'] }} />
         </span>
       </span>
+    </span>
+  );
+}
+
+/** Chrome strip + washed content with soft TL radius — teaches the shell join. */
+function WashPreviewMini({ wash }: { wash: WashName }) {
+  const preset = WASH_PRESETS[wash];
+  return (
+    <span
+      aria-hidden
+      className="relative block h-16 w-full overflow-hidden rounded-lg border border-border-soft bg-surface-card"
+    >
+      <span className="absolute inset-y-0 left-0 w-3 bg-surface-card" />
+      <span className="absolute inset-x-0 top-0 h-3 bg-surface-card" />
+      <span
+        className="absolute inset-0 left-3 top-3 overflow-hidden rounded-tl-xl border-l border-t border-border-hairline"
+        style={{
+          backgroundImage: `linear-gradient(180deg, ${preset.previewFrom} 0%, ${preset.previewTo} 100%)`,
+        }}
+      />
     </span>
   );
 }
@@ -129,6 +152,7 @@ export function AppearanceSection() {
   const [settings, setSettings] = useState<AppearanceSettings>({
     density: 'cozy',
     fontScale: 1.0,
+    pageWash: 'mint',
   });
 
   useEffect(() => { setSettings(getAppearance()); }, []);
@@ -163,6 +187,10 @@ export function AppearanceSection() {
 
   function updateFontScale(s: number) {
     setSettings(setAppearance({ fontScale: s }));
+  }
+
+  function updatePageWash(wash: WashName) {
+    setSettings(setAppearance({ pageWash: wash }));
   }
 
   function updateUseStaffAccent(next: boolean) {
@@ -311,6 +339,47 @@ export function AppearanceSection() {
 
         <p className="mt-3 text-role-caption text-text-soft">
           Saved to your account — follows you across devices.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-text-default">Page background</h3>
+        <p className="mb-3 text-role-caption text-text-soft">
+          Soft wash behind Unbox, receiving, and admin workbenches. Chrome (sidebar + header)
+          stays flat; the content corner keeps a visible radius hairline.
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {WASH_NAMES.map((name) => {
+            const preset = WASH_PRESETS[name];
+            const isActive = settings.pageWash === name;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => updatePageWash(name)}
+                className={`ds-raw-button rounded-xl border p-2 text-left transition ${
+                  isActive
+                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                    : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
+                }`}
+                aria-pressed={isActive}
+              >
+                <WashPreviewMini wash={name} />
+                <span className="mt-2 flex items-center justify-between px-0.5">
+                  <span className="text-role-caption font-bold text-text-default">{preset.label}</span>
+                  {isActive ? (
+                    <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">
+                  {preset.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-role-caption text-text-soft">
+          Saved on this device. Theme still owns the absolute colors.
         </p>
       </div>
 

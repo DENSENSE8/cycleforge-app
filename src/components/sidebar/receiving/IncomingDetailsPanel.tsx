@@ -1,12 +1,12 @@
 'use client';
 
-import { X, RefreshCw, Trash2 } from '@/components/Icons';
+import { RefreshCw, Trash2 } from '@/components/Icons';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import DeleteButton from '@/components/ui/DeleteButton';
 import { PoChip, TrackingChip, OrderIdChip, getLast4 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { tabsForData, type IncomingDetailsPanelProps } from './incoming-details/incoming-details-shared';
 import { useIncomingDetails } from './incoming-details/useIncomingDetails';
 import { PoTab } from './incoming-details/PoTab';
@@ -87,12 +87,6 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
               </Button>
             </HoverTooltip>
           )}
-          <IconButton
-            onClick={onClose}
-            ariaLabel="Close details panel"
-            icon={<X className="h-4 w-4" />}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft hover:bg-surface-sunken hover:text-text-default"
-          />
         </div>
 
       </div>

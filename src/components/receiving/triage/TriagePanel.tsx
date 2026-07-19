@@ -18,7 +18,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
-import { StationWorkbench } from '@/components/station/workbench';
+import { PairingTogglePill, StationWorkbench } from '@/components/station/workbench';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -29,7 +29,7 @@ import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
-import { markTriageCompleted, hasTriageBeenCompleted } from '../workspace/TriageProgressStepper';
+import { markTriageCompleted, hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
 import { useTriageStaging } from './useTriageStaging';
 import { WorkflowRecommendationsStrip } from '../WorkflowRecommendationsStrip';
 import {
@@ -59,10 +59,13 @@ export function TriagePanel({
   const [savingTriage, setSavingTriage] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<TriageView>('overview');
+  const [pairingOpen, setPairingOpen] = useState(false);
+  const togglePairing = useCallback(() => setPairingOpen((v) => !v), []);
 
   useEffect(() => {
     setActionFeedback(null);
     setTriageSaved(false);
+    setPairingOpen(false);
   }, [row.id]);
 
   // TriageFocusResolver — on open, switch to the first unmet SectionTabsSlider tab.
@@ -147,11 +150,31 @@ export function TriagePanel({
         staffId,
         c,
         staging,
+        pairingOpen,
+        onPairingToggle: togglePairing,
         onItemDescFeedback: handleItemDescFeedback,
         onItemDescSaved: handleItemDescSaved,
         onNotesFeedback: setActionFeedback,
       }),
-    [row, staffId, c, staging, handleItemDescFeedback, handleItemDescSaved],
+    [
+      row,
+      staffId,
+      c,
+      staging,
+      pairingOpen,
+      togglePairing,
+      handleItemDescFeedback,
+      handleItemDescSaved,
+    ],
+  );
+
+  const editPoControl = (
+    <PairingTogglePill
+      open={pairingOpen}
+      onToggle={togglePairing}
+      closedLabel="Edit PO — show package pairing"
+      openLabel="Hide package pairing"
+    />
   );
 
   const buildTerminal = useCallback(
@@ -211,6 +234,7 @@ export function TriagePanel({
               tabs={triageTabs}
               value={activeTab}
               onChange={(id) => setActiveTab(id as TriageView)}
+              rightSlot={activeTab === 'overview' ? editPoControl : undefined}
             />
           }
           feedback={

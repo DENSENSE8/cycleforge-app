@@ -121,7 +121,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   triage: {
     key: 'triage',
-    label: 'Receiving',
+    label: 'Arrival',
     route: '/triage',
     archetype: 'station',
     permission: 'receiving.view',

@@ -1,32 +1,25 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { ChevronDown, ClipboardList } from '@/components/Icons';
+import { ClipboardList } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
 import { Popover } from '@/design-system/primitives/Popover';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { formatDate } from '@/components/work-orders/types';
-import { getDaysLateNullable, getDaysLateTone } from '@/utils/date';
+import { getDaysLateNullable } from '@/utils/date';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { isOnWorkOrderSourcePath } from './header-work-order-shared';
+import { HEADER_ICON_WRAP } from './header-shell';
 
 /**
- * HeaderTopWorkOrderChip — P1-WORK-01 acceptance B.
- *
- * Surfaces the single most important work order for the SIGNED-IN operator in
- * the global header. Data + ranking come from /api/work-orders/mine, which
- * reuses the work-orders queue's data source and the shared ranking SoT
- * (compareWorkOrderRows) — so this chip never diverges from the queue order.
- *
- * Visual dialect matches {@link HeaderGoalChip}: quiet hover shell, two-line
- * stack (state on top, entity below), chevron. Color only for overdue tone.
- *
- * Renders nothing when the operator has no actionable assigned work.
+ * Header work-order — neutral ClipboardList IconButton (no urgency chrome).
+ * Opens the top assigned WO; queue / due / title live in tooltip + popover.
+ * Hidden when already on the work order's source path.
  */
 
 interface TopWorkOrder {
@@ -50,25 +43,25 @@ async function fetchMine(): Promise<{ top: TopWorkOrder | null }> {
   return res.json();
 }
 
-/** Compact due face — overdue first, else short date, else calm empty. */
-function dueFace(deadlineAt: string | null): { label: string; tone: string } {
-  if (!deadlineAt) return { label: 'No deadline', tone: 'text-text-soft' };
+function dueFace(deadlineAt: string | null): { label: string; overdue: boolean } {
+  if (!deadlineAt) return { label: 'No deadline', overdue: false };
   const daysLate = getDaysLateNullable(deadlineAt);
   if (daysLate !== null && daysLate > 0) {
     return {
       label: daysLate === 1 ? '1d late' : `${daysLate}d late`,
-      tone: getDaysLateTone(daysLate),
+      overdue: true,
     };
   }
   return {
     label: `Due ${formatDate(deadlineAt, '—')}`,
-    tone: 'text-text-soft',
+    overdue: false,
   };
 }
 
 export function HeaderTopWorkOrderChip() {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const staffId = user?.staffId ?? null;
   const orgId = user?.organizationId ?? '';
   const queryClient = useQueryClient();
@@ -85,8 +78,6 @@ export function HeaderTopWorkOrderChip() {
     refetchOnWindowFocus: true,
   });
 
-  // Live-refresh when assignments change (assignment popover / queue PATCH
-  // publish to the org-wide orders channel).
   const ordersChannel = safeChannelName(() => getOrdersChannelName(orgId));
   const invalidate = () => void queryClient.invalidateQueries({ queryKey });
   useAblyChannel(ordersChannel, 'order.assignments', invalidate, !!ordersChannel && !!staffId);
@@ -94,49 +85,28 @@ export function HeaderTopWorkOrderChip() {
 
   const top = data?.top ?? null;
   if (!staffId || !top) return null;
+  if (isOnWorkOrderSourcePath(pathname, top.sourcePath)) return null;
 
   const due = dueFace(top.deadlineAt);
   const deadlineLabel = top.deadlineAt ? formatDate(top.deadlineAt, 'No deadline') : null;
-  const daysLate = getDaysLateNullable(top.deadlineAt);
+  const tip = `${top.queueLabel} · ${due.label} · ${top.title}`;
 
   return (
-    <div className="relative hidden shrink-0 sm:block">
-      <HoverTooltip label="Your top work order" asChild>
-        <motion.button
+    <div className={cn(HEADER_ICON_WRAP, 'hidden sm:flex')}>
+      <HoverTooltip label={tip} asChild>
+        <IconButton
           ref={triggerRef}
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          whileTap={{ scale: 0.97 }}
+          size="md"
+          ariaLabel={`Work orders — ${tip}`}
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`Your top work order — ${top.queueLabel}: ${top.title}`}
+          onClick={() => setOpen((o) => !o)}
           className={cn(
-            'flex max-w-[240px] items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition-colors',
-            open ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
+            'rounded-full text-text-muted hover:bg-surface-sunken',
+            open && 'bg-surface-sunken',
           )}
-        >
-          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-muted">
-            <ClipboardList className="h-3.5 w-3.5" />
-          </span>
-          <span className="flex min-w-0 flex-col items-start leading-none">
-            <span className="w-full truncate text-role-caption font-bold tracking-tight text-text-default">
-              {top.queueLabel}
-            </span>
-            <span className="mt-0.5 flex max-w-full items-baseline gap-1 text-role-eyebrow font-semibold">
-              <span className={cn('shrink-0 tabular-nums', due.tone)}>{due.label}</span>
-              <span aria-hidden className="shrink-0 text-text-faint">
-                ·
-              </span>
-              <span className="min-w-0 truncate text-text-soft">{top.title}</span>
-            </span>
-          </span>
-          <ChevronDown
-            className={cn(
-              'h-3 w-3 shrink-0 text-text-faint transition-transform duration-200',
-              open && 'rotate-180',
-            )}
-          />
-        </motion.button>
+          icon={<ClipboardList className="h-4 w-4" />}
+        />
       </HoverTooltip>
 
       <Popover
@@ -171,12 +141,10 @@ export function HeaderTopWorkOrderChip() {
             <span
               className={cn(
                 'rounded-full px-2 py-0.5 text-role-eyebrow font-bold uppercase tracking-wider',
-                daysLate !== null && daysLate > 0
-                  ? 'bg-rose-50 text-rose-700'
-                  : 'bg-surface-sunken text-text-muted',
+                due.overdue ? 'bg-rose-50 text-rose-700' : 'bg-surface-sunken text-text-muted',
               )}
             >
-              {daysLate !== null && daysLate > 0 ? due.label : `Due ${deadlineLabel}`}
+              {due.overdue ? due.label : `Due ${deadlineLabel}`}
             </span>
           ) : null}
         </div>

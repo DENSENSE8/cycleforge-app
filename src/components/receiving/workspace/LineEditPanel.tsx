@@ -41,6 +41,7 @@ import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
+import { ReceivingStationContextBar } from './ReceivingStationContextBar';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
@@ -370,6 +371,7 @@ export function LineEditPanel({
   const toolbar = (
     <LineEditToolbar
       mode="unbox"
+      embedded
       receivingId={row.receiving_id ?? null}
       zohoSyncing={c.zohoSyncing}
       busy={c.saving || c.platformSaving}
@@ -385,9 +387,33 @@ export function LineEditPanel({
     />
   );
 
+  const stationContextBar = (
+    <ReceivingStationContextBar
+      identity={
+        <LineCartonContextSection
+          row={row}
+          staffId={staffId}
+          c={c}
+          linkedOrderNumber={linkedOrder?.orderId ?? null}
+          onToggleTicketView={toggleTicketView}
+          ticketViewActive={false}
+          density="bar"
+        />
+      }
+      utilities={toolbar}
+    />
+  );
+
   return (
     <>
-      <div className="relative isolate flex h-full min-h-0 flex-col bg-surface-canvas">
+      <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
+        {/* Ambient wash covers identity + body so the gradient isn't clipped
+            under a separate chrome band. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
+          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
+          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
+          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
+        </div>
         <AnimatePresence mode="wait" initial={false}>
           {showTicketEditor ? (
             <motion.div
@@ -396,10 +422,10 @@ export function LineEditPanel({
               animate={ticketPanePresence.animate}
               exit={ticketPanePresence.exit}
               transition={paneTransition}
-              className="flex min-h-0 flex-1 flex-col"
+              className="flex min-h-0 flex-1 flex-col overflow-visible"
             >
-              <div className="shrink-0 px-4 pt-5 sm:px-6">
-                <div className={STATION_WORKBENCH_COLUMN}>
+              <ReceivingStationContextBar
+                identity={
                   <LineCartonContextSection
                     row={row}
                     staffId={staffId}
@@ -407,10 +433,12 @@ export function LineEditPanel({
                     linkedOrderNumber={linkedOrder?.orderId ?? null}
                     onToggleTicketView={toggleTicketView}
                     ticketViewActive
+                    density="bar"
                   />
-                </div>
-              </div>
-              <div className="min-h-0 flex-1">
+                }
+                utilities={toolbar}
+              />
+              <div className="relative z-0 min-h-0 flex-1 overflow-hidden">
                 <SupportTicketDetail
                   ticketId={ticketId!}
                   onBack={() => setTicketView(false)}
@@ -425,30 +453,12 @@ export function LineEditPanel({
               animate={ticketPanePresence.animate}
               exit={ticketPanePresence.exit}
               transition={paneTransition}
-              className="flex min-h-0 flex-1 flex-col"
+              className="flex min-h-0 flex-1 flex-col overflow-visible"
             >
+              {stationContextBar}
               <StationWorkbench
-                ambientWash
-                className="flex-1"
-                toolbar={toolbar}
-                entityContext={
-                  <motion.div
-                    initial={false}
-                    animate="show"
-                    variants={revealContainer}
-                  >
-                    <motion.div variants={revealItem}>
-                      <LineCartonContextSection
-                        row={row}
-                        staffId={staffId}
-                        c={c}
-                        linkedOrderNumber={linkedOrder?.orderId ?? null}
-                        onToggleTicketView={toggleTicketView}
-                        ticketViewActive={false}
-                      />
-                    </motion.div>
-                  </motion.div>
-                }
+                ambientWash={false}
+                className="relative z-0 flex-1 bg-transparent"
                 tabs={
                   <motion.div
                     initial={false}

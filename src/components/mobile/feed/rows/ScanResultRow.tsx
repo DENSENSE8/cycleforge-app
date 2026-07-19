@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { ChevronRight, Package, AlertCircle, Loader2, Check, Zap, MapPin } from '@/components/Icons';
 import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
+import { formatOpsStageTime } from '@/utils/date';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 
 /**
  * Normalized scan-result item. Both the Universal Scan (/m/scan) and Receive
@@ -79,7 +81,9 @@ export function ScanResultRow({
   fresh?: boolean;
   onClick?: () => void;
 }) {
+  useTimeFormat();
   const tappable = Boolean(item.href) || Boolean(onClick);
+  const atLabel = formatOpsStageTime(item.at);
   const inner = (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
@@ -114,7 +118,7 @@ export function ScanResultRow({
               <span className="shrink-0 text-role-eyebrow font-bold uppercase tracking-wider text-blue-300">{item.meta}</span>
             )}
             <span className="shrink-0 text-role-eyebrow font-bold uppercase text-blue-200">
-              {item.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {atLabel === '--:--' ? '' : atLabel}
             </span>
           </div>
         </div>

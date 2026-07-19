@@ -31,6 +31,7 @@ import { RackLabelPrinter } from '@/components/barcode/RackLabelPrinter';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoomFinderProvider, useRoomFinder } from '@/components/warehouse/roomFinderContext';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SearchBar } from '@/components/ui/SearchBar';
 
 type InventoryTab = 'rooms' | 'bins' | 'labels' | 'racks' | 'map';
@@ -111,7 +112,7 @@ function WarehouseSidebarInner() {
 
   return (
     <SidebarShell
-      className="bg-surface-card"
+      className={appChromeClass}
       headerAbove={
         <>
           {!masterNavEnabled && (

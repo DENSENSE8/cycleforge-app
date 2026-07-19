@@ -1,5 +1,6 @@
 import { renderDataMatrixSvg } from '@/lib/barcode/dataMatrixSvg';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
+import { escapeLabelHtml } from '@/lib/print/labelHtml';
 
 /**
  * Shared 2×1" DataMatrix label shell. Receiving, repair, and product/testing
@@ -11,15 +12,8 @@ import { printHtmlInIframe } from '@/lib/print/iframePrint';
  * drifting apart (e.g. the testing label printing at the wrong scale/position).
  */
 
-/** HTML-escape a value for safe interpolation into label markup. */
-export function escapeLabelHtml(s: string | null | undefined): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+// escapeLabelHtml lives in ./labelHtml (dependency-free) so face-model modules
+// don't inherit this file's bwip-js graph.
 
 export interface LabelDataMatrix {
   value: string;

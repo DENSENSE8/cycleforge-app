@@ -7,7 +7,7 @@
  */
 
 import { useCallback } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { Printer } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

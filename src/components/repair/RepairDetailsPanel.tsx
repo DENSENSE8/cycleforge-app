@@ -17,7 +17,6 @@ import { IconButton } from '@/design-system/primitives';
 import {
   PaneHeader,
   PaneHeaderActionBar,
-  PaneHeaderCloseButton,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
   PaneHeaderStatusPill,
@@ -104,16 +103,13 @@ export function RepairDetailsPanel({
             </>
           }
           rightSlot={
-            <>
-              <IconButton
-                icon={<Pencil className="h-4 w-4" />}
-                onClick={() => c.setIsEditingTicket(true)}
-                ariaLabel="Edit ticket number"
-                disabled={c.isSavingTicket}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-sunken"
-              />
-              <PaneHeaderCloseButton onClick={onClose} ariaLabel="Close repair details" />
-            </>
+            <IconButton
+              icon={<Pencil className="h-4 w-4" />}
+              onClick={() => c.setIsEditingTicket(true)}
+              ariaLabel="Edit ticket number"
+              disabled={c.isSavingTicket}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-sunken"
+            />
           }
           belowSlot={
             <>

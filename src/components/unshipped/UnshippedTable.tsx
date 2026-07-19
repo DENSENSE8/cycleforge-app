@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
+import type { ShippedOrder } from '@/types/orders';
 
 /**
  * To Ship fulfillment queue — the dashboard's default lifecycle tab.
@@ -30,6 +31,11 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   selectMode?: boolean;
   /** Portal board toolbar controls into the dashboard outbound floating row. */
   toolbarPortalTarget?: HTMLElement | null;
+  /**
+   * Override row open. Default opens shipped details (`dispatchOpenShippedDetails`).
+   * Pack station passes this to open the pack overlay instead.
+   */
+  onOpenRecord?: (record: ShippedOrder) => void;
 }
 
 /** Map an assignment/order-changed event payload to the flat row patch it implies
@@ -78,6 +84,7 @@ export function UnshippedTable({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   toolbarPortalTarget,
+  onOpenRecord,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -315,6 +322,10 @@ export function UnshippedTable({
       searchValue={searchQuery}
       selectMode={selectMode}
       onOpenRecord={(record) => {
+        if (onOpenRecord) {
+          onOpenRecord(record);
+          return;
+        }
         dispatchOpenShippedDetails(record, 'queue');
       }}
       onClearSearch={clearSearch}

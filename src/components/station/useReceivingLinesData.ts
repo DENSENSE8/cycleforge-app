@@ -14,6 +14,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseReceivingPrependedDetail } from '@/lib/queries/receiving-queries';
+import { useReceivingLinesQuery } from '@/components/station/useReceivingLinesQuery';
 import { INCOMING_PAGE_SIZE, type ReceivingModeContext, type ReceivingModeDescriptor } from '@/lib/receiving/receiving-modes';
 import type { ApiResponse } from '@/components/station/receiving-lines-table-helpers';
 import {
@@ -64,18 +65,14 @@ export function useReceivingLinesData({
   const pathname = usePathname();
   const [localRows, setLocalRows] = useState<ReceivingLineRow[]>([]);
 
-  // Query key + params both come from the active descriptor. The key varies with
-  // every server-affecting input so react-query refetches on a facet flip.
-  const queryKey = mode.queryKey(modeContext);
-  const { data, isLoading } = useQuery<ApiResponse>({
-    queryKey,
-    queryFn: async () => {
-      const res = await fetch(`/api/receiving-lines?${mode.buildParams(modeContext).toString()}`);
-      if (!res.ok) throw new Error('fetch failed');
-      return res.json();
-    },
-    staleTime: 20_000,
-    refetchOnWindowFocus: true,
+  // Shared spine-first query layer (useReceivingLinesQuery): key + params both
+  // come from the active descriptor via receivingLinesTableQuery, so the Unbox
+  // KPI strip reads the SAME cache entry — no second fetch of the same view.
+  // Unbox tabs paint the cheap spine phase first; the authoritative
+  // include=serials rows land in a background pass and upgrade in place.
+  const { data, isLoading } = useReceivingLinesQuery({
+    mode,
+    modeContext,
     enabled: !isDeliveredUnscannedFacet && !isDeliveredNotUnboxedFacet,
   });
 

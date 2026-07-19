@@ -1,35 +1,43 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { WalkInSidebarPanel } from '@/components/sidebar/WalkInSidebarPanel';
-import { OutboundSidebarPanel } from '@/components/sidebar/OutboundSidebarPanel';
-import { ManualsLibrarySidebar } from '@/components/manuals/ManualsLibrarySidebar';
-import { ProductsSidebarPanel } from '@/components/sidebar/ProductsSidebarPanel';
-import { TechSidebarPanel } from '@/components/sidebar/TechSidebarPanel';
-import { PackerSidebarPanel } from '@/components/sidebar/PackerSidebarPanel';
-import { ReceivingSidebarPanel } from '@/components/sidebar/ReceivingSidebarPanel';
-import { StudioSidebarPanel } from '@/components/sidebar/StudioSidebarPanel';
-import { InventorySidebarPanel } from '@/components/sidebar/InventorySidebarPanel';
-import { SourcingSidebarPanel } from '@/components/sidebar/SourcingSidebarPanel';
-import { WarehouseSidebarPanel } from '@/components/sidebar/WarehouseSidebarPanel';
-import { FbaSidebarPanel } from '@/components/fba/sidebar';
-import { SupportSidebarPanel } from '@/components/sidebar/SupportSidebarPanel';
-import { AiChatSidebarPanel } from '@/components/sidebar/AiChatSidebarPanel';
-import { SettingsSidebar } from '@/components/sidebar/SettingsSidebarPanel';
-import { AuditLogSidebarPanel } from '@/components/sidebar/AuditLogSidebarPanel';
-import { OperationsSidebarPanel } from '@/components/sidebar/OperationsSidebarPanel';
-import { PhotoLibrarySidebarPanel } from '@/components/photos/PhotoLibrarySidebarPanel';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
 import { getSidebarTitle } from '@/lib/sidebar-titles';
-import { DashboardOrdersContextPanel } from '@/components/sidebar/DashboardOrdersContextPanel';
-import { AdminContextPanel } from '@/components/sidebar/AdminContextPanel';
-import { OrderWorkspaceSidebar } from '@/components/sidebar/order/OrderWorkspaceSidebar';
 import { ParkedSurface } from '@/components/dogfood/ParkedSurface';
 import {
   isParkedSurfaceBlocked,
   isParkedSurfaceKey,
 } from '@/lib/dogfood/parked-surfaces';
+
+// Every panel is code-split on the route key. Static imports here would drag
+// every feature area's sidebar graph (orders, FBA, studio, support, …) into
+// the shared shell bundle on every page — this dispatcher is exactly where the
+// per-route chunk boundary belongs. SSR stays on (default), so the active
+// route's panel is still server-rendered into the first HTML; the client only
+// downloads the one chunk its route needs.
+const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
+const OrderWorkspaceSidebar = dynamic(() => import('@/components/sidebar/order/OrderWorkspaceSidebar').then((m) => m.OrderWorkspaceSidebar));
+const AdminContextPanel = dynamic(() => import('@/components/sidebar/AdminContextPanel').then((m) => m.AdminContextPanel));
+const OperationsSidebarPanel = dynamic(() => import('@/components/sidebar/OperationsSidebarPanel').then((m) => m.OperationsSidebarPanel));
+const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
+const SupportSidebarPanel = dynamic(() => import('@/components/sidebar/SupportSidebarPanel').then((m) => m.SupportSidebarPanel));
+const AiChatSidebarPanel = dynamic(() => import('@/components/sidebar/AiChatSidebarPanel').then((m) => m.AiChatSidebarPanel));
+const SettingsSidebar = dynamic(() => import('@/components/sidebar/SettingsSidebarPanel').then((m) => m.SettingsSidebar));
+const AuditLogSidebarPanel = dynamic(() => import('@/components/sidebar/AuditLogSidebarPanel').then((m) => m.AuditLogSidebarPanel));
+const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/ReceivingSidebarPanel').then((m) => m.ReceivingSidebarPanel));
+const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m) => m.FbaSidebarPanel));
+const InventorySidebarPanel = dynamic(() => import('@/components/sidebar/InventorySidebarPanel').then((m) => m.InventorySidebarPanel));
+const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/SourcingSidebarPanel').then((m) => m.SourcingSidebarPanel));
+const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
+const WarehouseSidebarPanel = dynamic(() => import('@/components/sidebar/WarehouseSidebarPanel').then((m) => m.WarehouseSidebarPanel));
+const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
+const ManualsLibrarySidebar = dynamic(() => import('@/components/manuals/ManualsLibrarySidebar').then((m) => m.ManualsLibrarySidebar));
+const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
+const PhotoLibrarySidebarPanel = dynamic(() => import('@/components/photos/PhotoLibrarySidebarPanel').then((m) => m.PhotoLibrarySidebarPanel));
+const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
+const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context

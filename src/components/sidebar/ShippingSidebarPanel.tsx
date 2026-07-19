@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
 import { ShippingStaffScanHistoryRail } from '@/components/sidebar/shipping/ShippingStaffScanHistoryRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
@@ -38,7 +39,7 @@ export function ShippingSidebarPanel({
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
+    <div className={`relative flex h-full w-full flex-col overflow-hidden ${appChromeClass}`}>
       {!isMobile ? <ShippingScanBand {...scanBandProps} /> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

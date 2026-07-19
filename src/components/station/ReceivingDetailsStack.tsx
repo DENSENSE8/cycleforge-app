@@ -3,9 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import { Copy, Edit, Package, RefreshCw, Trash2, X } from '@/components/Icons';
+import { Copy, Edit, Package, RefreshCw, Trash2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
-import { IconButton } from '@/design-system/primitives/IconButton';
 import { copyToClipboard } from '@/utils/_dom';
 import { formatDateTimePST } from '@/utils/date';
 import { toast } from '@/lib/toast';
@@ -177,7 +176,7 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
   };
 
   const primaryCta = readiness.cta === 'continue_unbox'
-    ? { label: 'Continue unbox', onClick: handleEditPO }
+    ? { label: 'Unbox', onClick: handleEditPO }
     : readiness.cta === 'match_po'
       ? { label: 'Search Zoho PO', onClick: handleSearchZohoPo }
       : { label: 'Edit PO', onClick: handleEditPO };
@@ -205,27 +204,17 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
           </>
         }
         rightSlot={
-          <>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={primaryCta.onClick}
-              disabled={isOpeningEditor || form.isSaving}
-              loading={isOpeningEditor}
-              icon={<Edit />}
-              iconRight={<span aria-hidden className="text-white/70">→</span>}
-              className="text-role-caption font-black uppercase tracking-wider"
-            >
-              {isOpeningEditor ? 'Working…' : primaryCta.label}
-            </Button>
-            <IconButton
-              onClick={handleClose}
-              disabled={form.isSaving || form.isDeleting}
-              ariaLabel="Close"
-              icon={<X className="h-5 w-5" />}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-surface-sunken"
-            />
-          </>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={primaryCta.onClick}
+            disabled={isOpeningEditor || form.isSaving}
+            loading={isOpeningEditor}
+            icon={<Edit />}
+            className="text-role-caption font-black uppercase tracking-wider"
+          >
+            {isOpeningEditor ? 'Working…' : primaryCta.label}
+          </Button>
         }
         belowSlot={
           <>

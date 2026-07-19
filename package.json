@@ -145,7 +145,9 @@
     "dead-code:report": "node scripts/generate-dead-code-report.mjs",
     "dead-code:depcruise": "npx depcruise src --config .dependency-cruiser.cjs --output-type text | head -100",
     "test:assistant": "tsx --test src/lib/assistant/*.test.ts src/lib/assistant/tools/*.test.ts src/lib/assistant/mutations/*.test.ts src/lib/surfaces/feed-writes.test.ts src/lib/workflow/draft-graph-writes.test.ts",
-    "test:universal-feed": "tsx --test src/lib/receiving/rail-exclusions.test.ts src/lib/receiving/rail/exclusion-feed-key.test.ts src/lib/receiving/feed-membership-projection.test.ts src/lib/timeline/entity-signals.test.ts src/lib/studio/template-catalog.test.ts src/lib/mcp/tool-server.test.ts"
+    "test:universal-feed": "tsx --test src/lib/receiving/rail-exclusions.test.ts src/lib/receiving/rail/exclusion-feed-key.test.ts src/lib/receiving/feed-membership-projection.test.ts src/lib/timeline/entity-signals.test.ts src/lib/studio/template-catalog.test.ts src/lib/mcp/tool-server.test.ts",
+    "lighthouse:audit": "node scripts/lighthouse-audit.mjs",
+    "lighthouse:check": "node scripts/lighthouse-audit.mjs --tier 1 --check"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.7",
@@ -171,9 +173,9 @@
     "@types/qrcode": "^1.5.6",
     "@upstash/redis": "^1.36.2",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
     "@vercel/blob": "^0.27.0",
     "@vercel/sandbox": "^2.1.0",
+    "@vercel/speed-insights": "^2.0.0",
     "@xyflow/react": "^12.11.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
@@ -214,6 +216,7 @@
     "signature_pad": "^5.1.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
+    "web-vitals": "^5.3.0",
     "yjs": "^13.6.31",
     "zod": "^4.3.6"
   },
@@ -221,6 +224,7 @@
     "sharp": "0.34.5"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.10",
     "@playwright/test": "^1.58.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/cytoscape": "^3.21.9",
@@ -230,6 +234,7 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.17",
     "baseline-browser-mapping": "^2.9.19",
+    "chrome-launcher": "^1.2.1",
     "concurrently": "^9.2.1",
     "dependency-cruiser": "^17.3.10",
     "dotenv": "^17.3.1",
@@ -238,6 +243,7 @@
     "eslint-config-next": "^16.0.7",
     "eslint-plugin-unused-imports": "^4.4.1",
     "knip": "^5.88.0",
+    "lighthouse": "^13.4.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.9.3",

@@ -3,9 +3,11 @@
 import type React from 'react';
 import { motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system';
-import { RowTitle, RowMetaColumns, RowConditionMeta } from '@/components/ui/RowMetaColumns';
+import { RowTitle, RowMetaColumns, RowConditionMeta, QUEUE_ROW } from '@/components/ui/RowMetaColumns';
+import { cn } from '@/utils/_cn';
 import { SOURCE_DOT_BG, SOURCE_DOT_LABEL, type SourceDotType } from '@/utils/source-dot';
 import { orderRowQtyTone } from '@/lib/condition-tone';
+import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 
 /**
  * Shared station-row shell: zebra grid + source-dot title + qty/condition meta
@@ -26,6 +28,10 @@ export interface StationRecordShellProps {
   onClick: () => void;
   /** Packer rows animate (mount + hover/tap); tech rows are static. */
   animated?: boolean;
+  /** Stage stamp for history tables (omit on pending work with no instant). */
+  stageInstant?: string | null;
+  stageLabel?: string;
+  stageTooltipExtra?: string | null;
 }
 
 export function StationRecordShell({
@@ -37,6 +43,9 @@ export function StationRecordShell({
   index,
   onClick,
   animated = false,
+  stageInstant = null,
+  stageLabel = 'Activity',
+  stageTooltipExtra = null,
 }: StationRecordShellProps) {
   const zebra = index % 2 === 0 ? 'bg-surface-card' : 'bg-surface-canvas/10';
   const body = (
@@ -46,6 +55,15 @@ export function StationRecordShell({
         <RowMetaColumns
           qty={<span className={orderRowQtyTone(quantity)}>{quantity}</span>}
           condition={<RowConditionMeta condition={condition} />}
+          rest={
+            stageInstant ? (
+              <RowStageTimeMeta
+                instant={stageInstant}
+                label={stageLabel}
+                tooltipExtra={stageTooltipExtra}
+              />
+            ) : undefined
+          }
         />
       </div>
       {chipGrid}
@@ -60,7 +78,11 @@ export function StationRecordShell({
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.998 }}
         onClick={onClick}
-        className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border-default px-3 py-1.5 transition-all hover:bg-blue-50/40 ${zebra}`}
+        className={cn(
+          'grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border-default py-1.5 transition-all hover:bg-blue-50/40',
+          QUEUE_ROW.px,
+          zebra,
+        )}
       >
         {body}
       </motion.div>
@@ -70,7 +92,11 @@ export function StationRecordShell({
   return (
     <div
       onClick={onClick}
-      className={`grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border-default px-3 py-1.5 transition-colors hover:bg-blue-50/40 ${zebra}`}
+      className={cn(
+        'grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border-default py-1.5 transition-colors hover:bg-blue-50/40',
+        QUEUE_ROW.px,
+        zebra,
+      )}
     >
       {body}
     </div>

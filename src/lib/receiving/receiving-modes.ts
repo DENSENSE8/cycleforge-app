@@ -38,16 +38,35 @@ export const RECEIVING_TABLE_LIMIT = 500;
  * full `ReceivingMode` union also has `pickup` and `unfound`, but those are
  * handled upstream (a route switch / a different right-pane component), never
  * by this table — so they're intentionally absent here.
+ *
+ * Unbox workbench tabs (`?unboxview=`) resolve to `unbox_queue` / `unbox_viewed`
+ * / `history` via {@link resolveUnboxReceivingTableMode} — not via `?mode=`.
  */
-export type ReceivingTableMode = 'receive' | 'history' | 'incoming';
+export type ReceivingTableMode =
+  | 'receive'
+  | 'history'
+  | 'incoming'
+  | 'unbox_queue'
+  | 'unbox_viewed';
 
 /**
  * Resolve the raw `?mode=` URL value to the table mode. Anything that isn't
  * `incoming` or `history` (including absent) is the default Receive workspace —
  * matching the prior `pageMode === 'history' ? … : 'receive'` fallback.
+ * Unbox tab modes are never resolved from `?mode=` — see
+ * {@link resolveUnboxReceivingTableMode}.
  */
 export function resolveReceivingTableMode(raw: string | null | undefined): ReceivingTableMode {
   return raw === 'incoming' ? 'incoming' : raw === 'history' ? 'history' : 'receive';
+}
+
+/** Unbox workbench tab → lines-table mode (`recent` = History tab). */
+export function resolveUnboxReceivingTableMode(
+  tab: 'recent' | 'queue' | 'viewed',
+): ReceivingTableMode {
+  if (tab === 'queue') return 'unbox_queue';
+  if (tab === 'viewed') return 'unbox_viewed';
+  return 'history';
 }
 
 /** Axis each mode groups its date headers on. */
@@ -128,6 +147,16 @@ export interface ReceivingModeContext {
    * dock-scanned). Uses a dedicated feed because view=incoming drops scanned rows.
    */
   isDeliveredNotUnboxedFacet: boolean;
+  /**
+   * Universal `?staff=` filter (P1-WORK-02). Null / absent = all staff.
+   * Forwarded on Unbox queue/viewed/history and History table queries.
+   */
+  staffFilterId: number | null;
+  /**
+   * Free-text list filter from `?search=` (Unbox Queue / Viewed workbench
+   * search). History uses `historySearch` (`rh_q`) instead.
+   */
+  listSearch: string;
 }
 
 export interface ReceivingModeDescriptor {
@@ -172,6 +201,10 @@ export interface ReceivingModeDescriptor {
 
 const QUERY_ROOT = 'receiving-lines-table';
 
+function applyStaffParam(p: URLSearchParams, ctx: ReceivingModeContext): void {
+  if (ctx.staffFilterId != null) p.set('staff', String(ctx.staffFilterId));
+}
+
 const receiveMode: ReceivingModeDescriptor = {
   id: 'receive',
   // 'all' unions recent + received and keeps the untouched-incoming rows so the
@@ -181,23 +214,101 @@ const receiveMode: ReceivingModeDescriptor = {
   serverSorted: false,
   isIncoming: false,
   pageSize: null,
-  buildParams() {
+  buildParams(ctx) {
     const p = new URLSearchParams({
       limit: String(RECEIVING_TABLE_LIMIT),
       offset: '0',
     });
     p.set('include', 'serials');
     p.set('view', 'all');
+    applyStaffParam(p, ctx);
     return p;
   },
-  queryKey() {
-    return [QUERY_ROOT, 'all', 'receive'] as const;
+  queryKey(ctx) {
+    return [QUERY_ROOT, 'all', 'receive', ctx.staffFilterId ?? 'all'] as const;
   },
   skipWeekFilter() {
     return false;
   },
   emptyMessage() {
     return 'No lines yet — start scanning to populate.';
+  },
+};
+
+/** Unbox · Queue — door-scanned matched POs waiting to unbox. */
+const unboxQueueMode: ReceivingModeDescriptor = {
+  id: 'unbox_queue',
+  apiView: 'scanned',
+  groupAxis: 'activity',
+  serverSorted: true,
+  isIncoming: false,
+  pageSize: null,
+  buildParams(ctx) {
+    const p = new URLSearchParams({
+      limit: '50',
+      offset: '0',
+    });
+    p.set('include', 'serials');
+    p.set('view', 'scanned');
+    p.set('sort', 'priority');
+    if (ctx.listSearch) p.set('search', ctx.listSearch);
+    applyStaffParam(p, ctx);
+    return p;
+  },
+  queryKey(ctx) {
+    return [
+      QUERY_ROOT,
+      'scanned',
+      'unbox_queue',
+      ctx.listSearch,
+      ctx.staffFilterId ?? 'all',
+    ] as const;
+  },
+  skipWeekFilter() {
+    return true;
+  },
+  emptyMessage(ctx) {
+    return ctx.listSearch
+      ? 'No queue cartons match — try different text.'
+      : 'No cartons in the door queue. Triage matched POs land here.';
+  },
+};
+
+/** Unbox · Viewed — lines this operator recently opened (per-staff server feed). */
+const unboxViewedMode: ReceivingModeDescriptor = {
+  id: 'unbox_viewed',
+  apiView: 'viewed',
+  groupAxis: 'activity',
+  serverSorted: true,
+  isIncoming: false,
+  pageSize: null,
+  buildParams(ctx) {
+    const p = new URLSearchParams({
+      limit: String(RECEIVING_TABLE_LIMIT),
+      offset: '0',
+    });
+    p.set('include', 'serials');
+    p.set('view', 'viewed');
+    if (ctx.listSearch) p.set('search', ctx.listSearch);
+    applyStaffParam(p, ctx);
+    return p;
+  },
+  queryKey(ctx) {
+    return [
+      QUERY_ROOT,
+      'viewed',
+      'unbox_viewed',
+      ctx.listSearch,
+      ctx.staffFilterId ?? 'all',
+    ] as const;
+  },
+  skipWeekFilter() {
+    return true;
+  },
+  emptyMessage(ctx) {
+    return ctx.listSearch
+      ? 'No viewed lines match — try different text.'
+      : 'Nothing viewed yet. Open a carton to build your recent list.';
   },
 };
 
@@ -226,6 +337,7 @@ const historyMode: ReceivingModeDescriptor = {
     // Always send sort so the server window matches the client axis (default
     // unboxed is omitted from the browser URL but must reach the API).
     p.set('sort', normalizeHistorySort(ctx.historySort));
+    applyStaffParam(p, ctx);
     return p;
   },
   queryKey(ctx) {
@@ -237,6 +349,7 @@ const historyMode: ReceivingModeDescriptor = {
       ctx.historySearchField,
       ctx.historySearchScope,
       normalizeHistorySort(ctx.historySort),
+      ctx.staffFilterId ?? 'all',
     ] as const;
   },
   skipWeekFilter(ctx) {
@@ -314,6 +427,8 @@ export const RECEIVING_MODES: Record<ReceivingTableMode, ReceivingModeDescriptor
   receive: receiveMode,
   history: historyMode,
   incoming: incomingMode,
+  unbox_queue: unboxQueueMode,
+  unbox_viewed: unboxViewedMode,
 };
 
 /** Convenience: resolve `?mode=` straight to its descriptor. */
@@ -321,6 +436,13 @@ export function getReceivingModeDescriptor(
   raw: string | null | undefined,
 ): ReceivingModeDescriptor {
   return RECEIVING_MODES[resolveReceivingTableMode(raw)];
+}
+
+/** Resolve a concrete table mode id (incl. Unbox tab modes) to its descriptor. */
+export function getReceivingTableModeDescriptor(
+  mode: ReceivingTableMode,
+): ReceivingModeDescriptor {
+  return RECEIVING_MODES[mode];
 }
 
 /** Build the search-param key shared with the history free-text box. */

@@ -119,6 +119,7 @@ export default function StationPacking({
       serialUnitId: activeOrder.serialUnitId,
       unitKey: activeOrder.unitKey,
       packerLogId: activeOrder.packerLogId,
+      scanDriven: true,
     });
   }, [activeOrder, activeFba]);
 
@@ -465,77 +466,46 @@ export default function StationPacking({
             )}
           </AnimatePresence>
 
-          {/* Regular order scan result — embedded sidebar stays compact; full
-              checklist crossfades in the right pane (see ActivePackerWorkspace). */}
+          {/* Compact active-order chip — full checklist lives in PackOrderPanel. */}
           <AnimatePresence mode="wait">
             {activeOrder && !activeFba && (
               <motion.div
-                key={activeOrder.tracking}
+                key={activeOrder.tracking || activeOrder.orderId}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                className="p-4 bg-surface-card rounded-2xl border border-border-soft shadow-sm"
+                className="rounded-2xl border border-border-soft bg-surface-card px-3 py-2.5 shadow-sm"
               >
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <p className="text-role-micro text-text-soft uppercase tracking-widest">
-                    {activeOrder.scanType === 'SKU' ? 'Active SKU' : 'Active Order'}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-role-micro uppercase tracking-widest text-text-soft">
+                    {activeOrder.scanType === 'UNIT'
+                      ? 'Active unit'
+                      : activeOrder.scanType === 'SKU'
+                        ? 'Active SKU'
+                        : 'Active order'}
                   </p>
-                  <span className="text-role-micro font-mono text-text-muted">
+                  <span className="truncate font-mono text-role-micro text-text-muted">
                     {activeOrder.scanType === 'SKU'
-                      ? (activeOrder.sku || activeOrder.tracking || 'N/A')
-                      : (activeOrder.orderId || 'N/A')}
+                      ? activeOrder.sku || activeOrder.tracking || 'N/A'
+                      : activeOrder.orderId ||
+                        normalizeTrackingQuery(activeOrder.tracking) ||
+                        'N/A'}
                   </span>
                 </div>
-                <h3 className="text-base font-black text-text-default leading-tight">{activeOrder.productTitle}</h3>
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  <div className="bg-surface-canvas rounded-xl px-3 py-2 border border-border-hairline">
-                    <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1">Qty</p>
-                    <p className="text-xs font-bold text-text-default">{activeOrder.qty}</p>
-                  </div>
-                  <div className="bg-surface-canvas rounded-xl px-3 py-2 border border-border-hairline">
-                    <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1">Condition</p>
-                    <p className="text-xs font-bold text-text-default">{activeOrder.condition}</p>
-                  </div>
-                  <div className="bg-surface-canvas rounded-xl px-3 py-2 border border-border-hairline">
-                    <p className="text-role-eyebrow text-text-faint uppercase tracking-wider mb-1">
-                      {activeOrder.scanType === 'SKU' ? 'SKU' : 'TRK #'}
-                    </p>
-                    <p className="text-xs font-mono font-bold text-text-default">
-                      {activeOrder.scanType === 'SKU'
-                        ? (activeOrder.sku || activeOrder.tracking || '—')
-                        : (normalizeTrackingQuery(activeOrder.tracking) || '—')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Phase 3 order rollup — N/M lines of this order already packed
-                    (multi-line short-ship visibility at pack completion). */}
-                {packChecklist && packChecklist.orderRowIds.length > 0 && packChecklist.progress.total > 1 ? (
-                  <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-border-hairline bg-surface-canvas px-3 py-2">
-                    <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-                      Order rollup
-                    </p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset tabular-nums ${
-                        packChecklist.progress.packedLines >= packChecklist.progress.total
-                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                          : 'bg-amber-50 text-amber-700 ring-amber-200'
-                      }`}
-                    >
-                      {packChecklist.progress.packedLines}/{packChecklist.progress.total} lines packed
-                    </span>
-                  </div>
-                ) : null}
-
+                <p className="mt-1 truncate text-role-caption font-semibold text-text-default">
+                  {activeOrder.productTitle}
+                </p>
                 {embedded ? (
-                  <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-role-caption font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
-                    Checklist open in the history pane — verify each line item before sealing.
+                  <p className="mt-2 text-role-caption font-semibold text-emerald-700">
+                    Checklist open in the workbench — verify before sealing.
                   </p>
                 ) : (
                   <>
                     <OrderPackChecklist
                       lines={packChecklist?.lines ?? []}
-                      enforcement={packingPolicy?.enforcement ?? packChecklist?.enforcement ?? 'advisory'}
+                      enforcement={
+                        packingPolicy?.enforcement ?? packChecklist?.enforcement ?? 'advisory'
+                      }
                       resetKey={
                         activeOrder.orderRowId
                           ? `row-${activeOrder.orderRowId}`
@@ -556,8 +526,6 @@ export default function StationPacking({
                         defaultExpanded={false}
                       />
                     </div>
-                    {/* A3 — Zendesk reach-in, collapsed by default so it never
-                        competes with the scan loop. */}
                     <PackZendeskSection
                       orderId={activeOrder.orderId}
                       tracking={activeOrder.tracking}

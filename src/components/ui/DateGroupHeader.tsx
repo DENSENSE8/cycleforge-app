@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatDateWithOrdinal } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
@@ -22,9 +23,12 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
  * repair / sales, desktop + mobile) and the swim-lane board lanes.
  */
 
-/** Sticky row wrapper — left-aligned micro date+qty; soft fill so rows don't bleed under. */
-export const dayGroupChipRowClass =
-  'flex items-center bg-surface-card/90 px-3 py-0.5 backdrop-blur-[2px]';
+/** Sticky row wrapper — left-aligned micro date+qty; soft fill so rows don't bleed under.
+ *  Horizontal pad matches QUEUE_ROW.px so the day label shares the row title edge. */
+export const dayGroupChipRowClass = cn(
+  'flex items-center bg-surface-card/90 py-0.5 backdrop-blur-[2px]',
+  QUEUE_ROW.px,
+);
 
 /** Quiet micro date + qty — no border/shadow pill; sticky row is enough chrome.
  *  `whitespace-nowrap` keeps WED/JUN intact (no mid-weekday clip under tight parents). */

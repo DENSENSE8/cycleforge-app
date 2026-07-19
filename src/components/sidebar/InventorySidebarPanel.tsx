@@ -7,6 +7,7 @@ import { InventoryTriageSidebar } from '@/components/inventory/sidebar/Inventory
 import { InventoryPulseSidebar } from '@/components/inventory/sidebar/InventoryPulseSidebar';
 import { ReplenishSidebarPanel } from '@/components/sidebar/ReplenishSidebarPanel';
 import { sidebarHeaderPillRowClass } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { Package, RefreshCw } from '@/components/Icons';
@@ -47,21 +48,21 @@ export function InventorySidebarPanel() {
     // `?open=` / `?sku=` (the sidebar-mode contract).
     if (pathname?.startsWith('/inventory/graph')) {
         return (
-            <div className="flex h-full flex-col overflow-hidden bg-surface-card">
+            <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
                 <InventoryGraphSidebar />
             </div>
         );
     }
     if (pathname?.startsWith('/inventory/triage')) {
         return (
-            <div className="flex h-full flex-col overflow-hidden bg-surface-card">
+            <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
                 <InventoryTriageSidebar />
             </div>
         );
     }
     if (pathname?.startsWith('/inventory/pulse')) {
         return (
-            <div className="flex h-full flex-col overflow-hidden bg-surface-card">
+            <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
                 <InventoryPulseSidebar />
             </div>
         );
@@ -80,7 +81,7 @@ export function InventorySidebarPanel() {
     };
 
     return (
-        <div className="flex h-full flex-col overflow-hidden bg-surface-card">
+        <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
             {!masterNavEnabled && (
                 <div className={sidebarHeaderPillRowClass}>
                     <HorizontalButtonSlider

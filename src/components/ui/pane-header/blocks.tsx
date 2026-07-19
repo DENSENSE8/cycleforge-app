@@ -404,7 +404,9 @@ export function PaneHeaderActionBar({
           {status}
         </span>
       ) : null}
-      {(onPrev || onNext || rightSlot) && <div className="flex-1" />}
+      {/* Spacer only when prev/next need the far edge — rightSlot alone stays
+          clustered with the actions (station context bar util row). */}
+      {(onPrev || onNext) && <div className="flex-1" />}
       {rightSlot}
       {onPrev ? (
         <HoverTooltip label={prevTitle} asChild>

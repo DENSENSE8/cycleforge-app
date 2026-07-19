@@ -9,6 +9,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
 import { toast } from '@/lib/toast';
 import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
+import { appWashClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 /** Mirrors a row from GET /api/repair/issues (RepairIssueTemplate). */
 interface RepairIssueRecord {
@@ -178,7 +180,7 @@ export function RepairIssuesManagementTab() {
   const tableGridClass = 'grid grid-cols-[minmax(220px,2fr)_180px_90px_90px_108px] gap-x-3';
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col bg-[linear-gradient(180deg,#ffffff_0%,#f5f7fa_100%)]">
+    <section className={cn('flex h-full min-h-0 w-full flex-col', appWashClass)}>
       <div className={mainStickyHeaderClass}>
         <div className={`${mainStickyHeaderShellRowClass} flex-wrap gap-y-2 px-4`}>
           <p className={`${sectionLabel} truncate text-text-default`}>Repair Issues</p>

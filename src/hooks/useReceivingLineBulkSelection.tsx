@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Shared bulk-selection for the receiving-line history feeds (the global-header
- * pencil + contextual action bar). Both the Receiving dashboard's History /
- * Incoming list and the Tech dashboard's testing browse list select
+ * Shared bulk-selection for the receiving-line history feeds (workbench
+ * `BoardSelectToggle` + contextual action bar). Both the Receiving dashboard's
+ * History / Incoming list and the Tech dashboard's testing browse list select
  * `ReceivingLineRow`s with the IDENTICAL action set — Copy / Print / Create
  * support ticket / Send to staff / Send to phone — and the same single-line
  * claim modal. They differ only in the selection scope, which surface gates the
@@ -11,11 +11,11 @@
  * neither dashboard hand-rolls its own copy.
  *
  * Consolidates the previously-duplicated bulk-selection blocks from
- * TechDashboard and ReceivingDashboard.
+ * TechDashboard and ReceivingDashboard. The owning page mounts Select on the
+ * workbench chrome trailing slot — not the global header.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { usePageSelection } from '@/hooks/usePageHeader';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
@@ -234,17 +234,9 @@ export function useReceivingLineBulkSelection({
     [handleCopyDetails, handlePrintLabels],
   );
 
-  // Selection toggle — the pencil in the global header's right actions while the
-  // selectable surface is up. No page title in the header.
-  usePageSelection(
-    active
-      ? {
-          active: selectMode,
-          onToggle: toggleSelectMode,
-        }
-      : null,
-    [active, selectMode, toggleSelectMode],
-  );
+  // Selection mode is toggled by the workbench chrome `BoardSelectToggle`
+  // (Incoming / History / Testing headers). This hook only owns the state +
+  // bulk actions; callers pass `toggleSelectMode` into the header trailing slot.
 
   return {
     selectMode,

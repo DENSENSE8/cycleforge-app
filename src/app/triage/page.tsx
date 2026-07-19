@@ -2,7 +2,7 @@ import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePag
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 
 /**
- * `/triage` — the Receiving/Triage operator surface (scan/identify before
+ * `/triage` — the Arrival operator surface (dock scan/identify before
  * unboxing). Shares the scan-bar + recent-rail sidebar body with Unbox; only
  * the right pane differs. Bare `/triage` derives the `triage` mode path-first.
  *
@@ -12,7 +12,7 @@ import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 export default function TriagePage() {
   return (
     <SurfaceGate surfaceKey="triage">
-      <ReceivingSurfacePage mobileTitle="Triage" surface="triage" />
+      <ReceivingSurfacePage mobileTitle="Arrival" surface="triage" />
     </SurfaceGate>
   );
 }

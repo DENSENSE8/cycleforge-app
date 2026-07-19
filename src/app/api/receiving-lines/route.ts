@@ -58,6 +58,9 @@ function parsePositiveTechId(value: unknown): number | null {
 // ?id=<n>              → single row
 // ?receiving_id=<n>    → all lines for a package
 // ?limit&offset&search → paginated list (omit receiving_id to get all)
+// ?phase=spine         → fast-paint tier: forces include=serials off so the
+//                        authoritative fetchSerialsForLines resolve is skipped;
+//                        rows still carry serial_projection as `serials`.
 //
 // Testing feeds (`view=testing`, `view=needs-test`) are served exclusively by
 // GET /api/testing/receiving-lines — never here — so package-pairing / QC scans

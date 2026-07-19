@@ -1,6 +1,6 @@
 /**
  * Unbox workbench tabs on `/unbox` — URL SoT via `?unboxview=`.
- * Absent param defaults to Unboxed (`recent`).
+ * Absent param defaults to History (`recent` id kept for URL stability).
  */
 
 export type UnboxWorkspaceTab = 'recent' | 'queue' | 'viewed';
@@ -8,7 +8,7 @@ export type UnboxWorkspaceTab = 'recent' | 'queue' | 'viewed';
 const UNBOX_VIEW_PARAM = 'unboxview';
 
 export const UNBOX_WORKSPACE_TAB_LABEL: Record<UnboxWorkspaceTab, string> = {
-  recent: 'Unboxed',
+  recent: 'History',
   queue: 'Queue',
   viewed: 'Viewed',
 };

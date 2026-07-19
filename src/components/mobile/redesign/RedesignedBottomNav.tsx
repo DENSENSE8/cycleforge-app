@@ -13,7 +13,7 @@ import {
 import { TOKENS } from './DesignSystem';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { MobileNavTabId, CANONICAL_MOBILE_NAV_TABS } from '@/lib/auth/mobile-display-config';
 
 interface TabMeta {

@@ -5,25 +5,8 @@ import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { MasterNav, MasterNavProvider } from '@/components/sidebar/master-nav';
 import { SidebarContextPanel } from '@/components/sidebar/SidebarContextPanel';
-
-// Pages that use the master-nav L2 ModeRail (flush segmented). Panels for these
-// ids gate their own pill-row on useMasterNavEnabled() so the switcher is not
-// doubled. Keep this set in sync with those gated panels.
-const MASTER_NAV_RAIL_PAGES: ReadonlySet<string> = new Set([
-  'dashboard',
-  'operations',
-  'receiving',
-  'fba',
-  'inventory',
-  'warehouse',
-  'products',
-  'walk-in',
-  'tech',
-  'sourcing',
-  'outbound',
-  'packer',
-  'support',
-]);
+import { appChromeClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 export interface SidebarShellProps {
   /** Permission set used to filter the nav, or `undefined` to render unfiltered. */
@@ -37,10 +20,11 @@ export interface SidebarShellProps {
 }
 
 /**
- * The single master sidebar nav — one dropdown (recents on top, current page
- * hidden, grouped Main / Stations / More) plus the per-page L2 mode rail. The
- * `MasterNavProvider` tells panels rendered in `renderContext` to hide their
- * own mode pills (the rail is the single switcher).
+ * The single master sidebar nav — hovering the header trigger drops down the
+ * active page's L2 modes; clicking it opens the full nav (grouped Main /
+ * Stations / More). The `MasterNavProvider` tells panels rendered in
+ * `renderContext` to hide their own mode pills (the header menus are the
+ * single switcher).
  *
  * See docs/design-system/master-sidebar-nav-migration-plan.md.
  */
@@ -52,17 +36,20 @@ export function SidebarShell({
 }: SidebarShellProps) {
   return (
     <aside
-      className={`h-full w-full bg-surface-card border-r border-border-default overflow-hidden shadow-xl shadow-gray-900/5 flex flex-col ${
+      className={cn(
+        // No border-r — content shell (`appContentShellClass`) owns the join via
+        // curved border-l + border-t hairline at the top-left radius.
+        'flex h-full w-full flex-col overflow-hidden shadow-xl shadow-gray-900/5',
+        appChromeClass,
         // In the mobile drawer, inset the top so the header clears the notch /
         // status bar (parity with the old drawer trigger).
-        inDrawer ? 'pt-[max(3.5rem,calc(env(safe-area-inset-top)+2.75rem))]' : ''
-      }`}
+        inDrawer && 'pt-[max(3.5rem,calc(env(safe-area-inset-top)+2.75rem))]',
+      )}
     >
       <MasterNavProvider enabled>
         <MasterNav
           permissions={permissions}
           mobileRestricted={mobileRestricted}
-          railPageIds={MASTER_NAV_RAIL_PAGES}
           onNavigate={onNavigate}
           renderContext={() => <SidebarContextPanel />}
           className="flex-1 min-h-0"

@@ -4,17 +4,17 @@
  * Dashboard Search mode right pane (`/dashboard?mode=search`).
  *
  * Master-nav owns the L2 rail (Search · Receiving · Shipping). This pane is the
- * visual results surface — thin launcher (same as `/search`), not an in-content
- * order workbench. Order hits deep-link to `/o/[id]?mode=search&q=` so detail
- * opens in the dedicated order workbench with `OrderWorkspaceSidebar` as the map.
+ * visual results surface — thin launcher, not an in-content order workbench.
+ * Order hits deep-link to `/o/[id]?mode=search&q=` so detail opens in the
+ * dedicated order workbench. Query typing lives in the always-global header
+ * pill; this view is driven purely by URL `?q=`.
  */
 
-import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
 import { isTabId, type TabId } from '@/components/search/search-tabs';
-import { usePageHeaderSearch } from '@/hooks/usePageHeader';
-import { orderSearchHref, looksLikeIdentifier } from '@/lib/search/search-hit';
+import { orderSearchHref } from '@/lib/search/search-hit';
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
 import {
   DASHBOARD_SEARCH_RECENTS_SCOPE,
@@ -29,33 +29,24 @@ export function DashboardSearchView() {
   const rawType = (searchParams.get('type') ?? 'all').toLowerCase();
   const tab: TabId = isTabId(rawType) && rawType !== 'order' ? rawType : 'all';
 
-  const [input, setInput] = useState(q);
-  const [surfaceBusy, setSurfaceBusy] = useState(false);
-
-  // Per-staff recents (DB-backed) — the sidebar shows these; we record here on
-  // an explicit search (Enter), where the committed query is known.
+  // Per-staff recents (DB-backed) — the sidebar shows these; record when URL `q`
+  // commits (header Enter / re-run / deep-link).
   const { push: pushRecent } = useStaffSearchRecents({
     scope: DASHBOARD_SEARCH_RECENTS_SCOPE,
   });
-  const recordRecent = useCallback(
-    (query: string) => {
-      const t = query.trim();
-      if (!t) return;
-      pushRecent({
-        query: t,
-        scope: DASHBOARD_SEARCH_RECENTS_SCOPE,
-        scopeLabel: 'Search',
-        scopeHref: dashboardSearchRerunHref(t),
-      });
-    },
-    [pushRecent],
-  );
-
+  const lastRecorded = useRef<string>('');
   useEffect(() => {
-    setInput(q);
-  }, [q]);
+    if (!q || q === lastRecorded.current) return;
+    lastRecorded.current = q;
+    pushRecent({
+      query: q,
+      scope: DASHBOARD_SEARCH_RECENTS_SCOPE,
+      scopeLabel: 'Search',
+      scopeHref: dashboardSearchRerunHref(q),
+    });
+  }, [q, pushRecent]);
 
-  // Identifier pasted while already on Dashboard Search → bounce to /o (no flash).
+  // Legacy `?type=order` bookmarks → bounce to /o (no flash).
   useEffect(() => {
     if (rawType === 'order' && q) {
       router.replace(orderSearchHref(q, q));
@@ -81,53 +72,24 @@ export function DashboardSearchView() {
     [router, searchParams],
   );
 
-  usePageHeaderSearch(
-    {
-      value: input,
-      onChange: (value) => {
-        setInput(value);
-        updateUrl({ q: value.trim() });
-      },
-      onClear: () => {
-        setInput('');
-        updateUrl({ q: '' });
-      },
-      onSearch: (value) => {
-        const t = value.trim();
-        if (!t) return;
-        recordRecent(t);
-        if (looksLikeIdentifier(t)) {
-          router.push(orderSearchHref(t, t));
-          return;
-        }
-        updateUrl({ q: t });
-      },
-      placeholder: 'Search orders, serials, cartons, SKUs…',
-      debounceMs: 250,
-      isSearching: surfaceBusy,
-    },
-    [input, surfaceBusy],
-  );
-
   const handleSelectHit = useCallback(
     (hit: AiSearchHit, event: ReactMouseEvent) => {
       if (hit.entityType !== 'order') return;
       event.preventDefault();
-      router.push(orderSearchHref(hit.id, q || input));
+      router.push(orderSearchHref(hit.id, q));
     },
-    [router, q, input],
+    [router, q],
   );
 
   const handleTabChange = useCallback(
     (t: TabId) => {
       if (t === 'order') {
-        const query = (input || q).trim();
-        if (query) router.push(orderSearchHref(query, query));
+        if (q) router.push(orderSearchHref(q, q));
         return;
       }
       updateUrl({ type: t });
     },
-    [updateUrl, input, q, router],
+    [updateUrl, q, router],
   );
 
   return (
@@ -137,7 +99,6 @@ export function DashboardSearchView() {
         query={q}
         activeTab={tab}
         onTabChange={handleTabChange}
-        onLoadingChange={setSurfaceBusy}
         onSelectHit={handleSelectHit}
       />
     </div>

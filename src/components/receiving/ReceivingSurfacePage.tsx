@@ -23,6 +23,8 @@ import { Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { QuickAccessButton } from '@/components/layout/QuickAccessButton';
 import { ZohoSplitPane } from '@/components/receiving/workspace/ZohoSplitPane';
+import { appChromeClass, appWashClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 
 export interface ReceivingSurfacePageProps {
   /** Mobile header title — the operator's job for this surface ("Unbox" / "Triage"). */
@@ -42,8 +44,13 @@ function ReceivingSurfacePageInner({
   return (
     <>
       {/* Mobile (<768px) — photo-only feed with camera FAB. */}
-      <div className="flex h-full w-full flex-col overflow-hidden bg-surface-card md:hidden">
-        <header className="sticky top-0 z-header flex min-h-14 items-center gap-3 border-b border-border-hairline bg-surface-card px-3 pt-[env(safe-area-inset-top)]">
+      <div className={cn('flex h-full w-full flex-col overflow-hidden md:hidden', appChromeClass)}>
+        <header
+          className={cn(
+            'sticky top-0 z-header flex min-h-14 items-center gap-3 border-b border-border-hairline px-3 pt-[env(safe-area-inset-top)]',
+            appChromeClass,
+          )}
+        >
           <IconButton
             type="button"
             onClick={openDrawer}
@@ -72,7 +79,7 @@ function ReceivingSurfacePageInner({
       </div>
 
       {/* Desktop (≥768px) — sidebar + form flows. */}
-      <div className="hidden h-full w-full overflow-hidden bg-[linear-gradient(180deg,#f5fbfa_0%,#ffffff_22%)] md:flex">
+      <div className={cn('hidden h-full w-full overflow-hidden md:flex', appWashClass)}>
         <RouteShell
           actions={<ReceivingSidebarPanel />}
           history={<ReceivingDashboard />}
@@ -88,7 +95,9 @@ function ReceivingSurfacePageInner({
 
 export function ReceivingSurfacePage(props: ReceivingSurfacePageProps) {
   return (
-    <Suspense>
+    // Fallback fills the page slot with the app wash while useSearchParams
+    // suspends (SSR/hydration) — a bare Suspense here rendered a white void.
+    <Suspense fallback={<div className={cn('h-full w-full', appWashClass)} aria-hidden />}>
       <ReceivingSurfacePageInner {...props} />
     </Suspense>
   );

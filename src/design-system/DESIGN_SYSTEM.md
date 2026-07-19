@@ -118,7 +118,7 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 ### Components (`components/`)
 
 - Layout/data rows: `DetailLineRow`, `DetailsPanelRow`, `PanelSection`, `MetricLineRow`
-- Status/feedback: `StatusBadge`, `InlineSaveIndicator`
+- Status/feedback: `StatusBadge`, `InlineSaveIndicator`, `AppToaster` (Kinetic Ledger Sonner theme — light semantic fills via `@/lib/toast`; never `richColors`)
 - Values/editing: `UnderlineValue`, `InlineEditableValue`
 - Actions: `CopyActionIcon`, `ExternalLinkActionIcon`
 - Search/labels: `StatusMicroLabel`

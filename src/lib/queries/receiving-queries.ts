@@ -5,6 +5,11 @@ import {
   dispatchReceivingPhotoChanged,
   type ReceivingPhotoChangedPayload,
 } from '@/utils/events';
+import type {
+  ReceivingModeContext,
+  ReceivingModeDescriptor,
+} from '@/lib/receiving/receiving-modes';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /**
  * Query-key roots for every receiving feed (Phase 1 of the receiving-triage
@@ -794,4 +799,60 @@ export function notifyReceivingPhotoChanged(
       ? payload.photoIds[0]
       : undefined;
   refreshReceivingPhotos(queryClient, receivingId, deletedId);
+}
+
+// ─── Receiving-lines table query (shared workbench SoT) ──────────────────────
+
+/** Envelope of GET /api/receiving-lines paginated list (see ApiResponse twin in receiving-lines-table-helpers). */
+export interface ReceivingLinesListResponse {
+  success: boolean;
+  receiving_lines: ReceivingLineRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Fetch tiers for the lines table:
+ *  - `full`  — authoritative rows incl. the reconciled `include=serials` resolve.
+ *  - `spine` — fast-paint tier (`?phase=spine`): same rows, serial chips served
+ *    from the cheap `serial_projection` read-model instead of the expensive
+ *    authoritative resolve. Painted first, then upgraded by `full`.
+ */
+type ReceivingLinesFetchPhase = 'full' | 'spine';
+
+/**
+ * The ONE query-options builder for the receiving/unbox lines table. Every
+ * consumer of the table's rows (the table itself via useReceivingLinesQuery,
+ * the Unbox KPI strip, prefetchers) MUST build its options here so they share
+ * a single cache entry per (mode, context, phase) — a second page-local fetch
+ * of the same view is the duplicate-fetch bug this factory exists to prevent.
+ *
+ * The `full` phase key is exactly `mode.queryKey(ctx)` (unchanged), so all
+ * existing `['receiving-lines-table']`-root invalidation keeps covering it;
+ * the `spine` key appends a `'spine'` leaf under the same root.
+ */
+export function receivingLinesTableQuery(
+  mode: ReceivingModeDescriptor,
+  ctx: ReceivingModeContext,
+  phase: ReceivingLinesFetchPhase = 'full',
+) {
+  const params = mode.buildParams(ctx);
+  if (phase === 'spine') {
+    params.delete('include');
+    params.set('phase', 'spine');
+  }
+  const queryKey =
+    phase === 'spine'
+      ? ([...mode.queryKey(ctx), 'spine'] as const)
+      : mode.queryKey(ctx);
+  return {
+    queryKey,
+    queryFn: async (): Promise<ReceivingLinesListResponse> => {
+      const res = await fetch(`/api/receiving-lines?${params.toString()}`);
+      if (!res.ok) throw new Error('fetch failed');
+      return res.json();
+    },
+    staleTime: 20_000,
+  };
 }

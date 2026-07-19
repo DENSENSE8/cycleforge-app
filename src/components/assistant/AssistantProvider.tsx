@@ -22,12 +22,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
 import { GlobalDetailStackHost } from '@/components/detail-stacks/GlobalDetailStackHost';
 import { useRegisterRightPanel } from '@/components/right-rail/useRegisterRightPanel';
 import { RIGHT_RAIL_PRIORITY } from '@/lib/right-rail/store';
-import { AssistantDockBody } from './AssistantDock';
 import { DetailStackHistoryTracker } from './DetailStackHistoryTracker';
 import { requestComposerFocus } from '@/lib/assistant/composer-focus-store';
 import { requestComposerSeed } from '@/lib/assistant/composer-seed-store';
@@ -36,6 +36,13 @@ import { looksLikeRetrievalQuestion } from '@/lib/ai/retrieval-question';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 
 const OPEN_KEY = 'assistant:dock-open';
+
+// The dock body (chat UI) is only rendered while the dock is open — split its
+// chunk out of the shell bundle so every route stops paying for it up front.
+const AssistantDockBody = dynamic(
+  () => import('./AssistantDock').then((m) => m.AssistantDockBody),
+  { ssr: false },
+);
 
 /**
  * Whether the assistant dock is currently open (and permissioned/mounted).

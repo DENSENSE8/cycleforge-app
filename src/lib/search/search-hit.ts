@@ -179,7 +179,7 @@ export function journeyHandoffHref(hit: JourneyHandoffHit): string | null {
 
 /**
  * Header Enter / "See all" handoff. Order-heavy → `/o` Search map. Cross-entity
- * → thin `/search` launcher. Journey Trace is a **secondary** action
+ * → Dashboard Search mode. Journey Trace is a **secondary** action
  * (`journeyHandoffHref` / ⌘Enter) — never the Enter default.
  */
 export function globalSearchHandoffHref(
@@ -187,7 +187,7 @@ export function globalSearchHandoffHref(
   previewHits: ReadonlyArray<{ id: number; entityType: string }> = [],
 ): string {
   const trimmed = query.trim();
-  if (!trimmed) return '/search';
+  if (!trimmed) return '/dashboard?mode=search';
   const orderHits = previewHits.filter((h) => h.entityType === 'order');
   const orderOnly =
     previewHits.length > 0 && previewHits.every((h) => h.entityType === 'order');
@@ -195,9 +195,9 @@ export function globalSearchHandoffHref(
     const top = orderHits[0];
     if (top) return orderSearchHref(top.id, trimmed);
     if (looksLikeIdentifier(trimmed)) return orderSearchHref(trimmed, trimmed);
-    return `/dashboard?search=${encodeURIComponent(trimmed)}`;
+    return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}`;
   }
-  return `/search?q=${encodeURIComponent(trimmed)}`;
+  return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}`;
 }
 
 /**

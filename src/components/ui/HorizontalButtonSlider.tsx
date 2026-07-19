@@ -2,9 +2,10 @@
 
 import { Fragment, useCallback, useId, useRef, type RefObject, type WheelEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { appCanvasClass, appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 export type HorizontalSliderTone = 'zinc' | 'yellow' | 'emerald' | 'red' | 'blue' | 'orange' | 'purple';
@@ -118,8 +119,8 @@ export type HorizontalButtonSliderProps = {
    */
   animateItemMount?: boolean;
   /**
-   * Square, edge-to-edge segmented track for full-bleed sidebar bands (e.g.
-   * master-nav `ModeRail`). Drops outer radius, inset padding, and the track
+   * Square, edge-to-edge segmented track for full-bleed sidebar bands.
+   * Drops outer radius, inset padding, and the track
    * ring so the gray fill meets the panel edges.
    */
   segmentedFlush?: boolean;
@@ -192,11 +193,12 @@ export function HorizontalButtonSlider({
   const useScroller = variant !== 'floating' && !isSegmented && !(isOverlayNav && !dense);
   const containerClass = isSegmented
     ? segmentedFlush
-      ? // Full-bleed sidebar band: square white fill + bottom hairline (matches header bands).
-        cn('h-full rounded-none bg-surface-card p-0', receivingHeaderHairlineClass)
-      : // Recessed gray track (bg-surface-canvas + inset ring) so the active blue
+      ? // Full-bleed chrome band: no bottom hairline (join is the desktop
+        // content shell radius stroke, not stacked chrome rules).
+        cn('h-full rounded-none p-0', appChromeClass)
+      : // Recessed gray track (canvas + inset ring) so the active blue
         // pill reads as raised. p-1 + h-8 tabs = 40px in a fixed 40px band.
-        'rounded-xl bg-surface-canvas p-1 ring-1 ring-inset ring-border-soft'
+        cn('rounded-xl p-1 ring-1 ring-inset ring-border-soft', appCanvasClass)
     : useScroller
       ? `-mx-1 min-w-0 overflow-x-auto overscroll-x-contain ${scrollerPadY} [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden`
       : 'overflow-visible pt-2 pb-3';
@@ -258,7 +260,7 @@ export function HorizontalButtonSlider({
                       transition={framerTransition.sliderIndicator}
                     />
                   ) : null}
-                  {Icon ? <Icon className="relative z-10 h-[18px] w-[18px]" /> : null}
+                  {Icon ? <Icon className={navIconStrokeClass('mode', 'relative z-10 h-[18px] w-[18px]')} /> : null}
                   {item.badge === 'dot' ? (
                     <span className="absolute right-1.5 top-1.5 z-10 h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
                   ) : null}
@@ -314,7 +316,12 @@ export function HorizontalButtonSlider({
                   className={`group relative inline-flex snap-start items-center whitespace-nowrap rounded-full font-black uppercase transition-colors ring-1 ring-inset ${navSizeCls} ${stateClass}`}
                 >
                   {Icon ? (
-                    <Icon className={`shrink-0 ${navIconOnly ? 'h-3 w-3' : 'h-3.5 w-3.5'}`} />
+                    <Icon
+                      className={navIconStrokeClass(
+                        'mode',
+                        `shrink-0 ${navIconOnly ? 'h-3 w-3' : 'h-3.5 w-3.5'}`,
+                      )}
+                    />
                   ) : null}
                   {navIconOnly ? null : (
                     <span className="inline-flex min-w-0 items-center gap-1.5">

@@ -58,6 +58,12 @@ const config: KnipConfig = {
     'dependency-cruiser',
     'eslint-plugin-unused-imports',
     '@playwright/test',
+    // Lighthouse audit tooling — consumed by scripts/lighthouse-audit.mjs and
+    // ANALYZE=true builds (next.config.ts), which sit outside knip's `project`
+    // globs. See docs/performance/LIGHTHOUSE.md.
+    'lighthouse',
+    'chrome-launcher',
+    '@next/bundle-analyzer',
   ],
 
   // Be stricter about exports in the future (uncomment after baseline clean)

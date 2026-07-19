@@ -6,7 +6,7 @@
  * mode where the chip remains the primary action and Open/Edit move below it.
  */
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Copy, ChevronDown, ExternalLink, Pencil } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
@@ -39,12 +39,14 @@ export function IdentityLinkChip({
   showExternalIcon = false,
   menuFirstAction = 'open',
   linkOptions,
+  iconOnly = false,
+  iconOnlyMark,
 }: {
   openHref: string | null | undefined;
   openTitle: string;
   /** Raw value copied to the clipboard. */
   value: string;
-  /** Label shown in the chip (platform name / last-4 id). */
+  /** Label shown in the chip (platform name / last-4 id). Hidden when `iconOnly`. */
   display: string;
   /**
    * Copy-chip tone — supplies the leading identity icon (id `#`, tracking pin,
@@ -65,12 +67,22 @@ export function IdentityLinkChip({
   actionsInMenu?: boolean;
   /** Primary action for the complete chip surface. */
   chipAction?: 'copy' | 'open';
-  /** Render the external-link glyph inside the clickable chip. */
+  /**
+   * Render the external-link glyph inside the clickable chip.
+   * Tone icons win when `tone` is set — use this for listing-only (no tone).
+   */
   showExternalIcon?: boolean;
   /** First menu row. Listing uses Copy; PO/tracking use Open. */
   menuFirstAction?: 'open' | 'copy';
   /** Additional open targets — when length > 1, the hover menu lists every link. */
   linkOptions?: Array<{ href: string; label: string; title?: string }>;
+  /**
+   * Listing chrome: fixed-width platform mark instead of the variable-width
+   * platform name. `display` stays the accessible / tooltip label.
+   */
+  iconOnly?: boolean;
+  /** Mark node (e.g. {@link PlatformMark}) when `iconOnly`. */
+  iconOnlyMark?: ReactNode;
 }) {
   const [menuHover, setMenuHover] = useState(false);
   const normalizedValue = normalizeCopyText(value);
@@ -95,9 +107,17 @@ export function IdentityLinkChip({
     (!!onEdit || menuFirstAction === 'copy' || !!openHref || multiLinks != null);
   const showActionMenu = hasMenuActions && !editOpen;
 
+  const iconOnlyTooltip = openHref
+    ? `${display} — ${openTitle}`
+    : display
+      ? `${display} — no link available`
+      : 'No listing';
+
   return (
     <div
-      className={`group relative flex items-center gap-0.5 ${grow ? 'min-w-0 flex-1' : 'shrink-0'}`}
+      className={`group relative flex items-center gap-0.5 ${
+        iconOnly || !grow ? 'shrink-0' : 'min-w-0 flex-1'
+      }`}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
       onMouseEnter={() => {
@@ -117,30 +137,60 @@ export function IdentityLinkChip({
           />
         </HoverTooltip>
       ) : null}
-      <div className={`flex min-w-0 items-center gap-0.5 ${grow ? 'flex-1' : ''}`}>
-        <CopyChip
-          value={value}
-          display={display}
-          tone={tone}
-          icon={showExternalIcon ? <ExternalLink className="h-4 w-4 shrink-0" /> : undefined}
-          underlineClass={underlineClass}
-          iconClass={iconClass}
-          width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
-          outerPad="flush"
-          disableCopy={disableCopy}
-          fitDisplayWidth={!grow}
-          truncateDisplay={grow}
-          onActivate={chipAction === 'open' ? openExternal : undefined}
-          activationLabel={chipAction === 'open' ? openTitle : undefined}
-          activationTitle={
-            chipAction === 'open'
-              ? openHref
-                ? openTitle
-                : 'No link available'
-              : undefined
-          }
-          activationDisabled={chipAction === 'open' && !openHref && !onEdit}
-        />
+      <div className={`flex min-w-0 items-center gap-0.5 ${grow && !iconOnly ? 'flex-1' : ''}`}>
+        {iconOnly && iconOnlyMark ? (
+          <HoverTooltip label={iconOnlyTooltip} asChild>
+            {/* ds-raw-button: fixed-width platform mark face — not a DS Button */}
+            <button
+              type="button"
+              onClick={chipAction === 'open' ? openExternal : copyValue}
+              disabled={
+                chipAction === 'open'
+                  ? !openHref && !onEdit
+                  : !canCopy
+              }
+              aria-label={
+                chipAction === 'open'
+                  ? `${display}: ${openTitle}`
+                  : `Copy ${display}`
+              }
+              className="inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:opacity-40"
+            >
+              {iconOnlyMark}
+            </button>
+          </HoverTooltip>
+        ) : (
+          <CopyChip
+            value={value}
+            display={display}
+            tone={tone}
+            // Tone SoT (# / MapPin / …) wins; ExternalLink is listing-only.
+            icon={
+              tone
+                ? undefined
+                : showExternalIcon
+                  ? <ExternalLink className="h-4 w-4 shrink-0" />
+                  : undefined
+            }
+            underlineClass={underlineClass}
+            iconClass={iconClass}
+            width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
+            outerPad="flush"
+            disableCopy={disableCopy}
+            fitDisplayWidth={!grow}
+            truncateDisplay={grow}
+            onActivate={chipAction === 'open' ? openExternal : undefined}
+            activationLabel={chipAction === 'open' ? openTitle : undefined}
+            activationTitle={
+              chipAction === 'open'
+                ? openHref
+                  ? openTitle
+                  : 'No link available'
+                : undefined
+            }
+            activationDisabled={chipAction === 'open' && !openHref && !onEdit}
+          />
+        )}
         {multiLinks ? (
           <ChevronDown className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
         ) : null}
@@ -163,6 +213,8 @@ export function IdentityLinkChip({
           // anchored previews (ticket history) are the only panel shown.
           // Hover-only visibility — focus-within kept menus stuck open after a
           // chip click (especially chips on the wrapped second row).
+          // z-panelPopover + station-bar z-10 sibling beat the workbench so the
+          // menu is not covered/clipped when it opens below the identity chips.
           className={`absolute left-1/2 top-full z-panelPopover -translate-x-1/2 pt-1 transition-opacity duration-100 ${
             menuHover
               ? 'visible pointer-events-auto opacity-100'

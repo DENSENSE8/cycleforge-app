@@ -95,7 +95,7 @@ export interface FeedKeyDef {
 
 export const FEED_KEYS = {
   receiving_triage: {
-    label: 'Receiving triage',
+    label: 'Arrival queue',
     entityType: 'RECEIVING',
     description: 'Cartons needing triage: unfound/no-PO, carrier mismatch, pairing not complete. Cleared when triage completes.',
   },

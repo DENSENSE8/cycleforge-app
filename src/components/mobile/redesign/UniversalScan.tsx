@@ -6,9 +6,9 @@ import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { framerTransition, tabPagerVariants } from '@/design-system/foundations/motion-framer';
 import {
   History,
-  ClipboardList,
-  ShieldCheck,
   Box,
+  ReceivingModeArrival,
+  TechModeTesting,
 } from '@/components/Icons';
 import {
   TOKENS,
@@ -26,8 +26,8 @@ import { detectScanMode, type ScanMode } from '@/components/mobile/redesign/scan
 import { useLabelPrintFeed, type LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 
 const MODES: Array<{ id: ScanMode; label: string; icon: (p: { className?: string }) => JSX.Element; placeholder: string }> = [
-  { id: 'receiving', label: 'Receiving Scans', icon: ClipboardList, placeholder: 'Scan a tracking number' },
-  { id: 'testing', label: 'Testing Orders', icon: ShieldCheck, placeholder: 'Scan a PO label (R-####)' },
+  { id: 'receiving', label: 'Arrival', icon: ReceivingModeArrival, placeholder: 'Scan a tracking number' },
+  { id: 'testing', label: 'Testing Orders', icon: TechModeTesting, placeholder: 'Scan a PO label (R-####)' },
   { id: 'cms', label: 'Prepacked Products', icon: Box, placeholder: 'Scan a product / unit label' },
 ];
 
@@ -184,7 +184,7 @@ export default function RedesignedMobileUniversalScan() {
       </div>
 
       {/* Result area — a swipeable pager across the three scan modes. Drag
-          left/right to move between Receiving Scans, Testing Orders and
+          left/right to move between Arrival, Testing Orders and
           Prepacked Products; both panels share one grid cell so heights don't
           jump, and `dragDirectionLock` keeps each list's vertical scroll. */}
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-1 overflow-hidden bg-surface-canvas">

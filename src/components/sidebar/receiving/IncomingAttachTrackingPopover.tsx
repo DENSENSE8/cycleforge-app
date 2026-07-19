@@ -53,8 +53,9 @@ interface IncomingAttachTrackingPopoverProps {
    * rows). Omit for the standalone sidebar entry point, which keeps the search.
    */
   presetPo?: AttachTrackingPresetPo;
-  /** Custom trigger node. Defaults to the standalone "Link tracking to PO" pill. */
-  trigger?: React.ReactNode;
+  /** Custom trigger node. Defaults to the standalone "Link tracking to PO" pill.
+   *  Pass `null` when a host opens the modal via controlled `open` only (no trigger). */
+  trigger?: React.ReactNode | null;
   /** Optional controlled open state (falls back to internal state). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -270,32 +271,36 @@ export function IncomingAttachTrackingPopover({
 
   // Compose the open handler onto the caller's trigger (preserving its own
   // onClick, e.g. the row's stopPropagation) so a custom trigger still works.
-  const triggerNode = trigger
-    ? isValidElement(trigger)
-      ? cloneElement(trigger as ReactElement<{ onClick?: (e: MouseEvent) => void }>, {
-          onClick: (e: MouseEvent) => {
-            (trigger as ReactElement<{ onClick?: (e: MouseEvent) => void }>).props.onClick?.(e);
-            openModal(e);
-          },
-        })
+  // `trigger={null}` → headless (controlled open only — e.g. Incoming Sync menu).
+  const triggerNode =
+    trigger === null
+      ? null
       : trigger
-    : (
-      <HoverTooltip
-        label="Search a PO and attach carrier tracking number(s) before the boxes arrive"
-        asChild
-      >
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<Link2 className="h-3.5 w-3.5" />}
-          onClick={openModal}
-          ariaLabel="Search a PO and attach carrier tracking number(s) before the boxes arrive"
-          className="mx-1.5 bg-indigo-50 text-indigo-700 ring-indigo-200 ring-inset hover:bg-indigo-100"
-        >
-          Link tracking to PO
-        </Button>
-      </HoverTooltip>
-    );
+        ? isValidElement(trigger)
+          ? cloneElement(trigger as ReactElement<{ onClick?: (e: MouseEvent) => void }>, {
+              onClick: (e: MouseEvent) => {
+                (trigger as ReactElement<{ onClick?: (e: MouseEvent) => void }>).props.onClick?.(e);
+                openModal(e);
+              },
+            })
+          : trigger
+        : (
+          <HoverTooltip
+            label="Search a PO and attach carrier tracking number(s) before the boxes arrive"
+            asChild
+          >
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Link2 className="h-3.5 w-3.5" />}
+              onClick={openModal}
+              ariaLabel="Search a PO and attach carrier tracking number(s) before the boxes arrive"
+              className="mx-1.5 bg-indigo-50 text-indigo-700 ring-indigo-200 ring-inset hover:bg-indigo-100"
+            >
+              Link tracking to PO
+            </Button>
+          </HoverTooltip>
+        );
 
   const modal =
     open && typeof document !== 'undefined'

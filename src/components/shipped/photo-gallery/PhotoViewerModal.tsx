@@ -562,7 +562,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                       <AlertCircle className="h-6 w-6 text-red-400" />
                     </div>
                   ) : (
-                    <img src={photo.thumbUrl ?? photo.url} alt={`Thumbnail ${index + 1}`} loading="lazy" className="h-full w-full bg-stage-raised object-cover" />
+                    <img src={photo.thumbUrl ?? photo.url} alt={`Thumbnail ${index + 1}`} loading="lazy" decoding="async" className="h-full w-full bg-stage-raised object-cover" />
                   )}
                 </button>
               ))}

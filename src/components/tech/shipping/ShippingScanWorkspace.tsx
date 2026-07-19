@@ -28,6 +28,7 @@ export function ShippingScanWorkspace({
   onRemoveSerial,
   onChangeCondition,
   isMutatingCondition,
+  onExit,
 }: {
   activeOrder: ActiveStationOrder;
   /** Up Next preview row — supplies OOS + status fields missing from ActiveStationOrder. */
@@ -35,6 +36,8 @@ export function ShippingScanWorkspace({
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
   onChangeCondition?: (next: string) => void | Promise<void>;
   isMutatingCondition?: boolean;
+  /** Close the active order → right pane crossfades back to the list. */
+  onExit?: () => void;
 }) {
   const [view, setView] = useState<ShippingView>('ship');
   const hasUnits = activeOrder.serialNumbers.length > 0;
@@ -125,6 +128,7 @@ export function ShippingScanWorkspace({
       <ShippingEntityContextHeader
         activeOrder={activeOrder}
         outOfStock={previewOrder?.out_of_stock}
+        onExitToList={onExit}
       />
 
       <SectionTabsSlider

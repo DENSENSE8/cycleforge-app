@@ -68,24 +68,24 @@ export function triageFocusToTab(target: TriageFocusTarget): TriageFocusTab | nu
 }
 
 // ── ReceivingLineRow → TriageFocusFacts ─────────────────────────────────────
-// The single source for each per-step predicate — `TriageProgressStepper` and
-// `TriagePanel`'s live focus-resolve effect both read these, so the stepper's
-// dot state and the auto-focus target can never disagree about what "done"
-// means for a given step.
+// Per-step predicates for {@link deriveTriageFocusFacts} — TriagePanel's live
+// focus-resolve effect reads that composer so "done" for each step stays one
+// definition. (Workspace TriageProgressStepper was removed; carton pipeline
+// progress lives in ReceivingDetailsStack only.)
 
 /** Carton has an explicit classification (via `receiving_lines.intake_type`) or is already Zoho-matched. */
-export function isTriageClassified(row: ReceivingLineRow): boolean {
+function isTriageClassified(row: ReceivingLineRow): boolean {
   if (row.receiving_source !== 'unmatched') return true;
   return !!(row.intake_type && row.intake_type.trim());
 }
 
 /** A1 — both a physical shelf AND a priority lane are required to count as staged. */
-export function isTriageStaged(row: ReceivingLineRow): boolean {
+function isTriageStaged(row: ReceivingLineRow): boolean {
   return row.staging_location_id != null && !!row.priority_lane;
 }
 
 /** PO matched, pairing acknowledged/waived, a claim is linked, or a return with no label hint (C6). */
-export function isTriagePaired(row: ReceivingLineRow): boolean {
+function isTriagePaired(row: ReceivingLineRow): boolean {
   if (row.receiving_source !== 'unmatched') return true;
   if (row.pairing_state === 'WAIVED' || row.pairing_state === 'MATCHED') return true;
   if (row.zendesk_ticket) return true;

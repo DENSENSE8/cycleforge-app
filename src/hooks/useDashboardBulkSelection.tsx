@@ -20,7 +20,10 @@ import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
-import { printProductLabel, printProductLabels } from '@/lib/print/printProductLabel';
+// Lazy: the product-label printer drags the bwip-js barcode engine (~250 KB gz)
+// into whatever bundle imports it statically — this hook rides in the dashboard
+// page graph, and printing only happens on an explicit bulk action.
+const loadProductLabelPrinter = () => import('@/lib/print/printProductLabel');
 import { toast } from '@/lib/toast';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 
@@ -110,17 +113,19 @@ export function useDashboardBulkSelection(
   }, []);
 
   const handlePrintLabels = useCallback((rows: DashSelectableRow[]) => {
-    let printed = 0;
-    for (const r of rows) {
-      const sku = String(r.sku || '').trim();
-      if (!sku) continue;
-      const serial = String(r.serial_number || '').trim();
-      if (serial) printProductLabels({ sku, serialNumbers: [serial] });
-      else printProductLabel({ sku });
-      printed += 1;
-    }
-    if (printed > 0) toast.success(`Printing ${printed} label${printed === 1 ? '' : 's'}`);
-    else toast.error('No SKU on the selected row(s)');
+    void loadProductLabelPrinter().then(({ printProductLabel, printProductLabels }) => {
+      let printed = 0;
+      for (const r of rows) {
+        const sku = String(r.sku || '').trim();
+        if (!sku) continue;
+        const serial = String(r.serial_number || '').trim();
+        if (serial) printProductLabels({ sku, serialNumbers: [serial] });
+        else printProductLabel({ sku });
+        printed += 1;
+      }
+      if (printed > 0) toast.success(`Printing ${printed} label${printed === 1 ? '' : 's'}`);
+      else toast.error('No SKU on the selected row(s)');
+    });
   }, []);
 
   const handleDelete = useCallback(

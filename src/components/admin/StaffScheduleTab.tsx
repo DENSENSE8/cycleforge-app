@@ -14,6 +14,8 @@
 
 import { useState } from 'react';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { appWashClass } from '@/design-system/tokens/app-surface';
+import { cn } from '@/utils/_cn';
 import { AdminEmptyDetail } from './shared';
 import { StaffScheduleBoard } from './StaffScheduleBoard';
 import { useStaffScheduleData } from '@/hooks/admin/useStaffScheduleData';
@@ -64,7 +66,7 @@ export function StaffScheduleTab() {
   }
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col bg-[linear-gradient(180deg,#f8fafc_0%,#eef2f7_100%)]">
+    <section className={cn('flex h-full min-h-0 w-full flex-col', appWashClass)}>
       <StaffScheduleHeader
         total={summary.total}
         presentToday={summary.presentToday}

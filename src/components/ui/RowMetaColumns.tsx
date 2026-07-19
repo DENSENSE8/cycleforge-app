@@ -4,8 +4,17 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
-import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS, isEmptyMetaDash, orderRowConditionLabel } from '@/lib/conditions';
+import { EMPTY_META_DASH, conditionGradeTableLabel, isEmptyMetaDash } from '@/lib/conditions';
 import { orderRowConditionTone } from '@/lib/condition-tone';
+
+import {
+  QUEUE_ROW_META_INDENT,
+} from '@/components/ui/queue-row-chrome';
+
+export {
+  QUEUE_ROW,
+  metaIndentFor,
+} from '@/components/ui/queue-row-chrome';
 
 /**
  * Dashboard / queue / receiving order-row title + meta subrow.
@@ -27,6 +36,12 @@ import { orderRowConditionTone } from '@/lib/condition-tone';
  *     the same x on every row whether qty is "1" or "100/100" — so the columns
  *     never drift the way a content-width flow does.
  *
+ * Left-edge stack (title text x), outer → inner:
+ *   page gutter → card → [optional nest] → QUEUE_ROW.px → [select gutter] →
+ *   META_COL dotTrack → title. Meta indent = metaIndentFor(track, selectMode).
+ *   Wide track is intentional for received/expected qty (Receiving) — title starts
+ *   0.5rem later than Orders; do not collapse to w-5.
+ *
  * Typography — CF Type roles (search-and-dense-ui plan §2.4):
  *     title → text-role-data text-text-default (role-caption when `small`;
  *             role bakes weight 500 — do not stack font-semibold/bold)
@@ -35,27 +50,33 @@ import { orderRowConditionTone } from '@/lib/condition-tone';
  *
  * INVARIANTS:
  *   • RowMetaColumns `indent` MUST equal the RowTitle `dotTrack` width
- *     (w-5 → 1.25rem, w-7 → 1.75rem).
+ *     (w-5 → 1.25rem, w-7 → 1.75rem). Use `metaIndentFor`, never a hand-rolled calc.
  *   • A wide qty count ("0/1"…"100/100", receiving) needs the wider `qtyCol`
  *     (`qtyColWide`) so it doesn't clip — pair it with `indentWide`/`dotTrackWide`.
- *   Keep META_COL the single source for these paired widths.
+ *   • Accordion group headers MUST mirror child meta tracks (`indent` / `qtyCol` /
+ *     `condCol`). Receiving PO headers + line rows both use `poCondCol` so the
+ *     stage clock (`RowStageTimeMeta` / `META_REST_COL.stageTime`) starts at the
+ *     same x whether the row shows PARTS or an empty condition.
+ *   • Queue/station rows use `QUEUE_ROW.px` (never page-local `px-4`).
+ *   Keep META_COL + QUEUE_ROW the single source for these paired widths.
  *
  * (Meta fields are low visual weight; chip reflow when toggling Configure columns
  * is animated in ChipColumns.)
  */
+
 export const META_COL = {
   /** Default dot-track width AND meta indent — single-token counts (orders/shipped/tech/packer). */
-  indent: '1.25rem',
+  indent: QUEUE_ROW_META_INDENT.default,
   dotTrack: 'w-5',
   /** Wider variant for received/expected counts ("0/1" … "100/100") — receiving. */
-  indentWide: '1.75rem',
+  indentWide: QUEUE_ROW_META_INDENT.wide,
   dotTrackWide: 'w-7',
   /** Fixed qty-column track — single/low counts ("1"…"999"). */
   qtyCol: '0.75rem',
   /** Fixed qty-column track — received/expected counts ("0/1"…"100/100"). */
   qtyColWide: '2.15rem',
-  /** Fixed condition-column track — NEW / USED / N/A. */
-  condCol: '2.5rem',
+  /** Fixed condition-column track — NEW / USED / L-NEW / PARTS (table labels). */
+  condCol: '2.25rem',
   /**
    * PO line accordion — fixed condition-column track sized to the LONGEST
    * `ConditionGradeChip` table label ("PARTS" / "L-NEW", both ~57.7px measured
@@ -141,12 +162,12 @@ export function RowConditionMeta({
   condition: string | null | undefined;
   className?: string;
 }) {
-  const label = orderRowConditionLabel(condition);
+  const label = conditionGradeTableLabel(condition);
   return (
     <span
       className={cn(
         orderRowConditionTone(condition),
-        isEmptyMetaDash(label) && EMPTY_META_DASH_ALIGN_CLASS,
+        isEmptyMetaDash(label) && 'block w-full text-center',
         className,
       )}
     >
@@ -271,7 +292,7 @@ export function RowMetaColumns({
   return (
     <div
       className={cn(
-        'mt-0.5 grid min-w-0 items-center gap-x-1 text-role-eyebrow uppercase text-text-muted',
+        'mt-0.5 grid min-w-0 items-center gap-x-0.5 text-role-eyebrow uppercase text-text-muted',
         className,
       )}
       style={{ paddingLeft: indent, gridTemplateColumns: tracks.join(' ') }}
@@ -287,7 +308,7 @@ export function RowMetaColumns({
         </span>
       ) : null}
       {showRest ? (
-        <span data-col="rest" className="flex min-w-0 items-center gap-1 truncate">{rest}</span>
+        <span data-col="rest" className="flex min-w-0 items-center gap-0.5 truncate">{rest}</span>
       ) : null}
     </div>
   );

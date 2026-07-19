@@ -17,8 +17,9 @@ import {
  *   • publishes the selectable total so the action bar's ring can fill,
  *   • clears the selection when select mode turns off.
  *
- * The owning page renders the pencil (usePageSelection) and the
- * <ContextualSelectionBar>; the table just calls this with its visible rows.
+ * The owning page renders the pencil (`BoardSelectToggle` on workbench chrome
+ * trailing) and the <ContextualSelectionBar>; the table just calls this with
+ * its visible rows.
  *
  * `rows` / `getId` are read through refs so the broadcast fires only when the
  * *selection* changes — not on every parent re-render. That matters because the

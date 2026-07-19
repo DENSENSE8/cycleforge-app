@@ -11,14 +11,15 @@ import {
   Box,
   ClipboardList,
   Lock,
-  Wrench,
   MapPin,
   ChevronDown,
   X,
+  StationReceiving,
+  ReceivingModeRepair,
 } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 /**
  * Left slide-over navigation drawer for the mobile shell (2026 redesign).
@@ -60,8 +61,7 @@ type NavItem = LeafItem | GroupItem;
 
 // Single source of truth for the drawer's destinations. Scan is pinned to the
 // very top (the headline action). Receiving is a drill-down group into its
-// photo-capable modes. Icons mirror the desktop nav: Receiving = ClipboardList,
-// Packing = Box.
+// photo-capable modes. Icons mirror the desktop station registry (`station-nav-icons`).
 const NAV_ITEMS: NavItem[] = [
   { kind: 'leaf', id: 'scan', label: 'Scan', icon: Barcode, href: '/m/scan' },
   { kind: 'leaf', id: 'home', label: 'Recent', icon: History, href: '/m/home' },
@@ -70,14 +70,14 @@ const NAV_ITEMS: NavItem[] = [
     kind: 'group',
     id: 'receiving',
     label: 'Receiving',
-    icon: ClipboardList,
+    icon: StationReceiving,
     matchPrefixes: ['/m/receiving', '/m/receive', '/m/triage', '/m/unbox', '/m/r/'],
     children: [
       { kind: 'leaf', id: 'triage', label: 'Triage', icon: ClipboardList, href: '/m/triage' },
       { kind: 'leaf', id: 'unboxing', label: 'Unbox', icon: PackageOpen, href: '/m/unbox' },
       { kind: 'leaf', id: 'photos', label: 'Photo feed', icon: PackageOpen, href: '/m/receiving' },
       { kind: 'leaf', id: 'local-pickup', label: 'Walk-In', icon: MapPin, href: '/m/receiving?mode=local-pickup' },
-      { kind: 'leaf', id: 'repair', label: 'Repair Service', icon: Wrench, href: '/m/receiving?mode=repair' },
+      { kind: 'leaf', id: 'repair', label: 'Repair Service', icon: ReceivingModeRepair, href: '/m/receiving?mode=repair' },
     ],
   },
   { kind: 'leaf', id: 'packing', label: 'Packing', icon: Box, href: '/m/pack' },

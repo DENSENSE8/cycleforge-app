@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import { resolveReceivingRowStageStamp } from '@/components/station/receiving-lines-table-helpers';
 
 describe('resolveReceivingRowStageStamp', () => {
-  it('unboxed axis prefers unboxed_at and omits created_at fallback', () => {
-    assert.equal(
-      resolveReceivingRowStageStamp({ unboxed_at: null, scanned_at: '2026-07-01T10:00:00Z' }, 'unboxed'),
-      null,
+  it('unboxed axis prefers unboxed_at; falls back to scan when never unboxed', () => {
+    assert.deepEqual(
+      resolveReceivingRowStageStamp(
+        { unboxed_at: null, scanned_at: '2026-07-01T10:00:00Z', scanned_by_name: 'Bo' },
+        'unboxed',
+      ),
+      { instant: '2026-07-01T10:00:00Z', label: 'Scanned', staffName: 'Bo' },
     );
     assert.deepEqual(
       resolveReceivingRowStageStamp(
@@ -14,6 +17,10 @@ describe('resolveReceivingRowStageStamp', () => {
         'unboxed',
       ),
       { instant: '2026-07-02T18:00:00Z', label: 'Unboxed', staffName: 'Ada' },
+    );
+    assert.equal(
+      resolveReceivingRowStageStamp({ unboxed_at: null, scanned_at: null, received_at: null }, 'unboxed'),
+      null,
     );
   });
 

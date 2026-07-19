@@ -38,7 +38,7 @@ function Time({ iso }: { iso: string }) {
 
 function Avatar({ name, photo, ours }: { name: string; photo: string | null; ours: boolean }) {
   if (photo) {
-    return <img src={photo} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />;
+    return <img src={photo} alt="" loading="lazy" decoding="async" className="h-7 w-7 shrink-0 rounded-full object-cover" />;
   }
   return (
     <span
@@ -81,6 +81,8 @@ function Attachments({
           <img
             src={a.thumbnail_url || a.content_url}
             alt={a.file_name}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover"
           />
         </button>

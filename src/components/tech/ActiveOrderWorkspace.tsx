@@ -216,6 +216,7 @@ export function ActiveOrderWorkspace({
                 onRemoveSerial={isPreview ? undefined : onRemoveSerial}
                 onChangeCondition={handleConditionChange}
                 isMutatingCondition={orderAssignmentMutation.isPending}
+                onExit={onClose}
               />
             </motion.div>
 

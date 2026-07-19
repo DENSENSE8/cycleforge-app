@@ -22,6 +22,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
 import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import { STATION_CONTEXT_PHOTO_PILL_CLASS } from './station-context-action-pill';
 
 interface PhotoRow {
   id: number;
@@ -118,10 +119,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   }, []);
 
   // One consistent resting state across every PO — a calm blue-tinted pill.
-  // (Previously an `emphasized` variant added a ring/darker fill on the
-  // photos-step-with-zero-photos case, which read as an inconsistent highlight.)
-  const btnClass =
-    'h-8 shrink-0 gap-1 self-center rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-role-caption font-black tabular-nums text-blue-700 shadow-sm hover:bg-blue-100 hover:text-blue-700';
+  // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
+  const btnClass = STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const title = hasGallery
     ? `${count} photo${count === 1 ? '' : 's'} — click to send to phone, hover for gallery`

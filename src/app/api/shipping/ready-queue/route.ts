@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
 import { z } from 'zod';
-import { getReadyQueue } from '@/lib/channel-allocation';
+import { getReadyQueue } from '@/lib/channel-allocation/ready-queue';
 
 const QuerySchema = z
   .object({

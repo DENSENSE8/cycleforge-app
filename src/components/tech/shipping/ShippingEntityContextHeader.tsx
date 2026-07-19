@@ -25,9 +25,14 @@ import type { CartonListingLink } from '@/lib/receiving/listing-links';
 export function ShippingEntityContextHeader({
   activeOrder,
   outOfStock,
+  // Close the active scanned order → the right pane crossfades back to the list.
+  // Shared by two surfaces (tech ship-confirm + outbound labels); each passes its
+  // own close handler. Omit to hide the back button.
+  onExitToList,
 }: {
   activeOrder: ActiveStationOrder;
   outOfStock?: string | null;
+  onExitToList?: () => void;
 }) {
   const tracking = String(activeOrder.tracking || '').trim();
   const orderId = String(activeOrder.orderId || '').trim();
@@ -118,6 +123,7 @@ export function ShippingEntityContextHeader({
         onPlatformSelect={setPlatformValue}
         receivingType={receivingType}
         onTypeSelect={setReceivingType}
+        onExitToList={onExitToList}
       />
 
       {hasOutOfStock ? (

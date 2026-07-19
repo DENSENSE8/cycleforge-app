@@ -43,10 +43,11 @@ export const STATION_SCAN_BAR_BOTTOM_RULE_CLASS: Record<StationTheme, string> = 
 export const STATION_SCAN_BAR_RIGHT_SLOT_CLASS =
   'absolute right-2 top-1/2 z-dropdown isolate flex max-w-[55%] -translate-y-1/2 items-center gap-1';
 
-/** Frosted-glass chip rail — floats over the input; no vertical pad so mode
- *  icons sit flush top/bottom (Unbox / Testing / Shipping share this shell). */
+/** Frosted-glass chip rail — sits over the input; hairline ring only (no drop
+ *  shadow) so the scan band stays flush chrome and does not compete with the
+ *  elevated work canvas. Unbox / Testing / Shipping share this shell. */
 export const STATION_SCAN_BAR_FLOAT_RAIL_CLASS =
-  'rounded-lg border border-white/60 bg-surface-card/50 px-1 py-0 shadow-[0_2px_8px_rgba(15,23,42,0.06)] backdrop-blur-md backdrop-saturate-150';
+  'rounded-lg border border-border-hairline/80 bg-surface-card/50 px-1 py-0 ring-1 ring-inset ring-white/40 backdrop-blur-md backdrop-saturate-150';
 
 /** Narrower right inset when mode rails / spinners sit inside the bar. */
 export const STATION_SCAN_BAR_RIGHT_CONTENT_CLASS = 'right-1.5 gap-1';

@@ -22,7 +22,7 @@ import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface ActivityEntry {
   event_at: string | null;

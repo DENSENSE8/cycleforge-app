@@ -9,6 +9,7 @@ import { SidebarShell } from '@/components/layout/SidebarShell';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { toast } from '@/lib/toast';
@@ -301,7 +302,7 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
   if (embedded) {
     return (
       <>
-        <div className="h-full overflow-hidden bg-surface-card">{content}</div>
+        <div className={`h-full overflow-hidden ${appChromeClass}`}>{content}</div>
         {intakeOverlay}
       </>
     );
@@ -309,7 +310,7 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
 
   return (
     <>
-      <aside className="h-full overflow-hidden border-r border-border-soft bg-surface-card">{content}</aside>
+      <aside className={`h-full overflow-hidden border-r border-border-soft ${appChromeClass}`}>{content}</aside>
       {intakeOverlay}
     </>
   );

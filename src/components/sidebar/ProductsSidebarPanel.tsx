@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarShell } from '@/components/layout/SidebarShell';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav';
 import { useLabelRecents } from '@/hooks/useLabelRecents';
@@ -180,7 +181,7 @@ export function ProductsSidebarPanel() {
   // own sidebar bodies below.
   return (
     <SidebarShell
-      className="bg-surface-card"
+      className={appChromeClass}
       headerAbove={
         <>
           {!masterNavEnabled ? (
@@ -402,6 +403,8 @@ function QcSidebarPicker({ query }: { query: string }) {
                       <img
                         src={item.image_url}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -499,6 +502,8 @@ function KitPartsPicker({ query }: { query: string }) {
                       <img
                         src={item.image_url}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = 'none';
@@ -626,6 +631,8 @@ function ProductRow({ item, onPick }: ProductRowProps) {
             <img
               src={item.image_url}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = 'none';

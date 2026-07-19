@@ -24,8 +24,8 @@
  * presentational components under `./details-panel/`.
  */
 
-import { ExternalLink, Trash2, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { ExternalLink, Trash2 } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
@@ -72,14 +72,6 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
                 valueTitle={c.identityLabel}
               />
             </>
-          }
-          rightSlot={
-            <IconButton
-              icon={<X className="h-5 w-5" />}
-              ariaLabel="Close"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-surface-sunken"
-            />
           }
           belowSlot={
             isEmailPo ? (
