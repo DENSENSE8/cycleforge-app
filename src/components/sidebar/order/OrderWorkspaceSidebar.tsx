@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * OrderWorkspaceSidebar — the master picker for the dedicated `/o/[orderId]`
- * workbench. Two modes (URL `?mode=recent|search`, default recent):
+ * Order lookup workbench. Two modes (URL `?mode=recent|search`, default recent):
  *
  *   • Recent — orders the operator opened (detail-stack history, kind=order)
- *   • Search — header-pill-driven order near-matches + scoped search recents
+ *   • Search — header-pill-driven order near-matches; selecting a hit navigates
+ *     to Dashboard Search detail (`orderSearchHref` → `/dashboard?mode=search&openOrderId`)
  *
- * Selection navigates to `/o/[id]` (path is the SoT). Query typing lives in the
- * always-global header pill; this panel is driven by URL `?q=` and never mounts
+ * Legacy `/o/[id]?mode=search` redirects into Dashboard Search via OrderFullPageView.
+ * Query typing lives in the always-global header pill; this panel never mounts
  * its own search band (sidebar-search-bar.guard).
  */
 

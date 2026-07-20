@@ -22,7 +22,7 @@ const keepOnMainThread = () => {};
 
 export function RailRow<TRow>({
   row, index, isSelected, isFocused, editActive, isChecked, isDisabled, groupSize, groupIndex, isCollapsed, showInlinePkgChip,
-  staggerCascade, staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick,
+  staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick,
 }: {
   row: TRow;
   index: number;
@@ -35,10 +35,8 @@ export function RailRow<TRow>({
   groupIndex: number;
   isCollapsed: boolean;
   showInlinePkgChip: boolean;
-  /** True while the first-load cascade is still in flight — holds `layout` off so
-   * the slide's `transform` isn't fought by layout projection. */
-  staggerCascade: boolean;
-  /** When set, first-load cascade inherits these variants from the parent ul. */
+  /** Present on stagger rails — the row rides the parent ul's `show` timeline via
+   * these variants (and carries no `layout`, which would flash the reveal). */
   staggerItemVariants?: Variants;
   onToggleGroup?: () => void;
   getStatusDot: (row: TRow) => string;
@@ -111,7 +109,11 @@ export function RailRow<TRow>({
       ref={rowRef}
       role="option"
       aria-selected={editActive ? isChecked : isSelected}
-      layout={!staggerCascade}
+      // Stagger rows carry NO layout projection: their reveal is a pure `x`
+      // transform, and enabling `layout` mid-reveal made framer re-project every
+      // row and flash it to opacity 0 for a frame. Non-stagger CRUD rows keep
+      // `layout` so a dismissed row reflows its siblings smoothly.
+      layout={!staggerItemVariants}
       {...motionProps}
       // Right inset lives on the ROW, not the flush list host: it narrows the
       // `w-full` button so the selection ring + hover fill (both `ring-inset` on

@@ -15,17 +15,25 @@ export function SupportContextCustomer({
   embedded = false,
   receivingId,
   onBridgeChange,
+  onRequestLinkTicket,
 }: {
   bundle: SupportContextBundle;
   embedded?: boolean;
   receivingId?: number;
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+  /**
+   * Station hosts (Unbox / Testing) open {@link ReceivingClaimModal} on the
+   * Link-existing tab. When set, the empty-state chip calls this instead of the
+   * inline {@link TicketLinkPopover}.
+   */
+  onRequestLinkTicket?: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { has, isLoaded } = useAuth();
   const canZendesk = !isLoaded || has('integrations.zendesk');
   const ticketId = bundle.ticket?.providerTicketId;
   const canLink = Boolean(canZendesk && bundle.linkable?.canLinkTicket);
+  const useStationClaimModal = typeof onRequestLinkTicket === 'function';
 
   if (ticketId == null) {
     return (
@@ -36,24 +44,28 @@ export function SupportContextCustomer({
           description="Link an existing ticket to see the conversation here."
         />
         {canLink && bundle.linkable ? (
-          <div className="relative w-full max-w-sm">
-            <div className="flex justify-center">
-              <DashedLinkChip
-                label="Link ticket"
-                onClick={() => setPickerOpen((o) => !o)}
-                aria-expanded={pickerOpen}
-              />
-            </div>
-            {pickerOpen ? (
-              <div className="mt-2">
-                <TicketLinkPopover
-                  linkable={bundle.linkable}
-                  open={pickerOpen}
-                  onClose={() => setPickerOpen(false)}
+          useStationClaimModal ? (
+            <DashedLinkChip label="Link ticket" onClick={onRequestLinkTicket} />
+          ) : (
+            <div className="relative w-full max-w-sm">
+              <div className="flex justify-center">
+                <DashedLinkChip
+                  label="Link ticket"
+                  onClick={() => setPickerOpen((o) => !o)}
+                  aria-expanded={pickerOpen}
                 />
               </div>
-            ) : null}
-          </div>
+              {pickerOpen ? (
+                <div className="mt-2">
+                  <TicketLinkPopover
+                    linkable={bundle.linkable}
+                    open={pickerOpen}
+                    onClose={() => setPickerOpen(false)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          )
         ) : null}
       </div>
     );

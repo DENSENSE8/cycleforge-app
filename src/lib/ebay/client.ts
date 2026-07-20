@@ -3,7 +3,12 @@ import pool from '@/lib/db';
 import { logger } from '@/lib/observability/logger';
 import { refreshEbayAccessToken, readEbayToken, writeEbayToken } from './token-refresh';
 import { getEbayAppCreds, EBAY_PLATFORM_PREDICATE, type EbayAppCreds } from './credentials';
-import { isEbaySandbox } from './oauth-config';
+import {
+  ebayScopeStringForRole,
+  isEbaySandbox,
+  normalizeEbayRole,
+  type EbayAccountRole,
+} from './oauth-config';
 import { tenantQuery } from '@/lib/tenancy/db';
 
 /**
@@ -20,6 +25,8 @@ export class EbayClient {
   private sandbox = false;
   private orgId: string | null = null;
   private creds: EbayAppCreds | null = null;
+  /** Cached from ebay_accounts — drives role-matched refresh scopes. */
+  private accountRole: EbayAccountRole | null = null;
 
   constructor(accountName: string, orgId?: string) {
     this.accountName = accountName;
@@ -166,6 +173,27 @@ export class EbayClient {
   }
 
   /**
+   * Resolve + cache this account's seller|buyer role for role-matched refresh.
+   * Buyer tokens refreshed with seller scopes silently downgrade — never default.
+   */
+  private async getAccountRole(): Promise<EbayAccountRole> {
+    if (this.accountRole) return this.accountRole;
+    const orgId = await this.getOrganizationId();
+    const result = await tenantQuery<{ account_role: string | null }>(
+      orgId,
+      `SELECT account_role FROM ebay_accounts
+        WHERE account_name = $1 AND organization_id = $2 AND ${EBAY_PLATFORM_PREDICATE}
+        LIMIT 1`,
+      [this.accountName, orgId],
+    );
+    if (!result.rows[0]) {
+      throw new Error(`eBay account ${this.accountName} not found in database`);
+    }
+    this.accountRole = normalizeEbayRole(result.rows[0].account_role);
+    return this.accountRole;
+  }
+
+  /**
    * Get a valid access token for the account
    * Automatically refreshes if expired or about to expire
    * Returns both access token and refresh token (decrypted)
@@ -175,7 +203,7 @@ export class EbayClient {
     // Query database for current token using tenantQuery for GUC/RLS context
     const result = await tenantQuery(
       orgId,
-      `SELECT access_token, token_expires_at, refresh_token FROM ebay_accounts
+      `SELECT access_token, token_expires_at, refresh_token, account_role FROM ebay_accounts
         WHERE account_name = $1 AND organization_id = $2 AND ${EBAY_PLATFORM_PREDICATE}`,
       [this.accountName, orgId]
     );
@@ -184,7 +212,8 @@ export class EbayClient {
       throw new Error(`eBay account ${this.accountName} not found in database`);
     }
 
-    const { access_token, token_expires_at, refresh_token } = result.rows[0];
+    const { access_token, token_expires_at, refresh_token, account_role } = result.rows[0];
+    this.accountRole = normalizeEbayRole(account_role);
 
     // Read tokens, tolerating both plaintext and encrypted-at-rest storage
     const decryptedAccessToken = readEbayToken(access_token);
@@ -213,13 +242,16 @@ export class EbayClient {
       logger.info(`[${this.accountName}] Refreshing access token...`);
 
       // Resolve this account's app credentials (per-org / shared env app) and
-      // refresh against the matching environment's token endpoint.
+      // refresh against the matching environment's token endpoint with the
+      // SAME role scopes granted at consent (buyer vs seller).
       const creds = await this.ensureCreds();
+      const role = await this.getAccountRole();
       const { accessToken, expiresIn } = await refreshEbayAccessToken(
         creds.appId,
         creds.certId,
         refreshToken,
-        creds.environment
+        creds.environment,
+        ebayScopeStringForRole(role),
       );
       
       const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
@@ -235,7 +267,9 @@ export class EbayClient {
         [encryptedAccessToken, newExpiresAt, this.accountName, orgId]
       );
 
-      logger.info(`[${this.accountName}] Access token refreshed successfully (expires in ${expiresIn}s)`);
+      logger.info(
+        `[${this.accountName}] Access token refreshed successfully (role=${role}, expires in ${expiresIn}s)`,
+      );
       return accessToken;
     } catch (error: any) {
       console.error(`[${this.accountName}] Failed to refresh access token:`, error.message);

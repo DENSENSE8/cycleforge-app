@@ -3,16 +3,25 @@
 import { Check, GripVertical } from '@/components/Icons';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
+import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
 import {
   ORDERS_QUEUE_COL_HEADER_STICKY,
+  ORDERS_QUEUE_COLUMNS,
+  ORDERS_QUEUE_RESIZABLE_KEYS,
+  ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
+  type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
+import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { cn } from '@/utils/_cn';
+
+/** The labelled data columns (everything past the select + status gutters). */
+const DATA_COLUMNS = ORDERS_QUEUE_COLUMNS.filter((c) => c.key !== 'select' && c.key !== 'status');
 
 /**
  * Sticky column header for the orders-queue WMS table — docks ABOVE day bands.
@@ -25,16 +34,17 @@ export function OrdersQueueColumnHeader({
   selectMode = false,
   selectionScope,
   className,
+  onResizeColumn,
 }: {
   isMobile?: boolean;
   selectMode?: boolean;
   /** When set with selectMode, the lead checkbox drives select-all / clear. */
   selectionScope?: string;
   className?: string;
+  /** Commit a column's drag-resized width (px). Presence enables the handles. */
+  onResizeColumn?: (key: string, px: number) => void;
 }) {
   const isHidden = useIsColumnHidden();
-  const showQty = !isHidden('qty');
-  const showCondition = !isHidden('condition');
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
   const total = useTableSelectionTotal(scope);
@@ -64,8 +74,10 @@ export function OrdersQueueColumnHeader({
       )}
       style={{ gridTemplateColumns: template }}
     >
-      {/* select — micro drag grip (reorder affordance, header only) + select-all */}
-      <div className="flex items-center gap-0.5">
+      {/* select — micro drag grip (reorder affordance, header only) + select-all.
+          Lead control gutter: no inset, no column rule (status carries the rule
+          before the title). */}
+      <div className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), 'gap-0.5')}>
         <HoverTooltip label="Drag to reorder" focusable={false}>
           <span
             className="inline-flex h-3 w-3 shrink-0 cursor-grab items-center justify-center text-text-faint active:cursor-grabbing"
@@ -101,27 +113,64 @@ export function OrdersQueueColumnHeader({
 
       {/* status — dot column; keep an in-flow cell so the track stays (a bare
           `sr-only` span is position:absolute and would drop out of the grid,
-          shifting every following header off its column). Label is SR-only. */}
-      <div className="flex items-center justify-center">
+          shifting every following header off its column). Label is SR-only.
+          Carries the first column rule (before the title). */}
+      <div role="columnheader" className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center')}>
         <span className="sr-only">Status</span>
       </div>
 
-      <HeaderCell label="Product" />
-      {showQty ? <HeaderCell label="Qty" /> : <span />}
-      {showCondition ? <HeaderCell label="Cond" /> : <span />}
-      <HeaderCell label="Age" />
-      <HeaderCell label="Notes" />
-      <HeaderCell label="Platform" />
-      <HeaderCell label="Order" />
-      <HeaderCell label="Tracking" />
+      {DATA_COLUMNS.map((column, i) => {
+        const last = i === DATA_COLUMNS.length - 1;
+        // Hideable columns collapse to an empty rule cell when hidden, so the
+        // header stays locked to the body + the vertical rules stay continuous.
+        if (column.hideKey && isHidden(column.hideKey)) {
+          return <span key={column.key} className={ordersQueueGridCell({ rule: !last })} />;
+        }
+        return (
+          <HeaderCell
+            key={column.key}
+            column={column}
+            last={last}
+            onResize={onResizeColumn ? (px) => onResizeColumn(column.key, px) : undefined}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function HeaderCell({ label }: { label: string }) {
+/**
+ * One header field: type glyph (roomy columns only) + label + a right-edge drag
+ * resize handle (data columns), locked to the body via {@link ordersQueueGridCell}
+ * + `data-col` so header ↔ cell alignment is glyph-agnostic. `last` drops the
+ * trailing rule on the final (tracking) column.
+ *
+ * The glyph renders only on the flexible (roomy) columns — Product / Notes. On
+ * the narrow fixed fact columns a glyph would crowd out the label, and the
+ * shared `#` glyph (number/id) would make three headers ambiguous, so those stay
+ * label-first (legible throughput).
+ */
+function HeaderCell({
+  column,
+  last,
+  onResize,
+}: {
+  column: OrdersQueueColumn;
+  last: boolean;
+  onResize?: (px: number) => void;
+}) {
+  const label = column.label ?? column.key;
+  const showGlyph = column.width.includes('fr');
+  const resizable = Boolean(onResize) && ORDERS_QUEUE_RESIZABLE_KEYS.includes(column.key);
   return (
-    <div className={cn('flex min-w-0 items-center', tableHeader)}>
-      <span className="truncate">{label}</span>
+    <div
+      role="columnheader"
+      data-col={column.key}
+      className={cn('group/hcell relative', showGlyph && 'gap-1', ordersQueueGridCell({ rule: !last }), tableHeader)}
+    >
+      {showGlyph && column.type ? <ColumnTypeGlyph type={column.type} /> : null}
+      <span className="min-w-0 truncate">{label}</span>
+      {resizable && onResize ? <ColumnResizeHandle colKey={column.key} label={label} onCommit={onResize} /> : null}
     </div>
   );
 }

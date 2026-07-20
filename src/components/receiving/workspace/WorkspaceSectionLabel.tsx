@@ -28,5 +28,9 @@ export function WorkspaceFieldLabel({
   children: ReactNode;
   className?: string;
 }) {
-  return <span className={cn(WORKSPACE_FIELD_LABEL_CLASS, 'mb-0 leading-none', className)}>{children}</span>;
+  return (
+    <span className={cn(WORKSPACE_FIELD_LABEL_CLASS, 'mb-0 whitespace-nowrap leading-none', className)}>
+      {children}
+    </span>
+  );
 }

@@ -8,16 +8,24 @@
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { EbayClient } from '@/lib/ebay/client';
-import { EBAY_PLATFORM_PREDICATE, getEbayAppCreds, listActiveEbayAccounts } from '@/lib/ebay/credentials';
+import {
+  EBAY_PLATFORM_PREDICATE,
+  EBAY_SELLER_ROLE_PREDICATE,
+  getEbayAppCreds,
+  listActiveEbayAccounts,
+} from '@/lib/ebay/credentials';
 import { ebayIdentityEndpoint } from '@/lib/ebay/oauth-config';
 import { syncAccountOrders } from '@/lib/ebay/sync';
 import type { HealthResult, SyncOutcome } from './types';
 
 export async function ebaySync(orgId: OrgId): Promise<SyncOutcome> {
+  // Seller accounts only — buyer purchasing tokens lack sell.fulfillment and
+  // are synced by /api/cron/ebay/purchase-sync → Incoming.
   const { rows } = await pool.query<{ account_name: string }>(
     `SELECT account_name FROM ebay_accounts
       WHERE organization_id = $1 AND is_active = true
         AND ${EBAY_PLATFORM_PREDICATE}
+        AND ${EBAY_SELLER_ROLE_PREDICATE}
       ORDER BY account_name`,
     [orgId],
   );

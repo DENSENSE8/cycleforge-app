@@ -52,6 +52,11 @@ export interface SupportContextHubProps {
    * `flush` — body only; outer chrome comes from {@link DetailStackRailRegistrar}.
    */
   surface?: 'card' | 'flush';
+  /**
+   * Station hosts: open ReceivingClaimModal on Link-existing instead of the
+   * inline TicketLinkPopover in the Customer empty state.
+   */
+  onRequestLinkTicket?: () => void;
 }
 
 export function SupportContextHub({
@@ -68,6 +73,7 @@ export function SupportContextHub({
   defaultExpanded = true,
   linkageOnly = false,
   surface = 'card',
+  onRequestLinkTicket,
 }: SupportContextHubProps) {
   const flush = surface === 'flush';
   const cardShellClass = flush
@@ -175,6 +181,7 @@ export function SupportContextHub({
             embedded={embedded}
             receivingId={anchor.receivingId ?? undefined}
             onBridgeChange={onBridgeChange}
+            onRequestLinkTicket={onRequestLinkTicket}
           />
         ) : null}
         {activeSegment === 'team' ? (

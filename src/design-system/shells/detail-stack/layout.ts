@@ -25,7 +25,17 @@ export function detailStackAsideStyle(): CSSProperties {
 }
 
 export const detailStackAsideClassName =
-  'fixed z-panel flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl';
+  'fixed z-panel isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
+
+/**
+ * Elevated variant — sits in the dedicated `detailStack` band (above a
+ * workbench workspace overlay + its popovers). Opt-in per occupant via the
+ * `elevated` flag so only surfaces that open OVER a `panel`-band workspace
+ * (receiving Unbox/Triage) rise; every other detail stack keeps `z-panel` so
+ * its own sub-dialogs (portaled at `panelPopover`/`panelOverlay`) stay on top.
+ */
+export const detailStackAsideElevatedClassName =
+  'fixed z-detailStack isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
 
 /** Full-height dock for the persistent assistant (⌘J) — flush right edge, no inset card. */
 export function assistantDockAsideStyle(): CSSProperties {

@@ -23,12 +23,23 @@
 
 export type TableColumnGroup = 'meta' | 'chip';
 
+/**
+ * Presentation data-type of a column — drives the header type glyph (Airtable-
+ * style). Resolved to an icon in ONE place (`column-type-glyph.tsx`); views never
+ * inline per-column icon choices.
+ */
+export type ColumnType = 'text' | 'number' | 'id' | 'tag' | 'longtext' | 'date';
+
 export interface TableColumnSpec {
   /** Must equal the ChipColumn.key or RowMetaColumns slot key it controls. */
   key: string;
   /** Label shown in the column-config popover. */
   label: string;
   group: TableColumnGroup;
+  /** Data-type → header glyph (optional; grids that render typed headers set it). */
+  type?: ColumnType;
+  /** Horizontal content alignment (e.g. numbers right-align). Optional. */
+  align?: 'start' | 'end';
 }
 
 /** Stable ids for every shared list table that supports column config. */

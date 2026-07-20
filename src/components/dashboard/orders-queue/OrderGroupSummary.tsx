@@ -18,6 +18,7 @@ import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
+  ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
 } from '@/lib/dashboard-order-row-layout';
@@ -38,6 +39,9 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
   const isHidden = useIsColumnHidden();
   const showQtyCol = !isHidden('qty');
   const showConditionCol = !isHidden('condition');
+  const showPlatform = !isHidden('platform');
+  const showOrder = !isHidden('orderid');
+  const showTracking = !isHidden('tracking');
 
   const first = rows[0];
   const orderId = String(first.order_id || '').trim();
@@ -122,40 +126,44 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
       className={cn(ordersQueueRowShellClass(false), 'w-full')}
       style={{ gridTemplateColumns: ordersQueueGridTemplate() }}
     >
-      {/* select — empty (grip lives only in the sticky header) */}
-      <span aria-hidden />
-      {/* status — group dot */}
-      <div className="flex items-center justify-center">
+      {/* select — empty (grip lives only in the sticky header); no lead rule */}
+      <span className={ordersQueueGridCell({ inset: 'none', rule: false })} aria-hidden />
+      {/* status — group dot (carries the first column rule) */}
+      <div className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center')}>
         <HoverTooltip label={`${rows.length} products`} focusable={false}>
           <span className="h-2 w-2 shrink-0 rounded-full bg-surface-strong" />
         </HoverTooltip>
       </div>
-      <div className="min-w-0">
-        <span className="block truncate text-role-data text-text-default">
+      <div className={ordersQueueGridCell()}>
+        <span className="min-w-0 truncate text-role-data text-text-default">
           {platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
         </span>
       </div>
       {showQtyCol ? (
-        <span className={cn('font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qtySum))}>
-          {qtySum}
-        </span>
+        <div className={ordersQueueGridCell()}>
+          <span className={cn('min-w-0 truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qtySum))}>
+            {qtySum}
+          </span>
+        </div>
       ) : (
-        <span />
+        <span className={ordersQueueGridCell()} />
       )}
       {showConditionCol ? (
-        <span className="min-w-0 truncate text-role-eyebrow uppercase text-text-muted">
-          <RowConditionMeta condition={conditionText} />
-        </span>
+        <div className={cn(ordersQueueGridCell(), 'text-role-eyebrow uppercase text-text-muted')}>
+          <span className="min-w-0 truncate">
+            <RowConditionMeta condition={conditionText} />
+          </span>
+        </div>
       ) : (
-        <span />
+        <span className={ordersQueueGridCell()} />
       )}
       {/* age — none for a group header */}
-      <span className="text-role-caption text-text-faint" aria-hidden>—</span>
+      <div className={cn(ordersQueueGridCell(), 'text-role-caption text-text-faint')} aria-hidden>—</div>
       {/* notes — none for a group header */}
-      <span className="text-role-caption text-text-faint" aria-hidden>—</span>
-      <div data-col="platform" className="flex min-w-0 items-center">{platformCell}</div>
-      <div data-col="order" className="flex min-w-0 items-center">{orderCell}</div>
-      <div data-col="tracking" className="flex min-w-0 items-center">{trackingCell}</div>
+      <div className={cn(ordersQueueGridCell(), 'text-role-caption text-text-faint')} aria-hidden>—</div>
+      <div data-col="platform" className={ordersQueueGridCell()}>{showPlatform ? platformCell : null}</div>
+      <div data-col="order" className={ordersQueueGridCell()}>{showOrder ? orderCell : null}</div>
+      <div data-col="tracking" className={ordersQueueGridCell({ rule: false })}>{showTracking ? trackingCell : null}</div>
     </div>
   );
 }

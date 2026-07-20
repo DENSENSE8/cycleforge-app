@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
 import { SIDEBAR_GUTTER, SIDEBAR_RAIL_INSET_X } from '@/components/layout/header-shell';
@@ -34,16 +34,20 @@ export { railRelativeTime, type SidebarRailRowContext, type SidebarRailShellProp
 export { RailPopover } from './rail-shell/RailPopover';
 
 /**
- * How long the first-load cascade stays armed before handing rows to steady-state
- * presence. Long enough for the visible rows to finish their staggered reveal
- * (delay + a few rows × step + the item's own settle); short enough that the rail
- * is back on CRUD presence well before a scan-in.
+ * Rails that have already played their first-load reveal THIS SESSION, keyed by a
+ * stable rail identity. The first-load cascade must be a genuine one-shot: a rail
+ * subtree can REMOUNT shortly after its first paint (a parent Suspense boundary or
+ * dynamic-import chunk resolving, a query-key churn), and a fresh mount would
+ * otherwise replay `initial="hidden" animate="show"` and re-flash every row. We
+ * freeze "already revealed" at mount from this registry, so any later mount
+ * renders rows at rest instead. Cleared only by a full reload — exactly when a
+ * fresh cascade is wanted.
  */
-const STAGGER_REVEAL_SETTLE_MS = 700;
+const revealedRails = new Set<string>();
 
 export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   const {
-    queryKey,
+    // `queryKey` is consumed by the engine hook via `props`; not destructured here.
     selectedId,
     eyebrowTitle, eyebrowSuffix, eyebrowAction, hideEyebrow = false,
     emptyText = 'No recent activity yet.',
@@ -72,55 +76,63 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     if (contentPaintSurface && !showSkeleton) markSurfacePainted(contentPaintSurface);
   }, [contentPaintSurface, showSkeleton]);
 
-  const queryKeySig = JSON.stringify(queryKey);
-  // Latches once this feed has painted rows. Two jobs: (1) keep the list host
-  // mounted for the last row's exit slide after the feed empties, and (2) let the
-  // host mount FRESH the moment rows first arrive so it carries `initial="hidden"
-  // animate="show"` on mount — which is what actually orchestrates the cascade. A
-  // host that mounted empty first (snapshot rails skip the skeleton) never runs
-  // the mount-time stagger for its late-arriving children, so it sat frozen at
-  // `hidden`. Mirrors the skeleton path, where the host mounts fresh with rows.
+  // Latches TRUE the moment this feed first paints rows, and stays true for the
+  // component's whole life. Two jobs: (1) keep the list host mounted for the last
+  // row's exit slide after the feed empties, and (2) let the host mount FRESH the
+  // moment rows first arrive so it carries `initial="hidden" animate="show"` on
+  // mount — which is what actually orchestrates the cascade. A host that mounted
+  // empty first (snapshot rails skip the skeleton) never runs the mount-time
+  // stagger for its late-arriving children, so it sat frozen at `hidden`.
+  //
+  // Deliberately NOT reset on a queryKey change: a feed's key can churn shortly
+  // after mount (a staff/filter param resolving) with a transient 0-row window,
+  // and resetting the latch there unmounted + remounted the whole `motion.ul`,
+  // replaying the cascade from `hidden` (a full re-flash). A genuine feed switch
+  // remounts this component from its parent key, so the latch re-inits anyway.
   const [listPainted, setListPainted] = useState(false);
-  // Marks the first-load cascade as visually settled. It gates ONLY the per-row
-  // `layout` reflow (see RailRow): layout projection is held off while rows are
-  // sliding in via the `x` variant (the two would fight over `transform`), then
-  // enabled so a later dismiss reflows its siblings smoothly. It deliberately does
-  // NOT change the row's motion contract or disarm the container — rows ride the
-  // container's `show` for the whole mount, so there is no hand-off flicker.
-  const [cascadeSettled, setCascadeSettled] = useState(false);
-  useEffect(() => {
-    setListPainted(false);
-    setCascadeSettled(false);
-  }, [queryKeySig]);
   useEffect(() => {
     if (rows.length > 0) setListPainted(true);
   }, [rows.length]);
+
+  // One-shot guard: freeze "has this rail already revealed this session" at mount
+  // (a `useState` initializer runs once), so it can NEVER flip mid-mount and cut
+  // the cascade — and a REMOUNT reads the registry fresh and skips the reveal.
+  const revealKey = contentPaintSurface ?? eyebrowTitle;
+  const [alreadyRevealed] = useState(() => revealedRails.has(revealKey));
+  useEffect(() => {
+    if (staggerReveal) revealedRails.add(revealKey);
+  }, [staggerReveal, revealKey]);
 
   // The container drives the cascade for the whole mount and then simply HOLDS
   // `show` — it is never disarmed. Rows inherit `show` and rest there; a scan-in
   // row entering the same AnimatePresence slides in from `hidden`, and a dismiss
   // exits via the variant `exit`. Nothing swaps the row's contract mid-mount, so
-  // there is no settle-time flicker.
-  const staggerActive = staggerReveal && rows.length > 0 && !showSkeleton;
-  useEffect(() => {
-    if (!staggerActive || cascadeSettled) return;
-    const t = setTimeout(() => setCascadeSettled(true), STAGGER_REVEAL_SETTLE_MS);
-    return () => clearTimeout(t);
-  }, [staggerActive, cascadeSettled]);
-  // Cascade still in flight → hold `layout` off (transform belongs to the slide).
-  const cascadeInProgress = staggerActive && !cascadeSettled;
+  // there is no settle-time flicker. (Stagger rows also carry no `layout` prop —
+  // toggling `layout` on mid-reveal made framer re-project every row and flashed
+  // them to opacity 0 for a frame; see RailRow.)
+  const staggerActive = staggerReveal && rows.length > 0 && !showSkeleton && !alreadyRevealed;
 
   const reduceMotion = useReducedMotion();
-  const staggerItemVariants: Variants | undefined = staggerReveal
-    ? reduceMotion
-      ? { hidden: { opacity: 1 }, show: { opacity: 1, transition: { duration: 0.001 } }, exit: { opacity: 0 } }
-      : staggerRevealMotion === 'slide'
-        ? staggerRevealSidebarSlideItem
-        : staggerRevealMotion === 'rise'
-          ? staggerRevealRiseItem
-          : staggerRevealSidebarItem
-    : undefined;
-  const staggerContainerVariants = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
+  // STABLE identity across renders. A fresh variants object each render makes
+  // framer treat a mid-cascade re-render (e.g. the authoritative fetch replacing
+  // the snapshot rows) as a NEW animation target and restart the reveal from
+  // `hidden` — flashing every row to opacity 0 for a frame. Memoizing pins the
+  // identity so a re-render never re-triggers the container's `show` orchestration.
+  const staggerItemVariants = useMemo<Variants | undefined>(() => {
+    if (!staggerReveal) return undefined;
+    if (reduceMotion) {
+      return { hidden: { opacity: 1 }, show: { opacity: 1, transition: { duration: 0.001 } }, exit: { opacity: 0 } };
+    }
+    return staggerRevealMotion === 'slide'
+      ? staggerRevealSidebarSlideItem
+      : staggerRevealMotion === 'rise'
+        ? staggerRevealRiseItem
+        : staggerRevealSidebarItem;
+  }, [staggerReveal, reduceMotion, staggerRevealMotion]);
+  const staggerContainerVariants = useMemo(
+    () => staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP),
+    [reduceMotion],
+  );
   const insetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
 
   return (
@@ -195,7 +207,6 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                     key={rowKey(row)}
                     row={row}
                     index={idx}
-                    staggerCascade={cascadeInProgress}
                     staggerItemVariants={staggerItemVariants}
                     isDisabled={getRowDisabled?.(row) ?? false}
                     isSelected={getId(row) === selectedId}

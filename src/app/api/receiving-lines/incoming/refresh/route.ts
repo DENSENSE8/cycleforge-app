@@ -87,10 +87,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const result = await syncShipmentsByIds(batch, { concurrency: 5 });
 
     // Universal Incoming (plan §9.4): "Refresh from sources" also re-pulls eBay
-    // buyer purchases when the org is on the flag. Track A eBay sync is a no-op
-    // until buy.order.readonly is approved, so this is safe/zero for most orgs;
-    // an eBay failure is isolated (collected in the sync's errors) and never
-    // fails the carrier refresh the operator actually clicked for.
+    // buyer purchases when the org is on the flag (Trading GetOrders Buyer —
+    // live). An eBay failure is isolated (collected in the sync's errors) and
+    // never fails the carrier refresh the operator actually clicked for.
     let ebayIngested = 0;
     let ebayCreated = 0;
     try {

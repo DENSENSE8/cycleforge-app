@@ -3,5 +3,6 @@ export {
   assistantDockAsideClassName,
   assistantDockAsideStyle,
   detailStackAsideClassName,
+  detailStackAsideElevatedClassName,
   detailStackAsideStyle,
 } from './layout';

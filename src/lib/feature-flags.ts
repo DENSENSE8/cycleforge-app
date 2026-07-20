@@ -95,6 +95,25 @@ export function invalidateFeatureFlagCache(orgId?: OrgId, flag?: string): void {
   flagCache.delete(cacheKey(orgId, flag));
 }
 
+/** Per-org flag name for Universal Incoming (eBay buyer purchases on /incoming). */
+export const INCOMING_UNIVERSAL_FLAG = 'incoming_universal';
+
+/**
+ * Idempotently enable a per-org feature flag and drop the 30s read cache.
+ * Used when connecting an eBay purchasing account so Incoming lights up
+ * without a separate flag hunt.
+ */
+export async function enableOrgFeatureFlag(orgId: OrgId, flag: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO organization_feature_flags (organization_id, flag, enabled)
+     VALUES ($1, $2, true)
+     ON CONFLICT (organization_id, flag) DO UPDATE
+       SET enabled = true, updated_at = NOW()`,
+    [orgId, flag],
+  );
+  invalidateFeatureFlagCache(orgId, flag);
+}
+
 // ─── Sync env-only variants ────────────────────────────────────────────────
 //
 // NOTE: The INVENTORY_V2_* flags were removed on 2026-06-14. The unit-level
@@ -397,12 +416,13 @@ export function isShipmentLinksDualWrite(): boolean {
  * inventory-backend POs, the `?inbound=` facet filters by source, and the
  * receiving sync runs the cross-source merge. Default OFF — when off, Incoming
  * stays on the byte-identical legacy inventory-backend path and the merge hook
- * is a no-op, so a tenant not using buyer accounts is unaffected. Enable per org
- * (organization_feature_flags(flag='incoming_universal')) once they connect a
- * buyer account, or globally via INCOMING_UNIVERSAL=true.
+ * is a no-op, so a tenant not using buyer accounts is unaffected. Enabled
+ * automatically on successful eBay purchasing (buyer) OAuth connect, or
+ * manually via organization_feature_flags(flag='incoming_universal'), or
+ * globally via INCOMING_UNIVERSAL=true.
  */
 export async function isIncomingUniversal(orgId: OrgId): Promise<boolean> {
-  return resolveForOrg(orgId, 'incoming_universal', 'INCOMING_UNIVERSAL');
+  return resolveForOrg(orgId, INCOMING_UNIVERSAL_FLAG, 'INCOMING_UNIVERSAL');
 }
 
 /**

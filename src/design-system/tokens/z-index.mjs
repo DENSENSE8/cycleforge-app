@@ -15,6 +15,12 @@ export const zIndex = {
   panelBackdrop: 99,
   panelPopover: 120,
   panelOverlay: 130,
+  // Detail slide-over (RightRailHost) elevated ABOVE a workbench workspace
+  // overlay (itself at `panel`) + its popovers (`panelPopover`/`panelOverlay`),
+  // yet BELOW real modals so a modal opened over a detail panel still wins.
+  // Mirror the panel/panelBackdrop pairing (backdrop one below its surface).
+  detailStackBackdrop: 150,
+  detailStack: 160,
   modalBackdrop: 190,
   modal: 200,
   elevatedModal: 300,

@@ -26,6 +26,7 @@ import {
   assistantDockAsideClassName,
   assistantDockAsideStyle,
   detailStackAsideClassName,
+  detailStackAsideElevatedClassName,
   detailStackAsideStyle,
 } from '@/components/right-rail/DetailStackFrame';
 import {
@@ -46,6 +47,7 @@ export function RightRailHost() {
 
   const renderable = top && top.node != null ? top : null;
   const isAssistantDock = renderable?.id === 'assistant';
+  const isElevated = !!renderable?.elevated;
 
   useBodyScrollLock(!!renderable && !isAssistantDock);
   useEscapeClose(!!renderable?.onClose, renderable?.onClose ?? (() => {}));
@@ -62,7 +64,11 @@ export function RightRailHost() {
             exit={{ opacity: 0 }}
             transition={BACKDROP_FADE}
             onClick={renderable.onClose}
-            className="fixed inset-0 z-panelBackdrop bg-scrim/35 backdrop-blur-[1px]"
+            className={
+              isElevated
+                ? 'fixed inset-0 z-detailStackBackdrop bg-scrim/70 backdrop-blur-md'
+                : 'fixed inset-0 z-panelBackdrop bg-scrim/55 backdrop-blur-[2px]'
+            }
           />
         ) : null}
       </AnimatePresence>
@@ -77,7 +83,13 @@ export function RightRailHost() {
             exit={presence.exit}
             transition={transition}
             style={isAssistantDock ? assistantDockAsideStyle() : detailStackAsideStyle()}
-            className={isAssistantDock ? assistantDockAsideClassName : detailStackAsideClassName}
+            className={
+              isAssistantDock
+                ? assistantDockAsideClassName
+                : isElevated
+                  ? detailStackAsideElevatedClassName
+                  : detailStackAsideClassName
+            }
           >
             <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
               {renderable.node}

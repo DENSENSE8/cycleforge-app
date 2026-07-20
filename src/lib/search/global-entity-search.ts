@@ -15,6 +15,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
+import { orderSearchHref } from '@/lib/search/search-hit';
 
 export interface GlobalSearchResult {
   id: number;
@@ -72,9 +73,9 @@ export async function searchOrders(orgId: OrgId, query: string, limit: number): 
     subtitle: [row.order_id, row.serial_number, row.sku, row.account_source]
       .filter(Boolean)
       .join(' · '),
-    // Canonical order workbench — kept in sync with searchHitHref('ORDER') /
+    // Canonical Dashboard Search detail — kept in sync with searchHitHref('ORDER') /
     // orderSearchHref so exact-arm and doc-arm hits deep-link identically.
-    href: `/o/${row.id}?mode=search`,
+    href: orderSearchHref(row.id),
     matchField: 'order',
   }));
 }

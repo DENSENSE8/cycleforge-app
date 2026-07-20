@@ -52,6 +52,11 @@ export interface ClaimModalProps {
   lineIdOverride?: number | null;
   /** Seeds the "What happened?" note when the modal opens (RETURN match CTA). */
   prefillReason?: string;
+  /**
+   * Which wizard tab to land on when the modal opens. Defaults to `create`
+   * (New ticket). Station Ticket empty-state "Link ticket" passes `link`.
+   */
+  initialMode?: ClaimModalMode;
   onClose: () => void;
   /** Called with the formatted ticket number on success ("#12345"). */
   onTicketCreated: (ticketNumber: string) => void;
@@ -71,6 +76,7 @@ export function useReceivingClaimController({
   row,
   lineIdOverride,
   prefillReason,
+  initialMode = 'create',
   onClose,
   onTicketCreated,
   onTicketUnlinked,
@@ -199,7 +205,7 @@ export function useReceivingClaimController({
     // `crypto.randomUUID` only exists in a secure context (HTTPS / localhost);
     // over a plain-HTTP LAN IP it's undefined. `randomId` falls back safely.
     idempotencyKey.current = randomId();
-    setMode('create');
+    setMode(initialMode);
     setCreateStep('photos');
     setLinkStep('find');
     setFiledTicket(null);
@@ -208,7 +214,7 @@ export function useReceivingClaimController({
     setTestSellerPreview(null);
     setArchiveState(null);
     setIsDryRun(false);
-  }, [open, receivingId, lineId, initialClaimType, prefillReason]);
+  }, [open, receivingId, lineId, initialClaimType, prefillReason, initialMode]);
 
   // Persist the last-used CC email for the next claim.
   useEffect(() => {

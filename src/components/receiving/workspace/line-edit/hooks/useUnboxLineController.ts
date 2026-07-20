@@ -93,6 +93,12 @@ export function useUnboxLineController(
     condition_grade?: string | null;
   } | null>(null);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  /** Which ReceivingClaimModal tab to open — Link ticket uses `link`. */
+  const [claimModalInitialMode, setClaimModalInitialMode] = useState<'create' | 'link'>('create');
+  const openClaimModal = useCallback((mode: 'create' | 'link' = 'create') => {
+    setClaimModalInitialMode(mode);
+    setClaimModalOpen(true);
+  }, []);
   const [returnClaimPrefill, setReturnClaimPrefill] = useState<string | null>(null);
   // Guards the auto-bind-PO# effect so a matched order is only written once.
   const autoBoundOrderRef = useRef<string | null>(null);
@@ -612,9 +618,9 @@ export function useUnboxLineController(
       if (matchedOrder?.tracking_number) lines.push(`Shipped tracking: ${matchedOrder.tracking_number}.`);
       if (sn) lines.push(`Serial: ${sn}.`);
       setReturnClaimPrefill(lines.join(' '));
-      setClaimModalOpen(true);
+      openClaimModal('create');
     },
-    [serialLookup.serial, core.poNumber, core.persistPoNumber],
+    [serialLookup.serial, core.poNumber, core.persistPoNumber, openClaimModal],
   );
 
   // PO-number field commit: first try to IMPORT a sales order by this number
@@ -725,7 +731,8 @@ export function useUnboxLineController(
     canPrintReview, canReceiveReview, canZohoReceive, isUnfound, combinedReviewDisabled, combinedReviewDisabledReason, requireSerialConfirmation,
     receiveMenuLabel, receiveMenuTitle, printReceivePrimaryLabel, splitMenuAriaLabel, splitMenuHoverTitle, printThenReceiveTitle,
     // claim / RETURN flow
-    claimModalOpen, setClaimModalOpen, returnClaimPrefill, setReturnClaimPrefill,
+    claimModalOpen, setClaimModalOpen, claimModalInitialMode, openClaimModal,
+    returnClaimPrefill, setReturnClaimPrefill,
     handleFileReturnClaim,
     commitPoNumberOrImportOrder,
   };

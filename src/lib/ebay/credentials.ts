@@ -26,6 +26,13 @@ import {
 import { readEbayToken } from './token-refresh';
 import { normalizeEbayEnvironment, normalizeEbayRole, type EbayEnvironment } from './oauth-config';
 
+// Re-exported from account-predicates for callers; local import used below.
+export {
+  EBAY_PLATFORM_PREDICATE,
+  EBAY_SELLER_ROLE_PREDICATE,
+} from './account-predicates';
+import { EBAY_PLATFORM_PREDICATE } from './account-predicates';
+
 export interface EbayAppCreds {
   appId: string;
   certId: string;
@@ -112,11 +119,6 @@ function safeReadToken(stored: string): string | null {
 
 const ACCOUNT_COLUMNS = `id, account_name, ebay_user_id, account_role, access_token, refresh_token,
   token_expires_at, refresh_token_expires_at, is_active`;
-
-// ebay_accounts is dual-used for Zoho tokens (platform='ZOHO', see
-// 2026-03-09_ebay_accounts_add_platform_zoho.sql). eBay operations must only
-// touch eBay rows, or readEbayToken chokes on a Zoho token. NULL = legacy eBay.
-export const EBAY_PLATFORM_PREDICATE = `(platform = 'EBAY' OR platform IS NULL)`;
 
 /** Load a single eBay account (tokens decrypted) for an org, or null. */
 export async function getEbayAccount(orgId: OrgId, accountName: string): Promise<EbayAccount | null> {

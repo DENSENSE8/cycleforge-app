@@ -5,11 +5,10 @@ import { useMotionTransition } from '@/design-system/foundations/motion-framer-h
 import { useFocusTrap } from '@/design-system/hooks';
 import {
   X, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
-  AlertCircle, Trash2, Info, RotateCcw, RefreshCw, ExternalLink, Package, MoreVertical,
+  AlertCircle, Trash2, Info, RotateCcw, RefreshCw, ExternalLink, ArrowLeftRight, MoreVertical,
   Upload, Loader2,
 } from '../../Icons';
 import { PhotoContextPanel } from './PhotoContextPanel';
-import { MovePhotoToPoPanel } from './MovePhotoToPoPanel';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, Layer } from '@/design-system/primitives';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
@@ -254,7 +253,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                       onClick={(e) => {
                         e.stopPropagation();
                         setMoreOpen(false);
-                        dz.openPicker();
+                        g.openUploadOverlay();
                       }}
                       className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50"
                     >
@@ -288,15 +287,14 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                     <button
                       type="button"
                       role="menuitem"
-                      disabled={g.reassigning}
                       onClick={(e) => {
                         e.stopPropagation();
                         setMoreOpen(false);
-                        g.setReassignOpen(true);
+                        g.openMovePhotos();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50"
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15"
                     >
-                      <Package className="h-4 w-4 shrink-0" />
+                      <ArrowLeftRight className="h-4 w-4 shrink-0" />
                       Move to another PO
                     </button>
                   ) : null}
@@ -441,15 +439,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         </div>
       )}
 
-      {g.reassignError && !g.reassignOpen && (
-        <div
-          className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-600/90 px-4 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
-          role="alert"
-        >
-          {g.reassignError}
-        </div>
-      )}
-
       {g.uploading && (
         <div
           className="absolute top-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-glass/20 bg-scrim/80 px-4 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
@@ -468,15 +457,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           {g.uploadError}
         </div>
       )}
-
-      <MovePhotoToPoPanel
-        open={g.reassignOpen}
-        currentReceivingId={g.receivingId}
-        busy={g.reassigning}
-        error={g.reassignError}
-        onClose={() => g.setReassignOpen(false)}
-        onSelect={(targetReceivingId) => void g.handleReassignToReceiving(targetReceivingId)}
-      />
 
       {/* Main Photo */}
       <motion.div

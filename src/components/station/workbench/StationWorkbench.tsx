@@ -6,6 +6,7 @@ import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal
 import {
   STATION_WORKBENCH_COLUMN,
   STATION_WORKBENCH_BODY_DOCKED,
+  STATION_WORKBENCH_BODY_PAD_X,
 } from './workbench-layout';
 
 /**
@@ -21,7 +22,8 @@ import {
  *   5. feedback      — inline action / receive feedback bands
  *   6. dock          — StationTerminalDock (tab-aware FloatingButton)
  *
- * Unbox station chrome (utilities top-right · 720px identity column) lives in
+ * Unbox station chrome (corner utilities · identity column synced to workbench
+ * body via {@link STATION_WORKBENCH_IDENTITY_COLUMN}) lives in
  * ReceivingStationContextBar above this workbench. Carton pipeline stepper
  * lives only in ReceivingDetailsStack.
  *
@@ -80,7 +82,7 @@ export function StationWorkbench({
         <div
           className={cn(
             reserveScrollClearance
-              ? `${STATION_WORKBENCH_COLUMN} space-y-4 px-4 py-5 sm:px-6 ${STATION_TERMINAL_SCROLL_CLEARANCE}`
+              ? `${STATION_WORKBENCH_COLUMN} space-y-4 ${STATION_WORKBENCH_BODY_PAD_X} py-5 ${STATION_TERMINAL_SCROLL_CLEARANCE}`
               : STATION_WORKBENCH_BODY_DOCKED,
             scrollClassName,
           )}

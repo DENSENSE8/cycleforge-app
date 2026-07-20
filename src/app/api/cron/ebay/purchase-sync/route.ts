@@ -13,8 +13,8 @@ export const maxDuration = 300;
  * GET /api/cron/ebay/purchase-sync  (Vercel cron, ~30–60 min)
  * Universal Incoming Track A: sync each org's connected eBay BUYER accounts'
  * purchases into Incoming (plan §5.3). Only orgs with the incoming_universal flag
- * ON are swept; the eBay Buy Order API adapter is a no-op until buy.order.readonly
- * is approved, so this is a safe no-op cron until then.
+ * ON are swept. Discovery is Trading GetOrders OrderRole=Buyer (live);
+ * Buy Order enrich remains opt-in via buy.order.readonly / EBAY_BUYER_SCOPES.
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) {

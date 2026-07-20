@@ -34,6 +34,7 @@ import {
 import { isSkuSourceRecord } from '@/utils/source-dot';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
+  ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
 } from '@/lib/dashboard-order-row-layout';
@@ -248,7 +249,16 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // icon-less Platform / Order / Tracking grid cells that lock to the header.
   const chipsNode = <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />;
   const chipsCells = (
-    <OrderIdentityChips {...identityChipProps} isMobile={false} variant="plain" layout="cells" />
+    <OrderIdentityChips
+      {...identityChipProps}
+      isMobile={false}
+      variant="plain"
+      layout="cells"
+      // Shared grid chrome so platform/order/tracking cells carry the same
+      // vertical rule + inset as the rest of the row; tracking is the last
+      // column (no trailing rule).
+      gridCellClass={(col) => ordersQueueGridCell({ rule: col !== 'tracking' })}
+    />
   );
 
   const notesFlagsNode =
@@ -336,7 +346,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // Select cell — checkbox only. The drag grip lives solely in the sticky header
   // (select-all context); per-row grips clutter the vertical scan line.
   const leadControls = (
-    <div className="flex items-center" onClick={(e) => selectMode && e.stopPropagation()}>
+    <div
+      className={ordersQueueGridCell({ inset: 'none', rule: false })}
+      onClick={(e) => selectMode && e.stopPropagation()}
+    >
       {selectMode ? (
         <span
           className={cn(
@@ -500,30 +513,34 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       ) : (
         <>
           {leadControls}
-          <div className="flex items-center justify-center">{statusDotNode}</div>
-          <div className="min-w-0">
-            <span className="block truncate text-role-data text-text-default">
+          <div className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center')}>{statusDotNode}</div>
+          <div className={ordersQueueGridCell()}>
+            <span className="min-w-0 truncate text-role-data text-text-default">
               {record.product_title || 'Unknown Product'}
             </span>
           </div>
           {showQtyCol ? (
-            <span data-col="qty" className={cn('truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qty))}>
-              {qty}
-            </span>
+            <div data-col="qty" className={ordersQueueGridCell()}>
+              <span className={cn('min-w-0 truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qty))}>
+                {qty}
+              </span>
+            </div>
           ) : (
-            <span />
+            <span className={ordersQueueGridCell()} />
           )}
           {showConditionCol ? (
-            <span data-col="condition" className="min-w-0 truncate text-role-eyebrow uppercase text-text-muted">
-              <RowConditionMeta condition={record.condition} />
-            </span>
+            <div data-col="condition" className={cn(ordersQueueGridCell(), 'text-role-eyebrow uppercase text-text-muted')}>
+              <span className="min-w-0 truncate">
+                <RowConditionMeta condition={record.condition} />
+              </span>
+            </div>
           ) : (
-            <span />
+            <span className={ordersQueueGridCell()} />
           )}
-          <div data-col="age" className="flex min-w-0 items-center">
+          <div data-col="age" className={ordersQueueGridCell()}>
             {ageNode}
           </div>
-          <div data-col="notes" className="flex min-w-0 items-center gap-1">
+          <div data-col="notes" className={cn(ordersQueueGridCell(), 'gap-1')}>
             {desktopNotesCell}
           </div>
           {chipsCells}

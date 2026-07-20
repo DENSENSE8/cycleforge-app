@@ -7,18 +7,17 @@ import {
   ExternalLink,
   Info,
   Loader2,
+  Ticket,
   Upload,
 } from '../../Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { cn } from '@/utils/_cn';
 import type { PhotoGalleryController } from './usePhotoGallery';
 
 /** The launcher surface — thumbnail strip, slim toolbar, or the default button. */
 export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
   const { photoItems, compact, className, loadedCount, errorCount } = g;
-  const dz = usePhotoDropzone(g.handleUploadFiles);
 
   if (g.launcherLayout === 'thumbnails') {
     return (
@@ -65,8 +64,6 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           className,
         )}
       >
-        {g.canUpload ? <input ref={dz.inputRef} {...dz.inputProps} /> : null}
-
         {g.toolbarShowLabel ? (
           <HoverTooltip label="View photos fullscreen" asChild>
             {/* ds-raw-button: composite text-left launcher (label + chevron) — not a Button shape */}
@@ -122,7 +119,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
               <IconButton
                 onClick={(e) => {
                   e.stopPropagation();
-                  dz.openPicker();
+                  g.openUploadOverlay();
                 }}
                 disabled={g.uploading}
                 className={cn(iconBtn, sep)}
@@ -156,11 +153,26 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
               <IconButton
                 onClick={(e) => {
                   e.stopPropagation();
-                  g.openViewer(0, { reassign: true });
+                  g.openMovePhotos();
+                }}
+                className={cn(iconBtn, sep, g.movePhotosOpen ? 'bg-blue-100' : '')}
+                ariaLabel="Move to another PO"
+                aria-pressed={g.movePhotosOpen}
+                icon={<ArrowLeftRight className="h-4 w-4 text-blue-700" />}
+              />
+            </HoverTooltip>
+          ) : null}
+
+          {g.onSendToTicket ? (
+            <HoverTooltip label="Send photos to a support ticket" asChild>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  g.onSendToTicket?.();
                 }}
                 className={cn(iconBtn, sep)}
-                ariaLabel="Move to another PO"
-                icon={<ArrowLeftRight className="h-4 w-4 text-blue-700" />}
+                ariaLabel="Send photos to a support ticket"
+                icon={<Ticket className="h-4 w-4 text-blue-700" />}
               />
             </HoverTooltip>
           ) : null}

@@ -214,6 +214,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
               variant="station"
               onlySegment="customer"
               hideLinkage
+              onRequestLinkTicket={() => c.openClaimModal('link')}
               className="h-full min-h-0 rounded-2xl"
             />
           </div>

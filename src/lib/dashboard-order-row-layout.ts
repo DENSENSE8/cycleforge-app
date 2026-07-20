@@ -17,60 +17,154 @@
  * anatomy regardless of viewport width.
  */
 
+import type { ColumnType } from '@/lib/tables/table-columns';
+
 /** Sticky column header docks at the scrollport top; day bands sit beneath it. */
 export const ORDERS_QUEUE_COL_HEADER_STICKY = 'top-0';
 /** Day-band sticky offset — must match the column header’s rendered height (~36px). */
 export const ORDERS_QUEUE_DATE_STICKY = 'top-9';
 
-/**
- * Fixed track widths for the orders-queue columnar grid (desktop).
- * Keep header + row + group summary on THIS template — never mix `auto`/`fr`
- * for the same slot across rows, or columns drift (the uneven look the Sheets
- * rewrite exists to kill). Only `title` and `notes` flex; every id/fact column
- * is a fixed track so the header locks to it.
- */
-const ORDERS_QUEUE_COL = {
-  /** Row checkbox (header also holds the micro drag grip + select-all). */
-  select: '2rem',
-  /** Pipeline status dot — one shared vertical x across every row. */
-  status: '1.25rem',
-  /** Product title — primary flexing track. */
-  title: 'minmax(14rem, 1.6fr)',
-  qty: '2.5rem',
-  condition: '3.5rem',
-  /** Days-late pill / lane-age mono (single urgency column). */
-  age: '3.25rem',
-  /** Truncated order notes (secondary flexing track). */
-  notes: 'minmax(6rem, 0.7fr)',
-  /** Short platform label (`ebay` / `amazon`) — no leading glyph on this table. */
-  platform: '5.5rem',
-  /** Order id last-4 — no `#` glyph. */
-  order: '4rem',
-  /** Tracking / scan last-4 (or staged serial fallback) — no pin glyph. */
-  tracking: '4rem',
-} as const;
+/** Stable key set for the desktop orders-queue columns (scan order). */
+export type OrdersQueueColumnKey =
+  | 'select'
+  | 'status'
+  | 'title'
+  | 'qty'
+  | 'condition'
+  | 'age'
+  | 'notes'
+  | 'platform'
+  | 'order'
+  | 'tracking';
 
-/** Canonical desktop grid — same string for header, every row, and group summary. */
-export function ordersQueueGridTemplate(): string {
-  return [
-    ORDERS_QUEUE_COL.select,
-    ORDERS_QUEUE_COL.status,
-    ORDERS_QUEUE_COL.title,
-    ORDERS_QUEUE_COL.qty,
-    ORDERS_QUEUE_COL.condition,
-    ORDERS_QUEUE_COL.age,
-    ORDERS_QUEUE_COL.notes,
-    ORDERS_QUEUE_COL.platform,
-    ORDERS_QUEUE_COL.order,
-    ORDERS_QUEUE_COL.tracking,
-  ].join(' ');
+/**
+ * One column of the desktop orders-queue grid — the SoT that the grid template,
+ * the sticky header (label + type glyph + per-column menu), and the body/group
+ * cells all read, so a column's width, label, type, and hide-key live in ONE
+ * place and can never drift apart.
+ */
+export interface OrdersQueueColumn {
+  key: OrdersQueueColumnKey;
+  /** Fixed CSS grid track width. Only `title` + `notes` flex (`minmax`). */
+  width: string;
+  /** Header label; omitted for the select/status control gutters (no label). */
+  label?: string;
+  /** Data-type → header glyph (Airtable-style); omitted for control gutters. */
+  type?: ColumnType;
+  /** The `TableColumnConfig` key this column hides under, when hideable. */
+  hideKey?: string;
 }
 
-/** Desktop columnar shell (orders queue + station rows that share it). */
+/**
+ * Canonical column model, in strict scan order:
+ *   select · status · title · qty · cond · age · notes · platform · order · tracking
+ * Never mix `auto`/`fr` for the same slot across rows, or columns drift (the
+ * uneven look the Sheets rewrite exists to kill). `order` hides under the legacy
+ * `orderid` config key (the grid column is `order`; the hide-registry key is
+ * `orderid`).
+ */
+export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
+  { key: 'select', width: '2rem' },
+  { key: 'status', width: '1.25rem' },
+  { key: 'title', width: 'minmax(14rem, 1.6fr)', label: 'Product', type: 'text' },
+  { key: 'qty', width: '2.5rem', label: 'Qty', type: 'number', hideKey: 'qty' },
+  { key: 'condition', width: '3.5rem', label: 'Cond', type: 'tag', hideKey: 'condition' },
+  { key: 'age', width: '3.25rem', label: 'Age', type: 'date' },
+  { key: 'notes', width: 'minmax(6rem, 0.7fr)', label: 'Notes', type: 'longtext' },
+  { key: 'platform', width: '5.5rem', label: 'Platform', type: 'tag', hideKey: 'platform' },
+  { key: 'order', width: '4rem', label: 'Order', type: 'id', hideKey: 'orderid' },
+  { key: 'tracking', width: '4rem', label: 'Tracking', type: 'id', hideKey: 'tracking' },
+] as const;
+
+/** CSS custom property that overrides a column's track width (px), keyed by the
+ *  column key. Set on the grid surface; header + rows + group summary inherit it. */
+export function ordersQueueColVar(key: string): string {
+  return `--cf-col-${key}`;
+}
+
+/**
+ * Canonical desktop grid template — one track per column, each driven by its
+ * width CSS var with the default track as the fallback:
+ *   `var(--cf-col-title, minmax(14rem, 1.6fr)) …`
+ * so a persisted / drag-resized width overrides the default with ZERO template
+ * rebuild — set the var once on the surface and every row reflows via CSS (no
+ * per-row React state). Header, rows, and group summary share this exact string.
+ */
+export function ordersQueueGridTemplate(): string {
+  return ORDERS_QUEUE_COLUMNS.map((c) => `var(${ordersQueueColVar(c.key)}, ${c.width})`).join(' ');
+}
+
+/** Build the grid-surface style object that applies a persisted px-width map as
+ *  the per-column CSS vars (a column absent from the map keeps its default track). */
+export function ordersQueueColumnVars(
+  widths: Readonly<Record<string, number>>,
+): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const [key, px] of Object.entries(widths)) {
+    if (Number.isFinite(px)) vars[ordersQueueColVar(key)] = `${px}px`;
+  }
+  return vars;
+}
+
+/** Column keys that carry a drag-resize handle — the labelled data columns; the
+ *  select/status control gutters stay fixed. */
+export const ORDERS_QUEUE_RESIZABLE_KEYS: readonly string[] = ORDERS_QUEUE_COLUMNS.filter(
+  (c) => c.key !== 'select' && c.key !== 'status',
+).map((c) => c.key);
+
+/**
+ * Horizontal cell inset for the orders-queue grid.
+ *
+ * A Tier-1 density-aware scale step, deliberately NOT an `inset-*` intent: every
+ * intent also sets `paddingBlock`, which would fight the density-owned row height
+ * (the row's `py` / the Phase-5 row-height presets). Horizontal inset is the
+ * whole cell padding story here, so it stays a single centralized token instead
+ * of a scattered `px-2`. Guard-safe: the spacing guard bans only arbitrary-px.
+ */
+export const ORDERS_QUEUE_CELL_INSET = 'px-2';
+
+/**
+ * Per-column cell chrome shared by the sticky header, every row, and the
+ * multi-product group summary — the one helper that makes the queue read as a
+ * continuous spreadsheet grid (Airtable/Sheets), not a hairline list.
+ *
+ * Composes three things so header ↔ body ↔ group rules can never drift:
+ *   • `flex items-center` — the cell fills the stretched track height (the shell
+ *     is `items-stretch`) and vertically centers its content, so every column
+ *     rule spans the full row height uniformly.
+ *   • horizontal inset ({@link ORDERS_QUEUE_CELL_INSET}) — content never kisses
+ *     the rule. Suppressed on the narrow select/status control gutters.
+ *   • a right hairline (`border-r border-border-hairline`) — the vertical column
+ *     rule. Dropped on the last column and the lead select gutter.
+ *
+ * @param rule  draw the right column rule (default true).
+ * @param inset horizontal inset (default `'cell'`; `'none'` for control gutters).
+ */
+export function ordersQueueGridCell(
+  { rule = true, inset = 'cell' }: { rule?: boolean; inset?: 'cell' | 'none' } = {},
+): string {
+  return [
+    'flex min-w-0 items-center',
+    inset === 'cell' ? ORDERS_QUEUE_CELL_INSET : '',
+    rule ? 'border-r border-border-hairline' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+/**
+ * Desktop columnar shell (orders queue + station rows that share it).
+ *
+ * `items-stretch` (was `items-center`) so every grid cell fills the row height
+ * and its {@link ordersQueueGridCell} right hairline runs the full height — a
+ * continuous vertical rule, not a ragged content-height stub. The old `gap-x-2`
+ * is gone: cells butt together and the per-cell inset + rule (from the helper)
+ * own the inter-column spacing, the way a spreadsheet does.
+ */
 export function ordersQueueRowShellClass(isMobile: boolean): string {
   return isMobile
     ? 'flex flex-col gap-1.5'
-    : 'grid w-full min-w-0 items-center gap-x-2';
+    : 'grid w-full min-w-0 items-stretch';
 }
 
 /** Legacy two-zone shell — Shipped / Receiving / walk-in. */

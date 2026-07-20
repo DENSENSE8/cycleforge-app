@@ -1,7 +1,97 @@
 {
-  "generatedAt": "2026-07-19T07:41:47.191Z",
+  "generatedAt": "2026-07-20T08:51:49.491Z",
   "count": 196,
   "commits": [
+    {
+      "sha": "b766dd58f001e8c84941913f026a1eb7900c1958",
+      "shortSha": "b766dd58f",
+      "date": "2026-07-20T00:27:10-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(ui): queue-table SoT, unbox rail stagger, and header/station chrome polish",
+      "body": "Extract shared queue-table shell for To Ship Pending (10-col WMS grid), fix Unbox UNBOXED siderail first-load stagger and flush-right inset, align GlobalHeader/station bookmark chrome to header SoT, and sync unbox line selection via URL.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "queue-table SoT, unbox rail stagger, and header/station chrome polish"
+    },
+    {
+      "sha": "8c65e6c12db06b92548eb3ef2b2df807b0912a65",
+      "shortSha": "8c65e6c12",
+      "date": "2026-07-19T08:53:42-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(unbox): restore sidebar Unboxed rail eyebrow and pencil dismiss",
+      "body": "Re-enable rail edit mode on Unbox scan surfaces so the Unboxed · N eyebrow\nand bulk dismiss work again after the station-depth hide.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "restore sidebar Unboxed rail eyebrow and pencil dismiss"
+    },
+    {
+      "sha": "9aa2c9450c78bd7bb7e81d277eeba581eaeeceb9",
+      "shortSha": "9aa2c9450",
+      "date": "2026-07-19T08:51:59-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(nav): drop duplicate queryClient/handleRowHover in MasterNav",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "drop duplicate queryClient/handleRowHover in MasterNav"
+    },
+    {
+      "sha": "605dc206f8bacf0410d4eb81571456fcce51c890",
+      "shortSha": "605dc206f",
+      "date": "2026-07-19T08:51:18-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(nav): hover-prefetch Unbox receiving-lines spine data",
+      "body": "Wire MasterNav row/chip hover to prefetchNavData so /unbox paints from a\nwarm react-query cache instead of a cold spine fetch.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "hover-prefetch Unbox receiving-lines spine data"
+    },
+    {
+      "sha": "e638872597d2a58eb9f4375c50c39bded5eb06d0",
+      "shortSha": "e63887259",
+      "date": "2026-07-19T08:48:55-07:00",
+      "author": "DENSENSE8",
+      "subject": "test: cover spine-phase receiving-lines paint-limit clamp",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "test",
+      "title": "cover spine-phase receiving-lines paint-limit clamp"
+    },
+    {
+      "sha": "d70d809e7e57e93aef2f87f92fd38ffbe15d2a58",
+      "shortSha": "d70d809e7",
+      "date": "2026-07-19T08:47:50-07:00",
+      "author": "DENSENSE8",
+      "subject": "perf(unbox): clamp spine-phase receiving-lines window to 150",
+      "body": "Keep the paint-tier query lean when callers request deep limits; the full\nphase still restores authoritative depth behind the first paint.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "performance",
+      "title": "clamp spine-phase receiving-lines window to 150"
+    },
+    {
+      "sha": "21f818f775290da1de047c2611421c15f7fc74b2",
+      "shortSha": "21f818f77",
+      "date": "2026-07-19T08:46:30-07:00",
+      "author": "DENSENSE8",
+      "subject": "perf(unbox): gate MobileReceivingList fetch to mobile UI mode",
+      "body": "Skip the authoritative receiving-lines query when the list is only CSS-hidden\non desktop, and shrink the phone feed window from 500 to 100 rows.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "performance",
+      "title": "gate MobileReceivingList fetch to mobile UI mode"
+    },
+    {
+      "sha": "19b89f20355d8f9a285df79af95c4e5ce08b8c74",
+      "shortSha": "19b89f203",
+      "date": "2026-07-19T08:45:16-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore: append work-log for station depth / Tier-1 perf push",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "chore",
+      "title": "append work-log for station depth / Tier-1 perf push"
+    },
+    {
+      "sha": "dc30debcd490c173fc95ad009a6b327212f52d1e",
+      "shortSha": "dc30debcd",
+      "date": "2026-07-19T08:44:00-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: station depth SoT, pack/triage workspaces, and Tier-1 perf",
+      "body": "Align Pack and Triage to Unbox-shaped station workspaces, unify queue-row\nand stage-time chrome, and land Lighthouse tooling with route loading\nshells, provider diet, and print/db bundle fences for faster first paint.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "station depth SoT, pack/triage workspaces, and Tier-1 perf"
+    },
     {
       "sha": "74d1dd5f677173a27a783a257b004b9559dbe648",
       "shortSha": "74d1dd5f6",
@@ -1871,96 +1961,6 @@
       "body": "Best-effort Upstash Redis mutex keyed wf:advance:{serialUnitId}, wired into\nthe production advance() path. Mirrors api-guard.ts's REST /pipeline shape.\n\nFailure policy (the lock narrows races; engine idempotency is the backstop):\n- Redis unconfigured -> acquire() true / release() no-op (== NULL_LOCK), so\n  dev/CI/preview are unaffected.\n- SET NX miss (already held) -> acquire() false -> 2nd concurrent advance noops.\n- Redis error/timeout -> acquire() true (fail OPEN), never stalls a tap.\n\nShort TTL auto-expires a crashed holder; release is a token-checked\ncompare-and-delete (Lua) so we never free a lock a later advance re-acquired.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
       "type": "feature",
       "title": "real per-unit AdvanceLock replacing NULL_LOCK (Phase 1.0)"
-    },
-    {
-      "sha": "86fd9a36164533b73fc1c2713d0d7126bf51f602",
-      "shortSha": "86fd9a361",
-      "date": "2026-06-20T13:32:22-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): make serial_units writer org-required + FORCE RLS migration",
-      "body": "upsertSerialUnit now takes a REQUIRED orgId: the unscoped SELECT/INSERT/UPDATE\nbranches and the raw-pool dispatcher are deleted, so the canonical writer always\nstamps organization_id (or sets app.current_org on an external client). This\nremoves the FORCE-RLS footgun (relying on the column default, which loud-fails\nwithout the GUC) and the latent cross-tenant FOR UPDATE lock bug.\n\nsyncTsnToSerialUnit / syncSkuToSerialUnit also require orgId. Threaded callers:\npost-multi-sn, mark-received (ctx.organizationId), receive-line\n(input.organizationId), serial-attach attachSerialToLine (now requires orgId,\nlegacy raw-pool path removed) + its route callers scan-serial and\nmark-received-po, and the serials route. recordUnitEvent (test-only) gains\norganizationId on its input.\n\nAdds 2026-06-20b_enforce_tenant_isolation_serial_units.sql (FORCE phase E) and\nscripts/verify-serial-units-force.mjs (app_tenant baseline -> apply -> reread ->\nauto-relax harness). Apply ONLY after this code deploys.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "make serial_units writer org-required + FORCE RLS migration"
-    },
-    {
-      "sha": "1e28d1885934eb42001e6aca6413a2778423d2a3",
-      "shortSha": "1e28d1885",
-      "date": "2026-06-20T13:32:22-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tenancy): make serial_units writer org-required + FORCE RLS migration",
-      "body": "upsertSerialUnit now takes a REQUIRED orgId: the unscoped SELECT/INSERT/UPDATE\nbranches and the raw-pool dispatcher are deleted, so the canonical writer always\nstamps organization_id (or sets app.current_org on an external client). This\nremoves the FORCE-RLS footgun (relying on the column default, which loud-fails\nwithout the GUC) and the latent cross-tenant FOR UPDATE lock bug.\n\nsyncTsnToSerialUnit / syncSkuToSerialUnit also require orgId. Threaded callers:\npost-multi-sn, mark-received (ctx.organizationId), receive-line\n(input.organizationId), serial-attach attachSerialToLine (now requires orgId,\nlegacy raw-pool path removed) + its route callers scan-serial and\nmark-received-po, and the serials route. recordUnitEvent (test-only) gains\norganizationId on its input.\n\nAdds 2026-06-20b_enforce_tenant_isolation_serial_units.sql (FORCE phase E) and\nscripts/verify-serial-units-force.mjs (app_tenant baseline -> apply -> reread ->\nauto-relax harness). Apply ONLY after this code deploys.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "make serial_units writer org-required + FORCE RLS migration"
-    },
-    {
-      "sha": "4f19d69c5204c93e42a5780846e386c6784f2b92",
-      "shortSha": "4f19d69c5",
-      "date": "2026-06-19T12:18:21-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Allow protobufjs build scripts for pnpm",
-      "body": "",
-      "type": "other",
-      "title": "Allow protobufjs build scripts for pnpm"
-    },
-    {
-      "sha": "b534659486c3e549b6c9ef9e3d8d930dc2334d65",
-      "shortSha": "b53465948",
-      "date": "2026-06-19T12:18:21-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Allow protobufjs build scripts for pnpm",
-      "body": "",
-      "type": "other",
-      "title": "Allow protobufjs build scripts for pnpm"
-    },
-    {
-      "sha": "fb19e196a0f19b0a0c59728c17f345cddcc18fee",
-      "shortSha": "fb19e196a",
-      "date": "2026-06-19T12:14:08-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Fix photo library typings and release notes",
-      "body": "",
-      "type": "fix",
-      "title": "Fix photo library typings and release notes"
-    },
-    {
-      "sha": "f794767d3028db3ebd6455ec20481fc5c77099ca",
-      "shortSha": "f794767d3",
-      "date": "2026-06-19T12:14:08-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "Fix photo library typings and release notes",
-      "body": "",
-      "type": "fix",
-      "title": "Fix photo library typings and release notes"
-    },
-    {
-      "sha": "46f90b7ec09447eed480aab33ddf97bc190a4d9a",
-      "shortSha": "46f90b7ec",
-      "date": "2026-06-17T13:34:57-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "feat(integrations): platform_listings + connector reconcile groundwork",
-      "body": "- platform_listings: first-class per-channel listing (price/qty/condition,\n  own sync state + sync_hash for idempotent skip, nullable sku_catalog_id so\n  unresolved listings persist). Migration + drizzle schema + repo +\n  sync-hash util/test. Additive, RLS armed (not enforced).\n- connectors: add reconcile()/pushInventory() to the connector contract,\n  runReconcileAllOrgs orchestrator, and a daily /api/cron/integrations/reconcile\n  cron (CRON_SECRET-guarded, no-op until providers wire reconcile()).\n- receiving: photo capture/upload UX (mobile + line-edit), seller-message chip,\n  NAS attach, realtime invalidation, nas-photos/claim-photos tweaks.\n\nNote: .env.local intentionally not committed (contains a live Cloudflare\ntunnel token + provider secrets).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "platform_listings + connector reconcile groundwork"
-    },
-    {
-      "sha": "07b5d65b109fc6fd5324deac3dd8c8ad17d5a723",
-      "shortSha": "07b5d65b1",
-      "date": "2026-06-17T13:34:57-07:00",
-      "author": "usavsolutionsinc",
-      "subject": "feat(integrations): platform_listings + connector reconcile groundwork",
-      "body": "- platform_listings: first-class per-channel listing (price/qty/condition,\n  own sync state + sync_hash for idempotent skip, nullable sku_catalog_id so\n  unresolved listings persist). Migration + drizzle schema + repo +\n  sync-hash util/test. Additive, RLS armed (not enforced).\n- connectors: add reconcile()/pushInventory() to the connector contract,\n  runReconcileAllOrgs orchestrator, and a daily /api/cron/integrations/reconcile\n  cron (CRON_SECRET-guarded, no-op until providers wire reconcile()).\n- receiving: photo capture/upload UX (mobile + line-edit), seller-message chip,\n  NAS attach, realtime invalidation, nas-photos/claim-photos tweaks.\n\nNote: .env.local intentionally not committed (contains a live Cloudflare\ntunnel token + provider secrets).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "platform_listings + connector reconcile groundwork"
-    },
-    {
-      "sha": "e820f9f2e842659b33362735e787e5a07e24b057",
-      "shortSha": "e820f9f2e",
-      "date": "2026-06-19T08:46:36-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(photos): GCS-backed photos platform with library, share packs, and entity links",
-      "body": "Migrate photo capture and display across receiving, packing, testing, and claims to a unified GCS storage layer with Neon entity links, ops Photo Library UI, public share packs, NAS mirror cron, and analysis jobs. Includes DB migrations, backfill scripts, route permissions, E2E coverage, repair intake stepper, and print label refactors.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "GCS-backed photos platform with library, share packs, and entity links"
     }
   ]
 }

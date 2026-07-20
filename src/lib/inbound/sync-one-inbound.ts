@@ -3,9 +3,9 @@
  * buyer purchase onto the Incoming spine and re-poll its carrier shipment.
  *
  * Universal Incoming §7.3 / §9.4: the Incoming details panel "Resync" affordance
- * for non-Zoho rows. Track A eBay Buy API is a no-op until buy.order.readonly is
- * approved; until then we still re-poll tracking and surface actionable errors
- * (flag off, source disabled, no buyer account).
+ * for non-Zoho rows. Re-fetches via Trading GetOrders (Buyer) when possible and
+ * always re-polls carrier tracking; surfaces actionable errors (flag off, source
+ * disabled, no buyer account).
  *
  * Deps-injected so unit tests run DB-free.
  */

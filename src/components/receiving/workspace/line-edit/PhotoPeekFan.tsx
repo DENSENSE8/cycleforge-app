@@ -28,6 +28,7 @@ import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { useEscapeClose } from '@/design-system/hooks';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
 import type { PhotoGalleryInput, PhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
@@ -317,6 +318,16 @@ export function PhotoPeekFan({
             )
           : null
       )}
+
+      {gallery.canReassignCurrent && receivingId != null ? (
+        <MovePhotosBetweenPoModal
+          key={gallery.movePhotosKey}
+          open={gallery.movePhotosOpen}
+          receivingId={receivingId}
+          onClose={gallery.closeMovePhotos}
+          onMoved={() => onPhotoDeleted?.(0)}
+        />
+      ) : null}
     </>
   );
 }

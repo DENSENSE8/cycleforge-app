@@ -28,7 +28,7 @@ export function TestingCartonHeader({
       staffId={staffId}
       isUnmatched={row.receiving_source === 'unmatched'}
       showStaffPhotoRow
-      onMakeClaim={() => c.setClaimOpen(true)}
+      onMakeClaim={() => c.openClaimModal('create')}
       listingLink={c.listingLink}
       setListingLink={c.setListingLink}
       listingEditorOpen={c.listingEditorOpen}
@@ -85,6 +85,7 @@ export function TestingCartonHeader({
       priorityTier={c.priorityTier}
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
       onExitToList={() => dispatchSelectLine(null)}
+      onSendToTicket={() => c.setPhotoNoteOpen(true)}
     />
   );
 }

@@ -214,10 +214,20 @@ export function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   // Lock body scroll when drawer is open (restores prior overflow on close).
   useBodyScrollLock(drawerOpen);
 
-  // Skip the pre-mount blank for `/m` routes — they render the mobile shell
-  // deterministically (see `onMobileRoute`), so there's nothing to wait for and
-  // the blank would just be an extra refresh flash.
-  if (!mounted && !onMobileRoute) {
+  // Pre-hydration paint policy for the blank gate:
+  //   • `/m` routes render the mobile shell deterministically (`onMobileRoute`),
+  //     so there's nothing to wait for.
+  //   • Desktop-only routes (NOT in the mobile allowlist) always resolve to the
+  //     desktop branch as their final state — a phone bounces to `/m/home` via
+  //     `mobileRouteRestricted` rather than rendering an in-place mobile branch —
+  //     so there is no desktop→mobile flip to hide. Let their server-rendered
+  //     shell paint pre-hydration instead of blanking it. The whole shell used
+  //     to be client-gated here, so nothing the server rendered ever painted;
+  //     this is the LCP lever (richer first paint before hydration).
+  //   • Mobile-allowed non-`/m` routes DO flip to a content-only mobile branch
+  //     once device detection resolves (first render is always `desktop`), so
+  //     they keep the blank to avoid the desktop→mobile flash.
+  if (!mounted && !onMobileRoute && isMobileAllowedPath(pathname)) {
     return <div className={cn('flex min-h-0 flex-1', appChromeClass)} aria-hidden="true" />;
   }
 

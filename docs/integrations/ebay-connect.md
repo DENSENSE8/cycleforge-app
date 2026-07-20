@@ -1,8 +1,9 @@
 # eBay account connect (Settings → Integrations)
 
-Lets a workspace connect one or more eBay **seller accounts** by signing in to eBay
-and granting consent. Server-side OAuth (Authorization Code Grant); tokens never
-reach the client.
+Lets a workspace connect one or more eBay **seller** and/or **purchasing (buyer)**
+accounts by signing in to eBay and granting consent. Server-side OAuth
+(Authorization Code Grant); tokens never reach the client. Same shared eBay app;
+`account_role` (`seller` | `buyer`) chooses scopes and which sync path runs.
 
 This was a **hardening pass** over an existing implementation, not a greenfield
 build. What was added/fixed in this pass:
@@ -21,28 +22,65 @@ build. What was added/fixed in this pass:
 - **Declined-consent**, **refresh-failure → needs-reconsent**, a **health** endpoint,
   and **per-account disconnect** (step-up; eBay has no revoke API, so delete = revoke).
 - **Encryption-at-rest hard-fail** in production when `INTEGRATION_KMS_KEY` is unset.
+- **Purchasing accounts** — `?role=buyer`, Trading GetOrders → `/incoming`, and
+  auto-enable of `incoming_universal` on successful buyer connect.
 
 ## Tenancy model
 
-**Shared eBay app, many sellers.** One eBay developer app + RuName (USAV/CycleForge's)
-that every tenant's sellers grant consent to. App-level credentials resolve to the
+**Shared eBay app, many accounts.** One eBay developer app + RuName (CycleForge's)
+that every tenant's sellers/buyers grant consent to. App-level credentials resolve to the
 org's own `organization_integrations` row if present (future BYO app), otherwise the
-shared env app. Only the per-seller **tokens** are per-tenant (`ebay_accounts`).
+shared env app. Only the per-account **tokens** are per-tenant (`ebay_accounts`).
 
 ## OAuth flow
 
 1. `GET /api/ebay/connect?accountName=<label>` (auth: `integrations.ebay`) — resolves
    app creds, mints a nonce, encrypts `state = { organizationId, accountName,
-   environment, createdBy, nonce, issuedAt }`, sets the `ebay_oauth_state` httpOnly
+   environment, role, createdBy, nonce, issuedAt }`, sets the `ebay_oauth_state` httpOnly
    cookie, and 302s to `https://auth[.sandbox].ebay.com/oauth2/authorize`.
+   Pass `role=buyer` for a **purchasing** account (Settings → **Add purchasing**);
+   omit / `seller` for selling.
 2. eBay shows consent → redirects to the **RuName**, which must point at
    `GET /api/ebay/callback` (no auth — identity comes from `state`).
 3. Callback validates: declined-consent (`?error=`), missing params, decryptable
    state, required fields, TTL, and **cookie nonce === state nonce**; exchanges the
    code (Basic `base64(appId:certId)`) at the env-matched token endpoint; probes the
    identity API for the eBay user id; writes tokens via `writeEbayToken` (KMS-aware);
-   upserts `ON CONFLICT (organization_id, account_name)`; audits
+   upserts `ON CONFLICT (organization_id, account_name)` with `account_role`; audits
    `integrations.ebay.connected`; redirects to `/settings/integrations?success=ebay_connected`.
+   Buyer connects also enable `organization_feature_flags(flag='incoming_universal')`.
+
+## Purchasing accounts → Incoming
+
+Purchasing (buyer) accounts feed **Universal Incoming** (`/incoming`) so ops can find
+orders that are in transit or **delivered but not yet unboxed**.
+
+| Step | Behavior |
+|---|---|
+| Connect | Settings → Integrations → eBay → **Add purchasing** → `role=buyer` |
+| Flag | `incoming_universal` enabled for the org on successful buyer OAuth |
+| Sync | Cron `/api/cron/ebay/purchase-sync` (~30m) or Incoming **Marketplace** refresh |
+| Ingest | Trading `GetOrders` `OrderRole=Buyer` → `ingestPurchase` → `receiving_line` (`inbound_source_type='ebay'`, `EXPECTED`) |
+| Tracking | Tracking + carrier from Trading `ShippingDetails` → STN; carrier poll marks delivered |
+| UI | Main Incoming table + eBay details tab; facet **Delivered · not unboxed** for carrier-delivered, not-yet-opened packages |
+
+**Buyer scopes** (default — override via `EBAY_BUYER_SCOPES`):
+
+```
+https://api.ebay.com/oauth/api_scope
+```
+
+`buy.order.readonly` is **opt-in** for richer Buy Order enrich (ETA/detail); Trading
+discovery works without it. Refresh and consent **must** use the same role scope set —
+`EbayClient` and the hourly refresh job pass `ebayScopeStringForRole(account_role)`.
+
+Seller Fulfillment sync (`connectors/ebay.ts`) **excludes** buyer accounts; buyers
+never hit `sell.fulfillment`.
+
+**Delivered · not unboxed** needs tracking (or an eBay “ORDER DELIVERED” email signal).
+Without tracking, the purchase can still appear on Incoming as awaiting tracking /
+in transit once ingested, but it will not enter the delivered facet until a carrier
+(or email) marks delivery.
 
 ## eBay Developer Portal setup
 
@@ -100,6 +138,8 @@ the GET challenge (POST can still fail separately).
 
 ## Scopes
 
+### Seller (default)
+
 Default (`src/lib/ebay/oauth-config.ts`):
 
 ```
@@ -112,6 +152,11 @@ https://api.ebay.com/oauth/api_scope/sell.account
 `sell.finances` is **not** default (needs separate eBay approval). Override the whole
 set via the `EBAY_SCOPES` env var (space-separated) once approved — no redeploy of code.
 
+### Buyer / purchasing
+
+Default: `https://api.ebay.com/oauth/api_scope` only. Override via `EBAY_BUYER_SCOPES`
+(e.g. to add `buy.order.readonly` once the app is approved for it).
+
 ## Environment variables
 
 | Var | Purpose |
@@ -120,7 +165,9 @@ set via the `EBAY_SCOPES` env var (space-separated) once approved — no redeplo
 | `EBAY_CERT_ID` | OAuth client_secret (eBay "Cert ID"); Basic-auth on token calls. **Sensitive**. |
 | `EBAY_RU_NAME` | The registered RuName used as `redirect_uri` (per environment). |
 | `EBAY_ENVIRONMENT` | `PRODUCTION` (default) or `SANDBOX`. |
-| `EBAY_SCOPES` | Optional space-separated scope override. |
+| `EBAY_SCOPES` | Optional space-separated **seller** scope override. |
+| `EBAY_BUYER_SCOPES` | Optional space-separated **buyer** scope override. |
+| `INCOMING_UNIVERSAL` | Global env fallback for Universal Incoming (per-org flag preferred; buyer connect auto-enables). |
 | `EBAY_VERIFICATION_TOKEN` | MAD challenge token (32–80 `[A-Za-z0-9_-]`). Same value in the portal. **Sensitive**. |
 | `EBAY_MARKETPLACE_DELETION_ENDPOINT_URL` | Exact public HTTPS URL used in the challenge hash. Default: `https://app.cycleforge.ai/api/webhooks/ebay/marketplace-account-deletion`. |
 | `INTEGRATION_KMS_KEY` | base64 32-byte AES-256-GCM key. **Required in production** — tokens + OAuth state are stored plaintext without it (dev only). Generate: `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"` |
@@ -131,9 +178,12 @@ set via the `EBAY_SCOPES` env var (space-separated) once approved — no redeplo
 
 `/api/cron/ebay/refresh-tokens` (hourly, in `vercel.json` + `src/lib/cron/registry.ts`)
 runs `runEbayRefreshTokensJob`: refreshes tokens expiring within 30 min using each
-account's org app creds + environment. A dead/expired refresh token deactivates the
-account (`is_active=false`) and marks the integration in error so the card prompts a
-reconnect.
+account's org app creds, environment, and **role-matched scopes**. A dead/expired
+refresh token deactivates the account (`is_active=false`) and marks the integration
+in error so the card prompts a reconnect.
+
+Purchase sync: `/api/cron/ebay/purchase-sync` (~30m) for buyer → Incoming (gated by
+`incoming_universal`).
 
 ## Manual sandbox test checklist
 
@@ -146,4 +196,7 @@ reconnect.
 4. **Check** → healthy. **Refresh** (per-account) → success.
 5. **Cancel** consent on a second attempt → `?error=ebay_consent_declined` banner.
 6. **Disconnect** (Trash) → account removed (step-up required for non-admins).
-7. `npm run test:ebay` (scope/env SoT) and `npm run audit-route-auth:check`.
+7. **Purchasing:** **Add purchasing** → grant buyer consent → confirm
+   `incoming_universal` is on, Marketplace refresh pulls purchases to `/incoming`,
+   and delivered packages with tracking appear under **Delivered · not unboxed**.
+8. `npm run test:ebay` (scope/env SoT) and `npm run audit-route-auth:check`.
