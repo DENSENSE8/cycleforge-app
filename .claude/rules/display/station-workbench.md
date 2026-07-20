@@ -52,7 +52,7 @@ entity chrome / console drawer). Packing is terminal-registry-exempt (no sticky 
 |---|---|---|
 | **1. Progress stepper** | Completeness checklist (Photos → Serial → Print), not a wizard lock | `LinearWorkflowStepper` + `deriveLinearStepStates` — lives in parent shell (`ReceivingLineWorkspace`), not inside `StationWorkbench` |
 | **2. Utility toolbar** | Frozen icon bar: refresh, share, overflow, prev/next, details | `LineEditToolbar` + `WORKSPACE_MODES` |
-| **3. Entity context** | One-row identity + inline actions (listing · PO# · tracking · claim · photos) | `CartonContextCard` via `@/components/station/entity-context` + station adapters |
+| **3. Entity context** | One-row identity + inline actions (listing · PO# · tracking · claim · photos); bar density opens classify in a below-chrome strip so pills never fight the nowrap identity row | `CartonContextCard` via `@/components/station/entity-context` + station adapters |
 | **4. Section tabs** | Icon-pill slider that owns bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
 | **5. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content; bridges register dock state |
 | **6. Feedback / footer** | Inline action feedback (scroll) + receive band (between body and dock) | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |

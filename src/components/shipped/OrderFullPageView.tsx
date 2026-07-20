@@ -34,6 +34,7 @@ import {
 } from '@/components/shipped/details-panel/shipped-details-hooks';
 import { ShippedDetailsHeader } from '@/components/shipped/details-panel/ShippedDetailsHeader';
 import { ShippedDetailsBody } from '@/components/shipped/details-panel/ShippedDetailsBody';
+import { orderSearchHref } from '@/lib/search/search-hit';
 
 export type OrderFullPageLayout = 'standalone' | 'workbench';
 
@@ -117,15 +118,34 @@ export function OrderFullPageView({
   layout?: OrderFullPageLayout;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [resolved, setResolved] = useState<Resolved | null>(null);
+
+  // Legacy search handoff: `/o/[id]?mode=search` → Dashboard Search detail.
+  useEffect(() => {
+    if (searchParams.get('mode') !== 'search') return;
+    const q = searchParams.get('q') ?? undefined;
+    router.replace(orderSearchHref(orderId, q ?? undefined));
+  }, [searchParams, orderId, router]);
 
   const load = useCallback(async () => {
     setResolved(await resolveOrder(orderId));
   }, [orderId]);
 
   useEffect(() => {
+    if (searchParams.get('mode') === 'search') return;
     void load();
-  }, [load]);
+  }, [load, searchParams]);
+
+  if (searchParams.get('mode') === 'search') {
+    return (
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-canvas">
+        <span className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
+          <Loader2 className="h-4 w-4 animate-spin" /> Opening search detail…
+        </span>
+      </div>
+    );
+  }
 
   if (resolved === null) {
     return (

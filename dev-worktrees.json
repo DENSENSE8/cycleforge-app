@@ -83,6 +83,14 @@
       "appPort": 3090,
       "unlockParked": true,
       "note": "WS · topic/warehouse · :3090"
+    },
+    {
+      "id": "pending-grid",
+      "label": "Pending full grid",
+      "path": "../cycleforge-pending-grid",
+      "appPort": 3100,
+      "unlockParked": true,
+      "note": "WS-PENDING-GRID · topic/pending-grid · :3100 · bookkeeping — To-Ship Pending full-grid refactor developed in main until the predecessor base is committed; no physical worktree yet"
     }
   ]
 }

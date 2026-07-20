@@ -77,6 +77,11 @@ export function useTestingLineController(
   const [notes, setNotes] = useState<string>('');
   const [isPrinting, setIsPrinting] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [claimInitialMode, setClaimInitialMode] = useState<'create' | 'link'>('create');
+  const openClaimModal = useCallback((mode: 'create' | 'link' = 'create') => {
+    setClaimInitialMode(mode);
+    setClaimOpen(true);
+  }, []);
   const [activeSlotByLine, setActiveSlotByLine] = useState<Record<number, number>>({});
   const [previewBySerialUnit, setPreviewBySerialUnit] = useState<Record<number, AllocatedUnit>>({});
   const [isMutating, setIsMutating] = useState(false);
@@ -163,7 +168,7 @@ export function useTestingLineController(
 
       applyStatus(optimisticStatus);
       window.dispatchEvent(new CustomEvent('testing-result-recorded'));
-      if (next === 'TESTING_FAILED' && lineId === row.id) setClaimOpen(true);
+      if (next === 'TESTING_FAILED' && lineId === row.id) openClaimModal('create');
 
       setIsMutating(true);
       try {
@@ -203,7 +208,7 @@ export function useTestingLineController(
         setIsMutating(false);
       }
     },
-    [row.id, row.serials, row.receiving_id, notes, patchSiblingUnitStatus],
+    [row.id, row.serials, row.receiving_id, notes, patchSiblingUnitStatus, openClaimModal],
   );
 
   const handleSlotCondition = useCallback(
@@ -646,6 +651,6 @@ export function useTestingLineController(
     cartonLabelDraftDefaults: cartonLabel.draftDefaults,
     buildCartonLabelPayload: cartonLabel.buildPayload,
     applyCartonLabel: cartonLabel.applyAndPrint,
-    claimOpen, setClaimOpen,
+    claimOpen, setClaimOpen, claimInitialMode, openClaimModal,
   };
 }

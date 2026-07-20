@@ -24,7 +24,6 @@ export type HeaderActionKey =
   | 'share' // copy/native-share a deep link to this package
   | 'audit' // open the inventory-events audit modal
   | 'copy' // copy package + PO details to the clipboard
-  | 'photoNote' // send this PO's photos to a Zendesk ticket as an internal note
   | 'movePhotos' // bidirectional move photos between this carton and another PO
   | 'pair' // open the cross-platform SKU pairing modal (testing only)
   | 'details'; // right-slot Info → receiving-details overlay
@@ -59,7 +58,8 @@ export interface ModeDef {
 export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
   unbox: {
     label: 'Unbox',
-    headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos', 'photoNote'],
+    // photoNote lives on the carton photo dropdown (ReceivingPhotoButton), not More.
+    headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos'],
     showDetails: true,
     navChannel: 'receiving-navigate-table',
     terminalSlice: 'unbox',
@@ -67,7 +67,8 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
   },
   triage: {
     label: 'Arrival',
-    headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos', 'photoNote'],
+    // photoNote lives on the carton photo dropdown (ReceivingPhotoButton), not More.
+    headerActions: ['refresh', 'share', 'audit', 'copy', 'movePhotos'],
     showDetails: true,
     navChannel: 'receiving-navigate-table',
     terminalSlice: 'triage',
@@ -75,7 +76,8 @@ export const WORKSPACE_MODES: Record<WorkspaceMode, ModeDef> = {
   },
   testing: {
     label: 'Testing',
-    headerActions: ['refresh', 'share', 'audit', 'pair', 'copy', 'movePhotos', 'photoNote', 'details'],
+    // photoNote lives on the carton photo dropdown (ReceivingPhotoButton), not toolbar.
+    headerActions: ['refresh', 'share', 'audit', 'pair', 'copy', 'movePhotos', 'details'],
     showDetails: true,
     navChannel: 'testing-navigate-rail',
     terminalSlice: 'testing',

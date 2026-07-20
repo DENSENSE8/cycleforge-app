@@ -4,7 +4,7 @@
 // (src/lib/billing/plan-ceilings.ts) BEFORE starting a batch, not per-order.
 import { EbayClient } from './client';
 import pool from '@/lib/db';
-import { EBAY_PLATFORM_PREDICATE } from './credentials';
+import { EBAY_PLATFORM_PREDICATE, EBAY_SELLER_ROLE_PREDICATE } from './credentials';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { logger } from '@/lib/observability/logger';
 import { formatApiInstant, normalizePSTTimestamp } from '@/utils/date';
@@ -417,7 +417,8 @@ export async function syncAccountOrders(accountName: string, orgId: string): Pro
 }
 
 /**
- * Sync all active eBay accounts
+ * Sync all active eBay SELLER accounts (Fulfillment / outbound orders).
+ * Buyer purchasing accounts are excluded — they sync via purchase-sync → Incoming.
  */
 export async function syncAllAccounts(): Promise<Array<{
   account: string;
@@ -429,7 +430,9 @@ export async function syncAllAccounts(): Promise<Array<{
   // orders/exceptions with the account's OWNER org — not a hardcoded USAV.
   const accountsResult = await pool.query<{ account_name: string; organization_id: string }>(
     `SELECT account_name, organization_id FROM ebay_accounts
-     WHERE is_active = true AND ${EBAY_PLATFORM_PREDICATE}
+     WHERE is_active = true
+       AND ${EBAY_PLATFORM_PREDICATE}
+       AND ${EBAY_SELLER_ROLE_PREDICATE}
      ORDER BY account_name`
   );
 

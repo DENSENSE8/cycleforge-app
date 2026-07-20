@@ -94,8 +94,13 @@ export function TableColumnConfigProvider({
       const prev = queryClient.getQueryData<StaffPreferences>(STAFF_PREFERENCES_QUERY_KEY) ?? {};
       // Canonical (sorted) so membership is order-independent.
       const canonical = [...nextHidden].sort();
-      // Shallow JSONB merge at `tableColumns`, so carry the whole map forward.
-      const nextTableColumns = { ...(prev.tableColumns ?? {}), [tableId]: { hidden: canonical } };
+      // Shallow JSONB merge at `tableColumns`, so carry the whole map forward AND
+      // preserve this table's sibling `widths` (useColumnWidths owns those) — a
+      // bare `{ hidden }` here would clobber persisted column widths.
+      const nextTableColumns = {
+        ...(prev.tableColumns ?? {}),
+        [tableId]: { ...prev.tableColumns?.[tableId], hidden: canonical },
+      };
       const next: StaffPreferences = { ...prev, tableColumns: nextTableColumns };
       queryClient.setQueryData(STAFF_PREFERENCES_QUERY_KEY, next);
       try {

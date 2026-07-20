@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { dispatchReceivingPhotoChanged } from '@/utils/events';
 import {
@@ -12,8 +12,12 @@ import {
 import { usePhotoItems } from './usePhotoItems';
 import { useImageZoom } from './useImageZoom';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
+import { toast } from '@/lib/toast';
 import type { PhotoEntityType } from '@/lib/photos/types';
 import type { PhotoGalleryInput, PhotoItem } from './photo-gallery-utils';
+
+/** Soft exit duration for MovePhotosBetweenPoModal / RightPaneOverlay fade. */
+const MOVE_PHOTOS_SOFT_MS = 180;
 
 /**
  * Entity a viewer upload attaches to. Upload always targets the gallery's OWN
@@ -49,9 +53,9 @@ export interface PhotoGalleryProps {
   receivingId?: number;
   /** Opens the ops photo library filtered to this entity/receiving scope. */
   libraryHref?: string;
-  /** Show "Move to PO" in the viewer when the user can reassign receiving photos. */
+  /** Show "Move to another PO" (opens MovePhotosBetweenPoModal) for receiving photos. */
   allowReassign?: boolean;
-  /** Called after a photo is moved to another PO (parents invalidate cache). */
+  /** Called after photos move between POs (parents invalidate cache). */
   onPhotoReassigned?: (photoId: number) => void;
   /**
    * Enables the viewer's "Upload photos" action (⋮ menu item + drag-and-drop
@@ -62,6 +66,23 @@ export interface PhotoGalleryProps {
   uploadTarget?: PhotoUploadTarget;
   /** Called after each successful upload (parents invalidate cache). */
   onPhotoUploaded?: (photoId: number) => void;
+  /**
+   * Fired when the upload {@link RightPaneOverlay} opens/closes so hover-hosted
+   * parents (e.g. ReceivingPhotoButton) can pin the gallery mounted while the
+   * overlay is up — otherwise the file input unmounts mid-pick.
+   */
+  onUploadOverlayOpenChange?: (open: boolean) => void;
+  /**
+   * Fired when Move photos opens/closes so hover-hosted parents can pin the
+   * gallery while the modal is up (same contract as upload overlay).
+   */
+  onMovePhotosOpenChange?: (open: boolean) => void;
+  /**
+   * Opt-in toolbar action: send this carton's photos to a support ticket
+   * (opens {@link SendPhotoNoteModal} via the parent). Receiving station
+   * surfaces this on the photo dropdown instead of More actions.
+   */
+  onSendToTicket?: () => void;
 }
 
 /**
@@ -86,6 +107,9 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     onPhotoReassigned,
     uploadTarget,
     onPhotoUploaded,
+    onUploadOverlayOpenChange,
+    onMovePhotosOpenChange,
+    onSendToTicket,
   } = props;
 
   const { photoItems, setPhotoItems, resetFingerprint, loadedCount, errorCount } = usePhotoItems(photos);
@@ -101,24 +125,39 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [reassignOpen, setReassignOpen] = useState(false);
-  const [reassigning, setReassigning] = useState(false);
-  const [reassignError, setReassignError] = useState<string | null>(null);
+  const [movePhotosOpen, setMovePhotosOpen] = useState(false);
+  const [movePhotosKey, setMovePhotosKey] = useState(0);
+  const movePhotosReopenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadOverlayOpen, setUploadOverlayOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(
+    () => () => {
+      if (movePhotosReopenTimer.current != null) clearTimeout(movePhotosReopenTimer.current);
+    },
+    [],
+  );
+
   useBodyScrollLock(viewerOpen);
+
+  const trackMovePhotosOpen = useCallback(
+    (open: boolean) => {
+      setMovePhotosOpen(open);
+      onMovePhotosOpenChange?.(open);
+    },
+    [onMovePhotosOpenChange],
+  );
 
   const handleNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % photoItems.length);
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
-    setReassignError(null);
     setUploadError(null);
   }, [photoItems.length, zoom]);
 
@@ -127,7 +166,6 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
-    setReassignError(null);
     setUploadError(null);
   }, [photoItems.length, zoom]);
 
@@ -138,8 +176,6 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
-    setReassignOpen(false);
-    setReassignError(null);
     setUploadError(null);
   }, [zoom]);
 
@@ -161,14 +197,45 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     dismissViewer();
   }, [deferViewerClose, dismissViewer]);
 
-  const openViewer = useCallback((index: number, opts?: { details?: boolean; reassign?: boolean }) => {
+  const closeMovePhotos = useCallback(() => {
+    if (movePhotosReopenTimer.current != null) {
+      clearTimeout(movePhotosReopenTimer.current);
+      movePhotosReopenTimer.current = null;
+    }
+    trackMovePhotosOpen(false);
+  }, [trackMovePhotosOpen]);
+
+  /**
+   * Soft-close the lightbox (if open), then open Move photos. Clicking again
+   * while open soft-closes and reopens so picker state resets cleanly.
+   */
+  const openMovePhotos = useCallback(() => {
+    if (viewerOpen || deferViewerClose) {
+      dismissViewer();
+    }
+    if (movePhotosReopenTimer.current != null) {
+      clearTimeout(movePhotosReopenTimer.current);
+      movePhotosReopenTimer.current = null;
+    }
+    if (movePhotosOpen) {
+      trackMovePhotosOpen(false);
+      movePhotosReopenTimer.current = setTimeout(() => {
+        setMovePhotosKey((k) => k + 1);
+        trackMovePhotosOpen(true);
+        movePhotosReopenTimer.current = null;
+      }, MOVE_PHOTOS_SOFT_MS);
+      return;
+    }
+    setMovePhotosKey((k) => k + 1);
+    trackMovePhotosOpen(true);
+  }, [viewerOpen, deferViewerClose, dismissViewer, movePhotosOpen, trackMovePhotosOpen]);
+
+  const openViewer = useCallback((index: number, opts?: { details?: boolean }) => {
     setCurrentIndex(index);
     setViewerOpen(true);
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
-    setReassignOpen(Boolean(opts?.reassign));
-    setReassignError(null);
     setUploadError(null);
     setPanelOpen(Boolean(opts?.details));
   }, [zoom]);
@@ -292,9 +359,9 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   const canDeleteCurrent = typeof currentPhoto?.id === 'number' && Number.isFinite(currentPhoto.id);
   const canReassignCurrent =
     allowReassign &&
-    canDeleteCurrent &&
-    (currentPhoto?.meta?.sourceScope === 'unboxing' ||
-      (currentPhoto?.meta?.photoType ?? '').toUpperCase().includes('RECEIV'));
+    typeof receivingId === 'number' &&
+    Number.isFinite(receivingId) &&
+    receivingId > 0;
 
   const performDelete = async () => {
     const photo = photoItems[currentIndex];
@@ -351,6 +418,33 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
       : null);
   const canUpload = effectiveUploadTarget !== null;
 
+  const setUploadOverlayOpenSafe = useCallback(
+    (open: boolean) => {
+      setUploadOverlayOpen(open);
+      onUploadOverlayOpenChange?.(open);
+      if (!open) setUploadError(null);
+    },
+    [onUploadOverlayOpenChange],
+  );
+
+  const openUploadOverlay = useCallback(() => {
+    if (!canUpload || uploading) return;
+    setUploadError(null);
+    // Upload popover uses z-panelPopover; the lightbox is z-modal — close the
+    // viewer so the RightPaneOverlay isn't trapped behind the scrim.
+    if (viewerOpen) {
+      setViewerOpen(false);
+      setPanelOpen(false);
+      setDeferViewerClose(false);
+    }
+    setUploadOverlayOpenSafe(true);
+  }, [canUpload, uploading, viewerOpen, setUploadOverlayOpenSafe]);
+
+  const closeUploadOverlay = useCallback(() => {
+    if (uploading) return;
+    setUploadOverlayOpenSafe(false);
+  }, [uploading, setUploadOverlayOpenSafe]);
+
   const handleUploadFiles = useCallback(
     async (files: File[]) => {
       if (!effectiveUploadTarget || uploading) return;
@@ -399,6 +493,9 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
           receivingId: receivingId ?? null,
         });
         uploadedIds.forEach((id) => onPhotoUploaded?.(id));
+        const n = uploadedIds.length;
+        toast.success(n === 1 ? '1 photo uploaded' : `${n} photos uploaded`);
+        setUploadOverlayOpenSafe(false);
       } catch (err) {
         console.error('Failed to upload photo(s):', err);
         setUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -406,48 +503,23 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
         setUploading(false);
       }
     },
-    [effectiveUploadTarget, uploading, photoItems, currentIndex, resetFingerprint, setPhotoItems, receivingId, onPhotoUploaded, zoom],
+    [
+      effectiveUploadTarget,
+      uploading,
+      photoItems,
+      currentIndex,
+      resetFingerprint,
+      setPhotoItems,
+      receivingId,
+      onPhotoUploaded,
+      zoom,
+      setUploadOverlayOpenSafe,
+    ],
   );
-
-  const handleReassignToReceiving = async (targetReceivingId: number) => {
-    const photo = photoItems[currentIndex];
-    const photoId = photo?.id;
-    if (typeof photoId !== 'number' || !Number.isFinite(photoId)) return;
-    if (receivingId != null && targetReceivingId === receivingId) {
-      setReassignError('Photo is already on this PO');
-      return;
-    }
-    setReassigning(true);
-    setReassignError(null);
-    try {
-      const { reassignPhotoToReceiving } = await import('./photo-gallery-api');
-      await reassignPhotoToReceiving(photoId, targetReceivingId);
-      const remaining = photoItems.filter((_, i) => i !== currentIndex);
-      resetFingerprint();
-      setPhotoItems(remaining);
-      setReassignOpen(false);
-      dispatchReceivingPhotoChanged({
-        action: 'delete',
-        photoIds: [photoId],
-        receivingId: receivingId ?? null,
-      });
-      onPhotoReassigned?.(photoId);
-      if (remaining.length === 0) {
-        closeViewer();
-      } else {
-        setCurrentIndex((prev) => Math.min(prev, remaining.length - 1));
-        zoom.resetZoom();
-      }
-    } catch (err) {
-      setReassignError(err instanceof Error ? err.message : 'Move failed');
-    } finally {
-      setReassigning(false);
-    }
-  };
 
   return {
     className, compact, launcherTitle, launcherLayout, toolbarShowLabel, libraryHref,
-    allowReassign, receivingId,
+    allowReassign, receivingId, onSendToTicket,
     photoItems, loadedCount, errorCount,
     viewerOpen, currentIndex, mounted, openViewer, closeViewer, handleNext, handlePrevious, setCurrentIndex,
     panelOpen,
@@ -459,10 +531,12 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     downloading, handleDownloadCurrent, handleDownloadAll,
     canDeleteCurrent, deleteArmed, deletingPhoto, deleteError, handleDeleteClick,
     deletePhotoDirect: performDelete,
-    canReassignCurrent, reassignOpen, setReassignOpen, reassigning, reassignError,
-    handleReassignToReceiving,
+    canReassignCurrent,
+    movePhotosOpen, movePhotosKey, openMovePhotos, closeMovePhotos,
+    onPhotoReassigned,
     canUpload, uploading, uploadError, handleUploadFiles,
     clearUploadError: () => setUploadError(null),
+    uploadOverlayOpen, openUploadOverlay, closeUploadOverlay,
   };
 }
 

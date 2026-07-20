@@ -33,10 +33,10 @@ interface Props {
 /**
  * Right-pane focused work-item view for a single receiving line.
  *
- * Unbox leads with {@link ReceivingStationContextBar} (bookmark tabs flush
- * under GlobalHeader: centered identity + {@link ReceivingStationMoreDetails})
- * inside `LineEditPanel`. Workspace steppers are gone — carton pipeline
- * progress lives in ReceivingDetailsStack only.
+ * Unbox leads with {@link ReceivingStationContextBar} (identity bookmark synced
+ * to the workbench body column; {@link ReceivingStationMoreDetails} absolute in
+ * the corner) inside `LineEditPanel`. Workspace steppers are gone — carton
+ * pipeline progress lives in ReceivingDetailsStack only.
  *
  * Closing dispatches `receiving-workspace-close`; the sidebar reacts by
  * clearing its `selectedLine`/`scanMatchedRows`/`poContext` so both panes

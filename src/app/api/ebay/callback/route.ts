@@ -13,6 +13,7 @@ import {
   EBAY_OAUTH_STATE_COOKIE,
 } from '@/lib/ebay/oauth-config';
 import { syncEbayAccountsToPlatformAccounts } from '@/lib/neon/catalog-queries';
+import { enableOrgFeatureFlag, INCOMING_UNIVERSAL_FLAG } from '@/lib/feature-flags';
 
 /** State freshness window — aligned with the connect cookie's maxAge (10 min). */
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -186,7 +187,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Keep platform_accounts (catalog + Incoming account chip) aligned with the
-    // new seller row — seedOrgCatalog only runs at org creation, not on connect.
+    // new seller/buyer row — seedOrgCatalog only runs at org creation, not on connect.
     try {
       await syncEbayAccountsToPlatformAccounts(organizationId);
     } catch (syncErr: unknown) {
@@ -194,6 +195,19 @@ export async function GET(req: NextRequest) {
         '[ebay/callback] platform_accounts sync failed:',
         syncErr instanceof Error ? syncErr.message : syncErr,
       );
+    }
+
+    // Purchasing connect → light up Universal Incoming so /incoming shows eBay
+    // buyer lines without a separate flag hunt (idempotent upsert).
+    if (accountRole === 'buyer') {
+      try {
+        await enableOrgFeatureFlag(organizationId, INCOMING_UNIVERSAL_FLAG);
+      } catch (flagErr: unknown) {
+        console.warn(
+          '[ebay/callback] incoming_universal enable failed:',
+          flagErr instanceof Error ? flagErr.message : flagErr,
+        );
+      }
     }
 
     // Audit (no auth context — pass org/actor overrides, the documented path).

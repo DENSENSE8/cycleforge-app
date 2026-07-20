@@ -193,7 +193,9 @@ export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary
       id: number; label: string; status: KioskDeviceSummary['status'];
       last_seen_at: Date | null; created_at: Date; enrolled_by_staff_id: number | null;
     }>).map((row) => ({
-      id: row.id,
+      // pg serializes bigint as a string; the summary type (and the revoke
+      // route's `z.number()` body) expect a real number, so coerce at the waist.
+      id: Number(row.id),
       label: row.label,
       status: row.status,
       lastSeenAt: row.last_seen_at ? row.last_seen_at.toISOString() : null,

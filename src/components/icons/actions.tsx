@@ -203,3 +203,12 @@ export const MoreVertical = ({ className = "w-6 h-6" }: { className?: string }) 
         <circle cx="12" cy="19" r="1.75" />
     </svg>
 );
+
+/** Serif "T" — the data-type glyph for a text column (Airtable-style header). */
+export const Type = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 7V4h16v3" />
+        <path d="M9 20h6" />
+        <path d="M12 4v16" />
+    </svg>
+);

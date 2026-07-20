@@ -27,10 +27,12 @@ export function useRegisterRightPanel(opts: {
   priority: number;
   node: ReactNode;
   onClose?: () => void;
+  /** When true, render in the elevated `detailStack` band + deeper backdrop. */
+  elevated?: boolean;
   /** When false the component makes no claim (e.g. an unopened dock). */
   enabled?: boolean;
 }): void {
-  const { id, priority, node, onClose, enabled = true } = opts;
+  const { id, priority, node, onClose, elevated, enabled = true } = opts;
 
   // Stable claim: registers once per (id, priority, enabled) change, unregisters
   // on unmount / disable. Deliberately excludes `node` so content updates don't
@@ -39,12 +41,12 @@ export function useRegisterRightPanel(opts: {
   // effect below so a content re-render never remounts the occupant.
   useEffect(() => {
     if (!enabled) return undefined;
-    return registerRightRailPanel({ id, priority, node, onClose });
-  }, [id, priority, enabled]);
+    return registerRightRailPanel({ id, priority, node, onClose, elevated });
+  }, [id, priority, enabled, elevated]);
 
   // Keep the live occupant's node fresh (no-ops if the claim isn't active).
   useEffect(() => {
     if (!enabled) return;
-    updateRightRailPanelNode(id, node, onClose);
-  }, [id, node, onClose, enabled]);
+    updateRightRailPanelNode(id, node, onClose, elevated);
+  }, [id, node, onClose, elevated, enabled]);
 }

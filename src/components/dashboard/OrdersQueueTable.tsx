@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
+import { useCallback, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { sectionLabel, SkeletonList } from '@/design-system';
 import { Button } from '@/design-system/primitives';
@@ -33,7 +33,8 @@ import { VirtualQueueSections } from '@/components/dashboard/orders-queue/Virtua
 import { useOrdersQueueSelection } from '@/components/dashboard/orders-queue/useOrdersQueueSelection';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { ORDERS_QUEUE_DATE_STICKY } from '@/lib/dashboard-order-row-layout';
+import { useColumnWidths } from '@/components/ui/table-column-config/useColumnWidths';
+import { ORDERS_QUEUE_DATE_STICKY, ordersQueueColumnVars } from '@/lib/dashboard-order-row-layout';
 
 // Re-exported so existing importers keep their `@/components/dashboard/OrdersQueueTable` path.
 export type { OrdersQueueMode, OrdersQueueSort } from '@/components/dashboard/orders-queue/helpers';
@@ -174,6 +175,10 @@ export function OrdersQueueTable({
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Per-staff resized column widths → CSS vars on the grid surface (applied to
+  // the scroll body below), so a resize reflows every row via CSS with no
+  // per-row React state. `setWidth` commits a drag on drop / keyboard nudge.
+  const { widths, setWidth } = useColumnWidths('orders');
   // Day-band enter/exit (Show more revealing new dates) — same tableRow presence
   // as order rows so the top-left date pill arrives with the list.
   const dayPresence = useMotionPresence(framerPresence.tableRow);
@@ -383,7 +388,13 @@ export function OrdersQueueTable({
           />
         )}
 
-        <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
+        <div
+          ref={scrollRef}
+          data-testid="column-table-body"
+          data-cf-grid
+          className={bodyScrollClass}
+          style={{ ...(bodyScrollStyle ?? {}), ...ordersQueueColumnVars(widths) } as CSSProperties}
+        >
           {orderGroupsByDate.length === 0 ? (
             <div className={`flex flex-col items-center justify-center ${monitorShell ? 'py-10' : emptyPadClass} text-center`}>
               {searchValue ? (
@@ -427,6 +438,7 @@ export function OrdersQueueTable({
                 isMobile={isMobile}
                 selectMode={selectMode}
                 selectionScope={selectionScope}
+                onResizeColumn={setWidth}
               />
               {virtualized && growToContent && scrollParentRef ? (
                 <VirtualQueueSections

@@ -82,7 +82,7 @@ export function LineCartonContextSection({
       showClassifyControls={showClassifyControls}
       density={density}
       showStaffPhotoRow
-      onMakeClaim={() => c.setClaimModalOpen(true)}
+      onMakeClaim={() => c.openClaimModal('create')}
       listingLink={c.listingLink}
       setListingLink={c.setListingLink}
       listingEditorOpen={c.listingEditorOpen}
@@ -144,6 +144,7 @@ export function LineCartonContextSection({
       // Close the focused line → the right pane crossfades back to the browse
       // feed. Unbox + triage share the same window-event close mechanism.
       onExitToList={() => dispatchReceivingWorkspaceClose()}
+      onSendToTicket={() => c.setPhotoNoteOpen(true)}
     />
   );
 }

@@ -4,10 +4,10 @@
  * one on the Incoming spine via `ingestPurchase` (the SAME UPSERT the Phase 2
  * bridge uses), advancing a per-account cursor.
  *
- * The eBay-API-shape knowledge lives entirely behind the injected `fetchPurchases`
- * adapter (src/lib/ebay/purchase-client.ts), which is a documented no-op until
- * buy.order.readonly is approved — so this orchestration is complete and tested
- * now, and goes live by swapping the adapter, no rewrite.
+ * Discovery uses Trading API GetOrders with OrderRole=Buyer
+ * (`src/lib/ebay/purchase-client.ts`). Optional Buy Order API enrich needs
+ * `buy.order.readonly` (opt-in via EBAY_BUYER_SCOPES) and is not required for
+ * basic Incoming rows + tracking.
  *
  * Dedup: this direction (eBay purchase arrives first) is collapsed against a Zoho
  * PO when that PO later syncs — the Zoho receiving-sync hook calls

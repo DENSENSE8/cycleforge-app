@@ -3,23 +3,26 @@
 /**
  * Unbox-family station chrome — bookmark tabs flush under GlobalHeader.
  *
- * Outer inset matches GlobalHeader ({@link HEADER_INSET_X}). Inner pad/gap on
- * both tabs share {@link receivingStationBookmarkPadClass} /
- * {@link receivingStationBookmarkGapClass} — one spacing integer with the
- * header icon rail.
+ * Identity bookmark uses {@link STATION_WORKBENCH_IDENTITY_COLUMN} — the same
+ * max-width + horizontal pad as StationWorkbench body — so CartonContextCard
+ * density=bar matches the line-edit tabs/cards edge-for-edge.
  *
- *   1. Identity — CartonContextCard density=bar, optically centered
- *   2. More details — {@link ReceivingStationMoreDetails}, far right
+ *   1. Identity — centered workbench column, full width of that column
+ *   2. More details — {@link ReceivingStationMoreDetails}, absolute top-right
+ *      corner (minimal right inset; out of flow so identity stays centered)
  */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
-import { HEADER_INSET_X } from '@/components/layout/header-shell';
+import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 import {
   receivingStationBookmarkPadClass,
   receivingStationBookmarkPanelClass,
 } from './receiving-station-bookmark';
+
+/** Far-right inset for the more-details corner bookmark — keep flush. */
+const MORE_DETAILS_CORNER_CLASS = 'absolute top-0 right-1 flex items-start';
 
 export function ReceivingStationContextBar({
   identity,
@@ -34,14 +37,15 @@ export function ReceivingStationContextBar({
 }) {
   return (
     <div
-      className={cn(
-        'relative z-10 flex w-full shrink-0 items-start gap-2',
-        HEADER_INSET_X,
-        className,
-      )}
+      className={cn('relative z-10 w-full shrink-0', className)}
       data-testid="receiving-station-context-bar"
     >
-      <div className="flex min-w-0 flex-1 items-start justify-center overflow-visible">
+      <div
+        className={cn(
+          STATION_WORKBENCH_IDENTITY_COLUMN,
+          'flex items-center justify-center',
+        )}
+      >
         <Panel
           padding="none"
           radius="xl"
@@ -50,14 +54,23 @@ export function ReceivingStationContextBar({
           className={cn(
             receivingStationBookmarkPanelClass,
             receivingStationBookmarkPadClass,
-            'flex min-h-10 max-w-full items-center overflow-visible',
+            // Keep overflow visible so IdentityLinkChip hover menus (top-full)
+            // are not clipped; horizontal bleed is fixed via bar px + scan rule.
+            'flex min-h-10 w-full max-w-full items-center overflow-visible',
           )}
           data-testid="receiving-station-identity"
         >
           {identity}
         </Panel>
       </div>
-      {moreDetails != null ? moreDetails : null}
+      {moreDetails != null ? (
+        <div
+          className={MORE_DETAILS_CORNER_CLASS}
+          data-testid="receiving-station-more-details-slot"
+        >
+          {moreDetails}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -50,7 +50,7 @@ import {
 } from './header-shell';
 
 /**
- * Preview / keyboard hit → domain deep-link (orders keep Search-mode map).
+ * Preview / keyboard hit → domain deep-link (orders → Dashboard Search detail).
  * Journey Trace is secondary (row affordance / ⌘Enter), never the primary href.
  */
 function hrefForPreviewHit(hit: AiSearchHit, query: string): string {
@@ -58,15 +58,12 @@ function hrefForPreviewHit(hit: AiSearchHit, query: string): string {
   return hit.href;
 }
 
-/** Sync the field from surfaces that carry `?q=` in the URL. */
+/** Sync the field from Dashboard Search URL `?q=`. */
 function readSyncedQuery(pathname: string | null): string | null {
   if (typeof window === 'undefined') return null;
   const sp = new URLSearchParams(window.location.search);
   if (pathname === '/dashboard' && sp.get('mode') === 'search') {
     return sp.get('q') ?? '';
-  }
-  if (pathname?.startsWith('/o')) {
-    return sp.get('q');
   }
   return null;
 }
@@ -346,7 +343,7 @@ export function GlobalHeaderSearch() {
         pushRecent({
           query: trimmed,
           scope: 'global',
-          scopeHref: href.startsWith('/o/') ? href : dashboardSearchRerunHref(trimmed),
+          scopeHref: href.startsWith('/dashboard') ? href : dashboardSearchRerunHref(trimmed),
           topHit: top
             ? { title: top.title, href: orderSearchHref(top.id, trimmed), entityType: 'order' }
             : undefined,

@@ -7,11 +7,13 @@
  * composition surface. Behaviour is unchanged.
  */
 
+import { useQueryClient } from '@tanstack/react-query';
 import { ReceivingAuditModal } from '../ReceivingAuditModal';
 import { ReceivingClaimModal } from '../ReceivingClaimModal';
 import { SendPhotoNoteModal } from '../SendPhotoNoteModal';
 import { MovePhotosBetweenPoModal } from './MovePhotosBetweenPoModal';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import { invalidateSupportContextCaches } from '@/hooks';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineEditModalsProps {
@@ -20,6 +22,7 @@ interface LineEditModalsProps {
 }
 
 export function LineEditModals({ row, c }: LineEditModalsProps) {
+  const qc = useQueryClient();
   return (
     <>
       {row.receiving_id != null ? (
@@ -35,13 +38,15 @@ export function LineEditModals({ row, c }: LineEditModalsProps) {
         onClose={() => c.setPhotoNoteOpen(false)}
       />
       <MovePhotosBetweenPoModal
+        key={c.movePhotosKey}
         open={c.movePhotosOpen}
-        row={row}
+        receivingId={row.receiving_id}
         onClose={() => c.setMovePhotosOpen(false)}
       />
       <ReceivingClaimModal
         open={c.claimModalOpen}
         row={row}
+        initialMode={c.claimModalInitialMode}
         prefillReason={c.returnClaimPrefill ?? undefined}
         onClose={() => {
           c.setClaimModalOpen(false);
@@ -49,10 +54,12 @@ export function LineEditModals({ row, c }: LineEditModalsProps) {
         }}
         onTicketCreated={() => {
           void c.invalidateSupportTicket();
+          invalidateSupportContextCaches(qc);
           dispatchLineUpdated({ id: row.id, notes: row.notes });
         }}
         onTicketUnlinked={() => {
           void c.invalidateSupportTicket();
+          invalidateSupportContextCaches(qc);
         }}
       />
     </>

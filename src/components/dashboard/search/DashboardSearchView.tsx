@@ -3,11 +3,10 @@
 /**
  * Dashboard Search mode right pane (`/dashboard?mode=search`).
  *
- * Master-nav owns the L2 rail (Search · Receiving · Shipping). This pane is the
- * visual results surface — thin launcher, not an in-content order workbench.
- * Order hits deep-link to `/o/[id]?mode=search&q=` so detail opens in the
- * dedicated order workbench. Query typing lives in the always-global header
- * pill; this view is driven purely by URL `?q=`.
+ * With `openOrderId` — remade two-column Search order detail (no shipped panel).
+ * Without — cross-entity `SearchResultsSurface`. Order hits stay on this URL.
+ * Query typing lives in the always-global header pill; this view is driven by
+ * URL `?q=` (+ optional `openOrderId` / `map`).
  */
 
 import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
@@ -20,17 +19,17 @@ import {
   DASHBOARD_SEARCH_RECENTS_SCOPE,
   dashboardSearchRerunHref,
 } from '@/components/dashboard/search/dashboard-search-recents';
+import { SearchOrderDetailView } from '@/components/dashboard/search/SearchOrderDetailView';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 
 export function DashboardSearchView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? searchParams.get('dq') ?? '').trim();
+  const openOrderId = (searchParams.get('openOrderId') ?? '').trim();
   const rawType = (searchParams.get('type') ?? 'all').toLowerCase();
   const tab: TabId = isTabId(rawType) && rawType !== 'order' ? rawType : 'all';
 
-  // Per-staff recents (DB-backed) — the sidebar shows these; record when URL `q`
-  // commits (header Enter / re-run / deep-link).
   const { push: pushRecent } = useStaffSearchRecents({
     scope: DASHBOARD_SEARCH_RECENTS_SCOPE,
   });
@@ -46,12 +45,12 @@ export function DashboardSearchView() {
     });
   }, [q, pushRecent]);
 
-  // Legacy `?type=order` bookmarks → bounce to /o (no flash).
+  // Legacy `?type=order` bookmarks → open first identifier as order detail.
   useEffect(() => {
-    if (rawType === 'order' && q) {
+    if (rawType === 'order' && q && !openOrderId) {
       router.replace(orderSearchHref(q, q));
     }
-  }, [rawType, q, router]);
+  }, [rawType, q, openOrderId, router]);
 
   const updateUrl = useCallback(
     (next: { q?: string; type?: TabId }) => {
@@ -91,6 +90,14 @@ export function DashboardSearchView() {
     },
     [updateUrl, q, router],
   );
+
+  if (openOrderId) {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col">
+        <SearchOrderDetailView openOrderId={openOrderId} query={q || undefined} />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col space-y-4 overflow-y-auto px-6 py-4">

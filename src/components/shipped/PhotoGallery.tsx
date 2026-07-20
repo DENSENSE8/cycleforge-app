@@ -5,16 +5,19 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
-import { Image as ImageIcon } from '../Icons';
+import { Image as ImageIcon, Upload } from '../Icons';
+import { Button } from '@/design-system/primitives';
 import { usePhotoGallery, type PhotoGalleryProps } from './photo-gallery/usePhotoGallery';
 import { PhotoLauncher } from './photo-gallery/PhotoLauncher';
 import { PhotoViewerModal } from './photo-gallery/PhotoViewerModal';
+import { PhotoUploadOverlay } from './photo-gallery/PhotoUploadOverlay';
+import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 
 export type { PhotoGalleryInput } from './photo-gallery/photo-gallery-utils';
 
 /**
  * Photo gallery: a launcher surface (thumbnail strip / slim toolbar / button)
- * plus a portaled fullscreen viewer with zoom, download, PO reassignment, and a
+ * plus a portaled fullscreen viewer with zoom, download, PO photo moves, and a
  * two-step delete. Thin composition layer — state/logic live in
  * {@link usePhotoGallery} under `./photo-gallery/`.
  */
@@ -33,27 +36,72 @@ export function PhotoGallery(props: PhotoGalleryProps) {
   );
 
   const handleDelete = useCallback(
-    async (slide: SwipePhotoSlide, index: number) => {
+    async (_slide: SwipePhotoSlide, index: number) => {
       g.setCurrentIndex(index);
       await g.deletePhotoDirect();
     },
     [g],
   );
 
+  const movePhotosModal =
+    g.canReassignCurrent && g.receivingId != null ? (
+      <MovePhotosBetweenPoModal
+        key={g.movePhotosKey}
+        open={g.movePhotosOpen}
+        receivingId={g.receivingId}
+        onClose={g.closeMovePhotos}
+        onMoved={() => g.onPhotoReassigned?.(0)}
+      />
+    ) : null;
+
+  const uploadOverlay = g.canUpload ? (
+    <PhotoUploadOverlay
+      open={g.uploadOverlayOpen}
+      onClose={g.closeUploadOverlay}
+      onFiles={g.handleUploadFiles}
+      uploading={g.uploading}
+      uploadError={g.uploadError}
+      onClearError={g.clearUploadError}
+    />
+  ) : null;
+
   if (g.photoItems.length === 0) {
-    return (
-      <div className={`w-full bg-surface-canvas border border-border-soft rounded-xl px-4 py-3 ${g.className}`}>
-        <div className="flex items-center justify-center gap-2 text-text-soft">
-          <ImageIcon className="h-4 w-4" />
-          <span className="text-xs font-semibold">No photos available</span>
+    if (!g.canUpload) {
+      return (
+        <div className={`w-full bg-surface-canvas border border-border-soft rounded-xl px-4 py-3 ${g.className}`}>
+          <div className="flex items-center justify-center gap-2 text-text-soft">
+            <ImageIcon className="h-4 w-4" />
+            <span className="text-xs font-semibold">No photos available</span>
+          </div>
         </div>
-      </div>
+      );
+    }
+
+    return (
+      <>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          icon={<Upload className="h-4 w-4" />}
+          onClick={g.openUploadOverlay}
+          disabled={g.uploading}
+          loading={g.uploading}
+          className={g.className}
+          ariaLabel="Upload photos"
+        >
+          Upload photos
+        </Button>
+        {uploadOverlay}
+      </>
     );
   }
 
   return (
     <>
       <PhotoLauncher g={g} />
+      {uploadOverlay}
+      {movePhotosModal}
 
       {isMobile ? (
         <MobileSwipePhotoViewer

@@ -86,25 +86,28 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
  * SERIAL_UNIT uses the inventory workbench's `?unit=` view (ByUnitView →
  * /api/serial-units/:id, which accepts the numeric id).
  *
- * Order lookup workbench href — master sidebar (`OrderWorkspaceSidebar` Search
- * mode) + full-width `/o/[id]`. Always lands in `?mode=search` so the near-match
- * rail is the map; optional `q` keeps the header pill + sidebar list in sync.
+ * Order search detail — Dashboard Search mode with the order selected in the
+ * main pane (`openOrderId`) and the Recent|Search map in the L2 sidebar.
+ * Optional `q` keeps the header pill + Search-map list in sync; `map=search`
+ * opens the near-match rail (default when arriving from header / ⌘K).
  */
 export function orderSearchHref(orderId: string | number, query?: string): string {
-  const id = encodeURIComponent(String(orderId).trim());
+  const id = String(orderId).trim();
   const sp = new URLSearchParams();
   sp.set('mode', 'search');
+  sp.set('openOrderId', id);
+  sp.set('map', 'search');
   const q = query?.trim();
   if (q) sp.set('q', q);
-  return `/o/${id}?${sp.toString()}`;
+  return `/dashboard?${sp.toString()}`;
 }
 
 export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
   switch (dbType) {
     case 'ORDER':
-      // Full-page order workbench with the master-nav Search map open. The
-      // dashboard slide-over stays the in-place board experience; search/⌘K
-      // always deep-links here. Keep in sync with global-entity-search.ts.
+      // Dashboard Search detail page + L2 hit map. Shipping-mode slide-over
+      // stays the in-place board experience; search/⌘K always lands here.
+      // Keep in sync with global-entity-search.ts.
       return orderSearchHref(entityId);
     case 'SERIAL_UNIT':
       return `/inventory/units?unit=${entityId}`;
@@ -178,9 +181,10 @@ export function journeyHandoffHref(hit: JourneyHandoffHit): string | null {
 }
 
 /**
- * Header Enter / "See all" handoff. Order-heavy → `/o` Search map. Cross-entity
- * → Dashboard Search mode. Journey Trace is a **secondary** action
- * (`journeyHandoffHref` / ⌘Enter) — never the Enter default.
+ * Header Enter / "See all" handoff. Order-heavy → Dashboard Search detail
+ * (`openOrderId` + Search map). Cross-entity → Dashboard Search results list.
+ * Journey Trace is a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
+ * never the Enter default.
  */
 export function globalSearchHandoffHref(
   query: string,
@@ -195,7 +199,7 @@ export function globalSearchHandoffHref(
     const top = orderHits[0];
     if (top) return orderSearchHref(top.id, trimmed);
     if (looksLikeIdentifier(trimmed)) return orderSearchHref(trimmed, trimmed);
-    return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}`;
+    return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}&map=search`;
   }
   return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}`;
 }

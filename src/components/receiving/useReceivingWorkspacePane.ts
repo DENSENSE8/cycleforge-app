@@ -218,11 +218,23 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   // (prefer lineId) via /api/receiving-lines and select once so the right pane
   // opens AND the sidebar/rail highlight stay in sync. Best-effort: missing /
   // empty carton no-ops. Param is path-agnostic so legacy /receiving?… still works.
+  // Key already restored (fetched + dispatched) — never re-fetch it.
   const deepLinkedKeyRef = useRef<string | null>(null);
+  // Key whose restore fetch is currently in flight. This ref — NOT a per-effect
+  // `cancelled` boolean — is the staleness guard: a cold load / reload re-renders
+  // (searchParams identity churns) while the fetch is pending, and the old code
+  // cancelled the fetch on cleanup then early-returned on the re-run because the
+  // key was already marked restored, so the dispatch was dropped and the pane
+  // never reopened. Now an incidental re-render with the SAME key is a no-op that
+  // lets the fetch finish; only a genuinely different/cleared URL invalidates it.
+  const deepLinkInFlightRef = useRef<string | null>(null);
   useEffect(() => {
     const target = searchParams.get('openReceivingId');
     if (!target || !/^\d+$/.test(target)) {
+      // No active carton param — drop any restore state so a resolving stale
+      // fetch skips its dispatch and a later re-open of the same id re-fetches.
       deepLinkedKeyRef.current = null;
+      deepLinkInFlightRef.current = null;
       return;
     }
     const lineIdParam = searchParams.get('lineId');
@@ -234,9 +246,9 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       pendingOpenKeyRef.current = null;
       return;
     }
-    if (deepLinkedKeyRef.current === deepLinkKey) return;
-    deepLinkedKeyRef.current = deepLinkKey;
-    let cancelled = false;
+    if (deepLinkedKeyRef.current === deepLinkKey) return; // already restored
+    if (deepLinkInFlightRef.current === deepLinkKey) return; // fetch already running — let it finish
+    deepLinkInFlightRef.current = deepLinkKey;
     void (async () => {
       try {
         const res = await fetch(
@@ -248,14 +260,20 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
           ? (data.receiving_lines as ReceivingLineRow[])
           : [];
         const pick = pickReceivingLineForDeepLink(rows, lineIdParam);
-        if (!cancelled && pick) dispatchSelectLine(pick);
+        // Dispatch only if this key is still the active URL selection — a close
+        // or a switch to another carton clears/overwrites the in-flight ref.
+        if (deepLinkInFlightRef.current === deepLinkKey && pick) {
+          deepLinkedKeyRef.current = deepLinkKey;
+          dispatchSelectLine(pick);
+        }
       } catch {
         /* deep-link is best-effort; a network blip just no-ops */
+      } finally {
+        if (deepLinkInFlightRef.current === deepLinkKey) {
+          deepLinkInFlightRef.current = null;
+        }
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [searchParams]);
 
   // Browse-first for Unbox: do NOT auto-open the most-recent line. Operators

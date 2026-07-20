@@ -241,6 +241,7 @@ export function TestingPanel({
                   variant="station"
                   onlySegment="customer"
                   hideLinkage
+                  onRequestLinkTicket={() => c.openClaimModal('link')}
                   onBridgeChange={setTicketBridge}
                   className="h-full min-h-0 rounded-2xl"
                 />
@@ -308,7 +309,7 @@ export function TestingPanel({
         ticketId: claimTicketId,
         ticketBridge,
         claimFailedNoTicket: claimFailed && claimTicketId == null,
-        onFileClaim: () => c.setClaimOpen(true),
+        onFileClaim: () => c.openClaimModal('create'),
       }),
     [
       primaryLabel,
@@ -355,8 +356,7 @@ export function TestingPanel({
                     ? () => window.dispatchEvent(new CustomEvent(TESTING_OPEN_SKU_PAIRING_EVENT))
                     : undefined,
                 copy: () => void c.handleCopyAll(),
-                movePhotos: () => c.setMovePhotosOpen(true),
-                photoNote: () => c.setPhotoNoteOpen(true),
+                movePhotos: () => c.openMovePhotos(),
               }}
             />
           }

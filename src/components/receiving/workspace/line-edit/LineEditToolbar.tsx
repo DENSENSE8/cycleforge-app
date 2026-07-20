@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { ChevronLeft, Copy, History, Info, Link2, MoreVertical, RefreshCw, Ticket, ArrowLeftRight } from '@/components/Icons';
+import { ChevronLeft, Copy, History, Info, Link2, MoreVertical, RefreshCw, ArrowLeftRight } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -23,7 +23,8 @@ import {
   type WorkspaceMode,
 } from './mode-registry';
 
-/** Unbox: refresh stays inline; share + the rest live in the overflow menu. */
+/** Unbox: refresh stays inline; share + the rest live in the overflow menu.
+ *  Ticket (photoNote) is on the carton photo dropdown, not More. */
 const UNBOX_INLINE_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
   'refresh',
 ];
@@ -32,16 +33,16 @@ const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>>
   'audit',
   'copy',
   'movePhotos',
-  'photoNote',
 ];
 
 /**
  * Frozen utility toolbar — icon-only actions driven by the mode registry
  * (`WORKSPACE_MODES[mode].headerActions`). Unbox mounts this inside
- * {@link ReceivingStationMoreDetails} on the same chrome row as identity
- * (`embedded`) using GlobalHeader icon hit-box / gap SoT. Testing/other modes
- * keep the standalone header band. Unbox: refresh · ⋯ · info (no prev/next).
- * Testing keeps prev/next via navChannel.
+ * {@link ReceivingStationMoreDetails} (corner slot of
+ * {@link ReceivingStationContextBar}, `embedded`) using GlobalHeader icon
+ * hit-box / gap SoT. Testing/other modes keep the standalone header band.
+ * Unbox: refresh · ⋯ · info (no prev/next). Testing keeps prev/next via
+ * navChannel.
  */
 export function LineEditToolbar({
   mode = 'unbox',
@@ -108,13 +109,6 @@ export function LineEditToolbar({
       disabled: disabled || copyingAll,
       title: 'Copy package + PO details to clipboard',
       ariaLabel: 'Copy all receiving details',
-    },
-    photoNote: {
-      label: 'Ticket',
-      icon: <Ticket className={embedded ? HEADER_ICON_GLYPH : 'h-4 w-4'} />,
-      disabled,
-      title: "Send this PO's photos to a support ticket",
-      ariaLabel: 'Send photos to a support ticket',
     },
     movePhotos: {
       label: 'Photos',

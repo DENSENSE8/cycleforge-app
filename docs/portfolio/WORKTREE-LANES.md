@@ -29,6 +29,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `fba` | 3020 | `studio` | 3070 |
 | `glass` | 3030 | `unbox` | 3080 |
 | `home` | 3040 | `warehouse` | 3090 |
+| `pending-grid` | 3100 | | |
 | | | switcher panel | 3099 |
 
 ## Lanes (target registry)
@@ -44,6 +45,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `sourcing` | `topic/sourcing` | WS-SRC | Sourcing hub (parked) |
 | `ai-chat` | `topic/ai-chat` | WS-AI | AI chat (parked) |
 | `home` | `topic/home` | WS-HOME | My Day / home (parked) |
+| `pending-grid` | `topic/pending-grid` | WS-PENDING-GRID | To-Ship Pending full spreadsheet grid — **developed in `main`** until the uncommitted predecessor base is committed (no physical worktree yet) |
 
 ## Create another lane
 

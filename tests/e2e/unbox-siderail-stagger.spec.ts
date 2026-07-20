@@ -197,18 +197,31 @@ test.describe('unbox siderail first-load stagger', () => {
     await page.goto('/unbox');
     const firstRow = page.locator(`${RAIL} li[role="option"]`).first();
     await firstRow.waitFor({ state: 'visible', timeout: 30_000 });
+    // Measure at REST: the row slides in from x:-12, so measuring mid-cascade
+    // inflates the gap. Wait for the reveal to settle (sampler flag), then also
+    // assert the row's own transform is ~0 before reading geometry.
+    await page.waitForFunction(() => (window as unknown as { __cf_done?: boolean }).__cf_done === true, null, {
+      timeout: 30_000,
+    });
 
     const geom = await page.evaluate(() => {
       const ul = document.querySelector('ul[aria-label="Unboxed activity"]')!;
       const section = ul.closest('section')!;
       const btn = ul.querySelector('li[role="option"] button[data-rail-row]')!;
+      const li = btn.closest('li')!;
       const age = btn.querySelector('span.tabular-nums');
       const sr = section.getBoundingClientRect().right;
+      const tf = getComputedStyle(li).transform;
+      const m = tf && tf !== 'none' ? tf.match(/matrix\(([^)]+)\)/) : null;
+      const settledX = m ? Math.abs(+m[1].split(',').map(Number)[4]) : 0;
       return {
+        settledX,
         ringGap: Math.round(sr - btn.getBoundingClientRect().right), // ring is ring-inset on the button box
         ageGap: age ? Math.round(sr - age.getBoundingClientRect().right) : null,
       };
     });
+
+    expect(geom.settledX, 'row is at rest before measuring geometry').toBeLessThan(1);
 
     // The button box (which carries the ring-inset selection ring + hover fill)
     // must sit ~6px inside the sidebar edge so it clears the work-canvas

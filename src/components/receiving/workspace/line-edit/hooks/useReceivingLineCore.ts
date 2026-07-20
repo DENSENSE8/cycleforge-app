@@ -98,11 +98,39 @@ export function useReceivingLineCore(
   const [auditOpen, setAuditOpen] = useState(false);
   const [photoNoteOpen, setPhotoNoteOpen] = useState(false);
   const [movePhotosOpen, setMovePhotosOpen] = useState(false);
+  const [movePhotosKey, setMovePhotosKey] = useState(0);
+  const movePhotosReopenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copyingAll, setCopyingAll] = useState(false);
   const [phoneSharing, setPhoneSharing] = useState(false);
   const { getClient: getAblyClient } = useAblyClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
+
+  useEffect(
+    () => () => {
+      if (movePhotosReopenTimer.current != null) clearTimeout(movePhotosReopenTimer.current);
+    },
+    [],
+  );
+
+  /** Soft-close + reopen so picker state resets when the header action is re-clicked. */
+  const openMovePhotos = useCallback(() => {
+    if (movePhotosReopenTimer.current != null) {
+      clearTimeout(movePhotosReopenTimer.current);
+      movePhotosReopenTimer.current = null;
+    }
+    if (movePhotosOpen) {
+      setMovePhotosOpen(false);
+      movePhotosReopenTimer.current = setTimeout(() => {
+        setMovePhotosKey((k) => k + 1);
+        setMovePhotosOpen(true);
+        movePhotosReopenTimer.current = null;
+      }, 180);
+      return;
+    }
+    setMovePhotosKey((k) => k + 1);
+    setMovePhotosOpen(true);
+  }, [movePhotosOpen]);
 
   const { poEditorOpen, setPoEditorOpen, poNumberEdit, setPoNumberEdit, persistPoNumber } =
     usePoBinding(row);
@@ -519,7 +547,7 @@ export function useReceivingLineCore(
     priorityTier,
     auditOpen, setAuditOpen,
     photoNoteOpen, setPhotoNoteOpen,
-    movePhotosOpen, setMovePhotosOpen,
+    movePhotosOpen, setMovePhotosOpen, movePhotosKey, openMovePhotos,
     copyingAll,
     phoneSharing,
     // composed carton hooks

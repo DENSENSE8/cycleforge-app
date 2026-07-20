@@ -186,13 +186,13 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
   };
 
   return (
-    <DetailStackRailRegistrar id={`detail:receiving:${log.id}`} onClose={backdropClose}>
+    <DetailStackRailRegistrar id={`detail:receiving:${log.id}`} onClose={backdropClose} elevated>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header — receiving ID identity, primary "Edit PO" action in the
           right slot, and segmented tabs in the dual-sticky belowSlot. Matches
           the 2026 ops convention (Vercel/Front/Stripe pattern). */}
       <PaneHeader
-        className="shrink-0 border-border-hairline bg-surface-card/90 backdrop-blur-xl"
+        className="shrink-0 border-border-hairline bg-surface-card"
         rowClassName="px-6"
         leftSlot={
           <>

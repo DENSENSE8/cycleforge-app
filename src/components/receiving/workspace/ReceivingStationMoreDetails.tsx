@@ -1,10 +1,12 @@
 'use client';
 
 /**
- * Unbox-family station utilities — rounded bookmark tab.
+ * Unbox-family station utilities — corner bookmark tab.
  *
- * Hosts refresh · more · info via {@link LineEditToolbar}. Pad + gap match
- * GlobalHeader icon rail ({@link receivingStationBookmarkPadClass} /
+ * Hosts refresh · more · info via {@link LineEditToolbar}. Rendered in the
+ * absolute corner slot of {@link ReceivingStationContextBar} so the centered
+ * identity bookmark stays true-center. Pad + gap match GlobalHeader icon rail
+ * ({@link receivingStationBookmarkPadClass} /
  * {@link receivingStationBookmarkGapClass}).
  */
 

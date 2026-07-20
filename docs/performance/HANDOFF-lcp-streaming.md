@@ -3,6 +3,67 @@
 Continuation of the 2026-07-19 Lighthouse initiative (see `results-2026-07-19.md`).
 Bundle weight is done; this is the remaining architectural lever.
 
+---
+
+## Progress log — 2026-07-20 (step 1 shipped, step 2 disproven on /dashboard)
+
+**Shipped: step 1 — soften the `mounted` gate (kept).** `ResponsiveLayout.tsx`'s
+blank-until-hydrated gate now only blanks **mobile-allowed** non-`/m` routes (which
+still flip to a content-only mobile branch after device detection and would flash).
+**Desktop-only routes** (not in `MOBILE_ALLOWED_PREFIXES` — `/dashboard`, `/operations`,
+`/support`, `/products`, `/settings`, …; a phone bounces them to `/m/home`, so there
+is no in-place mobile branch to flash) now paint their **server-rendered shell**
+pre-hydration. Build-verified across all 502 pages (desktop shell had never SSR'd
+before — `GlobalHeader` et al. are SSR-safe). Measured on `/dashboard` (mobile,
+slow-4G, median of 3):
+
+| | Perf | LCP | TBT | CLS |
+|---|---|---|---|---|
+| Baseline | 67 | 12182ms | 69 | 0 |
+| **+ step 1 (shell SSR)** | **68** | **9768ms** | 80 | 0 |
+
+→ **LCP −2.4 s (−20%), no CLS/TBT regression.** This is a genuine win and is the
+change left in the tree. It lifts first paint on *every* desktop-only route, not
+just `/dashboard` (only `/dashboard` was measured — a full `--tier 1` run should
+confirm the others and then ratchet `lighthouse-baseline.json`).
+
+**Disproven & reverted: step 2 — server-seed the first collection (`/dashboard`).**
+Built the full RSC `HydrationBoundary` seed: extracted the pure order transforms +
+a shared query-key builder (no drift), a `server-only` seed helper that self-fetches
+`/api/orders` (auth cookie forwarded) and dehydrates the exact `unshipped` key the
+table mounts with, and a `Suspense`-streamed `page.tsx`. **Verified the seed streams**
+(75 `order_id` rows + `HydrationBoundary` in the initial HTML). **But it did not move
+LCP:**
+
+| | Perf | LCP | TBT |
+|---|---|---|---|
+| step 1 only | 68 | 9768ms | 40–80 |
+| step 1 + seed | 66 | 9635ms | 40 |
+
+**Root cause (important for the next agent):** on `/dashboard` the LCP element is the
+orders table, and `DashboardOrdersView` is `dynamic(..., { ssr: false })`
+(`DashboardOrdersView.tsx:~29`). So the table paints **only after its JS chunk
+downloads + hydrates** — LCP is **JS/hydration-bound, not fetch-bound.** Seeding
+removed a network fetch that already overlapped JS download while adding ~74 KB of
+inline HTML + a server self-fetch → net neutral-to-slightly-negative. **Data-seeding
+cannot help LCP while the LCP element is behind `ssr: false`.** Reverted; step-1 kept.
+
+**Corrected next lever (was step 2):** make the workbench's first meaningful paint
+not depend on the heavy `ssr: false` client table. Options, riskiest last:
+1. Render a **server-side static first-paint of the rows** (a lightweight RSC list of
+   the seeded rows shown until the interactive table hydrates over it) — this makes an
+   SSR'd element the LCP, so a seed *would* pay off. Needs a dumb server row renderer.
+2. **Drop `ssr: false`** on `DashboardOrdersView` so it SSRs (then a `HydrationBoundary`
+   seed paints server-side). Higher risk — the table has never SSR'd; audit for
+   render-time browser globals first.
+3. Split/shrink the table chunk so hydration is cheaper (bundle lever, not covered here).
+
+The reverted step-2 scaffolding (transform extraction + `dashboard-query-keys.ts` +
+`dashboard-seed.server.ts`) is straightforward to reconstruct from git history if
+option 1/2 is taken — it was correct, just aimed at the wrong bottleneck.
+
+---
+
 ## Mission
 
 Raise the five sub-70 Tier-1 routes to Performance ≥ 70 (mobile, slow-4G, median of 3)

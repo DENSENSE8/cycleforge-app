@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
+import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { dashboardOrderRowChipsClass } from '@/lib/dashboard-order-row-layout';
+import { cn } from '@/utils/_cn';
 import { useClipboardHistory, recordCopy } from '@/lib/clipboard-history';
 import { getTrackingUrl } from '@/utils/order-links';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
@@ -69,6 +71,14 @@ export interface OrderIdentityChipsProps {
    * column to its own header. Staged serial folds into the tracking cell.
    */
   layout?: 'cluster' | 'cells';
+  /**
+   * When `layout="cells"`, per-column grid chrome (vertical rule + horizontal
+   * inset) merged into each of the three cells so platform / order / tracking
+   * match the parent grid's other columns. The Sheets-grid parent passes
+   * `ordersQueueGridCell`; `tracking` is the grid's last column (no trailing
+   * rule). Omitted by non-grid consumers — the cells keep their bare layout.
+   */
+  gridCellClass?: (col: 'platform' | 'order' | 'tracking') => string;
   /** Fires when any chip's hover menu opens/closes — lets the row keep its
    *  hover-expanded chrome (chevron + shifted chips) while a menu is up. */
   onMenuOpenChange?: (open: boolean) => void;
@@ -103,9 +113,15 @@ export function OrderIdentityChips({
   isMobile,
   variant = 'icons',
   layout = 'cluster',
+  gridCellClass,
   onMenuOpenChange,
 }: OrderIdentityChipsProps) {
   const plain = variant === 'plain';
+  // Grid `cells` layout honors the per-staff column config so the per-column
+  // header "Hide field" actually drops platform/order/tracking (their hide-keys
+  // in the `orders` registry: platform / orderid / tracking). No-op outside a
+  // provider, so the `cluster`/mobile consumers are unaffected.
+  const isColumnHidden = useIsColumnHidden();
   const history = useClipboardHistory();
   const lastTracking = history.find((e) => e.kind === 'tracking' && e.value.trim());
   const trackingUrl = tracking ? getTrackingUrl(tracking) : null;
@@ -249,9 +265,15 @@ export function OrderIdentityChips({
   if (layout === 'cells') {
     return (
       <>
-        <div data-col="platform" className="flex min-w-0 items-center">{platformChipNode}</div>
-        <div data-col="order" className="flex min-w-0 items-center">{orderChipNode}</div>
-        <div data-col="tracking" className="flex min-w-0 items-center">{trackingChipNode}</div>
+        <div data-col="platform" className={cn('flex min-w-0 items-center', gridCellClass?.('platform'))}>
+          {isColumnHidden('platform') ? null : platformChipNode}
+        </div>
+        <div data-col="order" className={cn('flex min-w-0 items-center', gridCellClass?.('order'))}>
+          {isColumnHidden('orderid') ? null : orderChipNode}
+        </div>
+        <div data-col="tracking" className={cn('flex min-w-0 items-center', gridCellClass?.('tracking'))}>
+          {isColumnHidden('tracking') ? null : trackingChipNode}
+        </div>
       </>
     );
   }

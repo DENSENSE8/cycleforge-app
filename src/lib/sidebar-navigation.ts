@@ -120,6 +120,7 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
 const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/m',
   '/signin',
+  '/kiosk', // customer-intake tablet — a tablet-first surface, so touch/mobile devices must reach it (never bounce to /m/home)
   '/receiving',
   '/unbox',
   '/triage',

@@ -95,15 +95,6 @@ export function ReceivingPhotosSection({
           <div className="h-16 rounded-lg bg-surface-sunken" aria-hidden />
           <span className="sr-only">Loading photos</span>
         </div>
-      ) : galleryPhotos.length === 0 ? (
-        <div className="flex min-h-[5.5rem] items-center justify-center rounded-xl border-2 border-dashed border-border-hairline bg-surface-canvas px-4">
-          <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">No photos yet</p>
-            <p className="mt-1 text-role-eyebrow font-medium text-text-faint">
-              Mobile app → Receiving → ID <span className="font-mono font-black">#{receivingId}</span>
-            </p>
-          </div>
-        </div>
       ) : (
         <PhotoGallery
           photos={galleryPhotos}

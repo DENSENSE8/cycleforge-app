@@ -118,14 +118,19 @@ export const StaffPreferencesPutBody = z
     unshippedBoard: BOARD_PREFS.nullable().optional(),
     shippedBoard: BOARD_PREFS.nullable().optional(),
     /**
-     * Per-staff list-table column visibility, keyed by TableId. Each table maps
-     * to `{ hidden: string[] }`. Sent as the whole map (shallow JSONB merge).
+     * Per-staff list-table column config, keyed by TableId. Each table maps to
+     * `{ hidden: string[], widths: Record<colKey, px> }`. Sent as the whole map
+     * (shallow JSONB merge); a widths write preserves `hidden` and vice-versa.
      */
     tableColumns: z
       .record(
         z.string(),
         z
-          .object({ hidden: z.array(z.string()).optional() })
+          .object({
+            hidden: z.array(z.string()).optional(),
+            /** Per-column drag-resized width in px, keyed by column key. */
+            widths: z.record(z.string(), z.number().int().positive().max(2000)).optional(),
+          })
           .strict(),
       )
       .nullable()
