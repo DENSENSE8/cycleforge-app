@@ -29,28 +29,28 @@ export const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
     mode: 'tracking',
     label: 'Tracking',
     Icon: MapPin,
-    armedClass: 'text-blue-700 bg-blue-500/10',
+    armedClass: 'text-blue-700',
     iconClass: 'text-blue-600',
   },
   {
     mode: 'po',
     label: 'PO#',
     Icon: Hash,
-    armedClass: 'text-text-muted bg-slate-500/10', // ds-allow-raw-neutral: PO# hash tint among mode rail hues
+    armedClass: 'text-text-muted', // ds-allow-raw-neutral: PO# hash tint among mode rail hues
     iconClass: 'text-text-soft',
   },
   {
     mode: 'serial',
     label: 'Serial',
     Icon: Barcode,
-    armedClass: 'text-emerald-700 bg-emerald-500/10',
+    armedClass: 'text-emerald-700',
     iconClass: 'text-emerald-600',
   },
   {
     mode: 'sku',
     label: 'SKU',
     Icon: Pencil,
-    armedClass: 'text-yellow-700 bg-yellow-500/10',
+    armedClass: 'text-yellow-700',
     iconClass: 'text-yellow-600',
   },
 ] as const;

@@ -387,7 +387,11 @@ const FEEDS = {
     getActivityAt: (r) =>
       r.unboxed_at ?? r.unbox_opened_at ?? r.scanned_at ?? r.received_at ?? r.created_at ?? null,
     pinSelectedLead: false,
-    // Left-slide first-load + CRUD entrance — matches framerPresence.sidebarRailRow.
+    // First-load reveal is a left→right slide-in cascade (x: -12 → 0), matching
+    // the scan-dock / CRUD `framerPresence.sidebarRailRow` entrance language. Rows
+    // fade in from fully transparent (not a dim gray hold) so the slide reads as a
+    // clean entrance rather than "grayed rows that jump" — see
+    // `staggerRevealSidebarSlideItem`.
     staggerRevealMotion: 'slide',
     // One row per carton — line deletes retarget the carton row in place.
     listenLineDelete: false,

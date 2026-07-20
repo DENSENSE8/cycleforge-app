@@ -74,8 +74,8 @@ export interface SearchFieldProps {
    */
   trailingPrefix?: ReactNode;
   /**
-   * Renders after the default trailing control in the same row (e.g. divider + assistant
-   * action on the header search pill).
+   * Renders after the default trailing control in the same row (compact
+   * field-adjacent actions that must stay inside the search form).
    */
   trailingSuffix?: ReactNode;
   /** When true, trailing slot shows only paste (clipboard); never the clear (X) button when the field has text. */

@@ -51,6 +51,10 @@ export const framerDuration = {
   overlaySearchIn: 0.2,
   /** Copy-to-clipboard feedback flash */
   chipCopyFeedback: 0.15,
+  /** Station scan-band glow — idle ⇄ focused fade */
+  scanBandGlow: 0.2,
+  /** Station scan-band glow — submit / click pulse flash */
+  scanBandGlowPulse: 0.26,
   /** Auth card shell — first paint mount */
   signInCardMount: 0.26,
   /** Email ↔ password step slide (x) */
@@ -241,6 +245,25 @@ export const framerTransition = {
   chipCopyFeedback: {
     duration: framerDuration.chipCopyFeedback,
     ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Station scan-band glow — idle ⇄ focused opacity. Pair with
+   * `scanBandGlowOpacity` + `useMotionTransition`. Opacity only (GPU).
+   */
+  scanBandGlow: {
+    duration: framerDuration.scanBandGlow,
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
+   * Station scan-band glow — submit / armed-click pulse. Keyframe opacity
+   * flash then settle. Pair with `useMotionTransition`.
+   */
+  scanBandGlowPulse: {
+    duration: framerDuration.scanBandGlowPulse,
+    ease: motionBezier.easeOut,
+    times: [0, 0.4, 1],
   } satisfies Transition,
 
   /** Auth card shell mount — pair with `framerPresence.signInCard` */
@@ -521,6 +544,18 @@ export const framerGesture = {
   tapPress: { scale: 0.9 },
   cardHover: { scale: 1.002, y: -2 },
   rowHover: { x: 2 },
+} as const;
+
+/**
+ * Station scan-band glow opacity targets — chromatic depth rises from the
+ * staff bottom-rule. Quiet at rest; full when focused; pulse on submit.
+ * Consume via `ScanBandGlowHost` + `framerTransition.scanBandGlow*`.
+ */
+export const scanBandGlowOpacity = {
+  idle: 0.18,
+  focused: 1,
+  /** Mid-pulse dip when already focused (keeps a visible flash at opacity 1). */
+  pulseDip: 0.42,
 } as const;
 
 /**

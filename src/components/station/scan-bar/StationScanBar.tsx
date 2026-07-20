@@ -21,15 +21,16 @@ import {
   STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
   STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
   STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
-  STATION_SCAN_BAR_FLOAT_RAIL_CLASS,
   STATION_SCAN_BAR_ICON_SLOT_CLASS,
   STATION_SCAN_BAR_INPUT_CLASS,
   STATION_SCAN_BAR_MODE_BTN,
   STATION_SCAN_BAR_MODE_BTN_ARMED,
   STATION_SCAN_BAR_MODE_BTN_COMPACT,
   STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+  STATION_SCAN_BAR_MODE_GLYPH_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS,
+  STATION_SCAN_BAR_RIGHT_CELL,
   STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
   STATION_SCAN_BAR_SUBMIT_TRACE_CLASS,
 } from './tokens';
@@ -236,14 +237,10 @@ export function StationScanBar({
 
         {showRight ? (
           <div
-            className={cn(
-              STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
-              STATION_SCAN_BAR_FLOAT_RAIL_CLASS,
-              rightContentClassName,
-            )}
+            className={cn(STATION_SCAN_BAR_RIGHT_SLOT_CLASS, rightContentClassName)}
           >
             {modeButtonCount > 0 ? (
-              <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label="Scan mode">
+              <div className="flex h-full shrink-0 items-stretch gap-0" role="group" aria-label="Scan mode">
                 {visibleModes.includes('plan') ? (
                   <HoverTooltip label="Plan mode" asChild>
                     <button
@@ -255,11 +252,11 @@ export function StationScanBar({
                         'ds-raw-button',
                         modeBtnShell,
                         activeMode === 'plan'
-                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'bg-purple-500/10 text-purple-700')
+                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-purple-700')
                           : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
                       )}
                     >
-                      <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+                      <ClipboardList className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
                     </button>
                   </HoverTooltip>
                 ) : null}
@@ -274,30 +271,30 @@ export function StationScanBar({
                         'ds-raw-button',
                         modeBtnShell,
                         activeMode === 'select'
-                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'bg-blue-500/10 text-blue-700')
+                          ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, 'text-blue-700')
                           : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
                       )}
                     >
-                      <Pencil className="h-3.5 w-3.5 shrink-0" />
+                      <Pencil className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
                     </button>
                   </HoverTooltip>
                 ) : null}
               </div>
             ) : null}
             {hasActiveRightContent ? (
-              <div className="flex shrink-0 items-center">{rightContent}</div>
+              <div className="flex h-full shrink-0 items-stretch">{rightContent}</div>
             ) : null}
             {showPaste ? (
               <IconButton
                 onClick={() => void handlePasteClick()}
                 className={cn(
-                  STATION_SCAN_BAR_MODE_BTN_COMPACT,
+                  'ds-allow-control-size rounded-none',
+                  STATION_SCAN_BAR_RIGHT_CELL,
                   STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-                  'shrink-0',
                 )}
                 title="Paste from clipboard"
                 ariaLabel="Paste from clipboard"
-                icon={<Clipboard className="h-3.5 w-3.5 shrink-0" />}
+                icon={<Clipboard className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />}
               />
             ) : null}
           </div>

@@ -27,7 +27,9 @@ import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
 // lands.
 const DashboardSidebar = dynamic(() => import('@/components/DashboardSidebar'), {
   ssr: false,
-  loading: () => <aside className="h-full w-64 shrink-0" aria-hidden />,
+  // Match the docked sidebar's real width (`w-[360px]` in DashboardSidebar) so
+  // the desktop frame doesn't jump ~104px when the chunk lands.
+  loading: () => <aside className="h-full w-[360px] shrink-0" aria-hidden />,
 });
 
 // On-demand chrome, split out of the shell chunk. All three render nothing
@@ -73,7 +75,7 @@ function GlobalWedgeScannerMount() {
  */
 function SidebarFallback({ reset }: { reset: () => void }) {
   return (
-    <aside className={cn('flex h-full w-64 shrink-0 flex-col border-r border-border-soft', appChromeClass)}>
+    <aside className={cn('flex h-full w-[360px] shrink-0 flex-col border-r border-border-soft', appChromeClass)}>
       <div className="m-3 rounded-lg border border-dashed border-rose-200 bg-rose-50 px-3 py-4 text-center">
         <AlertTriangle className="mx-auto h-5 w-5 text-rose-500" />
         <p className="mt-2 text-role-caption font-bold text-rose-700">Sidebar unavailable</p>

@@ -30,7 +30,8 @@ import {
   type TriageWorkspaceTab,
 } from '@/utils/triage-workspace-state';
 
-export type UnboxView = 'recent' | 'queue' | 'viewed';
+/** Unbox sub-view from `?unboxview=` — internal to this hook (URL ↔ state). */
+type UnboxView = 'recent' | 'queue' | 'viewed';
 
 /**
  * Sub-view + filter params that belong to exactly one mode. Stripped on every

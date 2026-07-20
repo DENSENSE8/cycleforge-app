@@ -123,8 +123,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   const btnClass = STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const title = hasGallery
-    ? `${count} photo${count === 1 ? '' : 's'} — click to send to phone, hover for gallery`
-    : 'Send to phone to take photos';
+    ? `${count} photo${count === 1 ? '' : 's'} · send to phone`
+    : 'Send to phone';
 
   const ariaLabel = hasGallery
     ? `${count} carton photo${count === 1 ? '' : 's'}; send to phone or hover for gallery`
@@ -144,7 +144,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
           : undefined
       }
     >
-      <HoverTooltip label={title} asChild>
+      <HoverTooltip label={title} placement="above" asChild>
         <Button
           type="button"
           variant="ghost"

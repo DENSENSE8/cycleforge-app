@@ -4,14 +4,11 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Loader2, Package } from '@/components/Icons';
 import { StationScanBar } from '@/components/station/StationScanBar';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
-import { FBA_SCAN_BAND_HALO } from './fba-scan-theme';
+import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
 import { useFbaStationInput, type StationFbaInputProps } from './station-input/useFbaStationInput';
 import { FbaPendingPlanQueue } from './station-input/FbaPendingPlanQueue';
 import { FbaPlanPreviewList } from './station-input/FbaPlanPreviewList';
 
-// Scan-bar theme maps live in fba-scan-theme.ts; re-exported here so existing
-// importers of FBA_SCAN_BAND_HALO (FbaWorkspaceSidebar) keep their path.
-export { FBA_SCAN_BAND_HALO };
 export type { StationFbaInputProps };
 
 /**
@@ -53,6 +50,59 @@ export default function StationFbaInput(props: StationFbaInputProps) {
     />
   ) : null;
 
+  const scanField = useSidebarChrome ? (
+    <ThemedStationScanBar
+      staffId={staffId}
+      value={c.inputValue}
+      onChange={c.handleInputChange}
+      onSubmit={c.handleFormSubmit}
+      inputRef={c.inputRef}
+      inputBorderClassName={c.scanOutlineClass}
+      placeholder="FNSKU (X00…) or ASIN (B0…)"
+      autoFocus={false}
+      icon={scanIcon}
+      isResolving={c.busy}
+      showModeButtons={false}
+    />
+  ) : (
+    <StationScanBar
+      value={c.inputValue}
+      onChange={c.handleInputChange}
+      onSubmit={c.handleFormSubmit}
+      inputRef={c.inputRef}
+      theme={c.stationTheme}
+      inputBorderClassName={c.scanOutlineClass}
+      placeholder={
+        fbaScanOnly ? 'FNSKU (X00…) or ASIN (B0…)' : 'FNSKU, ASIN, tracking, RS-, serial'
+      }
+      autoFocus={false}
+      hasRightContent={Boolean(busySpinner)}
+      onPaste={fbaScanOnly && showModeToggle ? c.handleInputChange : undefined}
+      icon={scanIcon}
+      iconClassName=""
+      inputClassName={
+        fbaScanOnly
+          ? undefined
+          : '!py-2.5 !text-sm focus:border-b-violet-600 focus:ring-0'
+      }
+      showModeButtons={showModeToggle}
+      visibleModes={['plan', 'select']}
+      activeMode={c.fbaMode}
+      onPlanMode={() => {
+        c.setFbaMode('plan');
+        c.setSelectResult(null);
+      }}
+      onSelectMode={() => {
+        c.setFbaMode('select');
+        c.setPlanHint(null);
+        c.setFbaError(null);
+        c.setPlanPreviewLines([]);
+        c.clearPendingTodayPlan();
+      }}
+      rightContent={busySpinner}
+    />
+  );
+
   return (
     <div className={`${c.stackBelowScan ? 'space-y-2' : ''} ${className}`.trim()}>
       {showLabels ? (
@@ -74,63 +124,11 @@ export default function StationFbaInput(props: StationFbaInputProps) {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-        className={
-          fbaScanOnly && !sidebarHeaderBand
-            ? `${FBA_SCAN_BAND_HALO[c.stationTheme]}`
-            : undefined
-        }
       >
-        {useSidebarChrome ? (
-          <ThemedStationScanBar
-            staffId={staffId}
-            value={c.inputValue}
-            onChange={c.handleInputChange}
-            onSubmit={c.handleFormSubmit}
-            inputRef={c.inputRef}
-            inputBorderClassName={c.scanOutlineClass}
-            placeholder="FNSKU (X00…) or ASIN (B0…)"
-            autoFocus={false}
-            icon={scanIcon}
-            isResolving={c.busy}
-            showModeButtons={false}
-          />
+        {fbaScanOnly && !sidebarHeaderBand ? (
+          <ScanBandGlowHost themeColor={c.stationTheme}>{scanField}</ScanBandGlowHost>
         ) : (
-          <StationScanBar
-            value={c.inputValue}
-            onChange={c.handleInputChange}
-            onSubmit={c.handleFormSubmit}
-            inputRef={c.inputRef}
-            theme={c.stationTheme}
-            inputBorderClassName={c.scanOutlineClass}
-            placeholder={
-              fbaScanOnly ? 'FNSKU (X00…) or ASIN (B0…)' : 'FNSKU, ASIN, tracking, RS-, serial'
-            }
-            autoFocus={false}
-            hasRightContent={Boolean(busySpinner)}
-            onPaste={fbaScanOnly && showModeToggle ? c.handleInputChange : undefined}
-            icon={scanIcon}
-            iconClassName=""
-            inputClassName={
-              fbaScanOnly
-                ? undefined
-                : '!py-2.5 !text-sm focus:border-b-violet-600 focus:ring-0'
-            }
-            showModeButtons={showModeToggle}
-            visibleModes={['plan', 'select']}
-            activeMode={c.fbaMode}
-            onPlanMode={() => {
-              c.setFbaMode('plan');
-              c.setSelectResult(null);
-            }}
-            onSelectMode={() => {
-              c.setFbaMode('select');
-              c.setPlanHint(null);
-              c.setFbaError(null);
-              c.setPlanPreviewLines([]);
-              c.clearPendingTodayPlan();
-            }}
-            rightContent={busySpinner}
-          />
+          scanField
         )}
       </motion.div>
 

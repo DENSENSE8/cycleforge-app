@@ -26,21 +26,21 @@ export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
     mode: 'ticket',
     label: 'Ticket #',
     Icon: TicketHelp,
-    armedClass: 'text-emerald-700 bg-emerald-500/10',
+    armedClass: 'text-emerald-700',
     iconClass: 'text-emerald-600',
   },
   {
     mode: 'tracking',
     label: 'Tracking #',
     Icon: MapPin,
-    armedClass: 'text-blue-700 bg-blue-500/10',
+    armedClass: 'text-blue-700',
     iconClass: 'text-blue-600',
   },
   {
     mode: 'order',
     label: 'PO #',
     Icon: Hash,
-    armedClass: 'text-text-muted bg-slate-500/10', // ds-allow-raw-neutral: identity/tone hue — PO-mode slate tint among emerald/blue mode tints
+    armedClass: 'text-text-muted', // ds-allow-raw-neutral: identity/tone hue — PO-mode slate among emerald/blue mode tints
     iconClass: 'text-text-soft',
   },
 ] as const;

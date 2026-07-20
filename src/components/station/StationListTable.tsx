@@ -2,12 +2,14 @@
 
 import { useRef, type ReactNode, type RefObject } from 'react';
 import { sectionLabel, SkeletonList } from '@/design-system';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
 import DateRangeHeader from '@/components/ui/DateRangeHeader';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
+import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
 import { VirtualGroupedSections } from '@/components/dashboard/orders-queue/VirtualGroupedSections';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
 import type { RowGroup } from '@/lib/group-rows';
@@ -62,6 +64,15 @@ export interface StationListTableProps<TRecord> {
   bannerTitle?: string;
   bannerSubtitle?: string;
   bannerCompact?: boolean;
+
+  /** Multi-select mode — forwarded to the station column guide when enabled. */
+  selectMode?: boolean;
+  /** Render the shared station row column guide above the scroll body. */
+  showStationColumnHeader?: boolean;
+  /** Meta `rest` label on the column guide (e.g. Unboxed / Scanned / Stage). */
+  columnHeaderStageLabel?: string;
+  /** Hide serial chip column on the guide (Incoming omits serials). */
+  columnHeaderIncludeSerial?: boolean;
 
   // Body sizing / virtualization.
   virtualized?: boolean;
@@ -125,7 +136,12 @@ export function StationListTable<TRecord>({
   searchResultLabel = 'records',
   clearSearchLabel = 'Show all',
   footer,
+  selectMode = false,
+  showStationColumnHeader = false,
+  columnHeaderStageLabel = 'Stage',
+  columnHeaderIncludeSerial = true,
 }: StationListTableProps<TRecord>) {
+  const { isMobile } = useUIModeOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Body class logic mirrors OrdersQueueTable so the two scaffolds scroll identically.
@@ -145,6 +161,14 @@ export function StationListTable<TRecord>({
 
   const dayBands = orderGroupsByDate ?? daySections ?? [];
   const isEmpty = dayBands.length === 0;
+  const columnHeader =
+    showStationColumnHeader && !isMobile ? (
+      <StationRowColumnHeader
+        selectMode={selectMode}
+        includeSerial={columnHeaderIncludeSerial}
+        stageLabel={columnHeaderStageLabel}
+      />
+    ) : null;
 
   if (loading) {
     return (
@@ -188,6 +212,8 @@ export function StationListTable<TRecord>({
             }
           />
         )}
+
+        {columnHeader}
 
         <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
           {isEmpty ? (

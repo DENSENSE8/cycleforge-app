@@ -1,10 +1,11 @@
 /**
  * Station nav icon registry — maps sidebar page / mode ids to semantic icon
- * components from `@/components/Icons`. Single write path for STATIONS rail,
- * SIDEBAR_PAGE_NAV, receiving mode pills, tech top-mode pills, shipping modes,
- * and packing modes.
+ * components from `@/components/Icons`. Single write path for SIDEBAR_PAGE_NAV
+ * data, receiving mode pills, tech top-mode pills, shipping modes, and packing
+ * modes.
  *
- * Page icons and mode icons intentionally differ in stroke weight
+ * Chrome law: **modes own icons; pages are text** (MasterNav L1 / page lists
+ * do not render {@link STATION_PAGE_ICONS}). Mode stroke is heavier than page
  * (see icons/stations.tsx + icons/nav-weight.tsx). Mode *glyphs* must be unique
  * across floor stations — enforced via {@link MODE_ICON_GLYPH_KEYS}.
  */
@@ -34,7 +35,10 @@ type NavIconComponent = (props: { className?: string }) => JSX.Element;
 
 type StationPageId = 'receiving' | 'outbound' | 'tech' | 'packer';
 
-/** Master-nav + SIDEBAR_PAGE_NAV page icons for floor stations. */
+/**
+ * Floor-station page icons on SIDEBAR_PAGE_NAV / APP_SIDEBAR_NAV data.
+ * Not rendered in MasterNav L1 or mobile page rows — modes own chrome icons.
+ */
 export const STATION_PAGE_ICONS: Record<StationPageId, NavIconComponent> = {
   receiving: StationReceiving,
   outbound: StationShipping,
@@ -75,7 +79,7 @@ export const PACKING_MODE_ICONS = {
 /**
  * Underlying primitive name for every floor-station L2 mode.
  * Uniqueness is the hard law — Arrival Truck ≠ Tech Shipping Send, etc.
- * Pages may reuse a glyph with their default mode (different stroke wrapper).
+ * Pages may reuse a glyph with their default mode (data only — chrome renders modes).
  */
 export const MODE_ICON_GLYPH_KEYS = {
   'receiving.incoming': 'Inbox',

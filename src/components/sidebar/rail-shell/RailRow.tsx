@@ -11,6 +11,15 @@ import { railRelativeTime, type SidebarRailRowContext } from './sidebar-rail-sha
 import { RailPopover } from './RailPopover';
 import { useRailHoverPreview } from './useRailHoverPreview';
 
+/**
+ * No-op `onUpdate` — its mere presence forces framer to run the row's reveal on
+ * the MAIN-THREAD (JS) animator instead of the compositor (WAAPI). The WAAPI path
+ * has a one-frame commit gap on completion that flashed the `hidden` opacity:0
+ * back through as each row's fade-in finished; the JS animator writes the value
+ * every frame and commits cleanly, so the "appear from nothing" fade has no blink.
+ */
+const keepOnMainThread = () => {};
+
 export function RailRow<TRow>({
   row, index, isSelected, isFocused, editActive, isChecked, isDisabled, groupSize, groupIndex, isCollapsed, showInlinePkgChip,
   staggerCascade, staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick,
@@ -26,7 +35,8 @@ export function RailRow<TRow>({
   groupIndex: number;
   isCollapsed: boolean;
   showInlinePkgChip: boolean;
-  /** True when this row is part of the first-load stagger cascade. */
+  /** True while the first-load cascade is still in flight — holds `layout` off so
+   * the slide's `transform` isn't fought by layout projection. */
   staggerCascade: boolean;
   /** When set, first-load cascade inherits these variants from the parent ul. */
   staggerItemVariants?: Variants;
@@ -78,11 +88,17 @@ export function RailRow<TRow>({
 
   const activityAt = getActivityAt?.(row);
 
-  // First-load cascade: inherit the parent <ul>'s hidden→show timeline.
-  // Post-cascade CRUD (scan in / dismiss out): left-slide presence so rows
-  // enter and exit by id without remounting the rail host.
-  const motionProps = staggerItemVariants && staggerCascade
-    ? { variants: staggerItemVariants }
+  // Stagger rails: the row carries only `variants` for its whole mount and rides
+  // the parent <ul>'s `show` timeline by inheritance — the container orchestrates
+  // the first-load cascade, then simply holds `show`, and the row rests there. We
+  // never swap this row to an explicit initial/animate contract mid-mount: doing
+  // so re-touched `initial="hidden"` on the settled row and flickered it back
+  // toward `hidden` for a frame. The variant's own `exit` left-slides on dismiss
+  // (matches CRUD presence), and a scan-in row entering the same AnimatePresence
+  // slides in from `hidden`. Non-stagger rails have no variants and use CRUD
+  // presence for scan-in / dismiss.
+  const motionProps = staggerItemVariants
+    ? { variants: staggerItemVariants, onUpdate: keepOnMainThread }
     : {
         initial: crudPresence.initial,
         animate: crudPresence.animate,
@@ -97,7 +113,11 @@ export function RailRow<TRow>({
       aria-selected={editActive ? isChecked : isSelected}
       layout={!staggerCascade}
       {...motionProps}
-      className="relative"
+      // Right inset lives on the ROW, not the flush list host: it narrows the
+      // `w-full` button so the selection ring + hover fill (both `ring-inset` on
+      // the button box) clear the work-canvas `rounded-tl-2xl` cutout instead of
+      // tucking under it. The button keeps a small inner `pr` for the age.
+      className="relative pr-1.5"
       onMouseEnter={scheduleOpen}
       onMouseLeave={scheduleClose}
     >
@@ -122,7 +142,12 @@ export function RailRow<TRow>({
         // Shift-click range select: stop the browser's native shift-click text
         // selection from highlighting row labels across the range.
         onMouseDown={(e) => { if (editActive && e.shiftKey) e.preventDefault(); }}
-        className={`ds-raw-button group relative flex w-full gap-2.5 text-left transition-colors ${isGrouped ? 'pl-3 pr-2' : 'px-2'} ${
+        // Flush band, inset affordance: the list host stays flush-right
+        // (`SIDEBAR_RAIL_INSET_X = pl-1.5 pr-0`) so its eyebrow / MRU band chrome
+        // hugs the scan-dock edge; the row's box inset lives on the <li> (above)
+        // so the ring clears the rounded canvas cutout. Here `pr-1` is just the
+        // age's breathing room inside that inset affordance.
+        className={`ds-raw-button group relative flex w-full gap-2.5 text-left transition-colors ${isGrouped ? 'pl-3 pr-1' : 'pl-2 pr-1'} ${
           isDisabled ? 'cursor-wait opacity-80' : ''
         } ${
           (editActive ? isChecked : isSelected)

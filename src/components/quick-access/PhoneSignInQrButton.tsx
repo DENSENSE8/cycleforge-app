@@ -7,6 +7,7 @@ import { Smartphone, X } from '@/components/Icons';
 import { IconButton, type IconButtonSize } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
+import { HEADER_ICON_BTN_CLASS, HEADER_ICON_GLYPH } from '@/components/layout/header-shell';
 
 /**
  * Header phone icon + centered scan overlay. Encodes the mobile sign-in URL
@@ -15,7 +16,7 @@ import { cn } from '@/utils/_cn';
  */
 export function PhoneSignInQrButton({
   className,
-  iconClassName = 'h-4 w-4',
+  iconClassName = HEADER_ICON_GLYPH,
   size,
 }: {
   className?: string;
@@ -48,10 +49,7 @@ export function PhoneSignInQrButton({
           size={size}
           onClick={() => setOpen(true)}
           ariaLabel="Show sign-in QR code"
-          className={cn(
-            'rounded-full text-text-muted hover:bg-surface-sunken',
-            className,
-          )}
+          className={cn(HEADER_ICON_BTN_CLASS, className)}
           icon={<Smartphone className={iconClassName} />}
         />
       </HoverTooltip>

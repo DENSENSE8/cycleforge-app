@@ -17,7 +17,13 @@ import { ClipboardHistoryPopover } from '@/components/quick-access/ClipboardHist
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { PhoneSignInQrButton } from '@/components/quick-access/PhoneSignInQrButton';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
-import { HEADER_ICON_WRAP } from './header-shell';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
+  HEADER_ICON_CLUSTER,
+  HEADER_ICON_GLYPH,
+  HEADER_ICON_WRAP,
+} from './header-shell';
 
 type OpenPopover = 'none' | 'history' | 'inbox' | 'account' | 'clipboard' | 'feedback';
 
@@ -36,8 +42,9 @@ function initials(name: string): string {
 /**
  * Persistent right zone of the {@link GlobalHeader}.
  *
- * Desktop layout: a 420px right rail (aligned with detail panels) holds a
- * narrower search field on the left and quick-action icons on the right.
+ * Desktop layout: a 420px right rail (aligned with detail panels) holds
+ * icon-only search + AI (expanding on hover/focus) and quick-action icons —
+ * one shared {@link HEADER_ICON_CLUSTER} gap / glyph / button chrome.
  */
 export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'desktop' | 'mobile' } = {}) {
   const isMobile = variant === 'mobile';
@@ -66,7 +73,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const accountInitial = initials(displayName) || '·';
 
   const iconBtnSize = isMobile ? ('touch' as const) : ('md' as const);
-  const iconSize = isMobile ? 'h-5 w-5' : 'h-4 w-4';
+  const iconSize = isMobile ? 'h-5 w-5' : HEADER_ICON_GLYPH;
   const avatarSize = isMobile ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-role-caption';
   const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 
@@ -80,10 +87,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
             onClick={() => setPopover((p) => (p === 'clipboard' ? 'none' : 'clipboard'))}
             ariaLabel="Clipboard history"
             aria-expanded={clipboardOpen}
-            className={cn(
-              'rounded-full text-text-muted hover:bg-surface-sunken',
-              clipboardOpen && 'bg-surface-sunken',
-            )}
+            className={cn(HEADER_ICON_BTN_CLASS, clipboardOpen && HEADER_ICON_BTN_OPEN_CLASS)}
             icon={<Clipboard className={iconSize} />}
           />
         </HoverTooltip>
@@ -110,10 +114,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
             onClick={() => setPopover((p) => (p === 'inbox' ? 'none' : 'inbox'))}
             ariaLabel="Notifications"
             aria-expanded={inboxOpen}
-            className={cn(
-              'rounded-full text-text-muted hover:bg-surface-sunken',
-              inboxOpen && 'bg-surface-sunken',
-            )}
+            className={cn(HEADER_ICON_BTN_CLASS, inboxOpen && HEADER_ICON_BTN_OPEN_CLASS)}
             icon={
               <span className={cn('relative inline-flex shrink-0 items-center justify-center', iconSize)}>
                 <Inbox className={iconSize} />
@@ -137,7 +138,8 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
         </AnchoredLayer>
       </div>
 
-      <div ref={accountAnchorRef} className={wrapClass}>
+      {/* Extra air between inbox and staff avatar. */}
+      <div ref={accountAnchorRef} className={cn(wrapClass, !isMobile && 'ml-1.5')}>
         <HoverTooltip label={displayName || `Staff #${user.staffId}`} asChild>
           <button
             type="button"
@@ -191,16 +193,15 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
     </>
   );
 
+  if (isMobile) {
+    return <div className="flex h-full items-center gap-1.5">{iconCluster}</div>;
+  }
+
+  // One cluster: search + AI + rail icons share HEADER_ICON_GAP exactly.
   return (
-    <div className={cn('flex h-full items-center', isMobile ? 'gap-1.5' : 'gap-1')}>
-      {!isMobile ? (
-        <div className={cn('flex h-8 shrink-0 items-center gap-1.5', HEADER_RAIL_WIDTH)}>
-          <GlobalHeaderSearch />
-          <div className="flex h-8 shrink-0 items-center gap-0.5">{iconCluster}</div>
-        </div>
-      ) : (
-        iconCluster
-      )}
+    <div className={cn(HEADER_ICON_CLUSTER, 'justify-end', HEADER_RAIL_WIDTH)}>
+      <GlobalHeaderSearch />
+      {iconCluster}
     </div>
   );
 }

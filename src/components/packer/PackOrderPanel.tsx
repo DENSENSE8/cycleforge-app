@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Live pack workspace overlay — SoT chrome (ReceivingStationContextBar +
- * CartonContextCard) + StationWorkbench tabs. Sibling to LineEditPanel /
- * TriagePanel; binds PackActiveOrderPane, not ReceivingLineRow.
+ * Live pack workspace overlay — SoT chrome (ReceivingStationMoreDetails +
+ * ReceivingStationContextBar + CartonContextCard) + StationWorkbench tabs.
+ * Sibling to LineEditPanel / TriagePanel; binds PackActiveOrderPane, not
+ * ReceivingLineRow.
  */
 
 import { useMemo, useState } from 'react';
@@ -41,6 +42,7 @@ import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import { ReceivingStationContextBar } from '@/components/receiving/workspace/ReceivingStationContextBar';
+import { ReceivingStationMoreDetails } from '@/components/receiving/workspace/ReceivingStationMoreDetails';
 
 type PackView = 'checklist' | 'photos' | 'timeline' | 'ticket' | 'support' | 'rollup';
 
@@ -248,12 +250,14 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
             </motion.div>
           </motion.div>
         }
-        utilities={
-          <PaneHeaderCloseButton
-            onClick={onClose}
-            ariaLabel="Return to pack queue"
-            title="Return to pack queue"
-          />
+        moreDetails={
+          <ReceivingStationMoreDetails>
+            <PaneHeaderCloseButton
+              onClick={onClose}
+              ariaLabel="Return to pack queue"
+              title="Return to pack queue"
+            />
+          </ReceivingStationMoreDetails>
         }
       />
 

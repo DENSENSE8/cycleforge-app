@@ -28,6 +28,13 @@ import {
 } from '@/lib/receiving/listing-links';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { cn } from '@/utils/_cn';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
+  HEADER_ICON_GAP,
+  HEADER_ICON_GLYPH,
+  HEADER_ICON_WRAP,
+} from '@/components/layout/header-shell';
 import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill';
 
 
@@ -48,10 +55,11 @@ import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill'
  * workspace surface (`WorkspaceCard variant="glass"`) shared by the whole
  * unbox column.
  *
- * Bar density (`density="bar"`): classify (left) · listing/PO/tracking · Claim/
- * Photos (right-justified clusters). Listing uses ExternalLink + platform mark
- * (same CopyChip anatomy as PO# / tracking). Utilities sit in the trough via
- * ReceivingStationContextBar.
+ * Bar density (`density="bar"`): one packed cluster (classify · listing/PO/
+ * tracking · Claim/Photos) centered by ReceivingStationContextBar. Listing uses
+ * ExternalLink + platform mark (same CopyChip anatomy as PO# / tracking).
+ * Refresh · more · info are a sibling slot —
+ * {@link ReceivingStationMoreDetails} — same chrome row, far right.
  *
  * Layout decisions preserved from the original inline implementation:
  *  - The listing chip reads "----" (gray, no platform tone) until a URL or a
@@ -391,47 +399,52 @@ export function CartonContextCard({
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.12 }}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center',
-                    density === 'bar' ? 'flex-nowrap gap-2.5' : 'flex-wrap gap-2',
+                    'flex min-w-0 items-center',
+                    density === 'bar'
+                      ? 'w-fit max-w-full flex-nowrap gap-2'
+                      : 'flex-1 flex-wrap gap-2',
                   )}
                 >
-            {/* Cluster 1 — exit + classify (+ expanded urgency/platform/type). */}
+            {/* Cluster 1 — exit + classify icons (header icon SoT) · optional
+                expanded urgency/platform/type pills. */}
             <div className="flex shrink-0 items-center gap-2">
-            {/* Far-left — close the active entity and crossfade the right pane
-                back to this page's list/history display (in-page, no navigation).
-                Each adapter passes its mode's existing close handler. Unconditional
-                (not gated by classify/photo props) so it stays the true leftmost
-                element in triage/shipping too, where classify hides. */}
+            <div className={cn('flex shrink-0 items-center', HEADER_ICON_GAP)}>
             {onExitToList ? (
-              <HoverTooltip label={exitLabel} asChild>
-                <IconButton
-                  type="button"
-                  size="md"
-                  onClick={onExitToList}
-                  ariaLabel={exitLabel}
-                  icon={<ChevronLeft className="h-4 w-4" />}
-                  className="shrink-0 rounded-lg text-text-faint hover:bg-surface-hover hover:text-text-muted"
-                />
-              </HoverTooltip>
+              <div className={HEADER_ICON_WRAP}>
+                <HoverTooltip label={exitLabel} asChild>
+                  <IconButton
+                    type="button"
+                    size="md"
+                    onClick={onExitToList}
+                    ariaLabel={exitLabel}
+                    icon={<ChevronLeft className={HEADER_ICON_GLYPH} />}
+                    className={cn(HEADER_ICON_BTN_CLASS, 'text-text-faint hover:text-text-muted')}
+                  />
+                </HoverTooltip>
+              </div>
             ) : null}
             {showClassifyControls && showStaffPhotoRow ? (
-              <HoverTooltip label={classifyOpen ? 'Hide classification' : 'Show classification'} asChild>
-                <button
-                  type="button"
-                  onClick={() => setClassifyOpen((v) => !v)}
-                  aria-expanded={classifyOpen}
-                  aria-pressed={classifyOpen}
-                  aria-label={classifyOpen ? 'Hide classification' : 'Show classification'}
-                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                    classifyOpen
-                      ? 'bg-surface-sunken text-text-default'
-                      : 'text-text-faint hover:bg-surface-hover hover:text-text-muted'
-                  }`}
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                </button>
-              </HoverTooltip>
+              <div className={HEADER_ICON_WRAP}>
+                <HoverTooltip label={classifyOpen ? 'Hide classification' : 'Show classification'} asChild>
+                  <IconButton
+                    type="button"
+                    size="md"
+                    onClick={() => setClassifyOpen((v) => !v)}
+                    aria-expanded={classifyOpen}
+                    aria-pressed={classifyOpen}
+                    ariaLabel={classifyOpen ? 'Hide classification' : 'Show classification'}
+                    icon={<SlidersHorizontal className={HEADER_ICON_GLYPH} />}
+                    className={cn(
+                      HEADER_ICON_BTN_CLASS,
+                      classifyOpen
+                        ? HEADER_ICON_BTN_OPEN_CLASS
+                        : 'text-text-faint hover:text-text-muted',
+                    )}
+                  />
+                </HoverTooltip>
+              </div>
             ) : null}
+            </div>
             {showClassifyControls && classifyOpen ? (
               <>
             {showStaffPhotoRow ? (
@@ -470,12 +483,12 @@ export function CartonContextCard({
             ) : null}
             </div>
 
-            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: justify end). */}
+            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: packed with classify). */}
             <div
               className={cn(
                 'flex min-w-0 items-center',
                 density === 'bar'
-                  ? 'ml-auto shrink-0 flex-nowrap justify-end gap-2.5'
+                  ? 'shrink-0 flex-nowrap gap-2'
                   : 'flex-wrap gap-2',
               )}
             >
@@ -663,7 +676,7 @@ export function CartonContextCard({
                   />
                 </div>
               ) : onMakeClaim ? (
-                <HoverTooltip label="File a damage / wrong-item / missing claim for this package" asChild>
+                <HoverTooltip label="File claim" placement="above" asChild>
                   <Button
                     type="button"
                     variant="ghost"
@@ -927,7 +940,7 @@ export function CartonContextCard({
   );
 
   if (density === 'bar') {
-    return <div className="min-w-0 flex-1 overflow-visible">{body}</div>;
+    return <div className="w-fit max-w-full min-w-0 overflow-visible">{body}</div>;
   }
 
   return (

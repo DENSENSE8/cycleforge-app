@@ -148,3 +148,35 @@
 - `2026-07-19T07:53:27.082Z` · **main** · main · agent · Unbox prod A/B measured (isolated clones :3100/:3101): KPI dupe fetch gone, spine-first table (kpi=table 3.32-3.41s vs before kpi 3.87-4.22s + unmarked table); HUD shots saved; fixed forward 3 ticket-refs strays (knip) from perf-lane split -> npm run verify GREEN on full tree — ok
 - `2026-07-19T15:45:03.943Z` · **main** · main · agent · Commit+push main WIP: station depth SoT (pack/triage/unbox), queue-row chrome, Tier-1 Lighthouse/perf — success
 - `2026-07-19T15:53:17.577Z` · **main** · main · agent · Restore Unbox sidebar rail eyebrow (Unboxed · N + pencil dismiss) after station-depth hide — ok
+- `2026-07-19T15:56:04.197Z` · **main** · main · agent · Unbox levers: mobile feed gated to real mobile (invisible desktop 500-row serials fetch GONE, limit 500->100), spine paint clamp 150 (list laterals scale w/ LIMIT, -0.5s), nav-hover data prefetch registry (/unbox spine via MasterNav rows+chips). Prod warm kpi/table ~4.05s->~3.15s cumulative; verify+spec green — ok
+- `2026-07-19T16:02:58.491Z` · **main** · main · agent · Scan bar depth: flatten trough (drop float-rail + shadow-inner), full-height mode segments with solid surface-card armed plane — ok
+- `2026-07-19T16:04:45.241Z` · **main** · main · agent · Notes insert: + icon-only trigger matching overlay affordances; menu uses colored action chips + workbench row chrome — ok
+- `2026-07-19T16:05:48.037Z` · **main** · main · agent · Orders queue: columnar WMS row grid + column header (unified table UX) — ok
+- `2026-07-19T16:06:56.676Z` · **main** · main · agent · Scan band depth: bottom-up station glow; drop sidebar+canvas drop-shadows fighting soft join — ok
+- `2026-07-19T16:08:54.874Z` · **main** · main · agent · Scan band glow: quiet idle (~18%), full on focus-within — ok
+- `2026-07-19T16:13:54.652Z` · **main** · main · agent · Header search: icon-only Search + separate AI IconButtons; expand+focus on hover/⌘K — ok
+- `2026-07-19T16:17:23.240Z` · **main** · main · agent · Scan band glow: Framer catalog (scanBandGlow/Pulse) — animate on focus/click + submit pulse — ok
+- `2026-07-19T16:24:37.497Z` · **main** · main · agent · Header chrome SoT: equal icon gap, glyph size, stroke/btn face across GlobalHeader — ok
+- `2026-07-19T16:26:25.702Z` · **main** · main · agent · Notes + trigger = sync-btn token/hover outline; Popover keeps layer for dropdownPanel enter/exit motion — ok
+- `2026-07-19T16:31:21.027Z` · **main** · main · agent · Sidebar MRU + scan-bar right icons: equal w-8 cells, shared glyph, flush right edge — ok
+- `2026-07-19T16:36:49.538Z` · **main** · main · agent · Claim modal: claim type→ticket tab; photos unselected on open; add-photos control beside refresh — ok
+- `2026-07-19T16:43:13.984Z` · **main** · main · agent · Claim photos: select-all icon button right of add-photos — ok
+- `2026-07-19T16:43:22.508Z` · **main** · main · agent · Split unbox station chrome: ReceivingStationMoreDetails (refresh/more/info top-right under GlobalHeader) vs centered ReceivingStationContextBar identity trough — done
+- `2026-07-19T16:48:23.924Z` · **main** · main · agent · Claim photos: pencil select-all + shared SelectionMark (blue) — ok
+- `2026-07-19T16:49:54.616Z` · **main** · main · agent · Unbox station chrome: same-row identity + more-details on GlobalHeader appChromeMutedClass band — done
+- `2026-07-19T16:53:45.676Z` · **main** · main · agent · Unbox station chrome: floating Panel pills (identity + more-details) instead of full-width header bar — done
+- `2026-07-19T16:56:14.619Z` · **main** · main · agent · Unbox station chrome: bookmark tabs flush under GlobalHeader (square top, rounded bottom, no float gap) — done
+- `2026-07-19T16:58:46.094Z` · **main** · main · agent · Unbox bookmark tabs: scoop top corners (inverse of bottom) to mesh into GlobalHeader, no top hairline — done
+- `2026-07-19T17:00:03.735Z` · **main** · main · agent · Carton Claim+Photos tooltips: pin placement=above — ok
+- `2026-07-19T17:02:52.421Z` · **main** · main · agent · Shorten Claim+Photos tooltips to one line — ok
+- `2026-07-19T17:03:11.962Z` · **main** · main · agent · Unbox UNBOXED siderail: flush-right scanDock inset + readable slide stagger; prune unboxView — ok
+- `2026-07-19T17:03:18.693Z` · **main** · main · agent · Unbox bookmarks: square 90° top corners + top hairline L-join; context display owns receivingHeaderHairlineClass (not GlobalHeader) — done
+- `2026-07-19T17:11:22.429Z` · **main** · main · agent · Align GlobalHeader + station bookmarks to HEADER_INSET_X / HEADER_ICON_GAP / h-8 hit-box SoT — done
+- `2026-07-19T17:11:34.428Z` · **main** · main · agent · Photo toolbar: match outline icons; add details/upload/move-PO — ok
+- `2026-07-19T17:21:00.129Z` · **main** · main · agent · Header: sidebar toggle no pressed fill, closer to left edge; more gap phone FOB→inbox — ok
+- `2026-07-19T17:21:30.565Z` · **main** · main · agent · Nav chrome: modes own icons, pages text (MasterNav L1/MRU/⌘K/mobile; mode stroke heavier) — ok
+- `2026-07-19T17:40:49.120Z` · **main** · main · agent · To Ship pending table: sticky col header above dates, select-all+grip replaces pencil, fixed 6-col grid — ok
+- `2026-07-19T17:59:36.069Z` · **main** · main · agent · Fixed Unbox UNBOXED siderail first-load stagger: host now mounts fresh on first rows so the cascade orchestrates; rows ride the container variant (no contract swap); pure x-slide at full opacity (no gray, no completion flicker); ring+age inset 6px to clear rounded canvas edge — done
+- `2026-07-19T18:03:21.790Z` · **main** · main · agent · Added Playwright spec tests/e2e/unbox-siderail-stagger.spec.ts (3 tests, all green on :3000/desktop): asserts the Unboxed rail first-load reveal is a left-to-right x-slide cascade, staggers top->bottom, opacity never dips (no gray/no flicker), holds after settle, refetch does not restagger, and the row ring clears the rounded canvas edge — done
+- `2026-07-19T18:11:07.917Z` · **main** · main · agent · To Ship Pending → Sheets-like 10-col WMS grid (select·status·title·qty·cond·age·notes·platform·order·tracking); grew ordersQueueGridTemplate SoT + plain icon-less chip cells; grip header-only; staged serial folds into tracking cell — done
+- `2026-07-20T07:20:05.828Z` · **main** · main · agent · Unbox edit refresh sticks via ?openReceivingId=+lineId URL sync (mirror dashboard openOrderId); restore prefers lineId — done

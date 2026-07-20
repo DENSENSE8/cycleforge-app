@@ -18,13 +18,10 @@ import {
   isPendingTriageScanRow,
   type ReceivingMode,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import type { UnboxView } from '@/components/sidebar/receiving/useReceivingMode';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 interface ReceivingRailBodyProps {
   mode: ReceivingMode;
-  /** Kept for call-site compatibility; Unbox sidebar always shows the recent dock. */
-  unboxView: UnboxView;
   selectedLine: ReceivingLineRow | null;
   /** Pre-resolve triage scan stub (tracking #) for the combined Triage tab. */
   triageLeadingRow?: ReceivingLineRow | null;
@@ -34,7 +31,6 @@ interface ReceivingRailBodyProps {
 
 export function ReceivingRailBody({
   mode,
-  unboxView: _unboxView,
   selectedLine,
   triageLeadingRow = null,
   triageFilterText,

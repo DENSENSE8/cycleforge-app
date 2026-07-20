@@ -161,15 +161,16 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     dismissViewer();
   }, [deferViewerClose, dismissViewer]);
 
-  const openViewer = useCallback((index: number) => {
+  const openViewer = useCallback((index: number, opts?: { details?: boolean; reassign?: boolean }) => {
     setCurrentIndex(index);
     setViewerOpen(true);
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
-    setReassignOpen(false);
+    setReassignOpen(Boolean(opts?.reassign));
     setReassignError(null);
     setUploadError(null);
+    setPanelOpen(Boolean(opts?.details));
   }, [zoom]);
 
   useEffect(() => {

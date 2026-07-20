@@ -24,6 +24,9 @@ export interface RowFieldPreviewProps {
   /** When true the trigger is a button and clicking calls `onEdit`. */
   editable?: boolean;
   onEdit?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Extra classes on the trigger — e.g. `min-w-0 max-w-full` so a text value
+   *  (notes) can truncate within a fixed grid cell. */
+  className?: string;
   /** The indicator icon. */
   children: ReactNode;
 }
@@ -34,6 +37,7 @@ export function RowFieldPreview({
   tone = 'default',
   editable = false,
   onEdit,
+  className,
   children,
 }: RowFieldPreviewProps) {
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -138,7 +142,7 @@ export function RowFieldPreview({
             onEdit?.(e);
           }}
           aria-label={`Edit ${label.toLowerCase()}`}
-          className="ds-raw-button inline-flex items-center rounded hover:bg-surface-hover"
+          className={cn('ds-raw-button inline-flex items-center rounded hover:bg-surface-hover', className)}
         >
           {children}
         </button>
@@ -155,7 +159,7 @@ export function RowFieldPreview({
         }}
         tabIndex={0}
         {...commonHandlers}
-        className="inline-flex items-center"
+        className={cn('inline-flex items-center', className)}
       >
         {children}
       </span>

@@ -180,10 +180,9 @@ export function MasterNav({
       const page = pages.find((p) => p.id === ref.pageId);
       if (!page) continue;
       const mode = ref.modeId ? page.modes?.find((m) => m.id === ref.modeId) : undefined;
-      // Mode id unknown / gated out — fall back to page chrome when modeless or
-      // when the stored mode no longer exists in the filtered nav.
+      // Mode id unknown / gated out — skip when the stored mode no longer exists.
       if (ref.modeId && !mode && page.modes && page.modes.length > 0) continue;
-      const icon = mode?.icon ?? page.icon;
+      // Modes own icons; modeless page jumps use a short text mark (no page Lucide).
       const label =
         mode && page.modes && page.modes.length > 1
           ? `${page.label} · ${mode.label}`
@@ -191,8 +190,8 @@ export function MasterNav({
       chips.push({
         key,
         label,
-        icon,
-        iconLayer: mode ? 'mode' : 'page',
+        icon: mode?.icon,
+        textMark: mode ? undefined : page.label.replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || page.label.slice(0, 2),
         onSelect: () => handleNavigate(ref.pageId, ref.modeId ?? undefined),
         onHover: () => prefetchNavData(page.href, queryClient),
       });

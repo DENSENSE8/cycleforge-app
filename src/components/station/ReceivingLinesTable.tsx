@@ -44,12 +44,18 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout } from '@/lib/station/table-url-params';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import {
   WorkbenchTablePane,
   WORKBENCH_CHROME_COLUMN,
   WORKBENCH_GUTTERS,
 } from '@/components/dashboard/workbench-shell';
+import {
+  QueueTableShell,
+  QueueTableToolbar,
+  StationRowColumnHeader,
+  receivingStageColumnLabel,
+  receivingTableScopeLabel,
+} from '@/components/dashboard/queue-table';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -66,7 +72,6 @@ import {
 } from '@/lib/receiving/receiving-board-lanes';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { cn } from '@/utils/_cn';
 
 const RECEIVING_LANE_ICON: Record<ReceivingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   inbox: Inbox,
@@ -299,48 +304,67 @@ export default function ReceivingLinesTable({
       />
     );
 
-  // Unbox workbench embeds the table under UnboxWorkspaceHeader — no nested
-  // DateRangeHeader / Incoming chrome. Week + columns portal into the host slot.
-  if (embedded) {
-    const weekCount = getWeekCount();
-    const toolbar =
-      toolbarPortalTarget && (isHistoryMode || !skipWeekFilter) ? (
-        <>
-          <DateRangePickerPill
-            label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
-            count={weekCount}
-            weekNav={{
-              weekOffset,
-              onPrev: () => setWeekOffset(weekOffset + 1),
-              onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
-            }}
-          />
-          <ColumnConfigButton variant="toolbar" />
-        </>
-      ) : toolbarPortalTarget ? (
-        <ColumnConfigButton variant="toolbar" />
-      ) : null;
-    const portal =
-      toolbarPortalTarget && toolbar ? createPortal(toolbar, toolbarPortalTarget) : null;
+  const visibleLineCount = orderedVisibleRows.length;
+  const weekCount = getWeekCount();
+  const stageColumnLabel = receivingStageColumnLabel(historyAxis);
+  const columnHeader =
+    isMobile ? null : (
+      <StationRowColumnHeader
+        selectMode={selectMode}
+        includeSerial={!isIncomingMode}
+        stageLabel={stageColumnLabel}
+      />
+    );
+
+  const renderInCardToolbar = () => {
+    if (isHistoryMode || !skipWeekFilter) {
+      return (
+        <QueueTableToolbar
+          left={
+            <DateRangePickerPill
+              label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+              count={weekCount}
+              weekNav={{
+                weekOffset,
+                onPrev: () => setWeekOffset(weekOffset + 1),
+                onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
+              }}
+            />
+          }
+          right={toolbarPortalTarget ? null : <ColumnConfigButton variant="toolbar" />}
+        />
+      );
+    }
 
     return (
+      <QueueTableToolbar
+        left={
+          <DateRangePickerPill
+            label={receivingTableScopeLabel(mode.id)}
+            count={visibleLineCount}
+          />
+        }
+        right={toolbarPortalTarget ? null : <ColumnConfigButton variant="toolbar" />}
+      />
+    );
+  };
+
+  const portaledColumnConfig =
+    toolbarPortalTarget ? createPortal(<ColumnConfigButton variant="toolbar" />, toolbarPortalTarget) : null;
+
+  // Unbox workbench embeds the table under UnboxWorkspaceHeader — in-card toolbar
+  // + column guide; column config stays in the host chrome portal.
+  if (embedded) {
+    return (
       <TableColumnConfigProvider tableId="receiving">
-        {portal}
-        {/* Already inside WORKBENCH_BODY_COLUMN gutters — card only, no second inset. */}
-        <div
-          className={cn(
-            MONITOR_SECTION_CARD_SCROLL_CLASS,
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-          )}
+        {portaledColumnConfig}
+        <QueueTableShell
+          scrollRef={scrollRef}
+          toolbar={renderInCardToolbar()}
+          columnHeader={columnHeader}
         >
-          <div
-            ref={scrollRef}
-            data-testid="column-table-body"
-            className="min-h-0 flex-1 overflow-auto"
-          >
-            {listBody}
-          </div>
-        </div>
+          {listBody}
+        </QueueTableShell>
       </TableColumnConfigProvider>
     );
   }
@@ -368,9 +392,9 @@ export default function ReceivingLinesTable({
             <IncomingKpiStrip />
           </div>
           <WorkbenchTablePane>
-            <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
+            <QueueTableShell bare scrollRef={scrollRef} columnHeader={columnHeader}>
               {listBody}
-            </div>
+            </QueueTableShell>
           </WorkbenchTablePane>
         </div>
       </TableColumnConfigProvider>
@@ -395,9 +419,9 @@ export default function ReceivingLinesTable({
             />
           </div>
           <WorkbenchTablePane>
-            <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
+            <QueueTableShell bare scrollRef={scrollRef} columnHeader={columnHeader}>
               {listBody}
-            </div>
+            </QueueTableShell>
           </WorkbenchTablePane>
         </div>
       </TableColumnConfigProvider>
@@ -408,9 +432,9 @@ export default function ReceivingLinesTable({
     <TableColumnConfigProvider tableId="receiving">
       <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
         <WorkbenchTablePane>
-          <div ref={scrollRef} data-testid="column-table-body" className="min-h-0 flex-1 overflow-auto">
+          <QueueTableShell bare scrollRef={scrollRef} columnHeader={columnHeader}>
             {listBody}
-          </div>
+          </QueueTableShell>
         </WorkbenchTablePane>
       </div>
     </TableColumnConfigProvider>

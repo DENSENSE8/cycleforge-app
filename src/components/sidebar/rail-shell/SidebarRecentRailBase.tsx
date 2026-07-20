@@ -20,12 +20,15 @@ export type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
 export function SidebarRecentRailBase<TRow>({
   staggerReveal = true,
   pinSelectedLead = true,
+  // Flush-right under full-bleed scan bands (Unboxed / Testing / Labels).
+  railInset = 'scanDock',
   ...rest
 }: SidebarRecentRailBaseProps<TRow>) {
   return (
     <SidebarRailShell<TRow>
       staggerReveal={staggerReveal}
       pinSelectedLead={pinSelectedLead}
+      railInset={railInset}
       {...rest}
     />
   );

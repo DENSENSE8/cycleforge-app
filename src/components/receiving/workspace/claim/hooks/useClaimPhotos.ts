@@ -26,9 +26,9 @@ function mapPhotos(data: { photos?: ApiPhoto[] } | null): ClaimPhoto[] {
 
 /**
  * Loads the carton's photos so the operator can pick which to attach to the
- * Zendesk ticket. Defaults to all selected — attaching everything is the common
- * case; deselect to trim. Self-contained: re-loads whenever the modal opens on a
- * new carton and is best-effort (a claim can still be filed without photos).
+ * Zendesk ticket. Starts with none selected on first open — the operator opts
+ * in which evidence to attach. Self-contained: re-loads whenever the modal opens
+ * on a new carton and is best-effort (a claim can still be filed without photos).
  *
  * `refetch()` re-pulls on demand — wired to the realtime "phone uploaded a
  * photo" signal so send-to-phone captures appear in the grid live, pre-selected,
@@ -80,7 +80,9 @@ export function useClaimPhotos(open: boolean, receivingId: number | null | undef
       .then((data) => {
         const list = mapPhotos(data);
         setPhotos(list);
-        setSelectedPhotoIds(new Set(list.map((p) => p.id)));
+        // First open: nothing selected. knownIds still tracks the load so a
+        // later refetch only auto-selects brand-new phone captures.
+        setSelectedPhotoIds(new Set());
         knownIds.current = new Set(list.map((p) => p.id));
       })
       .catch(() => {

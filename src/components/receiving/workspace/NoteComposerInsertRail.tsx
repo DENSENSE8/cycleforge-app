@@ -2,29 +2,32 @@
 
 import { type ReactNode, useRef, useState } from 'react';
 import { Loader2, Plus } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Popover } from '@/design-system/primitives/Popover';
-import { NOTE_OVERLAY_ICON, NOTE_OVERLAY_ICON_BTN } from './note-composer-helpers';
+import { cn } from '@/utils/_cn';
+import {
+  NOTE_INSERT_MENU_ICON_TONE,
+  NOTE_INSERT_TRIGGER_BTN,
+  NOTE_INSERT_TRIGGER_BTN_ACTIVE,
+  NOTE_OVERLAY_ICON,
+} from './note-composer-helpers';
 
 export type NoteComposerInsertAction = {
   id: string;
   label: string;
   ariaLabel: string;
   icon: ReactNode;
+  /** Kept for call-site compatibility; menu uses {@link NOTE_INSERT_MENU_ICON_TONE}. */
   buttonClassName: string;
   onClick: () => void;
   disabled?: boolean;
   loading?: boolean;
 };
 
-const INSERT_TRIGGER_BTN = `${NOTE_OVERLAY_ICON_BTN} h-[22px] w-auto min-w-[22px] gap-0.5 px-1.5 text-role-micro font-semibold text-text-muted transition hover:bg-surface-sunken/80 hover:text-text-default hover:shadow-sm hover:ring-1 hover:ring-border-soft/80`;
-
-const RAIL_CHROME =
-  'rounded-md bg-surface-card/90 px-0.5 py-0.5 shadow-sm ring-1 ring-border-soft/50 backdrop-blur-[2px]';
-
 /**
- * Top-right insert control for note composers. Always renders a single
- * "+ Insert" trigger that opens a labeled menu — same affordance in the
- * label-notes field, claim body, and any future composers.
+ * Top-right insert control for note composers. Faint `+` at rest; hover/open
+ * shows white surface + gray ring with a visible gray glyph. Menu uses the
+ * house dropdownPanel motion.
  */
 export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInsertAction[] }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -34,19 +37,21 @@ export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInser
 
   return (
     <div className="pointer-events-none absolute right-1.5 top-1.5 z-10">
-      <div className={`pointer-events-auto ${RAIL_CHROME}`}>
-        <button
-          ref={triggerRef}
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          aria-label="Insert into note"
-          onClick={() => setMenuOpen((open) => !open)}
-          className={INSERT_TRIGGER_BTN}
-        >
-          <Plus className="h-3 w-3 shrink-0" />
-          <span>Insert</span>
-        </button>
+      <div className="pointer-events-auto">
+        <HoverTooltip label="Insert into note" asChild>
+          {/* ds-raw-button */}
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-label="Insert into note"
+            onClick={() => setMenuOpen((open) => !open)}
+            className={cn(NOTE_INSERT_TRIGGER_BTN, menuOpen && NOTE_INSERT_TRIGGER_BTN_ACTIVE)}
+          >
+            <Plus className={NOTE_OVERLAY_ICON} />
+          </button>
+        </HoverTooltip>
         <Popover
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
@@ -56,7 +61,7 @@ export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInser
           role="menu"
           aria-label="Insert into note"
           padded={false}
-          className="min-w-[11rem] py-1"
+          className="w-56 p-1"
         >
           {actions.map((action) => (
             <button
@@ -68,16 +73,22 @@ export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInser
                 action.onClick();
                 setMenuOpen(false);
               }}
-              className="ds-raw-button flex w-full items-center gap-2 inset-field text-left text-role-caption font-medium text-text-default transition hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-50"
+              className="ds-raw-button flex w-full items-center gap-2 rounded-md border-0 px-2 py-1.5 text-left text-role-caption font-semibold text-text-muted shadow-none outline-none transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <span className="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center text-text-muted">
+              <span
+                className={cn(
+                  'inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center',
+                  NOTE_INSERT_MENU_ICON_TONE[action.id] ?? 'text-text-muted',
+                )}
+                aria-hidden
+              >
                 {action.loading ? (
                   <Loader2 className={`${NOTE_OVERLAY_ICON} animate-spin`} />
                 ) : (
                   action.icon
                 )}
               </span>
-              <span className="min-w-0 truncate">{action.label}</span>
+              <span className="min-w-0 flex-1 truncate">{action.label}</span>
             </button>
           ))}
         </Popover>

@@ -8,7 +8,13 @@ import { HeaderGoalChip } from './HeaderGoalChip';
 import { HeaderTopWorkOrderChip } from './HeaderTopWorkOrderChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { HEADER_ICON_WRAP } from './header-shell';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_CLUSTER,
+  HEADER_ICON_GLYPH,
+  HEADER_ICON_WRAP,
+  HEADER_INSET_X,
+} from './header-shell';
 import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -58,21 +64,22 @@ export function GlobalHeader({
     // corner, not a hard L of hairlines.
     <header
       className={cn(
-        'sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 px-3 backdrop-blur-sm sm:px-4',
+        'sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 backdrop-blur-sm',
+        HEADER_INSET_X,
         appChromeMutedClass,
       )}
     >
-      {/* Left cluster: equal h-8 icon hit-boxes, vertically centered. */}
-      <div className="flex h-8 shrink-0 items-center gap-0.5">
+      {/* Left cluster: equal h-8 icon hit-boxes, shared gap + glyph stroke. */}
+      <div className={HEADER_ICON_CLUSTER}>
         {canCollapseSidebar && onToggleSidebar && (
-          <div className={cn(HEADER_ICON_WRAP, '-ml-1 sm:-ml-1.5')}>
+          <div className={cn(HEADER_ICON_WRAP, '-ml-1.5')}>
             <HoverTooltip label={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'} asChild>
               <IconButton
                 size="md"
                 onClick={onToggleSidebar}
                 ariaLabel={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
                 aria-pressed={!sidebarCollapsed}
-                className="rounded-md text-text-muted hover:bg-surface-sunken active:bg-surface-strong"
+                className={HEADER_ICON_BTN_CLASS}
                 icon={
                   <svg
                     viewBox="0 0 24 24"
@@ -81,7 +88,7 @@ export function GlobalHeader({
                     strokeWidth={2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="h-4 w-4"
+                    className={HEADER_ICON_GLYPH}
                     aria-hidden
                   >
                     <rect width="18" height="18" x="3" y="3" rx="2" />
@@ -98,7 +105,7 @@ export function GlobalHeader({
 
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
 
-      <div className="flex h-8 shrink-0 items-center pr-0.5 sm:pr-1">
+      <div className="flex h-8 shrink-0 items-center">
         <GlobalHeaderActions />
       </div>
     </header>

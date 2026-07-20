@@ -123,6 +123,14 @@ export interface SidebarRailShellProps<TRow> {
    *   - `slide` — visible, clipped-safe horizontal settle for sidebar rails.
    */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
+  /**
+   * Horizontal inset for the eyebrow + list host.
+   *   - `gutter` (shell default) — symmetric SIDEBAR_GUTTER.
+   *   - `scanDock` — left gutter, flush right (SIDEBAR_RAIL_INSET_X) so ages /
+   *     edit pencil align with full-bleed scan mode cells. Recent rails default
+   *     this via SidebarRecentRailBase.
+   */
+  railInset?: 'scanDock' | 'gutter';
 
   /** Dev/observability: stamp a paint mark once the rail leaves skeleton state. */
   contentPaintSurface?: PaintSurface;

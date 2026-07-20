@@ -22,6 +22,9 @@ const PAGE_GROUPS: ReadonlyArray<{ kind: NonNullable<SidebarNavItem['kind']>; la
  * The master-nav menu (plan §3.4): Main / Stations / More in sidebar nav order.
  * Recent jumps live in the closed header band — not duplicated here. The active
  * page only appears in its group (blue row).
+ *
+ * Chrome law: **pages are text; modes own icons.** L1 rows render label only;
+ * expanded L2 mode rows keep mode glyphs.
  */
 interface MasterNavDropdownProps {
   activePage: SidebarPageNav;
@@ -46,7 +49,6 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
     const rowKey = `${keyPrefix}-${page.id}`;
     const open = expandedKey === rowKey;
     const isPageActive = page.id === activePage.id;
-    const PageIcon = page.icon;
     const modeCount = page.modes?.length ?? 0;
     return (
       <div key={rowKey}>
@@ -56,18 +58,17 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
             isPageActive && 'bg-blue-600',
           )}
         >
-          {/* Left: go straight to the page's default mode. */}
+          {/* Left: go straight to the page's default mode. Pages = text. */}
           <button
             type="button"
             onClick={() => onNavigate(page.id)}
             onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
             aria-label={`Go to ${page.label}`}
             className={cn(
-              'ds-raw-button flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left transition-colors',
+              'ds-raw-button flex min-w-0 flex-1 items-center px-2.5 py-2 text-left transition-colors',
               isPageActive ? 'text-white' : 'rounded-xl hover:bg-surface-canvas',
             )}
           >
-            <PageIcon className={navIconStrokeClass('page', cn('h-[18px] w-[18px] shrink-0', isPageActive ? 'text-white' : 'text-text-muted'))} />
             <span className="min-w-0 flex-1 truncate text-role-body font-semibold">{page.label}</span>
           </button>
           {/* Right: expand / collapse this page's modes (no-op if 0/1 mode). */}
@@ -109,7 +110,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
               transition={softSpring}
               className="overflow-hidden"
             >
-              <div className={/* ds-allow-spacing — indents under the 34px icon column */ "space-y-0.5 py-1 pl-[34px] pr-1"}>
+              <div className={/* ds-allow-spacing — indent mode rows under page label */ 'space-y-0.5 py-1 pl-3 pr-1'}>
                 {page.modes.map((mode, i) => {
                   const ModeIcon = mode.icon;
                   const isModeActive = isPageActive && mode.id === highlightedModeId;
@@ -133,7 +134,7 @@ export const MasterNavDropdown = forwardRef<HTMLDivElement, MasterNavDropdownPro
                             : 'text-text-default hover:bg-blue-600 hover:text-white',
                         )}
                       >
-                        <ModeIcon className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 opacity-80')} />
+                        <ModeIcon className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0')} />
                         <span className="min-w-0 flex-1 truncate">{mode.label}</span>
                       </button>
                     </Fragment>

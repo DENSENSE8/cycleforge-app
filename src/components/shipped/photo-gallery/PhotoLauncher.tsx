@@ -1,13 +1,24 @@
 import {
-  ChevronRight, Image as ImageIcon, AlertCircle, Download, ExternalLink,
+  ArrowLeftRight,
+  ChevronRight,
+  Image as ImageIcon,
+  AlertCircle,
+  Download,
+  ExternalLink,
+  Info,
+  Loader2,
+  Upload,
 } from '../../Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
+import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
+import { cn } from '@/utils/_cn';
 import type { PhotoGalleryController } from './usePhotoGallery';
 
 /** The launcher surface — thumbnail strip, slim toolbar, or the default button. */
 export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
   const { photoItems, compact, className, loadedCount, errorCount } = g;
+  const dz = usePhotoDropzone(g.handleUploadFiles);
 
   if (g.launcherLayout === 'thumbnails') {
     return (
@@ -38,50 +49,122 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
   }
 
   if (g.launcherLayout === 'toolbar') {
-    const toolbarIconBtnInner = `${compact ? 'p-1.5' : 'p-2'} text-blue-700 transition-all hover:bg-blue-50 disabled:opacity-40 disabled:pointer-events-none`;
+    const iconBtn = cn(
+      compact ? 'p-1.5' : 'p-2',
+      'text-blue-700 transition-all hover:bg-blue-50 disabled:pointer-events-none disabled:opacity-40',
+    );
+    const sep = 'border-l border-blue-200/90';
+    const canDownload =
+      !g.downloading && photoItems.length > 0 && !photoItems.every((p) => p.status === 'error');
+
     return (
       <div
-        className={`flex w-fit max-w-full items-stretch gap-0 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100/50 ${
-          compact ? 'min-h-9 py-0.5 pl-1 pr-0.5' : 'min-h-[3.25rem] py-1 pl-2 pr-1'
-        } ${className}`}
+        className={cn(
+          'flex w-fit max-w-full items-stretch gap-0 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100/50',
+          compact ? 'min-h-9 py-0.5 pl-1 pr-0.5' : 'min-h-[3.25rem] py-1 pl-2 pr-1',
+          className,
+        )}
       >
-        <HoverTooltip label="View photos fullscreen" asChild>
-          {/* ds-raw-button: composite text-left launcher (icon tile + photo-count label + chevron) — not a Button shape */}
-          <button
-            type="button"
-            onClick={() => g.openViewer(0)}
-            className="flex min-w-0 shrink-0 items-center rounded-lg py-0.5 pl-0 pr-0.5 text-left transition-all hover:bg-blue-100/50 active:scale-[0.995]"
-            aria-label="View photos fullscreen"
-          >
-            <div className={`flex min-w-0 items-center ${g.toolbarShowLabel ? 'gap-2' : 'gap-1'}`}>
-              <div className={`flex shrink-0 items-center justify-center rounded-lg bg-blue-500 shadow-sm ${compact ? 'h-7 w-7' : 'h-9 w-9'}`}>
-                <ImageIcon className={compact ? 'h-3.5 w-3.5 text-white' : 'h-4 w-4 text-white'} />
-              </div>
-              {g.toolbarShowLabel ? (
-                <div className="flex min-w-0 flex-col">
-                  <span className="text-role-micro uppercase tracking-wider text-blue-600">
-                    {photoItems.length} {photoItems.length === 1 ? 'photo' : 'photos'}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-role-micro font-semibold">
-                    {loadedCount < photoItems.length && errorCount === 0 ? <span className="text-amber-600">Loading…</span> : null}
-                    {errorCount > 0 ? <span className="text-red-600">{errorCount} failed</span> : null}
-                  </div>
+        {g.canUpload ? <input ref={dz.inputRef} {...dz.inputProps} /> : null}
+
+        {g.toolbarShowLabel ? (
+          <HoverTooltip label="View photos fullscreen" asChild>
+            {/* ds-raw-button: composite text-left launcher (label + chevron) — not a Button shape */}
+            <button
+              type="button"
+              onClick={() => g.openViewer(0)}
+              className="flex min-w-0 shrink-0 items-center gap-1 rounded-lg py-0.5 pl-1 pr-1.5 text-left transition-all hover:bg-blue-100/50 active:scale-[0.995]"
+              aria-label="View photos fullscreen"
+            >
+              <div className="flex min-w-0 flex-col">
+                <span className="text-role-micro uppercase tracking-wider text-blue-600">
+                  {photoItems.length} {photoItems.length === 1 ? 'photo' : 'photos'}
+                </span>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-role-micro font-semibold">
+                  {loadedCount < photoItems.length && errorCount === 0 ? (
+                    <span className="text-amber-600">Loading…</span>
+                  ) : null}
+                  {errorCount > 0 ? <span className="text-red-600">{errorCount} failed</span> : null}
                 </div>
-              ) : null}
+              </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-blue-600" aria-hidden />
-            </div>
-          </button>
-        </HoverTooltip>
+            </button>
+          </HoverTooltip>
+        ) : null}
+
         <div className="flex shrink-0 items-stretch self-center overflow-hidden rounded-lg border border-blue-200/90 bg-surface-card/90 shadow-sm">
+          <HoverTooltip label="View photos fullscreen" asChild>
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                g.openViewer(0);
+              }}
+              className={iconBtn}
+              ariaLabel="View photos fullscreen"
+              icon={<ImageIcon className="h-4 w-4 text-blue-700" />}
+            />
+          </HoverTooltip>
+
+          <HoverTooltip label="Show photo details" asChild>
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                g.openViewer(0, { details: true });
+              }}
+              className={cn(iconBtn, sep)}
+              ariaLabel="Show photo details"
+              icon={<Info className="h-4 w-4 text-blue-700" />}
+            />
+          </HoverTooltip>
+
+          {g.canUpload ? (
+            <HoverTooltip label={g.uploading ? 'Uploading…' : 'Upload photos'} asChild>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dz.openPicker();
+                }}
+                disabled={g.uploading}
+                className={cn(iconBtn, sep)}
+                ariaLabel="Upload photos"
+                icon={
+                  g.uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-700" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-blue-700" />
+                  )
+                }
+              />
+            </HoverTooltip>
+          ) : null}
+
           <HoverTooltip label={g.downloading ? 'Downloading…' : 'Download all photos'} asChild>
             <IconButton
-              onClick={(e) => { e.stopPropagation(); void g.handleDownloadAll(); }}
-              disabled={g.downloading || photoItems.length === 0 || photoItems.every((p) => p.status === 'error')}
-              className={toolbarIconBtnInner}
+              onClick={(e) => {
+                e.stopPropagation();
+                void g.handleDownloadAll();
+              }}
+              disabled={!canDownload}
+              className={cn(iconBtn, sep)}
               ariaLabel="Download all photos"
               icon={<Download className="h-4 w-4 text-blue-700" />}
             />
           </HoverTooltip>
+
+          {g.allowReassign ? (
+            <HoverTooltip label="Move to another PO" asChild>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  g.openViewer(0, { reassign: true });
+                }}
+                className={cn(iconBtn, sep)}
+                ariaLabel="Move to another PO"
+                icon={<ArrowLeftRight className="h-4 w-4 text-blue-700" />}
+              />
+            </HoverTooltip>
+          ) : null}
+
           {g.libraryHref ? (
             <HoverTooltip label="Open in media library" asChild>
               <a
@@ -89,7 +172,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className={`${toolbarIconBtnInner} border-l border-blue-200/90`}
+                className={cn(iconBtn, sep, 'inline-flex items-center justify-center')}
                 aria-label="Open in media library"
               >
                 <ExternalLink className="h-4 w-4" />

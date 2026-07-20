@@ -29,19 +29,14 @@ test.describe('Photo library · viewer context panel', () => {
       const lightbox = page.getByTestId('photo-lightbox');
       await expect(lightbox).toBeVisible();
 
-      // Details, upload, and other secondary actions now live in the ⋮ overflow
-      // menu so the inline toolbar is identical on every page.
-      const openMenu = () =>
-        page.getByRole('button', { name: /more photo actions/i }).click();
-
-      // Show the info panel from the ⋮ menu, then hide it from the same menu.
-      await openMenu();
-      await page.getByRole('menuitem', { name: /show details/i }).click();
+      // Details is a persistent top-level toggle (like zoom), not a ⋮ menu item.
+      await page.getByRole('button', { name: /show photo details/i }).click();
       const panel = page.getByTestId('photo-context-panel');
       await expect(panel).toBeVisible();
 
-      await openMenu();
-      await page.getByRole('menuitem', { name: /hide details/i }).click();
+      // Both the toolbar toggle and the panel's own collapse control share this
+      // label; either dismisses the panel — take the toolbar one.
+      await page.getByRole('button', { name: /hide photo details/i }).first().click();
       await expect(panel).toHaveCount(0);
 
       // Rotate must not crash the viewer.
@@ -65,9 +60,8 @@ test.describe('Photo library · viewer context panel', () => {
     await firstTile.click();
     await expect(page.getByTestId('photo-lightbox')).toBeVisible();
 
-    // Open the info panel from the ⋮ overflow menu.
-    await page.getByRole('button', { name: /more photo actions/i }).click();
-    await page.getByRole('menuitem', { name: /show details/i }).click();
+    // Open the info panel from the persistent details toggle.
+    await page.getByRole('button', { name: /show photo details/i }).click();
     await expect(page.getByTestId('photo-context-panel')).toBeVisible();
 
     // The "view all from this source" link is present only when the photo has a
