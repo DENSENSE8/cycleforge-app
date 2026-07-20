@@ -42,6 +42,7 @@ import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import { ReceivingStationContextBar } from './ReceivingStationContextBar';
+import { ReceivingStationMoreDetails } from './ReceivingStationMoreDetails';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
@@ -368,23 +369,25 @@ export function LineEditPanel({
     ],
   );
 
-  const toolbar = (
-    <LineEditToolbar
-      mode="unbox"
-      embedded
-      receivingId={row.receiving_id ?? null}
-      zohoSyncing={c.zohoSyncing}
-      busy={c.saving || c.platformSaving}
-      copyingAll={c.copyingAll}
-      handlers={{
-        refresh: () => void c.syncWithZoho(),
-        share: () => void c.handleShare(),
-        audit: () => c.setAuditOpen(true),
-        copy: () => void c.handleCopyAll(),
-        movePhotos: () => c.setMovePhotosOpen(true),
-        photoNote: () => c.setPhotoNoteOpen(true),
-      }}
-    />
+  const moreDetails = (
+    <ReceivingStationMoreDetails>
+      <LineEditToolbar
+        mode="unbox"
+        embedded
+        receivingId={row.receiving_id ?? null}
+        zohoSyncing={c.zohoSyncing}
+        busy={c.saving || c.platformSaving}
+        copyingAll={c.copyingAll}
+        handlers={{
+          refresh: () => void c.syncWithZoho(),
+          share: () => void c.handleShare(),
+          audit: () => c.setAuditOpen(true),
+          copy: () => void c.handleCopyAll(),
+          movePhotos: () => c.setMovePhotosOpen(true),
+          photoNote: () => c.setPhotoNoteOpen(true),
+        }}
+      />
+    </ReceivingStationMoreDetails>
   );
 
   const stationContextBar = (
@@ -400,7 +403,7 @@ export function LineEditPanel({
           density="bar"
         />
       }
-      utilities={toolbar}
+      moreDetails={moreDetails}
     />
   );
 
@@ -422,7 +425,7 @@ export function LineEditPanel({
               animate={ticketPanePresence.animate}
               exit={ticketPanePresence.exit}
               transition={paneTransition}
-              className="flex min-h-0 flex-1 flex-col overflow-visible"
+              className="relative flex min-h-0 flex-1 flex-col overflow-visible"
             >
               <ReceivingStationContextBar
                 identity={
@@ -436,7 +439,7 @@ export function LineEditPanel({
                     density="bar"
                   />
                 }
-                utilities={toolbar}
+                moreDetails={moreDetails}
               />
               <div className="relative z-0 min-h-0 flex-1 overflow-hidden">
                 <SupportTicketDetail
@@ -453,7 +456,7 @@ export function LineEditPanel({
               animate={ticketPanePresence.animate}
               exit={ticketPanePresence.exit}
               transition={paneTransition}
-              className="flex min-h-0 flex-1 flex-col overflow-visible"
+              className="relative flex min-h-0 flex-1 flex-col overflow-visible"
             >
               {stationContextBar}
               <StationWorkbench

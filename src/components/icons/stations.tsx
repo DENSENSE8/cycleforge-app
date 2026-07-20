@@ -3,16 +3,16 @@
 // Product chrome imports these names — not the underlying primitives — so a
 // glyph can be swapped without touching sidebar-navigation, mode rails, or mobile
 // nav. Each export documents its layer:
-//   • Station*     — master-nav STATIONS row + SIDEBAR_PAGE_NAV page icon
-//   • *Mode*       — L2 mode pills inside a station
+//   • Station*     — data/SoT page icon (not rendered in MasterNav L1 — pages are text)
+//   • *Mode*       — L2 mode chrome (rails, dropdowns, MRU, header “now”)
 //
 // Hard law: every MODE glyph key must be unique across floor stations
 // (see MODE_ICON_GLYPH_KEYS in station-nav-icons.ts). Pages may share a glyph
-// with their default mode (heavier vs lighter stroke). Primitives stay generic
-// for timelines / badges unless aliased here.
+// with their default mode. Primitives stay generic for timelines / badges
+// unless aliased here.
 //
-// Stroke weight: page exports use heavier strokes; mode exports use lighter
-// strokes (see icons/nav-weight.tsx).
+// Stroke weight (nav-weight.tsx): **modes own icons** (heavier); page wrappers
+// stay light for rare non-chrome callers.
 
 import { Send } from './actions';
 import {
@@ -32,9 +32,9 @@ import { withNavIconModeStroke, withNavIconPageStroke } from './nav-weight';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
-// ── Station page icons (STATIONS rail) ───────────────────────────────────────
+// ── Station page icons (data / rare non-chrome) ──────────────────────────────
 
-/** Receiving station — default surface `/unbox`. Heavier stroke than Unbox mode. */
+/** Receiving station — default surface `/unbox`. Not rendered in MasterNav L1. */
 export const StationReceiving: IconComponent = withNavIconPageStroke(PackageOpen);
 
 /** Testing / QC station — `/test`. Not repair (Wrench). */
@@ -46,7 +46,7 @@ export const StationShipping: IconComponent = withNavIconPageStroke(PackageCheck
 /** Packing station — `/pack`. */
 export const StationPacking: IconComponent = withNavIconPageStroke(Box);
 
-// ── Receiving L2 modes ───────────────────────────────────────────────────────
+// ── Receiving L2 modes (chrome — modes own icons) ────────────────────────────
 
 /** PO queue before dock scan. */
 export const ReceivingModeIncoming: IconComponent = withNavIconModeStroke(Inbox);
@@ -68,7 +68,7 @@ export const ReceivingModeRepair: IconComponent = withNavIconModeStroke(Wrench);
 
 // ── Testing L2 modes (tech sidebar top row) ─────────────────────────────────
 
-/** QC bench — unit test verdicts. Lighter stroke than the Testing station page. */
+/** QC bench — unit test verdicts. Heavier stroke than the Testing page data icon. */
 export const TechModeTesting: IconComponent = withNavIconModeStroke(ShieldCheck);
 
 /**
@@ -93,7 +93,7 @@ export const ShippingModeScanOut: IconComponent = withNavIconModeStroke(Barcode)
 
 // ── Packing station L2 modes ─────────────────────────────────────────────────
 
-/** Standard pack bench — same glyph family as the Packing page, lighter stroke. */
+/** Standard pack bench — same glyph family as the Packing page data icon, mode stroke. */
 export const PackingModeStandard: IconComponent = withNavIconModeStroke(Box);
 
 /** Fragile pack path. */

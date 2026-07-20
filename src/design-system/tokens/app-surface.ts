@@ -94,20 +94,13 @@ export const appChromeBandHairlineClass =
 
 /**
  * Depth 1 — elevated station work canvas (UnboxLineWorkspace / Triage twin).
- * Full border so the hairline follows `rounded-tl-2xl`; soft shadow is secondary
- * lift on wash (depth 3). Scan chrome stays flush — do not elevate both.
+ * Full border so the hairline follows `rounded-tl-2xl`. No drop shadow — a
+ * box-shadow at the soft join casts a gray strip into the sidebar cutout and
+ * fights scan-band / wash depth. Edge stroke alone carries the plane; scan
+ * chrome stays flush with chromatic glow (not elevation).
  */
 export const appWorkCanvasClass =
-  `relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-tl-2xl ${appWorkCanvasEdgeClass} bg-surface-card shadow-sm`;
-
-/**
- * Recessed station entity-context channel — inset *into* the work canvas (not a
- * second elevated card). Soft `rounded-xl` echoes GlobalHeader × content-shell
- * corners (`rounded-tl-2xl`) at a smaller radius. Host:
- * `ReceivingStationContextBar`.
- */
-export const appStationContextTroughClass =
-  'rounded-xl bg-surface-sunken/70 ring-1 ring-inset ring-border-soft';
+  `relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-tl-2xl ${appWorkCanvasEdgeClass} bg-surface-card`;
 
 /**
  * Page wash hosts (Unbox, receiving, admin tabs). Gradient stops come from

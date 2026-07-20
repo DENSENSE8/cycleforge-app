@@ -4,11 +4,14 @@ import type { StationTheme } from '@/utils/staff-colors';
  * Canonical geometry + chrome for every station scan bar. Change padding,
  * height, icon slot, or placeholder styling HERE — not per surface.
  *
- * Chrome: bottom color rule only (no full box stroke). Submit confirm is a
- * center→edges scaleX flash on that same bottom edge — not a gradient sweep.
+ * Chrome: flat band + staff bottom-rule + bottom-up station glow (chromatic
+ * depth). Mode segments are full-height flush siblings — armed = solid
+ * `surface-card` against the glow so they read continuous with the work
+ * canvas. Submit confirm is a center→edges scaleX flash on the bottom rule.
+ * Work canvas elevation is border-only — no competing drop shadows at the join.
  *
  * Stacking (low → high): input @ z-base → icon @ z-raised → submit trace @
- * z-raised → right rail @ z-dropdown → armed mode chip @ z-dropdown.
+ * z-raised → right rail @ z-dropdown → armed mode segment @ z-dropdown.
  */
 
 export const STATION_SCAN_BAR_ICON_SLOT_CLASS =
@@ -20,9 +23,13 @@ export const STATION_SCAN_BAR_PAD_LEFT_CLASS = 'pl-7';
 
 export const STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS = 'pl-3.5';
 
-/** Flush band input — no side/top stroke; staff bottom-rule is applied separately. */
+/**
+ * Flush band input — transparent so the band's bottom-up station glow shows
+ * through. Armed mode segments sit on solid `surface-card` against that glow.
+ * Staff bottom-rule applied separately; work canvas owns elevation (border).
+ */
 export const STATION_SCAN_BAR_INPUT_CLASS =
-  'box-border h-10 w-full rounded-none bg-surface-canvas text-xs font-bold leading-normal text-text-default outline-none transition-[border-color] shadow-inner py-2 placeholder:text-text-faint';
+  'box-border h-10 w-full rounded-none bg-transparent text-xs font-bold leading-normal text-text-default outline-none transition-[border-color] py-2 placeholder:text-text-faint';
 
 /** Unthemed fallback bottom rule (ThemedStationScanBar replaces via staff map). */
 export const STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS =
@@ -40,31 +47,49 @@ export const STATION_SCAN_BAR_BOTTOM_RULE_CLASS: Record<StationTheme, string> = 
   pink: 'border-0 border-b-2 border-b-pink-500',
 };
 
+/**
+ * Full-height right rail — flush to the band edge (no frosted glass chip).
+ * Mode / spinner / paste share equal-width cells so glyphs stack on one grid.
+ */
 export const STATION_SCAN_BAR_RIGHT_SLOT_CLASS =
-  'absolute right-2 top-1/2 z-dropdown isolate flex max-w-[55%] -translate-y-1/2 items-center gap-1';
-
-/** Frosted-glass chip rail — sits over the input; hairline ring only (no drop
- *  shadow) so the scan band stays flush chrome and does not compete with the
- *  elevated work canvas. Unbox / Testing / Shipping share this shell. */
-export const STATION_SCAN_BAR_FLOAT_RAIL_CLASS =
-  'rounded-lg border border-border-hairline/80 bg-surface-card/50 px-1 py-0 ring-1 ring-inset ring-white/40 backdrop-blur-md backdrop-saturate-150';
+  'absolute inset-y-0 right-0 z-dropdown isolate flex items-stretch gap-0';
 
 /** Narrower right inset when mode rails / spinners sit inside the bar. */
-export const STATION_SCAN_BAR_RIGHT_CONTENT_CLASS = 'right-1.5 gap-1';
+export const STATION_SCAN_BAR_RIGHT_CONTENT_CLASS = 'right-0 gap-0';
 
+/**
+ * Optical glyph box for every right-rail icon (mode / paste / spinner).
+ * `[&_svg]:block` kills baseline gap so Ticket / Pin / Hash look evenly spaced.
+ */
+export const STATION_SCAN_BAR_MODE_GLYPH_CLASS =
+  'block h-3.5 w-3.5 shrink-0';
+
+/**
+ * Shared right-rail cell — matches compact mode width. Use for spinner / paste
+ * so they occupy the same column rhythm as mode segments.
+ */
+export const STATION_SCAN_BAR_RIGHT_CELL =
+  'flex h-full w-8 shrink-0 items-center justify-center';
+
+/** Full-band mode segment — default width. */
 export const STATION_SCAN_BAR_MODE_BTN =
-  'flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-emphasis/60';
+  'flex h-full w-9 shrink-0 items-center justify-center rounded-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-emphasis/60';
 
+/** Full-band mode segment — tighter width for 3–4 mode rails. */
 export const STATION_SCAN_BAR_MODE_BTN_COMPACT =
-  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-emphasis/60';
+  'flex h-full w-8 shrink-0 items-center justify-center rounded-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-emphasis/60';
 
-/** Idle mode icon — no solid chip; the glass rail carries the surface. */
+/** Idle mode — transparent on chrome; hover only. */
 export const STATION_SCAN_BAR_MODE_BTN_INACTIVE =
-  'relative z-base text-text-soft hover:text-text-muted';
+  'relative z-base text-text-soft hover:bg-surface-hover/50 hover:text-text-muted';
 
-/** Armed mode — inset ring so it never bleeds over sibling chips. */
+/**
+ * Armed mode — solid card plane (same token as work canvas) so the segment
+ * reads as elevated depth, not a nested tinted pill. Domain `armedClass`
+ * supplies icon/text hue only — do not add bg-* there.
+ */
 export const STATION_SCAN_BAR_MODE_BTN_ARMED =
-  'relative z-dropdown bg-surface-card/80 backdrop-blur-sm ring-1 ring-inset ring-current/40';
+  'relative z-dropdown bg-surface-card';
 
 /** Submit confirm flash — sits on the bottom edge; same hue family as the rule. */
 export const STATION_SCAN_BAR_SUBMIT_TRACE_CLASS: Record<StationTheme, string> = {

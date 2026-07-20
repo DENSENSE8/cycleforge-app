@@ -9,6 +9,13 @@ import {
   PaneHeaderActionBar,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_CLUSTER,
+  HEADER_ICON_GLYPH,
+  HEADER_ICON_WRAP,
+} from '@/components/layout/header-shell';
+import { cn } from '@/utils/_cn';
 import { dispatchReceivingDetailsOverlay } from '@/utils/events';
 import {
   workspaceMode,
@@ -30,9 +37,10 @@ const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>>
 
 /**
  * Frozen utility toolbar — icon-only actions driven by the mode registry
- * (`WORKSPACE_MODES[mode].headerActions`). Unbox embeds this in
- * {@link ReceivingStationContextBar} (`embedded`); testing/other modes keep
- * the standalone header band. Unbox: refresh · ⋯ · info (no prev/next).
+ * (`WORKSPACE_MODES[mode].headerActions`). Unbox mounts this inside
+ * {@link ReceivingStationMoreDetails} on the same chrome row as identity
+ * (`embedded`) using GlobalHeader icon hit-box / gap SoT. Testing/other modes
+ * keep the standalone header band. Unbox: refresh · ⋯ · info (no prev/next).
  * Testing keeps prev/next via navChannel.
  */
 export function LineEditToolbar({
@@ -59,7 +67,7 @@ export function LineEditToolbar({
   /** Testing: return to the tested-lines browse (history empty state). */
   onBackToBrowse?: () => void;
   /**
-   * Station context bar: flat icon cluster (no full-width header band).
+   * Station context bar: flat icon cluster matching GlobalHeader rail.
    * Default false keeps the legacy standalone toolbar band.
    */
   embedded?: boolean;
@@ -67,6 +75,7 @@ export function LineEditToolbar({
   const def = workspaceMode(mode);
   const disabled = receivingId == null;
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const glyph = embedded ? HEADER_ICON_GLYPH : 'h-3.5 w-3.5';
 
   const META: Record<
     Exclude<HeaderActionKey, 'details'>,
@@ -74,49 +83,49 @@ export function LineEditToolbar({
   > = {
     refresh: {
       label: 'Refresh',
-      icon: <RefreshCw className={`h-3.5 w-3.5 ${zohoSyncing ? 'animate-spin' : ''}`} />,
+      icon: <RefreshCw className={cn(glyph, zohoSyncing && 'animate-spin')} />,
       disabled: zohoSyncing,
       title: 'Sync purchase order by tracking number',
       ariaLabel: 'Refresh line from inventory',
     },
     share: {
       label: 'Share',
-      icon: <Link2 className="h-3.5 w-3.5" />,
+      icon: <Link2 className={glyph} />,
       disabled,
       title: 'Copy link to open this package on Receiving',
       ariaLabel: 'Share receiving link',
     },
     audit: {
       label: 'Audit',
-      icon: <History className="h-3.5 w-3.5" />,
+      icon: <History className={glyph} />,
       disabled,
       title: 'Audit log (inventory events)',
       ariaLabel: 'View audit log',
     },
     copy: {
       label: 'Copy',
-      icon: <Copy className={`h-3.5 w-3.5 ${copyingAll ? 'animate-pulse' : ''}`} />,
+      icon: <Copy className={cn(glyph, copyingAll && 'animate-pulse')} />,
       disabled: disabled || copyingAll,
       title: 'Copy package + PO details to clipboard',
       ariaLabel: 'Copy all receiving details',
     },
     photoNote: {
       label: 'Ticket',
-      icon: <Ticket className="h-4 w-4" />,
+      icon: <Ticket className={embedded ? HEADER_ICON_GLYPH : 'h-4 w-4'} />,
       disabled,
       title: "Send this PO's photos to a support ticket",
       ariaLabel: 'Send photos to a support ticket',
     },
     movePhotos: {
       label: 'Photos',
-      icon: <ArrowLeftRight className="h-3.5 w-3.5" />,
+      icon: <ArrowLeftRight className={glyph} />,
       disabled,
       title: 'Move photos between this carton and another PO',
       ariaLabel: 'Move photos between purchase orders',
     },
     pair: {
       label: 'Pair',
-      icon: <Link2 className="h-3.5 w-3.5" />,
+      icon: <Link2 className={glyph} />,
       disabled: disabled || pairing,
       title: 'Pair this SKU across platforms',
       ariaLabel: 'Open SKU pairing',
@@ -151,7 +160,7 @@ export function LineEditToolbar({
 
   const inlineActions = inlineKeys.map(toAction);
 
-  const overflowMenu =
+  const overflowMenu = (align: 'start' | 'end' = 'start') =>
     overflowKeys.length > 0 ? (
       <Popover.Root open={overflowOpen} onOpenChange={setOverflowOpen}>
         <HoverTooltip label="More actions">
@@ -159,15 +168,19 @@ export function LineEditToolbar({
             <button
               type="button"
               aria-label="More actions"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default"
+              className={cn(
+                embedded
+                  ? cn(HEADER_ICON_BTN_CLASS, 'inline-flex h-8 w-8 items-center justify-center')
+                  : 'inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default',
+              )}
             >
-              <MoreVertical className="h-3.5 w-3.5" />
+              <MoreVertical className={glyph} />
             </button>
           </Popover.Trigger>
         </HoverTooltip>
         <Popover.Portal>
           <Popover.Content
-            align="start"
+            align={align}
             sideOffset={4}
             className="z-50 min-w-[10rem] rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg"
           >
@@ -196,11 +209,52 @@ export function LineEditToolbar({
       </Popover.Root>
     ) : null;
 
+  if (embedded) {
+    const embeddedOverflow = overflowMenu('end');
+    return (
+      <div className={HEADER_ICON_CLUSTER}>
+        {inlineActions.map((action) => (
+          <div key={action.key} className={HEADER_ICON_WRAP}>
+            <HoverTooltip
+              label={
+                (typeof action.title === 'string' ? action.title : null) ??
+                (typeof action.label === 'string' ? action.label : action.key)
+              }
+              asChild
+            >
+              <IconButton
+                size="md"
+                onClick={action.onClick}
+                disabled={action.disabled}
+                ariaLabel={action.ariaLabel ?? String(action.label)}
+                className={HEADER_ICON_BTN_CLASS}
+                icon={action.icon}
+              />
+            </HoverTooltip>
+          </div>
+        ))}
+        {embeddedOverflow ? <div className={HEADER_ICON_WRAP}>{embeddedOverflow}</div> : null}
+        {def.showDetails && receivingId != null ? (
+          <div className={HEADER_ICON_WRAP}>
+            <HoverTooltip label="Receiving details" asChild>
+              <IconButton
+                size="md"
+                onClick={() => dispatchReceivingDetailsOverlay(receivingId)}
+                ariaLabel="Open receiving details"
+                className={HEADER_ICON_BTN_CLASS}
+                icon={<Info className={HEADER_ICON_GLYPH} />}
+              />
+            </HoverTooltip>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <PaneHeaderActionBar
-      variant={embedded ? 'flat' : 'header'}
+      variant="header"
       iconOnly
-      className={embedded ? 'gap-0.5 px-0 py-0' : undefined}
       leftSlot={
         onBackToBrowse ? (
           <HoverTooltip label="All tested lines" asChild>
@@ -218,7 +272,7 @@ export function LineEditToolbar({
       }
       rightSlot={
         <>
-          {overflowMenu}
+          {overflowMenu()}
           {def.showDetails && receivingId != null ? (
             <HoverTooltip label="Receiving details" asChild>
               <IconButton

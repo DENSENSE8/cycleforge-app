@@ -12,6 +12,11 @@ import {
 } from '@/components/station/ReceivingLinesTable';
 import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
 import { StationListTable } from '@/components/station/StationListTable';
+import {
+  QueueTableShell,
+  QueueTableToolbar,
+  StationRowColumnHeader,
+} from '@/components/dashboard/queue-table';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import {
@@ -347,36 +352,58 @@ export function TestingHistoryList({
           headerColumnsSlot={localHeaderColumns}
           headerEndSlot={localHeaderOptions}
           emptyMessage={emptyMessage}
+          selectMode={selectMode}
+          showStationColumnHeader
+          columnHeaderStageLabel={mode === 'history' ? 'Tested' : 'Stage'}
         />
       </div>
     );
   } else {
-    content = (
-      <div className="flex h-full min-w-0 flex-col overflow-hidden bg-surface-card">
-        <div className="min-h-0 flex-1 overflow-auto">
-          {isLoading && rows.length === 0 ? (
-            <div className="p-3">
-              <SkeletonList count={12} type="row" />
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
-            </div>
-          ) : (
-            <div className="flex w-full flex-col">
-              {rows.map((row, index) => renderRow(row, index))}
-            </div>
-          )}
+    const scopeLabel = mode === 'returns' ? 'Return queue' : 'Pending tests';
+    const queueBody =
+      isLoading && rows.length === 0 ? (
+        <div className="p-3">
+          <SkeletonList count={12} type="row" />
         </div>
-      </div>
+      ) : rows.length === 0 ? (
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+          <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
+          {rows.map((row, index) => renderRow(row, index))}
+        </div>
+      );
+
+    content = (
+      <QueueTableShell
+        toolbar={
+          <QueueTableToolbar
+            left={
+              <DateRangePickerPill label={scopeLabel} count={rows.length} />
+            }
+          />
+        }
+        columnHeader={
+          isMobile ? null : (
+            <StationRowColumnHeader selectMode={selectMode} stageLabel="Stage" />
+          )
+        }
+      >
+        {queueBody}
+      </QueueTableShell>
     );
   }
 
-  if (mode !== 'history') return content;
+  const portaledQueueControls =
+    mode !== 'history' && toolbarPortalTarget
+      ? createPortal(<ColumnConfigButton variant="toolbar" />, toolbarPortalTarget)
+      : null;
+
   return (
     <TableColumnConfigProvider tableId="testing">
-      <TableDensityProvider tableId="testing-history">
-        {portaledControls}
+      <TableDensityProvider tableId={mode === 'history' ? 'testing-history' : 'testing-queue'}>
+        {mode === 'history' ? portaledControls : portaledQueueControls}
         {content}
       </TableDensityProvider>
     </TableColumnConfigProvider>

@@ -6,8 +6,8 @@ export type ClaimModalMode = 'create' | 'link';
 
 /**
  * Linear create-flow wizard. Each step owns exactly one job:
- *   photos  → pick claim type + acknowledge/select evidence photos
- *   compose → edit the full Zendesk subject + body
+ *   photos  → acknowledge/select evidence photos
+ *   compose → pick claim type + edit the full Zendesk subject + body
  *   review  → read-only all-in-one summary, then file + archive
  *   confirm → ticket-created + local-backup confirmation
  *   seller  → the seller-facing message

@@ -65,8 +65,13 @@ export function PhotoGallery(props: PhotoGalleryProps) {
         />
       ) : (
         g.mounted && typeof document !== 'undefined' && createPortal(
-          <AnimatePresence mode="wait">
-            {g.viewerOpen && <PhotoViewerModal g={g} />}
+          // A stable `key` + default (sync) mode is required for AnimatePresence
+          // to reliably run the scrim's exit and UNMOUNT it. A keyless child under
+          // `mode="wait"` deadlocks when the parent re-renders mid-exit, leaving a
+          // full-screen scrim mounted that blocks every click until a page reload
+          // (see LightboxPortal, which fixed the same "ghost overlay" bug).
+          <AnimatePresence>
+            {g.viewerOpen ? <PhotoViewerModal key="photo-lightbox" g={g} /> : null}
           </AnimatePresence>,
           document.body,
         )

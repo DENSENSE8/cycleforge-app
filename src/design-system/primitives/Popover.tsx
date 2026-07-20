@@ -1,6 +1,6 @@
 'use client';
 
-import { type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
+import { useLayoutEffect, useState, type ComponentPropsWithoutRef, type ReactNode, type RefObject } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/utils/_cn';
 import { AnchoredLayer, type AnchoredPlacement } from './AnchoredLayer';
@@ -18,6 +18,8 @@ import type { ZIndexToken } from '../tokens/z-index';
 //
 // Motion comes from the SHARED presets (`framerPresence.dropdownPanel` +
 // `framerTransition.dropdownOpen`), run through the reduced-motion-aware hooks.
+// The layer stays mounted through exit so AnimatePresence can finish the close
+// animation (AnchoredLayer alone would tear down the portal on `open=false`).
 //
 // A11y: <AnchoredLayer> already owns Escape + outside-click dismissal. The
 // trigger's `aria-haspopup`/`aria-expanded` stay caller-owned (as in
@@ -72,10 +74,20 @@ export function Popover({
 }: PopoverProps) {
   const presence = useMotionPresence(framerPresence.dropdownPanel);
   const transition = useMotionTransition(framerTransition.dropdownOpen);
+  // Keep the portal alive until the exit motion finishes — otherwise
+  // AnchoredLayer unmounts on `open=false` and AnimatePresence never plays.
+  // useLayoutEffect so the open path mounts before paint (no missed first frame).
+  const [layerOpen, setLayerOpen] = useState(open);
+
+  useLayoutEffect(() => {
+    if (open) setLayerOpen(true);
+  }, [open]);
+
+  if (!layerOpen) return null;
 
   return (
     <AnchoredLayer
-      open={open}
+      open={layerOpen}
       onClose={onClose}
       anchorRef={anchorRef}
       placement={placement}
@@ -83,9 +95,14 @@ export function Popover({
       level={level}
       matchWidth={matchWidth}
     >
-      <AnimatePresence>
-        {open && (
+      <AnimatePresence
+        onExitComplete={() => {
+          if (!open) setLayerOpen(false);
+        }}
+      >
+        {open ? (
           <motion.div
+            key="popover-panel"
             initial={presence.initial}
             animate={presence.animate}
             exit={presence.exit}
@@ -99,7 +116,7 @@ export function Popover({
           >
             {children}
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </AnchoredLayer>
   );

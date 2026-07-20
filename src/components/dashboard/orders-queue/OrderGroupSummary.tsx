@@ -1,38 +1,44 @@
 'use client';
 
-import { TrackingCountChip } from '@/components/ui/CopyChip';
-import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
-import { RowTitle, RowMetaColumns, RowConditionMeta } from '@/components/ui/RowMetaColumns';
+import {
+  OrderIdChip,
+  PlatformChip,
+  TrackingCountChip,
+  TrackingOrSkuScanChip,
+  getLast4,
+} from '@/components/ui/CopyChip';
+import { RowTitle, RowConditionMeta } from '@/components/ui/RowMetaColumns';
+import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import {
   getOrderPlatformColor,
   getOrderPlatformBorderColor,
   isFbaOrder,
-  marketplaceOrderUrl,
 } from '@/utils/order-platform';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
-  dashboardOrderRowShellClass,
-  dashboardOrderRowChipsClass,
+  ordersQueueGridTemplate,
+  ordersQueueRowShellClass,
 } from '@/lib/dashboard-order-row-layout';
 import { formatSalePrice, type QueueRowRecord } from './helpers';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { orderRowConditionLabel, EMPTY_META_DASH } from '@/lib/conditions';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { cn } from '@/utils/_cn';
 
 /**
- * Collapsed-header content for a {@link CollapsibleGroupRow} wrapping several
- * order lines that share ONE order number but are DIFFERENT products (e.g. a
- * marketplace order with two items shipped under the same — or different —
- * tracking). Built from the same RowTitle / RowMetaColumns / chip primitives a
- * single line uses, so the header reads like a real row and aligns with the
- * child rows it reveals.
- *
- * The order number is the shared identity (one real #chip); tracking shows one
- * value when the lines ship together, else a ×N count ({@link TrackingCountChip}).
+ * Collapsed header for multi-product orders — the SAME Sheets-like 10-column WMS
+ * grid as {@link OrdersQueueTableRow}, so the group header locks to child rows.
+ * Identity cells are quiet (icon-less) and split platform / order / tracking so
+ * each stays under its own column header.
  */
 export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; isMobile: boolean }) {
   const orderChannelLabel = useOrderChannelLabel();
+  const isHidden = useIsColumnHidden();
+  const showQtyCol = !isHidden('qty');
+  const showConditionCol = !isHidden('condition');
+
   const first = rows[0];
   const orderId = String(first.order_id || '').trim();
   const platformLabel = orderChannelLabel(orderId, first.account_source);
@@ -50,7 +56,6 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
         ? 'MIXED'
         : EMPTY_META_DASH;
 
-  // Combined sale price across the lines that share this order number.
   const priceSum = rows.reduce((sum, r) => {
     const n = r.sale_amount == null || r.sale_amount === '' ? NaN : Number(r.sale_amount);
     return Number.isFinite(n) ? sum + n : sum;
@@ -64,40 +69,93 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
   );
   const trackingValue = trackings.size === 1 ? [...trackings][0] : '';
 
-  return (
-    <div className={dashboardOrderRowShellClass(isMobile)}>
-      <div className="flex min-w-0 flex-col">
-        <RowTitle
-          // Structural group marker (N products share one order#), not a status —
-          // neutral gray so it never collides with a pipeline-state dot hue.
-          dot="bg-surface-strong"
-          dotTitle={`${rows.length} products`}
-          title={platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
-        />
-        <RowMetaColumns
-          qty={<span className={orderRowQtyTone(qtySum)}>{qtySum}</span>}
-          condition={<RowConditionMeta condition={conditionText} />}
-          rest={groupPrice ? <span className="normal-case tracking-normal text-text-success">{groupPrice}</span> : null}
-        />
-      </div>
-      {trackings.size > 1 ? (
-        <div className={dashboardOrderRowChipsClass(isMobile)}>
-          <TrackingCountChip count={trackings.size} dense={isMobile} />
+  // Quiet, icon-less identity cells — match the row's `variant="plain"` chips.
+  const platformCell =
+    !isFba && platformLabel ? (
+      <PlatformChip
+        label={platformLabel}
+        underlineClass={getOrderPlatformBorderColor(platformLabel)}
+        iconClass={platformIconClass}
+        showIcon={false}
+        tooltipValue={productPageUrl ? 'Open listing' : 'No listing link'}
+        onClick={() => {
+          if (productPageUrl) window.open(productPageUrl, '_blank', 'noopener,noreferrer');
+        }}
+      />
+    ) : null;
+  const orderCell = orderId ? <OrderIdChip value={orderId} display={getLast4(orderId)} plain /> : null;
+  const trackingCell =
+    trackings.size > 1 ? (
+      <TrackingCountChip count={trackings.size} dense={isMobile} />
+    ) : trackingValue ? (
+      <TrackingOrSkuScanChip value={trackingValue} plain />
+    ) : null;
+
+  if (isMobile) {
+    return (
+      <div className={ordersQueueRowShellClass(true)}>
+        <div className="flex min-w-0 flex-col">
+          <RowTitle
+            dot="bg-surface-strong"
+            dotTitle={`${rows.length} products`}
+            title={platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
+          />
+          <div className="mt-0.5 flex items-center gap-2 pl-5 text-role-eyebrow uppercase text-text-muted">
+            <span className={cn('font-mono tabular-nums', orderRowQtyTone(qtySum))}>{qtySum}</span>
+            <RowConditionMeta condition={conditionText} />
+            {groupPrice ? (
+              <span className="normal-case tracking-normal text-text-success">{groupPrice}</span>
+            ) : null}
+          </div>
         </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {platformCell}
+          {orderCell}
+          {trackingCell}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(ordersQueueRowShellClass(false), 'w-full')}
+      style={{ gridTemplateColumns: ordersQueueGridTemplate() }}
+    >
+      {/* select — empty (grip lives only in the sticky header) */}
+      <span aria-hidden />
+      {/* status — group dot */}
+      <div className="flex items-center justify-center">
+        <HoverTooltip label={`${rows.length} products`} focusable={false}>
+          <span className="h-2 w-2 shrink-0 rounded-full bg-surface-strong" />
+        </HoverTooltip>
+      </div>
+      <div className="min-w-0">
+        <span className="block truncate text-role-data text-text-default">
+          {platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
+        </span>
+      </div>
+      {showQtyCol ? (
+        <span className={cn('font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qtySum))}>
+          {qtySum}
+        </span>
       ) : (
-        <OrderIdentityChips
-          platformLabel={platformLabel}
-          platformIconClass={platformIconClass}
-          platformBorderClass={getOrderPlatformBorderColor(platformLabel)}
-          productPageUrl={productPageUrl}
-          marketplaceOrderUrl={marketplaceOrderUrl(orderId, first.account_source)}
-          isFba={isFba}
-          orderId={orderId}
-          hideOrderId={false}
-          tracking={trackingValue}
-          isMobile={isMobile}
-        />
+        <span />
       )}
+      {showConditionCol ? (
+        <span className="min-w-0 truncate text-role-eyebrow uppercase text-text-muted">
+          <RowConditionMeta condition={conditionText} />
+        </span>
+      ) : (
+        <span />
+      )}
+      {/* age — none for a group header */}
+      <span className="text-role-caption text-text-faint" aria-hidden>—</span>
+      {/* notes — none for a group header */}
+      <span className="text-role-caption text-text-faint" aria-hidden>—</span>
+      <div data-col="platform" className="flex min-w-0 items-center">{platformCell}</div>
+      <div data-col="order" className="flex min-w-0 items-center">{orderCell}</div>
+      <div data-col="tracking" className="flex min-w-0 items-center">{trackingCell}</div>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { useStationTheme } from '@/hooks/useStationTheme';
 import { cn } from '@/utils/_cn';
 import { StationScanBar, type StationScanBarProps } from './StationScanBar';
 import {
+  STATION_SCAN_BAR_MODE_GLYPH_CLASS,
+  STATION_SCAN_BAR_RIGHT_CELL,
   STATION_SCAN_BAR_RIGHT_CONTENT_CLASS,
   stationScanBarFocusInputClass,
 } from './tokens';
@@ -45,7 +47,11 @@ export function ThemedStationScanBar({
   const resolvedRight =
     isResolving || rightContent != null ? (
       <>
-        {isResolving ? <Loader2 className="h-4 w-4 animate-spin text-text-muted" /> : null}
+        {isResolving ? (
+          <span className={STATION_SCAN_BAR_RIGHT_CELL} aria-hidden>
+            <Loader2 className={cn(STATION_SCAN_BAR_MODE_GLYPH_CLASS, 'animate-spin text-text-muted')} />
+          </span>
+        ) : null}
         {rightContent}
       </>
     ) : null;

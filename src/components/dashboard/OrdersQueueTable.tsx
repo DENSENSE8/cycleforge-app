@@ -25,6 +25,7 @@ import {
   type WeekRange,
 } from '@/components/dashboard/orders-queue/helpers';
 import { OrdersQueueTableRow } from '@/components/dashboard/orders-queue/OrdersQueueTableRow';
+import { OrdersQueueColumnHeader } from '@/components/dashboard/orders-queue/OrdersQueueColumnHeader';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
 import { QueueDateSection } from '@/components/dashboard/orders-queue/QueueDateSection';
 import { useOrdersQueueRows } from '@/components/dashboard/orders-queue/useOrdersQueueRows';
@@ -32,6 +33,7 @@ import { VirtualQueueSections } from '@/components/dashboard/orders-queue/Virtua
 import { useOrdersQueueSelection } from '@/components/dashboard/orders-queue/useOrdersQueueSelection';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
+import { ORDERS_QUEUE_DATE_STICKY } from '@/lib/dashboard-order-row-layout';
 
 // Re-exported so existing importers keep their `@/components/dashboard/OrdersQueueTable` path.
 export type { OrdersQueueMode, OrdersQueueSort } from '@/components/dashboard/orders-queue/helpers';
@@ -421,6 +423,11 @@ export function OrdersQueueTable({
                   </div>
                 </div>
               ) : null}
+              <OrdersQueueColumnHeader
+                isMobile={isMobile}
+                selectMode={selectMode}
+                selectionScope={selectionScope}
+              />
               {virtualized && growToContent && scrollParentRef ? (
                 <VirtualQueueSections
                   orderGroupsByDate={orderGroupsByDate}
@@ -460,7 +467,7 @@ export function OrdersQueueTable({
                             isMobile={isMobile}
                             renderRow={renderRow}
                             animateRows
-                            stickyTopClass={stickyTopClass}
+                            stickyTopClass={ORDERS_QUEUE_DATE_STICKY}
                           />
                         </motion.div>
                       ))}
@@ -474,7 +481,7 @@ export function OrdersQueueTable({
                         isMobile={isMobile}
                         renderRow={renderRow}
                         animateRows={false}
-                        stickyTopClass={stickyTopClass}
+                        stickyTopClass={ORDERS_QUEUE_DATE_STICKY}
                       />
                     ))
                   )}

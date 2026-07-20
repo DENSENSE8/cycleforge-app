@@ -8,17 +8,27 @@
  *   - the skeleton loader's grace-delay show / lingered clear around a scan
  *   - browse-first Unbox (no never-blank auto-open)
  *   - delete recovery onto an empty browse pane
+ *   - Unbox URL stickiness (`?openReceivingId=` / `?lineId=`) so refresh
+ *     reopens the edit overlay instead of the browse crossfade
  *
  * Reads the live `?mode=` so a client-side mode switch is honored without a
  * render lag. Extracted from ReceivingDashboard; behaviour is unchanged.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
+import {
+  receivingSurfaceBasePath,
+  UNBOX_SURFACE_ROUTE,
+} from '@/lib/receiving/surface-path';
+import {
+  applyUnboxOpenReceivingParams,
+  pickReceivingLineForDeepLink,
+} from '@/lib/receiving/unbox-selection-url';
 
 export interface WorkspaceState {
   row: ReceivingLineRow;
@@ -42,6 +52,8 @@ export interface ReceivingWorkspacePane {
 }
 
 export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
+  const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [workspace, setWorkspace] = useState<WorkspaceState | null>(null);
   const [nav, setNav] = useState<NavState | null>(null);
@@ -49,15 +61,81 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null
   >(null);
 
+  const isUnboxSurface =
+    receivingSurfaceBasePath(pathname) === UNBOX_SURFACE_ROUTE;
+
+  // Pending open key we've written locally but whose router.replace may still
+  // be in flight — prevents the deep-link effect from re-fetching mid-sync.
+  const pendingOpenKeyRef = useRef<string | null>(null);
+  // After close, ignore a stale openReceivingId until the URL catches up
+  // (same race as dashboard ignoredOpenOrderIdRef).
+  const ignoredOpenKeyRef = useRef<string | null>(null);
+  // Eager mirror for event handlers (declared before the listener effect).
+  const workspaceRef = useRef<WorkspaceState | null>(null);
+  workspaceRef.current = workspace;
+
+  const replaceUnboxOpenReceiving = useCallback(
+    (selection: { receivingId: number; lineId?: number | null } | null) => {
+      if (!isUnboxSurface) return;
+      const params = new URLSearchParams(searchParams.toString());
+      applyUnboxOpenReceivingParams(params, selection);
+      const nextSearch = params.toString();
+      const currentSearch = searchParams.toString();
+      if (nextSearch === currentSearch) return;
+      const base = UNBOX_SURFACE_ROUTE;
+      router.replace(nextSearch ? `${base}?${nextSearch}` : base, { scroll: false });
+    },
+    [isUnboxSurface, router, searchParams],
+  );
+
+  const syncUnboxOpenUrl = useCallback(
+    (row: ReceivingLineRow | null) => {
+      if (!isUnboxSurface) return;
+      const receivingId = row?.receiving_id;
+      if (row != null && receivingId != null && Number.isFinite(Number(receivingId))) {
+        const nextKey = `${receivingId}:${row.id}`;
+        const currentOpen = searchParams.get('openReceivingId');
+        const currentLine = searchParams.get('lineId');
+        if (currentOpen === String(receivingId) && currentLine === String(row.id)) {
+          pendingOpenKeyRef.current = null;
+          ignoredOpenKeyRef.current = null;
+          return;
+        }
+        pendingOpenKeyRef.current = nextKey;
+        ignoredOpenKeyRef.current = null;
+        replaceUnboxOpenReceiving({ receivingId: Number(receivingId), lineId: row.id });
+        return;
+      }
+      const currentOpen = searchParams.get('openReceivingId');
+      const currentLine = searchParams.get('lineId');
+      if (currentOpen || currentLine || searchParams.get('recvId')) {
+        if (currentOpen) {
+          ignoredOpenKeyRef.current = `${currentOpen}:${currentLine ?? ''}`;
+        }
+        pendingOpenKeyRef.current = null;
+        replaceUnboxOpenReceiving(null);
+      }
+    },
+    [isUnboxSurface, replaceUnboxOpenReceiving, searchParams],
+  );
+
   useEffect(() => {
     const handleOpen = (e: Event) => {
       const detail = (e as CustomEvent<WorkspaceState | null>).detail;
       if (!detail || !detail.row) return;
+      workspaceRef.current = detail;
       setWorkspace(detail);
+      syncUnboxOpenUrl(detail.row);
     };
     const handleClose = () => {
+      // Bridge fires close on mount when selectedLine is still null — must not
+      // wipe ?openReceivingId= before the deep-link restore effect runs.
+      const shouldClearUrl =
+        workspaceRef.current != null || pendingOpenKeyRef.current != null;
+      workspaceRef.current = null;
       setWorkspace(null);
       setNav(null);
+      if (shouldClearUrl) syncUnboxOpenUrl(null);
     };
     const handleUpdate = (e: Event) => {
       const partial = (e as CustomEvent<Partial<ReceivingLineRow> & { id: number }>).detail;
@@ -124,7 +202,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       window.removeEventListener('receiving-scan-resolved', handleResolved);
       if (showTimer) clearTimeout(showTimer);
     };
-  }, []);
+  }, [syncUnboxOpenUrl]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -135,19 +213,29 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     return () => window.removeEventListener('receiving-workspace-nav-state', handler);
   }, []);
 
-  // Deep-link: cmd+k emits /unbox?openReceivingId=<receiving.id> (param read
-  // path-agnostically, so the legacy /receiving?…&openReceivingId= still works).
-  // Resolve that carton's first line (receiving.id → /api/receiving-lines
-  // ?receiving_id=) and select it once via dispatchSelectLine, so the right pane
-  // opens AND the sidebar/rail highlight stay in sync. Best-effort: a missing or
-  // empty carton just no-ops, and the "never blank" effect (which is deferred
-  // while the param is present) resumes once it clears from the URL.
-  const deepLinkedReceivingRef = useRef<string | null>(null);
+  // Deep-link: cmd+k / search / refresh stickiness emit
+  // /unbox?openReceivingId=<receiving.id>&lineId=<optional>. Resolve the carton
+  // (prefer lineId) via /api/receiving-lines and select once so the right pane
+  // opens AND the sidebar/rail highlight stay in sync. Best-effort: missing /
+  // empty carton no-ops. Param is path-agnostic so legacy /receiving?… still works.
+  const deepLinkedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     const target = searchParams.get('openReceivingId');
-    if (!target || !/^\d+$/.test(target)) return;
-    if (deepLinkedReceivingRef.current === target) return;
-    deepLinkedReceivingRef.current = target;
+    if (!target || !/^\d+$/.test(target)) {
+      deepLinkedKeyRef.current = null;
+      return;
+    }
+    const lineIdParam = searchParams.get('lineId');
+    const deepLinkKey = `${target}:${lineIdParam ?? ''}`;
+    if (ignoredOpenKeyRef.current === deepLinkKey) return;
+    if (pendingOpenKeyRef.current === deepLinkKey) {
+      // Local open already wrote this URL — skip re-fetch; clear pending once URL matches.
+      deepLinkedKeyRef.current = deepLinkKey;
+      pendingOpenKeyRef.current = null;
+      return;
+    }
+    if (deepLinkedKeyRef.current === deepLinkKey) return;
+    deepLinkedKeyRef.current = deepLinkKey;
     let cancelled = false;
     void (async () => {
       try {
@@ -159,7 +247,8 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         const rows = Array.isArray(data?.receiving_lines)
           ? (data.receiving_lines as ReceivingLineRow[])
           : [];
-        if (!cancelled && rows[0]) dispatchSelectLine(rows[0]);
+        const pick = pickReceivingLineForDeepLink(rows, lineIdParam);
+        if (!cancelled && pick) dispatchSelectLine(pick);
       } catch {
         /* deep-link is best-effort; a network blip just no-ops */
       }
@@ -172,8 +261,6 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   // Browse-first for Unbox: do NOT auto-open the most-recent line. Operators
   // land on the Unboxed/Queue/Viewed feed (like Testing) and open a line via
   // click or scan. Deep-link `openReceivingId` still opens via the effect above.
-  const workspaceRef = useRef<WorkspaceState | null>(null);
-  workspaceRef.current = workspace;
   // Guards delete-recovery while choosing the next line so it doesn't race.
   const recoveringRef = useRef(false);
   // Any mode switch must drop the focused workspace from state — even though
@@ -189,7 +276,8 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     setWorkspace(null);
     setNav(null);
     setScanInFlight(null);
-  }, [searchParams]);
+    syncUnboxOpenUrl(null);
+  }, [searchParams, syncUnboxOpenUrl]);
 
   // Recover the right pane after the line it's showing is removed — the single
   // line, or the whole carton it belongs to. Browse-first Unbox: clear to the
@@ -200,11 +288,12 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       recoveringRef.current = true;
       setWorkspace(null);
       setNav(null);
+      syncUnboxOpenUrl(null);
       dispatchReceivingWorkspaceClose();
       window.dispatchEvent(new CustomEvent('receiving-clear-line'));
       recoveringRef.current = false;
     },
-    [],
+    [syncUnboxOpenUrl],
   );
 
   // Single line removed (e.g. last item pulled from an unmatched carton).

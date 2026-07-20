@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
-import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { SIDEBAR_GUTTER, SIDEBAR_RAIL_INSET_X } from '@/components/layout/header-shell';
 import {
   STAGGER_REVEAL_STEP,
   staggerRevealContainer,
@@ -33,6 +33,14 @@ import type { SidebarRailShellProps } from './rail-shell/sidebar-rail-shared';
 export { railRelativeTime, type SidebarRailRowContext, type SidebarRailShellProps } from './rail-shell/sidebar-rail-shared';
 export { RailPopover } from './rail-shell/RailPopover';
 
+/**
+ * How long the first-load cascade stays armed before handing rows to steady-state
+ * presence. Long enough for the visible rows to finish their staggered reveal
+ * (delay + a few rows × step + the item's own settle); short enough that the rail
+ * is back on CRUD presence well before a scan-in.
+ */
+const STAGGER_REVEAL_SETTLE_MS = 700;
+
 export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   const {
     queryKey,
@@ -40,7 +48,11 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     eyebrowTitle, eyebrowSuffix, eyebrowAction, hideEyebrow = false,
     emptyText = 'No recent activity yet.',
     staggerReveal = false,
-    staggerRevealMotion = 'sidebar',
+    // House default for every recent-activity rail: the left→right slide that
+    // fades each row in from nothing (`staggerRevealSidebarSlideItem`). Rails opt
+    // out to `sidebar` (y-settle) or `rise` only when a surface needs it.
+    staggerRevealMotion = 'slide',
+    railInset = 'gutter',
     contentPaintSurface,
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
     renderRowMain, renderPopover,
@@ -61,20 +73,42 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   }, [contentPaintSurface, showSkeleton]);
 
   const queryKeySig = JSON.stringify(queryKey);
-  const staggerEligibleRef = useRef(true);
+  // Latches once this feed has painted rows. Two jobs: (1) keep the list host
+  // mounted for the last row's exit slide after the feed empties, and (2) let the
+  // host mount FRESH the moment rows first arrive so it carries `initial="hidden"
+  // animate="show"` on mount — which is what actually orchestrates the cascade. A
+  // host that mounted empty first (snapshot rails skip the skeleton) never runs
+  // the mount-time stagger for its late-arriving children, so it sat frozen at
+  // `hidden`. Mirrors the skeleton path, where the host mounts fresh with rows.
+  const [listPainted, setListPainted] = useState(false);
+  // Marks the first-load cascade as visually settled. It gates ONLY the per-row
+  // `layout` reflow (see RailRow): layout projection is held off while rows are
+  // sliding in via the `x` variant (the two would fight over `transform`), then
+  // enabled so a later dismiss reflows its siblings smoothly. It deliberately does
+  // NOT change the row's motion contract or disarm the container — rows ride the
+  // container's `show` for the whole mount, so there is no hand-off flicker.
+  const [cascadeSettled, setCascadeSettled] = useState(false);
   useEffect(() => {
-    staggerEligibleRef.current = true;
+    setListPainted(false);
+    setCascadeSettled(false);
   }, [queryKeySig]);
-  // Stagger only on the first paint for this query key — remounting the cascade
-  // on every refetch reads as a loading↔loaded flash.
-  const staggerActive = staggerReveal && staggerEligibleRef.current && rows.length > 0 && !showSkeleton;
   useEffect(() => {
-    if (!staggerActive) return;
-    const id = requestAnimationFrame(() => {
-      staggerEligibleRef.current = false;
-    });
-    return () => cancelAnimationFrame(id);
-  }, [staggerActive]);
+    if (rows.length > 0) setListPainted(true);
+  }, [rows.length]);
+
+  // The container drives the cascade for the whole mount and then simply HOLDS
+  // `show` — it is never disarmed. Rows inherit `show` and rest there; a scan-in
+  // row entering the same AnimatePresence slides in from `hidden`, and a dismiss
+  // exits via the variant `exit`. Nothing swaps the row's contract mid-mount, so
+  // there is no settle-time flicker.
+  const staggerActive = staggerReveal && rows.length > 0 && !showSkeleton;
+  useEffect(() => {
+    if (!staggerActive || cascadeSettled) return;
+    const t = setTimeout(() => setCascadeSettled(true), STAGGER_REVEAL_SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [staggerActive, cascadeSettled]);
+  // Cascade still in flight → hold `layout` off (transform belongs to the slide).
+  const cascadeInProgress = staggerActive && !cascadeSettled;
 
   const reduceMotion = useReducedMotion();
   const staggerItemVariants: Variants | undefined = staggerReveal
@@ -87,11 +121,12 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           : staggerRevealSidebarItem
     : undefined;
   const staggerContainerVariants = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
+  const insetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
 
   return (
     <section className="min-w-0 border-t border-border-hairline bg-surface-card">
       {!hideEyebrow ? (
-        <div className={`flex items-center justify-between ${SIDEBAR_GUTTER} py-1`}>
+        <div className={`flex items-center justify-between ${insetX} py-1`}>
           <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
             {eyebrowTitle} · {topCount}
           </p>
@@ -113,20 +148,23 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
         </div>
       ) : null}
       {showSkeleton ? (
-        <div className={`space-y-1 ${SIDEBAR_GUTTER} py-2`}>
+        <div className={`space-y-1 ${insetX} py-2`}>
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 w-full animate-pulse rounded-md bg-surface-sunken" />)}
         </div>
       ) : (
         <>
           {/*
-            Keep motion.ul + AnimatePresence mounted even when empty so the last
-            carton can finish its exit slide. Replacing the ul with empty <p>
-            unmounts presence and pops the whole rail. Empty copy sits under the
-            list host (only when there are no live rows).
+            Mount the list host only once rows have painted (`listPainted` latches
+            on the first non-empty render and stays true so the last carton can
+            still finish its exit slide after the feed empties). Mounting FRESH at
+            the first rows — rather than mounting empty at render 0 and gaining
+            children later — is what lets `initial="hidden" animate="show"`
+            actually orchestrate the first-load cascade. Empty copy sits below.
           */}
+          {listPainted || rows.length > 0 ? (
           <motion.ul
             ref={listRef}
-            className={`${SIDEBAR_GUTTER} overflow-x-clip py-0.5 outline-none ${isFetching ? 'opacity-90' : ''}`}
+            className={`${insetX} overflow-x-clip py-0.5 outline-none ${isFetching ? 'opacity-90' : ''}`}
             role="listbox"
             aria-label={`${eyebrowTitle} activity`}
             aria-busy={isFetching || undefined}
@@ -149,7 +187,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                 const nodes: React.ReactElement[] = [];
                 if (showExpandedHeader) {
                   nodes.push(
-                    <PkgGroupHeader key={`pkg-${g.groupId}`} groupSize={g.groupSize} isCollapsed={false} staggerCascade={staggerActive} staggerItemVariants={staggerItemVariants} onToggle={() => toggleGroup(g.groupId as number)} />,
+                    <PkgGroupHeader key={`pkg-${g.groupId}`} groupSize={g.groupSize} isCollapsed={false} staggerItemVariants={staggerItemVariants} onToggle={() => toggleGroup(g.groupId as number)} />,
                   );
                 }
                 nodes.push(
@@ -157,7 +195,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                     key={rowKey(row)}
                     row={row}
                     index={idx}
-                    staggerCascade={staggerActive}
+                    staggerCascade={cascadeInProgress}
                     staggerItemVariants={staggerItemVariants}
                     isDisabled={getRowDisabled?.(row) ?? false}
                     isSelected={getId(row) === selectedId}
@@ -186,8 +224,9 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
               })}
             </AnimatePresence>
           </motion.ul>
+          ) : null}
           {rows.length === 0 && !isFetching ? (
-            <p className={`${SIDEBAR_GUTTER} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
+            <p className={`${insetX} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
           ) : null}
         </>
       )}

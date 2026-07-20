@@ -8,7 +8,7 @@ import { STATION_LABEL, toneFor } from './goal-chip/goal-chip-shared';
 import { useHeaderGoalChip } from './goal-chip/useHeaderGoalChip';
 import { GoalRing } from './goal-chip/GoalRing';
 import { GoalPopover } from './goal-chip/GoalPopover';
-import { HEADER_ICON_WRAP } from './header-shell';
+import { HEADER_ICON_BTN_CLASS, HEADER_ICON_BTN_OPEN_CLASS, HEADER_ICON_WRAP } from './header-shell';
 
 /**
  * Header goal — progress-ring IconButton that opens the daily checklist popover.
@@ -38,8 +38,8 @@ export function HeaderGoalChip() {
           ariaLabel={`Daily goal — ${tip}`}
           aria-expanded={g.open}
           onClick={() => g.setOpen((o) => !o)}
-          className={cn('rounded-full hover:bg-surface-sunken', g.open && 'bg-surface-sunken')}
-          icon={<GoalRing percent={view.percent} color={tone.ring} size={20} />}
+          className={cn(HEADER_ICON_BTN_CLASS, g.open && HEADER_ICON_BTN_OPEN_CLASS)}
+          icon={<GoalRing percent={view.percent} color={tone.ring} size={16} strokeWidth={2} />}
         />
       </HoverTooltip>
 

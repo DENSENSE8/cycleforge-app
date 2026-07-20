@@ -8,6 +8,7 @@ import {
   STATION_SCAN_BAR_MODE_BTN_ARMED,
   STATION_SCAN_BAR_MODE_BTN_COMPACT,
   STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+  STATION_SCAN_BAR_MODE_GLYPH_CLASS,
 } from './tokens';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -16,6 +17,7 @@ export interface StationScanModeDefinition<T extends string> {
   mode: T;
   label: string;
   Icon: IconComponent;
+  /** Icon/text hue when armed — no bg-* (segment shell owns the solid card plane). */
   armedClass: string;
 }
 
@@ -34,8 +36,9 @@ const BTN_BY_SIZE = {
 } as const;
 
 /**
- * Shared right-rail mode toggles (Tracking / PO# / Serial / …). Domain wrappers
- * supply the mode list + armed state; chrome stays identical everywhere.
+ * Full-height flush mode segments (Tracking / PO# / Serial / …). Armed =
+ * solid `surface-card` so the control reads as elevated depth continuous with
+ * the work canvas — not a frosted chip over a recessed trough.
  */
 export function StationScanModeRail<T extends string>({
   modes,
@@ -48,7 +51,7 @@ export function StationScanModeRail<T extends string>({
   const btnShell = BTN_BY_SIZE[size];
 
   return (
-    <div className="relative z-dropdown isolate flex items-center gap-0">
+    <div className="relative z-dropdown isolate flex h-full items-stretch gap-0" role="group">
       {modes.map((mode) => {
         const armed = armedMode === mode.mode;
         const ariaLabel =
@@ -64,7 +67,7 @@ export function StationScanModeRail<T extends string>({
 
         return (
           <HoverTooltip key={mode.mode} label={title} asChild>
-            {/* ds-raw-button: scan-station segmented mode pill (armed/inactive toggle via STATION_SCAN_BAR_MODE_* tokens) — intentionally not a Button/IconButton primitive */}
+            {/* ds-raw-button: scan-station full-height mode segment (armed/inactive via STATION_SCAN_BAR_MODE_* tokens) — intentionally not a Button/IconButton primitive */}
             <button
               type="button"
               onClick={() => onToggleMode?.(mode.mode)}
@@ -78,7 +81,7 @@ export function StationScanModeRail<T extends string>({
                   : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
               )}
             >
-              <mode.Icon className="h-3.5 w-3.5" />
+              <mode.Icon className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
             </button>
           </HoverTooltip>
         );

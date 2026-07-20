@@ -9,7 +9,6 @@ import {
   appChromeClass,
   appChromeMutedClass,
   appCanvasClass,
-  appStationContextTroughClass,
   appWorkCanvasClass,
   appWorkCanvasEdgeClass,
   appWashClass,
@@ -43,9 +42,6 @@ describe('app-surface SoT', () => {
     assert.match(appWorkCanvasClass, /rounded-tl-2xl/);
     assert.match(appWorkCanvasClass, /border-border-soft/);
     assert.doesNotMatch(appWorkCanvasClass, /border-border-hairline/);
-    assert.match(appWorkCanvasClass, /shadow-sm/);
-    assert.match(appStationContextTroughClass, /rounded-xl/);
-    assert.match(appStationContextTroughClass, /bg-surface-sunken/);
-    assert.match(appStationContextTroughClass, /ring-border-soft/);
+    assert.doesNotMatch(appWorkCanvasClass, /shadow-sm/);
   });
 });

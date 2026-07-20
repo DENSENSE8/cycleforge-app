@@ -76,7 +76,7 @@ function ModesHoverPanel({
                   : 'text-text-default hover:bg-blue-600 hover:text-white',
               )}
             >
-              <Icon className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 opacity-80')} />
+              <Icon className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0')} />
               <span className="min-w-0 flex-1 truncate">{mode.label}</span>
             </button>
           </Fragment>
@@ -140,6 +140,11 @@ export function MasterNavView({
 }) {
   const activeMode = activePage.modes?.find((m) => m.id === activeModeId);
   const headerLabel = activeMode?.label ?? activePage.label;
+  // Modes own icons — show the active mode glyph beside “now”; modeless pages stay text-only.
+  const headerIcon =
+    activePage.modes && activePage.modes.length > 1
+      ? (activeMode ?? activePage.modes[0])?.icon
+      : undefined;
 
   const menuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -229,6 +234,7 @@ export function MasterNavView({
   const header = (
     <MasterNavHeader
       label={headerLabel}
+      leadingIcon={headerIcon}
       open={open}
       onClick={handleToggle}
       onTriggerMouseEnter={openHoverFromTrigger}

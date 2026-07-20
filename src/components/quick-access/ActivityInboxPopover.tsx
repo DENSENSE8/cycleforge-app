@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import {
   Copy,
@@ -55,41 +55,6 @@ const KIND_META: Record<ActivityInboxItemKind, { label: string; Icon: Glyph; ton
   support_followup: { label: 'Support', Icon: Phone, tone: 'violet' },
   staff_message: { label: 'Message', Icon: MessageSquare, tone: 'blue' },
 };
-
-type InboxTabId = 'all' | 'tech_queue' | 'repair' | 'support' | 'warranty' | 'priority' | 'messages';
-
-const INBOX_TAB_FOR_KIND: Record<ActivityInboxItemKind, InboxTabId> = {
-  return_pending_test: 'tech_queue',
-  order_ready_ship: 'tech_queue',
-  repair_status: 'repair',
-  warranty_claim: 'warranty',
-  priority_unbox: 'priority',
-  support_followup: 'support',
-  staff_message: 'messages',
-};
-
-const INBOX_TAB_LABEL: Record<InboxTabId, string> = {
-  all: 'All',
-  tech_queue: 'Tech',
-  repair: 'Repair',
-  support: 'Support',
-  warranty: 'Warranty',
-  priority: 'Priority',
-  messages: 'Messages',
-};
-
-const TAB_EMPTY_COPY: Partial<Record<InboxTabId, string>> = {
-  tech_queue: 'No tech items',
-  repair: 'No repair updates',
-  support: 'No support follow-ups',
-  messages: 'No messages',
-};
-
-const PRIMARY_INBOX_TABS: InboxTabId[] = ['all', 'tech_queue', 'repair', 'support', 'messages'];
-
-function inboxTabFor(it: ActivityInboxItem): InboxTabId {
-  return INBOX_TAB_FOR_KIND[it.kind];
-}
 
 function inboxRelativeTime(ms: number): string {
   return formatDistanceToNowStrict(new Date(ms), { addSuffix: true })
@@ -164,87 +129,9 @@ function Pill({ tone, children }: { tone: Tone; children: ReactNode }) {
   );
 }
 
-function InboxTabs({
-  tabs,
-  activeTab,
-  tabCounts,
-  onChange,
-}: {
-  tabs: InboxTabId[];
-  activeTab: InboxTabId;
-  tabCounts: Record<InboxTabId, number>;
-  onChange: (tab: InboxTabId) => void;
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Filter notifications"
-      className="flex gap-1 rounded-lg border border-border-hairline bg-surface-canvas p-0.5"
-    >
-      {tabs.map((tabId) => {
-        const active = activeTab === tabId;
-        const count = tabId === 'all' ? tabCounts.all : tabCounts[tabId];
-        return (
-          <button
-            key={tabId}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(tabId)}
-            className={cn(
-              'ds-raw-button flex min-w-0 flex-1 items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-role-caption font-semibold transition-colors',
-              active
-                ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft'
-                : 'text-text-soft hover:text-text-muted',
-            )}
-          >
-            <span className="truncate">{INBOX_TAB_LABEL[tabId]}</span>
-            {count > 0 ? (
-              <span className={cn('shrink-0 tabular-nums', active ? 'text-text-soft' : 'text-text-faint')}>
-                {count}
-              </span>
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
   const { items, dismissItem, clear, undoItem, pendingUndoId } = useActivityInbox();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<InboxTabId>('all');
-
-  const tabCounts = useMemo(() => {
-    const counts: Record<InboxTabId, number> = {
-      all: items.length,
-      tech_queue: 0,
-      repair: 0,
-      support: 0,
-      warranty: 0,
-      priority: 0,
-      messages: 0,
-    };
-    for (const it of items) {
-      counts[inboxTabFor(it)] += 1;
-    }
-    return counts;
-  }, [items]);
-
-  const tabItems = useMemo((): InboxTabId[] => {
-    const tabs: InboxTabId[] = [...PRIMARY_INBOX_TABS];
-    if (tabCounts.warranty > 0) tabs.push('warranty');
-    if (tabCounts.priority > 0) tabs.push('priority');
-    return tabs;
-  }, [tabCounts.warranty, tabCounts.priority]);
-
-  const visibleItems = useMemo(
-    () => (activeTab === 'all' ? items : items.filter((it) => inboxTabFor(it) === activeTab)),
-    [items, activeTab],
-  );
-
-  const tabEmpty = activeTab !== 'all' && visibleItems.length === 0;
 
   const handleCopyBack = async (body: string, id: string) => {
     const ok = await copyToClipboard(body);
@@ -278,22 +165,8 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           </Button>
         ) : null
       }
-      toolbar={
-        items.length > 0 ? (
-          <InboxTabs
-            tabs={tabItems}
-            activeTab={activeTab}
-            tabCounts={tabCounts}
-            onChange={setActiveTab}
-          />
-        ) : null
-      }
     >
-      {tabEmpty ? (
-        <p className="px-4 py-10 text-center text-role-caption text-text-soft">
-          {TAB_EMPTY_COPY[activeTab] ?? `No ${INBOX_TAB_LABEL[activeTab].toLowerCase()} items`}
-        </p>
-      ) : items.length === 0 ? (
+      {items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
           <Inbox className="h-5 w-5 text-text-faint" />
           <p className="text-sm font-semibold text-text-default">All caught up</p>
@@ -303,7 +176,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
         </div>
       ) : (
         <ul className="divide-y divide-border-hairline">
-          {visibleItems.map((it) => {
+          {items.map((it) => {
             const meta = KIND_META[it.kind];
             const Icon = meta.Icon;
             const href = hrefFor(it);

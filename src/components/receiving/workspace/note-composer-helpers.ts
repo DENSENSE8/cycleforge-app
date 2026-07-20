@@ -65,18 +65,27 @@ export const NOTE_OVERLAY_ICON = 'h-3.5 w-3.5';
 
 /**
  * Textarea insets when {@link NoteComposerInsertRail} floats over line 1.
- * Right padding keeps wrapped text out from under the "+ Insert" control.
+ * Right padding keeps wrapped text out from under the icon-only `+` control.
  */
-export const NOTE_COMPOSER_OVERLAY_PAD = 'py-2 pr-20';
+export const NOTE_COMPOSER_OVERLAY_PAD = 'py-2 pr-10';
 
 /** Extra bottom inset when bottom-right icon actions share the same field. */
 export const NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS = 'pb-8';
 
+export const NOTE_DOWNLOAD_SYNC_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-blue-100/60 hover:text-blue-600 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
+
+/**
+ * Insert `+` trigger — faint at rest; hover/open = white surface, gray ring,
+ * gray `+` (same outline method as sync, neutral chrome instead of blue).
+ */
+export const NOTE_INSERT_TRIGGER_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-card hover:text-text-muted hover:shadow-sm hover:ring-1 hover:ring-border-soft`;
+
+export const NOTE_INSERT_TRIGGER_BTN_ACTIVE =
+  'bg-surface-card text-text-muted shadow-sm ring-1 ring-border-soft';
+
 export const NOTE_TAG_BTN = `${NOTE_OVERLAY_ICON_BTN} text-orange-500 transition hover:bg-orange-100/60 hover:text-orange-600 hover:shadow-sm hover:ring-1 hover:ring-orange-200/80`;
 
 export const NOTE_DOWNLOAD_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-blue-600 transition hover:bg-blue-100/60 hover:text-blue-700 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
-
-export const NOTE_DOWNLOAD_SYNC_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-blue-100/60 hover:text-blue-600 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
 
 export const NOTE_SAVE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-emerald-100/60 hover:text-emerald-600 hover:shadow-sm hover:ring-1 hover:ring-emerald-200/80`;
 
@@ -84,8 +93,19 @@ export const NOTE_STAFF_STAMP_BTN = `${NOTE_OVERLAY_ICON_BTN} text-violet-600 tr
 
 export const NOTE_SERIAL_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-emerald-600 transition hover:bg-emerald-100/60 hover:text-emerald-700 hover:shadow-sm hover:ring-1 hover:ring-emerald-200/80`;
 
-/** Money / unit cost — distinct from emerald serial identifiers. */
-export const NOTE_UNIT_PRICE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-amber-600 transition hover:bg-amber-100/60 hover:text-amber-700 hover:shadow-sm hover:ring-1 hover:ring-amber-200/80`;
+/** Unit cost — emerald money tone in the insert menu. */
+export const NOTE_UNIT_PRICE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-emerald-600 transition hover:bg-emerald-100/60 hover:text-emerald-700 hover:shadow-sm hover:ring-1 hover:ring-emerald-200/80`;
+
+/** Menu leading-icon tones only (no chip ring/box — keeps rows hairline-free). */
+export const NOTE_INSERT_MENU_ICON_TONE: Record<string, string> = {
+  'staff-stamp': 'text-violet-600',
+  'ticket-subject': 'text-orange-500',
+  'unit-price': 'text-emerald-600',
+  'sync-notes': 'text-blue-600',
+  'product-title': 'text-yellow-600',
+  serial: 'text-emerald-600',
+  'internal-notes': 'text-text-faint',
+};
 
 export const NOTE_CLEAR_BTN =
   'ds-raw-button rounded inset-chip text-role-micro font-semibold text-text-faint transition hover:bg-surface-sunken/80 hover:text-text-muted';

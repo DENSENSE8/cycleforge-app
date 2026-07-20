@@ -85,8 +85,7 @@ export function SidebarSectionList<TId extends string = string>({
             }`}
           >
             {s.icon && (
-              // w-5 box (= the MasterNavHeader icon width) with the glyph centered
-              // so the row icon's center lines up under the header icon, not its left edge.
+              // Optional leading glyph (e.g. admin L2 sections — modes own icons).
               <span className={`mt-0.5 flex w-5 shrink-0 justify-center ${isActive ? 'text-blue-600' : 'text-text-faint'}`}>
                 {s.icon}
               </span>

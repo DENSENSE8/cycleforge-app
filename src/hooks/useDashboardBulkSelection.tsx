@@ -60,7 +60,11 @@ export function useDashboardBulkSelection(
   const selectionEnabled = orderView !== 'fba';
   // Packed reuses the shipped row/delete path (packer records with packed_at).
   const isShippedView = orderView === 'shipped' || orderView === 'packed';
-  const [selectMode, setSelectMode] = useState(false);
+  // To Ship (unshipped): checkboxes always on — select-all lives in the table
+  // column header (grip + ☐), not a chrome pencil toggle.
+  const alwaysSelect = orderView === 'unshipped';
+  const [selectModeArmed, setSelectModeArmed] = useState(false);
+  const selectMode = alwaysSelect || selectModeArmed;
   const selectedRows = useTableSelection<DashSelectableRow>(
     DASHBOARD_ORDERS_SELECTION_SCOPE,
     (r) => Number(r.id),
@@ -69,24 +73,27 @@ export function useDashboardBulkSelection(
 
   const exitSelectMode = useCallback(() => {
     emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
-    setSelectMode(false);
+    setSelectModeArmed(false);
   }, []);
 
   const toggleSelectMode = useCallback(() => {
-    setSelectMode((armed) => {
+    if (alwaysSelect) return; // header select-all owns To Ship selection
+    setSelectModeArmed((armed) => {
       if (armed) emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
       return !armed;
     });
-  }, []);
+  }, [alwaysSelect]);
 
   // Switching view (or losing the selectable surface) exits select mode so a
   // stale toggle never lingers on FBA/Warranty.
   useEffect(() => {
-    if (!selectionEnabled && selectMode) exitSelectMode();
-  }, [selectionEnabled, selectMode, exitSelectMode]);
+    if (!selectionEnabled && selectModeArmed) exitSelectMode();
+  }, [selectionEnabled, selectModeArmed, exitSelectMode]);
   useEffect(() => {
-    // Reset on any view flip — the row types + delete semantics differ.
-    setSelectMode(false);
+    // Reset armed mode on any view flip — the row types + delete semantics differ.
+    // Unshipped stays selectable via alwaysSelect.
+    setSelectModeArmed(false);
+    emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
   }, [orderView]);
 
   const handleCopyDetails = useCallback((rows: DashSelectableRow[]) => {

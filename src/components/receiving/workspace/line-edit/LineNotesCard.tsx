@@ -180,7 +180,7 @@ export function LineNotesCard({
     if (staffStamp) {
       actions.push({
         id: 'staff-stamp',
-        label: `Stamp: ${staffStamp}`,
+        label: `Stamp · ${staffStamp}`,
         ariaLabel: 'Stamp staff name and time',
         icon: <User className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_STAFF_STAMP_BTN,
@@ -191,7 +191,7 @@ export function LineNotesCard({
     if (hasTicket) {
       actions.push({
         id: 'ticket-subject',
-        label: 'Insert linked ticket subject',
+        label: 'Ticket subject',
         ariaLabel: 'Insert the linked support ticket subject',
         icon: <Tag className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_TAG_BTN,
@@ -204,7 +204,7 @@ export function LineNotesCard({
     if (formattedUnitPrice) {
       actions.push({
         id: 'unit-price',
-        label: `Insert unit price: ${formattedUnitPrice}`,
+        label: `Unit price · ${formattedUnitPrice}`,
         ariaLabel: 'Insert unit price',
         icon: <DollarSign className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_UNIT_PRICE_BTN,
@@ -215,7 +215,7 @@ export function LineNotesCard({
     if (showSyncToPo && trimmedSyncNotes) {
       actions.push({
         id: 'sync-notes',
-        label: 'Insert the synced PO notes',
+        label: 'Synced PO notes',
         ariaLabel: 'Insert synced PO notes',
         icon: <Download className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_DOWNLOAD_INSERT_BTN,
@@ -226,7 +226,7 @@ export function LineNotesCard({
     if (trimmedSkuTitle) {
       actions.push({
         id: 'product-title',
-        label: `Insert product title: "${trimmedSkuTitle}"`,
+        label: trimmedSkuTitle,
         ariaLabel: 'Insert product title',
         icon: <Pencil className={NOTE_OVERLAY_ICON} />,
         buttonClassName: `${NOTE_OVERLAY_ICON_BTN} text-yellow-600 transition hover:bg-yellow-100/60 hover:text-yellow-700 hover:shadow-sm hover:ring-1 hover:ring-yellow-200/80`,
@@ -261,7 +261,7 @@ export function LineNotesCard({
           onChange={(e) => onNotesChange(e.target.value)}
           onBlur={handleBlur}
           placeholder="Notes for this carton — printed on the label and saved"
-          className={`block w-full resize-none rounded-lg border border-border-soft px-3 text-role-caption text-text-default placeholder:text-text-faint py-1.5 pr-20 ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS} ${NOTES_TEXTAREA_FOCUS}`}
+          className={`block w-full resize-none rounded-lg border border-border-soft px-3 text-role-caption text-text-default placeholder:text-text-faint py-1.5 pr-10 ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS} ${NOTES_TEXTAREA_FOCUS}`}
         />
 
         {/* Top-left repeat-previous; top-right insert rail; bottom-right push-to-PO. */}

@@ -53,6 +53,22 @@ export interface OrderIdentityChipsProps {
   /** Optional 4th column — serial chip on station (Tech) rows. */
   serialChip?: React.ReactNode;
   isMobile: boolean;
+  /**
+   * `icons` (default) — full CopyChip family with leading tone glyphs (Labels,
+   * Receiving, Station, and the mobile fallback all keep these).
+   * `plain` — quiet, icon-less chips for the Sheets-like queue grid: the sticky
+   * column header already labels Platform / Order / Tracking, so the leading
+   * glyphs are noise there. Copy + hover menus stay intact. Never strips icons
+   * globally — scoped to this prop.
+   */
+  variant?: 'icons' | 'plain';
+  /**
+   * `cluster` (default) — one right-aligned {@link ChipColumns} flex blob.
+   * `cells` — return the platform / order / tracking chips as three SEPARATE
+   * fixed-width grid cells (React fragment) so the parent grid can lock each
+   * column to its own header. Staged serial folds into the tracking cell.
+   */
+  layout?: 'cluster' | 'cells';
   /** Fires when any chip's hover menu opens/closes — lets the row keep its
    *  hover-expanded chrome (chevron + shifted chips) while a menu is up. */
   onMenuOpenChange?: (open: boolean) => void;
@@ -85,8 +101,11 @@ export function OrderIdentityChips({
   onReplaceTracking,
   serialChip,
   isMobile,
+  variant = 'icons',
+  layout = 'cluster',
   onMenuOpenChange,
 }: OrderIdentityChipsProps) {
+  const plain = variant === 'plain';
   const history = useClipboardHistory();
   const lastTracking = history.find((e) => e.kind === 'tracking' && e.value.trim());
   const trackingUrl = tracking ? getTrackingUrl(tracking) : null;
@@ -192,45 +211,58 @@ export function OrderIdentityChips({
     return trackingAction ?? null;
   })();
 
+  const platformChipNode = !isFba ? (
+    <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems} onOpenChange={handleMenuOpenChange}>
+      <PlatformChip
+        label={platformLabel}
+        underlineClass={platformBorderClass}
+        iconClass={platformIconClass}
+        showIcon={!plain}
+        tooltipValue={productPageUrl ? 'Open listing' : 'No listing link'}
+        onClick={() => {
+          if (productPageUrl) openExternal(productPageUrl);
+        }}
+      />
+    </CopyChipHoverMenu>
+  ) : null;
+
+  const orderChipNode = hideOrderId ? (
+    <OrderIdChipPlaceholder plain={plain} />
+  ) : (
+    <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
+      <OrderIdChip value={orderId} display={getLast4(orderId)} plain={plain} />
+    </CopyChipHoverMenu>
+  );
+
+  const trackingChipNode = tracking ? (
+    <CopyChipHoverMenu menuLabel="Tracking actions" items={trackingItems} onOpenChange={handleMenuOpenChange}>
+      <TrackingOrSkuScanChip value={tracking} plain={plain} />
+    </CopyChipHoverMenu>
+  ) : (
+    // Empty tracking: the paste / Add-TRK affordance (labels) wins; otherwise a
+    // staged row folds its serial into this trailing identity cell.
+    emptyTrackingNode ?? serialChip ?? null
+  );
+
+  // Sheets-like grid: three fixed-width cells the parent grid locks to its
+  // Platform / Order / Tracking headers. Left-aligned so values sit under labels.
+  if (layout === 'cells') {
+    return (
+      <>
+        <div data-col="platform" className="flex min-w-0 items-center">{platformChipNode}</div>
+        <div data-col="order" className="flex min-w-0 items-center">{orderChipNode}</div>
+        <div data-col="tracking" className="flex min-w-0 items-center">{trackingChipNode}</div>
+      </>
+    );
+  }
+
   const columns: ChipColumn[] = [
-    {
-      key: 'platform',
-      width: CHIP_COL.platform,
-      node: !isFba ? (
-        <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems} onOpenChange={handleMenuOpenChange}>
-          <PlatformChip
-            label={platformLabel}
-            underlineClass={platformBorderClass}
-            iconClass={platformIconClass}
-            tooltipValue={productPageUrl ? 'Open listing' : 'No listing link'}
-            onClick={() => {
-              if (productPageUrl) openExternal(productPageUrl);
-            }}
-          />
-        </CopyChipHoverMenu>
-      ) : null,
-    },
-    {
-      key: 'orderid',
-      width: CHIP_COL.id,
-      node: hideOrderId ? (
-        <OrderIdChipPlaceholder />
-      ) : (
-        <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
-          <OrderIdChip value={orderId} display={getLast4(orderId)} />
-        </CopyChipHoverMenu>
-      ),
-    },
+    { key: 'platform', width: CHIP_COL.platform, node: platformChipNode },
+    { key: 'orderid', width: CHIP_COL.id, node: orderChipNode },
     {
       key: 'tracking',
       width: CHIP_COL.tracking,
-      node: tracking ? (
-        <CopyChipHoverMenu menuLabel="Tracking actions" items={trackingItems} onOpenChange={handleMenuOpenChange}>
-          <TrackingOrSkuScanChip value={tracking} />
-        </CopyChipHoverMenu>
-      ) : (
-        emptyTrackingNode
-      ),
+      node: tracking ? trackingChipNode : emptyTrackingNode,
     },
   ];
 

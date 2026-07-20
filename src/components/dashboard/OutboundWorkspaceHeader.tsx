@@ -88,9 +88,11 @@ export function OutboundWorkspaceHeader({
         />
       }
       // [⚡] [⫶ lane/status] — All + saved views live in filter / table options.
+      // Select-all for To Ship lives in the table column header (grip + ☐), not
+      // a trailing pencil — keep the chrome pencil only for Packed / Shipped.
       right={<OutboundExactFilters mode={active} />}
       trailing={
-        onToggleSelectMode ? (
+        onToggleSelectMode && active !== 'unshipped' ? (
           <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
         ) : undefined
       }

@@ -1,6 +1,5 @@
 'use client';
 
-import { cn } from '@/utils/_cn';
 import { FbaFnskuScanToast } from '@/components/fba/sidebar/FbaFnskuScanToast';
 import {
   receivingScanBandClass,
@@ -8,7 +7,7 @@ import {
   sidebarHeaderPillRowClass,
   SIDEBAR_GUTTER,
 } from '@/components/layout/header-shell';
-import { FBA_SCAN_BAND_HALO } from '@/components/fba/StationFbaInput';
+import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
 import { SidebarSection } from '@/components/layout/SidebarSection';
 import { FbaWorkspaceScanField } from '@/components/fba/sidebar/FbaWorkspaceScanField';
 import {
@@ -80,14 +79,9 @@ export function FbaWorkspaceSidebar() {
           today's plan, Plan button only) and Select on combine (FNSKU selects
           packed items, Select button only). */}
       {isBoard && !editorActive && (
-        // Same 40px scan band geometry as testing / packing sidebars — no extra
-        // py that shrinks the input and stacks right-rail chips.
-        <div
-          className={cn(
-            receivingScanBandClass,
-            FBA_SCAN_BAND_HALO[stationTheme],
-          )}
-        >
+        // Same 40px scan band geometry as testing / packing sidebars — Framer
+        // glow host (focus/click + submit pulse) matches Unbox / Shipping.
+        <ScanBandGlowHost themeColor={stationTheme} className={receivingScanBandClass}>
           <div className="min-w-0 flex-1">
             <FbaWorkspaceScanField
               staffName={staffName}
@@ -97,7 +91,7 @@ export function FbaWorkspaceSidebar() {
               sidebarHeaderBand
             />
           </div>
-        </div>
+        </ScanBandGlowHost>
       )}
 
       {activeMode === 'plan' && !editorActive ? (

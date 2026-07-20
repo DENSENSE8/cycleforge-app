@@ -14,7 +14,12 @@ import { formatDate } from '@/components/work-orders/types';
 import { getDaysLateNullable } from '@/utils/date';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { isOnWorkOrderSourcePath } from './header-work-order-shared';
-import { HEADER_ICON_WRAP } from './header-shell';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
+  HEADER_ICON_GLYPH,
+  HEADER_ICON_WRAP,
+} from './header-shell';
 
 /**
  * Header work-order — neutral ClipboardList IconButton (no urgency chrome).
@@ -101,11 +106,8 @@ export function HeaderTopWorkOrderChip() {
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          className={cn(
-            'rounded-full text-text-muted hover:bg-surface-sunken',
-            open && 'bg-surface-sunken',
-          )}
-          icon={<ClipboardList className="h-4 w-4" />}
+          className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
+          icon={<ClipboardList className={HEADER_ICON_GLYPH} />}
         />
       </HoverTooltip>
 

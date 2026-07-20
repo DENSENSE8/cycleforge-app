@@ -532,12 +532,10 @@ export function CommandBar() {
                     className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-role-micro [&_[cmdk-group-heading]]:[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-text-faint"
                   >
                     {filteredNav.map((n) => {
-                      const Icon = n.icon;
                       return (
                         <CmdRow
                           key={`nav:${n.id}`}
                           value={`page ${n.label} ${n.href}`}
-                          icon={<Icon className="h-4 w-4 text-text-faint" />}
                           label={n.label}
                           subLabel={n.href}
                           onSelect={() =>
@@ -716,7 +714,8 @@ export function CommandBar() {
 
 interface CmdRowProps {
   value: string;
-  icon: React.ReactNode;
+  /** Omitted for page jumps — pages are text in nav chrome. */
+  icon?: React.ReactNode;
   label: string;
   subLabel?: string;
   badge?: string;
@@ -742,7 +741,7 @@ function CmdRow({ value, icon, label, subLabel, badge, chips, onSelect }: CmdRow
       onSelect={onSelect}
       className="group mx-1 flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-text-default transition-colors data-[selected=true]:bg-surface-sunken data-[selected=true]:text-text-default aria-selected:bg-surface-sunken"
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span>
+      {icon ? <span className="flex h-5 w-5 shrink-0 items-center justify-center">{icon}</span> : null}
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{label}</span>
         {subLabel && (

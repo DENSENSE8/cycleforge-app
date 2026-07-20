@@ -43,15 +43,20 @@ describe('row stage-time meta alignment', () => {
     );
   });
 
-  it('OrdersQueue and Shipped stage clocks use RowStageTimeMeta', () => {
+  it('OrdersQueue age column and Shipped stage clocks stay on SoT tracks', () => {
     const ordersQueue = readSibling('../dashboard/orders-queue/OrdersQueueTableRow.tsx');
     const shipped = readSibling('../shipped/ShippedRecordRow.tsx');
 
+    // Pending WMS table uses a fixed Age column (days-late / lane age) — not a
+    // stage stamp under a two-line title stack.
     assert.ok(
-      ordersQueue.includes("from '@/components/ui/RowStageTimeMeta'"),
-      'OrdersQueueTableRow must import RowStageTimeMeta',
+      ordersQueue.includes('ordersQueueGridTemplate'),
+      'OrdersQueueTableRow must use the fixed orders-queue column grid',
     );
-    assert.ok(ordersQueue.includes('<RowStageTimeMeta'), 'OrdersQueueTableRow must render RowStageTimeMeta');
+    assert.ok(
+      ordersQueue.includes('data-col="age"') || ordersQueue.includes('getDaysLateTone'),
+      'OrdersQueueTableRow must render age / days-late in the Age column',
+    );
 
     assert.ok(
       shipped.includes("from '@/components/ui/RowStageTimeMeta'"),

@@ -4,17 +4,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  History,
   Barcode,
-  ShoppingCart,
   PackageOpen,
-  Box,
   ClipboardList,
   Lock,
   MapPin,
   ChevronDown,
   X,
-  StationReceiving,
   ReceivingModeRepair,
 } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
@@ -35,15 +31,20 @@ import { toast } from '@/lib/toast';
  * with Sign out pinned to the very bottom (a deliberate, low-frequency action kept
  * away from the primary nav so it can't be fat-fingered).
  *
- * The "Receiving" item is a drill-down group: tapping it expands the three modes
+ * The "Receiving" item is a drill-down group: tapping it expands the modes
  * that have dedicated phone support for capturing/updating photos.
+ *
+ * Chrome law: **pages are text; modes own icons.** Top-level page rows and the
+ * Receiving group header are label-only; mode children keep glyphs. Scan keeps
+ * a tool icon (not a page destination).
  */
 
 type LeafItem = {
   kind: 'leaf';
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  /** Mode / tool glyph — omit for page-level destinations. */
+  icon?: React.ComponentType<{ className?: string }>;
   href: string;
 };
 
@@ -51,7 +52,6 @@ type GroupItem = {
   kind: 'group';
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
   /** Any of these path prefixes marks the group (and its row) active. */
   matchPrefixes: string[];
   children: LeafItem[];
@@ -61,16 +61,15 @@ type NavItem = LeafItem | GroupItem;
 
 // Single source of truth for the drawer's destinations. Scan is pinned to the
 // very top (the headline action). Receiving is a drill-down group into its
-// photo-capable modes. Icons mirror the desktop station registry (`station-nav-icons`).
+// photo-capable modes. Mode icons mirror the desktop station registry.
 const NAV_ITEMS: NavItem[] = [
   { kind: 'leaf', id: 'scan', label: 'Scan', icon: Barcode, href: '/m/scan' },
-  { kind: 'leaf', id: 'home', label: 'Recent', icon: History, href: '/m/home' },
-  { kind: 'leaf', id: 'picks', label: 'Picks', icon: ShoppingCart, href: '/m/pick' },
+  { kind: 'leaf', id: 'home', label: 'Recent', href: '/m/home' },
+  { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
   {
     kind: 'group',
     id: 'receiving',
     label: 'Receiving',
-    icon: StationReceiving,
     matchPrefixes: ['/m/receiving', '/m/receive', '/m/triage', '/m/unbox', '/m/r/'],
     children: [
       { kind: 'leaf', id: 'triage', label: 'Triage', icon: ClipboardList, href: '/m/triage' },
@@ -80,7 +79,7 @@ const NAV_ITEMS: NavItem[] = [
       { kind: 'leaf', id: 'repair', label: 'Repair Service', icon: ReceivingModeRepair, href: '/m/receiving?mode=repair' },
     ],
   },
-  { kind: 'leaf', id: 'packing', label: 'Packing', icon: Box, href: '/m/pack' },
+  { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },
 ];
 
 const isLeafActive = (pathname: string | null, href: string) => {
@@ -229,7 +228,7 @@ export const MobileSidebarDrawer = ({
                     const Icon = item.icon;
                     return (
                       <li key={item.id}>
-                        {/* ds-raw-button: text-left nav row (icon + label + active ring/fill), not a standard action button */}
+                        {/* ds-raw-button: text-left nav row (optional tool icon + label), not a standard action button */}
                         <button
                           onClick={() => navigate(item.href)}
                           className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] ${
@@ -238,20 +237,21 @@ export const MobileSidebarDrawer = ({
                               : 'text-text-muted hover:bg-surface-hover'
                           }`}
                         >
-                          <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-text-faint'}`} />
+                          {Icon ? (
+                            <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-text-faint'}`} />
+                          ) : null}
                           <span className="text-role-body font-bold tracking-tight">{item.label}</span>
                         </button>
                       </li>
                     );
                   }
 
-                  // Group (drill-down accordion)
-                  const Icon = item.icon;
+                  // Group (drill-down accordion) — page label only; children own icons.
                   const isOpen = expanded === item.id;
                   const groupActive = isGroupActive(pathname, item.matchPrefixes);
                   return (
                     <li key={item.id}>
-                      {/* ds-raw-button: text-left drill-down group row (icon + label + chevron + active ring/fill), not a standard action button */}
+                      {/* ds-raw-button: text-left drill-down group row (label + chevron), not a standard action button */}
                       <button
                         onClick={() => setExpanded((cur) => (cur === item.id ? null : item.id))}
                         aria-expanded={isOpen}
@@ -261,7 +261,6 @@ export const MobileSidebarDrawer = ({
                             : 'text-text-muted hover:bg-surface-hover'
                         }`}
                       >
-                        <Icon className={`h-5 w-5 shrink-0 ${groupActive ? 'text-blue-600' : 'text-text-faint'}`} />
                         <span className="flex-1 text-role-body font-bold tracking-tight">{item.label}</span>
                         <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                           <ChevronDown className={`h-4 w-4 ${groupActive ? 'text-blue-400' : 'text-text-faint'}`} />
@@ -292,7 +291,9 @@ export const MobileSidebarDrawer = ({
                                           : 'text-text-soft hover:bg-surface-hover'
                                       }`}
                                     >
-                                      <ChildIcon className={`h-4 w-4 shrink-0 ${childActive ? 'text-blue-600' : 'text-text-faint'}`} />
+                                      {ChildIcon ? (
+                                        <ChildIcon className={`h-4 w-4 shrink-0 ${childActive ? 'text-blue-600' : 'text-text-faint'}`} />
+                                      ) : null}
                                       <span className="text-[13.5px] font-semibold">{child.label}</span>
                                     </button>
                                   </li>

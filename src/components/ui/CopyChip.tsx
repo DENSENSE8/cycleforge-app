@@ -293,19 +293,40 @@ export function CopyChip({
 
 // --- Pre-configured chips ---
 
-/** Internal order ID. Gray / Hash icon. Do NOT use for tracking numbers or FNSKUs. */
-export const OrderIdChip = ({ value, display, dense }: { value: string; display: string; dense?: boolean }) => (
-  <CopyChip value={value} display={resolveChipDisplay(display)} tone="id" dense={dense} />
+/**
+ * Internal order ID. Gray / Hash icon. Do NOT use for tracking numbers or FNSKUs.
+ * `plain` drops the leading hash glyph (Sheets-like queue grid, where the column
+ * header already labels "Order") while keeping copy + last-4 mono value.
+ */
+export const OrderIdChip = ({
+  value,
+  display,
+  dense,
+  plain,
+}: {
+  value: string;
+  display: string;
+  dense?: boolean;
+  /** Omit the leading hash icon — used by the quiet queue-grid identity cells. */
+  plain?: boolean;
+}) => (
+  <CopyChip
+    value={value}
+    display={resolveChipDisplay(display)}
+    tone="id"
+    icon={plain ? null : undefined}
+    dense={dense}
+  />
 );
 
 /**
  * Reserves the same width as {@link OrderIdChip} when the real chip is omitted (e.g. SKU rows).
  * Keeps platform / tracking columns aligned with order-id rows.
  */
-export function OrderIdChipPlaceholder() {
+export function OrderIdChipPlaceholder({ plain }: { plain?: boolean } = {}) {
   return (
     <span className="pointer-events-none inline-flex shrink-0 select-none invisible" aria-hidden>
-      <OrderIdChip value="0000" display="0000" />
+      <OrderIdChip value="0000" display="0000" plain={plain} />
     </span>
   );
 }
@@ -506,7 +527,7 @@ export const ConditionGradeChip = ({
  * product search page using the base SKU (segment before `:`).
  * Label is always last 4 characters of the raw value (same for carrier and SKU scans).
  */
-export function TrackingOrSkuScanChip({ value }: { value: string }) {
+export function TrackingOrSkuScanChip({ value, plain }: { value: string; plain?: boolean }) {
   const raw = normalizeCopyText(value);
   const display = getLast4(raw);
   if (isSkuFormattedScanRef(raw)) {
@@ -527,7 +548,7 @@ export function TrackingOrSkuScanChip({ value }: { value: string }) {
       </>
     );
   }
-  return <TrackingChip value={raw} display={display} />;
+  return <TrackingChip value={raw} display={display} showIcon={!plain} />;
 }
 
 /**
@@ -784,6 +805,7 @@ export const PlatformChip = ({
   underlineClass,
   iconClass,
   onClick,
+  showIcon = true,
 }: {
   label: string;
   /** Full URL shown in the site tooltip; defaults to `Product Page`. */
@@ -793,6 +815,8 @@ export const PlatformChip = ({
   underlineClass: string;
   iconClass: string;
   onClick: (e: MouseEvent<HTMLButtonElement>) => void;
+  /** Drop the leading external-link glyph (quiet queue-grid identity cell). */
+  showIcon?: boolean;
 }) => {
   const isEmpty = isEmptyChipDisplay(label);
   const resolvedTooltipValue = (tooltipValue ?? 'Product Page').trim();
@@ -831,11 +855,13 @@ export const PlatformChip = ({
         }}
         className="inline-flex w-fit max-w-full items-center justify-start gap-0.5 py-0 bg-transparent text-left text-black transition-all active:scale-95 disabled:opacity-30"
       >
-        <span className={`inline-flex shrink-0 items-center ${resolvedIconClass}`}>
-          <ExternalLink className="h-4 w-4 shrink-0" />
-        </span>
+        {showIcon ? (
+          <span className={`inline-flex shrink-0 items-center ${resolvedIconClass}`}>
+            <ExternalLink className="h-4 w-4 shrink-0" />
+          </span>
+        ) : null}
         <span
-          className={`min-w-[60px] whitespace-nowrap border-b-2 pb-0.5 text-center font-dm-sans text-sm font-bold leading-none tracking-tight ${resolvedUnderline} ${labelClass}`}
+          className={`${showIcon ? 'min-w-[60px] text-center' : 'min-w-[3ch] text-left'} whitespace-nowrap border-b-2 pb-0.5 font-dm-sans text-sm font-bold leading-none tracking-tight ${resolvedUnderline} ${labelClass}`}
           aria-hidden={isEmpty}
         >
           {isEmpty ? '\u00a0' : label}

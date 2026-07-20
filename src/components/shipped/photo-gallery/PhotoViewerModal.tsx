@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -94,6 +94,16 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const isHeroFrame = !reduceMotion && !heroSpentRef.current && currentIndex === heroIndexRef.current;
   const heroLayoutId = isHeroFrame ? photoHeroLayoutId(photoItems[currentIndex]?.id) : undefined;
 
+  // Click-off to close: a click that lands on a backdrop region itself (the
+  // scrim or the empty stage area around the photo) — not on the image,
+  // toolbar, arrows, thumbnails, or details drawer, which all stopPropagation —
+  // dismisses the viewer, the standard lightbox affordance.
+  const handleBackdropClick = (e: ReactMouseEvent) => {
+    if (e.target !== e.currentTarget) return;
+    e.stopPropagation();
+    g.closeViewer();
+  };
+
   // Portal via Layer so the lightbox escapes <main>'s stacking context —
   // without this, GlobalHeader (z-header sibling of main) paints above the
   // viewer even when the modal token is higher.
@@ -111,7 +121,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       exit={{ opacity: 0, pointerEvents: 'none' }}
       transition={scrimTransition}
       className="absolute inset-0 flex bg-scrim/95 outline-none backdrop-blur-md"
-      onClick={(e) => e.stopPropagation()}
+      onClick={handleBackdropClick}
       onPointerDown={(e) => e.stopPropagation()}
       {...(g.canUpload ? dz.rootProps : {})}
     >
@@ -138,7 +148,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       {/* Stage — image lane. flex-1 yields width to the details drawer; the
           drawer animates its own width, so this lane reflows live via flexbox
           (no `layout` projection needed) in both open and close. */}
-      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden" onClick={handleBackdropClick}>
       {/* Top bar — counter (left) + zoom/rotate pill + action buttons (right).
           Pinned to the image lane, not the full viewport, so controls stay left
           of the details column when it opens. */}
@@ -421,7 +431,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         </div>
       </motion.div>
 
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden" onClick={handleBackdropClick}>
       {g.deleteError && (
         <div
           className="absolute top-24 left-1/2 z-20 -translate-x-1/2 rounded-full border border-red-300 bg-red-600/90 px-4 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
@@ -476,7 +486,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         exit={{ opacity: 0, scale: 0.95 }}
         transition={framerTransition.dropdownOpen}
         className="relative flex h-full w-full items-center justify-center p-4 sm:py-16 sm:pl-16 sm:pr-16"
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleBackdropClick}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={g.onMouseDown}
         onMouseMove={g.onMouseMove}

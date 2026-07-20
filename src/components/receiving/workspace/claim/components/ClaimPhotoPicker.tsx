@@ -1,8 +1,13 @@
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence } from 'framer-motion';
-import { Camera, Loader2, Plus, ZoomIn } from '@/components/Icons';
+import { Camera, Loader2, Pencil, Plus, ZoomIn } from '@/components/Icons';
 import { PhotoGridDisplayControls } from '@/components/photos/PhotoGridDisplayControls';
+import {
+  photoLibraryControlButtonClass,
+  photoLibraryControlGroupClass,
+} from '@/components/photos/photo-library-controls';
+import { SelectionMark } from '@/components/photos/photo-library-grid/SelectionMark';
 import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
@@ -13,7 +18,7 @@ import { photoGridLeafClass } from '@/lib/photos/photo-grid-density';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button, IconButton } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { claimPhotoTileProps } from '../claim-helpers';
@@ -84,6 +89,32 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
     }
   }, [refetch]);
 
+  const sendToPhoneControl = (
+    <HoverTooltip label="Send to phone to take more photos" asChild>
+      <button
+        type="button"
+        onClick={() => void handleSendToPhone()}
+        disabled={sending || !receivingId}
+        aria-label="Send to phone to take more photos"
+        className={cn(
+          'ds-raw-button relative flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft bg-surface-card text-text-soft transition-colors',
+          'hover:bg-surface-sunken hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60',
+        )}
+      >
+        {sending ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <>
+            <Camera className="h-3.5 w-3.5" />
+            <span className="absolute -bottom-0.5 -right-0.5 grid h-3 w-3 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-border-hairline">
+              <Plus className="h-1.5 w-1.5" />
+            </span>
+          </>
+        )}
+      </button>
+    </HoverTooltip>
+  );
+
   // ── Empty state — no photos yet: one big send-to-phone tile ────────────────
   if (list.length === 0) {
     return (
@@ -131,15 +162,32 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={toggleSelectAll}>
-            {selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
-          </Button>
           <PhotoGridDisplayControls
             density={gridDensity}
             onDensityChange={setGridDensity}
             onRefresh={() => void handleRefresh()}
             isRefreshing={refreshing}
           />
+          {sendToPhoneControl}
+          <HoverTooltip
+            label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
+            asChild
+          >
+            <div className={cn(photoLibraryControlGroupClass, 'shrink-0')}>
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                aria-label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
+                aria-pressed={selectedPhotoIds.size === list.length}
+                className={cn(
+                  'ds-raw-button',
+                  photoLibraryControlButtonClass(selectedPhotoIds.size === list.length, 'w-7'),
+                )}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </HoverTooltip>
         </div>
       </div>
 
@@ -148,66 +196,40 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
           const isSel = selectedPhotoIds.has(p.id);
           const tile = claimPhotoTileProps(p, gridDensity);
           return (
-            <HoverTooltip
+            <div
               key={p.id}
-              label={isSel ? 'Selected — click to remove' : 'Click to attach'}
-              asChild
+              className={cn(
+                'group relative rounded-lg border bg-surface-card text-left transition-colors',
+                isSel
+                  ? 'border-primary ring-2 ring-inset ring-primary'
+                  : 'border-border hover:border-border-default',
+              )}
             >
-              {/* ds-raw-button: photo thumbnail image tile (img selection target), not a standard action button */}
-              <button
-                type="button"
-                onClick={() => togglePhoto(p.id)}
-                aria-label={isSel ? 'Selected — click to remove' : 'Click to attach'}
-                className={cn(
-                  'relative overflow-hidden rounded-lg ring-2 transition',
-                  isSel ? 'ring-rose-500' : 'ring-transparent hover:ring-border-default',
-                  tile.ratio === 'natural' ? '' : 'aspect-square',
-                )}
+              <SelectionMark
+                checked={isSel}
+                active
+                onToggle={() => togglePhoto(p.id)}
+              />
+              <HoverTooltip
+                label={isSel ? 'Selected — click to remove' : 'Click to attach'}
+                asChild
               >
-                <PhotoThumb
-                  src={tile.imageUrl}
-                  alt=""
-                  ratio={tile.ratio}
-                  className={cn(!isSel && tile.ratio === 'square' ? 'opacity-70' : '')}
-                />
-                {isSel ? (
-                  <span className="absolute right-1 top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-rose-600 text-role-caption font-black text-white shadow-sm">
-                    ✓
-                  </span>
-                ) : null}
-              </button>
-            </HoverTooltip>
+                {/* ds-raw-button: photo thumbnail image tile (img selection target), not a standard action button */}
+                <button
+                  type="button"
+                  onClick={() => togglePhoto(p.id)}
+                  aria-label={isSel ? 'Selected — click to remove' : 'Click to attach'}
+                  className={cn(
+                    'ds-raw-button block w-full rounded-lg text-left',
+                    tile.ratio === 'natural' ? '' : 'aspect-square',
+                  )}
+                >
+                  <PhotoThumb src={tile.imageUrl} alt="" ratio={tile.ratio} className="rounded-lg" />
+                </button>
+              </HoverTooltip>
+            </div>
           );
         })}
-
-        {/* Send-to-phone tile — captures happen on the phone, stream back here. */}
-        <HoverTooltip label="Send to phone to take more photos" asChild>
-        {/* ds-raw-button: multi-line dashed send-to-phone card tile in the photo grid, not a standard action button */}
-        <button
-          type="button"
-          onClick={() => void handleSendToPhone()}
-          disabled={sending || !receivingId}
-          aria-label="Send to phone to take more photos"
-          className={cn(
-            'group flex flex-col items-center justify-center gap-1 self-start rounded-lg border border-dashed border-border-default bg-surface-canvas text-text-faint transition-colors hover:border-blue-300 hover:bg-blue-50/60 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60',
-            gridDensity === 'lg' ? 'aspect-square w-full' : 'aspect-square',
-          )}
-        >
-          {sending ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>
-              <span className="relative grid h-7 w-7 place-items-center rounded-full bg-surface-card ring-1 ring-border-soft transition-colors group-hover:ring-blue-300">
-                <Camera className="h-4 w-4" />
-                <span className="absolute -bottom-0.5 -right-0.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-border-hairline">
-                  <Plus className="h-2 w-2" />
-                </span>
-              </span>
-              <span className="text-role-eyebrow uppercase tracking-widest">Phone</span>
-            </>
-          )}
-        </button>
-        </HoverTooltip>
       </div>
       <p className="mt-2 text-role-micro font-medium text-text-faint">
         Checked photos attach to the support ticket. All carton photos also save to local storage in

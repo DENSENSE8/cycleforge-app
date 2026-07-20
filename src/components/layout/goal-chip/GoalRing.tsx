@@ -1,20 +1,40 @@
 import { motion } from 'framer-motion';
 
+/** Header / chrome progress ring — stroke matches house icon brush (2). */
+const DEFAULT_STROKE = 2;
+
 /** Animated SVG progress ring with the integer percent in its center. */
-export function GoalRing({ percent, color, size = 26 }: { percent: number; color: string; size?: number }) {
-  const r = size / 2 - 2.5;
+export function GoalRing({
+  percent,
+  color,
+  size = 16,
+  strokeWidth = DEFAULT_STROKE,
+}: {
+  percent: number;
+  color: string;
+  size?: number;
+  strokeWidth?: number;
+}) {
+  const r = size / 2 - strokeWidth;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, percent));
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg className="h-full w-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#E5E7EB" strokeWidth="2.5" fill="none" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="#E5E7EB"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           stroke={color}
-          strokeWidth="2.5"
+          strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
           strokeDasharray={c}

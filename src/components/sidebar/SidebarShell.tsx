@@ -37,9 +37,10 @@ export function SidebarShell({
   return (
     <aside
       className={cn(
-        // No border-r — content shell (`appContentShellClass`) owns the join via
-        // curved border-l + border-t hairline at the top-left radius.
-        'flex h-full w-full flex-col overflow-hidden shadow-xl shadow-gray-900/5',
+        // No border-r / drop shadow — content shell (`appContentShellClass`) owns
+        // the soft join (rounded-tl + border). A sidebar shadow casts a gray
+        // strip into that cutout and competes with work-canvas depth.
+        'flex h-full w-full flex-col overflow-hidden',
         appChromeClass,
         // In the mobile drawer, inset the top so the header clears the notch /
         // status bar (parity with the old drawer trigger).

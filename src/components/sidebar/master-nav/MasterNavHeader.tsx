@@ -4,18 +4,27 @@ import { useState } from 'react';
 import { MousePointerClick } from 'lucide-react';
 import { ChevronDown } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
+import {
+  SIDEBAR_MRU_CELL,
+  SIDEBAR_MRU_CLUSTER,
+  SIDEBAR_MRU_GLYPH,
+} from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
-/** Resolved recent mode chip for the closed trigger (icons only; name stays “now”). */
+/** Resolved recent jump chip for the closed trigger. Modes = icon; pages = text mark. */
 export interface MasterNavRecentModeChip {
   key: string;
   label: string;
-  icon: SidebarIconComponent;
-  /** Heavier stroke for page jumps; lighter for mode jumps. */
-  iconLayer?: 'page' | 'mode';
+  /** Mode glyph when the jump targets a mode; omit for modeless page jumps. */
+  icon?: SidebarIconComponent;
+  /**
+   * Short text mark for modeless page jumps (pages are text — no page Lucide).
+   * Typically 1–2 letters from the page label.
+   */
+  textMark?: string;
   onSelect: () => void;
   /** Optional hover hook — warms the destination's data (nav-data-prefetch). */
   onHover?: () => void;
@@ -23,12 +32,14 @@ export interface MasterNavRecentModeChip {
 
 /**
  * Closed master-nav trigger — **name of now**.
+ * Modeful pages: leading mode icon + mode label. Modeless: label only (pages = text).
  * Label opens the full nav on click; hovering the button opens same-page modes.
  * Chevron at rest; pointer on hover, while the modes panel is open, or while
  * the full nav dropdown is open.
  */
 export function MasterNavHeader({
   label,
+  leadingIcon: LeadingIcon,
   open,
   onClick,
   onTriggerMouseEnter,
@@ -38,6 +49,8 @@ export function MasterNavHeader({
   className,
 }: {
   label: string;
+  /** Active mode glyph when the current page is modeful. */
+  leadingIcon?: SidebarIconComponent;
   open: boolean;
   onClick?: () => void;
   onTriggerMouseEnter?: () => void;
@@ -67,8 +80,14 @@ export function MasterNavHeader({
         }}
         aria-expanded={open}
         aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-        className="ds-raw-button flex min-w-0 shrink items-center gap-1 px-3 text-left transition-colors hover:bg-surface-canvas"
+        className="ds-raw-button flex min-w-0 shrink items-center gap-1.5 px-3 text-left transition-colors hover:bg-surface-canvas"
       >
+        {LeadingIcon ? (
+          <LeadingIcon
+            className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 text-text-muted')}
+            aria-hidden
+          />
+        ) : null}
         <span className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default">
           {label}
         </span>
@@ -82,26 +101,43 @@ export function MasterNavHeader({
       </button>
 
       {hasRecents && (
-        <div className="ml-auto flex shrink-0 items-stretch gap-0.5 pr-1">
+        <div className={SIDEBAR_MRU_CLUSTER}>
           {recentModes.map((mode) => {
             const Icon = mode.icon;
             return (
               <div
                 key={mode.key}
-                className="flex items-center justify-center px-1"
+                className={SIDEBAR_MRU_CELL}
                 onMouseEnter={mode.onHover}
               >
                 <HoverTooltip label={mode.label} asChild placement="below">
-                  <IconButton
-                    size="xs"
-                    tone="accent"
-                    ariaLabel={mode.label}
-                    icon={<Icon className={navIconStrokeClass(mode.iconLayer ?? 'mode', 'h-3.5 w-3.5')} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      mode.onSelect();
-                    }}
-                  />
+                  {Icon ? (
+                    <IconButton
+                      size="xs"
+                      tone="accent"
+                      ariaLabel={mode.label}
+                      icon={
+                        <Icon className={navIconStrokeClass('mode', SIDEBAR_MRU_GLYPH)} />
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        mode.onSelect();
+                      }}
+                    />
+                  ) : (
+                    // ds-raw-button: text-mark MRU for modeless page jumps (pages = text)
+                    <button
+                      type="button"
+                      aria-label={mode.label}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        mode.onSelect();
+                      }}
+                      className="ds-raw-button flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-role-micro font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-50"
+                    >
+                      {mode.textMark ?? mode.label.slice(0, 2)}
+                    </button>
+                  )}
                 </HoverTooltip>
               </div>
             );

@@ -17,7 +17,7 @@ interface QuickAccessPanelShellProps {
   ariaLabel?: string;
   /** Actions rendered left of the close button (e.g. Clear all). */
   headerActions?: ReactNode;
-  /** Sticky strip below the header (e.g. tab filters). */
+  /** Sticky strip below the header (optional filters / tools). */
   toolbar?: ReactNode;
   footer?: ReactNode;
   bodyClassName?: string;

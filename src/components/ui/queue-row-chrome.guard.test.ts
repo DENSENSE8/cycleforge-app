@@ -54,7 +54,16 @@ describe('queue-row left-edge chrome', () => {
         src.includes('QUEUE_ROW') || src.includes('metaIndentFor'),
         `${name} must import QUEUE_ROW and/or metaIndentFor`,
       );
-      if (name !== 'ReceivingPoSummary' && name !== 'StationRecordShell') {
+      if (name === 'OrdersQueueTableRow') {
+        // Columnar WMS grid: QUEUE_ROW.px + ordersQueueGridTemplate; metaIndentFor
+        // remains on the mobile stacked path only.
+        assert.ok(src.includes('QUEUE_ROW.px'), `${name} must apply QUEUE_ROW.px`);
+        assert.ok(
+          src.includes('ordersQueueGridTemplate') || src.includes('ordersQueueRowShellClass'),
+          `${name} must use the orders-queue columnar shell`,
+        );
+        assert.ok(src.includes('metaIndentFor('), `${name} must keep metaIndentFor for mobile`);
+      } else if (name !== 'ReceivingPoSummary' && name !== 'StationRecordShell') {
         assert.ok(src.includes('QUEUE_ROW.px'), `${name} must apply QUEUE_ROW.px`);
         assert.ok(src.includes('metaIndentFor('), `${name} must call metaIndentFor(`);
       }
