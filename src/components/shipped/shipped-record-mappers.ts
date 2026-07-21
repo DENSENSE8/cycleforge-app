@@ -44,6 +44,7 @@ export function toDetailRecord(record: PackerRecord): ShippedOrder {
     packed_by_name: record.packed_by_name || null,
     tester_name: record.tester_name || null,
     packer_log_id: record.packer_log_id ?? null,
+    verification_outcome: (record as { verification_outcome?: string | null }).verification_outcome ?? null,
     station_activity_log_id: record.id,
     row_source: ((record as any).row_source || 'order') as ShippedOrder['row_source'],
     exception_reason: (record as any).exception_reason || null,

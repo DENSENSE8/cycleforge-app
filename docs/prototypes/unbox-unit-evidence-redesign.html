@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Unbox unit evidence: data-driven redesign</title>
+<title>Unbox line: three-row progressive bar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
@@ -13,984 +13,710 @@
   body {
     font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
     color: oklch(28% 0.03 250);
-    background: oklch(96.8% 0.008 250);
+    background: oklch(96.5% 0.01 250);
     line-height: 1.35;
     font-size: 14px;
   }
 
-  .page { max-width: 1120px; margin: 0 auto; padding: 24px 16px 56px; }
-
-  .page-head { margin-bottom: 18px; max-width: 68ch; }
-  .page-head .eyebrow {
+  .page { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; }
+  .eyebrow {
     font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
     text-transform: uppercase; color: oklch(48% 0.12 250); margin: 0 0 6px;
   }
-  .page-head h1 {
-    margin: 0 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
-  }
-  .page-head p { margin: 0; color: oklch(45% 0.02 250); font-size: 13.5px; }
+  h1 { margin: 0 0 8px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .lede { margin: 0 0 16px; color: oklch(45% 0.02 250); font-size: 13px; max-width: 58ch; }
 
-  .law {
-    display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    margin: 16px 0 20px; padding: 12px 14px;
-    background: oklch(99% 0.004 250); border: 1px solid oklch(88% 0.012 250); border-radius: 8px;
+  .flow {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    margin: 0 0 16px; font-size: 12px; font-weight: 600; color: oklch(42% 0.02 250);
   }
-  .law div { font-size: 12px; color: oklch(42% 0.02 250); }
-  .law strong { display: block; color: oklch(28% 0.03 250); font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+  .flow span { padding: 3px 8px; border-radius: 4px; background: oklch(99% 0.003 250);
+    border: 1px solid oklch(88% 0.012 250); }
+  .flow .arrow { border: 0; background: transparent; padding: 0; color: oklch(62% 0.015 250); }
 
-  .variant-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .variant-nav button {
-    appearance: none; border: 1px solid oklch(86% 0.012 250); background: oklch(99% 0.003 250);
-    color: oklch(42% 0.02 250); font: inherit; font-size: 12.5px; font-weight: 600;
-    padding: 7px 11px; border-radius: 6px; cursor: pointer;
-  }
-  .variant-nav button[aria-selected="true"] {
-    background: oklch(28% 0.03 250); border-color: oklch(28% 0.03 250); color: #fff;
-  }
-  .variant-nav button:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 2px; }
-
-  .variant-panel[hidden] { display: none; }
-  .variant-blurb {
-    font-size: 12.5px; color: oklch(45% 0.02 250); margin: 0 0 10px;
-  }
-  .variant-blurb b { color: oklch(28% 0.03 250); }
-
-  /* Station shell: flat, not card-soup */
   .shell {
     background: oklch(99.4% 0.003 250);
     border: 1px solid oklch(86% 0.012 250);
     border-radius: 10px;
     overflow: hidden;
-    display: grid;
-    grid-template-rows: auto auto 1fr auto;
-    min-height: 580px;
   }
-
   .id-bar {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 8px 12px; border-bottom: 1px solid oklch(88% 0.01 250);
     background: oklch(97.8% 0.006 250); font-size: 12px;
   }
-  .id-bar .mono {
-    font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; font-size: 12px;
-  }
-  .id-bar .muted { color: oklch(55% 0.015 250); }
-  .id-bar .grow { flex: 1; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; }
+  .muted { color: oklch(55% 0.015 250); }
+  .grow { flex: 1; }
 
-  .tabs {
-    display: flex; gap: 2px; padding: 6px 10px; border-bottom: 1px solid oklch(88% 0.01 250);
-    overflow-x: auto;
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11.5px; font-weight: 600; padding: 1px 2px;
+    color: oklch(42% 0.02 250); white-space: nowrap;
   }
-  .tabs button {
-    appearance: none; border: 0; background: transparent; font: inherit;
-    font-size: 12px; font-weight: 600; color: oklch(55% 0.015 250);
-    padding: 6px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap;
-  }
-  .tabs button[aria-selected="true"] {
-    background: oklch(93% 0.03 250); color: oklch(42% 0.12 250);
-  }
-  .tabs button:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; }
-  .tabs .count {
-    display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px;
-    border-radius: 999px; font-size: 10px; font-weight: 700;
-    background: oklch(90% 0.02 250); color: oklch(40% 0.08 250);
-  }
-  .tabs button[aria-selected="true"] .count {
-    background: oklch(85% 0.05 250); color: oklch(38% 0.12 250);
+  .chip.ok { color: oklch(42% 0.11 155); }
+  .chip.ok .u { border-bottom: 2px solid oklch(62% 0.12 155); }
+  .chip.loc { color: oklch(48% 0.1 85); }
+  .chip.loc .u { border-bottom: 2px solid oklch(72% 0.12 85); }
+  .chip.grade { color: oklch(45% 0.02 250); }
+  .chip.grade .u { border-bottom: 2px solid oklch(78% 0.02 250); }
+  .chip .ico { font-size: 11px; opacity: 0.7; }
+  .price {
+    margin-left: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px; font-weight: 700; color: oklch(42% 0.11 155);
+    border-bottom: 2px solid oklch(62% 0.12 155);
   }
 
-  .pane { padding: 0; overflow: auto; min-height: 0; }
-  .pane-pad { padding: 10px 12px 14px; }
-  .pane[hidden] { display: none; }
+  /* ── Line card: three rows ── */
+  .lines { padding: 10px; display: grid; gap: 10px; }
+
+  .line {
+    background: #fff;
+    border: 1px solid oklch(82% 0.04 250);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .line[aria-current="true"] {
+    border-color: oklch(72% 0.08 250);
+    background: oklch(98.5% 0.015 250);
+  }
+  .line.ready {
+    border-color: oklch(78% 0.06 155);
+    background: oklch(99% 0.012 155);
+  }
+
+  /* Row 1: title */
+  .r1 {
+    display: grid;
+    grid-template-columns: 28px 1fr 28px;
+    gap: 4px;
+    align-items: center;
+    padding: 8px 10px 4px;
+  }
+  .r1 .chev {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    color: oklch(62% 0.015 250); font-size: 14px; padding: 4px;
+    display: grid; place-items: center;
+  }
+  .r1 .chev:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; border-radius: 4px; }
+  .r1 .title {
+    margin: 0; font-size: 13px; font-weight: 700;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .r1 .more {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    color: oklch(55% 0.015 250); font-size: 16px; letter-spacing: 1px;
+    padding: 4px; line-height: 1;
+  }
+
+  /* Row 2: product meta (NO serial) */
+  .r2 {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+    padding: 2px 10px 8px 38px;
+    border-bottom: 1px solid oklch(90% 0.02 250);
+  }
+
+  /* Row 3: progression bar */
+  .r3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px 10px;
+    min-height: 52px;
+  }
+
+  .back {
+    appearance: none; border: 1px solid oklch(84% 0.015 250); background: #fff;
+    width: 34px; height: 36px; border-radius: 8px; cursor: pointer;
+    display: grid; place-items: center; flex-shrink: 0;
+    color: oklch(42% 0.02 250); font-size: 16px; font-weight: 700;
+  }
+  .back:disabled { opacity: 0.35; cursor: not-allowed; }
+  .back:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; }
+
+  /* Full progressive bar */
+  .bar {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 0;
+    background: oklch(97% 0.008 250);
+    border: 1px solid oklch(88% 0.012 250);
+    border-radius: 10px;
+    overflow: hidden;
+    min-height: 40px;
+  }
+
+  /* Completed facts pile left → right inside the bar */
+  .done-stack {
+    display: flex; align-items: stretch; flex-shrink: 0;
+  }
+  .done-chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 10px;
+    font-size: 12px; font-weight: 700;
+    border-right: 1px solid oklch(88% 0.012 250);
+    white-space: nowrap;
+    background: oklch(95% 0.025 155);
+    color: oklch(38% 0.1 155);
+  }
+  .done-chip.photos { background: oklch(94% 0.03 250); color: oklch(42% 0.12 250); }
+  .done-chip.grade { background: oklch(95% 0.04 85); color: oklch(45% 0.1 70); }
+  .done-chip.serial {
+    background: oklch(94% 0.03 280); color: oklch(42% 0.12 280);
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px;
+  }
+  .done-chip .ico { font-size: 12px; opacity: 0.85; }
+
+  /* Active stage fills the rest of the bar */
+  .active-slot {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 6px 4px 8px;
+  }
+  .active-slot .stage-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: oklch(48% 0.1 250); white-space: nowrap;
+  }
+
+  .ph-row { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 0; }
+  .ph {
+    width: 32px; height: 32px; border-radius: 6px;
+    border: 1px solid oklch(84% 0.015 250); background: oklch(94% 0.015 250);
+    display: grid; place-items: center; font-size: 9px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .ph.has { background: linear-gradient(145deg, oklch(88% 0.02 250), oklch(84% 0.03 230)); }
+  .ph.add {
+    appearance: none; cursor: pointer; width: auto; padding: 0 10px; height: 32px;
+    border-style: dashed; color: oklch(48% 0.12 250); background: #fff; font: inherit;
+    font-size: 11px; font-weight: 700;
+  }
+
+  .grades { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+  .grades button {
+    appearance: none; border: 1px solid oklch(84% 0.015 250); background: #fff;
+    font: inherit; font-size: 12px; font-weight: 700; padding: 6px 10px;
+    border-radius: 6px; cursor: pointer; min-width: 32px;
+  }
+  .grades button[aria-pressed="true"] {
+    background: oklch(28% 0.03 250); border-color: oklch(28% 0.03 250); color: #fff;
+  }
+  .grades button:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; }
+
+  .serial-row {
+    display: flex; gap: 6px; flex: 1; min-width: 0; align-items: center;
+  }
+  .serial-row input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600;
+    border: 1px solid oklch(78% 0.02 250); border-radius: 8px;
+    padding: 8px 10px; background: #fff; height: 36px;
+  }
+  .serial-row input:focus {
+    outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px;
+  }
+  .ocr-hint {
+    font-size: 10.5px; font-weight: 600; color: oklch(42% 0.1 155); white-space: nowrap;
+  }
+
+  .note-row {
+    display: flex; gap: 6px; flex: 1; min-width: 0; align-items: center;
+  }
+  .note-row input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px;
+    border: 1px solid oklch(78% 0.02 250); border-radius: 8px;
+    padding: 8px 10px; background: #fff; height: 36px;
+  }
+  .note-row input:focus {
+    outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px;
+  }
+
+  .confirm {
+    appearance: none; border: 0; width: 36px; height: 36px; border-radius: 8px;
+    background: oklch(88% 0.08 155); color: oklch(35% 0.1 155);
+    font-size: 16px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+  }
+  .confirm:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; }
+  .confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-text {
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 600; color: oklch(48% 0.02 250);
+    padding: 6px 8px; white-space: nowrap;
+  }
+  .btn-text:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; border-radius: 4px; }
+
+  .ready-summary {
+    display: flex; align-items: center; gap: 8px; flex: 1; padding: 0 4px;
+    font-size: 12px; font-weight: 600; color: oklch(40% 0.1 155);
+  }
 
   .dock {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 8px;
     padding: 8px 12px; border-top: 1px solid oklch(88% 0.01 250);
     background: oklch(97.8% 0.006 250); font-size: 12px; color: oklch(50% 0.015 250);
   }
-  .dock .grow { flex: 1; min-width: 140px; }
   .btn {
-    appearance: none; border: 1px solid oklch(80% 0.02 250); background: oklch(99% 0.003 250);
-    color: oklch(28% 0.03 250); font: inherit; font-size: 12.5px; font-weight: 600;
-    padding: 8px 12px; border-radius: 7px; cursor: pointer;
+    appearance: none; border: 1px solid oklch(80% 0.02 250); background: #fff;
+    font: inherit; font-size: 12px; font-weight: 600; padding: 7px 11px;
+    border-radius: 6px; cursor: pointer;
   }
   .btn.primary {
     background: oklch(46% 0.12 155); border-color: oklch(46% 0.12 155); color: #fff;
   }
-  .btn.ghost { border-color: transparent; background: transparent; color: oklch(45% 0.02 250); }
-  .btn:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 2px; }
-  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-  /* Fact chips: state from data */
-  .fact {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
-    border: 1px solid oklch(86% 0.012 250); background: oklch(99% 0.003 250);
-    color: oklch(42% 0.02 250); white-space: nowrap;
+  .legend {
+    margin-top: 14px; font-size: 12px; color: oklch(48% 0.02 250);
+    padding: 10px 12px; border: 1px solid oklch(88% 0.012 250); border-radius: 8px;
+    background: oklch(99% 0.003 250);
   }
-  .fact.ok { border-color: oklch(78% 0.06 155); background: oklch(95% 0.035 155); color: oklch(40% 0.1 155); }
-  .fact.miss { border-color: oklch(86% 0.04 75); background: oklch(97% 0.04 85); color: oklch(45% 0.1 75); }
-  .fact.idle { color: oklch(58% 0.015 250); }
-  .fact .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; }
+  .legend strong { color: oklch(28% 0.03 250); }
+  .legend ol { margin: 6px 0 0; padding-left: 1.2em; }
+  .legend li { margin: 3px 0; }
 
-  /* Line identity: one compressed fact strip, not a card */
-  .line-facts {
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px;
-    padding: 8px 12px; border-bottom: 1px solid oklch(90% 0.01 250);
-    font-size: 12.5px;
+  .fact-pill {
+    display: inline-flex; font-size: 11px; font-weight: 600; padding: 2px 7px;
+    border-radius: 4px; border: 1px solid oklch(86% 0.012 250); background: #fff;
   }
-  .line-facts .title {
-    font-weight: 700; max-width: 42ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .line-facts .rest { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-  .line-facts .price {
-    margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-weight: 600; font-size: 12px; color: oklch(42% 0.1 155);
-  }
-
-  /* Completeness HUD: derived counts only */
-  .hud {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
-    border-bottom: 1px solid oklch(88% 0.01 250);
-  }
-  .hud > div {
-    padding: 8px 10px; border-right: 1px solid oklch(90% 0.01 250);
-  }
-  .hud > div:last-child { border-right: 0; }
-  .hud .k {
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-    color: oklch(55% 0.015 250); margin: 0 0 2px;
-  }
-  .hud .v {
-    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 16px; font-weight: 600;
-  }
-  .hud .v.warn { color: oklch(48% 0.12 70); }
-  .hud .v.ok { color: oklch(42% 0.11 155); }
-  @media (max-width: 640px) {
-    .hud { grid-template-columns: 1fr 1fr; }
-    .hud > div:nth-child(2) { border-right: 0; }
-  }
-
-  /* ── A: Evidence ledger table ── */
-  table.ledger {
-    width: 100%; border-collapse: collapse; font-size: 12.5px;
-  }
-  table.ledger th {
-    text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.05em; color: oklch(55% 0.015 250);
-    padding: 8px 10px; border-bottom: 1px solid oklch(86% 0.012 250);
-    background: oklch(97.5% 0.006 250); position: sticky; top: 0;
-  }
-  table.ledger td {
-    padding: 0; border-bottom: 1px solid oklch(92% 0.008 250); vertical-align: top;
-  }
-  table.ledger tr.unit-row > td > .row-main {
-    display: grid; grid-template-columns: 52px 1.2fr 88px 72px 88px 72px;
-    gap: 0; align-items: center; padding: 9px 10px; cursor: pointer;
-  }
-  @media (max-width: 720px) {
-    table.ledger tr.unit-row > td > .row-main {
-      grid-template-columns: 44px 1fr 70px 60px;
-    }
-    table.ledger .hide-sm { display: none; }
-  }
-  table.ledger tr.unit-row[aria-selected="true"] > td {
-    background: oklch(96% 0.025 250);
-  }
-  table.ledger tr.unit-row:hover > td { background: oklch(97.5% 0.01 250); }
-  table.ledger tr.unit-row[aria-selected="true"]:hover > td {
-    background: oklch(96% 0.025 250);
-  }
-  .cell-u { font-weight: 700; font-family: "IBM Plex Mono", ui-monospace, monospace; }
-  .cell-sn { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; }
-  .cell-sn.empty, .cell-empty { color: oklch(62% 0.015 250); font-style: italic;
-    font-family: "IBM Plex Sans", sans-serif; font-size: 12px; }
-  .status-pill {
-    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.03em; padding: 2px 6px; border-radius: 3px;
-  }
-  .status-pill.ready { background: oklch(94% 0.04 155); color: oklch(38% 0.1 155); }
-  .status-pill.partial { background: oklch(96% 0.05 85); color: oklch(45% 0.1 70); }
-  .status-pill.empty { background: oklch(94% 0.01 250); color: oklch(55% 0.015 250); }
-
-  .edit-band {
-    padding: 10px 12px 12px; border-top: 1px solid oklch(88% 0.02 250);
-    background: oklch(98.5% 0.01 250); display: none;
-  }
-  tr.unit-row[aria-selected="true"] .edit-band { display: grid; gap: 10px; }
-  .edit-grid {
-    display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px;
-  }
-  @media (max-width: 720px) { .edit-grid { grid-template-columns: 1fr; } }
-
-  label.fld {
-    display: grid; gap: 4px; font-size: 10px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.04em; color: oklch(52% 0.015 250);
-  }
-  input[type="text"], textarea {
-    width: 100%; font: inherit; font-size: 13px; color: oklch(28% 0.03 250);
-    border: 1px solid oklch(78% 0.02 250); border-radius: 6px;
-    padding: 8px 10px; background: #fff;
-  }
-  input.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; }
-  input:focus, textarea:focus {
-    outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px;
-    border-color: oklch(50% 0.12 250);
-  }
-  textarea { min-height: 64px; resize: vertical; font-size: 12.5px; }
-  .photo-cells { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .ph {
-    width: 48px; height: 48px; border-radius: 5px; border: 1px solid oklch(84% 0.015 250);
-    background: oklch(94% 0.015 250); display: grid; place-items: center;
-    font-size: 10px; font-weight: 700; color: oklch(50% 0.02 250); cursor: pointer;
-  }
-  .ph.add { border-style: dashed; color: oklch(48% 0.12 250); background: #fff; }
-  .ph.has { background: linear-gradient(145deg, oklch(88% 0.02 250), oklch(84% 0.03 230)); }
-
-  /* ── B: Completeness matrix ── */
-  .matrix-wrap { overflow-x: auto; }
-  table.matrix {
-    width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 480px;
-  }
-  table.matrix th {
-    text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.05em; color: oklch(55% 0.015 250);
-    padding: 8px 8px; border-bottom: 1px solid oklch(86% 0.012 250);
-    background: oklch(97.5% 0.006 250);
-  }
-  table.matrix td {
-    padding: 6px 8px; border-bottom: 1px solid oklch(92% 0.008 250);
-    vertical-align: middle;
-  }
-  table.matrix tr.active-unit { background: oklch(96.5% 0.02 250); }
-  .cell-btn {
-    appearance: none; width: 100%; min-height: 36px; padding: 6px 8px;
-    border: 1px solid oklch(86% 0.012 250); border-radius: 5px;
-    background: oklch(99% 0.003 250); font: inherit; font-size: 12px;
-    text-align: left; cursor: pointer; color: oklch(42% 0.02 250);
-  }
-  .cell-btn:hover { border-color: oklch(70% 0.04 250); }
-  .cell-btn:focus-visible { outline: 2px solid oklch(55% 0.14 250); outline-offset: 1px; }
-  .cell-btn.filled {
-    border-color: oklch(78% 0.06 155); background: oklch(96% 0.03 155);
-    color: oklch(35% 0.09 155); font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-weight: 600; font-size: 11.5px;
-  }
-  .cell-btn.gap {
-    border-style: dashed; color: oklch(58% 0.02 250); font-style: italic;
-  }
-  .matrix-editor {
-    margin: 10px 12px 12px; padding: 10px 12px;
-    border: 1px solid oklch(84% 0.03 250); border-radius: 8px;
-    background: oklch(98% 0.012 250); display: none; gap: 8px;
-  }
-  .matrix-editor.open { display: grid; }
-  .matrix-editor .who {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-    color: oklch(48% 0.1 250);
-  }
-
-  /* ── C: Next-gap floor ── */
-  .next-gap {
-    padding: 14px 14px 16px; display: grid; gap: 12px;
-  }
-  .gap-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    color: oklch(48% 0.12 250); margin: 0;
-  }
-  .gap-prompt {
-    margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
-  }
-  .gap-sub { margin: 0; font-size: 12.5px; color: oklch(50% 0.015 250); }
-  .gap-input-row {
-    display: grid; grid-template-columns: 1fr auto; gap: 8px;
-  }
-  .gap-input-row input {
-    font-size: 18px; font-family: "IBM Plex Mono", ui-monospace, monospace;
-    font-weight: 600; padding: 14px 12px;
-  }
-  .gap-input-row .btn.primary { padding: 0 18px; font-size: 18px; }
-
-  .checklist {
-    display: grid; gap: 0; border: 1px solid oklch(88% 0.01 250); border-radius: 8px;
-    overflow: hidden;
-  }
-  .checklist .item {
-    display: grid; grid-template-columns: 18px 64px 1fr auto; gap: 8px; align-items: center;
-    padding: 8px 10px; border-bottom: 1px solid oklch(92% 0.008 250);
-    font-size: 12.5px; cursor: pointer; background: transparent;
-  }
-  .checklist .item:last-child { border-bottom: 0; }
-  .checklist .item[aria-current="true"] { background: oklch(95.5% 0.025 250); }
-  .checklist .item .mark {
-    width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid oklch(78% 0.02 250);
-  }
-  .checklist .item.done .mark {
-    background: oklch(46% 0.12 155); border-color: oklch(46% 0.12 155);
-  }
-  .checklist .item .u {
-    font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 700; font-size: 11px;
-  }
-  .checklist .item .need { color: oklch(50% 0.015 250); }
-  .checklist .item.done .need { color: oklch(42% 0.08 155); }
-
-  .unit-switch {
-    display: flex; gap: 4px; flex-wrap: wrap;
-  }
-  .unit-switch button {
-    appearance: none; border: 1px solid oklch(86% 0.012 250); background: #fff;
-    font: inherit; font-size: 11px; font-weight: 700; padding: 5px 9px;
-    border-radius: 5px; cursor: pointer; color: oklch(42% 0.02 250);
-    font-family: "IBM Plex Mono", ui-monospace, monospace;
-  }
-  .unit-switch button[aria-current="true"] {
-    background: oklch(28% 0.03 250); border-color: oklch(28% 0.03 250); color: #fff;
-  }
-  .unit-switch button.ready { box-shadow: inset 0 -2px 0 oklch(50% 0.12 155); }
-
-  .detail-dl {
-    display: grid; gap: 0; font-size: 13px; margin: 0;
-  }
-  .detail-dl div {
-    display: grid; grid-template-columns: 100px 1fr; gap: 8px;
-    padding: 7px 0; border-bottom: 1px solid oklch(92% 0.008 250);
-  }
-  .detail-dl dt { color: oklch(55% 0.015 250); font-weight: 600; font-size: 12px; }
-  .detail-dl dd { margin: 0; font-weight: 500; }
-
-  .foot {
-    margin-top: 16px; font-size: 12px; color: oklch(55% 0.015 250); max-width: 68ch;
-  }
-  kbd {
-    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
-    padding: 1px 4px; border: 1px solid oklch(86% 0.012 250); border-radius: 3px;
-    background: oklch(96% 0.006 250);
-  }
+  .fact-pill.ok { border-color: oklch(78% 0.06 155); background: oklch(95% 0.035 155); color: oklch(40% 0.1 155); }
+  .fact-pill.miss { border-color: oklch(86% 0.04 75); background: oklch(97% 0.04 85); color: oklch(45% 0.1 75); }
 </style>
 </head>
 <body>
   <div class="page">
-    <header class="page-head">
-      <p class="eyebrow">Kinetic Ledger · Station Unbox · data shape first</p>
-      <h1>Unit evidence: data-driven redesign</h1>
-      <p>
-        Completely redesigned. The UI is a projection of unit facts
-        (serial, photo count, note, readiness). Chrome does not invent a second story.
-        Accordion + single Serial field is gone.
-      </p>
-    </header>
+    <p class="eyebrow">Kinetic Ledger · Unbox · three-row line</p>
+    <h1>Title · meta · progressive bar</h1>
+    <p class="lede">
+      Matches today’s three-row line card. Serial leaves the meta row and lives only in the
+      third-row progression bar, after photos and condition.
+    </p>
 
-    <div class="law" aria-label="Design laws for this surface">
-      <div><strong>Data shape</strong> Units × evidence fields → table, matrix, or next-gap queue.</div>
-      <div><strong>State drives color</strong> Ready / partial / empty from facts, never decoration.</div>
-      <div><strong>Process first</strong> Capture lives on Process. Line / Timeline are secondary tabs.</div>
-      <div><strong>One job</strong> Fill missing evidence. Title and price stay compressed identity.</div>
+    <div class="flow" aria-label="Third-row order">
+      <span>1 Photos</span><span class="arrow">→</span>
+      <span>2 Condition</span><span class="arrow">→</span>
+      <span>3 Serial</span><span class="arrow">→</span>
+      <span>4 Notes</span>
     </div>
 
-    <nav class="variant-nav" role="tablist" aria-label="Data surface variants">
-      <button type="button" role="tab" id="tab-a" aria-controls="panel-a" aria-selected="true">A · Evidence ledger</button>
-      <button type="button" role="tab" id="tab-b" aria-controls="panel-b" aria-selected="false">B · Completeness matrix</button>
-      <button type="button" role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false">C · Next-gap floor</button>
-    </nav>
-
-    <!-- ════════ A ════════ -->
-    <section class="variant-panel" id="panel-a" role="tabpanel" aria-labelledby="tab-a">
-      <p class="variant-blurb"><b>Primary surface: table.</b> Each row is one physical unit. Columns are evidence facts. Select a row to edit the gap in place.</p>
-      <div class="shell" id="shell-a">
-        <div class="id-bar">
-          <span class="mono" data-track></span>
-          <span class="muted">Unbox</span>
-          <span class="grow"></span>
-          <span class="fact" data-po></span>
-          <span class="fact" data-line-progress></span>
-        </div>
-        <div class="tabs" role="tablist" data-shell-tabs>
-          <button type="button" data-pane="a-process" aria-selected="true">Process <span class="count" data-gap-count></span></button>
-          <button type="button" data-pane="a-line" aria-selected="false">Line</button>
-          <button type="button" data-pane="a-timeline" aria-selected="false">Timeline</button>
-        </div>
-        <div class="pane" id="a-process">
-          <div class="line-facts">
-            <span class="title" data-title></span>
-            <span class="rest">
-              <span class="fact" data-loc></span>
-              <span class="fact" data-grade></span>
-            </span>
-            <span class="price" data-price></span>
-          </div>
-          <div class="hud" data-hud></div>
-          <div style="overflow:auto; max-height: 360px;">
-            <table class="ledger" aria-label="Unit evidence ledger">
-              <thead>
-                <tr>
-                  <th colspan="6">
-                    <div style="display:grid;grid-template-columns:52px 1.2fr 88px 72px 88px 72px;gap:0;padding:0;">
-                      <span>Unit</span><span>Serial</span><span>Photos</span><span class="hide-sm">Notes</span><span>Status</span><span class="hide-sm"></span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody data-ledger-body></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="pane pane-pad" id="a-line" hidden>
-          <dl class="detail-dl" data-line-detail></dl>
-        </div>
-        <div class="pane pane-pad" id="a-timeline" hidden>
-          <p class="muted" style="margin:0;font-size:13px;color:oklch(50% 0.015 250)">Unit journeys + tracking (existing Timeline tab). No duplicate identity chrome.</p>
-        </div>
-        <div class="dock">
-          <span class="grow" data-dock-hint>Select a gap row. Scan fills serial on the open unit.</span>
-          <button type="button" class="btn ghost" data-action="prev-unit">Prev</button>
-          <button type="button" class="btn primary" data-action="next-gap">Next gap</button>
-        </div>
+    <div class="shell">
+      <div class="id-bar">
+        <span class="mono">1Z999…6784</span>
+        <span class="muted">Carton · Unbox</span>
+        <span class="grow"></span>
+        <span class="fact-pill miss" id="carton-progress">0/2 ready</span>
       </div>
-    </section>
 
-    <!-- ════════ B ════════ -->
-    <section class="variant-panel" id="panel-b" role="tabpanel" aria-labelledby="tab-b" hidden>
-      <p class="variant-blurb"><b>Primary surface: matrix.</b> Rows = units. Columns = evidence dimensions. Click a cell to fill that fact. Completeness is visible as a grid of filled vs dashed cells.</p>
-      <div class="shell" id="shell-b">
-        <div class="id-bar">
-          <span class="mono" data-track></span>
-          <span class="muted">Unbox</span>
-          <span class="grow"></span>
-          <span class="fact" data-po></span>
-          <span class="fact" data-line-progress></span>
-        </div>
-        <div class="tabs" role="tablist" data-shell-tabs>
-          <button type="button" data-pane="b-process" aria-selected="true">Process <span class="count" data-gap-count></span></button>
-          <button type="button" data-pane="b-line" aria-selected="false">Line</button>
-          <button type="button" data-pane="b-timeline" aria-selected="false">Timeline</button>
-        </div>
-        <div class="pane" id="b-process">
-          <div class="line-facts">
-            <span class="title" data-title></span>
-            <span class="rest">
-              <span class="fact" data-loc></span>
-              <span class="fact" data-grade></span>
-            </span>
-            <span class="price" data-price></span>
-          </div>
-          <div class="hud" data-hud></div>
-          <div class="matrix-wrap">
-            <table class="matrix" aria-label="Evidence completeness matrix">
-              <thead>
-                <tr>
-                  <th style="width:56px">Unit</th>
-                  <th>Serial</th>
-                  <th style="width:110px">Photos</th>
-                  <th>Notes</th>
-                  <th style="width:72px">Ready</th>
-                </tr>
-              </thead>
-              <tbody data-matrix-body></tbody>
-            </table>
-          </div>
-          <div class="matrix-editor" data-matrix-editor>
-            <div class="who" data-editor-label></div>
-            <div data-editor-fields></div>
-          </div>
-        </div>
-        <div class="pane pane-pad" id="b-line" hidden>
-          <dl class="detail-dl" data-line-detail></dl>
-        </div>
-        <div class="pane pane-pad" id="b-timeline" hidden>
-          <p style="margin:0;font-size:13px;color:oklch(50% 0.015 250)">Timeline spine (unchanged).</p>
-        </div>
-        <div class="dock">
-          <span class="grow">Gaps are dashed cells. Filled cells are facts.</span>
-          <button type="button" class="btn primary" data-action="next-gap">Jump to next gap</button>
-        </div>
+      <div class="lines" id="lines" aria-label="PO lines"></div>
+
+      <div class="dock">
+        <span class="grow" id="hint">Third row advances in place. Back steps to the previous stage.</span>
+        <button type="button" class="btn" id="reset">Reset</button>
       </div>
-    </section>
+    </div>
 
-    <!-- ════════ C ════════ -->
-    <section class="variant-panel" id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden>
-      <p class="variant-blurb"><b>Primary surface: next missing fact.</b> The UI asks for one gap at a time, derived from the unit list. Checklist below is the full fact state, not decoration.</p>
-      <div class="shell" id="shell-c">
-        <div class="id-bar">
-          <span class="mono" data-track></span>
-          <span class="muted">Unbox · floor</span>
-          <span class="grow"></span>
-          <span class="fact" data-po></span>
-          <span class="fact" data-line-progress></span>
-        </div>
-        <div class="tabs" role="tablist" data-shell-tabs>
-          <button type="button" data-pane="c-process" aria-selected="true">Process <span class="count" data-gap-count></span></button>
-          <button type="button" data-pane="c-line" aria-selected="false">Line</button>
-          <button type="button" data-pane="c-timeline" aria-selected="false">Timeline</button>
-        </div>
-        <div class="pane" id="c-process">
-          <div class="hud" data-hud></div>
-          <div class="next-gap">
-            <div class="unit-switch" data-unit-switch aria-label="Units"></div>
-            <p class="gap-label">Next required</p>
-            <p class="gap-prompt" data-gap-prompt></p>
-            <p class="gap-sub" data-gap-sub></p>
-            <div class="gap-input-row" data-gap-input-wrap>
-              <input type="text" class="mono" data-gap-input placeholder="" autocomplete="off" />
-              <button type="button" class="btn primary" data-action="commit-gap">✓</button>
-            </div>
-            <div class="photo-cells" data-gap-photos hidden></div>
-            <div class="checklist" data-checklist aria-label="Unit evidence checklist"></div>
-          </div>
-        </div>
-        <div class="pane pane-pad" id="c-line" hidden>
-          <div class="line-facts" style="border:0;padding:0 0 10px">
-            <span class="title" data-title style="white-space:normal;max-width:none"></span>
-          </div>
-          <dl class="detail-dl" data-line-detail></dl>
-        </div>
-        <div class="pane pane-pad" id="c-timeline" hidden>
-          <p style="margin:0;font-size:13px;color:oklch(50% 0.015 250)">Timeline spine (unchanged).</p>
-        </div>
-        <div class="dock">
-          <span class="grow">Focus stays on the next gap. <kbd>Enter</kbd> commits. <kbd>F2</kbd> would refocus in product.</span>
-          <button type="button" class="btn ghost" data-action="skip-gap">Skip field</button>
-          <button type="button" class="btn primary" data-action="commit-gap">Commit</button>
-        </div>
-      </div>
+    <section class="legend">
+      <strong>Three rows</strong>
+      <ol>
+        <li><strong>Row 1</strong> — title (chevron · name · ⋮)</li>
+        <li><strong>Row 2</strong> — product facts only: qty, location, condition grade from PO/line, price. No serial here.</li>
+        <li><strong>Row 3</strong> — <em>back</em> + full progression bar. Done stages stack left (photo count, then condition). Active stage fills the rest. Serial is the third stage in this bar (skipped if OCR already filled it from photos).</li>
+      </ol>
     </section>
-
-    <p class="foot">
-      Shared JS data model drives all three shells. Edit in one variant updates the others
-      (same facts). Prototype path: <code>docs/prototypes/unbox-unit-evidence-redesign.html</code>
-    </p>
   </div>
 
   <script>
-    /** Shared unit-evidence model. UI is a pure projection. */
-    const LINE = {
-      title: "Bose 251 Environmental Outdoor Speakers White Pair No Brackets Tested Excellent",
-      track: "1Z999AA10123456784",
-      po: "PO-18422",
-      sku: "BOSE-251-W",
-      loc: "3-WH",
-      grade: "B",
-      price: "$400.00",
-      expected: 3,
-    };
+    const GRADES = ["A", "B", "C", "D", "P"];
 
-    /** @type {{ id: number, serial: string|null, photos: string[], note: string|null }[]} */
-    let units = [
-      { id: 1, serial: "SN-B251-32BC", photos: ["front", "label"], note: "Carton scuffed" },
-      { id: 2, serial: "SN-B251-32AC", photos: ["front"], note: null },
-      { id: 3, serial: null, photos: [], note: null },
-    ];
+    /** @typedef {{
+     *  id: number,
+     *  title: string,
+     *  qty: string,
+     *  loc: string,
+     *  lineGrade: string,
+     *  price: string,
+     *  photos: string[],
+     *  photosDone: boolean,
+     *  grade: string|null,
+     *  serial: string|null,
+     *  serialFromOcr: boolean,
+     *  note: string|null,
+     *  noteSkipped: boolean,
+     *  collapsed: boolean,
+     * }} Line */
 
-    let selectedUnitId = 3;
-    /** @type {{ unitId: number, field: 'serial'|'photos'|'note' } | null} */
-    let matrixFocus = { unitId: 3, field: "serial" };
-    /** Floor: which gap index in the flattened missing list */
-    let floorGapSkip = 0;
+    function seed() {
+      return [
+        {
+          id: 1,
+          title: "Bose Acoustimass 6 Series v Home Theater Speaker system Tested And works Great.",
+          qty: "1/1",
+          loc: "3-BK",
+          lineGrade: "C",
+          price: "$344.99",
+          photos: [],
+          photosDone: false,
+          grade: null,
+          serial: null,
+          serialFromOcr: false,
+          note: null,
+          noteSkipped: false,
+          collapsed: false,
+        },
+        {
+          id: 2,
+          title: "Sony WH-1000XM5 Wireless Noise Canceling Headphones Black",
+          qty: "0/1",
+          loc: "2-A",
+          lineGrade: "B",
+          price: "$280.00",
+          photos: [],
+          photosDone: false,
+          grade: null,
+          serial: null,
+          serialFromOcr: false,
+          note: null,
+          noteSkipped: false,
+          collapsed: false,
+        },
+      ];
+    }
+
+    /** @type {Line[]} */
+    let lines = seed();
+    let activeId = 1;
+
+    function get(id) { return lines.find((l) => l.id === id); }
+
+    /** photos → grade → serial (if needed) → notes */
+    function stage(line) {
+      if (!line.photosDone) return "photos";
+      if (!line.grade) return "grade";
+      if (!line.serial) return "serial";
+      if (!line.note && !line.noteSkipped) return "notes";
+      return "ready";
+    }
 
     function last4(sn) {
-      if (!sn) return null;
-      return "…" + sn.slice(-4);
+      return sn ? sn.slice(-4).toUpperCase() : "";
     }
 
-    function unitStatus(u) {
-      const hasSn = !!u.serial;
-      const hasPh = u.photos.length > 0;
-      const hasNote = u.note != null && u.note.trim() !== "";
-      // Policy for this mock: serial required, photo required, note optional
-      if (hasSn && hasPh) return "ready";
-      if (hasSn || hasPh || hasNote) return "partial";
-      return "empty";
-    }
-
-    function unitGaps(u) {
-      const gaps = [];
-      if (!u.serial) gaps.push("serial");
-      if (u.photos.length === 0) gaps.push("photos");
-      return gaps; // note optional: not a blocking gap
-    }
-
-    function stats() {
-      const ready = units.filter((u) => unitStatus(u) === "ready").length;
-      const gaps = units.reduce((n, u) => n + unitGaps(u).length, 0);
-      const photos = units.reduce((n, u) => n + u.photos.length, 0);
-      const notes = units.filter((u) => u.note && u.note.trim()).length;
-      return { ready, total: units.length, gaps, photos, notes };
-    }
-
-    function nextGapUnit() {
-      return units.find((u) => unitGaps(u).length > 0) || null;
-    }
-
-    function allGaps() {
-      const list = [];
-      for (const u of units) {
-        for (const field of unitGaps(u)) list.push({ unitId: u.id, field });
+    function maybeOcr(line) {
+      if (line.serial) return;
+      // Demo: line 1 gets OCR serial from first photo; line 2 does not
+      if (line.id === 1) {
+        line.serial = "SN-OCR-37AC";
+        line.serialFromOcr = true;
       }
-      return list;
     }
 
-    function getUnit(id) {
-      return units.find((u) => u.id === id);
+    function canGoBack(line) {
+      const s = stage(line);
+      return s !== "photos";
     }
 
-    function setSerial(id, value) {
-      const u = getUnit(id);
-      if (!u) return;
-      const v = value.trim();
-      u.serial = v || null;
-      renderAll();
+    function goBack(line) {
+      const s = stage(line);
+      if (s === "grade") {
+        line.photosDone = false;
+        if (line.serialFromOcr) {
+          line.serial = null;
+          line.serialFromOcr = false;
+        }
+      } else if (s === "serial") {
+        line.grade = null;
+      } else if (s === "notes") {
+        if (line.serial && !line.serialFromOcr) {
+          line.serial = null;
+        } else {
+          line.grade = null;
+        }
+      } else if (s === "ready") {
+        line.note = null;
+        line.noteSkipped = false;
+      }
     }
 
-    function addPhoto(id) {
-      const u = getUnit(id);
-      if (!u) return;
-      u.photos.push("shot-" + (u.photos.length + 1));
-      renderAll();
+    function renderDoneStack(line) {
+      const s = stage(line);
+      const parts = [];
+
+      if (line.photosDone && s !== "photos") {
+        parts.push(`
+          <div class="done-chip photos" title="Photos done">
+            <span class="ico" aria-hidden="true">📷</span>
+            <span>${line.photos.length}</span>
+          </div>`);
+      }
+
+      if (line.grade && s !== "photos" && s !== "grade") {
+        parts.push(`
+          <div class="done-chip grade" title="Condition graded">
+            <span class="ico" aria-hidden="true">🏷</span>
+            <span>${line.grade}</span>
+          </div>`);
+      }
+
+      if (line.serial && (s === "notes" || s === "ready")) {
+        parts.push(`
+          <div class="done-chip serial" title="${line.serialFromOcr ? "Serial from OCR" : "Serial"}">
+            <span class="ico" aria-hidden="true">#</span>
+            <span>${last4(line.serial)}${line.serialFromOcr ? " OCR" : ""}</span>
+          </div>`);
+      }
+
+      return parts.length ? `<div class="done-stack">${parts.join("")}</div>` : "";
     }
 
-    function setNote(id, value) {
-      const u = getUnit(id);
-      if (!u) return;
-      const v = value.trim();
-      u.note = v || null;
-      renderAll();
-    }
+    function renderActive(line) {
+      const s = stage(line);
 
-    function renderHud(root) {
-      const s = stats();
-      root.innerHTML = `
-        <div><p class="k">Units ready</p><p class="v ${s.ready === s.total ? "ok" : "warn"}">${s.ready}/${s.total}</p></div>
-        <div><p class="k">Open gaps</p><p class="v ${s.gaps ? "warn" : "ok"}">${s.gaps}</p></div>
-        <div><p class="k">Photos</p><p class="v">${s.photos}</p></div>
-        <div><p class="k">Notes</p><p class="v">${s.notes}/${s.total}</p></div>
-      `;
-    }
-
-    function fillIdentity(shell) {
-      const s = stats();
-      shell.querySelectorAll("[data-track]").forEach((el) => { el.textContent = LINE.track.slice(0, 5) + "…" + LINE.track.slice(-4); });
-      shell.querySelectorAll("[data-po]").forEach((el) => { el.textContent = LINE.po; });
-      shell.querySelectorAll("[data-line-progress]").forEach((el) => {
-        el.textContent = s.ready + "/" + s.total + " ready";
-        el.className = "fact " + (s.ready === s.total ? "ok" : "miss");
-      });
-      shell.querySelectorAll("[data-title]").forEach((el) => { el.textContent = LINE.title; });
-      shell.querySelectorAll("[data-loc]").forEach((el) => { el.textContent = LINE.loc; });
-      shell.querySelectorAll("[data-grade]").forEach((el) => { el.textContent = "Grade " + LINE.grade; });
-      shell.querySelectorAll("[data-price]").forEach((el) => { el.textContent = LINE.price; });
-      shell.querySelectorAll("[data-gap-count]").forEach((el) => { el.textContent = String(stats().gaps); });
-      shell.querySelectorAll("[data-hud]").forEach(renderHud);
-      shell.querySelectorAll("[data-line-detail]").forEach((dl) => {
-        dl.innerHTML = `
-          <div><dt>SKU</dt><dd>${LINE.sku}</dd></div>
-          <div><dt>Expected</dt><dd>${LINE.expected}</dd></div>
-          <div><dt>Location</dt><dd>${LINE.loc}</dd></div>
-          <div><dt>Condition</dt><dd>${LINE.grade}</dd></div>
-          <div><dt>Price</dt><dd>${LINE.price}</dd></div>
-          <div><dt>Tracking</dt><dd class="mono">${LINE.track}</dd></div>
-        `;
-      });
-    }
-
-    /* ── Variant A ledger ── */
-    function renderLedger() {
-      const shell = document.getElementById("shell-a");
-      fillIdentity(shell);
-      const body = shell.querySelector("[data-ledger-body]");
-      body.innerHTML = units.map((u) => {
-        const st = unitStatus(u);
-        const selected = u.id === selectedUnitId;
+      if (s === "photos") {
         return `
-          <tr class="unit-row" aria-selected="${selected}" data-unit-id="${u.id}">
-            <td>
-              <div class="row-main" data-select-unit="${u.id}" role="button" tabindex="0">
-                <span class="cell-u">U${u.id}</span>
-                <span class="cell-sn ${u.serial ? "" : "empty"}">${u.serial ? last4(u.serial) : "no serial"}</span>
-                <span class="${u.photos.length ? "" : "cell-empty"}">${u.photos.length ? u.photos.length + " ph" : "0 ph"}</span>
-                <span class="hide-sm ${u.note ? "" : "cell-empty"}">${u.note ? "yes" : "none"}</span>
-                <span><span class="status-pill ${st}">${st}</span></span>
-                <span class="hide-sm muted" style="font-size:11px;color:oklch(55% 0.015 250)">${selected ? "editing" : ""}</span>
+          <div class="active-slot">
+            <span class="stage-tag">Photos</span>
+            <div class="ph-row">
+              ${line.photos.map((p) => `<span class="ph has">${p.slice(0, 3)}</span>`).join("")}
+              <button type="button" class="ph add" data-add-photo="${line.id}">+ Photo</button>
+            </div>
+            <button type="button" class="confirm" data-next-photos="${line.id}"
+              ${line.photos.length ? "" : "disabled"} aria-label="Confirm photos">✓</button>
+          </div>`;
+      }
+
+      if (s === "grade") {
+        return `
+          <div class="active-slot">
+            <span class="stage-tag">Condition</span>
+            <div class="grades" role="group" aria-label="Condition">
+              ${GRADES.map((g) => `
+                <button type="button" data-set-grade="${line.id}:${g}"
+                  aria-pressed="${line.grade === g}">${g}</button>
+              `).join("")}
+            </div>
+          </div>`;
+      }
+
+      if (s === "serial") {
+        return `
+          <div class="active-slot">
+            <span class="stage-tag">Serial</span>
+            <div class="serial-row">
+              <input type="text" placeholder="Serial" data-serial="${line.id}"
+                value="${line.serial || ""}" autocomplete="off" />
+              <button type="button" class="confirm" data-save-serial="${line.id}" aria-label="Confirm serial">✓</button>
+            </div>
+          </div>`;
+      }
+
+      if (s === "notes") {
+        return `
+          <div class="active-slot">
+            <span class="stage-tag">Notes</span>
+            <div class="note-row">
+              <input type="text" placeholder="Optional note" data-note="${line.id}"
+                value="${line.note || ""}" />
+              <button type="button" class="btn-text" data-skip-note="${line.id}">Skip</button>
+              <button type="button" class="confirm" data-save-note="${line.id}" aria-label="Save note">✓</button>
+            </div>
+            ${line.serialFromOcr ? `<span class="ocr-hint">OCR ${last4(line.serial)}</span>` : ""}
+          </div>`;
+      }
+
+      return `
+        <div class="active-slot">
+          <div class="ready-summary">Line ready · ${line.photos.length} photos · grade ${line.grade} · ${last4(line.serial)}</div>
+        </div>`;
+    }
+
+    function render() {
+      const ready = lines.filter((l) => stage(l) === "ready").length;
+      const pill = document.getElementById("carton-progress");
+      pill.textContent = ready + "/" + lines.length + " ready";
+      pill.className = "fact-pill " + (ready === lines.length ? "ok" : "miss");
+
+      document.getElementById("lines").innerHTML = lines.map((line) => {
+        const s = stage(line);
+        const active = line.id === activeId;
+        if (line.collapsed && !active) {
+          return `
+            <article class="line ${s === "ready" ? "ready" : ""}" data-line="${line.id}">
+              <div class="r1">
+                <button type="button" class="chev" data-expand="${line.id}" aria-label="Expand">›</button>
+                <p class="title">${line.title}</p>
+                <button type="button" class="more" aria-label="More">⋮</button>
               </div>
-              <div class="edit-band">
-                <div class="edit-grid">
-                  <label class="fld">Serial
-                    <input type="text" class="mono" data-edit-serial="${u.id}" value="${u.serial || ""}" placeholder="Scan serial" />
-                  </label>
-                  <div>
-                    <div class="fld" style="margin-bottom:4px">Photos</div>
-                    <div class="photo-cells">
-                      ${u.photos.map((p) => `<span class="ph has">${p.slice(0, 5)}</span>`).join("")}
-                      <button type="button" class="ph add" data-add-photo="${u.id}">+</button>
-                    </div>
-                  </div>
-                  <label class="fld">Note (optional)
-                    <textarea data-edit-note="${u.id}" placeholder="Unit note">${u.note || ""}</textarea>
-                  </label>
-                </div>
+            </article>`;
+        }
+
+        return `
+          <article class="line ${s === "ready" ? "ready" : ""}"
+            aria-current="${active ? "true" : "false"}" data-line="${line.id}">
+            <!-- Row 1: title -->
+            <div class="r1">
+              <button type="button" class="chev" data-collapse="${line.id}" aria-label="Collapse">▾</button>
+              <p class="title" title="${line.title}">${line.title}</p>
+              <button type="button" class="more" aria-label="More">⋮</button>
+            </div>
+
+            <!-- Row 2: product info, NO serial -->
+            <div class="r2">
+              <span class="chip ok"><span class="ico">▣</span><span class="u">${line.qty}</span></span>
+              <span class="chip loc"><span class="ico">✎</span><span class="u">${line.loc}</span></span>
+              <span class="chip grade"><span class="ico">🏷</span><span class="u">${line.lineGrade}</span></span>
+              <span class="price">${line.price}</span>
+            </div>
+
+            <!-- Row 3: back + full progression bar -->
+            <div class="r3">
+              <button type="button" class="back" data-back="${line.id}"
+                ${canGoBack(line) ? "" : "disabled"} aria-label="Previous stage">←</button>
+              <div class="bar" data-select="${line.id}">
+                ${renderDoneStack(line)}
+                ${renderActive(line)}
               </div>
-            </td>
-          </tr>
-        `;
+            </div>
+          </article>`;
       }).join("");
 
-      body.querySelectorAll("[data-select-unit]").forEach((el) => {
-        const id = Number(el.getAttribute("data-select-unit"));
-        el.addEventListener("click", () => { selectedUnitId = id; renderAll(); });
-        el.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectedUnitId = id; renderAll(); }
+      bind();
+
+      const a = get(activeId);
+      const s = stage(a);
+      document.getElementById("hint").textContent =
+        s === "ready"
+          ? `Line ${a.id} complete.`
+          : `Line ${a.id}: ${s}` +
+            (a.serialFromOcr && s === "grade" ? ` · OCR serial ${last4(a.serial)} waiting` : "") +
+            (a.serialFromOcr && s === "notes" ? " · serial skipped (OCR)" : "");
+    }
+
+    function bind() {
+      const root = document.getElementById("lines");
+
+      root.querySelectorAll("[data-select]").forEach((el) => {
+        el.addEventListener("click", () => {
+          activeId = Number(el.getAttribute("data-select"));
         });
       });
-      body.querySelectorAll("[data-edit-serial]").forEach((input) => {
-        const id = Number(input.getAttribute("data-edit-serial"));
-        input.addEventListener("change", () => setSerial(id, input.value));
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") { e.preventDefault(); setSerial(id, input.value); }
+
+      root.querySelectorAll("[data-expand]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const line = get(Number(btn.getAttribute("data-expand")));
+          line.collapsed = false;
+          activeId = line.id;
+          render();
         });
       });
-      body.querySelectorAll("[data-edit-note]").forEach((ta) => {
-        const id = Number(ta.getAttribute("data-edit-note"));
-        ta.addEventListener("change", () => setNote(id, ta.value));
+
+      root.querySelectorAll("[data-collapse]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const line = get(Number(btn.getAttribute("data-collapse")));
+          line.collapsed = true;
+          render();
+        });
       });
-      body.querySelectorAll("[data-add-photo]").forEach((btn) => {
+
+      root.querySelectorAll("[data-back]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const line = get(Number(btn.getAttribute("data-back")));
+          activeId = line.id;
+          goBack(line);
+          render();
+        });
+      });
+
+      root.querySelectorAll("[data-add-photo]").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
-          addPhoto(Number(btn.getAttribute("data-add-photo")));
+          const line = get(Number(btn.getAttribute("data-add-photo")));
+          activeId = line.id;
+          line.photos.push(line.photos.length ? "d" + line.photos.length : "front");
+          render();
         });
       });
 
-      const gap = nextGapUnit();
-      shell.querySelector("[data-dock-hint]").textContent = gap
-        ? `Next gap: U${gap.id} (${unitGaps(gap).join(", ")})`
-        : "All required evidence filled.";
-    }
-
-    /* ── Variant B matrix ── */
-    function renderMatrix() {
-      const shell = document.getElementById("shell-b");
-      fillIdentity(shell);
-      const body = shell.querySelector("[data-matrix-body]");
-      body.innerHTML = units.map((u) => {
-        const st = unitStatus(u);
-        const active = matrixFocus && matrixFocus.unitId === u.id;
-        return `
-          <tr class="${active ? "active-unit" : ""}" data-unit-id="${u.id}">
-            <td class="cell-u">U${u.id}</td>
-            <td>
-              <button type="button" class="cell-btn ${u.serial ? "filled" : "gap"}"
-                data-focus="${u.id}:serial">${u.serial ? last4(u.serial) : "scan serial"}</button>
-            </td>
-            <td>
-              <button type="button" class="cell-btn ${u.photos.length ? "filled" : "gap"}"
-                data-focus="${u.id}:photos">${u.photos.length ? u.photos.length + " photos" : "add photos"}</button>
-            </td>
-            <td>
-              <button type="button" class="cell-btn ${u.note ? "filled" : "gap"}"
-                data-focus="${u.id}:note">${u.note ? (u.note.length > 28 ? u.note.slice(0, 28) + "…" : u.note) : "optional note"}</button>
-            </td>
-            <td><span class="status-pill ${st}">${st}</span></td>
-          </tr>
-        `;
-      }).join("");
-
-      body.querySelectorAll("[data-focus]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const [uid, field] = btn.getAttribute("data-focus").split(":");
-          matrixFocus = { unitId: Number(uid), field };
-          selectedUnitId = Number(uid);
-          renderAll();
+      root.querySelectorAll("[data-next-photos]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const line = get(Number(btn.getAttribute("data-next-photos")));
+          if (!line.photos.length) return;
+          activeId = line.id;
+          line.photosDone = true;
+          if (!line.serial) maybeOcr(line);
+          render();
         });
       });
 
-      const editor = shell.querySelector("[data-matrix-editor]");
-      const fields = shell.querySelector("[data-editor-fields]");
-      const label = shell.querySelector("[data-editor-label]");
-      if (!matrixFocus) {
-        editor.classList.remove("open");
-        return;
-      }
-      const u = getUnit(matrixFocus.unitId);
-      editor.classList.add("open");
-      label.textContent = `U${u.id} · ${matrixFocus.field}`;
-      if (matrixFocus.field === "serial") {
-        fields.innerHTML = `<label class="fld">Serial<input type="text" class="mono" id="mx-input" value="${u.serial || ""}" placeholder="Scan or type" /></label>
-          <button type="button" class="btn primary" id="mx-save" style="justify-self:start">Save serial</button>`;
-        const save = () => setSerial(u.id, document.getElementById("mx-input").value);
-        document.getElementById("mx-save").onclick = save;
-        document.getElementById("mx-input").onkeydown = (e) => { if (e.key === "Enter") save(); };
-        document.getElementById("mx-input").focus();
-      } else if (matrixFocus.field === "photos") {
-        fields.innerHTML = `<div class="photo-cells">${u.photos.map((p) => `<span class="ph has">${p.slice(0, 5)}</span>`).join("")}
-          <button type="button" class="ph add" id="mx-photo">+ Add</button></div>`;
-        document.getElementById("mx-photo").onclick = () => addPhoto(u.id);
-      } else {
-        fields.innerHTML = `<label class="fld">Note<textarea id="mx-note" placeholder="Optional">${u.note || ""}</textarea></label>
-          <button type="button" class="btn primary" id="mx-save" style="justify-self:start">Save note</button>`;
-        document.getElementById("mx-save").onclick = () => setNote(u.id, document.getElementById("mx-note").value);
-      }
-    }
-
-    /* ── Variant C next-gap ── */
-    function currentFloorGap() {
-      const gaps = allGaps();
-      if (!gaps.length) return null;
-      const idx = floorGapSkip % gaps.length;
-      return gaps[idx];
-    }
-
-    function renderFloor() {
-      const shell = document.getElementById("shell-c");
-      fillIdentity(shell);
-
-      const sw = shell.querySelector("[data-unit-switch]");
-      sw.innerHTML = units.map((u) => {
-        const st = unitStatus(u);
-        return `<button type="button" class="${st === "ready" ? "ready" : ""}" aria-current="${u.id === selectedUnitId}" data-pick-unit="${u.id}">U${u.id}</button>`;
-      }).join("");
-      sw.querySelectorAll("[data-pick-unit]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          selectedUnitId = Number(btn.getAttribute("data-pick-unit"));
-          floorGapSkip = 0;
-          const gaps = allGaps();
-          const idx = gaps.findIndex((g) => g.unitId === selectedUnitId);
-          if (idx >= 0) floorGapSkip = idx;
-          renderAll();
+      root.querySelectorAll("[data-set-grade]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const [id, g] = btn.getAttribute("data-set-grade").split(":");
+          const line = get(Number(id));
+          activeId = line.id;
+          line.grade = g;
+          render();
         });
       });
 
-      const gap = currentFloorGap();
-      const prompt = shell.querySelector("[data-gap-prompt]");
-      const sub = shell.querySelector("[data-gap-sub]");
-      const wrap = shell.querySelector("[data-gap-input-wrap]");
-      const input = shell.querySelector("[data-gap-input]");
-      const photos = shell.querySelector("[data-gap-photos]");
+      root.querySelectorAll("[data-save-serial]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const id = Number(btn.getAttribute("data-save-serial"));
+          const input = root.querySelector(`[data-serial="${id}"]`);
+          const v = (input?.value || "").trim();
+          if (!v) { input?.focus(); return; }
+          const line = get(id);
+          activeId = id;
+          line.serial = v;
+          line.serialFromOcr = false;
+          render();
+        });
+      });
 
-      if (!gap) {
-        prompt.textContent = "Line complete";
-        sub.textContent = "All required unit evidence is filled.";
-        wrap.hidden = true;
-        photos.hidden = true;
-      } else {
-        selectedUnitId = gap.unitId;
-        const u = getUnit(gap.unitId);
-        wrap.hidden = gap.field === "photos";
-        photos.hidden = gap.field !== "photos";
-        if (gap.field === "serial") {
-          prompt.textContent = `Serial for unit ${u.id}`;
-          sub.textContent = `Required. ${unitGaps(u).length} open field(s) on this unit.`;
-          input.placeholder = "Scan serial";
-          input.value = u.serial || "";
-          input.focus();
-        } else if (gap.field === "photos") {
-          prompt.textContent = `Photo for unit ${u.id}`;
-          sub.textContent = "At least one photo required per unit (policy in this mock).";
-          photos.innerHTML = u.photos.map((p) => `<span class="ph has">${p.slice(0, 5)}</span>`).join("")
-            + `<button type="button" class="ph add" data-floor-photo>Camera</button>`;
-          photos.querySelector("[data-floor-photo]").onclick = () => addPhoto(u.id);
-        }
-      }
+      root.querySelectorAll("[data-serial]").forEach((input) => {
+        input.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          const id = input.getAttribute("data-serial");
+          root.querySelector(`[data-save-serial="${id}"]`)?.click();
+        });
+        input.addEventListener("focus", () => {
+          activeId = Number(input.getAttribute("data-serial"));
+        });
+      });
 
-      const list = shell.querySelector("[data-checklist]");
-      list.innerHTML = units.map((u) => {
-        const gaps = unitGaps(u);
-        const done = gaps.length === 0;
-        const need = done
-          ? `SN ${last4(u.serial)} · ${u.photos.length} ph${u.note ? " · note" : ""}`
-          : "Need: " + gaps.join(", ");
-        const current = gap && gap.unitId === u.id;
-        return `<div class="item ${done ? "done" : ""}" aria-current="${current}" data-pick-unit="${u.id}" role="button" tabindex="0">
-          <span class="mark" aria-hidden="true"></span>
-          <span class="u">U${u.id}</span>
-          <span class="need">${need}</span>
-          <span class="status-pill ${unitStatus(u)}">${unitStatus(u)}</span>
-        </div>`;
-      }).join("");
-      list.querySelectorAll("[data-pick-unit]").forEach((el) => {
-        el.addEventListener("click", () => {
-          selectedUnitId = Number(el.getAttribute("data-pick-unit"));
-          const gaps = allGaps();
-          const idx = gaps.findIndex((g) => g.unitId === selectedUnitId);
-          floorGapSkip = idx >= 0 ? idx : 0;
-          renderAll();
+      root.querySelectorAll("[data-skip-note]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const line = get(Number(btn.getAttribute("data-skip-note")));
+          activeId = line.id;
+          line.noteSkipped = true;
+          render();
+        });
+      });
+
+      root.querySelectorAll("[data-save-note]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const id = Number(btn.getAttribute("data-save-note"));
+          const input = root.querySelector(`[data-note="${id}"]`);
+          const line = get(id);
+          activeId = id;
+          const v = (input?.value || "").trim();
+          if (v) line.note = v;
+          else line.noteSkipped = true;
+          render();
         });
       });
     }
 
-    function commitFloorGap() {
-      const gap = currentFloorGap();
-      if (!gap) return;
-      if (gap.field === "serial") {
-        const input = document.querySelector("#shell-c [data-gap-input]");
-        setSerial(gap.unitId, input.value);
-      } else if (gap.field === "photos") {
-        addPhoto(gap.unitId);
-      }
-      floorGapSkip = 0;
-    }
-
-    function renderAll() {
-      renderLedger();
-      renderMatrix();
-      renderFloor();
-    }
-
-    /* Shell tabs */
-    document.querySelectorAll("[data-shell-tabs]").forEach((tabs) => {
-      const shell = tabs.closest(".shell");
-      tabs.querySelectorAll("button").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-pane");
-          tabs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", b === btn ? "true" : "false"));
-          shell.querySelectorAll(".pane").forEach((p) => { p.hidden = p.id !== id; });
-        });
-      });
+    document.getElementById("reset").addEventListener("click", () => {
+      lines = seed();
+      activeId = 1;
+      render();
     });
 
-    /* Variant nav */
-    document.querySelectorAll(".variant-nav [role='tab']").forEach((t) => {
-      t.addEventListener("click", () => {
-        document.querySelectorAll(".variant-nav [role='tab']").forEach((x) => {
-          x.setAttribute("aria-selected", x === t ? "true" : "false");
-        });
-        document.querySelectorAll(".variant-panel").forEach((p) => {
-          p.hidden = p.getAttribute("aria-labelledby") !== t.id;
-        });
-      });
-    });
-
-    /* Dock actions */
-    document.querySelectorAll("[data-action='next-gap']").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const gap = nextGapUnit();
-        if (!gap) return;
-        selectedUnitId = gap.id;
-        matrixFocus = { unitId: gap.id, field: unitGaps(gap)[0] };
-        const gaps = allGaps();
-        floorGapSkip = gaps.findIndex((g) => g.unitId === gap.id && g.field === matrixFocus.field);
-        if (floorGapSkip < 0) floorGapSkip = 0;
-        renderAll();
-      });
-    });
-    document.querySelectorAll("[data-action='prev-unit']").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const idx = units.findIndex((u) => u.id === selectedUnitId);
-        selectedUnitId = units[Math.max(0, idx - 1)].id;
-        renderAll();
-      });
-    });
-    document.querySelectorAll("[data-action='commit-gap']").forEach((btn) => {
-      btn.addEventListener("click", commitFloorGap);
-    });
-    document.querySelectorAll("[data-action='skip-gap']").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        floorGapSkip += 1;
-        renderAll();
-      });
-    });
-    document.querySelector("#shell-c [data-gap-input]")?.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") { e.preventDefault(); commitFloorGap(); }
-    });
-
-    renderAll();
+    render();
   </script>
 </body>
 </html>

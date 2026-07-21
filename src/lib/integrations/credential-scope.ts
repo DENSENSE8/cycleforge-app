@@ -9,7 +9,8 @@
  *      (fail fast with a clear error instead of deep in the HTTP layer);
  *   3. records credential usage to the audit ledger (throttled for the common
  *      'allowed' case; denials/errors always recorded) + touches last_used_at;
- *   4. runs the work, and on failure flags the integration in error.
+ *   4. runs the work; on *auth* failure (token mint / revoked refresh) flags
+ *      the vault row as error — resource misses (e.g. missing PO) do not.
  *
  * This pairs with the ROUTE-layer permission (withAuth({permission})): the route
  * checks the human/staff may invoke the feature; this checks the credential may
@@ -24,6 +25,7 @@ import {
   type IntegrationProvider,
 } from './credentials';
 import { isOperationAllowed, type CredentialOperation } from './credential-allowlist';
+import { isCredentialAuthFailure } from './credential-auth-failure';
 
 /** Operation not permitted for this credential type. Map to HTTP 403. */
 export class CredentialPermissionError extends Error {
@@ -107,13 +109,15 @@ export async function withCredentialScope<T>(
   void recordCredentialUsage({ orgId, provider, scope, operation, outcome: 'allowed' });
   void touchIntegrationLastUsed(orgId, provider, scope);
 
-  // 4. Run; flag the integration on failure.
+  // 4. Run; flag the vault only on auth failures (resource misses stay active).
   try {
     return await fn(credential);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     void recordCredentialUsage({ orgId, provider, scope, operation, outcome: 'error', detail: message });
-    void markIntegrationError(orgId, provider, message, scope).catch(() => {});
+    if (isCredentialAuthFailure(err)) {
+      void markIntegrationError(orgId, provider, message, scope).catch(() => {});
+    }
     throw err;
   }
 }

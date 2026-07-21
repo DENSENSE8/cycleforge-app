@@ -152,10 +152,15 @@ export function ReceivingFeedRail({
   // batch-serial hydrator. It only fires for rows still lacking serials, so once
   // Tier B2's projection is populated every row arrives with serials and this is
   // a pure no-op.
+  //
+  // IMPORTANT: reuse the same row-shaped queryFn as the shell. A placeholder
+  // `async () => []` on this shared queryKey can overwrite the real fetcher in
+  // TanStack Query and leave the Unboxed dock stuck on a sparse identity stub
+  // after never-self-blank swallows the empty refetch.
   const queryClient = useQueryClient();
   const railRows = useQuery<ReceivingLineRow[]>({
     queryKey,
-    queryFn: async () => [],
+    queryFn: async () => (await fetchFn()).receiving_lines ?? [],
     enabled: false,
     notifyOnChangeProps: ['data'],
   }).data;

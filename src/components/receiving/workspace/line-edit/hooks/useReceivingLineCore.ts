@@ -17,7 +17,11 @@ import {
   dispatchLineUpdated,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
-import { upsertReceivingRailRows } from '@/lib/queries/receiving-queries';
+import {
+  patchUnboxRailQtyByCarton,
+  patchUnboxRailTitleByCarton,
+  upsertReceivingRailRows,
+} from '@/lib/queries/receiving-queries';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   readReceivingLineDetailsScratch,
@@ -58,11 +62,59 @@ export function useReceivingLineCore(
   const dispatchLine = opts.dispatchLine ?? dispatchLineUpdated;
   const queryClient = useQueryClient();
 
-  /** Keep the Unboxed rail row by carton id — tracking is metadata, never a membership remove. */
+  /**
+   * Keep the Unboxed dock in sync without inventing membership.
+   * Title/qty go through allowlisted carton patches (Unbox ignores the shared
+   * line-update bus). Identity keep-alive merges onto an existing carton only —
+   * never strips a rich PATCH response down to `{id,receiving_id}` and prepends
+   * a `Line #N` stub onto an empty rail (Incoming leak into Unbox).
+   */
   const upsertUnboxRailRow = useCallback(
     (line: Partial<ReceivingLineRow> & { id: number }) => {
       const receivingId = line.receiving_id ?? row.receiving_id ?? null;
       if (receivingId == null || !Number.isFinite(receivingId)) return;
+      const hasTitle =
+        'item_name' in line
+        || 'sku' in line
+        || 'catalog_product_title' in line
+        || 'zoho_item_title' in line
+        || 'zoho_purchaseorder_number' in line;
+      const hasQty =
+        'quantity_received' in line
+        || 'quantity_expected' in line
+        || 'workflow_status' in line;
+      if (hasTitle) {
+        const titlePatch: {
+          item_name?: string | null;
+          catalog_product_title?: string | null;
+          zoho_item_title?: string | null;
+          sku?: string | null;
+          zoho_purchaseorder_number?: string | null;
+        } = {};
+        if ('item_name' in line) titlePatch.item_name = line.item_name;
+        if ('catalog_product_title' in line) titlePatch.catalog_product_title = line.catalog_product_title;
+        if ('zoho_item_title' in line) titlePatch.zoho_item_title = line.zoho_item_title;
+        if ('sku' in line) titlePatch.sku = line.sku;
+        if ('zoho_purchaseorder_number' in line) {
+          titlePatch.zoho_purchaseorder_number = line.zoho_purchaseorder_number;
+        }
+        patchUnboxRailTitleByCarton(queryClient, receivingId, titlePatch);
+      }
+      if (hasQty) {
+        const qtyPatch: {
+          quantity_received?: number;
+          quantity_expected?: number | null;
+          workflow_status?: string | null;
+        } = {};
+        if ('quantity_received' in line && line.quantity_received != null) {
+          qtyPatch.quantity_received = line.quantity_received;
+        }
+        if ('quantity_expected' in line) qtyPatch.quantity_expected = line.quantity_expected;
+        if ('workflow_status' in line) qtyPatch.workflow_status = line.workflow_status;
+        patchUnboxRailQtyByCarton(queryClient, receivingId, qtyPatch);
+      }
+      // Refresh carton reconcile id only — mergeRailRows skips identity-only
+      // prepend when the carton is not already on the Unboxed dock.
       upsertReceivingRailRows(queryClient, [
         {
           id: line.id,

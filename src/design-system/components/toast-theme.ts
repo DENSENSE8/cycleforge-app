@@ -12,19 +12,23 @@ export const TOAST_DURATION = {
   warning: 4500,
   /** Sticky enough to read; close affordance on. */
   error: 6000,
-  loading: Number.POSITIVE_INFINITY,
+  /**
+   * Loading is finite so a missed realtime settle (e.g. inventory sync) cannot
+   * spin forever. Call sites that need longer should pass an explicit duration.
+   */
+  loading: 45_000,
 } as const;
 
 export type ToastKind = keyof typeof TOAST_DURATION;
 
 export const TOAST_CLASSNAMES = {
   toast:
-    'group pointer-events-auto relative flex w-[min(22rem,calc(100vw-1.5rem))] items-start gap-2.5 rounded-lg border border-border-soft bg-surface-card px-3.5 py-2.5 text-text-default shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.04)]',
-  title: 'text-role-caption font-semibold leading-snug text-current',
+    'group pointer-events-auto relative flex w-auto max-w-[min(22rem,calc(100vw-1.5rem))] items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-text-default shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.04)]',
+  title: 'text-role-caption font-semibold leading-none text-current',
   description: 'mt-0.5 text-role-micro font-medium leading-snug text-current/70',
-  content: 'min-w-0 flex-1',
-  icon: 'mt-0.5 shrink-0 text-current opacity-90',
-  loader: 'mt-0.5 shrink-0 text-text-info',
+  content: 'min-w-0 flex items-center',
+  icon: 'shrink-0 text-current opacity-90 [&>svg]:block',
+  loader: 'shrink-0 text-text-info [&>svg]:block',
   closeButton:
     'absolute right-1.5 top-1.5 rounded-md p-0.5 text-current/45 transition-colors hover:bg-black/5 hover:text-current',
   actionButton:

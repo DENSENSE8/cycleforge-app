@@ -153,6 +153,15 @@ export function classifyReceiveResponse(r: ReceiveResponsePanelProps['response']
       detail: 'There are no receiving_lines rows for this package yet.',
     };
   }
+  if (zoho.skip_reason === 'inventory_not_connected') {
+    return {
+      verdict: 'skipped',
+      headline: 'Inventory NOT updated — reconnect Zoho',
+      tone: 'amber',
+      detail:
+        'Lines were saved locally but no active inventory connection is available. Open Settings → Integrations, reconnect Zoho, then retry Receive on the PO.',
+    };
+  }
   if (zoho.skip_reason === 'no_zoho_link') {
     return {
       verdict: 'skipped',

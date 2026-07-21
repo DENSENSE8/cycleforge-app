@@ -538,58 +538,69 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   box-shadow: 8px 0 8px -8px rgba(15, 23, 42, 0.22);
 }
 
-/* ── Airtable grid skin — the Pending → Grid view (LedgerGrid) ONLY ──
-   Opt-in via `data-grid-skin="airtable"` on the scroll surface; the vertical
-   shelf-board never sets it, so its faint-hairline look is untouched. Turns the
-   flat grid view into a closed white spreadsheet: white cells, a strong themeable
-   gridline on every cell (verticals + horizontals + outer frame) and an opaque
-   white header. Backgrounds / zebra / selection stay React-owned (OrdersGridView
-   + OrdersQueueTableRow) so the selected-row highlight survives. */
+/* ── Pending Grid view skin (LedgerGrid) — light connected spreadsheet ──
+   Industry pattern (Linear/Notion/Airtable calm): ONE visible line color,
+   continuous vertical + horizontal rules that meet at every cell corner, soft
+   rounded outer shell. Opt-in via `data-grid-skin="airtable"` — board never sets it.
+   Never border-strong (the black cage). Body fill / selection stay React-owned. */
 [data-grid-skin='airtable'] {
-  /* The single gridline-weight knob. border-strong is the darkest themeable
-     neutral — ≈ gray-900 on light ("black"), slate-300 on dark (stays visible),
-     so the grid reads the same in every theme with no page-local hex. */
-  --cf-grid-line: var(--ds-color-border-strong);
+  /* Visible connected grid: hairline-on-white was invisible. Use default gray +
+     anchor (2px) stroke so junctions read as continuous, not faded gaps. */
+  --cf-grid-line: var(--ds-color-border-default);
+  --cf-grid-line-w: var(--ds-border-width-anchor);
+  border: var(--ds-border-width-thin) solid var(--ds-color-border-subtle);
+  border-radius: var(--ds-radius-lg);
+  background-color: var(--ds-color-background-surface);
 }
 
-/* Every header + body + group-summary cell draws right & bottom rules → the full
-   internal grid. The first cell adds the left frame; header cells add the top
-   frame — all at the content inset, so the grid closes as one clean rectangle. */
+/* Internal grid only (RIGHT + BOTTOM). Shared CSS template keeps header ↔ body
+   verticals locked end-to-end. Outer frame = the rounded shell above — no
+   first-cell left / header top, so edges never double. */
 [data-grid-skin='airtable'] [role='row'] > *,
 [data-grid-skin='airtable'] [data-order-row-id] > *,
 [data-grid-skin='airtable'] [data-grid-summary-row] > * {
-  border-right: 1px solid var(--cf-grid-line);
-  border-bottom: 1px solid var(--cf-grid-line);
-}
-[data-grid-skin='airtable'] [role='row'] > *:first-child,
-[data-grid-skin='airtable'] [data-order-row-id] > *:first-child,
-[data-grid-skin='airtable'] [data-grid-summary-row] > *:first-child {
-  border-left: 1px solid var(--cf-grid-line);
-}
-[data-grid-skin='airtable'] [role='row'] > * {
-  border-top: 1px solid var(--cf-grid-line);
+  border-right: var(--cf-grid-line-w) solid var(--cf-grid-line);
+  border-bottom: var(--cf-grid-line-w) solid var(--cf-grid-line);
+  border-left-width: 0;
+  border-top-width: 0;
 }
 
-/* The row / header / summary CONTAINERS each carry their own full-width bottom
-   hairline for the board; in the skin the per-cell rule IS the gridline, so drop
-   the container line to avoid a doubled, edge-overhanging seam. */
+/* Trailing column: shell is the right edge — drop the last vertical. */
+[data-grid-skin='airtable'] [role='row'] > *:last-child,
+[data-grid-skin='airtable'] [data-order-row-id] > *:last-child,
+[data-grid-skin='airtable'] [data-grid-summary-row] > *:last-child {
+  border-right-width: 0;
+}
+
+/* Drop React container hairlines so cell rules are the only seams (no doubles). */
 [data-grid-skin='airtable'] [role='row'],
 [data-grid-skin='airtable'] [data-order-row-id],
 [data-grid-skin='airtable'] [data-grid-summary-row] {
   border-bottom-width: 0;
 }
 
-/* Opaque white header (drop the /95 canvas tint + blur so nothing shows through
-   on vertical scroll). Body-row backgrounds stay React-owned, so this never
-   fights the selected-row highlight. */
+/* Opaque white header (drop the /95 canvas tint + blur). */
 [data-grid-skin='airtable'] [role='row'] {
   background-color: var(--ds-color-background-surface);
   backdrop-filter: none;
 }
 
-/* Day bands sit on opaque white with one clean gridline seam (a band spans every
-   column, so it takes no vertical rules). */
+/* Day bands: opaque white, ZERO vertical padding so the bottom rule meets the
+   row grid below with no gap. Sticky dock is owned by VirtualGroupedSections
+   (top: var(--cf-grid-header-h)). */
 [data-grid-skin='airtable'] [data-date] {
   background-color: var(--ds-color-background-surface);
-  border-bottom: 1px solid var(--cf-grid-line);
+  backdrop-filter: none;
+  padding-top: 0;
+  padding-bottom: 0;
+  min-height: 1.5rem;
+  border-bottom: var(--cf-grid-line-w) solid var(--cf-grid-line);
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+/* Active sticky day — opaque chrome under the column header. */
+[data-grid-skin='airtable'] [data-sticky-day='true'] {
+  background-color: var(--ds-color-background-surface);
 }

@@ -340,7 +340,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       >
         <span
           className={cn(
-            'inline-flex rounded-md bg-surface-sunken px-1.5 py-0.5 font-mono tabular-nums normal-case tracking-normal ring-1 ring-inset ring-border-soft',
+            'font-mono tabular-nums normal-case tracking-normal',
             getDaysLateTone(daysLate),
             densityClasses.metaText,
           )}
@@ -367,9 +367,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     );
 
   // Select cell — checkbox only. The drag grip lives solely in the sticky header
-  // (select-all context); per-row grips clutter the vertical scan line. In the
-  // grid skin the checkbox is a hover-reveal affordance (visible on row hover /
-  // when checked) that toggles selection without opening the record.
+  // (select-all context). Grid skin + selectMode both show the checkbox always
+  // (no hover-reveal) so the select bubble is discoverable without hunting.
   const leadControls = (
     <div
       className={cn(
@@ -380,36 +379,38 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       style={{ left: ordersQueueFrozenLeft('select') }}
       onClick={(e) => (selectMode || gridSkin) && e.stopPropagation()}
     >
-      {selectMode ? (
-        <span
-          className={cn(
-            'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
-            isChecked
-              ? 'border-accent-bg bg-accent-bg text-text-inverse'
-              : 'border-border-default bg-surface-card',
-          )}
-        >
-          {isChecked ? <Check className="h-3 w-3" /> : null}
-        </span>
-      ) : gridSkin ? (
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={isChecked}
-          aria-label={isChecked ? 'Deselect row' : 'Select row'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect?.(record, { shiftKey: e.shiftKey });
-          }}
-          className={cn(
-            'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-opacity',
-            isChecked
-              ? 'border-accent-bg bg-accent-bg text-text-inverse opacity-100'
-              : 'border-border-default bg-surface-card opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100',
-          )}
-        >
-          {isChecked ? <Check className="h-3 w-3" /> : null}
-        </button>
+      {gridSkin || selectMode ? (
+        gridSkin ? (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isChecked}
+            aria-label={isChecked ? 'Deselect row' : 'Select row'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect?.(record, { shiftKey: e.shiftKey });
+            }}
+            className={cn(
+              'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+              isChecked
+                ? 'border-accent-bg bg-accent-bg text-text-inverse'
+                : 'border-border-default bg-surface-card',
+            )}
+          >
+            {isChecked ? <Check className="h-3 w-3" /> : null}
+          </button>
+        ) : (
+          <span
+            className={cn(
+              'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+              isChecked
+                ? 'border-accent-bg bg-accent-bg text-text-inverse'
+                : 'border-border-default bg-surface-card',
+            )}
+          >
+            {isChecked ? <Check className="h-3 w-3" /> : null}
+          </span>
+        )
       ) : (
         <span className="h-4 w-4 shrink-0" aria-hidden />
       )}
@@ -518,7 +519,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         QUEUE_ROW.px,
         isStagedRow
           ? 'py-2.5 hover:bg-blue-50/50'
-          : cn('hover:bg-surface-hover', densityClasses.rowPadding),
+          : cn(
+              'hover:bg-surface-hover',
+              // Spreadsheet skin: denser than comfortable — horizontal rules sit
+              // closer so the grid reads as connected cells, not padded pillows.
+              gridSkin ? 'py-1' : densityClasses.rowPadding,
+            ),
         isStagedRow
           ? (selectMode ? isChecked : isSelected)
             ? 'bg-blue-50/80'

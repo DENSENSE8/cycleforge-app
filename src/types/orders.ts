@@ -74,6 +74,8 @@ export interface ShippedOrder {
   tester_name?: string | null;
   /** `packer_logs.id` for DELETE; from packerlogs API join. */
   packer_log_id?: number | null;
+  /** Latest `pack_verification_events.outcome` for this packer_log (Review hydrate). */
+  verification_outcome?: string | null;
   /** `station_activity_logs.id` when delete has no packer_logs row (e.g. some FBA scans). */
   station_activity_log_id?: number | null;
   /** FK to customers — linked buyer (e.g. Amazon MFN shipping contact). */

@@ -162,8 +162,8 @@ export function ActiveLineConditionSerial({
           resultSlot={matchResult}
           condition={cond}
           onConditionChange={onConditionChange}
-          // Collapsed picker shows selected grade pill + edit pencil (copy-chip
-          // pattern). Meta-row ConditionGradeChip remains the scan-alignment readout.
+          // Collapsed picker: filled circle (grade hue) + white Tags icon.
+          // Meta-row ConditionGradeChip stays the labeled readout.
           collapsedConditionLabel={true}
           onAdd={(sn) => onSubmitSerial(sn, cond)}
           noSerialActive={serialAbsent}

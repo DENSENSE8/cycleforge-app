@@ -67,13 +67,15 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: '2rem' },
   { key: 'status', width: '1.25rem' },
   { key: 'title', width: 'minmax(14rem, 1.6fr)', label: 'Product', type: 'text' },
-  { key: 'qty', width: '2.5rem', label: 'Qty', type: 'number', hideKey: 'qty' },
-  { key: 'condition', width: '3.5rem', label: 'Cond', type: 'tag', hideKey: 'condition' },
-  { key: 'age', width: '3.25rem', label: 'Age', type: 'date' },
+  // Fact columns sized to fit FULL labels (Qty / Cond / Age / Platform / Order /
+  // Tracking) without ellipsis — industry default: never truncate the header.
+  { key: 'qty', width: '3.25rem', label: 'Qty', type: 'number', hideKey: 'qty' },
+  { key: 'condition', width: '4.5rem', label: 'Cond', type: 'tag', hideKey: 'condition' },
+  { key: 'age', width: '3.5rem', label: 'Age', type: 'date' },
   { key: 'notes', width: 'minmax(6rem, 0.7fr)', label: 'Notes', type: 'longtext' },
-  { key: 'platform', width: '5.5rem', label: 'Platform', type: 'tag', hideKey: 'platform' },
-  { key: 'order', width: '4rem', label: 'Order', type: 'id', hideKey: 'orderid' },
-  { key: 'tracking', width: '4rem', label: 'Tracking', type: 'id', hideKey: 'tracking' },
+  { key: 'platform', width: '6.75rem', label: 'Platform', type: 'external', hideKey: 'platform' },
+  { key: 'order', width: '4.5rem', label: 'Order', type: 'id', hideKey: 'orderid' },
+  { key: 'tracking', width: '5.75rem', label: 'Tracking', type: 'location', hideKey: 'tracking' },
 ] as const;
 
 /** CSS custom property that overrides a column's track width (px), keyed by the

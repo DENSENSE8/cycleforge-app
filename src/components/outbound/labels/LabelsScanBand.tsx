@@ -9,7 +9,7 @@
 
 import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
-import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
+import { ScanBandShell } from '@/components/station/scan-bar';
 import { Barcode } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStationTheme } from '@/hooks/useStationTheme';

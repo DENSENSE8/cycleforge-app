@@ -8,7 +8,7 @@
  */
 
 import { ThemedStationScanBar } from '@/components/station/scan-bar';
-import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
+import { ScanBandShell } from '@/components/station/scan-bar';
 import { Button } from '@/design-system/primitives';
 import { Barcode, Check, AlertTriangle } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';

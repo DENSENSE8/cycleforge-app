@@ -37,7 +37,9 @@ export function AppToaster() {
         error: <AlertCircle className={iconClass} />,
         warning: <AlertTriangle className={iconClass} />,
         info: <Info className={iconClass} />,
-        loading: <Loader2 className={`${iconClass} animate-spin`} />,
+        // Solid stroke spinner — avoid Sonner's default dashed radial loader
+        // (uneven vs caption text). Keep size matched to sibling icons.
+        loading: <Loader2 className={`${iconClass} animate-spin text-text-info`} />,
         close: <X className="h-3.5 w-3.5" />,
       }}
       toastOptions={{

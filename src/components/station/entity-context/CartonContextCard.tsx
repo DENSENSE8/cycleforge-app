@@ -20,14 +20,21 @@ import {
   RECEIVING_SCAN_RULE_LINE_CLASS,
   TRACKING_ADD_BTN_CLASS,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { WorkspaceFieldLabel } from '../WorkspaceSectionLabel';
-import { ReceivingPhotoButton } from './ReceivingPhotoButton';
-import { IdentityLinkChip } from './IdentityLinkChip';
-import { ReceivingTicketChip } from './ReceivingTicketChip';
-import { SellerMessageChip } from './SellerMessageChip';
+import { WorkspaceFieldLabel } from '@/components/receiving/workspace/WorkspaceSectionLabel';
+import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
+import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
+import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
+import { SellerMessageChip } from '@/components/receiving/workspace/line-edit/SellerMessageChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
-import { InlinePillPicker, INLINE_PILL_LEADING, type InlinePillOption } from './InlinePillPicker';
-import { receivingPriorityRank, receivingPriorityTone } from './receiving-priority';
+import {
+  InlinePillPicker,
+  INLINE_PILL_LEADING,
+  type InlinePillOption,
+} from '@/components/receiving/workspace/line-edit/InlinePillPicker';
+import {
+  receivingPriorityRank,
+  receivingPriorityTone,
+} from '@/components/receiving/workspace/line-edit/receiving-priority';
 import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
 import {

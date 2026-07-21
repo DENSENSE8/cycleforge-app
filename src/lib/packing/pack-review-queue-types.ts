@@ -5,7 +5,16 @@
  * database into the client bundle.
  */
 
-const PACK_REVIEW_BUCKETS = ['needs_review', 'exceptions', 'flagged', 'approved'] as const;
+const PACK_REVIEW_BUCKETS = [
+  'needs_review',
+  'exceptions',
+  'flagged',
+  'approved',
+  /** Decided / exception history for packers (table History tab). */
+  'history',
+  /** All latest outcomes (any) — used to hydrate Packed/Shipped outcome chips. */
+  'latest',
+] as const;
 export type PackReviewBucket = (typeof PACK_REVIEW_BUCKETS)[number];
 
 export function isPackReviewBucket(v: unknown): v is PackReviewBucket {

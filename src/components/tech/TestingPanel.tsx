@@ -24,9 +24,9 @@ import { SupportContextHub } from '@/components/support/context';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { resolveTestingTerminal } from './testing-panel/terminal/testing-terminal';
 import type { TestingView } from './testing-panel/terminal/types';
-import { LineEditToolbar } from '@/components/receiving/workspace/line-edit/LineEditToolbar';
 import {
   StationContextBar,
+  StationHeaderToolbar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import { LabelEditPopover, type LabelEditDraft } from '@/components/receiving/workspace/line-edit/LabelEditPopover';
@@ -352,7 +352,7 @@ export function TestingPanel({
           identity={<TestingCartonHeader c={c} row={row} staffId={staffId} />}
           moreDetails={
             <StationMoreDetails>
-              <LineEditToolbar
+              <StationHeaderToolbar
                 mode="testing"
                 embedded
                 receivingId={row.receiving_id ?? null}

@@ -28,7 +28,17 @@ export type TableColumnGroup = 'meta' | 'chip';
  * style). Resolved to an icon in ONE place (`column-type-glyph.tsx`); views never
  * inline per-column icon choices.
  */
-export type ColumnType = 'text' | 'number' | 'id' | 'tag' | 'longtext' | 'date';
+export type ColumnType =
+  | 'text'
+  | 'number'
+  | 'id'
+  | 'tag'
+  | 'longtext'
+  | 'date'
+  /** External / marketplace link (platform). */
+  | 'external'
+  /** Geo / tracking destination (map pin). */
+  | 'location';
 
 export interface TableColumnSpec {
   /** Must equal the ChipColumn.key or RowMetaColumns slot key it controls. */

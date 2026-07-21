@@ -174,6 +174,7 @@ export function VirtualGroupedSections<T>({
             // in a shared ancestor scroll region, subtract `scrollMargin` to lay out
             // within this list's own wrapper (start is measured from the region top).
             className={`left-0 top-0 w-full ${pinned ? 'z-20' : header ? 'z-10' : 'z-0'}`}
+            data-sticky-day={pinned ? 'true' : undefined}
             style={
               pinned
                 ? { position: 'sticky', top: stickyHeaderTop }

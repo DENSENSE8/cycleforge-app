@@ -22,6 +22,7 @@ import { SupportChatThread } from './SupportChatThread';
 import { SupportChatComposer } from './SupportChatComposer';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
+import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
 
 /** Image attachment urls on a single Zendesk comment (full-res `content_url`). */
@@ -105,6 +106,9 @@ export function SupportTicketDetail({
   const { data: contextBundle } = useSupportContext(contextAnchor, showContext);
   const [contextOpen, setContextOpen] = useState(false);
   const contextBadge = contextBadgeFromBundle(contextBundle);
+  const linkedOrderPk = contextBundle?.linkage.order?.id ?? null;
+  const ordersHref =
+    linkedOrderPk != null && linkedOrderPk > 0 ? supportOrdersHref(linkedOrderPk) : null;
 
   const photoUrls = useMemo(() => {
     const urls: string[] = [];
@@ -183,6 +187,7 @@ export function SupportTicketDetail({
         onOpenContext={showContext ? () => setContextOpen(true) : undefined}
         contextOpen={contextOpen}
         contextBadge={showContext ? contextBadge : null}
+        ordersHref={ordersHref}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <SupportChatThread

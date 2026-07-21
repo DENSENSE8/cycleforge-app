@@ -9,12 +9,15 @@
  *    sticky identity bookmark + corner utilities flush under GlobalHeader
  *    (`density="bar"`). Mount **above** StationWorkbench; do not put identity in
  *    the workbench `entityContext` / `toolbar` slots for Unbox-family stations.
+ * 3. **Header utilities** — {@link StationHeaderToolbar} + workspace mode registry:
+ *    refresh · more · info / prev-next driven by the mode registry.
  *
  * ```ts
  * import {
  *   CartonContextCard,
  *   StationContextBar,
  *   StationMoreDetails,
+ *   StationHeaderToolbar,
  * } from '@/components/station/entity-context';
  * ```
  *
@@ -23,13 +26,18 @@
  *   - Testing → `TestingCartonHeader`
  *   - Shipping (active order) → `ShippingEntityContextHeader`
  *   - Packing (active order) → `PackOrderIdentity`
+ *   - Review · Packing → `ReviewOrderIdentity` (`src/features/review/packer/`)
  *   - Local pickup → `PickupEntityContextHeader`
  *
- * Card implementation stays under `receiving/workspace/line-edit/` (claim, photos,
- * classify, receiving catalogs). This barrel is the public waist so stations
- * import a station path, not a receiving-private deep path.
+ * Card implementation lives here. Pill class tokens stay in
+ * `station-context-action-pill.ts` (import that module directly when needed).
  */
 
-export { CartonContextCard } from '@/components/receiving/workspace/line-edit/CartonContextCard';
+export { CartonContextCard } from './CartonContextCard';
 export { StationContextBar } from './StationContextBar';
 export { StationMoreDetails } from './StationMoreDetails';
+export { StationHeaderToolbar } from './StationHeaderToolbar';
+export {
+  WORKSPACE_MODES,
+  type WorkspaceMode,
+} from './workspace-mode-registry';

@@ -3,6 +3,7 @@
  * ShippedActiveSection so search chrome can evolve without the slide-over.
  */
 export type SearchOrderSection =
+  | 'overview'
   | 'shipping'
   | 'product'
   | 'documents'
@@ -15,6 +16,7 @@ export const SEARCH_ORDER_SECTION_TABS: ReadonlyArray<{
   value: SearchOrderSection;
   label: string;
 }> = [
+  { value: 'overview', label: 'Overview' },
   { value: 'shipping', label: 'Shipping' },
   { value: 'product', label: 'Product' },
   { value: 'documents', label: 'Documents' },

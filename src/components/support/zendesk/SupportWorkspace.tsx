@@ -16,6 +16,7 @@ import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
 import { VoicemailDetail } from '@/components/support/voice/VoicemailDetail';
 import { CallLogView } from '@/components/support/voice/CallLogView';
 import { IssuesWorkspace } from '@/components/support/issues/IssuesWorkspace';
+import { SupportOrdersWorkspace } from '@/components/support/orders/SupportOrdersWorkspace';
 import { SupportTicketDetail } from './chat/SupportTicketDetail';
 import { SupportTicketQueue } from './queue/SupportTicketQueue';
 
@@ -33,13 +34,15 @@ const WarrantyWorkspace = dynamic(
  * reacts to the same `?mode=` URL param:
  *
  * - tickets   → selected Zendesk conversation (`?ticket=`).
+ * - orders    → Dashboard To Ship board (`UnshippedTable` / OrdersQueueTable) +
+ *   Station order focus when `?openOrderId=` is set.
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
  * - calls     → the org call-log Monitor stream (read-only).
  * - warranty  → Warranty Logger (coverage + claims table + claim detail).
  * - issues    → Reported-Issues console (KPI strip + fact stack, `?issueId=`).
  *
  * Below md the contextual sidebar isn't shown, so the mode's list falls back to
- * rendering here (full-screen list ⇄ detail swap) for tickets/voicemail/issues.
+ * rendering here (full-screen list ⇄ detail swap) for tickets/voicemail/issues/orders.
  */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
@@ -50,18 +53,19 @@ export function SupportWorkspace() {
   const vmId = Number(searchParams.get('vm')) || null;
 
   const canTickets = !isLoaded || has('integrations.zendesk');
+  const canOrders = !isLoaded || has('orders.view');
   const canWarranty = !isLoaded || has('warranty.view');
   const canIssues = !isLoaded || has('support.issues.view');
 
   const paneMotion = useMotionPresence(framerPresence.workbenchPane);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
 
-  if (isLoaded && !canTickets && !canWarranty && !canIssues) {
+  if (isLoaded && !canTickets && !canWarranty && !canIssues && !canOrders) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to Support"
-          description="You need Zendesk ticket access, warranty, or reported-issues permissions to use the support console."
+          description="You need Zendesk ticket access, orders, warranty, or reported-issues permissions to use the support console."
         />
       </div>
     );
@@ -73,6 +77,25 @@ export function SupportWorkspace() {
     const qs = sp.toString();
     router.push(qs ? `/support?${qs}` : '/support');
   };
+
+  // ── Orders — Dashboard To Ship board + Station order focus ─────────────────
+  if (mode === 'orders') {
+    if (isLoaded && !canOrders) {
+      return (
+        <div className="flex h-full items-center justify-center p-6">
+          <EmptyState
+            title="No access to Orders"
+            description="You need the “View orders” permission."
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-full min-h-0 w-full bg-surface-canvas">
+        <SupportOrdersWorkspace />
+      </div>
+    );
+  }
 
   // ── Issues — Workbench + Monitor KPI rollup ────────────────────────────────
   if (mode === 'issues') {

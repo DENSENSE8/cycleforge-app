@@ -193,8 +193,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
   { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', requires: 'packing.view' },
   // Packer Review Station — desktop Workbench for approving/flagging packed
-  // orders (WS-REVIEW). Gated on `packing.review` at birth; when tech/receiving/
-  // shipping review modes land, widen this to any-of (see SIDEBAR_PAGE_NAV note).
+  // orders + serial/SKU pairing (WS-REVIEW). Gated on `packing.review` at birth;
+  // when tech/receiving/shipping review modes land, widen this to any-of
+  // (see SIDEBAR_PAGE_NAV note).
   { id: 'review',            label: 'Review',      href: '/review',             icon: ClipboardList,                kind: 'station', requires: 'packing.review' },
   // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
@@ -480,6 +481,29 @@ const WALK_IN = '/walk-in';
 const ADMIN = '/admin';
 const SHIPPING = '/shipping';
 const SUPPORT = '/support';
+/** Cleared on every Support L2 mode switch (mirrors SUPPORT_MODE_SCOPED_PARAMS). */
+const SUPPORT_MODE_CLEAR_PARAMS = {
+  ticket: null,
+  vm: null,
+  q: null,
+  status: null,
+  assignee: null,
+  direction: null,
+  range: null,
+  search: null,
+  open: null,
+  wstatus: null,
+  wexp: null,
+  issueId: null,
+  type: null,
+  reporter: null,
+  openOrderId: null,
+  ustatus: null,
+  attention: null,
+  stage: null,
+  staff: null,
+  view: null,
+} as const;
 // Packing graduated to its own first-class surface route (`/pack`,
 // operator-surfaces refactor Phase 7); its modes navigate there. Legacy
 // `/packer` still resolves (proxy redirect + shared page).
@@ -658,16 +682,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Review (Packer Review Station) ─────────────────────────────────────────
-  // The `?mode=` axis = WHICH station's work you're reviewing. `packer` is the
-  // sole mode at birth (param cleared); tech / receiving / shipping review land
-  // here as new pills on the SAME page — never new routes. When a 2nd mode ships,
-  // widen the APP_SIDEBAR_NAV `requires` gate to any-of (packing.review OR …).
+  // The `?mode=` axis = WHICH station's work you're reviewing. Packing (photo/
+  // item decide) is the default (param cleared); Pairing allocates serial/SKU to
+  // outbound lines. Tech / receiving / shipping review land later as pills on the
+  // SAME page — never new routes. When a non-packing review mode ships, widen the
+  // APP_SIDEBAR_NAV `requires` gate to any-of (packing.review OR …).
   {
     id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', requires: 'packing.review',
     modes: [
-      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null } }) },
+      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null, rtab: null, packerLogId: null, orderId: null } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2, to: () => ({ pathname: REVIEW, params: { mode: 'pairing', rtab: null, packerLogId: null, orderId: null } }) },
     ],
-    resolveMode: () => 'packer',
+    resolveMode: ({ params }) => (params.get('mode') === 'pairing' ? 'pairing' : 'packer'),
   },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.
@@ -763,10 +789,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     resolveMode: ({ params }) => parseWalkInHistoryMode(params.get('mode') ?? params.get('category')),
   },
   // ── Support ───────────────────────────────────────────────────────────────
-  // `?mode=voicemail|calls|warranty|issues`; bare /support = the Zendesk Tickets
-  // console (default, param cleared) for deep-link back-compat. Voicemail is a
-  // Workbench, Calls is a Monitor, Warranty is the claim/coverage Workbench
-  // (moved from Dashboard), Issues is the reported-issues Workbench (+ KPI).
+  // `?mode=orders|voicemail|calls|warranty|issues`; bare /support = the Zendesk
+  // Tickets console (default, param cleared) for deep-link back-compat.
+  // Orders is the To Ship exception Workbench (notes / OOS + ticket hub).
   // Every switch clears mode-scoped params so each mode opens clean — see
   // SUPPORT_MODE_SCOPED_PARAMS.
   {
@@ -778,23 +803,17 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         icon: Inbox,
         to: () => ({
           pathname: SUPPORT,
-          params: {
-            mode: null,
-            ticket: null,
-            vm: null,
-            q: null,
-            status: null,
-            assignee: null,
-            direction: null,
-            range: null,
-            search: null,
-            open: null,
-            wstatus: null,
-            wexp: null,
-            issueId: null,
-            type: null,
-            reporter: null,
-          },
+          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: null },
+        }),
+      },
+      {
+        id: 'orders',
+        label: 'Orders',
+        icon: Package,
+        requires: 'orders.view',
+        to: () => ({
+          pathname: SUPPORT,
+          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'orders' },
         }),
       },
       {
@@ -803,23 +822,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         icon: Voicemail,
         to: () => ({
           pathname: SUPPORT,
-          params: {
-            mode: 'voicemail',
-            ticket: null,
-            vm: null,
-            q: null,
-            status: null,
-            assignee: null,
-            direction: null,
-            range: null,
-            search: null,
-            open: null,
-            wstatus: null,
-            wexp: null,
-            issueId: null,
-            type: null,
-            reporter: null,
-          },
+          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'voicemail' },
         }),
       },
       {
@@ -828,23 +831,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         icon: Phone,
         to: () => ({
           pathname: SUPPORT,
-          params: {
-            mode: 'calls',
-            ticket: null,
-            vm: null,
-            q: null,
-            status: null,
-            assignee: null,
-            direction: null,
-            range: null,
-            search: null,
-            open: null,
-            wstatus: null,
-            wexp: null,
-            issueId: null,
-            type: null,
-            reporter: null,
-          },
+          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'calls' },
         }),
       },
       {
@@ -854,23 +841,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         requires: 'warranty.view',
         to: () => ({
           pathname: SUPPORT,
-          params: {
-            mode: 'warranty',
-            ticket: null,
-            vm: null,
-            q: null,
-            status: null,
-            assignee: null,
-            direction: null,
-            range: null,
-            search: null,
-            open: null,
-            wstatus: null,
-            wexp: null,
-            issueId: null,
-            type: null,
-            reporter: null,
-          },
+          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'warranty' },
         }),
       },
       {
@@ -880,28 +851,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         requires: 'support.issues.view',
         to: () => ({
           pathname: SUPPORT,
-          params: {
-            mode: 'issues',
-            ticket: null,
-            vm: null,
-            q: null,
-            status: null,
-            assignee: null,
-            direction: null,
-            range: null,
-            search: null,
-            open: null,
-            wstatus: null,
-            wexp: null,
-            issueId: null,
-            type: null,
-            reporter: null,
-          },
+          params: { ...SUPPORT_MODE_CLEAR_PARAMS, mode: 'issues' },
         }),
       },
     ],
     resolveMode: ({ params }) => {
       const m = params.get('mode');
+      if (m === 'orders') return 'orders';
       if (m === 'voicemail') return 'voicemail';
       if (m === 'calls') return 'calls';
       if (m === 'warranty') return 'warranty';

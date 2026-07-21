@@ -17,10 +17,14 @@ async function fetchQueue(bucket: PackReviewBucket): Promise<PackReviewQueueRow[
 }
 
 /** The Review station's latest-outcome queue, scoped to one tab bucket. */
-export function usePackReviewQueue(bucket: PackReviewBucket) {
+export function usePackReviewQueue(
+  bucket: PackReviewBucket,
+  opts: { enabled?: boolean } = {},
+) {
   return useQuery<PackReviewQueueRow[]>({
     queryKey: ['pack-review-queue', bucket],
     queryFn: () => fetchQueue(bucket),
     staleTime: 15_000,
+    enabled: opts.enabled !== false,
   });
 }

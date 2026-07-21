@@ -32,6 +32,7 @@ export function CollapsibleGroupRow({
   onToggle,
   countLabel = 'items',
   showChevron = true,
+  nestRail = true,
   className,
   index,
 }: {
@@ -55,6 +56,11 @@ export function CollapsibleGroupRow({
   /** Render the leading disclosure chevron. Off → the header has no glyph and
    *  its content aligns flush with the sibling rows' left edge. */
   showChevron?: boolean;
+  /**
+   * Left nest rail (`border-l`) on expanded children. Off for spreadsheet skins
+   * where cell gridlines already carry structure — a second rail creates gaps.
+   */
+  nestRail?: boolean;
   className?: string;
   /** Row index for zebra striping the header, matching the sibling rows. */
   index?: number;
@@ -71,7 +77,7 @@ export function CollapsibleGroupRow({
   return (
     // When expanded, a darker bottom hairline closes off the revealed child rows
     // as one visually-bounded unit; collapsed, it matches the gray-100 row dividers.
-    <div className={cn('border-b', isOpen ? 'border-border-default' : 'border-border-hairline', className)}>
+    <div className={cn(nestRail ? 'border-b' : 'border-b-0', nestRail && (isOpen ? 'border-border-default' : 'border-border-hairline'), className)}>
       {/* role="button" instead of a real <button>: the `summary` is built from
           the same identity chips the child rows use (OrderIdChip / SerialChip …),
           and those are themselves <button>s for copy-to-clipboard. A real
@@ -89,7 +95,8 @@ export function CollapsibleGroupRow({
         }}
         aria-expanded={isOpen}
         className={cn(
-          'ds-raw-button flex w-full cursor-pointer items-center gap-2 py-1.5 text-left transition-colors hover:bg-blue-50/50',
+          'ds-raw-button flex w-full cursor-pointer items-center gap-2 text-left transition-colors hover:bg-blue-50/50',
+          nestRail ? 'py-1.5' : 'py-0',
           QUEUE_ROW.px,
           isOpen ? 'bg-blue-50/40' : index != null && index % 2 === 1 ? 'bg-surface-canvas/40' : 'bg-surface-card',
         )}
@@ -122,7 +129,8 @@ export function CollapsibleGroupRow({
                 title edge — see QUEUE_ROW.nest*. */}
             <div
               className={cn(
-                'border-l-2 border-border-hairline bg-surface-canvas/30',
+                nestRail && 'border-l-2 border-border-hairline bg-surface-canvas/30',
+                !nestRail && 'bg-surface-canvas/30',
                 queueGroupNestClass(showChevron),
               )}
             >

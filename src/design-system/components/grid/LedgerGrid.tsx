@@ -66,8 +66,8 @@ interface LedgerGridProps<T> {
   className?: string;
   /**
    * Visual skin for the surface. `'airtable'` stamps `data-grid-skin="airtable"`,
-   * which the scoped stylesheet in `globals.css` targets to turn the flat grid
-   * into a closed white spreadsheet (strong gridline, white cells, opaque header).
+   * which the scoped stylesheet in `globals.css` targets for a light connected
+   * spreadsheet (hairline grid, rounded shell, opaque white header).
    * Omitted → the plain hairline look (the vertical shelf-board never opts in).
    */
   gridSkin?: 'airtable';

@@ -19,7 +19,6 @@ export function SearchOrderSectionTabs({
       tabs={[...SEARCH_ORDER_SECTION_TABS]}
       value={active}
       onChange={onChange}
-      className="border-b border-border-hairline px-2"
     />
   );
 }
