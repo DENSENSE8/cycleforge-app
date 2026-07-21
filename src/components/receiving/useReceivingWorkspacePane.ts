@@ -28,6 +28,7 @@ import {
 import {
   applyUnboxOpenReceivingParams,
   pickReceivingLineForDeepLink,
+  shouldRestoreOpenReceiving,
 } from '@/lib/receiving/unbox-selection-url';
 
 export interface WorkspaceState {
@@ -62,6 +63,16 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // `?openReceivingId=` is the Unbox surface's focused-carton URL SoT. The write
+  // side (`syncUnboxOpenUrl`) only stamps it on `/unbox`, so the read side (the
+  // restore effect below) is gated on the same surface. A stale value that rode
+  // a mode switch onto Incoming/Triage must NOT restore — its
+  // `dispatchSelectLine` is caught by the Incoming overlays listener and pops the
+  // details panel on load.
+  const isUnboxSurface =
+    receivingSurfaceBasePath(pathname) === UNBOX_SURFACE_ROUTE;
+
   const [workspace, setWorkspace] = useState<WorkspaceState | null>(null);
   const [nav, setNav] = useState<NavState | null>(null);
   const [scanInFlight, setScanInFlight] = useState<
@@ -69,13 +80,11 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   >(null);
   // Seed from the URL on first render so a deep-link load shows the workspace
   // skeleton immediately — no browse-feed flash before the restore resolves.
-  const [restorePending, setRestorePending] = useState<boolean>(() => {
-    const target = searchParams.get('openReceivingId');
-    return !!target && /^\d+$/.test(target);
-  });
-
-  const isUnboxSurface =
-    receivingSurfaceBasePath(pathname) === UNBOX_SURFACE_ROUTE;
+  // Unbox-surface only: a leaked param elsewhere must not hold a phantom
+  // skeleton (there is no restore for it — see the effect's gate).
+  const [restorePending, setRestorePending] = useState<boolean>(() =>
+    shouldRestoreOpenReceiving(isUnboxSurface, searchParams.get('openReceivingId')),
+  );
 
   // Pending open key we've written locally but whose router.replace may still
   // be in flight — prevents the deep-link effect from re-fetching mid-sync.
@@ -243,9 +252,13 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const deepLinkInFlightRef = useRef<string | null>(null);
   useEffect(() => {
     const target = searchParams.get('openReceivingId');
-    if (!target || !/^\d+$/.test(target)) {
-      // No active carton param — drop any restore state so a resolving stale
-      // fetch skips its dispatch and a later re-open of the same id re-fetches.
+    if (!shouldRestoreOpenReceiving(isUnboxSurface, target)) {
+      // No restorable carton param on the Unbox surface — drop any restore state
+      // so a resolving stale fetch skips its dispatch and a later re-open of the
+      // same id re-fetches. Non-Unbox surfaces land here too: `openReceivingId`
+      // is Unbox-only, so a value that rode a mode switch onto Incoming/Triage
+      // must never `dispatchSelectLine` (which would pop the Incoming details
+      // panel on load).
       deepLinkedKeyRef.current = null;
       deepLinkInFlightRef.current = null;
       setRestorePending(false);
@@ -316,7 +329,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         }
       }
     })();
-  }, [searchParams]);
+  }, [searchParams, isUnboxSurface]);
 
   // Browse-first for Unbox: do NOT auto-open the most-recent line. Operators
   // land on the Unboxed/Queue/Viewed feed (like Testing) and open a line via

@@ -38,6 +38,7 @@ export function OrdersQueueColumnHeader({
   selectionScope,
   className,
   onResizeColumn,
+  gridSkin = false,
 }: {
   isMobile?: boolean;
   selectMode?: boolean;
@@ -46,21 +47,31 @@ export function OrdersQueueColumnHeader({
   className?: string;
   /** Commit a column's drag-resized width (px). Presence enables the handles. */
   onResizeColumn?: (key: string, px: number) => void;
+  /**
+   * Airtable grid-view skin. Leads EVERY typed column with its type glyph (not
+   * only the roomy flex columns) and keeps the select-all checkbox available even
+   * when the pencil is off, dropping the per-column drag grip — the spreadsheet
+   * gutter shows selection, not reorder. Off → the plain board header.
+   */
+  gridSkin?: boolean;
 }) {
   const isHidden = useIsColumnHidden();
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
   const total = useTableSelectionTotal(scope);
   const selectedCount = selectionScope ? selectedRows.length : 0;
-  const allSelected = Boolean(selectMode && selectionScope && total > 0 && selectedCount >= total);
-  const someSelected = Boolean(selectMode && selectionScope && selectedCount > 0 && !allSelected);
+  // In the grid skin, selection is always live (Airtable-style hover-select), so
+  // select-all is armed without the pencil; the board still gates it on selectMode.
+  const selectActive = selectMode || gridSkin;
+  const allSelected = Boolean(selectActive && selectionScope && total > 0 && selectedCount >= total);
+  const someSelected = Boolean(selectActive && selectionScope && selectedCount > 0 && !allSelected);
 
   if (isMobile) return null;
 
   const template = ordersQueueGridTemplate();
 
   const onToggleAll = () => {
-    if (!selectionScope || !selectMode) return;
+    if (!selectionScope || !selectActive) return;
     emitToggleAll(selectionScope, allSelected ? 'none' : 'all');
   };
 
@@ -81,18 +92,24 @@ export function OrdersQueueColumnHeader({
           Lead control gutter: no inset, no column rule (status carries the rule
           before the title). */}
       <div
-        className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), 'gap-0.5', ORDERS_QUEUE_FROZEN_CELL)}
+        className={cn(
+          ordersQueueGridCell({ inset: 'none', rule: false }),
+          gridSkin ? 'justify-center' : 'gap-0.5',
+          ORDERS_QUEUE_FROZEN_CELL,
+        )}
         style={{ left: ordersQueueFrozenLeft('select') }}
       >
-        <HoverTooltip label="Drag to reorder" focusable={false}>
-          <span
-            className="inline-flex h-3 w-3 shrink-0 cursor-grab items-center justify-center text-text-faint active:cursor-grabbing"
-            aria-hidden
-          >
-            <GripVertical className="h-3 w-3" />
-          </span>
-        </HoverTooltip>
-        {selectMode && selectionScope ? (
+        {gridSkin ? null : (
+          <HoverTooltip label="Drag to reorder" focusable={false}>
+            <span
+              className="inline-flex h-3 w-3 shrink-0 cursor-grab items-center justify-center text-text-faint active:cursor-grabbing"
+              aria-hidden
+            >
+              <GripVertical className="h-3 w-3" />
+            </span>
+          </HoverTooltip>
+        )}
+        {selectActive && selectionScope ? (
           <button
             type="button"
             onClick={onToggleAll}
@@ -141,6 +158,7 @@ export function OrdersQueueColumnHeader({
             key={column.key}
             column={column}
             last={last}
+            gridSkin={gridSkin}
             onResize={onResizeColumn ? (px) => onResizeColumn(column.key, px) : undefined}
           />
         );
@@ -155,22 +173,25 @@ export function OrdersQueueColumnHeader({
  * + `data-col` so header ↔ cell alignment is glyph-agnostic. `last` drops the
  * trailing rule on the final (tracking) column.
  *
- * The glyph renders only on the flexible (roomy) columns — Product / Notes. On
- * the narrow fixed fact columns a glyph would crowd out the label, and the
- * shared `#` glyph (number/id) would make three headers ambiguous, so those stay
- * label-first (legible throughput).
+ * Board look: the glyph renders only on the flexible (roomy) columns —
+ * Product / Notes — since a glyph would crowd the narrow fact columns' labels.
+ * Airtable grid skin (`gridSkin`): every typed column leads with its glyph (the
+ * label still follows, so the shared `#`/tag glyphs stay unambiguous), for the
+ * icon-first spreadsheet header.
  */
 function HeaderCell({
   column,
   last,
   onResize,
+  gridSkin = false,
 }: {
   column: OrdersQueueColumn;
   last: boolean;
   onResize?: (px: number) => void;
+  gridSkin?: boolean;
 }) {
   const label = column.label ?? column.key;
-  const showGlyph = column.width.includes('fr');
+  const showGlyph = gridSkin ? Boolean(column.type) : column.width.includes('fr');
   const resizable = Boolean(onResize) && ORDERS_QUEUE_RESIZABLE_KEYS.includes(column.key);
   const frozen = isOrdersQueueFrozen(column.key);
   return (

@@ -77,6 +77,16 @@ export interface OrdersQueueTableRowProps {
    * kills the bleed. The vertical shelf-board keeps the translucent look.
    */
   opaqueStripe?: boolean;
+  /**
+   * Airtable grid-view skin. Flattens the zebra to solid white cells (the scoped
+   * gridline carries row separation) and renders a hover-reveal row-select
+   * checkbox in the gutter wired to {@link onToggleSelect}, so selection works
+   * without the pencil while a row-body click still opens the record.
+   */
+  gridSkin?: boolean;
+  /** Grid skin only — toggle this row's selection from the gutter checkbox
+   *  (stops propagation, so it never opens the record). */
+  onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   queueMode?: OrdersQueueMode;
   onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
 }
@@ -105,6 +115,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   disableEnterAnimation = false,
   disableLayoutAnimation = false,
   opaqueStripe = false,
+  gridSkin = false,
+  onToggleSelect,
   queueMode = 'fulfillment',
   onRowClick,
 }: OrdersQueueTableRowProps) {
@@ -355,12 +367,18 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     );
 
   // Select cell — checkbox only. The drag grip lives solely in the sticky header
-  // (select-all context); per-row grips clutter the vertical scan line.
+  // (select-all context); per-row grips clutter the vertical scan line. In the
+  // grid skin the checkbox is a hover-reveal affordance (visible on row hover /
+  // when checked) that toggles selection without opening the record.
   const leadControls = (
     <div
-      className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), ORDERS_QUEUE_FROZEN_CELL)}
+      className={cn(
+        ordersQueueGridCell({ inset: 'none', rule: false }),
+        gridSkin && 'justify-center',
+        ORDERS_QUEUE_FROZEN_CELL,
+      )}
       style={{ left: ordersQueueFrozenLeft('select') }}
-      onClick={(e) => selectMode && e.stopPropagation()}
+      onClick={(e) => (selectMode || gridSkin) && e.stopPropagation()}
     >
       {selectMode ? (
         <span
@@ -373,6 +391,25 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         >
           {isChecked ? <Check className="h-3 w-3" /> : null}
         </span>
+      ) : gridSkin ? (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={isChecked}
+          aria-label={isChecked ? 'Deselect row' : 'Select row'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect?.(record, { shiftKey: e.shiftKey });
+          }}
+          className={cn(
+            'ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-opacity',
+            isChecked
+              ? 'border-accent-bg bg-accent-bg text-text-inverse opacity-100'
+              : 'border-border-default bg-surface-card opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100',
+          )}
+        >
+          {isChecked ? <Check className="h-3 w-3" /> : null}
+        </button>
       ) : (
         <span className="h-4 w-4 shrink-0" aria-hidden />
       )}
@@ -452,8 +489,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             }
           : undefined
       }
-      whileHover={{ x: 2 }}
-      whileTap={{ scale: 0.998 }}
+      whileHover={gridSkin ? undefined : { x: 2 }}
+      whileTap={gridSkin ? undefined : { scale: 0.998 }}
       onClick={(event) => onRowClick(record, event)}
       onMouseDown={(event) => {
         if (selectMode && event.shiftKey) event.preventDefault();
@@ -490,9 +527,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               : 'bg-surface-card'
           : (selectMode ? isChecked : isSelected)
             ? QUEUE_ROW.selectedClass
-            : useAlternateStripe
+            : gridSkin
               ? 'bg-surface-card'
-              : opaqueStripe ? 'bg-surface-canvas' : 'bg-surface-canvas/40',
+              : useAlternateStripe
+                ? 'bg-surface-card'
+                : opaqueStripe ? 'bg-surface-canvas' : 'bg-surface-canvas/40',
       )}
       style={gridTemplate ? { gridTemplateColumns: gridTemplate } : undefined}
     >
@@ -591,6 +630,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.isChecked !== next.isChecked) return false;
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
   if (prev.opaqueStripe !== next.opaqueStripe) return false;
+  if (prev.gridSkin !== next.gridSkin) return false;
   if (prev.rowStatus.dot !== next.rowStatus.dot) return false;
   if (prev.rowStatus.label !== next.rowStatus.label) return false;
   if (prev.hasOutOfStock !== next.hasOutOfStock) return false;

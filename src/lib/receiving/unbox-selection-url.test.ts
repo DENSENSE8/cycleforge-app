@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   applyUnboxOpenReceivingParams,
   pickReceivingLineForDeepLink,
+  shouldRestoreOpenReceiving,
 } from '@/lib/receiving/unbox-selection-url';
 
 describe('applyUnboxOpenReceivingParams', () => {
@@ -56,5 +57,23 @@ describe('pickReceivingLineForDeepLink', () => {
 
   it('returns undefined for empty rows', () => {
     assert.equal(pickReceivingLineForDeepLink([], '20'), undefined);
+  });
+});
+
+describe('shouldRestoreOpenReceiving', () => {
+  it('restores a valid id on the Unbox surface', () => {
+    assert.equal(shouldRestoreOpenReceiving(true, '123'), true);
+  });
+
+  it('does NOT restore off the Unbox surface (the Incoming click-to-open regression)', () => {
+    // A stale ?openReceivingId= that rode a mode switch onto /incoming (or any
+    // non-Unbox surface) must not dispatchSelectLine and pop the details panel.
+    assert.equal(shouldRestoreOpenReceiving(false, '123'), false);
+  });
+
+  it('does not restore a missing or non-numeric id even on Unbox', () => {
+    assert.equal(shouldRestoreOpenReceiving(true, null), false);
+    assert.equal(shouldRestoreOpenReceiving(true, ''), false);
+    assert.equal(shouldRestoreOpenReceiving(true, 'abc'), false);
   });
 });

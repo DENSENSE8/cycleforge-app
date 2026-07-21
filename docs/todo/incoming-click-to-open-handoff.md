@@ -2,8 +2,38 @@
 
 **For:** next coding agent  
 **Lane:** `main` (WS-DOGFOOD)  
-**Status:** **BUG STILL OPEN** — operator reports `IncomingDetailsPanel` appears on `/incoming` load even after browse-first auto-select was removed. Desired UX is **table-only until row click**.  
+**Status:** **RESOLVED (2026-07-21)** — root cause was the Unbox focused-carton
+restore, not an auto-select. Desired UX (**table-only until row click**) now holds.  
 **Do not re-enable** browse-first auto-detail.
+
+---
+
+## Resolution (2026-07-21)
+
+**Root cause — the second, still-live open path.** `?openReceivingId=` is the
+**Unbox** surface's focused-carton URL SoT (written only on `/unbox` by
+`syncUnboxOpenUrl`, which is gated `if (!isUnboxSurface) return`). The **read**
+side — the deep-link restore effect in `useReceivingWorkspacePane` — was **not**
+surface-gated. A stale `openReceivingId` that rode a mode switch onto `/incoming`
+(it is not in `MODE_SCOPED_PARAMS` and `stripCrossSurfaceParams` leaves it) made
+the restore fetch the carton and fire `dispatchSelectLine(pick)`. On Incoming,
+`useReceivingDetailOverlays`' `receiving-select-line` listener turned that into
+`setIncomingDetails(...)` → `IncomingDetailsPanel` (`RightRailHost` `role=dialog`)
+opened on load. `useIncomingAutoSelect` really was gone; this was a separate path.
+
+**Fix — make the read symmetric with the write.** New pure SoT predicate
+`shouldRestoreOpenReceiving(isUnboxSurface, openReceivingId)` in
+`src/lib/receiving/unbox-selection-url.ts`; `useReceivingWorkspacePane` gates both
+the `restorePending` seed and the restore effect on it (added `isUnboxSurface` to
+the effect deps). No other surface restores from a param it never wrote. No
+symptom-patch in the overlays listener; no URL-semantics change on Unbox.
+
+**Tests.** Unit: `shouldRestoreOpenReceiving` cases in
+`src/lib/receiving/unbox-selection-url.test.ts` (the off-Unbox case IS the
+regression). E2E: `tests/e2e/incoming-click-to-open.spec.ts` — fresh `/incoming`
+and a leaked `?openReceivingId=` both assert `role="dialog"` count 0 on load;
+row-click opens then close-stays-closed (skips when dogfood has no rows).
+`npm run verify` green (tenancy-isolation warnings are pre-existing/advisory).
 
 ---
 
