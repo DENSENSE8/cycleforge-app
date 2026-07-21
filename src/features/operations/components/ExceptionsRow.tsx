@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { AlertCircle, Package, Wrench } from '@/components/Icons';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { cn } from '@/utils/_cn';
 
 async function safeJson<T>(url: string): Promise<T | null> {
   try {
@@ -119,9 +121,12 @@ export function ExceptionsRow() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
             whileHover={c.disabled ? undefined : { y: -2 }}
-            className={`block bg-surface-card rounded-2xl border border-border-soft p-5 shadow-[0_2px_12px_rgba(161,140,90,0.04)] ${
-              c.disabled ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-[0_4px_18px_rgba(161,140,90,0.08)] transition-shadow'
-            }`}
+            className={cn(
+              'block',
+              MONITOR_SECTION_CARD_CLASS,
+              'p-5',
+              c.disabled ? 'opacity-60 cursor-not-allowed' : 'transition-shadow hover:shadow-md',
+            )}
           >
             <div className="flex items-start justify-between mb-3">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.tone.ring} ${c.tone.text}`}>

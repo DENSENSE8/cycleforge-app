@@ -58,6 +58,13 @@ export interface VirtualGroupedSectionsProps<T> {
    *  virtualizer scrolls to that item whenever this changes — works even when the
    *  target isn't currently windowed (unlike a DOM `scrollIntoView`). */
   scrollToKey?: string | null;
+  /**
+   * CSS `top` for the pinned day-band header (default `'0'`). A ledger/spreadsheet
+   * shell that renders its own sticky column header ABOVE this list passes the
+   * header's measured height (e.g. `var(--cf-grid-header-h)`) so day bands dock
+   * directly beneath it instead of colliding at `top:0`.
+   */
+  stickyHeaderTop?: string;
 }
 
 const HEADER_ESTIMATE = 36;
@@ -74,6 +81,7 @@ export function VirtualGroupedSections<T>({
   headerEstimate = HEADER_ESTIMATE,
   rowEstimate = ROW_ESTIMATE,
   scrollToKey,
+  stickyHeaderTop = '0',
 }: VirtualGroupedSectionsProps<T>) {
   const items = useMemo<FlatItem<T>[]>(() => {
     const flat: FlatItem<T>[] = [];
@@ -168,7 +176,7 @@ export function VirtualGroupedSections<T>({
             className={`left-0 top-0 w-full ${pinned ? 'z-20' : header ? 'z-10' : 'z-0'}`}
             style={
               pinned
-                ? { position: 'sticky', top: 0 }
+                ? { position: 'sticky', top: stickyHeaderTop }
                 : { position: 'absolute', transform: `translateY(${vRow.start - scrollMargin}px)` }
             }
           >

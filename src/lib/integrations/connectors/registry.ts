@@ -27,6 +27,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     // Lazy imports so the connection reader never pulls in the eBay client.
     sync: (orgId) => import('./ebay').then((m) => m.ebaySync(orgId)),
     validate: (orgId) => import('./ebay').then((m) => m.ebayValidate(orgId)),
+    refresh: (orgId, scope) => import('./ebay').then((m) => m.ebayRefresh(orgId, scope)),
   },
   amazon: {
     provider: 'amazon',

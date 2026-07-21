@@ -37,12 +37,11 @@ const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>>
 
 /**
  * Frozen utility toolbar — icon-only actions driven by the mode registry
- * (`WORKSPACE_MODES[mode].headerActions`). Unbox mounts this inside
- * {@link ReceivingStationMoreDetails} (corner slot of
- * {@link ReceivingStationContextBar}, `embedded`) using GlobalHeader icon
- * hit-box / gap SoT. Testing/other modes keep the standalone header band.
- * Unbox: refresh · ⋯ · info (no prev/next). Testing keeps prev/next via
- * navChannel.
+ * (`WORKSPACE_MODES[mode].headerActions`). Unbox-family stations mount this inside
+ * {@link StationMoreDetails} (corner slot of
+ * {@link StationContextBar}, `embedded`) using GlobalHeader icon
+ * hit-box / gap SoT. Unbox: refresh · ⋯ · info (no prev/next). Testing keeps
+ * prev/next via navChannel when those handlers are provided.
  */
 export function LineEditToolbar({
   mode = 'unbox',

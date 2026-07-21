@@ -26,6 +26,10 @@ test('requireCredentialPermission throws CredentialPermissionError when denied',
   );
 });
 
-test('requireCredentialPermission is a no-op for allowed operations', () => {
-  assert.doesNotThrow(() => requireCredentialPermission('zoho', 'purchaseorders.read'));
+test('ebay + amazon declare token/order operations (INT-008)', () => {
+  assert.equal(isOperationAllowed('ebay', 'orders.read'), true);
+  assert.equal(isOperationAllowed('ebay', 'purchases.read'), true);
+  assert.equal(isOperationAllowed('ebay', 'tokens.write'), true);
+  assert.equal(isOperationAllowed('amazon', 'orders.read'), true);
+  assert.equal(isOperationAllowed('ebay', 'contacts.write' as never), false);
 });

@@ -1,12 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  isTabId,
-  tabDbType,
-  groupHitsForPreview,
-  flattenPreviewGroups,
-} from './search-tabs';
+import { groupHitsForPreview, flattenPreviewGroups } from './search-tabs';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 
 function hit(entityType: string, id: number): AiSearchHit {
@@ -20,14 +15,6 @@ function hit(entityType: string, id: number): AiSearchHit {
     score: 1,
   };
 }
-
-test('isTabId / tabDbType', () => {
-  assert.equal(isTabId('order'), true);
-  assert.equal(isTabId('nope'), false);
-  assert.equal(tabDbType('order'), 'ORDER');
-  assert.equal(tabDbType('unit'), 'SERIAL_UNIT');
-  assert.equal(tabDbType('all'), undefined); // Overview has no db scope
-});
 
 test('groupHitsForPreview: orders first, per-group + total caps respected', () => {
   const hits = [

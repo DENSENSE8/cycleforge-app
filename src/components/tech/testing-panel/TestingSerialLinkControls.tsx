@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Link2, Loader2, Unlink } from '@/components/Icons';
+import { Check, Link2, Loader2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton, Popover } from '@/design-system/primitives';
+import { Popover } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';
@@ -20,29 +20,22 @@ interface SiblingLine {
 }
 
 /**
- * LINK / UNLINK controls for the condition+serial row, sitting next to the item-
- * description button in the accordion title row (testing page only).
+ * LINK (combine) control for the condition+serial row, sitting next to the
+ * title ⋮ in the accordion (testing page only).
  *
  * A scanned serial is a sidecar on a line; a SKU import is a whole new line — so
- * they show as separate rows. These merge them into ONE row via the verified
+ * they show as separate rows. LINK merges them into ONE row via the verified
  * `/api/receiving/serial-move` primitive (re-homes membership IN PLACE, preserving
- * the testing verdict):
- *   • LINK  (combine) — pull another row's serial(s) onto THIS line, then delete
- *                       the emptied source line.
- *   • UNLINK (split)  — move this line's serial out to a brand-new line of its own
- *                       (unmatched cartons only — a Zoho-PO carton's lines come
- *                       from the PO and can't take a new unmatched line).
+ * the testing verdict). UNLINK (split) lives in the shared {@link PoLineTitleMenu}.
  */
 export function TestingSerialLinkControls({
   carton,
   line,
-  staffId,
 }: {
-  /** The active carton row — supplies receiving_id + source. */
+  /** The active carton row — supplies receiving_id. */
   carton: ReceivingLineRow;
   /** This accordion line. */
   line: ReceivingLineRow;
-  staffId: string;
 }) {
   const qc = useQueryClient();
   const [linkOpen, setLinkOpen] = useState(false);
@@ -51,9 +44,6 @@ export function TestingSerialLinkControls({
   const linkBtnRef = useRef<HTMLButtonElement>(null);
 
   const receivingId = carton.receiving_id;
-  const isUnmatched = carton.receiving_source === 'unmatched';
-  const lineSerials = (line.serials ?? []) as Array<{ id: number; serial_number: string }>;
-  const hasSerial = lineSerials.length > 0;
 
   const refresh = () => {
     if (receivingId != null) {
@@ -119,34 +109,6 @@ export function TestingSerialLinkControls({
     }
   };
 
-  const splitSerial = async () => {
-    if (busy || !hasSerial || receivingId == null) return;
-    setBusy(true);
-    try {
-      const created = await fetch('/api/receiving/add-unmatched-line', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          receiving_id: receivingId,
-          sku: line.sku ?? undefined,
-          quantity_expected: 1,
-          staff_id: Number(staffId) || undefined,
-        }),
-      });
-      const cdata = await created.json().catch(() => null);
-      const newLineId = cdata?.line?.id as number | undefined;
-      if (!created.ok || !cdata?.success || !newLineId) {
-        toast.error(cdata?.error || 'Could not create a new row to split into');
-        return;
-      }
-      const ok = await moveSerial(lineSerials[0].id, newLineId);
-      toast[ok ? 'success' : 'error'](ok ? 'Split to its own row' : 'Could not split the serial');
-      refresh();
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <>
       <HoverTooltip label="Combine another row's serial into this one" asChild focusable={false}>
@@ -165,21 +127,6 @@ export function TestingSerialLinkControls({
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
         </button>
       </HoverTooltip>
-
-      {isUnmatched && hasSerial ? (
-        <HoverTooltip label="Split this serial out to its own row" asChild focusable={false}>
-          <IconButton
-            ariaLabel="Split serial to its own row"
-            disabled={busy}
-            onClick={(e) => {
-              e.stopPropagation();
-              void splitSerial();
-            }}
-            className="-m-1 flex shrink-0 items-center justify-center rounded-md p-1 text-text-faint transition-colors hover:bg-amber-100 hover:text-amber-600"
-            icon={<Unlink className="h-3.5 w-3.5" aria-hidden />}
-          />
-        </HoverTooltip>
-      ) : null}
 
       <Popover
         open={linkOpen}

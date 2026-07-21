@@ -5,8 +5,8 @@
  * mode: the fast "identify the carton before unbox" pass.
  *
  * Station Workbench anatomy (same as Unbox / Testing):
- *   toolbar → condensed CartonContextCard → SectionTabsSlider
- *   (Classify / Staging / Pairing) → Save-for-unbox dock.
+ *   StationContextBar (density=bar identity + corner toolbar) →
+ *   SectionTabsSlider (Overview / Staging / …) → Save-for-unbox dock.
  *
  * Classify pills live in the Overview tab — not expanded in the entity header.
  * All state lives in the shared `useUnboxLineController` so triage and unbox
@@ -19,6 +19,10 @@ import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import { PairingTogglePill, StationWorkbench } from '@/components/station/workbench';
+import {
+  StationContextBar,
+  StationMoreDetails,
+} from '@/components/station/entity-context';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -196,38 +200,48 @@ export function TriagePanel({
 
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col">
-        <StationWorkbench
-          className="h-full"
-          reserveScrollClearance
-          toolbar={
-            <LineEditToolbar
-              mode="triage"
-              receivingId={row.receiving_id ?? null}
-              zohoSyncing={c.zohoSyncing}
-              busy={c.saving || c.platformSaving}
-              copyingAll={c.copyingAll}
-              handlers={{
-                refresh: () => void c.syncWithZoho(),
-                share: () => void c.handleShare(),
-                audit: () => c.setAuditOpen(true),
-                copy: () => void c.handleCopyAll(),
-                movePhotos: () => c.openMovePhotos(),
-              }}
+      <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
+          <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-blue-400/[0.08] blur-3xl" />
+          <div className="absolute right-[-7rem] top-1/3 h-80 w-80 rounded-full bg-violet-400/[0.06] blur-3xl" />
+          <div className="absolute bottom-[-5rem] left-[-5rem] h-80 w-80 rounded-full bg-emerald-400/[0.06] blur-3xl" />
+        </div>
+        <StationContextBar
+          identity={
+            <LineCartonContextSection
+              row={row}
+              staffId={staffId}
+              c={c}
+              expandClassifyWhenPending={false}
+              showClassifyControls={false}
+              density="bar"
             />
           }
-          entityContext={
-            <div className="space-y-4">
-              <WorkflowRecommendationsStrip row={row} surface="triage" />
-              <LineCartonContextSection
-                row={row}
-                staffId={staffId}
-                c={c}
-                expandClassifyWhenPending={false}
-                showClassifyControls={false}
+          moreDetails={
+            <StationMoreDetails>
+              <LineEditToolbar
+                mode="triage"
+                embedded
+                receivingId={row.receiving_id ?? null}
+                zohoSyncing={c.zohoSyncing}
+                busy={c.saving || c.platformSaving}
+                copyingAll={c.copyingAll}
+                handlers={{
+                  refresh: () => void c.syncWithZoho(),
+                  share: () => void c.handleShare(),
+                  audit: () => c.setAuditOpen(true),
+                  copy: () => void c.handleCopyAll(),
+                  movePhotos: () => c.openMovePhotos(),
+                }}
               />
-            </div>
+            </StationMoreDetails>
           }
+        />
+        <StationWorkbench
+          ambientWash={false}
+          className="relative z-0 h-full flex-1 bg-transparent"
+          reserveScrollClearance
+          entityContext={<WorkflowRecommendationsStrip row={row} surface="triage" />}
           tabs={
             <TriageSectionTabs
               tabs={triageTabs}

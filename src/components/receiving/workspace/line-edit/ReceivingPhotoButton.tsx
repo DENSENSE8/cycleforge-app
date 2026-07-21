@@ -200,6 +200,22 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     setEmptyUploadOpen(true);
   }, [hasGallery, handleRequestOnPhone]);
 
+  const pillButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={handlePillClick}
+      ariaLabel={ariaLabel}
+      aria-expanded={hasGallery ? galleryHover || galleryUploadPinned || galleryMovePinned : emptyUploadOpen}
+      icon={<Camera className="h-4 w-4" />}
+      iconRight={<Plus className="h-3 w-3" />}
+      className={btnClass}
+    >
+      {count > 0 ? <>{count}</> : null}
+    </Button>
+  );
+
   return (
     <div
       className="relative shrink-0"
@@ -214,27 +230,20 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
           : undefined
       }
     >
-      <HoverTooltip label={title} placement="above" asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handlePillClick}
-          ariaLabel={ariaLabel}
-          aria-expanded={hasGallery ? galleryHover || galleryUploadPinned || galleryMovePinned : emptyUploadOpen}
-          icon={<Camera className="h-4 w-4" />}
-          iconRight={<Plus className="h-3 w-3" />}
-          className={btnClass}
-        >
-          {count > 0 ? <>{count}</> : null}
-        </Button>
-      </HoverTooltip>
+      {/* Suppress pill tooltip while peek is open — avoids tooltip + toolbar stacking. */}
+      {showGalleryPeek ? (
+        pillButton
+      ) : (
+        <HoverTooltip label={title} placement="above" asChild>
+          {pillButton}
+        </HoverTooltip>
+      )}
 
       {showGalleryPeek ? (
         // `pt-1.5` bridges the gap so the pointer stays inside the hover target
         // while moving from the pill to the gallery card.
         <div className="absolute right-0 top-full z-30 pt-1.5">
-          <div className="w-fit max-w-[80vw] rounded-xl border border-border-soft bg-surface-card p-1 shadow-xl">
+          <div className="w-fit max-w-[80vw] rounded-xl border border-blue-200 bg-surface-card p-0.5 shadow-xl">
             <PhotoGallery
               photos={photos}
               orderId={`RCV-${receivingId}`}

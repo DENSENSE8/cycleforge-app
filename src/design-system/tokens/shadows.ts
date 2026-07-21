@@ -1,3 +1,16 @@
+/**
+ * Shadow tokens — raw CSS box-shadow values (CSS vars) plus the **elevation
+ * role ladder** (Tailwind class recipes).
+ *
+ * Raw `shadows.*` feed `--ds-shadow-*` via css-variables. Elevation roles follow
+ * industry practice (Atlassian / M3-aligned): role = interaction plane, not
+ * viewport position. Shadow is one cue; pair with surface treatment in dark
+ * themes when needed.
+ *
+ * Consume via {@link elevationClass} / {@link ELEVATION_CLASS}. Never hand-roll
+ * `shadow-* shadow-scrim/*` for flat / raised / overlay jobs.
+ */
+
 export const shadows = {
   none: 'none',
   xs: '0 2px 8px rgba(15, 23, 42, 0.02)',
@@ -11,3 +24,45 @@ export const shadows = {
 } as const;
 
 export type Shadows = typeof shadows;
+
+/**
+ * Industry elevation roles — temporary / floating UI sits higher.
+ *
+ * - `flat`    — flush with canvas (no lift); borders/spacing carry hierarchy
+ * - `raised`  — in-flow cards / panels above the page
+ * - `overlay` — floating UI (menus, popovers, dialogs, sheets)
+ */
+export type ElevationRole = 'flat' | 'raised' | 'overlay';
+
+/**
+ * Intensity under `raised` only — Station column accent without inventing
+ * extra roles:
+ * - `soft`    — flush bookmark chrome (softer lift under GlobalHeader)
+ * - `default` — primary glass work cards
+ */
+export type RaisedIntensity = 'soft' | 'default';
+
+export const ELEVATION_CLASS = {
+  flat: '',
+  raised: {
+    soft: 'shadow-sm shadow-scrim/5',
+    default: 'shadow-lg shadow-scrim/10',
+  },
+  overlay: 'shadow-xl shadow-scrim/20',
+} as const satisfies Record<
+  ElevationRole,
+  string | Record<RaisedIntensity, string>
+>;
+
+export function elevationClass(role: 'flat' | 'overlay'): string;
+export function elevationClass(
+  role: 'raised',
+  intensity?: RaisedIntensity,
+): string;
+export function elevationClass(
+  role: ElevationRole,
+  intensity: RaisedIntensity = 'default',
+): string {
+  if (role === 'raised') return ELEVATION_CLASS.raised[intensity];
+  return ELEVATION_CLASS[role];
+}

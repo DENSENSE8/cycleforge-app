@@ -24,7 +24,7 @@ interface TechSidebarPanelProps {
   contextNavTitle?: string;
 }
 
-export function TechSidebarPanel({ techId, onBackToAppNav }: TechSidebarPanelProps) {
+export function TechSidebarPanel({ techId, onBackToAppNav: _onBackToAppNav }: TechSidebarPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

@@ -5,7 +5,8 @@ import type { MarketplaceDocumentAdapter, MarketplaceFetchOutcome } from './type
 
 /**
  * Platform-specific adapter that builds a packing slip PDF from order row data.
- * Used for Amazon, ECWID, and Walmart until dedicated marketplace APIs are wired.
+ * Used for Amazon and Walmart until dedicated marketplace APIs are wired.
+ * Ecwid uses `ecwid-documents.ts` (live invoice-pdf).
  */
 export function createGeneratedPlatformAdapter(
   platform: string,
@@ -66,10 +67,6 @@ function sourceIncludes(order: OutboundOrderContext, token: string): boolean {
 
 export const amazonDocumentAdapter = createGeneratedPlatformAdapter('amazon', (order) =>
   sourceIncludes(order, 'amazon') || sourceIncludes(order, 'fba'),
-);
-
-export const ecwidDocumentAdapter = createGeneratedPlatformAdapter('ecwid', (order) =>
-  sourceIncludes(order, 'ecwid'),
 );
 
 export const walmartDocumentAdapter = createGeneratedPlatformAdapter('walmart', (order) =>

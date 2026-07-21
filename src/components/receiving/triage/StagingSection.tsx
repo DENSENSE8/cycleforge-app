@@ -8,7 +8,11 @@
  */
 
 import { useMemo } from 'react';
-import { WorkspaceCard } from '@/design-system/components';
+import {
+  WorkspaceCard,
+  WORKSPACE_NESTED_FIELD,
+  WORKSPACE_NESTED_FIELD_PAD,
+} from '@/design-system/components';
 import { Loader2, MapPin, Flag, Barcode } from '@/components/Icons';
 import { SELECT_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TRIAGE_LANE_OPTS, triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
@@ -50,7 +54,7 @@ function PlacementSummary({
   const spokenPath = [room, bin, barcode ? `scan ${barcode}` : null].filter(Boolean).join(' · ');
 
   return (
-    <div className="rounded-xl bg-surface-canvas px-3 py-3 ring-1 ring-inset ring-border-soft">
+    <div className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`}>
       <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
         Place carton here
       </p>
@@ -141,7 +145,7 @@ export function StagingSection({ staging }: { staging: TriageStagingController }
   ) : null;
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" actions={savingIndicator ?? undefined}>
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" actions={savingIndicator ?? undefined}>
       <div className="space-y-4">
         <TriageStagingStatusChips
           complete={isStaged}
@@ -152,7 +156,7 @@ export function StagingSection({ staging }: { staging: TriageStagingController }
         {selectedLocation ? (
           <PlacementSummary location={selectedLocation} lane={priorityLane} />
         ) : (
-          <p className="rounded-xl bg-surface-canvas px-3 py-3 text-role-caption text-text-muted ring-1 ring-inset ring-border-soft">
+          <p className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD} text-role-caption text-text-muted`}>
             Pick a shelf so inventory and unboxers know exactly where this carton
             sits (room · bin · barcode).
           </p>

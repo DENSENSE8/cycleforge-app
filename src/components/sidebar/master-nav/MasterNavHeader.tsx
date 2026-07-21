@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { MousePointerClick } from 'lucide-react';
 import { ChevronDown } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
@@ -33,18 +31,17 @@ export interface MasterNavRecentModeChip {
 /**
  * Closed master-nav trigger — **name of now**.
  * Modeful pages: leading mode icon + mode label. Modeless: label only (pages = text).
- * Label opens the full nav on click; hovering the button opens same-page modes.
- * Chevron at rest; pointer on hover, while the modes panel is open, or while
- * the full nav dropdown is open.
+ * Top-left chevron opens the full nav; the whole mode icon+name+chevron opens
+ * same-page modes (click only). A hairline separates the two controls.
  */
 export function MasterNavHeader({
   label,
   leadingIcon: LeadingIcon,
   open,
   onClick,
-  onTriggerMouseEnter,
-  onTriggerMouseLeave,
-  modesPanelOpen = false,
+  modesOpen = false,
+  onModesClick,
+  showModesToggle = false,
   recentModes = [],
   className,
 }: {
@@ -53,52 +50,73 @@ export function MasterNavHeader({
   leadingIcon?: SidebarIconComponent;
   open: boolean;
   onClick?: () => void;
-  onTriggerMouseEnter?: () => void;
-  onTriggerMouseLeave?: () => void;
-  /** Same-page modes hover panel is visible — keeps pointer icon while over the panel. */
-  modesPanelOpen?: boolean;
+  /** Same-page modes panel is open. */
+  modesOpen?: boolean;
+  /** Toggle same-page modes (modeful pages only). */
+  onModesClick?: () => void;
+  /** Show the modes control (icon + name + chevron) as a click target. */
+  showModesToggle?: boolean;
   recentModes?: MasterNavRecentModeChip[];
   className?: string;
 }) {
-  const [triggerHovered, setTriggerHovered] = useState(false);
   const hasRecents = recentModes.length > 0;
-  // Pointer when hovering modes, modes panel open, or full nav open; chevron only at rest.
-  const showClickIcon = open || triggerHovered || modesPanelOpen;
+
+  const modeIdentity = (
+    <>
+      {LeadingIcon ? (
+        <LeadingIcon
+          className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 text-text-muted')}
+          aria-hidden
+        />
+      ) : null}
+      <span className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default">
+        {label}
+      </span>
+    </>
+  );
 
   return (
     <div className={cn('flex h-[40px] w-full min-w-0 items-stretch', className)}>
+      {/* Top-left: full page nav */}
       <button
         type="button"
         onClick={onClick}
-        onMouseEnter={() => {
-          setTriggerHovered(true);
-          onTriggerMouseEnter?.();
-        }}
-        onMouseLeave={() => {
-          setTriggerHovered(false);
-          onTriggerMouseLeave?.();
-        }}
         aria-expanded={open}
         aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-        className="ds-raw-button flex min-w-0 shrink items-center gap-1.5 px-3 text-left transition-colors hover:bg-surface-canvas"
+        className="ds-raw-button flex shrink-0 items-center justify-center px-2.5 text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default"
       >
-        {LeadingIcon ? (
-          <LeadingIcon
-            className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 text-text-muted')}
+        <ChevronDown
+          className={cn('h-4 w-4 transition-transform duration-200', open && 'rotate-180')}
+          aria-hidden
+        />
+      </button>
+
+      {/* Hairline between full-nav chevron and mode identity */}
+      <div className="my-2 w-px shrink-0 self-stretch bg-border-hairline" aria-hidden />
+
+      {/* Name of now — whole control opens modes when the page is modeful */}
+      {showModesToggle ? (
+        <button
+          type="button"
+          onClick={onModesClick}
+          aria-expanded={modesOpen}
+          aria-label={modesOpen ? 'Close modes menu' : 'Open modes menu'}
+          className="ds-raw-button flex min-w-0 shrink items-center gap-1.5 px-2.5 text-left transition-colors hover:bg-surface-canvas"
+        >
+          {modeIdentity}
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 shrink-0 text-text-muted transition-transform duration-200',
+              modesOpen && 'rotate-180',
+            )}
             aria-hidden
           />
-        ) : null}
-        <span className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default">
-          {label}
-        </span>
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-muted" aria-hidden>
-          {showClickIcon ? (
-            <MousePointerClick className="h-4 w-4" strokeWidth={2} />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
-        </span>
-      </button>
+        </button>
+      ) : (
+        <div className="flex min-w-0 shrink items-center gap-1.5 px-2.5">
+          {modeIdentity}
+        </div>
+      )}
 
       {hasRecents && (
         <div className={SIDEBAR_MRU_CLUSTER}>
@@ -147,3 +165,4 @@ export function MasterNavHeader({
     </div>
   );
 }
+

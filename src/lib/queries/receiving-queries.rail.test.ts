@@ -2,8 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { QueryClient } from '@tanstack/react-query';
 import {
+  TESTING_RAIL_SEGMENT,
   UNBOX_QUEUE_SEGMENT,
   UNBOX_RAIL_SEGMENT,
+  patchTestingRailByLine,
+  patchUnboxRailQtyByCarton,
+  patchUnboxRailTitleByCarton,
   receivingRailCartonKey,
   receivingRailReconcileId,
   reconcileUnboxRailAfterLineDelete,
@@ -125,6 +129,242 @@ describe('upsertReceivingRailRows (tracking metadata)', () => {
     assert.equal(next?.length, 2);
     assert.ok(next?.some((r) => r.receiving_id === 77 && r.client_event_id === 'carton:77'));
     assert.ok(next?.some((r) => r.receiving_id === 88));
+  });
+
+  it('does not bump an existing Unboxed carton on re-upsert (stable first-open order)', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      { id: 1, receiving_id: 10, client_event_id: 'carton:10', unbox_opened_at: '2026-07-01T10:00:00Z' },
+      { id: 2, receiving_id: 20, client_event_id: 'carton:20', unbox_opened_at: '2026-07-01T09:00:00Z' },
+      { id: 3, receiving_id: 30, client_event_id: 'carton:30', unbox_opened_at: '2026-07-01T08:00:00Z' },
+    ] satisfies ReceivingRailRow[]);
+
+    upsertReceivingRailRows(qc, [
+      {
+        id: 3,
+        receiving_id: 30,
+        client_event_id: 'carton:30',
+        unbox_opened_at: '2026-07-20T12:00:00Z', // re-scan stamp — must be ignored
+      },
+    ]);
+
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.receiving_id, 10);
+    assert.equal(next?.[2]?.receiving_id, 30);
+    assert.equal(next?.[2]?.unbox_opened_at, '2026-07-01T08:00:00Z');
+  });
+
+  it('preserves first-open unbox_opened_at when hydration upsert omits or rewrites it', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      {
+        id: -40,
+        receiving_id: 40,
+        client_event_id: 'carton:40',
+        unbox_opened_at: '2026-07-20T11:00:00Z',
+      },
+    ] satisfies ReceivingRailRow[]);
+
+    upsertReceivingRailRows(qc, [
+      {
+        id: 900,
+        receiving_id: 40,
+        client_event_id: 'carton:40',
+        unbox_opened_at: '2026-07-20T18:00:00Z',
+      },
+    ]);
+
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.id, 900);
+    assert.equal(next?.[0]?.unbox_opened_at, '2026-07-20T11:00:00Z');
+  });
+
+  it('prepends a brand-new Unboxed carton (first open)', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      { id: 1, receiving_id: 10, client_event_id: 'carton:10', unbox_opened_at: '2026-07-01T10:00:00Z' },
+    ] satisfies ReceivingRailRow[]);
+
+    upsertReceivingRailRows(qc, [
+      {
+        id: 2,
+        receiving_id: 99,
+        client_event_id: 'carton:99',
+        unbox_opened_at: '2026-07-20T12:00:00Z',
+      },
+    ]);
+
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.receiving_id, 99);
+    assert.equal(next?.[1]?.receiving_id, 10);
+  });
+});
+
+describe('patchUnboxRailTitleByCarton', () => {
+  it('renames stub carton title without clearing unbox_opened_at or writing serials/workflow', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      {
+        id: -45624,
+        receiving_id: 45624,
+        client_event_id: 'carton:45624',
+        unbox_opened_at: '2026-07-20T21:28:27.920Z',
+        item_name: 'Unfound PO',
+        workflow_status: 'ARRIVED',
+        quantity_received: 0,
+      } as ReceivingRailRow & {
+        item_name: string;
+        workflow_status: string;
+        quantity_received: number;
+      },
+    ]);
+
+    patchUnboxRailTitleByCarton(qc, 45624, {
+      item_name: 'Return serial 064795940570213AE',
+    });
+
+    const next = qc.getQueryData<
+      Array<
+        ReceivingRailRow & {
+          item_name?: string;
+          workflow_status?: string;
+          quantity_received?: number;
+          serials?: unknown;
+        }
+      >
+    >(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.item_name, 'Return serial 064795940570213AE');
+    assert.equal(next?.[0]?.unbox_opened_at, '2026-07-20T21:28:27.920Z');
+    assert.equal(next?.[0]?.id, -45624);
+    assert.equal(next?.[0]?.workflow_status, 'ARRIVED');
+    assert.equal(next?.[0]?.quantity_received, 0);
+    assert.equal(next?.[0]?.serials, undefined);
+  });
+
+  it('does not invent workflow_status or serials when only title is patched', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      {
+        id: 10,
+        receiving_id: 10,
+        client_event_id: 'carton:10',
+        unbox_opened_at: '2026-07-20T12:00:00Z',
+        item_name: 'Unfound PO',
+      } as ReceivingRailRow & { item_name: string },
+    ]);
+
+    patchUnboxRailTitleByCarton(qc, 10, {
+      item_name: 'Return serial ABC',
+      sku: 'SKU-1',
+    });
+
+    const next = qc.getQueryData<
+      Array<ReceivingRailRow & { item_name?: string; sku?: string; workflow_status?: string }>
+    >(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.item_name, 'Return serial ABC');
+    assert.equal(next?.[0]?.sku, 'SKU-1');
+    assert.equal(next?.[0]?.unbox_opened_at, '2026-07-20T12:00:00Z');
+    assert.equal(next?.[0]?.workflow_status, undefined);
+  });
+});
+
+describe('patchUnboxRailQtyByCarton', () => {
+  it('updates qty/workflow without touching unbox_opened_at or title', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      {
+        id: -50,
+        receiving_id: 50,
+        client_event_id: 'carton:50',
+        unbox_opened_at: '2026-07-20T10:00:00Z',
+        item_name: 'Widget',
+        quantity_received: 0,
+        workflow_status: 'ARRIVED',
+      } as ReceivingRailRow & {
+        item_name: string;
+        quantity_received: number;
+        workflow_status: string;
+      },
+    ]);
+
+    patchUnboxRailQtyByCarton(qc, 50, {
+      quantity_received: 2,
+      quantity_expected: 2,
+      workflow_status: 'UNBOXED',
+    });
+
+    const next = qc.getQueryData<
+      Array<
+        ReceivingRailRow & {
+          item_name?: string;
+          quantity_received?: number;
+          quantity_expected?: number;
+          workflow_status?: string;
+        }
+      >
+    >(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.quantity_received, 2);
+    assert.equal(next?.[0]?.quantity_expected, 2);
+    assert.equal(next?.[0]?.workflow_status, 'UNBOXED');
+    assert.equal(next?.[0]?.unbox_opened_at, '2026-07-20T10:00:00Z');
+    assert.equal(next?.[0]?.item_name, 'Widget');
+    assert.equal(next?.[0]?.id, -50);
+  });
+});
+
+describe('patchTestingRailByLine', () => {
+  it('patches workflow/tested_count by line id without writing age or serials', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(TESTING_RAIL_SEGMENT), [
+      {
+        id: 88,
+        receiving_id: 9,
+        last_activity_at: '2026-07-20T08:00:00Z',
+        tested_at: '2026-07-20T08:00:00Z',
+        workflow_status: 'IN_TEST',
+        tested_count: 0,
+        quantity_received: 2,
+      } as ReceivingRailRow & {
+        last_activity_at: string;
+        tested_at: string;
+        workflow_status: string;
+        tested_count: number;
+        quantity_received: number;
+      },
+    ]);
+
+    patchTestingRailByLine(qc, 88, {
+      workflow_status: 'PASSED',
+      tested_count: 2,
+    });
+
+    const next = qc.getQueryData<
+      Array<
+        ReceivingRailRow & {
+          workflow_status?: string;
+          tested_count?: number;
+          last_activity_at?: string;
+          tested_at?: string;
+          serials?: unknown;
+        }
+      >
+    >(railKey(TESTING_RAIL_SEGMENT));
+    assert.equal(next?.[0]?.workflow_status, 'PASSED');
+    assert.equal(next?.[0]?.tested_count, 2);
+    assert.equal(next?.[0]?.last_activity_at, '2026-07-20T08:00:00Z');
+    assert.equal(next?.[0]?.tested_at, '2026-07-20T08:00:00Z');
+    assert.equal(next?.[0]?.serials, undefined);
+  });
+
+  it('does not invent a row when the line is absent from the Testing dock', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(TESTING_RAIL_SEGMENT), [
+      { id: 1, receiving_id: 1 } satisfies ReceivingRailRow,
+    ]);
+    patchTestingRailByLine(qc, 99, { workflow_status: 'PASSED' });
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(TESTING_RAIL_SEGMENT));
+    assert.equal(next?.length, 1);
+    assert.equal(next?.[0]?.id, 1);
   });
 });
 

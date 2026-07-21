@@ -16,6 +16,11 @@ import {
   WorkspaceTimelineTab,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
+import {
+  CartonContextCard,
+  StationContextBar,
+  StationMoreDetails,
+} from '@/components/station/entity-context';
 ```
 
 Reference implementation: `LineEditPanel` (Unbox). Sibling adopters:
@@ -51,21 +56,25 @@ entity chrome / console drawer). Packing is terminal-registry-exempt (no sticky 
 | Layer | Role | SoT |
 |---|---|---|
 | **1. Progress stepper** | Completeness checklist (Photos → Serial → Print), not a wizard lock | `LinearWorkflowStepper` + `deriveLinearStepStates` — lives in parent shell (`ReceivingLineWorkspace`), not inside `StationWorkbench` |
-| **2. Utility toolbar** | Frozen icon bar: refresh, share, overflow, prev/next, details | `LineEditToolbar` + `WORKSPACE_MODES` |
-| **3. Entity context** | One-row identity + inline actions (listing · PO# · tracking · claim · photos); bar density opens classify in a below-chrome strip so pills never fight the nowrap identity row | `CartonContextCard` via `@/components/station/entity-context` + station adapters |
-| **4. Section tabs** | Icon-pill slider that owns bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
-| **5. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content; bridges register dock state |
-| **6. Feedback / footer** | Inline action feedback (scroll) + receive band (between body and dock) | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |
-| **7. Terminal dock** | Tab-aware primary CTA (mobile-style FloatingButton) | `STATION_TERMINAL_REGISTRY` → resolver → `useStationTerminalAction` → `StationTerminalDock` |
+| **2. Station bookmark chrome** | Sticky identity bookmark + corner utilities flush under GlobalHeader | `StationContextBar` + `StationMoreDetails` + `CartonContextCard` `density="bar"` via `@/components/station/entity-context` |
+| **3. Section tabs** | Icon-pill slider that owns bar + mounted panels; `rightSlot` for contextual controls | `SectionTabsSlider` + `buildSectionTabs` + `PairingTogglePill` / `ExternalLinkPill` |
+| **4. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content; bridges register dock state |
+| **5. Feedback / footer** | Inline action feedback (scroll) + receive band (between body and dock) | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |
+| **6. Terminal dock** | Tab-aware primary CTA (mobile-style FloatingButton) | `STATION_TERMINAL_REGISTRY` → resolver → `useStationTerminalAction` → `StationTerminalDock` |
 
 ```
-ReceivingLineWorkspace (stepper)
+Parent shell
+├── StationContextBar          ← identity (density=bar) + StationMoreDetails (embedded LineEditToolbar)
 └── StationWorkbench
-    ├── toolbar
-    ├── scroll: entityContext → tabs → feedback
+    ├── scroll: tabs → feedback  (entityContext/toolbar unused for Unbox-family)
     ├── footer (optional sticky band)
     └── dock
 ```
+
+`StationWorkbench` still accepts optional `toolbar` / `entityContext` for legacy
+or non-identity chrome (e.g. Labels Queue/Print band, Triage recommendations
+strip, Pickup product summary). Do **not** put `CartonContextCard` identity
+there for Unbox-family stations — mount it in `StationContextBar` instead.
 
 Overlays (photo peek, modals) compose **around** `StationWorkbench`, not inside it.
 
@@ -74,13 +83,14 @@ Overlays (photo peek, modals) compose **around** `StationWorkbench`, not inside 
 ## Introspective reuse (new station checklist)
 
 1. Add one row to `WORKSPACE_MODES` only for receiving-family chrome; every docked adopter adds `STATION_TERMINAL_REGISTRY`
-2. Thin adapter: controller → `CartonContextCard` props
-3. Tab defs with visibility gates → `buildSectionTabs()`
-4. Terminal resolver in `{station}/terminal/` — tab id → `TerminalActionVm`
-5. Compose `StationWorkbench` — never hand-roll `relative flex h-full min-h-0 flex-col`
+2. Thin adapter: controller → `CartonContextCard` props with `density="bar"`
+3. Mount adapter in `StationContextBar` above `StationWorkbench`; utilities in `StationMoreDetails` + embedded `LineEditToolbar`
+4. Tab defs with visibility gates → `buildSectionTabs()`
+5. Terminal resolver in `{station}/terminal/` — tab id → `TerminalActionVm`
+6. Compose `StationWorkbench` — never hand-roll `relative flex h-full min-h-0 flex-col`
 
 Adding a tab = one registry row + one content component + one resolver branch.
-Shell, toolbar, entity header, slider chrome, and dock renderer stay untouched.
+Shell, bookmark chrome, slider chrome, and dock renderer stay untouched.
 
 ---
 
@@ -90,16 +100,37 @@ Shell, toolbar, entity header, slider chrome, and dock renderer stay untouched.
 |---|---|---|
 | Form state / handlers | Controllers (`useUnboxLineController`, …) | — |
 | Tab content bodies | Domain cards | `WorkspaceCard`, `SectionTabsSlider` |
+| Overview Notes + Label preview | Adapters (`WorkspaceNotesCard`, `UnboxLabelPreview`, …) | `WorkspaceCard` `bodyDensity="nested"` + `WORKSPACE_NESTED_FIELD*` |
+| Content tabs (checklist / units / timeline / manuals) | Station tab bodies | Same `bodyDensity="nested"` — keep `space-y-*` on inner wrappers |
 | Terminal VM assembly | `resolveUnboxTerminal`, … | Registry + `StationTerminalDock` |
 | Step gate inputs | Photo count, serial, label printed | `deriveLinearStepStates` walk |
 | Entity field wiring | Classify, linked order | `CartonContextCard` props |
 
 ---
 
+## Glass nested worksheet recipe
+
+Stacked overview cards (PO → Notes → Label) and non-overview content tabs share
+one body pad via `WorkspaceCard` `variant="glass"` + `bodyDensity="nested"`
+(`p-3`). Inner white fields compose:
+
+| Token | Value | Role |
+|---|---|---|
+| `WORKSPACE_NESTED_FIELD` | `rounded-xl border … bg-surface-card` | White inset (concentric: glass `3xl` − `p-3` ≈ `xl`) |
+| `WORKSPACE_NESTED_FIELD_PAD` | `inset-field` (`px-3 py-2`) | Default inset pad (Label, PO note, claim) |
+| `WORKSPACE_NESTED_FIELD_PAD_COMPACT` | `px-3 py-1` | 50px overview Notes exception |
+| `WORKSPACE_NESTED_OVERLAY_CORNER` | `right-1.5 top-1.5` | Default overlay inset (Label Edit, claim insert rail) |
+| `WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT` | `right-1.5 top-px` | Notes 50px overlay exception |
+
+**Do not** force this recipe onto flush entity chrome (`CartonContextCard`
+`px-0 py-0`), Shipping solid pairing cards, ShippedNotesComposer, or admin
+`rounded-lg` regions.
+
 ## Related
 
 - Station scan contract: [`station.md`](station.md)
 - Workbench (master–detail) contract: [`workbench.md`](workbench.md)
 - Code: `src/components/station/workbench/`
-- Entity header barrel: `src/components/station/entity-context/`
+- Entity header + bookmark chrome barrel: `src/components/station/entity-context/`
 - Terminal registry: `src/lib/station-terminal/`
+- Nested field SoT: `src/design-system/components/WorkspaceCard.tsx`

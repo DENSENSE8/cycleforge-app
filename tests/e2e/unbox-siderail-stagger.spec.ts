@@ -19,6 +19,10 @@ import { test, expect } from '@playwright/test';
  * NOT restagger, and the row affordance clears the rounded canvas edge (Problem 1).
  */
 
+// Desktop-only: the Unboxed sidebar rail never mounts on phone layouts
+// (/unbox routes to /m/* there), so the reveal under test cannot run.
+test.skip(({ browserName }) => browserName !== 'chromium', 'desktop-only');
+
 const RAIL = 'ul[aria-label="Unboxed activity"]';
 
 // Sampler: from first paint of the Unboxed rail, record the first 6 rows'

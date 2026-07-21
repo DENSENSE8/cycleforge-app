@@ -24,6 +24,8 @@ import {
   type SwimlaneSortOption,
 } from '@/components/board/SwimlaneBoard';
 import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
+import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
+import { getDashboardPendingLayoutFromSearch } from '@/utils/dashboard-search-state';
 import { ORDERS_QUEUE_SORTS, ORDERS_QUEUE_SORT_LABEL, type OrdersQueueSort } from '@/components/dashboard/orders-queue/helpers';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
@@ -137,6 +139,9 @@ export function UnshippedShelfBoard({
 }: UnshippedShelfBoardProps) {
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Pending presentation: default vertical shelf-board vs the flat spreadsheet
+  // grid view (`?view=grid`). Search always flattens (grid|board irrelevant).
+  const pendingLayout = getDashboardPendingLayoutFromSearch(searchParams);
 
   const focusLane = useMemo((): BoardLane | null => {
     const raw = String(searchParams.get('ustatus') || '').trim().toUpperCase();
@@ -325,6 +330,42 @@ export function UnshippedShelfBoard({
                   virtualized={VIRTUAL_LANES && pageScroll}
                 />
               </div>
+            </div>
+            {footer}
+          </div>
+        ) : pendingLayout === 'grid' ? (
+          <div className="flex min-w-0 flex-col">
+            {toolbarPortalTarget
+              ? createPortal(searchToolbar, toolbarPortalTarget)
+              : (
+                <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-soft px-3 py-1.5">
+                  {searchToolbar}
+                </div>
+              )}
+            {/* Dual-axis self-scroll region — a spreadsheet grid can't grow into
+                the dashboard's page-scroll body (overflow-x-clip + the CSS
+                visible→auto promotion kill the frozen h-scroll), so it owns a
+                bounded viewport-fit height. Height is browser-tunable. */}
+            <div className="h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0 px-3 pb-3">
+              <OrdersGridView
+                records={records}
+                loading={loading}
+                searchValue={searchValue}
+                onOpenRecord={(record) => {
+                  setSelectedId(Number(record.id));
+                  onOpenRecord(record);
+                }}
+                onCloseRecord={() => {
+                  setSelectedId(null);
+                  dispatchCloseShippedDetails();
+                }}
+                onClearSearch={onClearSearch}
+                selectMode={selectMode}
+                selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+                searchEmptyTitle={searchEmptyTitle}
+                searchResultLabel={searchResultLabel}
+                clearSearchLabel={clearSearchLabel}
+              />
             </div>
             {footer}
           </div>

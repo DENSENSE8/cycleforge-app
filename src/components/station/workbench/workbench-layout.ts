@@ -15,7 +15,7 @@ export const STATION_WORKBENCH_COLUMN = 'mx-auto w-full min-w-0 max-w-[720px]';
 export const STATION_WORKBENCH_BODY_PAD_X = 'px-4 sm:px-6';
 
 /**
- * Sticky identity bookmark column ({@link ReceivingStationContextBar}) —
+ * Sticky identity bookmark column ({@link StationContextBar}) —
  * same max-width + horizontal pad as the workbench body content.
  */
 export const STATION_WORKBENCH_IDENTITY_COLUMN =

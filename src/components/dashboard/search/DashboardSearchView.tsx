@@ -4,16 +4,20 @@
  * Dashboard Search mode right pane (`/dashboard?mode=search`).
  *
  * With `openOrderId` — remade two-column Search order detail (no shipped panel).
- * Without — cross-entity `SearchResultsSurface`. Order hits stay on this URL.
- * Query typing lives in the always-global header pill; this view is driven by
- * URL `?q=` (+ optional `openOrderId` / `map`).
+ * Without — cross-entity `SearchResultsSurface` (grouped, no category pills).
+ * Identifier queries resolve immediately via lookup so exact order #s open
+ * detail without waiting on retrieve / Overview.
  */
 
 import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
-import { isTabId, type TabId } from '@/components/search/search-tabs';
-import { orderSearchHref } from '@/lib/search/search-hit';
+import {
+  looksLikeIdentifier,
+  orderSearchHref,
+  shouldAutoOpenSearchOrder,
+} from '@/lib/search/search-hit';
+import { resolveSearchOrder } from '@/lib/search/resolve-search-order';
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
 import {
   DASHBOARD_SEARCH_RECENTS_SCOPE,
@@ -27,8 +31,6 @@ export function DashboardSearchView() {
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? searchParams.get('dq') ?? '').trim();
   const openOrderId = (searchParams.get('openOrderId') ?? '').trim();
-  const rawType = (searchParams.get('type') ?? 'all').toLowerCase();
-  const tab: TabId = isTabId(rawType) && rawType !== 'order' ? rawType : 'all';
 
   const { push: pushRecent } = useStaffSearchRecents({
     scope: DASHBOARD_SEARCH_RECENTS_SCOPE,
@@ -45,32 +47,6 @@ export function DashboardSearchView() {
     });
   }, [q, pushRecent]);
 
-  // Legacy `?type=order` bookmarks → open first identifier as order detail.
-  useEffect(() => {
-    if (rawType === 'order' && q && !openOrderId) {
-      router.replace(orderSearchHref(q, q));
-    }
-  }, [rawType, q, openOrderId, router]);
-
-  const updateUrl = useCallback(
-    (next: { q?: string; type?: TabId }) => {
-      const sp = new URLSearchParams(searchParams.toString());
-      sp.set('mode', 'search');
-      sp.delete('openOrderId');
-      sp.delete('dq');
-      if (next.q !== undefined) {
-        if (next.q) sp.set('q', next.q);
-        else sp.delete('q');
-      }
-      if (next.type !== undefined) {
-        if (next.type === 'all' || next.type === 'order') sp.delete('type');
-        else sp.set('type', next.type);
-      }
-      router.replace(`/dashboard?${sp.toString()}`);
-    },
-    [router, searchParams],
-  );
-
   const handleSelectHit = useCallback(
     (hit: AiSearchHit, event: ReactMouseEvent) => {
       if (hit.entityType !== 'order') return;
@@ -80,15 +56,63 @@ export function DashboardSearchView() {
     [router, q],
   );
 
-  const handleTabChange = useCallback(
-    (t: TabId) => {
-      if (t === 'order') {
-        if (q) router.push(orderSearchHref(q, q));
-        return;
+  /** Sole-hit / identifier open attempts — keyed by q. */
+  const autoOpenQueryRef = useRef<string | null>(null);
+  const identifierAttemptRef = useRef<string | null>(null);
+  /** True after detail was open — Back clears attempts so re-open can fire. */
+  const hadOpenOrderRef = useRef(false);
+
+  useEffect(() => {
+    if (!q.trim()) {
+      autoOpenQueryRef.current = null;
+      identifierAttemptRef.current = null;
+      hadOpenOrderRef.current = false;
+      return;
+    }
+    if (openOrderId) {
+      hadOpenOrderRef.current = true;
+      return;
+    }
+    if (hadOpenOrderRef.current) {
+      hadOpenOrderRef.current = false;
+      autoOpenQueryRef.current = null;
+      identifierAttemptRef.current = null;
+    }
+  }, [q, openOrderId]);
+
+  // Identifier → resolve via lookup immediately (no wait for retrieve).
+  useEffect(() => {
+    if (openOrderId || !q || !looksLikeIdentifier(q)) return;
+    if (identifierAttemptRef.current === q) return;
+    identifierAttemptRef.current = q;
+
+    let cancelled = false;
+    void (async () => {
+      const next = await resolveSearchOrder(q);
+      if (cancelled) return;
+      if (next.status === 'ok') {
+        router.replace(orderSearchHref(next.order.id, q));
       }
-      updateUrl({ type: t });
+      // notfound / fba → stay on grouped results (Zoho PO / non-order ids).
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [openOrderId, q, router]);
+
+  const handleResults = useCallback(
+    (hits: AiSearchHit[]) => {
+      if (openOrderId) return;
+      // Identifier path owns open for digit-bearing tokens — avoid double navigate.
+      if (looksLikeIdentifier(q)) return;
+      if (!shouldAutoOpenSearchOrder(hits)) return;
+      const key = q.trim();
+      if (!key || autoOpenQueryRef.current === key) return;
+      autoOpenQueryRef.current = key;
+      router.replace(orderSearchHref(hits[0].id, q));
     },
-    [updateUrl, q, router],
+    [openOrderId, q, router],
   );
 
   if (openOrderId) {
@@ -104,9 +128,8 @@ export function DashboardSearchView() {
       <SearchResultsSurface
         scope="global"
         query={q}
-        activeTab={tab}
-        onTabChange={handleTabChange}
         onSelectHit={handleSelectHit}
+        onResults={handleResults}
       />
     </div>
   );

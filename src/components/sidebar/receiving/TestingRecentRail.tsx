@@ -36,6 +36,16 @@ const TESTING_TESTED_REFRESH_EVENTS = [
 ];
 
 /**
+ * Testing dock age axis = this tester's verdict time. `view=testing` folds
+ * `tested_at` into `last_activity_at`; prefer explicit `tested_at` when present.
+ * Never fall through to `created_at` (scan/import time) — that was the jump
+ * `dispatchTestingLineUpdated` strip-lists tried (and failed) to paper over.
+ */
+function getTestingActivityAt(row: ReceivingLineRow): string | null {
+  return row.tested_at ?? row.last_activity_at ?? null;
+}
+
+/**
  * Computes "Tested" quantity for a line in the Testing feed. Prefers the real
  * recorded-verdict count from the API (`tested_count`, scoped to this tester);
  * a line with verdicts but a non-terminal workflow_status (e.g. partway through
@@ -115,11 +125,14 @@ export function TestingRecentRail({
         limit={limit}
         queryKey={queryKey}
         fetchFn={fetchFn}
-        updateEvent="receiving-line-updated"
+        // Mode isolation: ignore shared `receiving-line-updated`. Workspace
+        // patches (serials / verdict) stay on that bus; dock membership +
+        // tested qty reconcile via refreshEvents + allowlisted RQ helpers.
         refreshEvents={TESTING_TESTED_REFRESH_EVENTS}
         navigateEvent="testing-navigate-rail"
         eyebrowTitle="Recent"
         eyebrowSuffix="You"
+        getActivityAt={getTestingActivityAt}
         getStatusDot={getTestingStatusDot}
         getStatusDotLabel={getTestingStatusDotLabel}
         renderQuantity={(row) => {

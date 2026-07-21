@@ -27,8 +27,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
 import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
-import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
+import { PackerPhotoRequestStatus } from '@/components/station/PackerPhotoRequestStatus';
 import { toast } from '@/lib/toast';
 
 interface ActivePackingOrder {
@@ -148,6 +148,18 @@ export default function StationPacking({
     const scan = inputValue.trim();
     if (!scan || isLoading) return;
 
+    // §1b dual-link: a unit QR scanned while an ORDERS/SKU pack is still active
+    // links its phone photos to that pack's packer_log (not a fresh prepack); a
+    // first-scan / prepack-only unit stays unlinked (null). Read before the
+    // reset below — the closure still holds the prior scan's active order.
+    const priorPackerLogId =
+      activeOrder &&
+      (activeOrder.scanType === 'ORDERS' || activeOrder.scanType === 'SKU') &&
+      typeof activeOrder.packerLogId === 'number' &&
+      activeOrder.packerLogId > 0
+        ? activeOrder.packerLogId
+        : null;
+
     setIsLoading(true);
     setErrorMessage(null);
     setActiveOrder(null);
@@ -188,19 +200,17 @@ export default function StationPacking({
           sku: sku || undefined,
           serialUnitId,
           unitKey: displayKey,
-          packerLogId: null,
+          packerLogId: priorPackerLogId,
         });
 
-        if (UNIT_SCAN_PHOTOS) {
-          await publishUnitPhotoRequest({
-            serialUnitId,
-            unitKey: displayKey,
-            stage: 'packing',
-            packerLogId: null,
-            poRef: sku || displayKey,
-          });
-          setLastUnitPhotoRequest({ serialUnitId, unitKey: displayKey });
-        }
+        await publishUnitPhotoRequest({
+          serialUnitId,
+          unitKey: displayKey,
+          stage: 'packing',
+          packerLogId: priorPackerLogId,
+          poRef: sku || displayKey,
+        });
+        setLastUnitPhotoRequest({ serialUnitId, unitKey: displayKey });
         toast.success('Prepack unit ready', {
           description: 'Phone camera opened for packing photos.',
         });
@@ -387,10 +397,19 @@ export default function StationPacking({
         </ScanBandShell>
 
         <div className={SIDEBAR_GUTTER}>
-          {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+          {lastUnitPhotoRequest ? (
             <UnitPhotoRequestStatus
               serialUnitId={lastUnitPhotoRequest.serialUnitId}
               unitKey={lastUnitPhotoRequest.unitKey}
+            />
+          ) : null}
+
+          {activeOrder &&
+          (activeOrder.scanType === 'ORDERS' || activeOrder.scanType === 'SKU') &&
+          activeOrder.packerLogId ? (
+            <PackerPhotoRequestStatus
+              packerLogId={activeOrder.packerLogId}
+              orderId={activeOrder.orderId}
             />
           ) : null}
 

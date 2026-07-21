@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { tenantQuery } from '@/lib/tenancy/db';
-import { refreshEbayAccessToken, readEbayToken, writeEbayToken } from '@/lib/ebay/token-refresh';
-import { getEbayAppCreds, markEbayAccountNeedsReconsent } from '@/lib/ebay/credentials';
-import { ebayScopeStringForRole, normalizeEbayRole } from '@/lib/ebay/oauth-config';
+import { refreshEbayAccessToken } from '@/lib/ebay/token-refresh';
+import {
+  getEbayAppCreds,
+  markEbayAccountNeedsReconsent,
+  patchEbayUserAccessToken,
+  resolveEbayUserTokens,
+  touchEbayAccountTokenExpiry,
+} from '@/lib/ebay/credentials';
+import { ebayScopeStringForRole } from '@/lib/ebay/oauth-config';
 import { formatPSTTimestamp } from '@/utils/date';
 
 /** A 4xx from eBay's token endpoint means the refresh token is dead — re-consent needed. */
@@ -14,7 +19,7 @@ function isDeadRefreshToken(message: string): boolean {
 /**
  * POST /api/ebay/refresh-token  { accountName }
  * Manually refresh an account's access token (the per-account "Refresh" button).
- * Org-scoped via tenantQuery, KMS-aware token read/write, per-tenant environment.
+ * Tokens live in the organization_integrations vault (scoped seller:/buyer:).
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -23,24 +28,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'Account name is required' }, { status: 400 });
     }
 
-    const result = await tenantQuery<{
-      refresh_token: string;
-      refresh_token_expires_at: string | null;
-      account_role: string | null;
-    }>(
-      ctx.organizationId,
-      `SELECT refresh_token, refresh_token_expires_at, account_role
-         FROM ebay_accounts
-        WHERE account_name = $1 AND organization_id = $2`,
-      [accountName, ctx.organizationId],
-    );
-    if (result.rows.length === 0) {
-      return NextResponse.json({ success: false, error: `Account ${accountName} not found` }, { status: 404 });
+    let tokens;
+    try {
+      tokens = await resolveEbayUserTokens(ctx.organizationId, accountName);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Account not found';
+      const status = /not found/i.test(message) ? 404 : 409;
+      return NextResponse.json({ success: false, error: message }, { status });
     }
-    const { refresh_token, refresh_token_expires_at, account_role } = result.rows[0];
 
-    // Dead refresh token → re-consent, don't bother calling eBay.
-    if (refresh_token_expires_at && new Date(refresh_token_expires_at).getTime() <= Date.now()) {
+    if (tokens.refreshTokenExpiresAt && tokens.refreshTokenExpiresAt.getTime() <= Date.now()) {
       await markEbayAccountNeedsReconsent(ctx.organizationId, accountName, 'refresh token expired');
       return NextResponse.json(
         { success: false, error: 'Re-authorization required — the refresh token expired. Reconnect the account.' },
@@ -53,20 +50,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'eBay app credentials are not configured.' }, { status: 500 });
     }
 
-    const decryptedRefreshToken = readEbayToken(refresh_token);
-
     let accessToken: string;
     let expiresIn: number;
     try {
       ({ accessToken, expiresIn } = await refreshEbayAccessToken(
         creds.appId,
         creds.certId,
-        decryptedRefreshToken,
+        tokens.refreshToken,
         creds.environment,
-        ebayScopeStringForRole(normalizeEbayRole(account_role)),
+        ebayScopeStringForRole(tokens.accountRole),
       ));
-    } catch (err: any) {
-      const message = err?.message || 'refresh failed';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'refresh failed';
       if (isDeadRefreshToken(message)) {
         await markEbayAccountNeedsReconsent(ctx.organizationId, accountName, message);
         return NextResponse.json(
@@ -78,13 +73,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
-    await tenantQuery(
-      ctx.organizationId,
-      `UPDATE ebay_accounts
-          SET access_token = $1, token_expires_at = $2, updated_at = NOW()
-        WHERE account_name = $3 AND organization_id = $4`,
-      [writeEbayToken(accessToken), newExpiresAt, accountName, ctx.organizationId],
-    );
+    await patchEbayUserAccessToken({
+      orgId: ctx.organizationId,
+      role: tokens.accountRole,
+      accountName,
+      accessToken,
+      expiresAt: newExpiresAt,
+    });
+    await touchEbayAccountTokenExpiry(ctx.organizationId, accountName, newExpiresAt);
 
     return NextResponse.json({
       success: true,
@@ -92,8 +88,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       expiresAt: formatPSTTimestamp(newExpiresAt),
       expiresIn,
     });
-  } catch (error: any) {
-    console.error('[ebay/refresh-token] error:', error?.message || error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal error';
+    console.error('[ebay/refresh-token] error:', message);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }, { permission: 'integrations.ebay' });

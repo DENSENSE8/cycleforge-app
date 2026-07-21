@@ -31,6 +31,12 @@ import {
   type TicketLinkAnchor,
   type TicketLinkEntityType,
 } from '@/lib/support/tickets';
+import {
+  pairTicketShipmentFromEntity as pairTicketShipmentFromEntityCore,
+  pairTicketShipmentFromReceiving as pairTicketShipmentFromReceivingCore,
+  type PairTicketShipmentFromEntityDeps,
+  type PairTicketShipmentFromReceivingDeps,
+} from '@/lib/support/ticket-shipment-pair';
 
 export type TicketLinkAnchorInput =
   | { type: 'receiving'; receivingId: number; lineId?: number | null }
@@ -226,6 +232,21 @@ export async function linkTicketToAnchor(args: {
     staffId: args.staffId ?? null,
   });
 
+  // Pair the carton's STN as a ticket_links reference whenever the anchor is a
+  // receiving carton/line. Best-effort — primary RECEIVING link already succeeded.
+  if (args.anchor.type === 'receiving') {
+    try {
+      await pairTicketShipmentFromReceiving({
+        orgId: args.orgId,
+        ticketId: ticket.id,
+        receivingId: args.anchor.receivingId,
+        staffId: args.staffId ?? null,
+      });
+    } catch (pairErr) {
+      console.warn('[ticket-link] STN pair after receiving anchor failed', pairErr);
+    }
+  }
+
   return {
     ticketNumber,
     ticketUrl: zendeskTicketUrl(ticket.id),
@@ -415,6 +436,104 @@ export async function addTicketShipmentReference(args: {
     [args.orgId, args.ticketId, shipmentId],
   );
   return { shipmentId, isPrimary: existing.rows[0]?.is_primary ?? false, added: false };
+}
+
+/**
+ * After anchoring a ticket to a receiving carton/line, also reference the
+ * carton's STN on `ticket_links` (non-primary when RECEIVING is already the
+ * anchor). Idempotent; best-effort callers should catch.
+ *
+ * Returns null when the carton has no shipment_id (nothing to pair).
+ */
+const defaultPairFromReceivingDeps: PairTicketShipmentFromReceivingDeps = {
+  lookupCartonShipmentId: async (orgId, receivingId) => {
+    const res = await tenantQuery<{ shipment_id: number | null }>(
+      orgId,
+      `SELECT shipment_id
+         FROM receiving_carton
+        WHERE id = $1 AND organization_id = $2
+        LIMIT 1`,
+      [receivingId, orgId],
+    );
+    const shipmentId = res.rows[0]?.shipment_id;
+    return shipmentId == null ? null : Number(shipmentId);
+  },
+  addReference: (args) => addTicketShipmentReference(args),
+};
+
+export async function pairTicketShipmentFromReceiving(
+  args: {
+    orgId: OrgId;
+    ticketId: number;
+    receivingId: number;
+    staffId?: number | null;
+  },
+  deps: PairTicketShipmentFromReceivingDeps = defaultPairFromReceivingDeps,
+): Promise<{ shipmentId: number; isPrimary: boolean; added: boolean } | null> {
+  return pairTicketShipmentFromReceivingCore(args, deps);
+}
+
+/**
+ * Pair a ticket to a known STN (by id or tracking). Prefer
+ * {@link pairTicketShipmentFromReceiving} when the carton is in hand.
+ */
+export async function pairTicketShipmentIfKnown(args: {
+  orgId: OrgId;
+  ticketId: number;
+  shipmentId?: number | null;
+  trackingNumber?: string | null;
+  staffId?: number | null;
+}): Promise<{ shipmentId: number; isPrimary: boolean; added: boolean } | null> {
+  if (args.shipmentId != null && Number.isFinite(args.shipmentId) && args.shipmentId > 0) {
+    return addTicketShipmentReference({
+      orgId: args.orgId,
+      ticketId: args.ticketId,
+      shipmentId: Number(args.shipmentId),
+      staffId: args.staffId ?? null,
+    });
+  }
+  const tracking = args.trackingNumber?.trim();
+  if (!tracking) return null;
+  return addTicketShipmentReference({
+    orgId: args.orgId,
+    ticketId: args.ticketId,
+    trackingNumber: tracking,
+    staffId: args.staffId ?? null,
+  });
+}
+
+/**
+ * When a ticket was just anchored to RECEIVING / RECEIVING_LINE / SHIPMENT,
+ * ensure the STN is on `ticket_links`. SHIPMENT anchors are already the STN
+ * primary — this is an idempotent re-reference for those.
+ */
+const defaultPairFromEntityDeps: PairTicketShipmentFromEntityDeps = {
+  ...defaultPairFromReceivingDeps,
+  lookupLineReceivingId: async (orgId, lineId) => {
+    const res = await tenantQuery<{ receiving_id: number | null }>(
+      orgId,
+      `SELECT receiving_id
+         FROM receiving_line
+        WHERE id = $1 AND organization_id = $2
+        LIMIT 1`,
+      [lineId, orgId],
+    );
+    const receivingId = res.rows[0]?.receiving_id;
+    return receivingId == null ? null : Number(receivingId);
+  },
+};
+
+export async function pairTicketShipmentFromEntity(
+  args: {
+    orgId: OrgId;
+    ticketId: number;
+    entityType: string;
+    entityId: number;
+    staffId?: number | null;
+  },
+  deps: PairTicketShipmentFromEntityDeps = defaultPairFromEntityDeps,
+): Promise<{ shipmentId: number; isPrimary: boolean; added: boolean } | null> {
+  return pairTicketShipmentFromEntityCore(args, deps);
 }
 
 /**

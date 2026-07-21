@@ -14,8 +14,8 @@
  *   • Round-trip (gated E2E_PHOTOS_GCS=1) — discover a real receiving-attached
  *     unit, upload a testing photo, assert it lands in the timeline's `testing`
  *     bucket, then delete it (non-destructive). The optional UI leg
- *     (E2E_UNIT_PHOTOS_UI=1, dev server booted with
- *     NEXT_PUBLIC_UNIT_SCAN_PHOTOS=1) asserts the thumbnail renders in the pane.
+ *     (E2E_UNIT_PHOTOS_UI=1, dev server booted) asserts the thumbnail renders
+ *     in the pane — the unit-photo bridge now ships unconditionally (no flag).
  *
  * Auth is the admin session minted by global-setup (admin short-circuits to
  * every permission, incl. tech.scan_serial + sku_stock.view).
@@ -173,7 +173,7 @@ test.describe('Unit photo scan — full round-trip', () => {
   test('unit detail pane renders the paired photo thumbnail', async ({ request, page }) => {
     test.skip(
       !process.env.E2E_UNIT_PHOTOS_UI,
-      'Set E2E_UNIT_PHOTOS_UI=1 with the dev server booted NEXT_PUBLIC_UNIT_SCAN_PHOTOS=1',
+      'Set E2E_UNIT_PHOTOS_UI=1 with the dev server booted',
     );
     const unit = await findSerialUnit(request);
     test.skip(unit === null, 'no receiving-attached serial unit found in this env');

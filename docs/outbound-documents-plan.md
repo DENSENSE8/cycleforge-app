@@ -111,7 +111,7 @@ stored for reprint/audit.
 |----------|-----------------|---------------------|
 | eBay | `EbayClient.getOrderShippingFulfillments()` | Fulfillment API; label PDF availability varies |
 | Amazon | SP-API modules under `src/lib/` | Needs Orders API + shipping label / document endpoints per MFN flow |
-| ECWID | `src/lib/ecwid/` | Order export; slip generation may be internal |
+| ECWID | `src/lib/ecwid/` | Order export; packing slips via `invoice-pdf` (see `marketplace/ecwid-documents.ts`) |
 | Walmart | Limited | Phase 2+ adapter |
 | Zoho | `sales_orders` sync | Packing slip from Zoho SO PDF is an alternate source |
 
@@ -546,7 +546,7 @@ interface MarketplaceDocumentAdapter {
 |-------|----------|--------------|-----------|
 | 1 | eBay | `marketplace/ebay-documents.ts` | Fulfillment API; may need Sell Feed for some PDFs |
 | 2 | Amazon MFN | `marketplace/amazon-documents.ts` | SP-API Orders + Shipping; check token scopes |
-| 3 | ECWID | `marketplace/ecwid-documents.ts` | Generate internal slip from order JSON if no PDF |
+| 3 | ECWID | `marketplace/ecwid-documents.ts` | Live `GET …/orders/{orderRef}/invoice-pdf` → packing_slip (`marketplace_api`); generated slip on failure |
 | 4 | Walmart | stub | Return `not_supported` |
 
 ### 11.3 Fetch orchestrator

@@ -39,7 +39,7 @@ export function OperationsDashboard() {
             title="Numbers at a glance"
             meta="Live · refreshes every minute"
           />
-          <PrimaryKpiGrid summary={data?.summary} onOpen={setOpenKpi} />
+          <PrimaryKpiGrid summary={data?.summary} onOpen={setOpenKpi} activeKind={openKpi} />
 
           <div className="mt-3">
             <SecondaryKPITiles summary={data?.summary} />

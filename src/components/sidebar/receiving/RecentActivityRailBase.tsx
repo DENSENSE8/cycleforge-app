@@ -63,7 +63,7 @@ export interface RecentActivityRailBaseProps {
    */
   loadSnapshot?: () => Promise<ReceivingLineRow[] | null>;
   persistSnapshot?: (rows: ReceivingLineRow[]) => void;
-  updateEvent: string;
+  updateEvent?: string;
   /** Optimistic delete event ({ id }); drops the row from the rail immediately. */
   deleteEvent?: string;
   /** Optimistic group-delete event (detail = receiving_id); drops the whole carton's rows. */
@@ -86,6 +86,11 @@ export interface RecentActivityRailBaseProps {
    * back). Defaults to true (preserve the pin) for every other rail.
    */
   pinSelectedLead?: boolean;
+  /**
+   * When true, keep SQL/fetcher order — shell skips client re-sort by activity.
+   * Unboxed sets this so first-open is the only axis.
+   */
+  preserveServerOrder?: boolean;
   /** First-load stagger motion — forwarded to SidebarRailShell. */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
   /** Dev/observability: stamp paint timing once the rail leaves skeleton. */
@@ -216,6 +221,7 @@ export function RecentActivityRailBase({
   emptyText,
   autoSelectFirstWhenEmpty = false,
   pinSelectedLead = true,
+  preserveServerOrder = false,
   staggerRevealMotion,
   contentPaintSurface,
   getActivityAt = getRowActivityAt,
@@ -252,6 +258,7 @@ export function RecentActivityRailBase({
       getRowDisabled={getRowDisabled}
       limit={limit}
       pinSelectedLead={pinSelectedLead}
+      preserveServerOrder={preserveServerOrder}
       staggerRevealMotion={staggerRevealMotion}
       contentPaintSurface={contentPaintSurface}
       eyebrowTitle={eyebrowTitle}
@@ -488,7 +495,9 @@ function ReceivingPopoverContent({
 
       <div className="flex items-center justify-between border-t border-border-hairline pt-2.5">
         <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
-          {railRelativeTime(activityAt ?? row.created_at)} ago
+          {activityAt
+            ? `${railRelativeTime(activityAt)} ago`
+            : '—'}
           {row.assigned_tech_id ? ` · ${getStaffName(row.assigned_tech_id)}` : ''}
         </span>
         <div className="flex items-center gap-1.5">

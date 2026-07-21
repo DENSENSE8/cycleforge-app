@@ -3,8 +3,7 @@ import pool from '@/lib/db';
 import { decryptIntegrationPayload } from '@/lib/integrations/crypto';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { recordAudit } from '@/lib/audit-logs';
-import { writeEbayToken } from '@/lib/ebay/token-refresh';
-import { getEbayAppCreds } from '@/lib/ebay/credentials';
+import { getEbayAppCreds, upsertEbayUserCreds } from '@/lib/ebay/credentials';
 import {
   ebayIdentityEndpoint,
   ebayTokenEndpoint,
@@ -146,27 +145,36 @@ export async function GET(req: NextRequest) {
       /* non-fatal — identity probe is informational only */
     }
 
-    // Encrypt tokens with the KMS-aware writer so the read side (readEbayToken)
-    // stays consistent (previously the callback used raw encryptIntegrationPayload).
-    const encryptedAccessToken = writeEbayToken(data.access_token);
-    const encryptedRefreshToken = writeEbayToken(data.refresh_token);
-
     const tokenExpiresAt = new Date(Date.now() + (data.expires_in || 7200) * 1000);
     const refreshTokenExpiresAt = new Date(
       Date.now() + (data.refresh_token_expires_in || 18 * 30 * 24 * 3600) * 1000,
     );
 
+    // Vault SoT — per-account user tokens (scope = seller:{slug} | buyer:{slug}).
+    await upsertEbayUserCreds({
+      orgId: organizationId,
+      accountName,
+      role: accountRole,
+      refreshToken: data.refresh_token,
+      accessToken: data.access_token,
+      expiresAt: tokenExpiresAt,
+      refreshTokenExpiresAt,
+      environment,
+      accountRef: ebayUserId || null,
+      displayLabel: `${accountRole} · ${accountName}`,
+      createdBy: createdBy ?? null,
+    });
+
+    // Metadata only — no token columns (dropped after vault migration).
     await tenantQuery(
       organizationId,
       `INSERT INTO ebay_accounts (
-        organization_id, account_name, ebay_user_id, access_token, refresh_token,
+        organization_id, account_name, ebay_user_id,
         token_expires_at, refresh_token_expires_at, marketplace_id, platform, account_role, is_active, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'EBAY', $9, true, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, 'EBAY', $7, true, NOW())
       ON CONFLICT (organization_id, account_name) DO UPDATE
       SET ebay_user_id            = EXCLUDED.ebay_user_id,
-          access_token            = EXCLUDED.access_token,
-          refresh_token           = EXCLUDED.refresh_token,
           token_expires_at        = EXCLUDED.token_expires_at,
           refresh_token_expires_at = EXCLUDED.refresh_token_expires_at,
           platform                = 'EBAY',
@@ -177,8 +185,6 @@ export async function GET(req: NextRequest) {
         organizationId,
         accountName,
         ebayUserId || null,
-        encryptedAccessToken,
-        encryptedRefreshToken,
         tokenExpiresAt,
         refreshTokenExpiresAt,
         'EBAY_US',

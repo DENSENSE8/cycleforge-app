@@ -1,3 +1,11 @@
+export interface PackerLogPhoto {
+  id: number;
+  url: string;
+  uploadedAt: string;
+  /** photos.photo_type — pack_slip / pack_box when guided Review captured. */
+  photoType?: string | null;
+}
+
 export interface PackerLogRow {
   id: number;
   packer_log_id: number | null;
@@ -7,7 +15,9 @@ export interface PackerLogRow {
   packed_by: number | null;
   packed_by_name: string | null;
   tracking_type: string | null;
-  packer_photos_url: Array<{ id: number; url: string; uploadedAt: string }> | null;
+  packer_photos_url: PackerLogPhoto[] | null;
+  /** Latest pack_verification_events.outcome (plan §2e). */
+  verification_outcome?: string | null;
   order_row_id: number | null;
   shipment_id: number | null;
   order_id: string | null;

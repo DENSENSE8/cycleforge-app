@@ -16,6 +16,12 @@ import {
   MobileSwipePhotoViewer,
   type SwipePhotoSlide,
 } from '@/components/mobile/station/MobileSwipePhotoViewer';
+import {
+  gateStillFrame,
+  PACK_SLIP_GATE_COACHING,
+  type GateReason,
+} from '@/lib/vision/frame-quality';
+import { toast } from '@/lib/toast';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +42,8 @@ export interface PriorPhoto {
 type GallerySlide =
   | { kind: 'prior'; id: string; previewUrl: string }
   | { kind: 'capture'; id: string; previewUrl: string; blob: Blob };
+
+const GATE_DIM = 160;
 
 export interface MobilePackerSpamCameraProps {
   /**
@@ -61,6 +69,12 @@ export interface MobilePackerSpamCameraProps {
    * to document.body. The swipe viewer still portals for z-index stacking.
    */
   embedded?: boolean;
+  /**
+   * When true, run the still-frame quality gate on every shutter (plan §2c —
+   * Packer Review slip capture). Rejected shots never enter the gallery; the
+   * operator sees the lighting/blur coaching toast and retries.
+   */
+  gateCapture?: boolean;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -91,14 +105,17 @@ export function MobilePackerSpamCamera({
   priorPhotos = [],
   onDeletePrior,
   embedded = false,
+  gateCapture = false,
 }: MobilePackerSpamCameraProps) {
   const { videoRef, startCamera, stopCamera, cameraError } = useCamera();
   const viewfinderRef = useRef<HTMLDivElement>(null);
+  const gateCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [shots, setShots] = useState<CapturedShot[]>([]);
   const [flash, setFlash] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [startError, setStartError] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [gateHint, setGateHint] = useState<string | null>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -192,6 +209,32 @@ export function MobilePackerSpamCamera({
       sy = Math.round((vh - sHeight) / 2);
     }
 
+    // Still-frame quality gate (plan §2c) — cheap downscale before we keep the shot.
+    if (gateCapture) {
+      if (!gateCanvasRef.current) gateCanvasRef.current = document.createElement('canvas');
+      const gc = gateCanvasRef.current;
+      const gh = Math.max(1, Math.round((GATE_DIM * sHeight) / sWidth));
+      gc.width = GATE_DIM;
+      gc.height = gh;
+      const gctx = gc.getContext('2d', { willReadFrequently: true });
+      if (gctx) {
+        gctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, GATE_DIM, gh);
+        const imageData = gctx.getImageData(0, 0, GATE_DIM, gh);
+        const gate = gateStillFrame(imageData);
+        if (!gate.ok) {
+          const reason: GateReason = gate.reason;
+          setGateHint(PACK_SLIP_GATE_COACHING);
+          toast.message(PACK_SLIP_GATE_COACHING, {
+            description: reason === 'ok' ? undefined : reason.replace('-', ' '),
+            position: 'top-center',
+            duration: 3500,
+          });
+          return;
+        }
+        setGateHint(null);
+      }
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = sWidth;
     canvas.height = sHeight;
@@ -212,7 +255,7 @@ export function MobilePackerSpamCamera({
     setShots((prev) => [...prev, { id, blob, previewUrl }]);
     setFlash(true);
     setTimeout(() => setFlash(false), 160);
-  }, [shots.length, maxPhotos, jpegQuality, videoRef]);
+  }, [shots.length, maxPhotos, jpegQuality, videoRef, gateCapture]);
 
   // ── Gallery paging ────────────────────────────────────────────────────────
   const openGallery = useCallback(() => {
@@ -421,6 +464,13 @@ export function MobilePackerSpamCamera({
       {atCap && cameraLive && (
         <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 -translate-x-1/2 px-3 py-1.5 rounded-full bg-amber-500/95 text-xs font-black uppercase tracking-wider text-white shadow-lg">
           Max {maxPhotos} photos
+        </div>
+      )}
+
+      {/* ── Quality-gate coaching (plan §2c) ── */}
+      {gateHint && cameraLive && !atCap && (
+        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl bg-amber-500/95 px-3 py-2 text-center text-xs font-bold text-white shadow-lg">
+          {gateHint}
         </div>
       )}
 

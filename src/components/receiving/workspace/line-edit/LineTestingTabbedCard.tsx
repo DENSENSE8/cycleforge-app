@@ -71,7 +71,7 @@ export function TestingSkuChecklistPanel({
   if (!bundle) return null;
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       <ChecklistSection
         embedded
         receivingLineId={receivingLineId}
@@ -101,7 +101,7 @@ export function TestingSkuManualsPanel({
   if (!bundle) return null;
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       <ManualsSection
         embedded
         receivingLineId={receivingLineId}

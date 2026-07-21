@@ -38,8 +38,8 @@ export function SidebarShell({
     <aside
       className={cn(
         // No border-r / drop shadow — content shell (`appContentShellClass`) owns
-        // the soft join (rounded-tl + border). A sidebar shadow casts a gray
-        // strip into that cutout and competes with work-canvas depth.
+        // the soft join (rounded-tl + depth-edge hairline). A sidebar shadow
+        // casts a gray strip into that cutout and competes with content depth.
         'flex h-full w-full flex-col overflow-hidden',
         appChromeClass,
         // In the mobile drawer, inset the top so the header clears the notch /

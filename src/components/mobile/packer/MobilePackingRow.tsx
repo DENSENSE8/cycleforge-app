@@ -8,6 +8,8 @@ import type { PackerLogRow } from '@/components/mobile/packer/types';
 import { MobileRowCard } from '@/components/mobile/feed/MobileRowCard';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
+import { OutcomeChip } from '@/features/review/OutcomeChip';
+import { PACK_SLIP_PHOTO_TYPE, PACK_BOX_PHOTO_TYPE } from '@/lib/photos/types';
 
 interface MobilePackingRowProps {
   row: PackerLogRow;
@@ -30,13 +32,18 @@ function getSourceDotBg(row: PackerLogRow): string {
  * RowTitle + RowMetaColumns + ReceivingIdentityChips primitives, a compact
  * photo chip on collapsed rows, and a big "Take Photos" CTA on the bottom-pinned
  * expanded card. Packing carries no SKU/serial chip — order # + tracking only.
+ * Plan §2e: slip/box presence + latest verification outcome hydrate from the feed.
  */
 export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHref }: MobilePackingRowProps) {
   const productTitle = row.product_title || row.item_number || row.sku || 'Unnamed pack line';
   const quantity = parseInt(String(row.quantity || '1'), 10) || 1;
   const orderId = (row.order_id || '').trim();
   const trackingValue = (row.shipping_tracking_number || row.scan_ref || '').trim();
-  const photoCount = Array.isArray(row.packer_photos_url) ? row.packer_photos_url.length : 0;
+  const photos = Array.isArray(row.packer_photos_url) ? row.packer_photos_url : [];
+  const photoCount = photos.length;
+  const hasSlip = photos.some((p) => p.photoType === PACK_SLIP_PHOTO_TYPE);
+  const hasBox = photos.some((p) => p.photoType === PACK_BOX_PHOTO_TYPE);
+  const outcome = (row.verification_outcome || '').trim() || null;
   const isExpanded = variant === 'expanded';
   const packedAt = (row.created_at || '').trim() || null;
 
@@ -65,6 +72,27 @@ export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHre
           <ReceivingIdentityChips po={orderId} tracking={trackingValue} includeSku={false} includeSerial={false} asColumns dense />
         </div>
       </div>
+
+      {(hasSlip || hasBox || outcome || (!isExpanded && photoCount > 0)) && (
+        <div className="pointer-events-none mt-1 flex flex-wrap items-center gap-1.5 pl-[calc(0.5rem+0.5rem)]">
+          {hasSlip ? (
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+              Slip
+            </span>
+          ) : null}
+          {hasBox ? (
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft">
+              Box
+            </span>
+          ) : null}
+          {outcome ? <OutcomeChip outcome={outcome} /> : null}
+          {!isExpanded && !hasSlip && !hasBox && photoCount > 0 ? (
+            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-black uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft tabular-nums">
+              ×{photoCount}
+            </span>
+          ) : null}
+        </div>
+      )}
 
       {isExpanded && (
         <Link

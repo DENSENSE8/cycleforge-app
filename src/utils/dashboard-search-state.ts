@@ -69,6 +69,19 @@ export function getDashboardViewGroup(view: DashboardOrderView): DashboardViewGr
   return view === 'fba' ? 'fba' : 'orders';
 }
 
+/**
+ * Pending (To Ship) presentation: the default vertical shelf-**board** (swimlane
+ * bubbles) vs the flat full-width spreadsheet **grid** view. Orthogonal to the
+ * lifecycle flags — carried by `?view=grid` (absence = board), Pending-only.
+ */
+export type DashboardPendingLayout = 'board' | 'grid';
+
+export function getDashboardPendingLayoutFromSearch(
+  searchParams: Pick<URLSearchParams, 'get'>
+): DashboardPendingLayout {
+  return String(searchParams.get('view') || '').trim().toLowerCase() === 'grid' ? 'grid' : 'board';
+}
+
 /** Display labels for the outbound lifecycle slider (industry-standard wording). */
 export const DASHBOARD_ORDER_VIEW_LABEL: Record<
   Exclude<DashboardOrderView, 'fba'>,
@@ -96,6 +109,9 @@ export function normalizeDashboardOrderViewParams(
   params.delete('wexp');
   // Nested board layout was retired — lists only on Pending / Packed / Shipped.
   params.delete('layout');
+  // The board|grid layout toggle is Pending-only — clear it off any other tab so
+  // `?view=grid` never bleeds onto Packed / Shipped / FBA.
+  if (nextView !== 'unshipped') params.delete('view');
   // Cross-tab status filters are view-specific; clear so they don't bleed.
   if (nextView !== 'unshipped') {
     params.delete('ustatus');

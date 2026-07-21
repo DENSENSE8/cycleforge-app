@@ -28,9 +28,21 @@ build. What was added/fixed in this pass:
 ## Tenancy model
 
 **Shared eBay app, many accounts.** One eBay developer app + RuName (CycleForge's)
-that every tenant's sellers/buyers grant consent to. App-level credentials resolve to the
-org's own `organization_integrations` row if present (future BYO app), otherwise the
-shared env app. Only the per-account **tokens** are per-tenant (`ebay_accounts`).
+that every tenant's sellers/buyers grant consent to.
+
+| Layer | Home | Contents |
+|---|---|---|
+| **App credentials** | env (`EBAY_APP_ID` / `CERT_ID` / `RU_NAME`) or vault `provider='ebay'` **scope=null** | Client ID, Cert, RuName, environment |
+| **User tokens (SoT)** | `organization_integrations` `provider='ebay'` scope=`seller:{slug}` \| `buyer:{slug}` | Refresh + access tokens, expiry, scopes |
+| **Account metadata** | `ebay_accounts` | Label, `account_role`, `ebay_user_id`, sync watermarks, expiry chips (no secrets) |
+| **Catalog identity** | `platform_accounts.integration_scope` | Same string as vault scope |
+
+Helpers: `ebayScopeForAccount`, `upsertEbayUserCreds`, `resolveEbayUserTokens` in
+`src/lib/ebay/credentials.ts`. Mirror of the Amazon pattern (`amazon_accounts` +
+vault `seller-{id}`).
+
+Backfill existing rows: `npx tsx scripts/migrate-ebay-tokens-to-vault.ts --apply`
+then apply migration `2026-07-20_ebay_vault_tokens.sql` (drops token columns).
 
 ## OAuth flow
 
@@ -45,9 +57,10 @@ shared env app. Only the per-account **tokens** are per-tenant (`ebay_accounts`)
 3. Callback validates: declined-consent (`?error=`), missing params, decryptable
    state, required fields, TTL, and **cookie nonce === state nonce**; exchanges the
    code (Basic `base64(appId:certId)`) at the env-matched token endpoint; probes the
-   identity API for the eBay user id; writes tokens via `writeEbayToken` (KMS-aware);
-   upserts `ON CONFLICT (organization_id, account_name)` with `account_role`; audits
-   `integrations.ebay.connected`; redirects to `/settings/integrations?success=ebay_connected`.
+   identity API for the eBay user id; **upserts vault** via `upsertEbayUserCreds`
+   (scope `seller:`/`buyer:`); upserts `ebay_accounts` **metadata** (no token columns);
+   syncs `platform_accounts`; audits `integrations.ebay.connected`; redirects to
+   `/settings/integrations?success=ebay_connected`.
    Buyer connects also enable `organization_feature_flags(flag='incoming_universal')`.
 
 ## Purchasing accounts → Incoming

@@ -2,9 +2,9 @@
 
 /**
  * Labels-station workspace chrome — tabs left (Queue · Recent), station filters
- * (search + Urgent/lane like Dashboard · To Ship) and ghost icon-only Priority /
- * Import / New-order controls right. Mirrors ShippingWorkspaceHeader /
- * OutboundWorkspaceHeader for `/shipping` labels.
+ * (search + Urgent/lane like Dashboard · To Ship) right, then sort + primary
+ * Import / Add CTAs. Mirrors ShippingWorkspaceHeader / OutboundWorkspaceHeader
+ * for `/shipping` labels.
  */
 
 import { useMemo, type Ref } from 'react';
@@ -19,6 +19,7 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ArrowUpDown, Plus } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
 import {
   awaitingLabelsQuery,
   stagedOrdersQuery,
@@ -118,14 +119,18 @@ export function LabelsWorkspaceHeader({
       right={tab === 'queue' ? <OutboundExactFilters mode="unshipped" /> : undefined}
       trailing={
         <>
-          {/* Order: Priority → Import → New order (+) — ghost icon-only. */}
+          {/* Sort (ghost) → Import (blue CTA) → Add (green CTA). */}
           <SortToggle sort={sort} onToggle={onToggleSort} />
-          <OrdersSyncPopover triggerVariant="header" iconOnly />
-          <HoverTooltip label="New order" asChild>
-            <ToolbarButton type="button" iconOnly onClick={onNewOrder} aria-label="New order entry">
-              <Plus className="h-3.5 w-3.5" />
-            </ToolbarButton>
-          </HoverTooltip>
+          <OrdersSyncPopover triggerVariant="header" />
+          <Button
+            size="sm"
+            onClick={onNewOrder}
+            ariaLabel="New order entry"
+            icon={<Plus />}
+            className="rounded-full font-bold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
+          >
+            Add
+          </Button>
         </>
       }
     />

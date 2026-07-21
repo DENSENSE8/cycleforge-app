@@ -2,31 +2,22 @@
 
 /**
  * SearchResultsSurface — the shared results body for Dashboard Search mode.
- * Controlled: the host owns the query + active tab (URL state) and passes them
- * in; the surface owns only the retrieval + result rendering.
+ * Controlled: the host owns the query (URL state); the surface owns retrieval
+ * + grouped result rendering. No category pill strip — one unscoped retrieve.
  */
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Search, Loader2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { AiQuickJumpResults } from '@/components/search/AiQuickJumpResults';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import { cn } from '@/utils/_cn';
-import {
-  CATEGORY_LABELS,
-  CATEGORY_TABS,
-  tabDbType,
-  type TabId,
-} from './search-tabs';
+import { CATEGORY_TABS } from './search-tabs';
 
 export interface SearchResultsSurfaceProps {
   query: string;
   /** Kept for call-site compatibility; only `global` is used. */
   scope?: 'global';
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
   /**
    * Row click. Receives the event so a host can intercept the `<Link>`.
    * When absent, rows navigate to their deep-link normally.
@@ -36,7 +27,7 @@ export interface SearchResultsSurfaceProps {
   onLoadingChange?: (loading: boolean) => void;
   /**
    * Fires with the current result set each time a query settles, so a host can
-   * react to the hits (the rep workbench auto-selects the top order match).
+   * react to the hits (sole ORDER → Search order detail).
    */
   onResults?: (hits: AiSearchHit[]) => void;
   /** Highlighted order id — the rep workbench rail's current selection. */
@@ -57,8 +48,6 @@ const GROUPS = CATEGORY_TABS.filter((t) => t.id !== 'all');
 
 export function SearchResultsSurface({
   query,
-  activeTab,
-  onTabChange,
   onSelectHit,
   onLoadingChange,
   onResults,
@@ -76,10 +65,9 @@ export function SearchResultsSurface({
   const abortRef = useRef<AbortController | null>(null);
   const pageContext = '/dashboard?mode=search';
 
-  // One fetch per (q, tab): Overview pulls a wide cross-entity page; a category
-  // tab re-queries with the HARD entityTypes scope so its list is deep.
+  // One unscoped retrieve per query — cross-entity page, grouped in the UI.
   useEffect(() => {
-    const key = `${q}::${activeTab}`;
+    const key = q;
     if (!q || q.length < 2) {
       setState({ status: 'idle', hits: [], usedSemantic: false, forKey: key });
       return;
@@ -89,8 +77,6 @@ export function SearchResultsSurface({
     abortRef.current = controller;
     setState((prev) => ({ ...prev, status: 'loading', forKey: key }));
 
-    const dbType = tabDbType(activeTab);
-
     fetch('/api/ai/retrieve', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -98,7 +84,6 @@ export function SearchResultsSurface({
         query: q,
         limit: 50,
         pageContext,
-        entityTypes: dbType ? [dbType] : undefined,
       }),
       signal: controller.signal,
     })
@@ -121,7 +106,7 @@ export function SearchResultsSurface({
         if ((err as { name?: string }).name === 'AbortError') return;
         setState({ status: 'error', hits: [], usedSemantic: false, forKey: key });
       });
-  }, [q, activeTab]);
+  }, [q]);
 
   useEffect(() => {
     onLoadingChange?.(state.status === 'loading');
@@ -132,7 +117,6 @@ export function SearchResultsSurface({
     if (state.status === 'done') onResults?.(state.hits);
   }, [state.status, state.hits, onResults]);
 
-  // Overview: group by entityType in the fixed category order.
   const grouped = useMemo(() => {
     const byType = new Map<string, AiSearchHit[]>();
     for (const hit of state.hits) {
@@ -149,14 +133,6 @@ export function SearchResultsSurface({
 
   return (
     <div className={cn('space-y-4', className)}>
-      <HorizontalButtonSlider
-        items={CATEGORY_TABS.map((t) => ({ id: t.id, label: t.label }))}
-        value={activeTab}
-        onChange={(id) => onTabChange(id as TabId)}
-        variant="nav"
-        dense
-      />
-
       {state.status === 'done' && (
         <p className="text-role-caption font-medium text-text-soft">
           {state.hits.length === 50 ? '50+' : state.hits.length} result
@@ -165,7 +141,6 @@ export function SearchResultsSurface({
         </p>
       )}
 
-      {/* States */}
       {!q && (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-10 text-center">
           <Search className="mx-auto mb-2 h-6 w-6 text-text-faint" />
@@ -193,14 +168,12 @@ export function SearchResultsSurface({
       )}
       {state.status === 'done' && state.hits.length === 0 && q && (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption font-medium text-text-soft">
-          No matches for “{q}”
-          {activeTab !== 'all' ? ` in ${CATEGORY_LABELS[activeTab] ?? activeTab}` : ''}. Try fewer
-          words, a partial serial, or the last 8 digits of a tracking number.
+          No matches for “{q}”. Try fewer words, a partial serial, or the last 8 digits of a
+          tracking number.
         </div>
       )}
 
-      {/* Overview: grouped categories with View-all handoff */}
-      {showResults && activeTab === 'all' && (
+      {showResults && (
         <div className="space-y-4 pb-8">
           {grouped.map((group) => (
             <section key={group.id} className="rounded-xl border border-border-hairline bg-surface-card">
@@ -211,19 +184,9 @@ export function SearchResultsSurface({
                     {group.hits.length}
                   </span>
                 </p>
-                {group.hits.length > 5 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onTabChange(group.id as TabId)}
-                    className="-my-1.5 px-1 text-role-caption font-semibold text-blue-600 hover:bg-transparent hover:underline"
-                  >
-                    View all →
-                  </Button>
-                )}
               </div>
               <AiQuickJumpResults
-                hits={group.hits.slice(0, 5)}
+                hits={group.hits}
                 onNavigate={onSelectHit}
                 activeId={activeHitId}
                 packoutById={packoutById}
@@ -232,20 +195,6 @@ export function SearchResultsSurface({
               />
             </section>
           ))}
-        </div>
-      )}
-
-      {/* Single category: the full scoped list */}
-      {showResults && activeTab !== 'all' && (
-        <div className="overflow-hidden rounded-xl border border-border-hairline bg-surface-card">
-          <AiQuickJumpResults
-            hits={state.hits}
-            onNavigate={onSelectHit}
-            activeId={activeHitId}
-            packoutById={packoutById}
-            density="comfortable"
-            className="[&>p]:hidden"
-          />
         </div>
       )}
     </div>

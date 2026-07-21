@@ -193,17 +193,27 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
 }
 
 /**
- * Mirror eBay seller rows in `ebay_accounts` into `platform_accounts` so the
+ * Mirror eBay seller/buyer rows in `ebay_accounts` into `platform_accounts` so the
  * catalog + Incoming account chip stay in sync after OAuth connect (the one-shot
  * migration 2026-06-14f backfill does not re-run on its own). Skips ZOHO token
- * rows (platform='ZOHO') — only real eBay seller connections.
+ * rows (platform='ZOHO'). `integration_scope` matches the vault scope
+ * (`seller:{slug}` / `buyer:{slug}`).
  */
 export async function syncEbayAccountsToPlatformAccounts(
   organizationId: OrgId,
   client?: { query: (text: string, params?: unknown[]) => Promise<unknown> },
 ): Promise<void> {
   const sql = `INSERT INTO platform_accounts (organization_id, platform_id, slug, label, integration_scope, is_active)
-       SELECT ea.organization_id, p.id, ea.account_name, ea.account_name, ea.account_name, COALESCE(ea.is_active, true)
+       SELECT ea.organization_id,
+              p.id,
+              ea.account_name,
+              ea.account_name,
+              CASE
+                WHEN lower(COALESCE(ea.account_role, 'seller')) = 'buyer'
+                  THEN 'buyer:' || ea.account_name
+                ELSE 'seller:' || ea.account_name
+              END,
+              COALESCE(ea.is_active, true)
          FROM ebay_accounts ea
          JOIN platforms p ON p.organization_id = ea.organization_id AND p.slug = 'ebay'
         WHERE ea.organization_id = $1

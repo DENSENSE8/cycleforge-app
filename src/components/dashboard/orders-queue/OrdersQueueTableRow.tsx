@@ -34,6 +34,8 @@ import {
 import { isSkuSourceRecord } from '@/utils/source-dot';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
+  ORDERS_QUEUE_FROZEN_CELL,
+  ordersQueueFrozenLeft,
   ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
@@ -67,6 +69,14 @@ export interface OrdersQueueTableRowProps {
   daysLate: number | null;
   disableEnterAnimation?: boolean;
   disableLayoutAnimation?: boolean;
+  /**
+   * Opaque zebra bg (default false = translucent `/40`). Flat h-scroll surfaces
+   * (the Pending grid view / any {@link LedgerGrid} consumer) MUST pass true: the
+   * frozen identity pane inherits the row bg (`bg-inherit`), so a translucent
+   * stripe lets the scrolling fact columns bleed through the pinned cells. Opaque
+   * kills the bleed. The vertical shelf-board keeps the translucent look.
+   */
+  opaqueStripe?: boolean;
   queueMode?: OrdersQueueMode;
   onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
 }
@@ -94,6 +104,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   isMobile,
   disableEnterAnimation = false,
   disableLayoutAnimation = false,
+  opaqueStripe = false,
   queueMode = 'fulfillment',
   onRowClick,
 }: OrdersQueueTableRowProps) {
@@ -347,7 +358,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // (select-all context); per-row grips clutter the vertical scan line.
   const leadControls = (
     <div
-      className={ordersQueueGridCell({ inset: 'none', rule: false })}
+      className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), ORDERS_QUEUE_FROZEN_CELL)}
+      style={{ left: ordersQueueFrozenLeft('select') }}
       onClick={(e) => selectMode && e.stopPropagation()}
     >
       {selectMode ? (
@@ -474,13 +486,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           ? (selectMode ? isChecked : isSelected)
             ? 'bg-blue-50/80'
             : useAlternateStripe
-              ? 'bg-surface-canvas/40'
+              ? opaqueStripe ? 'bg-surface-canvas' : 'bg-surface-canvas/40'
               : 'bg-surface-card'
           : (selectMode ? isChecked : isSelected)
             ? QUEUE_ROW.selectedClass
             : useAlternateStripe
               ? 'bg-surface-card'
-              : 'bg-surface-canvas/40',
+              : opaqueStripe ? 'bg-surface-canvas' : 'bg-surface-canvas/40',
       )}
       style={gridTemplate ? { gridTemplateColumns: gridTemplate } : undefined}
     >
@@ -513,8 +525,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       ) : (
         <>
           {leadControls}
-          <div className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center')}>{statusDotNode}</div>
-          <div className={ordersQueueGridCell()}>
+          <div
+            className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center', ORDERS_QUEUE_FROZEN_CELL)}
+            style={{ left: ordersQueueFrozenLeft('status') }}
+          >
+            {statusDotNode}
+          </div>
+          <div
+            className={cn(ordersQueueGridCell(), ORDERS_QUEUE_FROZEN_CELL)}
+            style={{ left: ordersQueueFrozenLeft('title') }}
+            data-frozen-edge
+          >
             <span className="min-w-0 truncate text-role-data text-text-default">
               {record.product_title || 'Unknown Product'}
             </span>
@@ -569,6 +590,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.selectMode !== next.selectMode) return false;
   if (prev.isChecked !== next.isChecked) return false;
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
+  if (prev.opaqueStripe !== next.opaqueStripe) return false;
   if (prev.rowStatus.dot !== next.rowStatus.dot) return false;
   if (prev.rowStatus.label !== next.rowStatus.label) return false;
   if (prev.hasOutOfStock !== next.hasOutOfStock) return false;

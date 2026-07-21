@@ -44,7 +44,11 @@ export interface ReceivingDetailOverlays {
   enrichOverlayLog: (receivingId: number) => Promise<void>;
 }
 
-export function useReceivingDetailOverlays(isIncomingMode: boolean): ReceivingDetailOverlays {
+export function useReceivingDetailOverlays(
+  isIncomingMode: boolean,
+  /** Incoming POS vs Email Triage (`?incview=`). Email must not keep a stale PO panel. */
+  incomingView: 'pos' | 'email' = 'pos',
+): ReceivingDetailOverlays {
   const [overlayLog, setOverlayLog] = useState<ReceivingDetailsLog | null>(null);
   // A finalized local pickup PO opens its own review/reprint panel instead of
   // the generic carton details stack (it has no receiving_lines).
@@ -148,10 +152,18 @@ export function useReceivingDetailOverlays(isIncomingMode: boolean): ReceivingDe
     return () => window.removeEventListener('receiving-select-line', handler);
   }, [isIncomingMode]);
 
-  // Mode flip → close any open incoming panel so it doesn't leak into Receiving.
+  // Mode flip or Email Triage sub-view → close any open incoming panel so it
+  // doesn't leak into Receiving / Email Triage.
   useEffect(() => {
-    if (!isIncomingMode) setIncomingDetails(null);
-  }, [isIncomingMode]);
+    if (!isIncomingMode) {
+      setIncomingDetails(null);
+      return;
+    }
+    if (incomingView === 'email') {
+      setIncomingDetails(null);
+      window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+    }
+  }, [isIncomingMode, incomingView]);
 
   useEffect(() => {
     const handler = (e: Event) => {

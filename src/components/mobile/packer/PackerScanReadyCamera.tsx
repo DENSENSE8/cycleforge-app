@@ -50,7 +50,14 @@ export function PackerScanReadyCamera() {
         return;
       }
 
-      router.push(`/m/p/${packerLogId}/photos`);
+      // §1d deep-link: carry the order number + start the guided flow on the
+      // slip step so the phone opens straight into pack_slip capture.
+      const qs = new URLSearchParams();
+      const orderId = String(data.order?.orderId || '').trim();
+      if (orderId) qs.set('orderId', orderId);
+      qs.set('step', 'slip');
+      const suffix = qs.toString();
+      router.push(`/m/p/${packerLogId}/photos${suffix ? `?${suffix}` : ''}`);
     },
     [router],
   );

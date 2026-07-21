@@ -32,6 +32,15 @@ export const UNIT_TESTING_PHOTO_TYPE = 'testing_photo';
 export const UNIT_PACKING_PHOTO_TYPE = 'packer_photo';
 
 /**
+ * `photo_type`s for the guided Packer Review capture (two-step slip → box) on
+ * `/m/pack` (docs/todo/packer-review-station-plan.md §2a). Both link to
+ * PACKER_LOG (no schema change) and are distinguished only by this constant, so
+ * the review station and library can bucket slip vs box without an ALTER.
+ */
+export const PACK_SLIP_PHOTO_TYPE = 'pack_slip';
+export const PACK_BOX_PHOTO_TYPE = 'pack_box';
+
+/**
  * Resolve the serial-units photo POST `stage` body field → canonical photo_type.
  * `shipout` (default) → packer_photo; `prepack` kept as a free-text stage label
  * for verify-before-pack captures that are still unit-scoped.

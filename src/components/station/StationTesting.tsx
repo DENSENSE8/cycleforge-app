@@ -16,7 +16,6 @@ import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtim
 import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
 import { scannedUnitKey } from '@/lib/barcode-routing';
-import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
 
 interface StationTestingProps {
   userId: string;
@@ -63,7 +62,6 @@ export default function StationTesting({
   >(null);
   const handleUnitLabelScanned = useCallback(
     (rawInput: string) => {
-      if (!UNIT_SCAN_PHOTOS) return;
       const key = scannedUnitKey(rawInput);
       if (!key) return;
       // Resolve the label key → canonical serial_units.id, then request phone
@@ -231,7 +229,7 @@ export default function StationTesting({
   const feedbackBelow = (
     <div className={SIDEBAR_GUTTER}>
       <ActiveOrderScanFeedback activeOrder={activeOrder} />
-      {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+      {lastUnitPhotoRequest ? (
         <UnitPhotoRequestStatus
           serialUnitId={lastUnitPhotoRequest.serialUnitId}
           unitKey={lastUnitPhotoRequest.unitKey}

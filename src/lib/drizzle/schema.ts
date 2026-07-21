@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, boolean, timestamp, integer, smallint, date, primaryKey, jsonb, pgEnum, bigserial, bigint, uuid, numeric, uniqueIndex, index, customType } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, boolean, timestamp, integer, smallint, date, primaryKey, jsonb, pgEnum, bigserial, bigint, uuid, numeric, real, uniqueIndex, index, customType } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ─── Multi-tenancy Helper ─────────────
@@ -4132,6 +4132,48 @@ export const entitySignals = pgTable('entity_signals', {
   kindTimeIdx: index('idx_entity_signals_org_kind_time').on(table.organizationId, table.signalKind, table.occurredAt.desc(), table.id.desc()),
   notesTsvIdx: index('idx_entity_signals_notes_tsv').using('gin', table.notesTsv),
 }));
+
+/**
+ * pack_verification_events — append-only packer verification / review outcomes
+ * (plan: packer-review-station-plan.md Phase 3). One row = one OUTCOME about a
+ * packer_log; latest-wins per (org, entity_type, entity_id). Replaces the
+ * sketch's orders.verify_status / orders.packing_metadata (no ALTER on
+ * orders/packer_logs). Written only by recordPackVerificationEvent, which also
+ * emits an ops_event. Parent-delete integrity via
+ * fn_delete_pack_verification_events_on_parent_delete(). Tenant-scoped from birth.
+ */
+export const packVerificationEvents = pgTable('pack_verification_events', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** CHECK: PACKER_LOG (only value at birth; tech/receiving/shipping review expand later). */
+  entityType: text('entity_type').notNull(),
+  /** packer_logs.id (BIGINT per polymorphic contract; parent is INTEGER today). */
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** Soft denormalized query assist (packer_logs.shipment_id). */
+  shipmentId: bigint('shipment_id', { mode: 'number' }),
+  /** CHECK: UNVERIFIED | VERIFIED | REVIEW_APPROVED | REVIEW_FLAGGED | READY | ERROR_MISSING_TRACKING | ERROR_COUNT_MISMATCH | ERROR_OCR_FAILED */
+  outcome: text('outcome').notNull().default('UNVERIFIED'),
+  detectedOrderId: text('detected_order_id'),
+  detectedTracking: text('detected_tracking'),
+  ocrConfidence: real('ocr_confidence'),
+  /** EOD (Phase 5): detector/manual shelf box count. */
+  shelfBoxCount: integer('shelf_box_count'),
+  /** EOD (Phase 5): expected = today's REVIEW_APPROVED count. */
+  expectedCount: integer('expected_count'),
+  verifiedByStaffId: integer('verified_by_staff_id'),
+  reviewNote: text('review_note'),
+  clientEventId: uuid('client_event_id'),
+  meta: jsonb('meta'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  entityTimeIdx: index('idx_pack_verification_events_org_entity_time').on(table.organizationId, table.entityType, table.entityId, table.createdAt.desc(), table.id.desc()),
+  outcomeTimeIdx: index('idx_pack_verification_events_org_outcome_time').on(table.organizationId, table.outcome, table.createdAt.desc(), table.id.desc()),
+  shipmentIdx: index('idx_pack_verification_events_org_shipment').on(table.organizationId, table.shipmentId).where(sql`shipment_id IS NOT NULL`),
+  clientEventIdx: uniqueIndex('uq_pack_verification_events_client_event').on(table.organizationId, table.clientEventId).where(sql`client_event_id IS NOT NULL`),
+}));
+
+export type PackVerificationEvent = typeof packVerificationEvents.$inferSelect;
+export type NewPackVerificationEvent = typeof packVerificationEvents.$inferInsert;
 
 /**
  * ops_events — polymorphic append-only ops event log ("SAL-style"), the

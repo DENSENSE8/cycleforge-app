@@ -22,7 +22,11 @@ import {
 import { normalizeSku } from '@/utils/sku';
 import { useReceivingLineCore } from '@/components/receiving/workspace/line-edit/hooks/useReceivingLineCore';
 import { useCartonLabelEditor } from '@/components/receiving/workspace/line-edit/hooks/useCartonLabelEditor';
-import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';
+import {
+  dispatchTestingLineUpdated,
+  narrowTestingWorkspacePatch,
+} from '@/components/tech/testing-line-events';
+import { patchTestingRailByLine } from '@/lib/queries/receiving-queries';
 
 interface NextIdResponse {
   ok: boolean;
@@ -46,11 +50,14 @@ export type TestingLabelDraft = {
 
 /**
  * Controller for the TESTING workspace display. Composes the mode-agnostic
- * `useReceivingLineCore` (carton identity / copy / audit·claim) — passing the
- * rail-safe `dispatchTestingLineUpdated` so verdict clicks never clobber the
- * "You Tested" rail's verdict time — and layers the testing domain on top:
- * per-unit verdicts, the fire-and-forget serial queue, lazy unit-id minting,
- * and the Pass + Print auto-advance.
+ * `useReceivingLineCore` (carton identity / copy / audit·claim) — passing
+ * `dispatchTestingLineUpdated` for narrow workspace patches — and layers the
+ * testing domain on top: per-unit verdicts, the fire-and-forget serial queue,
+ * lazy unit-id minting, and the Pass + Print auto-advance.
+ *
+ * `TestingRecentRail` is opted off the shared bus; dock refresh is via
+ * `testing-result-recorded` / `app-refresh-data`. Never dump a full by-id GET
+ * row onto `receiving-line-updated` — use {@link narrowTestingWorkspacePatch}.
  *
  * Unlike the unbox controller, the parent (`TestingLineWorkspace`) owns `row`
  * and updates it from `receiving-line-updated`; this controller propagates its
@@ -98,13 +105,17 @@ export function useTestingLineController(
   // A synthetic unfound-carton stub carries a negative id and has no
   // receiving_lines row to fetch (buildUnmatchedStubRow), so skip the request
   // rather than firing a guaranteed `success:false` GET on every stub scan.
+  // Narrow workspace patch only — never dump the full by-id row onto the bus
+  // (TestingRecentRail is opted out; other rails must not inherit hydrate junk).
   const refreshLineWithSerials = useCallback(async (id: number) => {
     if (!Number.isFinite(id) || id <= 0) return;
     try {
       const res = await fetch(`/api/receiving-lines?id=${id}&include=serials`);
       const data = await res.json();
       if (data?.success && data.receiving_line) {
-        dispatchTestingLineUpdated(data.receiving_line as ReceivingLineRow);
+        dispatchTestingLineUpdated(
+          narrowTestingWorkspacePatch(data.receiving_line as ReceivingLineRow),
+        );
       }
     } catch {
       /* silent — next manual action will retry */
@@ -193,11 +204,21 @@ export function useTestingLineController(
         // it (re-dispatching could clobber a newer press); only reconcile the
         // derived line-level state the server computes across all units.
         if (data.line) {
-          dispatchTestingLineUpdated({
+          const linePatch = {
             id: lineId,
             workflow_status: data.line.workflow_status,
             qa_status: data.line.qa_status,
             disposition_code: data.line.disposition_code,
+          };
+          dispatchTestingLineUpdated(linePatch);
+          // Testing dock is opted off the bus — allowlisted RQ write for instant
+          // status/qty chrome; membership still refreshes on testing-result-recorded.
+          patchTestingRailByLine(queryClient, lineId, {
+            workflow_status: data.line.workflow_status,
+            qa_status: data.line.qa_status,
+            disposition_code: data.line.disposition_code,
+            tested_count:
+              typeof data.line.tested_count === 'number' ? data.line.tested_count : undefined,
           });
         }
       } catch (err) {
@@ -208,7 +229,7 @@ export function useTestingLineController(
         setIsMutating(false);
       }
     },
-    [row.id, row.serials, row.receiving_id, notes, patchSiblingUnitStatus, openClaimModal],
+    [row.id, row.serials, row.receiving_id, notes, patchSiblingUnitStatus, openClaimModal, queryClient],
   );
 
   const handleSlotCondition = useCallback(

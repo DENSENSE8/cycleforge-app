@@ -13,6 +13,7 @@ import {
   sharpnessScore,
   motionScore,
   gateFrame,
+  gateStillFrame,
   DEFAULT_GATE_THRESHOLDS,
   type ImageDataLike,
 } from './frame-quality';
@@ -96,4 +97,17 @@ test('gateFrame: steady but featureless frame is rejected as blurry', () => {
   const res = gateFrame(flatGray, toGray(flatGray));
   strictEqual(res.ok, false);
   strictEqual(res.reason, 'blurry');
+});
+
+test('gateStillFrame: self-prev zeros motion and passes a sharp lit frame', () => {
+  const res = gateStillFrame(checkerboard);
+  strictEqual(res.ok, true);
+  strictEqual(res.reason, 'ok');
+  strictEqual(res.metrics.motion, 0);
+});
+
+test('gateStillFrame: rejects dark frames', () => {
+  const res = gateStillFrame(dark);
+  strictEqual(res.ok, false);
+  strictEqual(res.reason, 'dark');
 });

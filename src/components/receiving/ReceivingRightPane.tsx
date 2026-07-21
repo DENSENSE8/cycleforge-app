@@ -44,6 +44,8 @@ interface ReceivingRightPaneProps {
   workspace: WorkspaceState | null;
   nav: NavState | null;
   scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
+  /** Deep-link restore resolving — Unbox shows the workspace skeleton, not browse. */
+  restorePending: boolean;
   staffId: string;
   incomingDetails: IncomingDetailsTarget | null;
   onCloseIncoming: () => void;
@@ -63,6 +65,7 @@ export function ReceivingRightPane({
   workspace,
   nav,
   scanInFlight,
+  restorePending,
   staffId,
   incomingDetails,
   onCloseIncoming,
@@ -89,6 +92,7 @@ export function ReceivingRightPane({
           staffId={staffId}
           workspace={workspace}
           nav={nav}
+          restorePending={restorePending}
           onCloseWorkspace={onCloseWorkspace}
         />
       </RightPaneOverlayHost>
@@ -143,21 +147,18 @@ export function ReceivingRightPane({
         ) : null}
       </AnimatePresence>
 
-      {/* Incoming details panel — right slide-over. A stable key keeps it mounted
-          as rows flip so only the contents swap. */}
-      <AnimatePresence initial={false}>
-        {isIncomingMode && incomingView === 'pos' && incomingDetails ? (
-          <IncomingDetailsPanel
-            key="incoming-details-panel"
-            zohoPurchaseOrderId={incomingDetails.poId}
-            poNumberHint={incomingDetails.poNumber}
-            shipmentId={incomingDetails.shipmentId}
-            inboundSourceType={incomingDetails.inboundSourceType}
-            inboundSourceOrderId={incomingDetails.inboundSourceOrderId}
-            onClose={onCloseIncoming}
-          />
-        ) : null}
-      </AnimatePresence>
+      {/* Incoming details panel — registers into RightRailHost (returns null
+          locally). Motion / backdrop live on the host; no local AnimatePresence. */}
+      {isIncomingMode && incomingView === 'pos' && incomingDetails ? (
+        <IncomingDetailsPanel
+          zohoPurchaseOrderId={incomingDetails.poId}
+          poNumberHint={incomingDetails.poNumber}
+          shipmentId={incomingDetails.shipmentId}
+          inboundSourceType={incomingDetails.inboundSourceType}
+          inboundSourceOrderId={incomingDetails.inboundSourceOrderId}
+          onClose={onCloseIncoming}
+        />
+      ) : null}
 
       {/* Bulk-selection action bar — pins to the bottom of the list region when
           rows are selected in History / Incoming-POS (never over Email Triage). */}

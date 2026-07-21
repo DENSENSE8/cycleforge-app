@@ -392,6 +392,12 @@ export function OrdersQueueTable({
           ref={scrollRef}
           data-testid="column-table-body"
           data-cf-grid
+          onScroll={(e) => {
+            // Frozen-edge shadow only while the fact columns are scrolled under the
+            // pinned identity pane. Direct classList (no React state) → no re-render.
+            const el = e.currentTarget;
+            el.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
+          }}
           className={bodyScrollClass}
           style={{ ...(bodyScrollStyle ?? {}), ...ordersQueueColumnVars(widths) } as CSSProperties}
         >

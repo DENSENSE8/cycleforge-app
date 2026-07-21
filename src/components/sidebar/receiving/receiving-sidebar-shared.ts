@@ -13,6 +13,7 @@ import { RECEIVING_MODE_ICONS } from '@/lib/nav/station-nav-icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
+import type { ClaimSeverity, ClaimType } from '@/lib/receiving-claim-type';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
@@ -557,19 +558,10 @@ export function receivingVariantFromType(
 }
 
 // ─── Claim modal ────────────────────────────────────────────────────────────
-// Used by `ReceivingClaimModal` + `POST /api/receiving/zendesk-claim` to file
-// damage / missing-item / wrong-item / vendor-defect claims as Zendesk tickets
-// (via the existing GAS bridge in src/lib/zendesk.ts).
+// ClaimType / ClaimSeverity live in `@/lib/zendesk-claim-template` (SoT).
+// Pill chrome for ReceivingClaimModal lives here.
 
-export type ClaimType =
-  | 'damage'
-  | 'missing'
-  | 'wrong_item'
-  | 'vendor_defect'
-  | 'return'
-  | 'unfound'
-  | 'repair_service';
-export type ClaimSeverity = 'low' | 'medium' | 'high';
+export type { ClaimType, ClaimSeverity } from '@/lib/receiving-claim-type';
 
 export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
   value: ClaimType;
@@ -579,17 +571,19 @@ export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
   /** Inactive pill color. */
   inactive: string;
 }> = [
-  { value: 'damage',         label: 'Damage',         active: 'bg-rose-600 text-white',    inactive: 'bg-rose-50 text-rose-700' },
-  { value: 'missing',        label: 'Missing',        active: 'bg-amber-600 text-white',   inactive: 'bg-amber-50 text-amber-700' },
-  { value: 'wrong_item',     label: 'Wrong item',     active: 'bg-violet-600 text-white',  inactive: 'bg-violet-50 text-violet-700' },
-  { value: 'vendor_defect',  label: 'Vendor defect',  active: 'bg-orange-600 text-white',  inactive: 'bg-orange-50 text-orange-700' },
+  { value: 'damage',           label: 'Damage',           active: 'bg-rose-600 text-white',    inactive: 'bg-rose-50 text-rose-700' },
+  { value: 'missing',          label: 'Missing',          active: 'bg-amber-600 text-white',   inactive: 'bg-amber-50 text-amber-700' },
+  { value: 'wrong_item',       label: 'Wrong item',       active: 'bg-violet-600 text-white',  inactive: 'bg-violet-50 text-violet-700' },
+  { value: 'vendor_defect',    label: 'Vendor defect',    active: 'bg-orange-600 text-white',  inactive: 'bg-orange-50 text-orange-700' },
   // Auto-selected by ReceivingClaimModal for RETURN-type intake.
-  { value: 'return',         label: 'Return',         active: 'bg-teal-600 text-white',    inactive: 'bg-teal-50 text-teal-700' },
+  { value: 'return',           label: 'Return',           active: 'bg-teal-600 text-white',    inactive: 'bg-teal-50 text-teal-700' },
+  // Auto-selected when the carton STN is carrier-RETURNED (distinct from return intake).
+  { value: 'return_to_sender', label: 'Return to sender', active: 'bg-slate-700 text-white',   inactive: 'bg-slate-100 text-slate-700' },
   // Auto-selected by ReceivingClaimModal when row.receiving_source === 'unmatched'
   // and no PO# is present; hidden once a PO# is found/filled.
-  { value: 'unfound',        label: 'Unfound',        active: 'bg-yellow-600 text-white',  inactive: 'bg-yellow-50 text-yellow-700' },
+  { value: 'unfound',          label: 'Unfound',          active: 'bg-yellow-600 text-white',  inactive: 'bg-yellow-50 text-yellow-700' },
   // Repair routing — entry point for warranty / in-house bench work.
-  { value: 'repair_service', label: 'Repair service', active: 'bg-sky-600 text-white',     inactive: 'bg-sky-50 text-sky-700' },
+  { value: 'repair_service',   label: 'Repair service',   active: 'bg-sky-600 text-white',     inactive: 'bg-sky-50 text-sky-700' },
 ];
 
 export const CLAIM_SEVERITY_OPTIONS: ReadonlyArray<{
@@ -802,6 +796,8 @@ export function buildUnboxRailUnmatchedRow(
     workflow_status: 'DONE',
     client_event_id: `carton:${receivingId}`,
     scanned_at: now,
+    // Unbox-open MRU stamp — same axis as buildUnboxRailMatchedRow / ops MAX.
+    unbox_opened_at: now,
     last_activity_at: now,
     created_at: now,
   };

@@ -1,7 +1,7 @@
 # Packer Review Station — photo bridge, guided capture, verification events, `/review`
 
-**Status:** spec (not yet built) · v3 · WS-REVIEW
-**Created:** 2026-07-16 · refined 2026-07-17
+**Status:** built in `topic/review` · promoting to main · v3 · WS-REVIEW
+**Created:** 2026-07-16 · refined 2026-07-17 · implemented 2026-07-20
 **Owner:** packing + unified-engine
 **Related:**
 - [`.claude/rules/polymorphic-tables.md`](../../.claude/rules/polymorphic-tables.md) — typed-fact table contract
@@ -20,13 +20,13 @@
 
 | Phase | Slice | Status |
 |---|---|---|
-| 1 | Retire `UNIT_SCAN_PHOTOS` flag, `packerLogId` dual-link, `PackerPhotoRequestStatus`, deep-link `orderId`+`step` | pending |
-| 2 | `pack_slip`/`pack_box` types, guided studio, frame-quality gate + vision OCR w/ manual override, wire `GET /api/orders/verify` | pending |
-| 3 | CREATE `pack_verification_events` (polymorphic contract), domain helper, submit/decide/queue APIs, `packing.review` permission | pending |
-| 4 | `/review` all-in-one station with `?mode=packer` (sole mode at birth), latest-outcome queue, Approve/Flag | pending |
-| 5a | EOD shelf columns on the event table (ships with Phase 3; no UI) | pending |
+| 1 | Retire `UNIT_SCAN_PHOTOS` flag, `packerLogId` dual-link, `PackerPhotoRequestStatus`, deep-link `orderId`+`step` | **done** |
+| 2 | `pack_slip`/`pack_box` types, guided studio, frame-quality gate + vision OCR w/ manual override, wire `GET /api/orders/verify`, feed row (2e) | **done** |
+| 3 | CREATE `pack_verification_events` (polymorphic contract), domain helper, submit/decide/queue APIs, `packing.review` permission | **done (apply migration to go live)** |
+| 4 | `/review` all-in-one station with `?mode=packer` (sole mode at birth), latest-outcome queue, Approve/Flag | **done** |
+| 5a | EOD shelf columns on the event table (ships with Phase 3; no UI) | **done** |
 | 5b | Open-vocab box counting in `vision/` (`/locate`), bbox overlay, `READY`/`ERROR_COUNT_MISMATCH` | deferred |
-| 6 | Unit tests for append-only outcomes + `npm run verify` + UAT | pending |
+| 6 | Unit tests for append-only outcomes + `npm run verify` + UAT | **tests done · UAT after migrate** |
 
 ---
 

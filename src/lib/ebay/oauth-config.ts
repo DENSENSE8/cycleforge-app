@@ -35,6 +35,27 @@ export function normalizeEbayRole(value?: string | null): EbayAccountRole {
   return String(value ?? '').trim().toLowerCase() === 'buyer' ? 'buyer' : 'seller';
 }
 
+/**
+ * Vault scope for a seller/buyer consent. Never bare `{slug}` — same label for
+ * both roles must not collide on (org, provider, scope).
+ * Lives here (not credentials.ts) so unit tests stay DB-free.
+ */
+export function ebayScopeForAccount(role: EbayAccountRole, accountSlug: string): string {
+  const slug = String(accountSlug ?? '').trim();
+  if (!slug) throw new Error('ebayScopeForAccount: accountSlug is required');
+  return `${normalizeEbayRole(role)}:${slug}`;
+}
+
+/** Parse `seller:USAV` / `buyer:Purchasing` → role + slug, or null if malformed. */
+export function parseEbayAccountScope(
+  scope: string | null | undefined,
+): { role: EbayAccountRole; accountSlug: string } | null {
+  const raw = String(scope ?? '').trim();
+  const m = /^(seller|buyer):(.+)$/i.exec(raw);
+  if (!m) return null;
+  return { role: normalizeEbayRole(m[1]), accountSlug: m[2].trim() };
+}
+
 /** httpOnly cookie that carries the single-use CSRF nonce across the OAuth redirect. */
 export const EBAY_OAUTH_STATE_COOKIE = 'ebay_oauth_state';
 

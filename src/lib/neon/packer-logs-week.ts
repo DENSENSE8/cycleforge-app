@@ -826,6 +826,7 @@ export async function fetchPackerLogRows(
 
   // Spine-first skips the photos round-trip; photos arrive via the hydrate call.
   const photosMap: Record<number, any[]> = {};
+  const outcomeMap: Record<number, string> = {};
   if (!spineOnly && packerLogIds.length > 0) {
     try {
       const photosResult = await pool.query(
@@ -834,7 +835,8 @@ export async function fetchPackerLogRows(
                   json_build_object(
                     'id', p.id,
                     'url', '/api/photos/' || p.id::text || '/content',
-                    'uploadedAt', p.created_at
+                    'uploadedAt', p.created_at,
+                    'photoType', p.photo_type
                   )
                   ORDER BY p.created_at
                 ) AS photos
@@ -855,11 +857,30 @@ export async function fetchPackerLogRows(
     } catch (error) {
       console.warn('[packer-logs-week] photo lookup failed; returning rows without photos', error);
     }
+
+    try {
+      const outcomeResult = await pool.query<{ entity_id: number; outcome: string }>(
+        `SELECT DISTINCT ON (entity_id) entity_id, outcome
+           FROM pack_verification_events
+          WHERE organization_id = $2
+            AND entity_type = 'PACKER_LOG'
+            AND entity_id = ANY($1::bigint[])
+          ORDER BY entity_id, created_at DESC, id DESC`,
+        [packerLogIds, orgId],
+      );
+      for (const row of outcomeResult.rows) {
+        outcomeMap[row.entity_id] = row.outcome;
+      }
+    } catch (error) {
+      // pack_verification_events may be unapplied — degrade without outcomes.
+      console.warn('[packer-logs-week] verification outcome lookup skipped', error);
+    }
   }
 
   const rows = result.rows.map((r: any) => ({
     ...r,
     packer_photos_url: photosMap[r.packer_log_id] ?? [],
+    verification_outcome: r.packer_log_id != null ? outcomeMap[r.packer_log_id] ?? null : null,
   }));
 
   // Defer the cache write so it never blocks TTFB. Safe in both Route Handlers

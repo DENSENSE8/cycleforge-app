@@ -9,12 +9,20 @@ function PhotoPageInner() {
   const searchParams = useSearchParams();
   const packerLogId = Number(params?.id);
   const orderId = searchParams.get('orderId') || `PL-${packerLogId}`;
+  // Guided Review capture is the default for /m/p/{id}/photos (plan §2b). A
+  // bare open (no ?step=) still runs slip→box→confirm; `?step=box` resumes at
+  // the box step (desktop deep-link / re-entry). `?mode=spam` keeps the legacy
+  // free-capture path for operators who only need extra evidence shots.
+  const stepParam = searchParams.get('step');
+  const spamMode = searchParams.get('mode') === 'spam';
+  const guided = !spamMode;
+  const initialStep = stepParam === 'box' ? 'box' : 'slip';
 
   const validPackerLogId = Number.isFinite(packerLogId) && packerLogId > 0;
   if (!validPackerLogId) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center px-6 text-center">
-        <p className="text-sm font-bold text-white/70">Invalid packer log id</p>
+        <p className="text-role-caption font-bold text-white/70">Invalid packer log id</p>
       </div>
     );
   }
@@ -28,6 +36,8 @@ function PhotoPageInner() {
       headerLabel={headerLabel}
       returnHref="/m/pack"
       maxPhotos={10}
+      guided={guided}
+      initialStep={initialStep}
     />
   );
 }

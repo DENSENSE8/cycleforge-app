@@ -53,6 +53,38 @@
       "note": "WS · topic/inventory · :3050"
     },
     {
+      "id": "journey-hops",
+      "label": "journey-hops · topic/journey-hops",
+      "path": "../cycleforge-journey-hops",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/journey-hops · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "pending-grid",
+      "label": "Pending full grid",
+      "path": "../cycleforge-pending-grid",
+      "appPort": 3100,
+      "unlockParked": true,
+      "note": "WS-PENDING-GRID · topic/pending-grid · :3100 · bookkeeping — To-Ship Pending full-grid refactor developed in main until the predecessor base is committed; no physical worktree yet"
+    },
+    {
+      "id": "photo",
+      "label": "Photo evidence",
+      "path": "../cycleforge-photo",
+      "appPort": 3110,
+      "unlockParked": true,
+      "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
+    },
+    {
+      "id": "review",
+      "label": "review · topic/review",
+      "path": "../cycleforge-review",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · topic/review · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "sourcing",
       "label": "Sourcing",
       "path": "../cycleforge-sourcing",
@@ -83,14 +115,6 @@
       "appPort": 3090,
       "unlockParked": true,
       "note": "WS · topic/warehouse · :3090"
-    },
-    {
-      "id": "pending-grid",
-      "label": "Pending full grid",
-      "path": "../cycleforge-pending-grid",
-      "appPort": 3100,
-      "unlockParked": true,
-      "note": "WS-PENDING-GRID · topic/pending-grid · :3100 · bookkeeping — To-Ship Pending full-grid refactor developed in main until the predecessor base is committed; no physical worktree yet"
     }
   ]
 }

@@ -112,12 +112,12 @@ test.describe('eBay connect — API contract', () => {
 test.describe('eBay connect — Settings UI', () => {
   test('the eBay card renders on Settings → Integrations', async ({ page }) => {
     await page.goto('/settings/integrations');
-    await expect(page.getByText('Storefront orders + tracking reconciliation.').first()).toBeVisible();
+    await expect(page.getByText(/storefront orders \+ tracking/i).first()).toBeVisible();
   });
 
   test('?success=ebay_connected shows the success banner', async ({ page }) => {
     await page.goto('/settings/integrations?success=ebay_connected');
-    await expect(page.getByText('eBay connected.').first()).toBeVisible();
+    await expect(page.getByText('eBay account linked successfully.').first()).toBeVisible();
   });
 
   test('?error=ebay_oauth_state_expired shows the error banner', async ({ page }) => {

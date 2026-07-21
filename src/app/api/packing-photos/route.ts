@@ -39,6 +39,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       rows.map(async (row) => ({
         id: row.id,
         photoUrl: await resolvePhotoAccessUrl(row.id, ctx.organizationId, 'full'),
+        // caption holds photos.photo_type (pack_slip / pack_box / …) — plan §2a/§4c.
+        photoType: row.caption,
         uploadedBy: row.uploadedBy,
         createdAt: row.createdAt,
       })),

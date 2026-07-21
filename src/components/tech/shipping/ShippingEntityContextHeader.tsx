@@ -20,18 +20,18 @@ import type { CartonListingLink } from '@/lib/receiving/listing-links';
  *
  * Maps an active outbound order onto the Unbox condensed identity row
  * (listing · order# · tracking). Claim / photos / classify are omitted —
- * the ship session stays scan-driven.
+ * the ship session stays scan-driven. Mount inside {@link StationContextBar}
+ * with `density="bar"`. Out-of-stock notices stay below the bar via
+ * {@link ShippingOutOfStockNotice}.
  */
 export function ShippingEntityContextHeader({
   activeOrder,
-  outOfStock,
   // Close the active scanned order → the right pane crossfades back to the list.
   // Shared by two surfaces (tech ship-confirm + outbound labels); each passes its
   // own close handler. Omit to hide the back button.
   onExitToList,
 }: {
   activeOrder: ActiveStationOrder;
-  outOfStock?: string | null;
   onExitToList?: () => void;
 }) {
   const tracking = String(activeOrder.tracking || '').trim();
@@ -77,65 +77,68 @@ export function ShippingEntityContextHeader({
     setTrackingEditorsOpen(false);
   }, [activeOrder.orderId, activeOrder.tracking, listingItemKey, listingUrl, orderId, platformKey, tracking]);
 
-  const hasOutOfStock = Boolean(String(outOfStock || '').trim());
+  return (
+    <CartonContextCard
+      density="bar"
+      receivingId={null}
+      staffId=""
+      isUnmatched={false}
+      showStaffPhotoRow={false}
+      listingLink={listingLink}
+      setListingLink={setListingLink}
+      listingEditorOpen={listingEditorOpen}
+      setListingEditorOpen={setListingEditorOpen}
+      listingOpenHref={listingUrl}
+      listingLinks={listingLinks}
+      poOpenHref={null}
+      trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
+      poDisplay={orderId}
+      linkedOrderNumber={orderId}
+      poEditorOpen={poEditorOpen}
+      setPoEditorOpen={setPoEditorOpen}
+      poNumberEdit={poNumberEdit}
+      setPoNumberEdit={setPoNumberEdit}
+      onCommitPoNumber={() => {
+        /* ship session — order id is read-only */
+      }}
+      lineId={null}
+      zendeskTrimmed=""
+      zendeskHref={null}
+      zendeskChipDisplay=""
+      primaryTrackingTrimmed={tracking}
+      filledExtraTrackingsCount={0}
+      isLocalPickup={false}
+      trackingEditorsOpen={trackingEditorsOpen}
+      onToggleTrackingEditors={() => setTrackingEditorsOpen((v) => !v)}
+      trackingEdit={trackingEdit}
+      setTrackingEdit={setTrackingEdit}
+      onCommitTracking={() => {
+        /* ship session — tracking comes from the scanned order */
+      }}
+      extraTrackings={extraTrackings}
+      setExtraTrackings={setExtraTrackings}
+      platformValue={platformValue}
+      onPlatformSelect={setPlatformValue}
+      receivingType={receivingType}
+      onTypeSelect={setReceivingType}
+      onExitToList={onExitToList}
+    />
+  );
+}
+
+/** Out-of-stock banner — mount below {@link StationContextBar}, not inside it. */
+export function ShippingOutOfStockNotice({ outOfStock }: { outOfStock?: string | null }) {
+  const message = String(outOfStock || '').trim();
+  if (!message) return null;
 
   return (
-    <div className="space-y-3">
-      <CartonContextCard
-        receivingId={null}
-        staffId=""
-        isUnmatched={false}
-        showStaffPhotoRow={false}
-        listingLink={listingLink}
-        setListingLink={setListingLink}
-        listingEditorOpen={listingEditorOpen}
-        setListingEditorOpen={setListingEditorOpen}
-        listingOpenHref={listingUrl}
-        listingLinks={listingLinks}
-        poOpenHref={null}
-        trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
-        poDisplay={orderId}
-        linkedOrderNumber={orderId}
-        poEditorOpen={poEditorOpen}
-        setPoEditorOpen={setPoEditorOpen}
-        poNumberEdit={poNumberEdit}
-        setPoNumberEdit={setPoNumberEdit}
-        onCommitPoNumber={() => {
-          /* ship session — order id is read-only */
-        }}
-        lineId={null}
-        zendeskTrimmed=""
-        zendeskHref={null}
-        zendeskChipDisplay=""
-        primaryTrackingTrimmed={tracking}
-        filledExtraTrackingsCount={0}
-        isLocalPickup={false}
-        trackingEditorsOpen={trackingEditorsOpen}
-        onToggleTrackingEditors={() => setTrackingEditorsOpen((v) => !v)}
-        trackingEdit={trackingEdit}
-        setTrackingEdit={setTrackingEdit}
-        onCommitTracking={() => {
-          /* ship session — tracking comes from the scanned order */
-        }}
-        extraTrackings={extraTrackings}
-        setExtraTrackings={setExtraTrackings}
-        platformValue={platformValue}
-        onPlatformSelect={setPlatformValue}
-        receivingType={receivingType}
-        onTypeSelect={setReceivingType}
-        onExitToList={onExitToList}
-      />
-
-      {hasOutOfStock ? (
-        <WorkspaceCard label="Out of stock" tone="red" bodyClassName="px-5 py-3">
-          <div className="flex items-start gap-2.5">
-            <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-            <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-red-800">
-              {outOfStock}
-            </p>
-          </div>
-        </WorkspaceCard>
-      ) : null}
-    </div>
+    <WorkspaceCard label="Out of stock" tone="red" bodyClassName="px-5 py-3">
+      <div className="flex items-start gap-2.5">
+        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
+        <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-red-800">
+          {message}
+        </p>
+      </div>
+    </WorkspaceCard>
   );
 }

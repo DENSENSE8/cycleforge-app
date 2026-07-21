@@ -15,7 +15,7 @@
  * Extracted from ReceivingSidebarPanel; behaviour is unchanged.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   dispatchReceivingWorkspaceOpen,
   dispatchReceivingWorkspaceClose,
@@ -60,12 +60,22 @@ export function useReceivingWorkspaceBridge({
     return scoped.length > 0 ? scoped.length : scanMatchedRows.length;
   }, [selectedLine, scanMatchedRows]);
 
+  // A close only makes sense to reverse a prior open. A fresh page mount starts
+  // with no selection, so a naive effect broadcasts `receiving-workspace-close`
+  // before anything is open. On a deep-link load (`/unbox?openReceivingId=`) the
+  // pane's restore dispatches `select-line` asynchronously; a null-close that
+  // races it (before React commits the restored selection) wipes it and the pane
+  // never reopens (the browse-first refresh bug). So never emit a close until
+  // this bridge has emitted at least one open — genuine deselects (a selection →
+  // null transition, which can only happen after an open) still fire it.
+  const hasOpenedRef = useRef(false);
+
   // Open / close: dispatch whenever the selected line, scan-driven flag, or
   // bootstrap mode changes. Null clears the workspace pane. History/Incoming
   // are table-only — never push workspace-open while those modes are active.
   useEffect(() => {
     if (isTableOnlyMode || !selectedLine) {
-      dispatchReceivingWorkspaceClose();
+      if (hasOpenedRef.current) dispatchReceivingWorkspaceClose();
       return;
     }
     // Pending rail stubs (tracking# title, receiving_source null) stay
@@ -74,6 +84,7 @@ export function useReceivingWorkspaceBridge({
     if (isPendingTriageScanRow(selectedLine)) {
       return;
     }
+    hasOpenedRef.current = true;
     dispatchReceivingWorkspaceOpen({
       row: selectedLine,
       accordionBootstrap: lineAccordionBootstrap,

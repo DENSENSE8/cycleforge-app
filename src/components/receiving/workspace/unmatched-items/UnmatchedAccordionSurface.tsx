@@ -473,7 +473,6 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                 receivingId={receivingId}
                 quantityExpected={resolvedActiveLine.quantity_expected ?? null}
                 cond={resolvedActiveLine.condition_grade}
-                receivingType={receivingTypeHint}
                 serialSubmitting={lineSerials.serialSubmitting}
                 editingSerial={lineSerials.editingSerial}
                 serialLookup={lineSerials.serialLookup}

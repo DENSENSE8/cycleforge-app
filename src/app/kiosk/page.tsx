@@ -1,66 +1,129 @@
 'use client';
 
 /**
- * /kiosk — customer-facing intake tablet (FOH/BOH surface split, doc 06).
+ * /kiosk — front-desk intake tablet (FOH/BOH surface split, doc 06).
  *
- * This surface authenticates as a DEVICE PRINCIPAL, never a staff member: the
- * page is public + chromeless (registered in proxy.ts PUBLIC_PATHS +
- * AuthContext CLIENT_PUBLIC_PATHS, so ResponsiveLayout renders no staff nav),
- * and every write goes through the httpOnly `cf_kiosk` device token via
- * withKioskAuth. Staff identity only appears transiently via PIN step-up on a
- * privileged action.
+ * DEVICE PRINCIPAL, never a staff member: public + chromeless (registered in
+ * proxy.ts PUBLIC_PATHS + AuthContext CLIENT_PUBLIC_PATHS), every write goes
+ * through the httpOnly `cf_kiosk` device token via withKioskAuth.
  *
- * SEAM (doc 03): the real service forms (Sales · Local Pickup · Repair) +
- * Square/Zoho/Ecwid capability wiring replace the demonstrator tiles below. The
- * device-principal AUTH model — pairing, unpaired-gate, device-authed writes —
- * is what this page owns.
+ * A team member is always at the counter filling this out WITH the customer —
+ * so it is HEADLESS (no self-service "checked in" step, no staff PIN). Tapping a
+ * live service opens the real intake form (currently Repair → the shared
+ * `RepairIntakeForm` in `kioskMode`), which submits device-authed to
+ * `/api/kiosk/repair/submit` and shows its own confirmation. Sales + Pickup are
+ * WIP tiles kept in the same SoT so re-enabling one is a status flip.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Button, Panel } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
+import type { RepairFormData, RepairSubmitResult } from '@/components/repair/RepairIntakeForm';
+
+// Lazy-load the intake form so the welcome screen stays light; it only loads
+// when a team member opens a service.
+const RepairIntakeForm = dynamic(
+  () => import('@/components/repair/RepairIntakeForm').then((m) => m.RepairIntakeForm),
+  { ssr: false },
+);
 
 type Service = 'sales' | 'pickup' | 'repair';
-type Mode = 'ready' | 'pair' | 'done';
+type Mode = 'ready' | 'pair';
 
-const SERVICES: ReadonlyArray<{ id: Service; label: string; blurb: string }> = [
-  { id: 'sales', label: 'Buy / Sell', blurb: 'Start a counter sale or trade-in' },
-  { id: 'pickup', label: 'Order Pickup', blurb: 'Collect a ready order' },
-  { id: 'repair', label: 'Repair Drop-off', blurb: 'Check in a device for service' },
+interface ServiceTile {
+  id: Service;
+  label: string;
+  blurb: string;
+  /** Only `live` services render today; `wip` ones stay here to reuse this tile. */
+  status: 'live' | 'wip';
+}
+
+// Single SoT for every front-desk service tile. Sales + Pickup are WIP: they
+// stay in this array so bringing one online is a one-line `status: 'live'` flip
+// that reuses this exact tile grammar — never a second tile design.
+const SERVICES: ReadonlyArray<ServiceTile> = [
+  { id: 'repair', label: 'Repair Drop-off', blurb: 'Check in a device for service', status: 'live' },
+  { id: 'sales', label: 'Buy / Sell', blurb: 'Start a counter sale or trade-in', status: 'wip' },
+  { id: 'pickup', label: 'Order Pickup', blurb: 'Collect a ready order', status: 'wip' },
 ];
+
+const REPAIR_SUBMIT_TIMEOUT_MS = 60_000;
 
 export default function KioskPage() {
   const [mode, setMode] = useState<Mode>('ready');
+  const [activeService, setActiveService] = useState<Service | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [code, setCode] = useState('');
-  const [lastService, setLastService] = useState<Service | null>(null);
+  // Idempotency key for the in-flight repair submission — persists across failed
+  // retries (dedupes the Zendesk ticket) and clears on success/close.
+  const repairIdemKey = useRef<string | null>(null);
 
-  const startIntake = useCallback(async (service: Service) => {
-    setBusy(true);
+  const liveServices = SERVICES.filter((s) => s.status === 'live');
+
+  const openService = useCallback((service: Service) => {
     setErr(null);
+    setActiveService(service);
+  }, []);
+
+  const closeService = useCallback(() => {
+    setActiveService(null);
+    repairIdemKey.current = null;
+  }, []);
+
+  const submitRepair = useCallback(async (data: RepairFormData): Promise<RepairSubmitResult> => {
+    if (!repairIdemKey.current) repairIdemKey.current = safeRandomUUID();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REPAIR_SUBMIT_TIMEOUT_MS);
     try {
-      const r = await fetch('/api/kiosk/intake', {
+      const res = await fetch('/api/kiosk/repair/submit', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ service }),
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': repairIdemKey.current },
+        body: JSON.stringify(data),
+        signal: controller.signal,
       });
-      if (r.status === 401) {
-        // Device isn't paired — route staff to the setup screen.
+      clearTimeout(timeout);
+
+      if (res.status === 401) {
+        // Device isn't paired — route staff to setup and abort the submit.
+        setActiveService(null);
+        setErr('This tablet needs to be paired before intake. A manager can set it up in Settings → Devices.');
         setMode('pair');
-        return;
+        throw new Error('This tablet is not paired yet.');
       }
-      if (!r.ok) {
-        setErr('Something went wrong. Please ask a team member for help.');
-        return;
+
+      let result: Record<string, unknown>;
+      try {
+        result = await res.json();
+      } catch {
+        throw new Error(res.ok ? 'Invalid response from server. Please try again.' : `Failed to submit repair (${res.status}). Please try again.`);
       }
-      setLastService(service);
-      setMode('done');
-    } catch {
-      setErr('Network issue. Please ask a team member for help.');
-    } finally {
-      setBusy(false);
+
+      if (res.ok && result.success) {
+        repairIdemKey.current = null;
+        return {
+          id: Number(result.id),
+          rsNumber: (result.rsNumber as string | number | null | undefined) ?? null,
+          zendeskTicketNumber: (result.zendeskTicketNumber as string | null | undefined) ?? null,
+          zendeskTicketUrl: (result.zendeskTicketUrl as string | null | undefined) ?? null,
+        };
+      }
+
+      const message =
+        typeof result.error === 'string' && result.error.trim()
+          ? result.error
+          : `Failed to submit repair (${res.status}). Please try again.`;
+      throw new Error(message);
+    } catch (error: unknown) {
+      clearTimeout(timeout);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('Submission timed out. A team member can check the repair list before retrying.');
+      }
+      if (error instanceof Error) throw error;
+      throw new Error('Error submitting repair. Please try again.');
     }
   }, []);
 
@@ -90,6 +153,16 @@ export default function KioskPage() {
     }
   }, [code]);
 
+  // A live service replaces the whole surface with its full-screen intake form.
+  // The form owns its own submit + confirmation; onClose returns to Welcome.
+  if (activeService === 'repair') {
+    return (
+      <div className="fixed inset-0 z-panelOverlay bg-surface-card">
+        <RepairIntakeForm kioskMode onClose={closeService} onSubmit={submitRepair} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-canvas px-6 py-10 text-text-default">
       <div className="w-full max-w-2xl">
@@ -105,16 +178,21 @@ export default function KioskPage() {
         )}
 
         {mode === 'ready' && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {SERVICES.map((s) => (
+          <div
+            className={cn(
+              'grid grid-cols-1 gap-4',
+              liveServices.length > 1 && 'sm:grid-cols-3',
+              liveServices.length === 1 && 'mx-auto max-w-sm',
+            )}
+          >
+            {liveServices.map((s) => (
               // ds-raw-button — bespoke full-height service tile, not a Button variant
               <button
                 key={s.id}
                 type="button"
-                disabled={busy}
-                onClick={() => void startIntake(s.id)}
+                onClick={() => openService(s.id)}
                 className={cn(
-                  'flex min-h-[9rem] flex-col items-center justify-center gap-2 rounded-2xl border border-border-soft bg-surface-card px-4 py-6 text-center shadow-sm transition hover:bg-surface-hover disabled:opacity-60', // ds-allow-box — bespoke interactive service tile (not a static Panel)
+                  'flex min-h-[9rem] flex-col items-center justify-center gap-2 rounded-2xl border border-border-soft bg-surface-card px-4 py-6 text-center shadow-sm transition hover:bg-surface-hover', // ds-allow-box — bespoke interactive service tile (not a static Panel)
                   focusRing('control', 'accent'),
                 )}
               >
@@ -123,20 +201,6 @@ export default function KioskPage() {
               </button>
             ))}
           </div>
-        )}
-
-        {mode === 'done' && (
-          <Panel padding="lg" className="text-center">
-            <p className="text-xl font-black">You're checked in.</p>
-            <p className="mt-2 text-sm font-semibold text-text-soft">
-              A team member will be with you shortly{lastService === 'repair' ? ' about your repair.' : '.'}
-            </p>
-            <div className="mt-6">
-              <Button variant="secondary" onClick={() => setMode('ready')}>
-                Start over
-              </Button>
-            </div>
-          </Panel>
         )}
 
         {mode === 'pair' && (

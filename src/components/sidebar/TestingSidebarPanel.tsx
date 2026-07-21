@@ -40,7 +40,6 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
 import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
 import { scannedUnitKey } from '@/lib/barcode-routing';
-import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
 
 interface Props {
@@ -144,7 +143,6 @@ export function TestingSidebarPanel({
 
   const requestUnitPhotos = useCallback(
     (rawInput: string) => {
-      if (!UNIT_SCAN_PHOTOS) return;
       const key = scannedUnitKey(rawInput);
       if (!key) return;
       void (async () => {
@@ -327,7 +325,7 @@ export function TestingSidebarPanel({
           <ScanBandShell themeColor={themeColor}>{scanBarBlock}</ScanBandShell>
           <div className={SIDEBAR_GUTTER}>
             <TestingScanSessionFeedback session={session} />
-            {UNIT_SCAN_PHOTOS && lastUnitPhotoRequest ? (
+            {lastUnitPhotoRequest ? (
               <div className="mt-1.5">
                 <UnitPhotoRequestStatus
                   serialUnitId={lastUnitPhotoRequest.serialUnitId}

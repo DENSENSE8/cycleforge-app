@@ -92,7 +92,7 @@ export function DataSourcePopover({ info, anchorRef, open, onOpenChange }: DataS
       <ul className="mt-2.5 space-y-1.5 text-role-caption font-medium leading-relaxed text-text-muted">
         {info.bullets.map((b, i) => (
           <li key={i} className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[#C4BAA8]" />
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-surface-strong" />
             <span>{b}</span>
           </li>
         ))}

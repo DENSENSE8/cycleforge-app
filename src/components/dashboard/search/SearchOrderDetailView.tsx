@@ -6,60 +6,21 @@
  * Resolves `openOrderId` (numeric pk or human order # / tracking token) to a
  * ShippedOrder, then mounts the remade two-column search detail shell.
  * Never imports ShippedDetailsPanel / Header / Body.
+ *
+ * Canonicalize (human # → numeric id) paints once and keeps the shell across
+ * the URL replace — no Loading↔empty flash.
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ExternalLink, Loader2, Package } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import type { ShippedOrder } from '@/types/orders';
-import { fetchDashboardOrderRowById } from '@/lib/dashboard-table-data';
-import { isFbaOrder } from '@/utils/order-platform';
 import { orderSearchHref } from '@/lib/search/search-hit';
+import {
+  resolveSearchOrder,
+  type ResolvedSearchOrder,
+} from '@/lib/search/resolve-search-order';
 import { SearchOrderDetailShell } from '@/components/dashboard/search/SearchOrderDetailShell';
-
-type Resolved =
-  | { status: 'ok'; order: ShippedOrder }
-  | { status: 'fba' }
-  | { status: 'notfound' };
-
-async function resolveOrder(orderId: string): Promise<Resolved> {
-  const raw = decodeURIComponent(orderId || '').trim();
-  if (!raw) return { status: 'notfound' };
-
-  if (/^\d+$/.test(raw)) {
-    const order = await fetchDashboardOrderRowById(Number(raw));
-    if (order) return { status: 'ok', order };
-    try {
-      const res = await fetch(`/api/orders/${raw}`, { credentials: 'include', cache: 'no-store' });
-      if (res.ok) {
-        const o = (await res.json())?.order;
-        if (o && isFbaOrder(o.order_id, o.account_source)) return { status: 'fba' };
-      }
-    } catch {
-      /* fall through */
-    }
-    return { status: 'notfound' };
-  }
-
-  try {
-    const res = await fetch(`/api/orders/lookup/${encodeURIComponent(raw)}`, {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (!res.ok) return { status: 'notfound' };
-    const o = (await res.json())?.order;
-    if (!o) return { status: 'notfound' };
-    if (isFbaOrder(o.order_id, o.account_source)) return { status: 'fba' };
-    if (typeof o.id === 'number') {
-      const order = await fetchDashboardOrderRowById(o.id);
-      if (order) return { status: 'ok', order };
-    }
-    return { status: 'notfound' };
-  } catch {
-    return { status: 'notfound' };
-  }
-}
 
 function EmptyStateShell({
   title,
@@ -92,22 +53,61 @@ export function SearchOrderDetailView({
   query?: string;
 }) {
   const router = useRouter();
-  const [resolved, setResolved] = useState<Resolved | null>(null);
-
-  const load = useCallback(async () => {
-    setResolved(null);
-    const next = await resolveOrder(openOrderId);
-    // Canonicalize human order # / tracking path → numeric openOrderId.
-    if (next.status === 'ok' && String(next.order.id) !== openOrderId && /^\d+$/.test(String(next.order.id))) {
-      router.replace(orderSearchHref(next.order.id, query));
-      return;
-    }
-    setResolved(next);
-  }, [openOrderId, query, router]);
+  const [resolved, setResolved] = useState<ResolvedSearchOrder | null>(null);
+  /** Already-painted order — skip blank/reload across human→numeric canonicalize. */
+  const paintedRef = useRef<{ id: number; orderId: string } | null>(null);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+
+    async function run() {
+      const painted = paintedRef.current;
+      if (painted) {
+        const human = painted.orderId;
+        if (openOrderId === String(painted.id) || (human && openOrderId === human)) {
+          if (openOrderId !== String(painted.id)) {
+            router.replace(orderSearchHref(painted.id, query));
+          }
+          return;
+        }
+      }
+
+      setResolved(null);
+      const next = await resolveSearchOrder(openOrderId);
+      if (cancelled) return;
+
+      if (next.status === 'ok') {
+        paintedRef.current = {
+          id: next.order.id,
+          orderId: String(next.order.order_id || '').trim(),
+        };
+        setResolved(next);
+        if (String(next.order.id) !== openOrderId) {
+          router.replace(orderSearchHref(next.order.id, query));
+        }
+        return;
+      }
+
+      paintedRef.current = null;
+      // Human # / tracking / Zoho PO false opens: fall through to cross-entity
+      // results. Numeric pk (from a search hit) stays on the empty shell —
+      // redirecting clears openOrderId and the sidebar re-auto-opens → flash loop.
+      if (next.status === 'notfound') {
+        const q = query?.trim();
+        const isNumericPk = /^\d+$/.test(openOrderId.trim());
+        if (q && !isNumericPk) {
+          router.replace(`/dashboard?mode=search&q=${encodeURIComponent(q)}&map=search`);
+          return;
+        }
+      }
+      setResolved(next);
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [openOrderId, query, router]);
 
   if (resolved === null) {
     return (

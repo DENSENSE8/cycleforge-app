@@ -301,7 +301,6 @@ export function UnmatchedLineRow({
               receivingId={receivingId}
               quantityExpected={line.quantity_expected ?? null}
               cond={line.condition_grade}
-              receivingType={receivingType}
               serialSubmitting={serialSubmitting}
               editingSerial={editingSerial}
               serialLookup={serialLookup}

@@ -94,6 +94,25 @@ async function routeReceivingLines(page: Page): Promise<void> {
   });
 }
 
+/** Same as routeReceivingLines but delays the carton fetch so the restore
+ *  skeleton is observable (proves no browse-feed flash on a deep-link load). */
+async function routeReceivingLinesSlowCarton(page: Page): Promise<void> {
+  await page.route('**/api/receiving-lines**', async (route: Route) => {
+    const url = route.request().url();
+    const isCartonFetch = url.includes(`receiving_id=${RECEIVING_ID}`);
+    if (isCartonFetch) await new Promise((r) => setTimeout(r, 1200));
+    await route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(
+        isCartonFetch
+          ? { success: true, receiving_lines: [matchedReceivingLine] }
+          : { success: true, receiving_lines: [] },
+      ),
+    });
+  });
+}
+
 async function routeLookupPo(page: Page): Promise<void> {
   await page.route('**/api/receiving/lookup-po', async (route: Route) => {
     await route.fulfill({
@@ -150,6 +169,25 @@ test.describe('Unbox refresh stickiness', () => {
     await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 15_000 });
   });
 
+  test('deep-link load shows the workspace skeleton, not the browse feed', async ({ page }) => {
+    // Carton fetch is delayed so the restore window is observable. During it the
+    // Unbox pane must render the workspace skeleton — never the browse table.
+    await routeReceivingLinesSlowCarton(page);
+    await routeLookupPo(page);
+
+    await page.goto(`/unbox?openReceivingId=${RECEIVING_ID}&lineId=${LINE_ID}`, {
+      waitUntil: 'domcontentloaded',
+    });
+
+    // Skeleton is up while restoring…
+    await expect(page.getByLabel('Loading workspace')).toBeVisible({ timeout: 10_000 });
+    // …and the browse workbench (Queue/Viewed/History tabs) is NOT the shown content.
+    await expect(page.getByRole('button', { name: 'Queue', exact: true })).toBeHidden();
+
+    // …then the real workspace replaces it once the carton lands.
+    await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 15_000 });
+  });
+
   test('closing the workspace strips the open params and returns to browse', async ({ page }) => {
     await routeReceivingLines(page);
     await routeLookupPo(page);
@@ -162,7 +200,7 @@ test.describe('Unbox refresh stickiness', () => {
     await expect(workspace).toBeVisible({ timeout: 15_000 });
 
     // Close the overlay via its back-to-browse control.
-    await page.getByRole('button', { name: /back to all|all lines/i }).first().click();
+    await page.getByRole('button', { name: 'Back to list' }).first().click();
 
     await expect
       .poll(() => new URL(page.url()).searchParams.get('openReceivingId'), { timeout: 5_000 })

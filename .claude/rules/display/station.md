@@ -30,7 +30,7 @@ anatomy, chips, HoverTooltip, icons). This doc only adds what is *station-specif
 > pointer.** No browsable lists, no hover-reveal detail, no persistent selection.
 
 For the **right-pane unit editor** that opens after a scan (Unbox / Testing / Shipping body), compose
-[`station-workbench.md`](station-workbench.md) — toolbar → entity context → SectionTabsSlider → terminal dock —
+[`station-workbench.md`](station-workbench.md) — StationContextBar → SectionTabsSlider → terminal dock —
 instead of hand-rolling a parallel shell.
 
 ---
@@ -42,7 +42,7 @@ Top-to-bottom, a station is four parts and nothing more:
 | Part | Module | Rule |
 |---|---|---|
 | **Focus-locked scan bar** (top, sticky) | `StationScanBar` / `ThemedStationScanBar` (`src/components/station/scan-bar/`) | One input, auto-focused, the *only* primary control. |
-| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` via `@/components/station/entity-context` | Condensed one-row identity (listing · PO/order · tracking · claim · photos). Unbox golden; Triage/Testing/Shipping compose via thin adapters. Never fork. |
+| **Entity-context header** (active carton / line / ship order) | `CartonContextCard` + `StationContextBar` via `@/components/station/entity-context` | Sticky bookmark identity (`density="bar"`) under GlobalHeader. Unbox golden; Triage/Testing/Shipping/Pack/Pickup compose via thin adapters. Never fork. |
 | **Single active-entity card** (replaces on scan) | `ActiveOrderScanFeedback`, `PackChecklist`, `StationPacking` | One card; the new scan's card *replaces* the previous one. |
 | **Minimal chrome / goal HUD** | `StationGoalBar` (composed in `StationPacking`) | Ambient throughput only; never a control surface. |
 | **Station-down banner** (singleton, app root) | `OfflineBanner` (`src/components/layout/OfflineBanner.tsx`) | First-class, non-blocking, mounted once. |
@@ -53,10 +53,11 @@ Top-to-bottom, a station is four parts and nothing more:
   + focus ring + right-rail inset onto the core `StationScanBar`. *Rationale: one geometry SoT keeps every bench
   identical and keeps the focus affordance inside the input box so sidebar bands never clip it.*
 - **Compose the entity-context header, never fork it.** Inbound carton benches (Unbox, Triage, Testing)
-  and `/test` Shipping active-order chrome import `CartonContextCard` from
-  `@/components/station/entity-context`. Thin adapters map controller bags → props; omit optional
-  props to hide claim / photos / classify. *Rationale: the condensed one-row identity bar is the
-  Unbox golden — a second header grammar splits operator muscle memory across stations.*
+  and Shipping / Pack / Pickup active-order chrome import `CartonContextCard` + `StationContextBar`
+  from `@/components/station/entity-context`. Thin adapters map controller bags → props with
+  `density="bar"`; omit optional props to hide claim / photos / classify. *Rationale: the condensed
+  one-row bookmark identity is the Unbox golden — a second header grammar splits operator muscle
+  memory across stations.*
 - **The card region uses `flex-1 overflow-y-auto`; the scan bar stays pinned above it.** See `StationPacking` — scan
   bar in the header band, results in the scroll body. *Rationale: the bar must never scroll out from under a working
   operator.*

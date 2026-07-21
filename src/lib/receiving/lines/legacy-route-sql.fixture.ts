@@ -925,7 +925,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
             ? `ORDER BY rt.door_received_at::text DESC NULLS LAST, rl.id DESC`
           : view === 'unbox_opened'
             // Newest Unbox-surface scan first — matches the Unboxed sidebar sort.
-            ? `ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) DESC NULLS LAST, rl.id DESC`
+            ? `ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) DESC NULLS LAST, rl.id DESC`
           : view === 'testing'
             // Sort the "tested" feed by the SAME verdict time the rail renders
             // (tr_agg.tested_at) so the timeline reads monotonically. Ordering by
@@ -1519,7 +1519,7 @@ export function legacyBuildUnboxOpenedPlaceholdersSql(searchParams: URLSearchPar
                   AND rl.organization_id = r.organization_id
              )
              ${unboxSearchSql}
-           ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
+           ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`;
   const countSql =

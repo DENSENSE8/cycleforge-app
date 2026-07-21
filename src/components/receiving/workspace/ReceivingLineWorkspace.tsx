@@ -33,8 +33,8 @@ interface Props {
 /**
  * Right-pane focused work-item view for a single receiving line.
  *
- * Unbox leads with {@link ReceivingStationContextBar} (identity bookmark synced
- * to the workbench body column; {@link ReceivingStationMoreDetails} absolute in
+ * Unbox leads with {@link StationContextBar} (identity bookmark synced
+ * to the workbench body column; {@link StationMoreDetails} absolute in
  * the corner) inside `LineEditPanel`. Workspace steppers are gone — carton
  * pipeline progress lives in ReceivingDetailsStack only.
  *

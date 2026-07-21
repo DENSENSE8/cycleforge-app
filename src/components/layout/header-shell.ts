@@ -2,6 +2,7 @@ import {
   appChromeBandHairlineClass,
   appChromeClass,
   appChromeMutedClass,
+  appWorkCanvasEdgeClass,
 } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -69,14 +70,15 @@ export const mainStickyHeaderShellRowClass = 'flex h-[44px] items-center justify
 export const mainStickyHeaderCompactRowClass = 'flex h-[40px] items-center justify-between gap-4 px-4';
 
 /**
- * Desktop app content host — soft top-left cutout where master sidebar × global
- * header meet the work column. Chrome ({@link appChromeClass}) shows through the
- * curve; **no border** here — station work canvases own the hairlined elevated
- * plane via `appWorkCanvasClass` (app-surface SoT). Pair with GlobalHeader (no
+ * Desktop app content host — soft top-left cutout + depth-edge hairline where
+ * master sidebar × global header meet the work column. Chrome
+ * ({@link appChromeClass}) shows through the curve; the stroke is
+ * {@link appWorkCanvasEdgeClass} so every desktop page gets the same radius
+ * hairline (not only Unbox/Triage/Pack). Pair with GlobalHeader (no
  * `border-b`). Chromeless / mobile routes skip it.
  */
 export const appContentShellClass =
-  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl';
+  `flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl ${appWorkCanvasEdgeClass}`;
 
 /**
  * Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail).

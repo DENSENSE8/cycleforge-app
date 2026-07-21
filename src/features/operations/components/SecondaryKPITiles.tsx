@@ -7,6 +7,8 @@ import { Info } from 'lucide-react';
 import { AlertCircle, Clock } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { IconButton } from '@/design-system/primitives';
+import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { cn } from '@/utils/_cn';
 import type { DashboardData } from '@/features/operations/types';
 import { DataSourcePopover, type DataSourceInfo } from '@/features/operations/components/DataSourcePopover';
 import { OPERATIONS_SECONDARY_KPI_SOURCES } from '@/features/operations/operations-data-sources';
@@ -47,7 +49,7 @@ function SecondaryTile({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      className={`ds-raw-button relative rounded-2xl border border-border-soft bg-surface-card p-4 shadow-[0_2px_8px_rgba(161,140,90,0.04)] transition-shadow hover:shadow-[0_4px_14px_rgba(161,140,90,0.08)] ${'cursor-pointer'}`}
+      className={cn('ds-raw-button relative cursor-pointer', MONITOR_SECTION_CARD_CLASS, 'p-4 transition-shadow hover:shadow-md')}
       role="button"
       tabIndex={0}
       aria-label={`${label}: ${value}. ${sub}`}

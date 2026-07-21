@@ -40,6 +40,16 @@ interface RepairIntakeFormProps {
     onSubmit: (data: RepairFormData) => Promise<RepairSubmitResult | null | void>;
     initialData?: Partial<RepairFormData>;
     favoriteSkuId?: number | null;
+    /**
+     * Headless kiosk variant (device principal, no staff session): a team member
+     * fills this WITH the customer at the front desk. Hides the staff-only
+     * affordances whose endpoints a device token cannot reach — technician
+     * assignment, favorites, existing-customer PII search, the Zendesk link and
+     * print — and swaps the Ecwid catalog for a manual product field. Default off
+     * = the unchanged /repair staff flow. Submit still goes through the injected
+     * `onSubmit` (the kiosk host points it at the device-authed route).
+     */
+    kioskMode?: boolean;
 }
 
 export interface RepairFormData {
@@ -68,7 +78,7 @@ const REPAIR_INTAKE_MAX_WIDTH = 'max-w-[720px]';
 const REPAIR_INTAKE_COLUMN_CLASS = `mx-auto w-full ${REPAIR_INTAKE_MAX_WIDTH}`;
 const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
-export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId }: RepairIntakeFormProps) {
+export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId, kioskMode = false }: RepairIntakeFormProps) {
     const [currentStep, setCurrentStep] = useState<RepairIntakeStepKey>('product');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -85,9 +95,9 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
     const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
     const [contactFieldIndex, setContactFieldIndex] = useState(0);
 
-    const { techs, loadingTechs, skuIssues } = useRepairIntakeData(favoriteSkuId);
+    const { techs, loadingTechs, skuIssues } = useRepairIntakeData(favoriteSkuId, kioskMode);
     const { customerResults, loadingCustomers, customerSearchError } = useRepairCustomerSearch(
-        currentStep === 'contact' && customerMode === 'existing',
+        !kioskMode && currentStep === 'contact' && customerMode === 'existing',
         customerQuery,
     );
 
@@ -378,7 +388,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
 
                 <div className="shrink-0 border-t border-border-hairline bg-surface-card">
                     <div className={`${REPAIR_INTAKE_COLUMN_CLASS} flex items-center gap-3 px-6 py-3`}>
-                        {submitted.zendeskTicketUrl ? (
+                        {!kioskMode && submitted.zendeskTicketUrl ? (
                             <a
                                 href={submitted.zendeskTicketUrl}
                                 target="_blank"
@@ -396,6 +406,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                             >
                                 Done
                             </Button>
+                            {!kioskMode && (
                             <Button
                                 variant="brand"
                                 size="md"
@@ -404,6 +415,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                             >
                                 Print document
                             </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -507,31 +519,53 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                     </div>
                                 </div>
                             )}
-                            <FavoritesWorkspaceSection
-                                variant="quick-pick"
-                                workspaceKey="repair"
-                                accent="blue"
-                                title="Common Repairs"
-                                description=""
-                                emptyLabel="No repair favorites yet"
-                                useLabel="Start repair"
-                                allowRepairDefaults
-                                onUseFavorite={handleUseFavorite}
-                                searchSkuSuffixFilter="-RS"
-                                fuzzyTitleSearch
-                            />
+                            {kioskMode ? (
+                                // Headless kiosk: the Ecwid catalog + favorites are staff-authed
+                                // endpoints a device token can't reach — capture the product by
+                                // hand instead (type fixed to the 'Other' convention). Price is
+                                // entered on the Contact step, same as every other intake.
+                                <section className="space-y-3">
+                                    <p className={SECTION_LABEL}>What are we repairing?</p>
+                                    <TextField
+                                        label="Product / model"
+                                        value={formData.product.model}
+                                        onChange={(value) => setFormData(prev => ({
+                                            ...prev,
+                                            product: { type: value.trim() ? 'Other' : '', model: value, sourceSku: null },
+                                        }))}
+                                        tone="neutral"
+                                        autoFocus
+                                    />
+                                </section>
+                            ) : (
+                                <>
+                                    <FavoritesWorkspaceSection
+                                        variant="quick-pick"
+                                        workspaceKey="repair"
+                                        accent="blue"
+                                        title="Common Repairs"
+                                        description=""
+                                        emptyLabel="No repair favorites yet"
+                                        useLabel="Start repair"
+                                        allowRepairDefaults
+                                        onUseFavorite={handleUseFavorite}
+                                        searchSkuSuffixFilter="-RS"
+                                        fuzzyTitleSearch
+                                    />
 
-                            <section className="space-y-3">
-                                <p className={SECTION_LABEL}>All products</p>
-                                <ProductSelector
-                                    onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
-                                    selectedProduct={formData.product.type ? formData.product : null}
-                                    onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
-                                    fillHeight
-                                    selectedItems={selectedItems}
-                                    onSelectedItemsChange={handleSelectedItemsChange}
-                                />
-                            </section>
+                                    <section className="space-y-3">
+                                        <p className={SECTION_LABEL}>All products</p>
+                                        <ProductSelector
+                                            onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
+                                            selectedProduct={formData.product.type ? formData.product : null}
+                                            onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
+                                            fillHeight
+                                            selectedItems={selectedItems}
+                                            onSelectedItemsChange={handleSelectedItemsChange}
+                                        />
+                                    </section>
+                                </>
+                            )}
                         </div>
                     )}
 
@@ -552,6 +586,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                 skuIssues={skuIssues}
                             />
 
+                            {!kioskMode && (
                             <div className="space-y-2">
                                 <label
                                     htmlFor="repair-tech-select"
@@ -584,11 +619,13 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                     ))}
                                 </select>
                             </div>
+                            )}
                         </div>
                     )}
 
                     {currentStep === 'contact' && (
                         <div className="w-full space-y-6">
+                            {!kioskMode && (
                             <div className="grid grid-cols-2 gap-2 rounded-xl border border-border-soft p-1">
                                 <Button
                                     variant={customerMode === 'existing' ? 'brand' : 'ghost'}
@@ -607,8 +644,9 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                     New
                                 </Button>
                             </div>
+                            )}
 
-                            {customerMode === 'existing' && (
+                            {!kioskMode && customerMode === 'existing' && (
                                 <div className="space-y-3">
                                     <TextField
                                         label="Search customer"

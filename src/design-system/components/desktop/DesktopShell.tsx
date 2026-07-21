@@ -37,7 +37,7 @@ export interface DesktopShellProps {
  *
  * Mirrors {@link ResponsiveLayout}: chrome column is `bg-surface-card`; `<main>`
  * uses {@link appContentShellClass} so the sidebar × header join is a soft
- * corner instead of a hard L of hairlines.
+ * corner with the shared depth-edge hairline.
  *
  * Sidebar collapses with a width transition (matches DashboardSidebar behavior).
  */

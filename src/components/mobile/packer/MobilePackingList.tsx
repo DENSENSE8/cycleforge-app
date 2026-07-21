@@ -41,10 +41,12 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
   const buildPhotosHref = useCallback((row: PackerLogRow) => {
     if (!row.packer_log_id) return '#';
     // Carry the real order number so packer photos file under it in the library
-    // (poRef) instead of the fallback PL-{id}.
+    // (poRef) instead of the fallback PL-{id}. Guided Review starts on slip.
+    const params = new URLSearchParams();
     const oid = (row.order_id || '').trim();
-    const q = oid ? `?orderId=${encodeURIComponent(oid)}` : '';
-    return `/m/p/${row.packer_log_id}/photos${q}`;
+    if (oid) params.set('orderId', oid);
+    params.set('step', 'slip');
+    return `/m/p/${row.packer_log_id}/photos?${params.toString()}`;
   }, []);
 
   return (

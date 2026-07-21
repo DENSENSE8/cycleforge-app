@@ -105,15 +105,16 @@ test.describe('receiving — Zoho overall notes + unit price', () => {
     }
   });
 
-  test('PO row notes icon toggles the inline item-description editor', async ({ page, request }) => {
+  test('PO row ⋮ menu toggles the inline item-description editor', async ({ page, request }) => {
     const hit = await findCandidate(request);
     test.skip(!hit, 'no backfilled carton available');
     await page.goto(`/receiving?recvId=${hit!.receiving_id}&lineId=${hit!.id}`);
 
-    // The far-right notes icon on the PO row opens the inline item-description editor.
-    const notesIcon = page.getByRole('button', { name: /Toggle item description/i }).first();
-    await expect(notesIcon).toBeVisible({ timeout: 25_000 });
-    await notesIcon.click();
+    // Title-row ⋮ → Item description (synced) opens the inline editor.
+    const lineMenu = page.getByRole('button', { name: /Line actions/i }).first();
+    await expect(lineMenu).toBeVisible({ timeout: 25_000 });
+    await lineMenu.click();
+    await page.getByRole('menuitem', { name: /Item description \(synced\)/i }).click();
 
     // Editor swaps in: an item-description input + a save (check) action.
     await expect(page.getByRole('textbox', { name: /Item description/i })).toBeVisible({ timeout: 8_000 });

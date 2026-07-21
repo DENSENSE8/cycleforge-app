@@ -86,6 +86,7 @@ export function TestingCartonHeader({
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
       onExitToList={() => dispatchSelectLine(null)}
       onSendToTicket={() => c.setPhotoNoteOpen(true)}
+      density="bar"
     />
   );
 }

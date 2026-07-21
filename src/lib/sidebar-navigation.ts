@@ -71,6 +71,7 @@ export type SidebarRouteKey =
   | 'sourcing'
   | 'tech'
   | 'packer'
+  | 'review'
   | 'outbound'
   | 'support'
   | 'ai-chat'
@@ -115,6 +116,8 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'admin',
   'audit-log',
   'order',
+  // Review station is desktop-only (packer capture stays on /m/pack). Plan §4d.
+  'review',
 ]);
 
 const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
@@ -189,6 +192,10 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
   { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', requires: 'packing.view' },
+  // Packer Review Station — desktop Workbench for approving/flagging packed
+  // orders (WS-REVIEW). Gated on `packing.review` at birth; when tech/receiving/
+  // shipping review modes land, widen this to any-of (see SIDEBAR_PAGE_NAV note).
+  { id: 'review',            label: 'Review',      href: '/review',             icon: ClipboardList,                kind: 'station', requires: 'packing.review' },
   // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
@@ -283,6 +290,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // panel + station, so it resolves to the `packer` key (legacy `/packer` too).
   if (pathname === '/pack' || pathname.startsWith('/pack/')) return 'packer';
   if (pathname === '/packer' || pathname.startsWith('/packer/')) return 'packer';
+  // Review station (WS-REVIEW) — resolves to its own key across every mode.
+  if (pathname === '/review' || pathname.startsWith('/review/')) return 'review';
   // `/shipping` is the first-class Shipping surface; it reuses the `outbound`
   // sidebar panel + station key (legacy `/outbound` too).
   if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return 'outbound';
@@ -361,6 +370,7 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/pack',               permission: 'packing.view' },
   { prefix: '/packer',             permission: 'packing.view' },
   { prefix: '/packers',            permission: 'packing.view' },
+  { prefix: '/review',             permission: 'packing.review' },
   { prefix: '/shipping',           permission: 'shipping.view' },
   { prefix: '/outbound',           permission: 'shipping.view' },
   { prefix: '/products',           permission: 'sku_stock.view' },
@@ -474,6 +484,7 @@ const SUPPORT = '/support';
 // operator-surfaces refactor Phase 7); its modes navigate there. Legacy
 // `/packer` still resolves (proxy redirect + shared page).
 const PACK = '/pack';
+const REVIEW = '/review';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -492,11 +503,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'dashboard', label: 'Dashboard', href: DASHBOARD, icon: LayoutDashboard, kind: 'main', requires: 'dashboard.view',
     modes: [
-      { id: 'search',   label: 'Search',   icon: Search, to: () => ({ pathname: DASHBOARD, params: { mode: 'search', q: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, sort: null, rtab: null, open: null } }) },
+      // Every L2 switch clears Search-scoped selection (`openOrderId`/`map`/`q`)
+      // so Receiving/Shipping never inherit a Search handoff, and Search opens clean.
+      { id: 'search',   label: 'Search',   icon: Search, to: () => ({ pathname: DASHBOARD, params: { mode: 'search', q: null, openOrderId: null, map: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, sort: null, rtab: null, open: null } }) },
       // Lands on the Triage tab (scanned order) — `sort=scanned_newest` keeps the
       // header tab + the table's day-band axis in lockstep (both read `?sort`).
-      { id: 'receiving', label: 'Receiving', icon: Inbox, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest', q: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, dq: null, open: null } }) },
-      { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { mode: null, q: null, type: null, unshipped: '', pending: null, shipped: null, fba: null, warranty: null, dq: null, rtab: null } }) },
+      { id: 'receiving', label: 'Receiving', icon: Inbox, to: () => ({ pathname: DASHBOARD, params: { mode: 'inbound', sort: 'scanned_newest', q: null, openOrderId: null, map: null, type: null, unshipped: null, pending: null, shipped: null, fba: null, warranty: null, dq: null, open: null } }) },
+      { id: 'outbound', label: 'Shipping', icon: Send,   to: () => ({ pathname: DASHBOARD, params: { mode: null, q: null, openOrderId: null, map: null, type: null, unshipped: '', pending: null, shipped: null, fba: null, warranty: null, dq: null, rtab: null } }) },
     ],
     resolveMode: ({ params }) => {
       const m = String(params.get('mode') || '').trim().toLowerCase();
@@ -643,6 +656,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       const m = params.get('packMode');
       return m === 'fragile' || m === 'multi' ? m : 'standard';
     },
+  },
+  // ── Review (Packer Review Station) ─────────────────────────────────────────
+  // The `?mode=` axis = WHICH station's work you're reviewing. `packer` is the
+  // sole mode at birth (param cleared); tech / receiving / shipping review land
+  // here as new pills on the SAME page — never new routes. When a 2nd mode ships,
+  // widen the APP_SIDEBAR_NAV `requires` gate to any-of (packing.review OR …).
+  {
+    id: 'review', label: 'Review', href: REVIEW, icon: ClipboardList, kind: 'station', requires: 'packing.review',
+    modes: [
+      { id: 'packer', label: 'Packing', icon: PackageCheck, to: () => ({ pathname: REVIEW, params: { mode: null } }) },
+    ],
+    resolveMode: () => 'packer',
   },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.

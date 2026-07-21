@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, Download, Loader2, Pencil, History, DollarSign, User, Tag } from '@/components/Icons';
 import type { ReceivingStepKey } from '../ReceivingProgressStepper';
-import { WorkspaceCard } from '@/design-system/components';
+import {
+  WorkspaceCard,
+  WORKSPACE_NESTED_FIELD,
+  WORKSPACE_NESTED_FIELD_PAD_COMPACT,
+  WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT,
+} from '@/design-system/components';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../NoteComposerInsertRail';
@@ -13,7 +18,6 @@ import {
   buildStaffStampText,
   focusTextEnd,
   formatUnitPriceForNotes,
-  NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS,
   NOTE_DOWNLOAD_INSERT_BTN,
   NOTE_DOWNLOAD_SYNC_BTN,
   NOTE_OVERLAY_ICON,
@@ -251,7 +255,7 @@ export function LineNotesCard({
     // Glass worksheet surface — matches the carton context / PO items cards so the
     // whole unbox column reads as one frosted worksheet. No header row: the
     // placeholder teaches what the field is, and it saves itself.
-    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-3">
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       <div className="group relative">
         <textarea
           ref={textareaRef}
@@ -261,12 +265,12 @@ export function LineNotesCard({
           onChange={(e) => onNotesChange(e.target.value)}
           onBlur={handleBlur}
           placeholder="Notes for this carton — printed on the label and saved"
-          className={`block w-full resize-none rounded-lg border border-border-soft px-3 text-role-caption text-text-default placeholder:text-text-faint py-1.5 pr-10 ${NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS} ${NOTES_TEXTAREA_FOCUS}`}
+          className={`block h-[50px] w-full resize-none ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD_COMPACT} text-role-caption leading-snug text-text-default placeholder:text-text-faint pr-10 ${NOTES_TEXTAREA_FOCUS}`}
         />
 
         {/* Top-left repeat-previous; top-right insert rail; bottom-right push-to-PO. */}
         {trimmedPreviousNotes && (
-          <div className="pointer-events-none absolute left-1.5 top-1.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <div className="pointer-events-none absolute left-1.5 top-px opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             <div className="pointer-events-auto">
               <HoverTooltip label="Repeat the previous line's notes" asChild>
                 {/* ds-raw-button */}
@@ -283,12 +287,15 @@ export function LineNotesCard({
           </div>
         )}
 
-        <NoteComposerInsertRail actions={insertActions} />
+        <NoteComposerInsertRail
+          actions={insertActions}
+          className={WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT}
+        />
 
         {/* Bottom-left: a light "Saved" confirmation that fades in on blur-save. */}
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute bottom-1.5 left-3 flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
+          className={`pointer-events-none absolute bottom-px left-3 flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
             savedFlash ? 'opacity-100' : 'opacity-0'
           }`}
         >
@@ -296,7 +303,7 @@ export function LineNotesCard({
         </div>
 
         {showSyncToPo ? (
-          <div className="pointer-events-none absolute bottom-1.5 right-1.5 z-10">
+          <div className="pointer-events-none absolute bottom-px right-1.5 z-10">
             <div className="pointer-events-auto">
               <HoverTooltip label="Push this note to the synced PO" asChild>
                 {/* ds-raw-button */}

@@ -1,6 +1,14 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import type { SidebarIconComponent, SidebarPageNav } from '@/lib/sidebar-navigation';
@@ -8,10 +16,7 @@ import { cn } from '@/utils/_cn';
 import { MasterNavHeader, type MasterNavRecentModeChip } from './MasterNavHeader';
 import { MasterNavDropdown } from './MasterNavDropdown';
 
-/** Delay before the hover modes panel closes once the pointer leaves the trigger/panel. */
-const HOVER_CLOSE_DELAY_MS = 120;
-
-/** Same-page L2 mode for the hover dropdown under the header trigger. */
+/** Same-page L2 mode for the click dropdown under the header trigger. */
 export interface MasterNavPageModeChip {
   id: string;
   label: string;
@@ -23,30 +28,26 @@ export interface MasterNavPageModeChip {
 }
 
 /**
- * Hover-opened same-page modes menu. Direct AnimatePresence child so exit
- * timing is reliable; pointer-events none on exit so a fading shell cannot
- * re-trigger open.
+ * Click-opened same-page modes menu. Direct AnimatePresence child so exit
+ * timing is reliable.
  */
-function ModesHoverPanel({
-  modes,
-  className,
-  onMouseEnter,
-  onMouseLeave,
-}: {
-  modes: MasterNavPageModeChip[];
-  className?: string;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}) {
+const ModesPanel = forwardRef<
+  HTMLDivElement,
+  {
+    modes: MasterNavPageModeChip[];
+    className?: string;
+    /** Fired after a mode pick so the host can dismiss the panel. */
+    onModeSelect?: () => void;
+  }
+>(function ModesPanel({ modes, className, onModeSelect }, ref) {
   return (
     <motion.div
-      key="modes-hover"
+      ref={ref}
+      key="modes-panel"
       initial={false}
-      animate={{ opacity: 1, y: 0, scale: 1, pointerEvents: 'auto' as const }}
-      exit={{ opacity: 0, y: -4, scale: 0.99, pointerEvents: 'none' as const }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -4, scale: 0.99 }}
       transition={{ duration: 0.12, ease: 'easeOut' }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
       className={cn(
         'z-dropdown max-h-[320px] overflow-y-auto rounded-2xl border border-border-soft bg-surface-card p-1 shadow-xl shadow-slate-900/10',
         className,
@@ -68,7 +69,10 @@ function ModesHoverPanel({
               type="button"
               role="menuitem"
               aria-current={mode.active ? 'page' : undefined}
-              onClick={mode.onSelect}
+              onClick={() => {
+                mode.onSelect();
+                onModeSelect?.();
+              }}
               className={cn(
                 'ds-raw-button flex w-full items-center gap-2.5 rounded-lg inset-cozy text-left text-role-data font-medium transition-colors',
                 mode.active
@@ -84,17 +88,17 @@ function ModesHoverPanel({
       })}
     </motion.div>
   );
-}
+});
 
 /**
  * Presentational composite of the master nav — header trigger + a floating
  * dropdown. Fully state-driven so it wires to either local state (the
  * /design-demo showroom) or the live router (the {@link MasterNav} container).
  *
- * Two menus hang off the header **label button** (not the whole band):
- * - **Hover** — the active page's modes (fast L2 switch, no click cost).
- * - **Click** — the full nav dropdown (all pages, expandable mode lists).
- * The click menu always wins: opening it dismisses the hover panel.
+ * Two click menus hang off the header:
+ * - **Top-left chevron** — the full nav dropdown (all pages, expandable mode lists).
+ * - **Right-of-label chevron** — the active page's modes (fast L2 switch).
+ * Opening either dismisses the other. No hover open.
  *
  * The dropdown closes on a click outside the header/menu or Escape. It floats
  * over the workspace body below (it never takes the whole panel over). The body
@@ -122,7 +126,7 @@ export function MasterNavView({
   activeModeId: string | null;
   open: boolean;
   onOpen: () => void;
-  /** Same-page modes for the hover dropdown (modeful pages). */
+  /** Same-page modes for the modes dropdown (modeful pages). */
   pageModes?: MasterNavPageModeChip[];
   /** Prior modes for header jump chips (excludes current; max 3). */
   recentModes?: MasterNavRecentModeChip[];
@@ -147,81 +151,50 @@ export function MasterNavView({
       : undefined;
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const modesPanelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 
-  // ── Hover modes panel ─────────────────────────────────────────────────────
-  // Hover opens only from the label button (not the whole header band). While
-  // the panel is exiting, ignore re-enter so a fading hit-target cannot reopen it.
+  // ── Modes panel (click only) ──────────────────────────────────────────────
   const modeful = pageModes.length > 1;
-  const [hoverOpen, setHoverOpen] = useState(false);
-  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hoverExitingRef = useRef(false);
+  const [modesOpen, setModesOpen] = useState(false);
 
-  const cancelHoverClose = useCallback(() => {
-    if (hoverCloseTimer.current) {
-      clearTimeout(hoverCloseTimer.current);
-      hoverCloseTimer.current = null;
-    }
-  }, []);
-
-  /** Open from the label button — may interrupt an in-flight exit. */
-  const openHoverFromTrigger = useCallback(() => {
-    cancelHoverClose();
-    hoverExitingRef.current = false;
-    if (modeful && !open) setHoverOpen(true);
-  }, [cancelHoverClose, modeful, open]);
-
-  /**
-   * Keep the panel alive while the pointer is over it. Ignored while exiting
-   * (motion sets pointer-events: none), so a fading shell cannot revive itself.
-   */
-  const openHoverFromPanel = useCallback(() => {
-    if (hoverExitingRef.current) return;
-    cancelHoverClose();
-    if (modeful && !open) setHoverOpen(true);
-  }, [cancelHoverClose, modeful, open]);
-
-  const scheduleHoverClose = useCallback(() => {
-    cancelHoverClose();
-    hoverCloseTimer.current = setTimeout(() => {
-      hoverExitingRef.current = true;
-      setHoverOpen(false);
-    }, HOVER_CLOSE_DELAY_MS);
-  }, [cancelHoverClose]);
-
-  const handleHoverExitComplete = useCallback(() => {
-    hoverExitingRef.current = false;
-  }, []);
-
-  // The click menu always wins — and clean the timer up on unmount.
+  // Full nav always wins — dismiss modes when it opens.
   useEffect(() => {
-    if (open) {
-      cancelHoverClose();
-      hoverExitingRef.current = false;
-      setHoverOpen(false);
-    }
-  }, [open, cancelHoverClose]);
-  useEffect(() => cancelHoverClose, [cancelHoverClose]);
+    if (open) setModesOpen(false);
+  }, [open]);
 
-  const handleToggle = useCallback(() => {
-    cancelHoverClose();
-    hoverExitingRef.current = false;
-    setHoverOpen(false);
+  // Dismiss modes after a mode/page jump (URL change).
+  useEffect(() => {
+    setModesOpen(false);
+  }, [activePage.id, activeModeId]);
+
+  const handleNavToggle = useCallback(() => {
+    setModesOpen(false);
     if (open) onRequestClose?.();
     else onOpen();
-  }, [open, onOpen, onRequestClose, cancelHoverClose]);
+  }, [open, onOpen, onRequestClose]);
 
-  // Close on Escape or a click outside the header trigger and the open menu.
+  const handleModesToggle = useCallback(() => {
+    if (!modeful) return;
+    if (open) onRequestClose?.();
+    setModesOpen((prev) => !prev);
+  }, [modeful, open, onRequestClose]);
+
+  // Close either menu on Escape or a click outside the header + open panel.
   useEffect(() => {
-    if (!open || !onRequestClose) return;
+    if (!open && !modesOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onRequestClose();
+      if (e.key !== 'Escape') return;
+      if (open) onRequestClose?.();
+      setModesOpen(false);
     };
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (headerRef.current?.contains(target)) return;
-      if (menuRef.current?.contains(target)) return;
-      onRequestClose();
+      if (open && menuRef.current?.contains(target)) return;
+      if (modesOpen && modesPanelRef.current?.contains(target)) return;
+      if (open) onRequestClose?.();
+      setModesOpen(false);
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onPointerDown);
@@ -229,29 +202,29 @@ export function MasterNavView({
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onPointerDown);
     };
-  }, [open, onRequestClose]);
+  }, [open, modesOpen, onRequestClose]);
 
   const header = (
     <MasterNavHeader
       label={headerLabel}
       leadingIcon={headerIcon}
       open={open}
-      onClick={handleToggle}
-      onTriggerMouseEnter={openHoverFromTrigger}
-      onTriggerMouseLeave={scheduleHoverClose}
-      modesPanelOpen={hoverOpen && !open}
+      onClick={handleNavToggle}
+      modesOpen={modesOpen && !open}
+      onModesClick={handleModesToggle}
+      showModesToggle={modeful}
       recentModes={recentModes}
     />
   );
 
-  const hoverPanel = (positionClass: string) => (
-    <AnimatePresence onExitComplete={handleHoverExitComplete}>
-      {hoverOpen && !open && (
-        <ModesHoverPanel
+  const modesPanel = (positionClass: string) => (
+    <AnimatePresence>
+      {modesOpen && !open && (
+        <ModesPanel
+          ref={modesPanelRef}
           modes={pageModes}
           className={positionClass}
-          onMouseEnter={openHoverFromPanel}
-          onMouseLeave={scheduleHoverClose}
+          onModeSelect={() => setModesOpen(false)}
         />
       )}
     </AnimatePresence>
@@ -284,7 +257,7 @@ export function MasterNavView({
           {header}
         </div>
         <div className="relative z-0 min-h-0 flex-1 overflow-hidden">{renderContext()}</div>
-        {hoverPanel('absolute inset-x-1 top-[40px]')}
+        {modesPanel('absolute inset-x-1 top-[40px]')}
         {/* Dropdown floats over the whole panel — anchored to the root (not the
             ~40px header band) so its definite top/bottom give the inner menu a
             height to scroll within. */}
@@ -297,7 +270,7 @@ export function MasterNavView({
     <div className={cn('relative flex min-h-0 flex-col', className)}>
       <div className="relative z-30 shrink-0">
         <div ref={headerRef}>{header}</div>
-        {hoverPanel('absolute inset-x-1 top-[calc(100%-1px)]')}
+        {modesPanel('absolute inset-x-1 top-[calc(100%-1px)]')}
         <AnimatePresence>
           {open && (
             <div className="absolute inset-x-1 top-[calc(100%-1px)]">

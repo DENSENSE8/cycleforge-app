@@ -8,6 +8,7 @@ import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable'
 import type { TestingController } from './testing-panel-types';
 import { TestingLineSlot, confirmDeleteSerial } from './TestingLineSlot';
 import { TestingSerialLinkControls } from './TestingSerialLinkControls';
+import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';
 import {
   shouldUseUnmatchedItemsSurface,
 } from '@/lib/receiving/intake-items-routing';
@@ -117,8 +118,15 @@ export function TestingPoItemsSection({
       suppressHeader={suppressHeader}
       placeholderActiveRow={row}
       hideNoTestLines
+      serialSplit={{
+        staffId,
+        cartonSource: row.receiving_source,
+        onAfterSplit: (line) => {
+          dispatchTestingLineUpdated({ id: line.id, serials: line.serials ?? [] });
+        },
+      }}
       renderTitleActions={(line) => (
-        <TestingSerialLinkControls carton={row} line={line} staffId={staffId} />
+        <TestingSerialLinkControls carton={row} line={line} />
       )}
       activeSerialActions={{
         editingSerialId: c.headerSerialEdit?.id ?? null,

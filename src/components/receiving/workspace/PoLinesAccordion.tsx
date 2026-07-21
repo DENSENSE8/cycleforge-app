@@ -9,6 +9,7 @@ import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';
 import { usePoLinesData } from './hooks/usePoLinesData';
 import { usePoLineItemDescriptionEditor } from './hooks/usePoLineItemDescriptionEditor';
+import type { PoLineSerialSplitContext } from './PoLineTitleMenu';
 import type {
   ActiveRowSlot,
   PoLineSerialActions,
@@ -85,10 +86,15 @@ interface Props {
   suppressHeader?: boolean;
   /**
    * Opt-in: extra controls rendered in each line's title row, immediately after
-   * the item-description button (e.g. the testing page's serial LINK/UNLINK).
+   * the ⋮ menu (e.g. the testing page's serial LINK combine control).
    * Omitted callers (unbox) render nothing here — unchanged.
    */
   renderTitleActions?: (line: ReceivingLineRow) => React.ReactNode;
+  /**
+   * Opt-in: enables Unlink in the title ⋮ for unmatched cartons with a serial
+   * (Testing UNLINK / wrong physical item → split onto its own row).
+   */
+  serialSplit?: Omit<PoLineSerialSplitContext, 'receivingId'>;
 }
 
 /**
@@ -115,6 +121,7 @@ export function PoLinesAccordion({
   onItemDescFeedback,
   onItemDescSaved,
   renderTitleActions,
+  serialSplit,
   placeholderActiveRow,
   embedded = false,
   headerRight,
@@ -203,6 +210,11 @@ export function PoLinesAccordion({
               activeSerialActions={activeSerialActions}
               activeRowSlot={activeRowSlot}
               renderTitleActions={renderTitleActions}
+              serialSplit={
+                serialSplit
+                  ? { ...serialSplit, receivingId }
+                  : undefined
+              }
               desc={{
                 shownId: desc.shownId,
                 draft: desc.draft,

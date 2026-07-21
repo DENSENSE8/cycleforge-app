@@ -14,6 +14,7 @@ import {
   searchHitHref,
   searchScopeHref,
   searchScopeLabel,
+  shouldAutoOpenSearchOrder,
   toDbEntityType,
   toUiEntityType,
 } from './search-hit';
@@ -48,6 +49,20 @@ test('orderSearchHref: opens Dashboard Search detail with optional q', () => {
   assert.equal(
     orderSearchHref('111-6350504-7603458', '111-6350504-7603458'),
     '/dashboard?mode=search&openOrderId=111-6350504-7603458&map=search&q=111-6350504-7603458',
+  );
+});
+
+test('shouldAutoOpenSearchOrder: exact sole ORDER hit only', () => {
+  assert.equal(shouldAutoOpenSearchOrder([{ entityType: 'order' }]), true);
+  assert.equal(shouldAutoOpenSearchOrder([]), false);
+  assert.equal(shouldAutoOpenSearchOrder([{ entityType: 'receiving' }]), false);
+  assert.equal(
+    shouldAutoOpenSearchOrder([{ entityType: 'order' }, { entityType: 'order' }]),
+    false,
+  );
+  assert.equal(
+    shouldAutoOpenSearchOrder([{ entityType: 'order' }, { entityType: 'unit' }]),
+    false,
   );
 });
 
@@ -87,7 +102,17 @@ test('globalSearchHandoffHref: order-heavy opens Dashboard Search detail', () =>
   );
   assert.equal(
     globalSearchHandoffHref('111-6350504-7603458', []),
-    '/dashboard?mode=search&openOrderId=111-6350504-7603458&map=search&q=111-6350504-7603458',
+    '/dashboard?mode=search&q=111-6350504-7603458&map=search',
+  );
+  // Zoho PO / identifier with no ORDER preview → Search results (not forced openOrderId).
+  // 05-14897-15602 is a receiving carton PO in dogfood, not a sales order_id.
+  assert.equal(
+    globalSearchHandoffHref('05-14897-15602', []),
+    '/dashboard?mode=search&q=05-14897-15602&map=search',
+  );
+  assert.equal(
+    globalSearchHandoffHref('05-14897-15602', [{ id: 14897, entityType: 'order' }]),
+    '/dashboard?mode=search&openOrderId=14897&map=search&q=05-14897-15602',
   );
   assert.equal(
     globalSearchHandoffHref('bose remote', [
@@ -107,13 +132,12 @@ test('globalSearchHandoffHref: order-heavy opens Dashboard Search detail', () =>
 });
 
 test('globalSearchHandoffHref: Enter stays on work surfaces (never Trace)', () => {
-  // Identifier with only a unit hit → Dashboard Search with openOrderId=query
-  // (Enter default), not Trace.
+  // Identifier with only a unit hit → Search results list (Enter default), not Trace.
   assert.equal(
     globalSearchHandoffHref('SN-ABC-12345', [
       { id: 9, entityType: 'unit', facets: { serial_number: 'SN-ABC-12345' } },
     ]),
-    '/dashboard?mode=search&openOrderId=SN-ABC-12345&map=search&q=SN-ABC-12345',
+    '/dashboard?mode=search&q=SN-ABC-12345&map=search',
   );
   // Identifier matching an order → Dashboard Search detail (journey is secondary / ⌘Enter).
   assert.equal(

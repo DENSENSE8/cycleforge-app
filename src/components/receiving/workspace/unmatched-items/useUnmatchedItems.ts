@@ -29,6 +29,7 @@ import {
   mintOptimisticSerialId,
 } from '@/lib/receiving/optimistic-serials';
 import {
+  patchUnboxRailTitleByCarton,
   publishLineSerials,
   reconcileUnboxRailAfterLineDelete,
   remapReceivingSiblingLineId,
@@ -271,6 +272,13 @@ export function useUnmatchedItems({
         id: tempLineId,
         serials: optimisticLine.serials,
       });
+      // Unboxed opts out of the shared bus — title-only carton rename (age/qty
+      // / status stay put). Accordion still gets the bus patch above.
+      if (optimisticLine.item_name) {
+        patchUnboxRailTitleByCarton(queryClient, receivingId, {
+          item_name: optimisticLine.item_name,
+        });
+      }
       onActiveConditionChange?.(cartonScanCondition || 'USED_A');
 
       const clientEventId = `unfound-return-${receivingId}-${serial}`;
@@ -381,6 +389,14 @@ export function useUnmatchedItems({
           prev.map((l) => (l.id === lineId ? { ...l, ...lineWithSerials } : l)),
         );
         writeReceivingSiblingLine(queryClient, receivingId, lineWithSerials);
+
+        // Title may upgrade from "Return serial …" → product title on order match.
+        if (lineWithSerials.item_name || lineWithSerials.sku) {
+          patchUnboxRailTitleByCarton(queryClient, receivingId, {
+            item_name: lineWithSerials.item_name ?? null,
+            sku: lineWithSerials.sku ?? null,
+          });
+        }
 
         const onLinkedLine = {
           id: lineId,

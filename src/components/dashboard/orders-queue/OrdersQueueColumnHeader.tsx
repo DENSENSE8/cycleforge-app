@@ -11,7 +11,10 @@ import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelec
 import {
   ORDERS_QUEUE_COL_HEADER_STICKY,
   ORDERS_QUEUE_COLUMNS,
+  ORDERS_QUEUE_FROZEN_CELL,
   ORDERS_QUEUE_RESIZABLE_KEYS,
+  isOrdersQueueFrozen,
+  ordersQueueFrozenLeft,
   ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
@@ -77,7 +80,10 @@ export function OrdersQueueColumnHeader({
       {/* select — micro drag grip (reorder affordance, header only) + select-all.
           Lead control gutter: no inset, no column rule (status carries the rule
           before the title). */}
-      <div className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), 'gap-0.5')}>
+      <div
+        className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), 'gap-0.5', ORDERS_QUEUE_FROZEN_CELL)}
+        style={{ left: ordersQueueFrozenLeft('select') }}
+      >
         <HoverTooltip label="Drag to reorder" focusable={false}>
           <span
             className="inline-flex h-3 w-3 shrink-0 cursor-grab items-center justify-center text-text-faint active:cursor-grabbing"
@@ -115,7 +121,11 @@ export function OrdersQueueColumnHeader({
           `sr-only` span is position:absolute and would drop out of the grid,
           shifting every following header off its column). Label is SR-only.
           Carries the first column rule (before the title). */}
-      <div role="columnheader" className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center')}>
+      <div
+        role="columnheader"
+        className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center', ORDERS_QUEUE_FROZEN_CELL)}
+        style={{ left: ordersQueueFrozenLeft('status') }}
+      >
         <span className="sr-only">Status</span>
       </div>
 
@@ -162,11 +172,20 @@ function HeaderCell({
   const label = column.label ?? column.key;
   const showGlyph = column.width.includes('fr');
   const resizable = Boolean(onResize) && ORDERS_QUEUE_RESIZABLE_KEYS.includes(column.key);
+  const frozen = isOrdersQueueFrozen(column.key);
   return (
     <div
       role="columnheader"
       data-col={column.key}
-      className={cn('group/hcell relative', showGlyph && 'gap-1', ordersQueueGridCell({ rule: !last }), tableHeader)}
+      data-frozen-edge={column.key === 'title' ? true : undefined}
+      className={cn(
+        'group/hcell relative',
+        showGlyph && 'gap-1',
+        ordersQueueGridCell({ rule: !last }),
+        frozen && ORDERS_QUEUE_FROZEN_CELL,
+        tableHeader,
+      )}
+      style={frozen ? { left: ordersQueueFrozenLeft(column.key) } : undefined}
     >
       {showGlyph && column.type ? <ColumnTypeGlyph type={column.type} /> : null}
       <span className="min-w-0 truncate">{label}</span>

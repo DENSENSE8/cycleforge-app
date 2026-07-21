@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Live pack workspace overlay — SoT chrome (ReceivingStationMoreDetails +
- * ReceivingStationContextBar + CartonContextCard) + StationWorkbench tabs.
+ * Live pack workspace overlay — SoT chrome (StationMoreDetails +
+ * StationContextBar + CartonContextCard) + StationWorkbench tabs.
  * Sibling to LineEditPanel / TriagePanel; binds PackActiveOrderPane, not
  * ReceivingLineRow.
  */
@@ -41,8 +41,10 @@ import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
-import { ReceivingStationContextBar } from '@/components/receiving/workspace/ReceivingStationContextBar';
-import { ReceivingStationMoreDetails } from '@/components/receiving/workspace/ReceivingStationMoreDetails';
+import {
+  StationContextBar,
+  StationMoreDetails,
+} from '@/components/station/entity-context';
 
 type PackView = 'checklist' | 'photos' | 'timeline' | 'ticket' | 'support' | 'rollup';
 
@@ -242,7 +244,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
       transition={cardTransition}
       className="relative flex h-full w-full flex-col bg-surface-canvas"
     >
-      <ReceivingStationContextBar
+      <StationContextBar
         identity={
           <motion.div initial="hidden" animate="show" variants={revealContainer}>
             <motion.div variants={revealItem}>
@@ -251,13 +253,13 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
           </motion.div>
         }
         moreDetails={
-          <ReceivingStationMoreDetails>
+          <StationMoreDetails>
             <PaneHeaderCloseButton
               onClick={onClose}
               ariaLabel="Return to pack queue"
               title="Return to pack queue"
             />
-          </ReceivingStationMoreDetails>
+          </StationMoreDetails>
         }
       />
 

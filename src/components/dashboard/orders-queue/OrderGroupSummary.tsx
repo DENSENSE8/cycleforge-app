@@ -18,6 +18,8 @@ import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
+  ORDERS_QUEUE_FROZEN_CELL,
+  ordersQueueFrozenLeft,
   ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
@@ -127,14 +129,25 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
       style={{ gridTemplateColumns: ordersQueueGridTemplate() }}
     >
       {/* select — empty (grip lives only in the sticky header); no lead rule */}
-      <span className={ordersQueueGridCell({ inset: 'none', rule: false })} aria-hidden />
+      <span
+        className={cn(ordersQueueGridCell({ inset: 'none', rule: false }), ORDERS_QUEUE_FROZEN_CELL)}
+        style={{ left: ordersQueueFrozenLeft('select') }}
+        aria-hidden
+      />
       {/* status — group dot (carries the first column rule) */}
-      <div className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center')}>
+      <div
+        className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center', ORDERS_QUEUE_FROZEN_CELL)}
+        style={{ left: ordersQueueFrozenLeft('status') }}
+      >
         <HoverTooltip label={`${rows.length} products`} focusable={false}>
           <span className="h-2 w-2 shrink-0 rounded-full bg-surface-strong" />
         </HoverTooltip>
       </div>
-      <div className={ordersQueueGridCell()}>
+      <div
+        className={cn(ordersQueueGridCell(), ORDERS_QUEUE_FROZEN_CELL)}
+        style={{ left: ordersQueueFrozenLeft('title') }}
+        data-frozen-edge
+      >
         <span className="min-w-0 truncate text-role-data text-text-default">
           {platformLabel ? `${platformLabel} · Order ${orderId}` : `Order ${orderId}`}
         </span>

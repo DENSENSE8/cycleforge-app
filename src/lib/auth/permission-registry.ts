@@ -80,6 +80,7 @@ export const PERMISSIONS = [
   { id: 'packing.complete_order',   category: 'packing', label: 'Complete packed order' },
   { id: 'packing.substitute_unit',  category: 'packing', label: 'Substitute fulfilled unit' },
   { id: 'packing.approve_amendment', category: 'packing', label: 'Approve substitution amendment' },
+  { id: 'packing.review',           category: 'packing', label: 'Review packed orders' },
 
   // ─ Tech & Repair ─
   { id: 'tech.view',                category: 'tech', label: 'View tech station' },

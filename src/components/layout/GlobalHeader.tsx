@@ -31,7 +31,8 @@ import { cn } from '@/utils/_cn';
  *   - **Find / signal / self** — {@link GlobalHeaderActions} (search ⌘K, inbox, account)
  *
  * No `border-b` here — the desktop `<main>` ({@link appContentShellClass}) owns the
- * separator as a rounded top edge so the sidebar × header join is soft, not an L.
+ * separator as a rounded top+left edge + depth hairline so the sidebar × header
+ * join is soft on every page, not an L.
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.
  */
@@ -60,8 +61,8 @@ export function GlobalHeader({
 
   return (
     // No border-b — {@link appContentShellClass} on `<main>` owns the separator
-    // as a rounded top+left edge so the master-nav × header join is a soft
-    // corner, not a hard L of hairlines.
+    // as a rounded top+left edge + depth hairline so the master-nav × header
+    // join is a soft corner on every page, not a hard L of hairlines.
     <header
       className={cn(
         'sticky top-0 z-header flex h-[40px] w-full shrink-0 select-none items-center gap-3 backdrop-blur-sm',

@@ -315,7 +315,7 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
 
   if (!plan.hasContent || tabs.length === 0) {
     return (
-      <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-role-caption font-medium text-text-soft">
           Scan a serial or attach tracking to see history.
         </div>
@@ -339,7 +339,7 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
   }
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       {body}
     </WorkspaceCard>
   );

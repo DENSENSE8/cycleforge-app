@@ -3,8 +3,8 @@
 /**
  * Local-pickup main-pane editor.
  *
- * Composes the Unbox-family StationWorkbench SoT: a compact utility toolbar,
- * shared entity-context header, Item/Add SectionTabs displays, and one
+ * Composes the Unbox-family station SoTs: sticky {@link StationContextBar}
+ * identity, utility toolbar, Item/Add SectionTabs displays, and one
  * tab-aware terminal action. Selection + cart live in the shared
  * {@link localPickupStore}; the slim sidebar list drives `selectedKey`.
  *
@@ -20,6 +20,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SectionTabsSlider } from '@/design-system/components';
 import { Button, EmptyState, IconButton } from '@/design-system/primitives';
 import { StationWorkbench } from '@/components/station/workbench';
+import { StationContextBar } from '@/components/station/entity-context';
 import {
   StationTerminalDock,
   useStationTerminalAction,
@@ -29,7 +30,10 @@ import {
   EcwidProductSearchInline,
   type EcwidProductSelection,
 } from '@/components/receiving/unfound/EcwidProductSearchInline';
-import { PickupEntityContextHeader } from './PickupEntityContextHeader';
+import {
+  PickupEntityContextHeader,
+  PickupProductSummary,
+} from './PickupEntityContextHeader';
 import { buildPickupTabs } from './build-pickup-tabs';
 import { resolvePickupTerminal } from './terminal/pickup-terminal';
 import {
@@ -142,41 +146,47 @@ export function LocalPickupEditPanel() {
 
   return (
     <>
-      <StationWorkbench
-        className="w-full"
-        toolbar={
-          <PaneHeaderActionBar
-            variant="header"
-            actions={[]}
-            leftSlot={
-              <span className="text-role-eyebrow font-black uppercase tracking-widest text-text-muted">
-                Local Pickup
-                {selected && cart.length > 1 ? (
-                  <span className="ml-1 text-text-soft">
-                    · Item {index + 1} of {cart.length}
-                  </span>
-                ) : null}
-              </span>
-            }
-            onPrev={cart.length > 1 ? goPrev : undefined}
-            onNext={cart.length > 1 ? goNext : undefined}
-            prevDisabled={!canPrev}
-            nextDisabled={!canNext}
-            prevTitle="Previous item"
-            nextTitle="Next item"
-          />
-        }
-        entityContext={<PickupEntityContextHeader selected={selected} />}
-        tabs={
-          <SectionTabsSlider
-            tabs={tabs}
-            value={view}
-            onChange={(id) => setView(id as PickupView)}
-            ariaLabel="Local Pickup displays"
-          />
-        }
-        dock={<StationTerminalDock vm={terminalVm} />}
-      />
+      <div className="relative flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+        <StationContextBar
+          identity={<PickupEntityContextHeader selected={selected} />}
+        />
+        <StationWorkbench
+          ambientWash={false}
+          className="relative z-0 w-full flex-1 bg-transparent"
+          toolbar={
+            <PaneHeaderActionBar
+              variant="header"
+              actions={[]}
+              leftSlot={
+                <span className="text-role-eyebrow font-black uppercase tracking-widest text-text-muted">
+                  Local Pickup
+                  {selected && cart.length > 1 ? (
+                    <span className="ml-1 text-text-soft">
+                      · Item {index + 1} of {cart.length}
+                    </span>
+                  ) : null}
+                </span>
+              }
+              onPrev={cart.length > 1 ? goPrev : undefined}
+              onNext={cart.length > 1 ? goNext : undefined}
+              prevDisabled={!canPrev}
+              nextDisabled={!canNext}
+              prevTitle="Previous item"
+              nextTitle="Next item"
+            />
+          }
+          entityContext={<PickupProductSummary selected={selected} />}
+          tabs={
+            <SectionTabsSlider
+              tabs={tabs}
+              value={view}
+              onChange={(id) => setView(id as PickupView)}
+              ariaLabel="Local Pickup displays"
+            />
+          }
+          dock={<StationTerminalDock vm={terminalVm} />}
+        />
+      </div>
       {reviewOpen ? (
         <LocalPickupReviewPanel mode="finalize" onClose={closeReview} />
       ) : null}
