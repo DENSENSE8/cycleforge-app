@@ -1,9 +1,12 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Pencil, Lock } from '@/components/Icons';
+import { Pencil, Lock, Tags } from '@/components/Icons';
 import { CONDITION_GRADES, conditionLabel, conditionDescription } from '@/lib/conditions';
-import { conditionPillClass } from '@/lib/condition-tone';
+import {
+  conditionPillClass,
+  conditionGradeTone,
+} from '@/lib/condition-tone';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 
@@ -12,9 +15,8 @@ interface Props {
   onChange: (next: string) => void;
   /**
    * When set, the picker starts as the full row (PO just opened → pick a
-   * grade) and collapses to ONLY the selected pill + an edit pencil once a
-   * grade is chosen — mirroring the serial copy-chip. Clicking the pencil (or
-   * the pill) re-expands the full row.
+   * grade) and collapses to ONLY the selected control once a grade is chosen.
+   * Clicking the icon re-expands the full row.
    */
   collapsible?: boolean;
   /**
@@ -26,11 +28,10 @@ interface Props {
   onExpandedChange?: (next: boolean) => void;
   /**
    * Collapsible mode only. When false, the collapsed state renders JUST the edit
-   * pencil (no selected-grade pill) — used where another surface already shows
-   * the chosen grade (e.g. the PO-line meta row's condition chip), so the pill
-   * would be a redundant second label directly beneath it. Defaults to true (the
-   * copy-chip-style "selected pill + pencil") for surfaces where the collapsed
-   * pill is the only grade readout (the unmatched / add-item flows).
+   * pencil (no selected-grade control) — used where another surface already shows
+   * the chosen grade (e.g. the PO-line meta row's condition chip). When true,
+   * collapses to a filled circle (condition hue) with a white Tags icon.
+   * Defaults to true.
    */
   collapsedLabel?: boolean;
   /**
@@ -51,10 +52,14 @@ const GRADES = CONDITION_GRADES.map((value) => ({
   label: conditionLabel(value, 'pill'),
 }));
 
+/** Circle footprint — condition fill + white Tags icon (collapsed). */
+const COLLAPSED_ICON_BTN =
+  'ds-raw-button inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 ring-inset transition-colors active:scale-[0.98]';
+
 /**
  * Bare, mobile-first condition picker. Renders every grade as a single
  * horizontally-scrolling row of pills — no nested parents. In `collapsible`
- * mode it folds to the selected pill + an edit pencil after a grade is chosen.
+ * mode it folds to a Tags circle after a grade is chosen.
  */
 export function ConditionPills({
   value,
@@ -73,7 +78,7 @@ export function ConditionPills({
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   // Collapsible variant starts EXPANDED on mount (the SerialCard remounts per
   // line, so opening a PO line always shows the full row for selection); it
-  // collapses to the chosen pill once a grade is picked. The parent may take
+  // collapses to the chosen grade once a grade is picked. The parent may take
   // control via `expanded`/`onExpandedChange` (e.g. collapse while editing a
   // serial); otherwise it's self-managed.
   const [internalExpanded, setInternalExpanded] = useState(true);
@@ -103,10 +108,12 @@ export function ConditionPills({
     );
   }
 
-  // Collapsed: only the selected pill + an edit pencil (mirrors the copy-chip).
+  // Collapsed: filled circle (active grade hue) + white Tags icon.
+  // Click expands the full grade row — no separate edit pencil.
   // When `collapsedLabel` is off, the grade is already shown elsewhere (the meta
-  // row chip), so collapse to just the edit pencil — no redundant second label.
+  // row chip), so collapse to just a change control (pencil) with no duplicate icon.
   if (collapsible && !expanded && selectedGrade) {
+    const tone = conditionGradeTone(selectedGrade.value);
     return (
       <div role="radiogroup" aria-label="Condition grade" className="flex w-fit items-center gap-1.5">
         {collapsedLabel ? (
@@ -116,26 +123,27 @@ export function ConditionPills({
               type="button"
               aria-label={`Condition ${selectedGrade.label} — change`}
               onClick={() => setExpanded(true)}
-              className={`${conditionPillClass(selectedGrade.value, true)} ds-raw-button`}
+              className={`${COLLAPSED_ICON_BTN} ${tone.active}`}
             >
-              {selectedGrade.label}
+              <Tags className="h-4 w-4 text-white" aria-hidden />
             </button>
           </HoverTooltip>
-        ) : null}
-        <HoverTooltip
-          label={collapsedLabel ? 'Edit condition' : `Condition ${selectedGrade.label} — change`}
-          asChild
-          focusable={false}
-        >
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            aria-label={collapsedLabel ? 'Edit condition' : `Condition ${selectedGrade.label} — change`}
-            className="ds-raw-button rounded p-0.5 text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted"
+        ) : (
+          <HoverTooltip
+            label={`Condition ${selectedGrade.label} — change`}
+            asChild
+            focusable={false}
           >
-            <Pencil className="h-3 w-3" />
-          </button>
-        </HoverTooltip>
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              aria-label={`Condition ${selectedGrade.label} — change`}
+              className="ds-raw-button rounded p-0.5 text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          </HoverTooltip>
+        )}
       </div>
     );
   }

@@ -5,8 +5,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStaffPreferences, STAFF_PREFERENCES_QUERY_KEY } from '@/hooks/useStaffPreferences';
 import type { StaffPreferences } from '@/lib/neon/staff-preferences-queries';
 
-/** Clamp any drag-resized column to a sane px range (min keeps a cell usable). */
-export const COLUMN_WIDTH_MIN = 44;
+/** Clamp any drag-resized column to a sane px range.
+ *  64px floor keeps short labels (Qty / Cond / Age / Order) readable — the old
+ *  44px floor crushed headers to "C…" / "# OR…" under persisted prefs. */
+export const COLUMN_WIDTH_MIN = 64;
 const COLUMN_WIDTH_MAX = 720;
 
 export function clampColumnWidth(px: number): number {
@@ -45,8 +47,16 @@ export function useColumnWidths(tableId: string): UseColumnWidthsResult {
 
   const stored = prefs?.tableColumns?.[tableId]?.widths ?? EMPTY;
   const widthsKey = JSON.stringify(stored);
+  // Re-clamp on read so legacy prefs stored under the old 44px floor (which
+  // truncated Cond / Platform / Order headers) lift to the new minimum.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on content, not identity
-  const widths = useMemo(() => ({ ...stored }), [widthsKey]);
+  const widths = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const [key, px] of Object.entries(stored)) {
+      if (Number.isFinite(px)) next[key] = clampColumnWidth(px);
+    }
+    return next;
+  }, [widthsKey]);
 
   const writeWidths = useCallback(
     async (nextWidths: Record<string, number>) => {

@@ -4,10 +4,12 @@ import { useMemo, type ReactNode } from 'react';
 import {
   KpiTile,
   metricIntentTextClass,
-  MONITOR_KPI_TILE_CLASS,
+  OpsKpiBand,
+  OpsKpiBandCell,
+  OpsKpiBandEmpty,
+  OpsKpiBandError,
+  OpsKpiBandSkeleton,
 } from '@/design-system/components/monitor';
-import { Button } from '@/design-system/primitives';
-import { CheckCircle, RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesQuery } from '@/components/station/useReceivingLinesQuery';
@@ -27,9 +29,6 @@ import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 import { toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
-
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
 function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
   const tone = metricIntentTextClass(metric.intent);
@@ -59,53 +58,6 @@ function MetricKpiTile({ metric }: { metric: ComputedMetric }) {
     </HoverTooltip>
   ) : (
     tile
-  );
-}
-
-function StripSkeleton() {
-  return (
-    <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading unbox metrics…</span>
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className={cn(MONITOR_KPI_TILE_CLASS, TILE_CELL_CLASS, 'h-24')}>
-          <div className="h-2.5 w-16 rounded-full bg-surface-strong" />
-          <div className="mt-2 h-7 w-14 rounded bg-surface-strong" />
-          <div className="mt-2.5 h-2.5 w-20 rounded-full bg-surface-strong" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function StripEmpty({ mode }: { mode: UnboxWorkspaceTab }) {
-  const copy =
-    mode === 'queue'
-      ? 'No door-scanned cartons are waiting to unbox.'
-      : mode === 'viewed'
-        ? 'You have not opened any lines yet.'
-        : 'No cartons have been opened on Unbox yet.';
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-5">
-      <CheckCircle className="h-5 w-5 shrink-0 text-text-success" />
-      <div className="min-w-0">
-        <p className="text-role-caption font-bold text-text-default">All clear.</p>
-        <p className="mt-0.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-          {copy}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function StripError({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border-danger bg-fill-danger px-4 py-8 text-center">
-      <p className="text-role-caption font-bold text-text-danger">Couldn&apos;t load unbox metrics.</p>
-      <Button variant="secondary" size="sm" onClick={onRetry} className="mt-2">
-        <RefreshCw className="h-3.5 w-3.5" />
-        Try again
-      </Button>
-    </div>
   );
 }
 
@@ -191,6 +143,12 @@ function viewedCounts(rows: ReceivingLineRow[]): UnboxViewedCounts {
   return { total: rows.length, viewedToday, unfinished };
 }
 
+function emptyCopy(mode: UnboxWorkspaceTab): string {
+  if (mode === 'queue') return 'No door-scanned cartons are waiting to unbox.';
+  if (mode === 'viewed') return 'You have not opened any lines yet.';
+  return 'No cartons have been opened on Unbox yet.';
+}
+
 export function UnboxKpiStrip({ mode }: { mode: UnboxWorkspaceTab }) {
   // Resolve the SAME URL-driven descriptor + context the table resolves, and
   // subscribe to the table's own cache entry through the shared spine-first
@@ -231,19 +189,19 @@ export function UnboxKpiStrip({ mode }: { mode: UnboxWorkspaceTab }) {
   return (
     <section aria-label="Unbox attention" className="shrink-0">
       {isError ? (
-        <StripError onRetry={refetch} />
+        <OpsKpiBandError message="Couldn't load unbox metrics." onRetry={refetch} />
       ) : isLoading ? (
-        <StripSkeleton />
+        <OpsKpiBandSkeleton count={3} loadingLabel="Loading unbox metrics…" />
       ) : tiles.length === 0 ? (
-        <StripEmpty mode={mode} />
+        <OpsKpiBandEmpty description={emptyCopy(mode)} />
       ) : (
-        <div className={TILE_BAND_CLASS}>
+        <OpsKpiBand aria-label="Unbox attention">
           {tiles.map((metric) => (
-            <div key={metric.id} className={TILE_CELL_CLASS}>
+            <OpsKpiBandCell key={metric.id}>
               <MetricKpiTile metric={metric} />
-            </div>
+            </OpsKpiBandCell>
           ))}
-        </div>
+        </OpsKpiBand>
       )}
     </section>
   );

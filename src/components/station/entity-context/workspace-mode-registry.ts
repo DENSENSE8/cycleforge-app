@@ -1,19 +1,12 @@
 /**
- * Workspace mode registry — the single source of truth for "what is each mode".
+ * Workspace mode registry — **station entity-context SoT**.
  *
- * Three surfaces share the receiving/tech workspace cards but are distinct mode
- * DISPLAYS, not one panel with bits hidden:
- *   - `unbox`   (/receiving)            — scan → identify → serial → print · receive
- *   - `triage`  (/receiving?mode=triage)— fast classify pass → save for unbox
- *   - `testing` (/test?view=testing)    — verdict pills → pass · print
- *     (tested-lines browse when no line is selected)
- *
- * Card visibility is no longer a shared matrix — unbox and triage are separate
- * panels (`LineEditPanel` / `TriagePanel`) that each declare their own sections.
- * This registry owns the cross-mode chrome config the unified pane header needs
- * — which toolbar actions a mode shows, which rail/table navigation channel
+ * Cross-mode chrome config for Unbox / Triage / Testing:
+ * which toolbar actions a mode shows, which rail/table navigation channel
  * its prev/next drives — plus pointers into `STATION_TERMINAL_REGISTRY` for the
  * tab-aware bottom dock. Adding a mode = one row here.
+ *
+ * Prefer importing from `@/components/station/entity-context`.
  */
 
 export type WorkspaceMode = 'unbox' | 'triage' | 'testing';
@@ -35,9 +28,9 @@ export type HeaderActionKey =
  *   - `testing-navigate-rail` → Testing sidebar rail
  * Shared header reads this instead of hard-coding the channel.
  */
-export type NavChannel = 'receiving-navigate-table' | 'testing-navigate-rail';
+type NavChannel = 'receiving-navigate-table' | 'testing-navigate-rail';
 
-export interface ModeDef {
+interface ModeDef {
   /** Human label (rail header / a11y). */
   label: string;
   /** Toolbar actions shown in the pane header, left → right. */

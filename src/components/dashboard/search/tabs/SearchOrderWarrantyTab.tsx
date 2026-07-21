@@ -6,11 +6,7 @@ import { SearchOrderTabFrame } from '@/components/dashboard/search/SearchOrderTa
 
 export function SearchOrderWarrantyTab({ order }: { order: ShippedOrder }) {
   return (
-    <SearchOrderTabFrame
-      title="Warranty"
-      description="Coverage and claims for this order."
-      className="[&>div:last-child]:px-2"
-    >
+    <SearchOrderTabFrame title="Warranty" description="Coverage and claims for this order.">
       <OrderWarrantySection order={order} />
     </SearchOrderTabFrame>
   );

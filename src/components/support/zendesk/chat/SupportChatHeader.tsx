@@ -10,7 +10,7 @@ import {
 } from '@/hooks/useZendeskQueries';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
-import { Check, ChevronLeft, ExternalLink, Link2, X } from '@/components/Icons';
+import { Check, ChevronLeft, ExternalLink, Link2, Package, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
@@ -33,6 +33,7 @@ export function SupportChatHeader({
   onOpenContext,
   contextOpen = false,
   contextBadge = null,
+  ordersHref = null,
 }: {
   ticket: ZendeskTicket;
   onBack?: () => void;
@@ -46,6 +47,8 @@ export function SupportChatHeader({
   contextOpen?: boolean;
   /** Short linked-state hint under the Links control (e.g. order last-4 / Unlinked). */
   contextBadge?: string | null;
+  /** When the ticket is linked to an order — open Support · Orders for that pk. */
+  ordersHref?: string | null;
 }) {
   const update = useUpdateTicket();
   const assign = useAssignTicket();
@@ -202,6 +205,17 @@ export function SupportChatHeader({
                     : 'bg-surface-card ring-border-soft hover:text-text-default',
                 )}
               />
+            </HoverTooltip>
+          ) : null}
+          {ordersHref ? (
+            <HoverTooltip label="Open linked order" asChild>
+              <a
+                href={ordersHref}
+                aria-label="Open linked order"
+                className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+              >
+                <Package className="h-4 w-4" />
+              </a>
             </HoverTooltip>
           ) : null}
           <SupportDetailsStack ticket={ticket} />

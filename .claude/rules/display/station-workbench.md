@@ -20,6 +20,7 @@ import {
   CartonContextCard,
   StationContextBar,
   StationMoreDetails,
+  StationHeaderToolbar,
 } from '@/components/station/entity-context';
 ```
 
@@ -84,7 +85,7 @@ Overlays (photo peek, modals) compose **around** `StationWorkbench`, not inside 
 
 1. Add one row to `WORKSPACE_MODES` only for receiving-family chrome; every docked adopter adds `STATION_TERMINAL_REGISTRY`
 2. Thin adapter: controller → `CartonContextCard` props with `density="bar"`
-3. Mount adapter in `StationContextBar` above `StationWorkbench`; utilities in `StationMoreDetails` + embedded `LineEditToolbar`
+3. Mount adapter in `StationContextBar` above `StationWorkbench`; utilities in `StationMoreDetails` + embedded `StationHeaderToolbar`
 4. Tab defs with visibility gates → `buildSectionTabs()`
 5. Terminal resolver in `{station}/terminal/` — tab id → `TerminalActionVm`
 6. Compose `StationWorkbench` — never hand-roll `relative flex h-full min-h-0 flex-col`

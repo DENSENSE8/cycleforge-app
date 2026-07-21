@@ -9,7 +9,7 @@ import {
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
-import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
+import { ScanBandShell } from '@/components/station/scan-bar';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 
 interface ShippingScanBandProps {

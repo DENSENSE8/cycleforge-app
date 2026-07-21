@@ -23,7 +23,7 @@
 | 1 | Retire `UNIT_SCAN_PHOTOS` flag, `packerLogId` dual-link, `PackerPhotoRequestStatus`, deep-link `orderId`+`step` | **done** |
 | 2 | `pack_slip`/`pack_box` types, guided studio, frame-quality gate + vision OCR w/ manual override, wire `GET /api/orders/verify`, feed row (2e) | **done** |
 | 3 | CREATE `pack_verification_events` (polymorphic contract), domain helper, submit/decide/queue APIs, `packing.review` permission | **done (apply migration to go live)** |
-| 4 | `/review` all-in-one station with `?mode=packer` (sole mode at birth), latest-outcome queue, Approve/Flag | **done** |
+| 4 | `/review` Workbench table+detail: Packing tabs Packed/Shipped/History (`OrdersQueueTable`), Pairing mode (allocate), Approve/Flag | **done** |
 | 5a | EOD shelf columns on the event table (ships with Phase 3; no UI) | **done** |
 | 5b | Open-vocab box counting in `vision/` (`/locate`), bbox overlay, `READY`/`ERROR_COUNT_MISMATCH` | deferred |
 | 6 | Unit tests for append-only outcomes + `npm run verify` + UAT | **tests done · UAT after migrate** |
@@ -321,22 +321,22 @@ Every station already has a review-shaped backlog (amendments, tech verdicts, re
 - Route-key resolution: `/review` → `'review'` so the item stays active across every mode.
 - Add `/review` to `MOBILE_RESTRICTED_SIDEBAR_IDS` — review is desktop-only (§4d).
 
-### 4c. Workbench UI (mode = packer)
+### 4c. Workbench UI (mode = packer / packing)
 
-Region contract is **Workbench** (pick a record → decide → persist), density `ops`.
+Region contract is **Workbench table + context** (not StationWorkbench scan shell, not sidebar-only list). Mirror Outbound Labels: dense `OrdersQueueTable` in the main pane; row select opens a crossfade detail overlay.
 
 | Region | Content |
 |--------|---------|
-| Sidebar | Mode pills (`HorizontalButtonSlider` `variant="nav"` `dense`) via `SidebarShell` `headerAbove`; search band; queue list |
-| Left queue tabs | Needs review (`VERIFIED`), Exceptions (`ERROR_*`), Flagged (`REVIEW_FLAGGED`), Approved today (`REVIEW_APPROVED`) |
-| Right | Order + tracking chip, live `/api/orders/verify` badge, slip/box GCS strip (via packing-photos / library query), note field |
-| Advance | Approve → `REVIEW_APPROVED`; Flag → `REVIEW_FLAGGED` + required note |
+| Nav modes | Packing (default, `?mode=` cleared) · Pairing (`?mode=pairing`) |
+| Packing sub-tabs | `?rtab=packed\|shipped\|history` (default packed) in workbench chrome |
+| Primary map | `OrdersQueueTable` — Packed (`packedOrdersQuery`), Shipped (week packerlogs + verification hydrate), History (`pack_verification_events` decided/exception outcomes) |
+| Focus surface | `PackerReviewMode` overlay — slip/box strip, ERP verify, Approve/Flag |
+| Pairing | Staged + awaiting-label table; detail allocates serial via `POST /api/serial-units/[id]/allocate` |
+| Sidebar | Slim chrome + staff filter (queue list retired — table owns the map) |
 
-Selection is durable + URL-addressable (`?packerLogId=`); the queue list does not animate — only the right pane crossfades (`framerPresence.workbenchPane` via `useMotionPresence`).
+Selection is durable + URL-addressable (`?packerLogId=` / `?orderId=`); tab/mode switches clear selection. Overlay crossfades (`framerPresence.workbenchPaneSettle`).
 
-Files: `src/app/review/page.tsx`, `src/features/review/ReviewWorkspace.tsx`, `src/features/review/packer/PackerReviewMode.tsx`, `usePackReviewQueue.ts`, `src/components/sidebar/review/ReviewSidebarPanel.tsx`.
-
-Optional: scan tracking in the station bar to jump to that packer_log's latest event.
+Files: `src/app/review/page.tsx`, `src/features/review/ReviewWorkspace.tsx`, `ReviewPackingTable.tsx`, `packer/PackerReviewMode.tsx`, `pairing/*`, `src/components/sidebar/review/ReviewSidebarPanel.tsx`.
 
 ### 4d. Mobile
 

@@ -359,8 +359,8 @@ export function SerialCard({
       <div className="flex items-center gap-2">
         {onConditionChange ? (
           // Condition picker: full pill row when the line opens (for selection),
-          // collapsing to the chosen pill + an edit pencil once a grade is
-          // picked. Picking a grade auto-focuses the serial input below.
+          // collapsing to a filled circle (grade hue) + white Tags.
+          // Picking a grade auto-focuses the serial input below.
           <div className="flex min-w-0 items-center gap-2">
             <ConditionPills
               value={condition}

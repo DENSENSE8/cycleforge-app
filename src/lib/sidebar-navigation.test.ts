@@ -309,6 +309,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=inbound')), 'receiving');
   assert.equal(resolveSidebarMode('dashboard', at('/dashboard', 'mode=receiving')), 'receiving');
   assert.equal(resolveSidebarMode('support', at('/support', 'mode=warranty')), 'warranty');
+  assert.equal(resolveSidebarMode('support', at('/support', 'mode=orders')), 'orders');
+  assert.equal(resolveSidebarMode('support', at('/support')), 'tickets');
   // Tech: top-mode switch only — view=testing flips to Testing, else Shipping.
   // The surface graduated /tech → /test (operator-surfaces Phase 8); the mode is
   // param-based so it resolves identically on the canonical route + legacy alias.

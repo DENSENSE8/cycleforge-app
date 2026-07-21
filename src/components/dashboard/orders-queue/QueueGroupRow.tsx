@@ -40,6 +40,7 @@ export function QueueGroupRow({ group, baseStripeIndex, isMobile, gridSkin = fal
     <CollapsibleGroupRow
       index={baseStripeIndex}
       showChevron={false}
+      nestRail={!gridSkin}
       summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} gridSkin={gridSkin} />}
     >
       {group.rows.map((row, i) => renderRow(row, baseStripeIndex + i))}

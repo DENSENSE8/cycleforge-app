@@ -483,6 +483,32 @@ function normalizeRailRows(rows: ReceivingRailRow[]): ReceivingRailRow[] {
   });
 }
 
+/**
+ * Identity-only keep-alive patches (`{ id, receiving_id, client_event_id }`) from
+ * the workspace must MERGE onto an existing Unboxed row — never PREPEND. A
+ * prepend onto an empty/partial cache paints `Line #N` + `/ ?` and leaks
+ * Incoming/workspace chrome into the Unbox dock (mode separation).
+ *
+ * Rail cache rows are typed narrowly but often carry full line display fields;
+ * read those via a soft cast (same pattern as title/qty patches).
+ */
+function isIdentityOnlyRailRow(row: ReceivingRailRow): boolean {
+  const r = row as ReceivingRailRow & {
+    item_name?: string | null;
+    sku?: string | null;
+    catalog_product_title?: string | null;
+    zoho_item_title?: string | null;
+    zoho_purchaseorder_number?: string | null;
+    zoho_purchaseorder_id?: string | null;
+    quantity_received?: number | null;
+  };
+  return (
+    r.quantity_received == null
+    && !(r.item_name || r.sku || r.catalog_product_title || r.zoho_item_title)
+    && !(r.zoho_purchaseorder_number || r.zoho_purchaseorder_id)
+  );
+}
+
 function mergeRailRows(
   old: ReceivingRailRow[] | undefined,
   normalized: ReceivingRailRow[],
@@ -505,6 +531,10 @@ function mergeRailRows(
         merged.unbox_opened_at = next[idx].unbox_opened_at;
       }
       next[idx] = merged;
+    } else if (isIdentityOnlyRailRow(row)) {
+      // Workspace identity keep-alive with no matching carton — do not invent
+      // a Line # stub. Membership comes from scan-apply / view=unbox_opened.
+      continue;
     } else {
       // New carton only — prepend so a first Unbox scan lands at the top until
       // the authoritative refetch settles (same first-open stamp).

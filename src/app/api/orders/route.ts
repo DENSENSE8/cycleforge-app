@@ -268,6 +268,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       pl_latest AS (
         SELECT DISTINCT ON (pl.shipment_id)
           pl.shipment_id,
+          pl.id AS packer_log_id,
           pl.created_at AS packed_at,
           pl.packed_by
         FROM packer_logs pl
@@ -441,6 +442,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.label_printed_at::text  AS label_printed_at,
         wa_t.assigned_tech_id   AS tester_id,
         wa_p.assigned_packer_id AS packer_id,
+        pl_latest.packer_log_id,
         pl_latest.packed_at,
         COALESCE(pack_activity.staff_id, pl_latest.packed_by) AS packed_by,
         to_char(pack_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,

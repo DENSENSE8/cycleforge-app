@@ -17,6 +17,7 @@ import {
   Layers,
   Lock,
   MessageSquare,
+  Package,
   Phone,
   PhoneIncoming,
   PhoneMissed,
@@ -29,7 +30,13 @@ import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlide
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type SupportMode = 'tickets' | 'voicemail' | 'calls' | 'warranty' | 'issues';
+export type SupportMode =
+  | 'tickets'
+  | 'voicemail'
+  | 'calls'
+  | 'warranty'
+  | 'issues'
+  | 'orders';
 
 /**
  * - tickets   → Zendesk ticket queue → conversation (Workbench, the existing
@@ -42,9 +49,12 @@ export type SupportMode = 'tickets' | 'voicemail' | 'calls' | 'warranty' | 'issu
  *   claim detail (`?open=`). Phone-support home for “is this still covered?”.
  * - issues    → Reported-Issues console (Workbench + Monitor KPI rollup):
  *   pick an in-app feedback row → fact stack (`?issueId=`).
+ * - orders    → To Ship exception loop (Workbench + Station focus pane):
+ *   lane filter → notes / OOS → order detail + SupportContextHub (`?openOrderId=`).
  */
 export const SUPPORT_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'tickets', label: 'Tickets', icon: TicketHelp },
+  { id: 'orders', label: 'Orders', icon: Package },
   { id: 'voicemail', label: 'Voicemail', icon: Voicemail },
   { id: 'calls', label: 'Calls', icon: Phone },
   { id: 'warranty', label: 'Warranty', icon: ShieldCheck },
@@ -57,9 +67,27 @@ export function parseSupportMode(raw: string | null | undefined): SupportMode {
   return raw === 'voicemail' ||
     raw === 'calls' ||
     raw === 'warranty' ||
-    raw === 'issues'
+    raw === 'issues' ||
+    raw === 'orders'
     ? raw
     : 'tickets';
+}
+
+/**
+ * Deep link into Support · Orders for a durable order row pk.
+ * Prefer this over Dashboard when the agent is already in the ticket loop.
+ */
+export function supportOrdersHref(orderPk: number): string {
+  const id = Number(orderPk);
+  if (!Number.isFinite(id) || id <= 0) return '/support?mode=orders';
+  return `/support?mode=orders&openOrderId=${id}`;
+}
+
+/** Escape hatch: full Dashboard Shipping detail for the same order pk. */
+export function dashboardOrderHref(orderPk: number): string {
+  const id = Number(orderPk);
+  if (!Number.isFinite(id) || id <= 0) return '/dashboard';
+  return `/dashboard?openOrderId=${id}`;
 }
 
 /**
@@ -69,7 +97,7 @@ export function parseSupportMode(raw: string | null | undefined): SupportMode {
 export const SUPPORT_MODE_SCOPED_PARAMS = [
   'ticket', // tickets: selected Zendesk ticket
   'vm', // voicemail: selected voicemail (durable, deep-linkable)
-  'q', // search query (voicemail / calls / issues)
+  'q', // search query (voicemail / calls / issues / orders)
   'status', // voicemail follow-up OR issues status filter
   'assignee', // voicemail assignee filter
   'direction', // calls: inbound | outbound | missed
@@ -81,6 +109,12 @@ export const SUPPORT_MODE_SCOPED_PARAMS = [
   'issueId', // issues: selected reported issue
   'type', // issues: bug | suggestion | question
   'reporter', // issues: reporter staff id
+  'openOrderId', // orders: selected order row pk
+  'ustatus', // orders: To Ship lane filter
+  'attention', // orders: urgent-only
+  'stage', // orders: coarse server facet (legacy)
+  'staff', // orders: staff scope
+  'view', // orders: board | grid (`?view=grid`)
 ] as const;
 
 // ── Tickets mode — Zendesk status filter ────────────────────────────────────

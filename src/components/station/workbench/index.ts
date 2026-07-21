@@ -43,5 +43,9 @@ export {
   STATION_WORKBENCH_BODY_DOCKED,
 } from './workbench-layout';
 
+export {
+  StationWorkspaceSkeleton,
+} from './StationWorkspaceSkeleton';
+
 /** Re-export the thinner shell for callers that only need toolbar → body → dock. */
 export { StationWorkbenchShell } from '@/components/station/terminal/StationWorkbenchShell';

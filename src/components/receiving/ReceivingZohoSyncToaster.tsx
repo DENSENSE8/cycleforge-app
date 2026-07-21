@@ -7,6 +7,7 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import {
   hydratePendingZohoSyncToasts,
   resolvePendingZohoSync,
+  expireStalePendingZohoSync,
 } from '@/lib/receiving/zoho-sync-toast-tracker';
 
 type ReceivingLogChangedEvent = {
@@ -24,6 +25,9 @@ export function ReceivingZohoSyncToaster() {
   useEffect(() => {
     if (!orgId) return;
     hydratePendingZohoSyncToasts(orgId);
+    expireStalePendingZohoSync();
+    const t = window.setInterval(() => expireStalePendingZohoSync(), 15_000);
+    return () => window.clearInterval(t);
   }, [orgId]);
 
   useAblyChannel(

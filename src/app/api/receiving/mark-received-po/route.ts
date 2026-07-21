@@ -903,7 +903,10 @@ export const POST = withAuth(async (request, ctx) => {
               'mark-received-po: no inventory integration connected — provider receive skipped',
             );
           }
-          for (const zohoPoId of byPo.keys()) poZohoReceiveSucceeded.set(zohoPoId, false);
+          // Do not stamp poZohoReceiveSucceeded=false — the response already
+          // carries skip_reason inventory_not_connected; publishing
+          // zohoReceive:'failed' would fire the generic "saved locally" toast
+          // on top of the clearer reconnect diagnostic.
         } else if (skipZohoReceive) {
           // "Mark as scanned" intent: flip every linked Zoho PO back to issued
           // so the local SCANNED state stays consistent with Zoho. Idempotent
@@ -934,6 +937,22 @@ export const POST = withAuth(async (request, ctx) => {
             try {
               const poResp = await inventory.getPurchaseOrder(zohoPoId);
               assertPurchaseOrderReceivable(poResp);
+              // Zoho already shows received/billed/closed — skip createPurchaseReceive.
+              // sumWarehouseReceivedByPoLineItem can still report 0 pending on some
+              // billed POs; posting again burns 30–60s and leaves the UI on
+              // "Syncing to inventory…" until realtime settles (or forever if Ably misses).
+              const poStatus = String(poResp.purchaseorder?.status ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/[\s-]+/g, '_');
+              if (poStatus === 'received' || poStatus === 'billed' || poStatus === 'closed') {
+                poZohoReceiveSucceeded.set(zohoPoId, true);
+                logger.info(
+                  { zohoPoId, poStatus },
+                  'mark-received-po: PO already terminal in Zoho (background, treated as success)',
+                );
+                continue;
+              }
               const idSet = byPo.get(zohoPoId)!;
               const skuByLineItemId = new Map<string, string>();
               for (const l of updatedLines) {
@@ -974,9 +993,10 @@ export const POST = withAuth(async (request, ctx) => {
               // which is fine: local SoT now matches Zoho's truth. Treat the
               // PO as succeeded so the description PUT still gets a chance and
               // we don't surface this as an error.
-              const alreadyReceived = /already\s+created\s+a\s+receive\s+for\s+all\s+the\s+items/i.test(
-                message,
-              );
+              const alreadyReceived =
+                /already\s+created\s+a\s+receive\s+for\s+all\s+the\s+items/i.test(message) ||
+                /already\s+(fully\s+)?received/i.test(message) ||
+                /marked\s+as\s+received/i.test(message);
               if (alreadyReceived) {
                 poZohoReceiveSucceeded.set(zohoPoId, true);
                 logger.info(
@@ -1214,6 +1234,10 @@ export const POST = withAuth(async (request, ctx) => {
       // Unfound carton received locally — lines are RECEIVED (DONE), Zoho is
       // intentionally untouched. Emerald success, not a "no PO link" warning.
       skipReason = 'received_local';
+    } else if (!inventory && attemptedPoIds.size > 0) {
+      // Vault disconnected / poisoned — local receive stands; operator must
+      // reconnect inventory before a purchase receive can land.
+      skipReason = 'inventory_not_connected';
     } else if (attemptedPoIds.size === 0 && updatedLines.length > 0) {
       skipReason = 'no_zoho_link';
     } else if (circuitOpen) {

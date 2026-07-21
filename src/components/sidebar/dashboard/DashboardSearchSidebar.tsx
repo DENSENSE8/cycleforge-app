@@ -8,7 +8,7 @@
  * so the main pane shows Search order detail (not `/o` / shipped panel).
  */
 
-import { useCallback, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Box, Clock, Search, X } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -24,7 +24,7 @@ import { useRecentDetailStacks } from '@/hooks/useRecentDetailStacks';
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
 import { removeDetailStack, type DetailStackEntry } from '@/lib/detail-stacks/history-store';
 import { formatRelativeTime } from '@/lib/search/search-recents';
-import { globalSearchHandoffHref, shouldAutoOpenSearchOrder } from '@/lib/search/search-hit';
+import { globalSearchHandoffHref } from '@/lib/search/search-hit';
 import { DASHBOARD_SEARCH_RECENTS_SCOPE } from '@/components/dashboard/search/dashboard-search-recents';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
@@ -115,25 +115,9 @@ export function DashboardSearchSidebar() {
     [q, map, router],
   );
 
-  /** Last auto-open attempt for this query — blocks notfound→clear→retry flash. */
-  const autoOpenAttemptRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    autoOpenAttemptRef.current = null;
-  }, [q]);
-
-  // Exact/only ORDER hit → open detail when nothing selected yet.
-  // Human → numeric canonicalize is owned by SearchOrderDetailView.
-  useEffect(() => {
-    if (map !== 'search' || searching) return;
-    if (openOrderId) return;
-    if (!shouldAutoOpenSearchOrder(hits)) return;
-    const id = String(hits[0].id);
-    const attemptKey = `${q.trim()}::${id}`;
-    if (autoOpenAttemptRef.current === attemptKey) return;
-    autoOpenAttemptRef.current = attemptKey;
-    openOrder(id, true);
-  }, [map, searching, hits, openOrderId, openOrder, q]);
+  // Exact-match auto-open is owned solely by the main pane's
+  // `useDashboardSearchOrder` (identifier resolve) + `onResults` (sole-hit) —
+  // this sidebar is a pure navigation map, so nothing here races the URL.
 
   const handleSelectHit = useCallback(
     (hit: AiSearchHit, event: ReactMouseEvent) => {

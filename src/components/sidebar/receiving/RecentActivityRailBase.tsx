@@ -140,9 +140,9 @@ function railTicketNumber(row: ReceivingLineRow): string | null {
 }
 
 /**
- * Compact ticket flag on the TITLE row (same line as the PO/order id) — never
- * on the meta line. A padded chip on the meta row made ticket-flagged rows
- * taller than their neighbors on selection.
+ * Compact ticket flag on the META (qty) row — inline after qty, same h-4
+ * hit-box as when it lived on the title line so ticket vs non-ticket rows
+ * keep identical height (no padded chip).
  */
 function TicketRailFlag({ ticket }: { ticket: string }) {
   return (
@@ -329,18 +329,16 @@ function ReceivingRowMain({
       vm={{
         title,
         titleAttr: title,
-        // Ticket flag shares the title row with PKG chip so meta height stays
-        // identical to non-ticket rows (same width / rhythm as every other display).
-        titleAccessory: (
-          <>
-            {ticket ? <TicketRailFlag ticket={ticket} /> : null}
-            {ctx.pkgChip}
-          </>
-        ),
+        titleAccessory: ctx.pkgChip,
+        // Ticket sits on the qty line (right of qty), not the title — keeps the
+        // title clean while the compact h-4 flag preserves row height.
         meta: (
-          <span className="block truncate font-semibold uppercase tracking-widest text-text-soft">
-            {renderQuantity(row)}
-            {techId ? <span className={`ml-1 ${techColor}`}>· {getStaffName(techId)}</span> : null}
+          <span className="flex min-w-0 items-center gap-1 font-semibold uppercase tracking-widest text-text-soft">
+            <span className="truncate">
+              {renderQuantity(row)}
+              {techId ? <span className={`ml-1 ${techColor}`}>· {getStaffName(techId)}</span> : null}
+            </span>
+            {ticket ? <TicketRailFlag ticket={ticket} /> : null}
           </span>
         ),
       }}

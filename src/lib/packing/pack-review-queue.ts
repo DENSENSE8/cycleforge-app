@@ -4,11 +4,13 @@
  *
  * pack_verification_events is append-only, so the queue is the DISTINCT ON
  * latest outcome per packer_log, joined to the order / tracking for display and
- * filtered into the station's four tabs:
+ * filtered into the station's tabs:
  *   • needs_review — latest = VERIFIED (awaiting a manager decision)
  *   • exceptions   — latest = ERROR_* (floor capture or EOD error)
  *   • flagged      — latest = REVIEW_FLAGGED
  *   • approved     — latest = REVIEW_APPROVED, TODAY (warehouse civil day)
+ *   • history      — latest ∈ {REVIEW_APPROVED, REVIEW_FLAGGED, READY, ERROR_*}
+ *   • latest       — all latest outcomes (hydrate Packed/Shipped chips)
  *
  * Read-only, org-scoped through tenantQuery. The order lookup is a LATERAL
  * LIMIT 1 so a shipment with more than one order never fans the queue out.
@@ -35,6 +37,14 @@ export async function getPackReviewQueue(
     predicate = `l.outcome LIKE 'ERROR\\_%'`;
   } else if (bucket === 'flagged') {
     predicate = `l.outcome = 'REVIEW_FLAGGED'`;
+  } else if (bucket === 'history') {
+    // Packer review history — decided + exception outcomes (not awaiting VERIFIED).
+    predicate = `(
+      l.outcome IN ('REVIEW_APPROVED', 'REVIEW_FLAGGED', 'READY')
+      OR l.outcome LIKE 'ERROR\\_%'
+    )`;
+  } else if (bucket === 'latest') {
+    predicate = `TRUE`;
   } else {
     const bounds = warehouseDayUtcBounds(getCurrentPSTDateKey());
     params.push(bounds?.startIso ?? new Date(0).toISOString());
@@ -98,4 +108,61 @@ export async function getPackReviewQueue(
       tracking: (row.tracking as string | null) ?? null,
     };
   });
+}
+
+/** Latest verification row for one packer_log (any outcome), or null. */
+export async function getPackReviewRowByPackerLogId(
+  orgId: OrgId,
+  packerLogId: number,
+): Promise<PackReviewQueueRow | null> {
+  if (!Number.isSafeInteger(packerLogId) || packerLogId <= 0) return null;
+
+  const sql = `
+    SELECT
+      e.entity_id             AS packer_log_id,
+      e.outcome,
+      e.detected_tracking,
+      e.detected_order_id,
+      e.shipment_id,
+      e.review_note,
+      e.verified_by_staff_id,
+      e.ocr_confidence,
+      e.created_at,
+      stn.tracking_number_raw AS tracking,
+      o.order_id,
+      o.product_title
+    FROM pack_verification_events e
+    LEFT JOIN shipping_tracking_numbers stn ON stn.id = e.shipment_id
+    LEFT JOIN LATERAL (
+      SELECT order_id, product_title
+      FROM orders
+      WHERE shipment_id = e.shipment_id AND organization_id = $1::uuid
+      ORDER BY id DESC
+      LIMIT 1
+    ) o ON true
+    WHERE e.organization_id = $1::uuid
+      AND e.entity_type = 'PACKER_LOG'
+      AND e.entity_id = $2::bigint
+    ORDER BY e.created_at DESC, e.id DESC
+    LIMIT 1
+  `;
+
+  const res = await tenantQuery(orgId, sql, [orgId, packerLogId]);
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0] as Record<string, unknown>;
+  const toNum = (v: unknown): number | null => (v == null ? null : Number(v));
+  return {
+    packerLogId: Number(row.packer_log_id),
+    outcome: String(row.outcome),
+    detectedTracking: (row.detected_tracking as string | null) ?? null,
+    detectedOrderId: (row.detected_order_id as string | null) ?? null,
+    shipmentId: toNum(row.shipment_id),
+    reviewNote: (row.review_note as string | null) ?? null,
+    verifiedByStaffId: toNum(row.verified_by_staff_id),
+    ocrConfidence: toNum(row.ocr_confidence),
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    orderId: (row.order_id as string | null) ?? null,
+    productTitle: (row.product_title as string | null) ?? null,
+    tracking: (row.tracking as string | null) ?? null,
+  };
 }

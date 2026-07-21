@@ -149,6 +149,15 @@ function ReceiveSuccessChecklist({
   const [status, setStatus] = useState<'pending' | 'confirmed' | 'failed'>('pending');
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Hard ceiling — if Ably never delivers zohoReceive (or after() hangs on a
+  // slow Zoho already-received path), flip to retryable failure instead of
+  // spinning "Syncing to inventory…" forever.
+  useEffect(() => {
+    if (!result.reconcile || status !== 'pending') return;
+    const t = window.setTimeout(() => setStatus('failed'), 45_000);
+    return () => window.clearTimeout(t);
+  }, [result.reconcile, status]);
+
   useAblyChannel(
     channel,
     'receiving-log.changed',
@@ -192,15 +201,14 @@ function ReceiveSuccessChecklist({
         <>
           {/* Reconcile footer — only while a real Zoho receive is in flight. */}
           {result.reconcile && status === 'pending' && view.tone === 'emerald' ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-wider text-text-faint">
-              <Loader2 className="h-3 w-3 animate-spin" />
+            <p className="mt-1.5 text-role-micro font-semibold uppercase tracking-wider leading-none text-text-faint">
               Syncing to inventory…
             </p>
           ) : null}
           {status === 'confirmed' ? (
-            <p className="mt-1.5 flex items-center gap-1.5 text-role-micro font-semibold uppercase tracking-wider text-emerald-600">
-              <Check className="h-3 w-3" />
-              Confirmed in inventory
+            <p className="mt-1.5 flex items-center gap-2 text-role-micro font-semibold uppercase tracking-wider text-emerald-600">
+              <Check className="h-3.5 w-3.5 shrink-0" />
+              <span className="leading-none">Confirmed in inventory</span>
             </p>
           ) : null}
 

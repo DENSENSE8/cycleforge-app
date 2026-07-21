@@ -28,9 +28,8 @@ export function SearchOrderTimelineTab({ order }: { order: ShippedOrder }) {
     <SearchOrderTabFrame
       title="Timeline"
       description="Audit, station, and serial journey for this order."
-      className="[&>div:last-child]:px-0"
     >
-      <div className="space-y-4 px-4 pb-4">
+      <div className="space-y-4">
         <OrderTimelineSection orderId={Number(order.id)} />
         {serials.map((sn) => (
           <SerialJourneySection

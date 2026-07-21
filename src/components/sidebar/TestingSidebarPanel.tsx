@@ -7,7 +7,7 @@ import { Button } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
-import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
+import { ScanBandShell } from '@/components/station/scan-bar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
 import { TestingScanSessionFeedback } from '@/components/sidebar/receiving/TestingScanSessionFeedback';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';

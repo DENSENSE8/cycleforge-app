@@ -6,12 +6,21 @@ import { isPackReviewBucket } from '@/lib/packing/pack-review-queue-types';
 /**
  * GET /api/packing/verification/queue — the latest-outcome review queue for the
  * Review station's packer mode (docs/todo/packer-review-station-plan.md §4c).
- * `?bucket=needs_review|exceptions|flagged|approved` (default needs_review),
+ * `?bucket=needs_review|exceptions|flagged|approved|history|latest` (default needs_review),
+ * `?packerLogId=` — when set, returns the single latest row for that packer_log
+ * (any outcome) in `{ row }` instead of the bucket list,
  * `?limit=` (1..500). Read-only, org-scoped. Gated on `packing.review`.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);
+    const packerLogId = Number(searchParams.get('packerLogId'));
+    if (Number.isFinite(packerLogId) && packerLogId > 0) {
+      const { getPackReviewRowByPackerLogId } = await import('@/lib/packing/pack-review-queue');
+      const row = await getPackReviewRowByPackerLogId(ctx.organizationId, packerLogId);
+      return NextResponse.json({ success: true, row });
+    }
+
     const bucketRaw = searchParams.get('bucket');
     const bucket = isPackReviewBucket(bucketRaw) ? bucketRaw : 'needs_review';
     const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));

@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ShippingRecentRail } from '@/components/sidebar/shipping/ShippingRecentRail';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
-import { ScanBandShell } from '@/components/sidebar/receiving/ReceivingScanBands';
+import { ScanBandShell } from '@/components/station/scan-bar';
 import { ActiveOrderScanFeedback } from './ActiveOrderScanFeedback';
 import { type StationInputMode, useStationTestingController } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';

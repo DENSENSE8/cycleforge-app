@@ -6,7 +6,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WORKSPACE_MODES, type WorkspaceMode } from '@/components/receiving/workspace/line-edit/mode-registry';
+import { WORKSPACE_MODES, type WorkspaceMode } from '@/components/station/entity-context';
 import { STATION_TERMINAL_REGISTRY, getTerminalSlice } from './registry';
 import { resolveTerminalKind } from './resolve-terminal-action';
 import type { TerminalWorkspaceMode } from './types';

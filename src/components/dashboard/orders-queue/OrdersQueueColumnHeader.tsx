@@ -48,10 +48,8 @@ export function OrdersQueueColumnHeader({
   /** Commit a column's drag-resized width (px). Presence enables the handles. */
   onResizeColumn?: (key: string, px: number) => void;
   /**
-   * Airtable grid-view skin. Leads EVERY typed column with its type glyph (not
-   * only the roomy flex columns) and keeps the select-all checkbox available even
-   * when the pencil is off, dropping the per-column drag grip — the spreadsheet
-   * gutter shows selection, not reorder. Off → the plain board header.
+   * Pending Grid view skin. Icon-only typed headers (HoverTooltip for labels),
+   * always-visible select-all, no drag grip. Off → the plain board header.
    */
   gridSkin?: boolean;
 }) {
@@ -79,10 +77,10 @@ export function OrdersQueueColumnHeader({
     <div
       role="row"
       className={cn(
-        'sticky z-sticky grid border-b border-border-soft bg-surface-canvas/95 backdrop-blur-sm',
+        'group/hrow sticky z-sticky grid border-b border-border-soft bg-surface-canvas/95 backdrop-blur-sm',
         ORDERS_QUEUE_COL_HEADER_STICKY,
         QUEUE_ROW.px,
-        'py-2',
+        gridSkin ? 'py-1.5' : 'py-2',
         ordersQueueRowShellClass(false),
         className,
       )}
@@ -168,16 +166,12 @@ export function OrdersQueueColumnHeader({
 }
 
 /**
- * One header field: type glyph (roomy columns only) + label + a right-edge drag
- * resize handle (data columns), locked to the body via {@link ordersQueueGridCell}
- * + `data-col` so header ↔ cell alignment is glyph-agnostic. `last` drops the
- * trailing rule on the final (tracking) column.
+ * One header field: type glyph + label + a right-edge drag resize handle.
+ * Locked to the body via {@link ordersQueueGridCell} + `data-col`.
  *
- * Board look: the glyph renders only on the flexible (roomy) columns —
- * Product / Notes — since a glyph would crowd the narrow fact columns' labels.
- * Airtable grid skin (`gridSkin`): every typed column leads with its glyph (the
- * label still follows, so the shared `#`/tag glyphs stay unambiguous), for the
- * icon-first spreadsheet header.
+ * Board: glyph only on flexible (roomy) columns — Product / Notes; labels show.
+ * Grid skin: icon-only typed headers (T / # / tags / clock / notes / external /
+ * # / map) with the human label in a HoverTooltip — no truncated text.
  */
 function HeaderCell({
   column,
@@ -192,8 +186,10 @@ function HeaderCell({
 }) {
   const label = column.label ?? column.key;
   const showGlyph = gridSkin ? Boolean(column.type) : column.width.includes('fr');
+  const iconOnly = gridSkin && Boolean(column.type);
   const resizable = Boolean(onResize) && ORDERS_QUEUE_RESIZABLE_KEYS.includes(column.key);
   const frozen = isOrdersQueueFrozen(column.key);
+  const glyph = showGlyph && column.type ? <ColumnTypeGlyph type={column.type} /> : null;
   return (
     <div
       role="columnheader"
@@ -202,14 +198,25 @@ function HeaderCell({
       className={cn(
         'group/hcell relative',
         showGlyph && 'gap-1',
+        iconOnly && 'justify-center',
         ordersQueueGridCell({ rule: !last }),
         frozen && ORDERS_QUEUE_FROZEN_CELL,
         tableHeader,
       )}
       style={frozen ? { left: ordersQueueFrozenLeft(column.key) } : undefined}
     >
-      {showGlyph && column.type ? <ColumnTypeGlyph type={column.type} /> : null}
-      <span className="min-w-0 truncate">{label}</span>
+      {iconOnly ? (
+        <HoverTooltip label={label} focusable={false}>
+          <span className="inline-flex items-center justify-center" aria-label={label}>
+            {glyph}
+          </span>
+        </HoverTooltip>
+      ) : (
+        <>
+          {glyph}
+          <span className="min-w-0 truncate">{label}</span>
+        </>
+      )}
       {resizable && onResize ? <ColumnResizeHandle colKey={column.key} label={label} onCommit={onResize} /> : null}
     </div>
   );

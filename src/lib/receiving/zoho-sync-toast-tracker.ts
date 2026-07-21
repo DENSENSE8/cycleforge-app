@@ -1,4 +1,5 @@
 import { toast } from '@/lib/toast';
+import { TOAST_DURATION } from '@/design-system/components/toast-theme';
 
 type ZohoVerdict = 'ok' | 'failed' | 'skipped';
 
@@ -12,6 +13,8 @@ type PendingZohoSync = {
 
 const STORAGE_KEY = 'receiving.pendingZohoSync.v1';
 const TTL_MS = 20 * 60 * 1000;
+/** Match TOAST_DURATION.loading — missed Ably settle must not spin forever. */
+const LOADING_TOAST_MS = TOAST_DURATION.loading;
 
 const inMemory = new Map<string, PendingZohoSync>();
 
@@ -65,7 +68,16 @@ function removePending(id: string) {
 }
 
 function ensureLoadingToast(p: PendingZohoSync) {
-  toast.loading(p.label, { id: p.id, duration: Infinity });
+  const age = now() - p.createdAt;
+  const remaining = Math.max(1_000, LOADING_TOAST_MS - age);
+  // Plain message — not toast.loading — so Sonner never mounts a spinner.
+  toast.message(p.label, {
+    id: p.id,
+    duration: remaining,
+    icon: null,
+    className:
+      'group pointer-events-auto relative flex w-auto items-center rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-text-muted shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_12px_rgba(15,23,42,0.04)]',
+  });
 }
 
 export function enqueuePendingZohoSync(input: {
@@ -91,6 +103,8 @@ export function enqueuePendingZohoSync(input: {
 
 export function hydratePendingZohoSyncToasts(orgId: string): void {
   if (!isBrowser()) return;
+  // Drop anything already past the loading budget before re-showing.
+  expireStalePendingZohoSync(LOADING_TOAST_MS);
   const list = prune(readStorage());
   writeStorage(list);
 
@@ -128,3 +142,16 @@ export function resolvePendingZohoSync(input: {
   removePending(hit.id);
 }
 
+/** Resolve any pending sync toasts older than `maxAgeMs` as failed (UI safety net). */
+export function expireStalePendingZohoSync(maxAgeMs = LOADING_TOAST_MS): void {
+  if (!isBrowser()) return;
+  const cutoff = now() - maxAgeMs;
+  for (const p of prune(readStorage())) {
+    if (p.createdAt >= cutoff) continue;
+    toast.error('Inventory sync timed out — saved locally. Open the PO and retry Receive.', {
+      id: p.id,
+      duration: 6000,
+    });
+    removePending(p.id);
+  }
+}

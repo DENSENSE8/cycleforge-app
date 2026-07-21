@@ -28,7 +28,7 @@ import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-req
 import { toast } from '@/lib/toast';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
-import { STATION_CONTEXT_PHOTO_PILL_CLASS } from './station-context-action-pill';
+import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
 interface PhotoRow {
   id: number;

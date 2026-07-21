@@ -31,7 +31,6 @@ import { toast } from '@/lib/toast';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
-import { LineEditToolbar } from './line-edit/LineEditToolbar';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
@@ -43,6 +42,7 @@ import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import {
   StationContextBar,
+  StationHeaderToolbar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
@@ -373,7 +373,7 @@ export function LineEditPanel({
 
   const moreDetails = (
     <StationMoreDetails>
-      <LineEditToolbar
+      <StationHeaderToolbar
         mode="unbox"
         embedded
         receivingId={row.receiving_id ?? null}

@@ -2,8 +2,8 @@
  * Station scan bar — master module.
  *
  * Layers (outer → inner):
- *   1. `ScanBandShell` (`@/components/sidebar/receiving/ReceivingScanBands`) —
- *      flush 40px sidebar band + {@link ScanBandGlowHost} (Framer glow).
+ *   1. {@link ScanBandShell} — flush 40px sidebar band + {@link ScanBandGlowHost}
+ *      (Framer glow).
  *   2. {@link ThemedStationScanBar} — staff theme border + focus ring + right inset
  *   3. {@link StationScanBar} — input, icon slot, hotkey gear, sweep
  *   4. {@link StationScanModeRail} — full-height flush mode segments (armed =
@@ -14,6 +14,7 @@
  * mode lists + submit logic; they should not re-declare chrome classes.
  */
 
+export { ScanBandShell } from './ScanBandShell';
 export { StationScanBar, type StationScanBarProps } from './StationScanBar';
 export { ThemedStationScanBar, type ThemedStationScanBarProps } from './ThemedStationScanBar';
 export { StationScanLeadingIcon } from './StationScanLeadingIcon';

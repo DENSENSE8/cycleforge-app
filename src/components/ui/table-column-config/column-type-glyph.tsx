@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { Clock, FileText, Hash, Tags, Type } from '@/components/Icons';
+import { Clock, ExternalLink, FileText, Hash, MapPin, Tags, Type } from '@/components/Icons';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { cn } from '@/utils/_cn';
 
@@ -11,6 +11,7 @@ import { cn } from '@/utils/_cn';
  *   text     → serif "T"        long text  → document
  *   number   → hash             tag        → tags (single-select)
  *   id       → hash             date/age   → clock
+ *   external → external-link    location   → map pin
  */
 const COLUMN_TYPE_GLYPH: Record<ColumnType, ComponentType<{ className?: string }>> = {
   text: Type,
@@ -19,12 +20,14 @@ const COLUMN_TYPE_GLYPH: Record<ColumnType, ComponentType<{ className?: string }
   tag: Tags,
   longtext: FileText,
   date: Clock,
+  external: ExternalLink,
+  location: MapPin,
 };
 
 /**
  * Subtle data-type indicator shown before a column-header label (Airtable-style).
  * Structural, not decorative: it denotes the column's data type. Kept faint +
- * small so the header reads label-first.
+ * small so the header reads label-first (board) or icon-only (grid skin).
  */
 export function ColumnTypeGlyph({ type, className }: { type: ColumnType; className?: string }) {
   const Glyph = COLUMN_TYPE_GLYPH[type];

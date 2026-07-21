@@ -21,13 +21,13 @@ import { StationTerminalDock, useStationTerminalAction } from '@/components/stat
 import { PairingTogglePill, StationWorkbench } from '@/components/station/workbench';
 import {
   StationContextBar,
+  StationHeaderToolbar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
-import { LineEditToolbar } from '../workspace/line-edit/LineEditToolbar';
 import { ReceivingPhotoPeek } from '../workspace/line-edit/ReceivingPhotoPeek';
 import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
@@ -219,7 +219,7 @@ export function TriagePanel({
           }
           moreDetails={
             <StationMoreDetails>
-              <LineEditToolbar
+              <StationHeaderToolbar
                 mode="triage"
                 embedded
                 receivingId={row.receiving_id ?? null}

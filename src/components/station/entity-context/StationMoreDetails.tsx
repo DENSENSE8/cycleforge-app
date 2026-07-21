@@ -3,7 +3,7 @@
 /**
  * Station utilities — top-right corner bookmark tab.
  *
- * Hosts refresh · more · info via {@link LineEditToolbar}. Rendered flush to
+ * Hosts refresh · more · info via {@link StationHeaderToolbar}. Rendered flush to
  * the work-canvas top + right edges in {@link StationContextBar} so
  * the centered identity bookmark stays true-center. No top/right hairline —
  * left + bottom stroke only ({@link stationMoreDetailsPanelClass}).

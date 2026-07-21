@@ -66,6 +66,8 @@ export interface PackerRecord {
   ship_confirmed_at?: string | null;
   shipped_out_by?: number | null;
   shipped_out_by_name?: string | null;
+  /** Latest pack_verification_events.outcome (Review / packerlogs hydrate). */
+  verification_outcome?: string | null;
 }
 
 export interface UsePackerLogsOptions {

@@ -21,7 +21,7 @@ import {
   workspaceMode,
   type HeaderActionKey,
   type WorkspaceMode,
-} from './mode-registry';
+} from './workspace-mode-registry';
 
 /** Unbox: refresh stays inline; share + the rest live in the overflow menu.
  *  Ticket (photoNote) is on the carton photo dropdown, not More. */
@@ -36,14 +36,17 @@ const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>>
 ];
 
 /**
- * Frozen utility toolbar — icon-only actions driven by the mode registry
- * (`WORKSPACE_MODES[mode].headerActions`). Unbox-family stations mount this inside
- * {@link StationMoreDetails} (corner slot of
- * {@link StationContextBar}, `embedded`) using GlobalHeader icon
- * hit-box / gap SoT. Unbox: refresh · ⋯ · info (no prev/next). Testing keeps
- * prev/next via navChannel when those handlers are provided.
+ * Station header utilities toolbar — **entity-context SoT**.
+ *
+ * Icon-only actions driven by {@link workspaceMode} (`headerActions`).
+ * Unbox-family stations mount this inside {@link StationMoreDetails}
+ * (corner slot of {@link StationContextBar}, `embedded`) using GlobalHeader
+ * icon hit-box / gap SoT. Unbox: refresh · ⋯ · info (no prev/next). Testing
+ * keeps prev/next via navChannel when those handlers are provided.
+ *
+ * Prefer this over page-local header icon clusters.
  */
-export function LineEditToolbar({
+export function StationHeaderToolbar({
   mode = 'unbox',
   receivingId,
   zohoSyncing = false,
@@ -296,3 +299,4 @@ export function LineEditToolbar({
     />
   );
 }
+

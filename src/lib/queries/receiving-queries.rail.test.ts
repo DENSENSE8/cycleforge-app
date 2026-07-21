@@ -185,18 +185,94 @@ describe('upsertReceivingRailRows (tracking metadata)', () => {
       { id: 1, receiving_id: 10, client_event_id: 'carton:10', unbox_opened_at: '2026-07-01T10:00:00Z' },
     ] satisfies ReceivingRailRow[]);
 
+    // First-open membership carries display fields (scan-apply / matched stub) —
+    // identity-only workspace patches must not invent a Line # row.
     upsertReceivingRailRows(qc, [
       {
         id: 2,
         receiving_id: 99,
         client_event_id: 'carton:99',
         unbox_opened_at: '2026-07-20T12:00:00Z',
-      },
+        item_name: 'Scan-opened carton',
+        quantity_received: 0,
+      } as ReceivingRailRow,
     ]);
 
     const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
     assert.equal(next?.[0]?.receiving_id, 99);
     assert.equal(next?.[1]?.receiving_id, 10);
+  });
+});
+
+describe('upsertReceivingRailRows identity-only guard', () => {
+  it('does not prepend a Line # stub onto an empty Unboxed cache', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [] satisfies ReceivingRailRow[]);
+
+    upsertReceivingRailRows(qc, [
+      {
+        id: 8700,
+        receiving_id: 14226,
+        client_event_id: 'carton:14226',
+      },
+    ]);
+
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.deepEqual(next, []);
+  });
+
+  it('still prepends a rich scan stub onto an empty Unboxed cache', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [] satisfies ReceivingRailRow[]);
+
+    upsertReceivingRailRows(qc, [
+      {
+        id: 8700,
+        receiving_id: 14226,
+        client_event_id: 'carton:14226',
+        item_name: 'Bose CineMate GS Series II',
+        sku: '00044-P-9',
+        quantity_received: 0,
+        quantity_expected: 1,
+      } as ReceivingRailRow,
+    ]);
+
+    const next = qc.getQueryData<Array<ReceivingRailRow & { item_name?: string }>>(
+      railKey(UNBOX_RAIL_SEGMENT),
+    );
+    assert.equal(next?.length, 1);
+    assert.equal(next?.[0]?.item_name, 'Bose CineMate GS Series II');
+    assert.equal(next?.[0]?.id, 8700);
+  });
+
+  it('merges identity keep-alive onto an existing rich Unboxed row', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
+      {
+        id: 8700,
+        receiving_id: 14226,
+        client_event_id: 'carton:14226',
+        item_name: 'Bose CineMate GS Series II',
+        sku: '00044-P-9',
+        quantity_received: 0,
+        quantity_expected: 1,
+      } as ReceivingRailRow,
+    ]);
+
+    upsertReceivingRailRows(qc, [
+      {
+        id: 8700,
+        receiving_id: 14226,
+        client_event_id: 'carton:14226',
+      },
+    ]);
+
+    const next = qc.getQueryData<
+      Array<ReceivingRailRow & { item_name?: string; quantity_received?: number }>
+    >(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.length, 1);
+    assert.equal(next?.[0]?.item_name, 'Bose CineMate GS Series II');
+    assert.equal(next?.[0]?.quantity_received, 0);
   });
 });
 
