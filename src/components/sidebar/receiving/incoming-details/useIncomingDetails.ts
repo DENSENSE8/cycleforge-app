@@ -45,7 +45,7 @@ export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipment
     queryClient.invalidateQueries({ queryKey: ['incoming-delivered-unscanned'] });
   }, [queryClient, detailsKey]);
 
-  const { data, isLoading, isError } = useQuery<DetailsResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<DetailsResponse>({
     queryKey: ['incoming-details', detailsKey],
     queryFn: async () => {
       const qs = isShipmentOnly
@@ -188,7 +188,7 @@ export function useIncomingDetails({ zohoPurchaseOrderId, poNumberHint, shipment
     tab, setTab,
     syncing, syncOne,
     handleDelete,
-    data, isLoading, isError,
+    data, isLoading, isError, refetch,
     headerPo, headerTracking,
   };
 }

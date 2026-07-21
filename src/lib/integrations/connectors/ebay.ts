@@ -1,9 +1,11 @@
 /**
- * eBay connector sync + validate adapters — wrap the EXISTING per-account eBay
- * sync (`syncAccountOrders`) and the /api/ebay/health check logic so a
- * connection drives ingestion and credential validation across the org's
- * active eBay accounts. Lazily imported by the registry so the lightweight
- * connection reader never pulls in the eBay client.
+ * eBay connector sync + validate + refresh adapters — wrap the EXISTING
+ * per-account eBay sync (`syncAccountOrders`) and the /api/ebay/health check
+ * logic so a connection drives ingestion and credential validation across the
+ * org's active eBay accounts. Lazily imported by the registry so the
+ * lightweight connection reader never pulls in the eBay client.
+ *
+ * User tokens live in organization_integrations (scoped seller:/buyer:).
  */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -13,10 +15,15 @@ import {
   EBAY_SELLER_ROLE_PREDICATE,
   getEbayAppCreds,
   listActiveEbayAccounts,
+  parseEbayAccountScope,
+  patchEbayUserAccessToken,
+  resolveEbayUserTokens,
+  touchEbayAccountTokenExpiry,
 } from '@/lib/ebay/credentials';
-import { ebayIdentityEndpoint } from '@/lib/ebay/oauth-config';
+import { ebayIdentityEndpoint, ebayScopeStringForRole } from '@/lib/ebay/oauth-config';
+import { refreshEbayAccessToken } from '@/lib/ebay/token-refresh';
 import { syncAccountOrders } from '@/lib/ebay/sync';
-import type { HealthResult, SyncOutcome } from './types';
+import type { HealthResult, SyncOutcome, TokenEnvelope } from './types';
 
 export async function ebaySync(orgId: OrgId): Promise<SyncOutcome> {
   // Seller accounts only — buyer purchasing tokens lack sell.fulfillment and
@@ -42,6 +49,56 @@ export async function ebaySync(orgId: OrgId): Promise<SyncOutcome> {
     }
   }
   return { ok: errors.length === 0, imported, error: errors.length ? errors.join('; ') : undefined };
+}
+
+/**
+ * connector.refresh() — rotate one scoped vault connection (or all active
+ * accounts when scope is null). Used by /api/cron/integrations/refresh.
+ */
+export async function ebayRefresh(
+  orgId: OrgId,
+  scope?: string | null,
+): Promise<TokenEnvelope | null> {
+  const parsed = parseEbayAccountScope(scope);
+  const targets = parsed
+    ? [{ accountName: parsed.accountSlug, role: parsed.role }]
+    : (await listActiveEbayAccounts(orgId)).map((a) => ({
+        accountName: a.accountName,
+        role: a.accountRole,
+      }));
+
+  if (targets.length === 0) return null;
+
+  const creds = await getEbayAppCreds(orgId);
+  if (!creds) throw new Error('eBay app credentials are not configured');
+
+  let last: TokenEnvelope | null = null;
+  for (const t of targets) {
+    const tokens = await resolveEbayUserTokens(orgId, t.accountName, t.role);
+    const { accessToken, expiresIn } = await refreshEbayAccessToken(
+      creds.appId,
+      creds.certId,
+      tokens.refreshToken,
+      creds.environment,
+      ebayScopeStringForRole(t.role),
+    );
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    await patchEbayUserAccessToken({
+      orgId,
+      role: t.role,
+      accountName: t.accountName,
+      accessToken,
+      expiresAt,
+    });
+    await touchEbayAccountTokenExpiry(orgId, t.accountName, expiresAt);
+    last = {
+      accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: expiresAt.getTime(),
+      accountRef: t.accountName,
+    };
+  }
+  return last;
 }
 
 /**

@@ -64,7 +64,8 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - `tokens/spacing.ts` — includes `density` presets (compact/standard/spacious)
   - `tokens/borders.ts`
   - `tokens/radii.ts` — graduated scale (none → sm → md → lg → xl → 2xl → 3xl → full)
-  - `tokens/shadows.ts` (surface-dim/low-opacity only)
+  - `tokens/shadows.ts` — raw box-shadow CSS vars + elevation roles
+    (`elevationClass('flat' | 'raised' | 'overlay')`; raised intensity `soft` | `default`)
 - Motion:
   - `foundations/motion.ts` — CSS-oriented durations / cubic-bezier strings (`micro=100ms`, `fast=150ms`)
   - `foundations/motion-framer.ts` — Framer Motion presets used on station surfaces:

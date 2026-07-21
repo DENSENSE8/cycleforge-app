@@ -1133,12 +1133,20 @@ function compareReceivingRowsByScannedAt(
   return d !== 0 ? d : b.id - a.id;
 }
 
-/** `view=unbox_opened` placeholder merge — newest Unbox-surface scan first. */
+/** `view=unbox_opened` placeholder merge — newest Unbox-surface scan first (ops MRU). */
+function receivingRowUnboxOpenedTs(row: { unbox_opened_at?: string | null }) {
+  const raw = row.unbox_opened_at ?? null;
+  if (!raw) return 0;
+  const t = new Date(raw).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
 function compareReceivingRowsByUnboxOpenedAt(
-  a: { scanned_at?: string | null; received_at?: string | null; created_at?: string | null; id: number },
-  b: { scanned_at?: string | null; received_at?: string | null; created_at?: string | null; id: number },
+  a: { unbox_opened_at?: string | null; id: number },
+  b: { unbox_opened_at?: string | null; id: number },
 ) {
-  return compareReceivingRowsByScannedAt(a, b);
+  const d = receivingRowUnboxOpenedTs(b) - receivingRowUnboxOpenedTs(a);
+  return d !== 0 ? d : b.id - a.id;
 }
 
 function receivingRowActivityTs(row: {

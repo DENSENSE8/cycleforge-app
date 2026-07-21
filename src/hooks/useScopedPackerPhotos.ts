@@ -7,6 +7,8 @@ import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCam
 export interface PackerPhotoRow {
   id: number;
   photoUrl: string;
+  /** photos.photo_type — pack_slip / pack_box when guided Review captured. */
+  photoType?: string | null;
 }
 
 export function packerPhotosQueryKey(packerLogId: number) {

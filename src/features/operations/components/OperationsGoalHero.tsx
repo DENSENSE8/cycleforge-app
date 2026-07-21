@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Flag, TrendingUp } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
+import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { cn } from '@/utils/_cn';
 import type { DashboardData } from '@/features/operations/types';
 
 /**
@@ -22,14 +25,21 @@ interface OperationsGoalHeroProps {
   isLoading?: boolean;
 }
 
+/**
+ * Pacing tone → semantic tokens (no page-local hex). `toneClass` drives the ring
+ * arc via `currentColor` (same technique as the Monitor `MetricRing`); `bar` is
+ * the per-station fill; `chip` is the status-pill triad.
+ */
 function toneFor(percent: number) {
-  if (percent >= 100) return { ring: '#059669', label: 'Goal hit', chip: 'bg-emerald-50 text-emerald-700' };
-  if (percent >= 85) return { ring: '#059669', label: 'On track', chip: 'bg-emerald-50 text-emerald-700' };
-  if (percent >= 60) return { ring: '#D97706', label: 'Close', chip: 'bg-amber-50 text-amber-700' };
-  return { ring: '#E11D48', label: 'Behind', chip: 'bg-rose-50 text-rose-700' };
+  if (percent >= 85)
+    return { toneClass: 'text-text-success', bar: 'bg-fill-success', label: percent >= 100 ? 'Goal hit' : 'On track', chip: 'bg-surface-success text-text-success' };
+  if (percent >= 60)
+    return { toneClass: 'text-text-warning', bar: 'bg-fill-warning', label: 'Close', chip: 'bg-surface-warning text-text-warning' };
+  return { toneClass: 'text-text-danger', bar: 'bg-fill-danger', label: 'Behind', chip: 'bg-surface-danger text-text-danger' };
 }
 
-function BigGoalRing({ percent, color }: { percent: number; color: string }) {
+function BigGoalRing({ percent, toneClass }: { percent: number; toneClass: string }) {
+  const reduce = useReducedMotion();
   const size = 132;
   const r = size / 2 - 10;
   const c = 2 * Math.PI * r;
@@ -37,20 +47,24 @@ function BigGoalRing({ percent, color }: { percent: number; color: string }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg className="h-full w-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#F0EDE8" strokeWidth="9" fill="none" />
-        <motion.circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={color}
-          strokeWidth="9"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          initial={{ strokeDashoffset: c }}
-          animate={{ strokeDashoffset: c * (1 - clamped / 100) }}
-          transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-        />
+        <g className="text-surface-strong">
+          <circle cx={size / 2} cy={size / 2} r={r} stroke="currentColor" strokeWidth="9" fill="none" />
+        </g>
+        <g className={toneClass}>
+          <motion.circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke="currentColor"
+            strokeWidth="9"
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            initial={{ strokeDashoffset: reduce ? c * (1 - clamped / 100) : c }}
+            animate={{ strokeDashoffset: c * (1 - clamped / 100) }}
+            transition={{ duration: reduce ? 0 : 1.1, ease: motionBezier.easeOut }}
+          />
+        </g>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-3xl font-extrabold leading-none tabular-nums tracking-tight text-text-default">
@@ -85,6 +99,7 @@ function stationBreakdown(rows: DashboardData['staffProgress']) {
 }
 
 export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalHeroProps) {
+  const reduce = useReducedMotion();
   const rows = useMemo(() => staffProgress ?? [], [staffProgress]);
 
   const totals = useMemo(() => {
@@ -100,20 +115,15 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
   const remaining = Math.max(0, totals.goal - totals.current);
 
   if (isLoading && rows.length === 0) {
-    return (
-      <section className="h-[180px] animate-pulse rounded-[28px] border border-border-soft bg-surface-card/60" />
-    );
+    return <section className={cn(MONITOR_SECTION_CARD_CLASS, 'h-[180px] animate-pulse')} />;
   }
 
   return (
-    <section
-      className="overflow-hidden rounded-[28px] border border-border-soft bg-surface-card
-                 shadow-[0_4px_24px_rgba(161,140,90,0.06)]"
-    >
+    <section className={cn(MONITOR_SECTION_CARD_CLASS, 'overflow-hidden')}>
       <div className="flex flex-col gap-6 p-5 sm:p-7 lg:flex-row lg:items-center">
         {/* ── Headline goal ── */}
         <div className="flex items-center gap-5">
-          <BigGoalRing percent={totals.percent} color={tone.ring} />
+          <BigGoalRing percent={totals.percent} toneClass={tone.toneClass} />
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-role-micro uppercase tracking-[0.2em] text-text-muted">
               <Flag className="h-3 w-3" /> Today’s goal
@@ -134,7 +144,7 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
               </span>
               {totals.goal > 0 ? (
                 <span className="inline-flex items-center gap-1 text-role-caption font-bold tabular-nums text-text-muted">
-                  <span style={{ color: tone.ring }}>
+                  <span className={tone.toneClass}>
                     <TrendingUp className="h-3 w-3" />
                   </span>
                   <AnimatedStat value={remaining} className="inline" /> to go
@@ -172,11 +182,10 @@ export function OperationsGoalHero({ staffProgress, isLoading }: OperationsGoalH
                   </div>
                   <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-canvas">
                     <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: st.ring }}
-                      initial={{ width: 0 }}
+                      className={`h-full rounded-full ${st.bar}`}
+                      initial={{ width: reduce ? `${Math.min(100, s.percent)}%` : 0 }}
                       animate={{ width: `${Math.min(100, s.percent)}%` }}
-                      transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ duration: reduce ? 0 : 0.9, ease: motionBezier.easeOut }}
                     />
                   </div>
                 </div>

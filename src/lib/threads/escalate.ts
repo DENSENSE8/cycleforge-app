@@ -86,6 +86,7 @@ export const defaultEscalateDeps: EscalateThreadDeps = {
   createZendeskTicket: async ({ orgId, entityType, entityId, subject, note, staffId }) => {
     const { requireHelpdeskProvider } = await import('@/lib/integrations/helpdesk');
     const { linkTicket } = await import('@/lib/zendesk-links');
+    const { pairTicketShipmentFromEntity } = await import('@/lib/support/ticket-link');
     const provider = await requireHelpdeskProvider(orgId);
     const ticket = await provider.createTicket({
       subject,
@@ -98,6 +99,17 @@ export const defaultEscalateDeps: EscalateThreadDeps = {
       entityId,
       staffId: staffId ?? null,
     });
+    try {
+      await pairTicketShipmentFromEntity({
+        orgId,
+        ticketId: ticket.id,
+        entityType,
+        entityId,
+        staffId: staffId ?? null,
+      });
+    } catch (pairErr) {
+      console.warn('[escalate] STN pair failed', pairErr);
+    }
     return { supportTicketId, externalTicketId: String(ticket.id) };
   },
   attach: (args) => attachSupportTicket(args),

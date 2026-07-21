@@ -38,6 +38,7 @@ const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarP
 const PhotoLibrarySidebarPanel = dynamic(() => import('@/components/photos/PhotoLibrarySidebarPanel').then((m) => m.PhotoLibrarySidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
+const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context
@@ -95,6 +96,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'ops-photos') return <PhotoLibrarySidebarPanel />;
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
+  if (routeKey === 'review') return <ReviewSidebarPanel />;
 
   return null;
 }

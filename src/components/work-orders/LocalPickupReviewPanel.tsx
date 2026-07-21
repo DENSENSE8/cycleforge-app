@@ -22,6 +22,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Loader2, Package, Printer, ShoppingCart, X } from '@/components/Icons';
+import {
+  WorkspaceCard,
+  WORKSPACE_NESTED_FIELD,
+  WORKSPACE_NESTED_FIELD_PAD,
+} from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ReceivingPoLabelPreview } from '@/components/receiving/workspace/ReceivingPoLabelPreview';
 import { printReceivingLabel } from '@/lib/print/printReceivingLabel';
@@ -483,19 +488,18 @@ function LabelPreviewBlock({
   date: string;
 }) {
   return (
-    <div>
-      <p className="mb-1.5 text-role-eyebrow uppercase tracking-wider text-text-soft">
-        Label preview
-      </p>
-      <ReceivingPoLabelPreview
-        embedded
-        receivingId={receivingId ?? null}
-        scanValue={scanValue}
-        platform={platform}
-        notes={notes}
-        conditionCode=" "
-        date={date}
-      />
-    </div>
+    <WorkspaceCard variant="glass" bodyDensity="nested" label="Label preview">
+      <div className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`}>
+        <ReceivingPoLabelPreview
+          embedded
+          receivingId={receivingId ?? null}
+          scanValue={scanValue}
+          platform={platform}
+          notes={notes}
+          conditionCode=" "
+          date={date}
+        />
+      </div>
+    </WorkspaceCard>
   );
 }

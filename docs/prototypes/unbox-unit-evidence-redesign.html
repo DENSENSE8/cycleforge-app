@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unbox unit evidence redesign variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    color: oklch(28% 0.03 250);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, oklch(94% 0.03 250), transparent 60%),
+      oklch(97.5% 0.008 250);
+    line-height: 1.4;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 64px;
+  }
+
+  header.page-head {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 22px;
+    max-width: 72ch;
+  }
+  header.page-head h1 {
+    margin: 0;
+    font-size: 1.55rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  header.page-head p {
+    margin: 0;
+    color: oklch(42% 0.025 250);
+    font-size: 0.95rem;
+  }
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: oklch(52% 0.14 250);
+  }
+
+  .critique {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding: 16px 18px;
+    background: oklch(99.2% 0.004 250);
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 10px;
+    box-shadow: 0 1px 0 oklch(0% 0 0 / 0.04), 0 8px 24px oklch(30% 0.04 250 / 0.06);
+  }
+  .critique h2 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .critique-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .crit-card {
+    padding: 12px;
+    border-radius: 8px;
+    background: oklch(96.2% 0.01 250);
+    border: 1px solid oklch(88% 0.015 250);
+  }
+  .crit-card h3 {
+    margin: 0 0 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .crit-card p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: oklch(42% 0.025 250);
+  }
+  .fail {
+    color: oklch(52% 0.16 25);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .variant-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .variant-nav button {
+    appearance: none;
+    border: 1px solid oklch(88% 0.015 250);
+    background: oklch(99.2% 0.004 250);
+    color: oklch(42% 0.025 250);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .variant-nav button[aria-selected="true"] {
+    background: oklch(28% 0.03 250);
+    border-color: oklch(28% 0.03 250);
+    color: white;
+  }
+  .variant-nav button:focus-visible {
+    outline: 2px solid oklch(55% 0.16 250);
+    outline-offset: 2px;
+  }
+
+  .variant-panel[hidden] { display: none; }
+  .variant-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .variant-meta h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .variant-meta p {
+    margin: 0;
+    color: oklch(42% 0.025 250);
+    font-size: 0.85rem;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: oklch(94% 0.035 250);
+    color: oklch(52% 0.14 250);
+  }
+
+  .bench {
+    background: oklch(99.2% 0.004 250);
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 12px;
+    box-shadow: 0 1px 0 oklch(0% 0 0 / 0.04), 0 8px 24px oklch(30% 0.04 250 / 0.06);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    min-height: 560px;
+  }
+  .bookmark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid oklch(88% 0.015 250);
+    background: oklch(98.5% 0.008 250);
+  }
+  .bookmark .track {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .bookmark .muted { color: oklch(55% 0.02 250); font-size: 0.75rem; }
+  .bookmark .spacer { flex: 1; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid oklch(88% 0.015 250);
+    background: oklch(99.2% 0.004 250);
+    color: oklch(42% 0.025 250);
+    white-space: nowrap;
+  }
+  .chip.ok {
+    border-color: oklch(80% 0.06 155);
+    background: oklch(94% 0.04 155);
+    color: oklch(48% 0.12 155);
+  }
+  .chip.warn {
+    border-color: oklch(84% 0.08 85);
+    background: oklch(95% 0.05 85);
+    color: oklch(48% 0.1 85);
+  }
+
+  .section-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid oklch(88% 0.015 250);
+    overflow-x: auto;
+  }
+  .section-tabs button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: oklch(55% 0.02 250);
+    padding: 7px 11px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .section-tabs button[aria-selected="true"] {
+    background: oklch(94% 0.035 250);
+    color: oklch(52% 0.14 250);
+  }
+  .section-tabs button:focus-visible {
+    outline: 2px solid oklch(55% 0.16 250);
+    outline-offset: 1px;
+  }
+
+  .body {
+    padding: 12px 14px 16px;
+    overflow: auto;
+  }
+  .tab-pane[hidden] { display: none; }
+
+  .dock {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-top: 1px solid oklch(88% 0.015 250);
+    background: oklch(98% 0.006 250);
+  }
+  .dock .hint { flex: 1; font-size: 0.75rem; color: oklch(55% 0.02 250); }
+  .btn {
+    appearance: none;
+    border: 1px solid oklch(78% 0.025 250);
+    background: oklch(99.2% 0.004 250);
+    color: oklch(28% 0.03 250);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 9px 14px;
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  .btn.primary {
+    background: oklch(48% 0.12 155);
+    border-color: oklch(48% 0.12 155);
+    color: white;
+  }
+  .btn.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: oklch(42% 0.025 250);
+  }
+  .btn:focus-visible {
+    outline: 2px solid oklch(55% 0.16 250);
+    outline-offset: 2px;
+  }
+
+  .line-strip {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 10px;
+    background: oklch(96.2% 0.01 250);
+    margin-bottom: 12px;
+  }
+  .line-strip .title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .price {
+    margin-left: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: oklch(48% 0.12 155);
+  }
+
+  label.field {
+    display: grid;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: oklch(55% 0.02 250);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  input[type="text"], textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 0.92rem;
+    color: oklch(28% 0.03 250);
+    border: 1px solid oklch(78% 0.025 250);
+    border-radius: 9px;
+    padding: 10px 12px;
+    background: oklch(99.2% 0.004 250);
+  }
+  input[type="text"]:focus, textarea:focus {
+    outline: 2px solid oklch(55% 0.16 250);
+    outline-offset: 1px;
+    border-color: oklch(52% 0.14 250);
+  }
+  textarea { min-height: 72px; resize: vertical; font-size: 0.85rem; }
+
+  .serial-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .confirm {
+    width: 44px;
+    border: 0;
+    border-radius: 9px;
+    background: oklch(48% 0.12 155);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .confirm:focus-visible {
+    outline: 2px solid oklch(55% 0.16 250);
+    outline-offset: 2px;
+  }
+
+  .photo-strip {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    border: 1px dashed oklch(78% 0.025 250);
+    background: oklch(96.2% 0.01 250);
+    display: grid;
+    place-items: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: oklch(55% 0.02 250);
+    cursor: pointer;
+  }
+  .thumb.filled {
+    border-style: solid;
+    background: linear-gradient(135deg, oklch(90% 0.02 250), oklch(86% 0.03 230));
+    color: oklch(42% 0.025 250);
+  }
+  .thumb.add {
+    border-style: dashed;
+    color: oklch(52% 0.14 250);
+  }
+
+  .stack { display: grid; gap: 12px; }
+  .split-2 {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (max-width: 720px) {
+    .split-2 { grid-template-columns: 1fr; }
+  }
+
+  .unit-stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .unit-stepper .label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: oklch(42% 0.025 250);
+  }
+  .dots { display: flex; gap: 6px; flex: 1; }
+  .dot {
+    height: 8px;
+    flex: 1;
+    max-width: 48px;
+    border-radius: 999px;
+    background: oklch(88% 0.015 250);
+  }
+  .dot.done { background: oklch(48% 0.12 155); }
+  .dot.active { background: oklch(52% 0.14 250); }
+  .unit-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: oklch(52% 0.14 250);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .capture-card {
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 12px;
+    padding: 14px;
+    display: grid;
+    gap: 14px;
+  }
+  .capture-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .capture-head h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .capture-head .sub {
+    font-size: 0.75rem;
+    color: oklch(55% 0.02 250);
+  }
+
+  .unit-list { display: grid; gap: 8px; }
+  .unit-row {
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 10px;
+    background: oklch(99.2% 0.004 250);
+    overflow: hidden;
+  }
+  .unit-row.active {
+    border-color: oklch(78% 0.06 250);
+    background: oklch(97.5% 0.02 250);
+  }
+  .unit-row-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    cursor: pointer;
+  }
+  .unit-row-head:focus-visible {
+    outline: 2px solid oklch(55% 0.16 250);
+    outline-offset: -2px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: oklch(78% 0.025 250);
+  }
+  .status-dot.ready { background: oklch(48% 0.12 155); }
+  .status-dot.partial { background: oklch(62% 0.13 85); }
+  .unit-id { font-size: 0.8rem; font-weight: 700; }
+  .unit-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 3px;
+  }
+  .fact {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7rem;
+    color: oklch(42% 0.025 250);
+  }
+  .fact.empty {
+    color: oklch(55% 0.02 250);
+    font-style: italic;
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  .unit-body {
+    padding: 12px;
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid oklch(88% 0.015 250);
+  }
+  .unit-row:not(.open) .unit-body { display: none; }
+
+  .floor { display: grid; gap: 12px; }
+  .floor-hero {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid oklch(52% 0.14 250);
+    background: oklch(98% 0.02 250);
+  }
+  .floor-hero .big-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: oklch(52% 0.14 250);
+  }
+  .floor-hero .serial-row input {
+    font-size: 1.15rem;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 600;
+    padding: 14px;
+  }
+  .floor-hero .confirm { width: 56px; font-size: 1.35rem; }
+  .sibling-rail {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sib {
+    appearance: none;
+    border: 1px solid oklch(88% 0.015 250);
+    background: oklch(99.2% 0.004 250);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: oklch(42% 0.025 250);
+  }
+  .sib[aria-current="true"] {
+    background: oklch(52% 0.14 250);
+    border-color: oklch(52% 0.14 250);
+    color: white;
+  }
+  .sib.done::after { content: " ✓"; }
+  .evidence-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 720px) {
+    .evidence-grid { grid-template-columns: 1fr; }
+  }
+  .quiet-panel {
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+  .quiet-panel h4 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: oklch(42% 0.025 250);
+  }
+
+  .detail-list {
+    display: grid;
+    gap: 8px;
+    font-size: 0.82rem;
+  }
+  .detail-list div {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid oklch(88% 0.015 250);
+  }
+  .detail-list dt { color: oklch(55% 0.02 250); font-weight: 600; }
+  .detail-list dd { margin: 0; font-weight: 500; }
+
+  .footer-note {
+    margin-top: 22px;
+    font-size: 0.78rem;
+    color: oklch(55% 0.02 250);
+    max-width: 72ch;
+  }
+  kbd {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border: 1px solid oklch(88% 0.015 250);
+    border-radius: 4px;
+    background: oklch(96.2% 0.01 250);
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header class="page-head">
+      <div class="eyebrow">Station · Unbox · Kinetic Ledger</div>
+      <h1>PO line to unit evidence redesign</h1>
+      <p>
+        Critique-driven mockups. Current accordion expands into a single serial field;
+        it cannot carry industry-standard <strong>serial + photos + notes per unit</strong>.
+        Each variant keeps Process as the primary tab; Line / Timeline stay secondary.
+      </p>
+    </header>
+
+    <section class="critique" aria-label="Design critique of current accordion">
+      <div>
+        <div class="fail">Anti-patterns · current</div>
+        <h2 style="margin-top:6px">Not AI-slop, but wrong job for the surface</h2>
+        <p style="margin:6px 0 0;font-size:0.85rem;color:oklch(42% 0.025 250)">
+          The row is a solid Workbench list item. Fail is architectural: unit evidence is a
+          Station processing job stuffed into an accordion body. Meta chips (qty, location, grade, serials, price)
+          compete with the only action that matters: capture the next unit.
+        </p>
+      </div>
+      <div class="critique-grid">
+        <div class="crit-card">
+          <h3>Hierarchy</h3>
+          <p>Eye lands on long title + chip soup first; serial field is secondary. Unbox needs the opposite.</p>
+        </div>
+        <div class="crit-card">
+          <h3>IA</h3>
+          <p>One horizontal Serial slot cannot host photos or notes. Multi-qty lines have nowhere to park per-unit evidence.</p>
+        </div>
+        <div class="crit-card">
+          <h3>Affordance</h3>
+          <p>Checkmark confirms serial only. No path to photo this unit or note damage without leaving the row.</p>
+        </div>
+        <div class="crit-card">
+          <h3>Biggest opportunity</h3>
+          <p>Promote active unit as the work object. Demote line identity to a strip. Put Line / Support / Timeline on tabs.</p>
+        </div>
+      </div>
+    </section>
+
+    <nav class="variant-nav" role="tablist" aria-label="Design variants">
+      <button type="button" role="tab" id="tab-a" aria-controls="panel-a" aria-selected="true">A · Unit queue</button>
+      <button type="button" role="tab" id="tab-b" aria-controls="panel-b" aria-selected="false">B · Unit ledger</button>
+      <button type="button" role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false">C · Floor focus</button>
+    </nav>
+
+    <section class="variant-panel" id="panel-a" role="tabpanel" aria-labelledby="tab-a">
+      <div class="variant-meta">
+        <h2>A · Unit queue</h2>
+        <span class="pill">Best for qty &gt; 1</span>
+        <p>One unit at a time. Step through units; capture serial, photos, then note in a fixed stack. Line detail is a tab.</p>
+      </div>
+
+      <div class="bench" data-variant="a">
+        <div class="bookmark">
+          <span class="track">1Z999…32AC</span>
+          <span class="muted">Carton · Unbox</span>
+          <span class="spacer"></span>
+          <span class="chip ok">2/3 units</span>
+          <span class="chip">PO-18422</span>
+        </div>
+
+        <div class="section-tabs" role="tablist" aria-label="Workspace sections A">
+          <button type="button" data-pane="a-process" aria-selected="true">Process</button>
+          <button type="button" data-pane="a-line" aria-selected="false">Line</button>
+          <button type="button" data-pane="a-timeline" aria-selected="false">Timeline</button>
+          <button type="button" data-pane="a-support" aria-selected="false">Support</button>
+        </div>
+
+        <div class="body">
+          <div class="tab-pane" id="a-process">
+            <div class="line-strip">
+              <div class="title">Bose 251 Environmental Outdoor Speakers White Pair No Brackets Tested Excellent</div>
+              <div class="meta-row">
+                <span class="chip ok">2/3</span>
+                <span class="chip">3-WH</span>
+                <span class="chip">Grade B</span>
+                <span class="price">$400.00</span>
+              </div>
+            </div>
+
+            <div class="unit-stepper" aria-label="Unit progress">
+              <span class="label">Units</span>
+              <div class="dots" aria-hidden="true">
+                <span class="dot done"></span>
+                <span class="dot done"></span>
+                <span class="dot active"></span>
+              </div>
+              <span class="chip warn">Unit 3 of 3</span>
+            </div>
+
+            <div class="capture-card">
+              <div class="capture-head">
+                <span class="unit-badge" aria-hidden="true">3</span>
+                <div>
+                  <h3>Capture unit</h3>
+                  <div class="sub">Scan serial, snap evidence, optional note, confirm</div>
+                </div>
+              </div>
+
+              <label class="field">Serial
+                <div class="serial-row">
+                  <input type="text" placeholder="Scan or type serial" value="" autocomplete="off" />
+                  <button type="button" class="confirm" aria-label="Confirm serial">✓</button>
+                </div>
+              </label>
+
+              <div class="split-2">
+                <div class="stack">
+                  <span class="field" style="display:block">Photos <span style="font-weight:500;text-transform:none;letter-spacing:0">(this unit)</span></span>
+                  <div class="photo-strip">
+                    <button type="button" class="thumb add" aria-label="Add photo">+ Add</button>
+                    <div class="thumb" aria-hidden="true">empty</div>
+                    <div class="thumb" aria-hidden="true">empty</div>
+                  </div>
+                </div>
+                <label class="field">Notes
+                  <textarea placeholder="Damage, missing parts, packaging…"></textarea>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="a-line" hidden>
+            <div class="quiet-panel">
+              <h4>Line details</h4>
+              <dl class="detail-list">
+                <div><dt>SKU</dt><dd>BOSE-251-W</dd></div>
+                <div><dt>Expected</dt><dd>3</dd></div>
+                <div><dt>Location</dt><dd>3-WH</dd></div>
+                <div><dt>Condition</dt><dd>B · Tested Excellent</dd></div>
+                <div><dt>Serials on file</dt><dd>…32bc · …32ac · pending</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="a-timeline" hidden>
+            <div class="quiet-panel">
+              <h4>Timeline</h4>
+              <p style="margin:0;font-size:0.82rem;color:oklch(42% 0.025 250)">Unit journeys + tracking spine (existing Station Workbench Timeline tab).</p>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="a-support" hidden>
+            <div class="quiet-panel">
+              <h4>Support</h4>
+              <p style="margin:0;font-size:0.82rem;color:oklch(42% 0.025 250)">Team notes / ticket (unchanged from Station Workbench).</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dock">
+          <span class="hint">Primary loop: scan, photos, note, then <kbd>Enter</kbd> next unit</span>
+          <button type="button" class="btn ghost">Skip unit</button>
+          <button type="button" class="btn primary">Confirm unit</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="variant-panel" id="panel-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+      <div class="variant-meta">
+        <h2>B · Unit ledger</h2>
+        <span class="pill">Best for review + edit</span>
+        <p>All units visible as ledger rows. Expand one to edit serial / photos / notes. Process tab stays dense; Line tab holds PO identity.</p>
+      </div>
+
+      <div class="bench" data-variant="b">
+        <div class="bookmark">
+          <span class="track">1Z999…32AC</span>
+          <span class="muted">Carton · Unbox</span>
+          <span class="spacer"></span>
+          <span class="chip warn">1 incomplete</span>
+          <span class="chip">PO-18422</span>
+        </div>
+
+        <div class="section-tabs" role="tablist" aria-label="Workspace sections B">
+          <button type="button" data-pane="b-process" aria-selected="true">Process</button>
+          <button type="button" data-pane="b-line" aria-selected="false">Line</button>
+          <button type="button" data-pane="b-timeline" aria-selected="false">Timeline</button>
+          <button type="button" data-pane="b-support" aria-selected="false">Support</button>
+        </div>
+
+        <div class="body">
+          <div class="tab-pane" id="b-process">
+            <div class="line-strip">
+              <div class="title">Bose 251 Environmental Outdoor Speakers White Pair No Brackets Tested Excellent</div>
+              <div class="meta-row">
+                <span class="chip ok">2/3 ready</span>
+                <span class="chip">Grade B</span>
+                <span class="price">$400.00</span>
+              </div>
+            </div>
+
+            <div class="unit-list">
+              <div class="unit-row">
+                <div class="unit-row-head" tabindex="0" role="button" aria-expanded="false">
+                  <span class="status-dot ready" aria-hidden="true"></span>
+                  <div>
+                    <div class="unit-id">Unit 1</div>
+                    <div class="unit-facts">
+                      <span class="fact">SN …32bc</span>
+                      <span class="fact">2 photos</span>
+                      <span class="fact">note</span>
+                    </div>
+                  </div>
+                  <span class="chip ok">Ready</span>
+                </div>
+              </div>
+
+              <div class="unit-row">
+                <div class="unit-row-head" tabindex="0" role="button" aria-expanded="false">
+                  <span class="status-dot ready" aria-hidden="true"></span>
+                  <div>
+                    <div class="unit-id">Unit 2</div>
+                    <div class="unit-facts">
+                      <span class="fact">SN …32ac</span>
+                      <span class="fact">1 photo</span>
+                      <span class="fact empty">no note</span>
+                    </div>
+                  </div>
+                  <span class="chip ok">Ready</span>
+                </div>
+              </div>
+
+              <div class="unit-row active open">
+                <div class="unit-row-head" tabindex="0" role="button" aria-expanded="true">
+                  <span class="status-dot partial" aria-hidden="true"></span>
+                  <div>
+                    <div class="unit-id">Unit 3</div>
+                    <div class="unit-facts">
+                      <span class="fact empty">no serial</span>
+                      <span class="fact empty">0 photos</span>
+                      <span class="fact empty">no note</span>
+                    </div>
+                  </div>
+                  <span class="chip warn">Capture</span>
+                </div>
+                <div class="unit-body">
+                  <label class="field">Serial
+                    <div class="serial-row">
+                      <input type="text" placeholder="Scan serial" />
+                      <button type="button" class="confirm" aria-label="Confirm serial">✓</button>
+                    </div>
+                  </label>
+                  <div class="split-2">
+                    <div class="stack">
+                      <span class="field" style="display:block">Photos</span>
+                      <div class="photo-strip">
+                        <button type="button" class="thumb add">+ Add</button>
+                      </div>
+                    </div>
+                    <label class="field">Notes
+                      <textarea placeholder="Optional unit note"></textarea>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="b-line" hidden>
+            <div class="quiet-panel">
+              <h4>Line details</h4>
+              <p style="margin:0;font-size:0.82rem;color:oklch(42% 0.025 250)">Full title, SKU, location, price, condition: demoted out of the processing surface.</p>
+            </div>
+          </div>
+          <div class="tab-pane" id="b-timeline" hidden>
+            <div class="quiet-panel"><h4>Timeline</h4><p style="margin:0;font-size:0.82rem;color:oklch(42% 0.025 250)">Unit journeys.</p></div>
+          </div>
+          <div class="tab-pane" id="b-support" hidden>
+            <div class="quiet-panel"><h4>Support</h4><p style="margin:0;font-size:0.82rem;color:oklch(42% 0.025 250)">Notes / ticket.</p></div>
+          </div>
+        </div>
+
+        <div class="dock">
+          <span class="hint">Scan fills the open unit; expand another row to edit</span>
+          <button type="button" class="btn ghost">Add unit</button>
+          <button type="button" class="btn primary">Save unit 3</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="variant-panel" id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+      <div class="variant-meta">
+        <h2>C · Floor focus</h2>
+        <span class="pill">Best for scan throughput</span>
+        <p>Maximum Station floor density. Serial is the hero. Photos + notes sit beside it. Sibling units are a rail, not an accordion.</p>
+      </div>
+
+      <div class="bench" data-variant="c">
+        <div class="bookmark">
+          <span class="track">1Z999…32AC</span>
+          <span class="muted">Carton · Unbox</span>
+          <span class="spacer"></span>
+          <span class="chip">Line 1 of 4</span>
+        </div>
+
+        <div class="section-tabs" role="tablist" aria-label="Workspace sections C">
+          <button type="button" data-pane="c-process" aria-selected="true">Process</button>
+          <button type="button" data-pane="c-photos" aria-selected="false">Photos</button>
+          <button type="button" data-pane="c-notes" aria-selected="false">Notes</button>
+          <button type="button" data-pane="c-line" aria-selected="false">Line</button>
+        </div>
+
+        <div class="body">
+          <div class="tab-pane" id="c-process">
+            <div class="floor">
+              <div class="sibling-rail" aria-label="Units on this line">
+                <button type="button" class="sib done">U1</button>
+                <button type="button" class="sib done">U2</button>
+                <button type="button" class="sib" aria-current="true">U3</button>
+              </div>
+
+              <div class="floor-hero">
+                <div class="big-label">Active unit · 3 of 3</div>
+                <label class="field" style="text-transform:none;letter-spacing:0;font-size:0.75rem;color:oklch(42% 0.025 250)">Serial number
+                  <div class="serial-row">
+                    <input type="text" placeholder="Ready for scan…" autofocus />
+                    <button type="button" class="confirm" aria-label="Confirm">✓</button>
+                  </div>
+                </label>
+                <div class="evidence-grid">
+                  <div class="stack">
+                    <span class="field" style="display:block">Photos <span style="font-weight:500;text-transform:none">(unit)</span></span>
+                    <div class="photo-strip">
+                      <button type="button" class="thumb add">Camera</button>
+                      <div class="thumb filled">1</div>
+                    </div>
+                  </div>
+                  <label class="field">Quick note
+                    <input type="text" placeholder="Optional (or open Notes tab)" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="meta-row" style="padding:0 2px">
+                <span class="chip">Bose 251…</span>
+                <span class="chip">2/3</span>
+                <span class="chip">B</span>
+                <span class="muted" style="font-size:0.72rem;margin-left:auto">Full title on Line tab</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="c-photos" hidden>
+            <div class="quiet-panel">
+              <h4>Unit 3 photos</h4>
+              <div class="photo-strip">
+                <div class="thumb filled">front</div>
+                <button type="button" class="thumb add">+ Add</button>
+              </div>
+              <p style="margin:0;font-size:0.78rem;color:oklch(55% 0.02 250)">Per-unit gallery. Line-level carton photos stay on carton chrome.</p>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="c-notes" hidden>
+            <div class="quiet-panel">
+              <h4>Unit 3 notes</h4>
+              <textarea placeholder="Full note for this unit…"></textarea>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="c-line" hidden>
+            <div class="quiet-panel">
+              <h4>Line</h4>
+              <div class="title" style="font-size:0.9rem;font-weight:700;margin-bottom:8px">
+                Bose 251 Environmental Outdoor Speakers White Pair No Brackets Tested Excellent
+              </div>
+              <dl class="detail-list">
+                <div><dt>Location</dt><dd>3-WH</dd></div>
+                <div><dt>Price</dt><dd>$400.00</dd></div>
+                <div><dt>Condition</dt><dd>B</dd></div>
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        <div class="dock">
+          <span class="hint">Focus stays on serial; <kbd>F2</kbd> refocus; Photos/Notes tabs for depth</span>
+          <button type="button" class="btn ghost">Prev unit</button>
+          <button type="button" class="btn primary">Next unit</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      Prototype only (not wired to app code). Maps to Station Workbench
+      (<code>SectionTabsSlider</code> + terminal dock) and replaces PO-line accordion
+      body as the unit-evidence editor. Open this file in a browser to flip variants and tabs.
+    </p>
+  </div>
+
+  <script>
+    const variantTabs = [...document.querySelectorAll('.variant-nav [role="tab"]')];
+    const variantPanels = [...document.querySelectorAll('.variant-panel')];
+
+    function selectVariant(id) {
+      variantTabs.forEach((t) => {
+        const on = t.id === id;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      variantPanels.forEach((p) => {
+        p.hidden = p.getAttribute('aria-labelledby') !== id;
+      });
+    }
+
+    variantTabs.forEach((t) => {
+      t.addEventListener('click', () => selectVariant(t.id));
+    });
+
+    document.querySelectorAll('.bench').forEach((bench) => {
+      const tabs = [...bench.querySelectorAll('.section-tabs button')];
+      tabs.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const paneId = btn.getAttribute('data-pane');
+          tabs.forEach((b) => b.setAttribute('aria-selected', b === btn ? 'true' : 'false'));
+          bench.querySelectorAll('.tab-pane').forEach((pane) => {
+            pane.hidden = pane.id !== paneId;
+          });
+        });
+      });
+    });
+
+    document.querySelectorAll('#panel-b .unit-row-head').forEach((head) => {
+      head.addEventListener('click', () => {
+        const row = head.closest('.unit-row');
+        const list = row.parentElement;
+        list.querySelectorAll('.unit-row').forEach((r) => {
+          r.classList.remove('open', 'active');
+          const h = r.querySelector('.unit-row-head');
+          if (h) h.setAttribute('aria-expanded', 'false');
+        });
+        row.classList.add('open', 'active');
+        head.setAttribute('aria-expanded', 'true');
+      });
+      head.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          head.click();
+        }
+      });
+    });
+
+    document.querySelectorAll('#panel-c .sib').forEach((sib) => {
+      sib.addEventListener('click', () => {
+        sib.parentElement.querySelectorAll('.sib').forEach((s) => s.removeAttribute('aria-current'));
+        sib.setAttribute('aria-current', 'true');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -14,12 +14,15 @@ export interface TechStaff {
  * directory (filtered from active staff) and the SKU issue labels for the
  * selected favorite (or the default issue list).
  */
-export function useRepairIntakeData(favoriteSkuId?: number | null) {
+export function useRepairIntakeData(favoriteSkuId?: number | null, kioskMode = false) {
   const [techs, setTechs] = useState<TechStaff[]>([]);
-  const [loadingTechs, setLoadingTechs] = useState(true);
+  // On the headless kiosk (device principal) both fetches below hit staff-only
+  // endpoints that 401, and neither surface is shown — start settled + empty.
+  const [loadingTechs, setLoadingTechs] = useState(!kioskMode);
   const [skuIssues, setSkuIssues] = useState<string[]>([]);
 
   useEffect(() => {
+    if (kioskMode) return;
     let active = true;
     getActiveStaff()
       .then((data) => {
@@ -28,9 +31,10 @@ export function useRepairIntakeData(favoriteSkuId?: number | null) {
       .catch(() => setTechs([]))
       .finally(() => setLoadingTechs(false));
     return () => { active = false; };
-  }, []);
+  }, [kioskMode]);
 
   useEffect(() => {
+    if (kioskMode) return;
     let active = true;
     const url = favoriteSkuId
       ? `/api/repair/issues?favoriteSkuId=${favoriteSkuId}`
@@ -44,7 +48,7 @@ export function useRepairIntakeData(favoriteSkuId?: number | null) {
       })
       .catch(() => { if (active) setSkuIssues([]); });
     return () => { active = false; };
-  }, [favoriteSkuId]);
+  }, [favoriteSkuId, kioskMode]);
 
   return { techs, loadingTechs, skuIssues };
 }

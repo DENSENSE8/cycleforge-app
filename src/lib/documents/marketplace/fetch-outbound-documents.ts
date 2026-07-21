@@ -9,11 +9,8 @@ import type { OutboundDocumentType } from '@/lib/documents/types';
 import { loadOutboundOrderContext } from './order-context';
 import { ebayDocumentAdapter } from './ebay-documents';
 import { generatedDocumentAdapter } from './generated-documents';
-import {
-  amazonDocumentAdapter,
-  ecwidDocumentAdapter,
-  walmartDocumentAdapter,
-} from './platform-documents';
+import { amazonDocumentAdapter, walmartDocumentAdapter } from './platform-documents';
+import { ecwidDocumentAdapter } from './ecwid-documents';
 import type { MarketplaceDocumentAdapter } from './types';
 
 const ADAPTERS: MarketplaceDocumentAdapter[] = [

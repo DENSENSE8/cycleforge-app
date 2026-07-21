@@ -9,6 +9,14 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
+  framerPresence,
+  framerTransition,
+} from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import {
   RECEIVING_SCAN_RULE_LINE_CLASS,
   TRACKING_ADD_BTN_CLASS,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -18,7 +26,7 @@ import { IdentityLinkChip } from './IdentityLinkChip';
 import { ReceivingTicketChip } from './ReceivingTicketChip';
 import { SellerMessageChip } from './SellerMessageChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
-import { InlinePillPicker, type InlinePillOption } from './InlinePillPicker';
+import { InlinePillPicker, INLINE_PILL_LEADING, type InlinePillOption } from './InlinePillPicker';
 import { receivingPriorityRank, receivingPriorityTone } from './receiving-priority';
 import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
@@ -49,23 +57,22 @@ import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill'
  * receiving-type pickers.
  *
  * DENSITY CONTRACT: this is an operations-heavy surface — the identity facts
- * stay on ONE condensed row (chips + actions), with classify + editors sliding
- * in below on demand. Do not regroup it into stacked form sections; the
- * one-row identity anatomy is the display method. The card renders on the
- * frosted glass workspace surface (`WorkspaceCard variant="glass"`) shared by
- * the whole unbox column.
+ * stay on ONE condensed row (chips + actions). Classify pills open **inline on
+ * that same first row** (Framer Motion slide-in from the toggle); only identity
+ * editors (PO# / tracking / listing URL) slide in below. Do not regroup it into
+ * stacked form sections; the one-row identity anatomy is the display method.
+ * The card renders on the frosted glass workspace surface
+ * (`WorkspaceCard variant="glass"`) shared by the whole unbox column.
  *
  * Bar density (`density="bar"`): fills the workbench identity column (same
- * max-width + pad as line-edit cards) — exit + classify-toggle on the left,
- * listing/PO/tracking · Claim/Photos on the right (nowrap). Classify pills
- * open in a below-chrome strip (same border-t drawer family as editors) so
- * they never compete with identity chips on the nowrap row. Listing uses
- * ExternalLink + platform mark (same CopyChip anatomy as PO# / tracking).
- * Refresh · more · info live in a separate corner bookmark —
- * {@link ReceivingStationMoreDetails}.
+ * max-width + pad as line-edit cards) — exit + classify-toggle (+ open classify
+ * pills) on the left, listing/PO/tracking · Claim/Photos on the right (nowrap).
+ * Listing uses ExternalLink + platform mark (same CopyChip anatomy as PO# /
+ * tracking). Refresh · more · info live in a separate corner bookmark —
+ * {@link StationMoreDetails}.
  *
- * Card density (`density="card"`): classify pills stay inline on the wrap-
- * friendly identity row (legacy glass card body).
+ * Card density (`density="card"`): same inline classify-on-row-1 pattern on the
+ * wrap-friendly identity row (legacy glass card body).
  *
  * Layout decisions preserved from the original inline implementation:
  *  - The listing chip reads "----" (gray, no platform tone) until a URL or a
@@ -254,6 +261,10 @@ export function CartonContextCard({
   const poInputRef = useRef<HTMLInputElement>(null);
 
   const [classifyOpen, setClassifyOpen] = useState(classifyPending);
+  // Classify pills slide in on the identity row (same plane as chips) — not a
+  // second strip. Sidebar-rail presence: left-origin reveal from the toggle.
+  const classifyPresence = useMotionPresence(framerPresence.sidebarRailRow);
+  const classifyTransition = useMotionTransition(framerTransition.sidebarRailRowMount);
 
   // An unclassified unfound carton auto-expands the classify pills — this exact
   // header, expanded, IS the classify surface (no separate control). Opens the
@@ -272,7 +283,7 @@ export function CartonContextCard({
   }, [classifyPending, poEditorOpen, trackingEditorsOpen, listingEditorOpen]);
 
   // Detail editors and classify compete for attention — collapse classify when
-  // any identity editor opens so the below-chrome strip stays one job at a time.
+  // any identity editor opens so the row stays one job at a time.
   useEffect(() => {
     if (poEditorOpen || trackingEditorsOpen || listingEditorOpen) {
       setClassifyOpen(false);
@@ -518,45 +529,56 @@ export function CartonContextCard({
               </div>
             ) : null}
             </div>
-            {/* Card density: classify pills stay inline (wrap-friendly row).
-                Bar density: pills live in the below-chrome strip — never on
-                the nowrap identity row. */}
-            {showClassifyControls && classifyOpen && density === 'card' ? (
-              <>
-            {showStaffPhotoRow ? (
-              <InlinePillPicker
-                ariaLabel="Urgency"
-                options={urgencyOptions}
-                value={urgencyValue}
-                onSelect={handleUrgencySelect}
-                collapsedLabel={effectiveUrgencyLabel}
-                collapsedClass={effectiveUrgencyClass}
-                open={false}
-                onOpenChange={(o) => { if (o) setOpenPicker('urgency'); }}
-                disabled={!onPrioritySelect}
-              />
-            ) : null}
-            <InlinePillPicker
-              ariaLabel="Platform"
-              options={platformOptions}
-              value={platformValue}
-              onSelect={onPlatformSelect}
-              open={false}
-              onOpenChange={(o) => { if (o) setOpenPicker('platform'); }}
-              disabled={receivingId == null}
-              placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-            />
-            <InlinePillPicker
-              ariaLabel="Type"
-              options={typeOptions}
-              value={receivingType}
-              onSelect={onTypeSelect}
-              open={false}
-              onOpenChange={(o) => { if (o) setOpenPicker('type'); }}
-              placeholder="Type"
-            />
-              </>
-            ) : null}
+            {/* Classify pills — inline on the identity row for both densities.
+                AnimatePresence slides them in from the toggle (left origin);
+                never a second border-t strip under the chips. */}
+            <AnimatePresence initial={false}>
+              {showClassifyControls && classifyOpen ? (
+                <motion.div
+                  key="classify-pills"
+                  data-testid="carton-context-classify-pills"
+                  {...classifyPresence}
+                  transition={classifyTransition}
+                  className="flex shrink-0 items-center gap-2"
+                >
+                  {showStaffPhotoRow ? (
+                    <InlinePillPicker
+                      ariaLabel="Urgency"
+                      options={urgencyOptions}
+                      value={urgencyValue}
+                      onSelect={handleUrgencySelect}
+                      collapsedLabel={effectiveUrgencyLabel}
+                      collapsedClass={effectiveUrgencyClass}
+                      open={false}
+                      onOpenChange={(o) => { if (o) setOpenPicker('urgency'); }}
+                      disabled={!onPrioritySelect}
+                      leadingIcon={INLINE_PILL_LEADING.urgency}
+                    />
+                  ) : null}
+                  <InlinePillPicker
+                    ariaLabel="Platform"
+                    options={platformOptions}
+                    value={platformValue}
+                    onSelect={onPlatformSelect}
+                    open={false}
+                    onOpenChange={(o) => { if (o) setOpenPicker('platform'); }}
+                    disabled={receivingId == null}
+                    placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+                    leadingIcon={INLINE_PILL_LEADING.platform}
+                  />
+                  <InlinePillPicker
+                    ariaLabel="Type"
+                    options={typeOptions}
+                    value={receivingType}
+                    onSelect={onTypeSelect}
+                    open={false}
+                    onOpenChange={(o) => { if (o) setOpenPicker('type'); }}
+                    placeholder="Type"
+                    leadingIcon={INLINE_PILL_LEADING.type}
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
             </div>
 
             {/* Clusters 2–3 — identity facts · Claim/Photos (bar: right side). */}
@@ -781,6 +803,7 @@ export function CartonContextCard({
                       onSelect={handleUrgencySelect}
                       open
                       onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
+                      leadingIcon={INLINE_PILL_LEADING.urgency}
                     />
                   ) : openPicker === 'platform' ? (
                     <InlinePillPicker
@@ -791,6 +814,7 @@ export function CartonContextCard({
                       open
                       onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
                       placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+                      leadingIcon={INLINE_PILL_LEADING.platform}
                     />
                   ) : (
                     <InlinePillPicker
@@ -801,54 +825,13 @@ export function CartonContextCard({
                       open
                       onOpenChange={(o) => { if (!o) setOpenPicker(null); }}
                       placeholder="Type"
+                      leadingIcon={INLINE_PILL_LEADING.type}
                     />
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-
-          {/* Bar density: classify strip — same border-t drawer family as
-              editors; keeps the nowrap identity row free of pills. */}
-          {showClassifyControls && classifyOpen && density === 'bar' && openPicker === null ? (
-            <div
-              className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2 border-t border-border-hairline pt-1.5"
-              data-testid="carton-context-classify-strip"
-            >
-              {showStaffPhotoRow ? (
-                <InlinePillPicker
-                  ariaLabel="Urgency"
-                  options={urgencyOptions}
-                  value={urgencyValue}
-                  onSelect={handleUrgencySelect}
-                  collapsedLabel={effectiveUrgencyLabel}
-                  collapsedClass={effectiveUrgencyClass}
-                  open={false}
-                  onOpenChange={(o) => { if (o) setOpenPicker('urgency'); }}
-                  disabled={!onPrioritySelect}
-                />
-              ) : null}
-              <InlinePillPicker
-                ariaLabel="Platform"
-                options={platformOptions}
-                value={platformValue}
-                onSelect={onPlatformSelect}
-                open={false}
-                onOpenChange={(o) => { if (o) setOpenPicker('platform'); }}
-                disabled={receivingId == null}
-                placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-              />
-              <InlinePillPicker
-                ariaLabel="Type"
-                options={typeOptions}
-                value={receivingType}
-                onSelect={onTypeSelect}
-                open={false}
-                onOpenChange={(o) => { if (o) setOpenPicker('type'); }}
-                placeholder="Type"
-              />
-            </div>
-          ) : null}
 
           {/* Below-row inline editors for PO# / tracking / listing URL.
               Close + paste share one horizontal trailing cluster on the field.
@@ -1057,7 +1040,7 @@ export function CartonContextCard({
   );
 
   if (density === 'bar') {
-    // Width comes from ReceivingStationContextBar's identity Panel
+    // Width comes from StationContextBar's identity Panel
     // ({@link STATION_WORKBENCH_IDENTITY_COLUMN}).
     return <div className="w-full min-w-0 overflow-visible">{body}</div>;
   }

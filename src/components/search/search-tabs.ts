@@ -1,43 +1,21 @@
 /**
- * search-tabs — the shared category-tab vocabulary + preview grouping for the
- * one results surface (Dashboard Search + header dropdown preview).
+ * search-tabs — category group vocabulary + preview grouping for Dashboard
+ * Search results and the header dropdown preview. (No UI pill strip — groups
+ * are section headers only.)
  */
 
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
-import type { SearchEntityType } from '@/lib/search/build-search-text';
 
-export interface CategoryTab {
-  id: string;
-  label: string;
-  /** DB entity type for the scoped retrieve; absent = Overview (all). */
-  db?: SearchEntityType;
-}
-
+/** Entity groups for the results surface (section headers). */
 export const CATEGORY_TABS = [
   { id: 'all', label: 'Overview' },
-  { id: 'order', label: 'Orders', db: 'ORDER' },
-  { id: 'unit', label: 'Units', db: 'SERIAL_UNIT' },
-  { id: 'receiving', label: 'Receiving', db: 'RECEIVING' },
-  { id: 'sku', label: 'SKUs', db: 'SKU' },
-  { id: 'repair', label: 'Repairs', db: 'REPAIR' },
-  { id: 'fba', label: 'FBA', db: 'FBA_SHIPMENT' },
-] as const satisfies readonly CategoryTab[];
-
-export type TabId = (typeof CATEGORY_TABS)[number]['id'];
-
-export const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-  CATEGORY_TABS.map((t) => [t.id, t.label]),
-);
-
-export function isTabId(value: string): value is TabId {
-  return CATEGORY_TABS.some((t) => t.id === value);
-}
-
-/** DB entity type for a tab id (undefined for Overview / unknown). */
-export function tabDbType(id: TabId): SearchEntityType | undefined {
-  const tab = CATEGORY_TABS.find((t) => t.id === id);
-  return tab && 'db' in tab ? tab.db : undefined;
-}
+  { id: 'order', label: 'Orders' },
+  { id: 'unit', label: 'Units' },
+  { id: 'receiving', label: 'Receiving' },
+  { id: 'sku', label: 'SKUs' },
+  { id: 'repair', label: 'Repairs' },
+  { id: 'fba', label: 'FBA' },
+] as const;
 
 // ── Header-preview grouping ─────────────────────────────────────────────────
 

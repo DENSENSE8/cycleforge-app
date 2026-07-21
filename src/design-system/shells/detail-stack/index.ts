@@ -5,4 +5,6 @@ export {
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,
+  detailStackBackdropClassName,
+  detailStackBackdropElevatedClassName,
 } from './layout';

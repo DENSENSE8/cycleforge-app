@@ -1,6 +1,6 @@
 # Search → Journey handoff (WS-JOURNEY, main lane)
 
-> **Status:** Shipped (display handoff) · 2026-07-17 · main lane (dogfood-surface fix, no migration, no new surface)
+> **Status:** DONE (display handoff shipped + acceptance run 2026-07-20) · main lane (dogfood-surface fix, no migration, no new surface)
 > **Supersedes:** the original "Search Journey Loop Gaps" 4-phase draft — interview-validated and cut down
 > (decision log below). Hop-emitter work split to
 > [`journey-hop-emitters-plan.md`](journey-hop-emitters-plan.md).
@@ -81,20 +81,32 @@ fetch renders the section empty, never 500s the pane).
 | `src/lib/connections/` `getItemJourney` façade | **Deferred** | Only if Phase-2-style mounts start duplicating fetch logic. |
 | Timeline strip inside the header dropdown; second timeline primitive; denormalized timelines in `entity_search_docs` | **Never** | Unchanged from original plan. |
 
-## Acceptance: renders-what-exists + gap ledger
+## Acceptance: renders-what-exists + gap ledger — **RUN 2026-07-20 ✅**
 
-The full staff checklist (received → tested → putaway bin → allocated → picked → packed → shipped → ticket →
-RMA round-trip) belongs to the emitters lane. **This** plan accepts on:
+**Contract chain (deterministic) — PASS.** Verified param names round-trip end-to-end across all four dims:
+`journeyHandoffHref` / `build*JourneyHref` write `dim=order|serial|unit|tracking` + matching value param →
+`OperationsHistoryView` URL-state → `operations-journey-queries` builds `/api/operations/journey?dim=…&…=…`
+→ route `entityParamForDim` → `resolveEntity`. No `dim=unit` ↔ `?unit=` drift.
 
-1. ⌘K a shipped serial → row affordance / Cmd+Enter → Trace renders every spine that has data today
-   (receive, test, pack, ship-where-emitted, carrier).
-2. ⌘K an order id → same via `dim=order`; ⌘K an outbound tracking → `dim=tracking`.
-3. Unit hit primary click → `/inventory/units` detail shows the journey section.
-4. Browser back from Trace returns to prior context.
-5. **Gap ledger:** every hop that *should* appear on the acceptance serials but doesn't gets logged as a
-   concrete item in `journey-hop-emitters-plan.md` — the acceptance run doubles as that lane's audit.
+**Coverage (live, read-only) — captured.** `scripts/probe-journey-coverage.mjs` org-wide census fed the gap
+ledger in [`journey-hop-emitters-plan.md`](journey-hop-emitters-plan.md). Headline findings:
+- Emitting today (render on Trace): receive, test, grade, label, **putaway with `bin_id` (93/93)**, allocate.
+- Confirmed gaps → emitters lane: **no `PACKED`, no `SHIPPED`** serial-anchored events (ship state lives on the
+  shipment side; 7,856 tracking rows but 0 serial ship hops).
+- Unverifiable in dev (thin data): ticket spine (0 rows, blocked on Entity Threads), SAL/RMA round-trip.
 
-Gates: unit tests (handoff helper, `dim=unit` resolver, adapter untouched-behavior), then `npm run verify`.
+**Tests added:** `src/lib/operations/journey.resolve-entity.test.ts` (5 cases — DB-free fake-`PoolClient`
+coverage of the `dim=unit` branch: id→serial anchors, allocated+shipped→order+tracking, non-numeric→null/no-query,
+unknown→null, blank→null). Auto-run by `verify`'s `src/**/*.test.ts` gate (with the server-only shim); it can't
+join `test:operations-journey`, which runs shimless.
+
+Original acceptance criteria, for the record:
+1. ⌘K shipped serial → affordance / ⌘Enter → Trace renders every spine with data today. ✅ (wiring + data verified)
+2. ⌘K order id → `dim=order`; ⌘K tracking → `dim=tracking`. ✅ (contract)
+3. Unit hit primary click → `/inventory/units` detail journey section. ✅ (`ByUnitView` mounts it)
+4. Gap ledger seeded from the run. ✅
+
+Gates: `journey.resolve-entity.test.ts` 5/5, `search-hit.test.ts` 9/9; full `npm run verify` still to run on final tree.
 
 ## Implementation notes
 

@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRailEditMode } from '@/components/sidebar/rail-edit-mode';
-import { railActivitySortMs, type SidebarRailShellProps } from './sidebar-rail-shared';
+import {
+  mergeRailUpdatePatch,
+  orderRailRowsByActivity,
+  railActivitySortMs,
+  type SidebarRailShellProps,
+} from './sidebar-rail-shared';
 import {
   parseReceivingPrependedDetail,
   receivingPrependMatchesRail,
@@ -36,6 +41,7 @@ export function useSidebarRail<TRow>({
   autoSelectFirstWhenEmpty = false,
   canAutoSelectFirst,
   pinSelectedLead = true,
+  preserveServerOrder = false,
   getId, getGroupId, getActivityAt, getReconcileId, getRowDisabled, onSelect,
 }: SidebarRailShellProps<TRow>) {
   // Render identity: the durable key the React list reconciles by. Prefer the
@@ -67,12 +73,12 @@ export function useSidebarRail<TRow>({
   });
 
   const sortRowsByActivity = useCallback((rows: TRow[]): TRow[] => {
-    if (!getActivityAt) return rows;
-    return [...rows].sort((a, b) => {
-      const d = railActivitySortMs(getActivityAt(b)) - railActivitySortMs(getActivityAt(a));
-      return d !== 0 ? d : getId(b) - getId(a);
+    return orderRailRowsByActivity(rows, {
+      preserveServerOrder,
+      getActivityAt,
+      getId,
     });
-  }, [getActivityAt, getId]);
+  }, [preserveServerOrder, getActivityAt, getId]);
 
   const [localRows, setLocalRows] = useState<TRow[] | null>(null);
   // Mirror query data. For the SAME queryKey, keep the prior rows while a refetch
@@ -153,7 +159,9 @@ export function useSidebarRail<TRow>({
         const idx = rows.findIndex((r) => getId(r) === updated.id);
         if (idx < 0) return rows;
         const existing = rows[idx];
-        const merged = { ...existing, ...updated } as TRow;
+        // Never let a Testing-style full by-id dump (or any patch that can't
+        // reproduce this feed's getActivityAt axis) blank the rail age / reorder.
+        const merged = mergeRailUpdatePatch(existing, updated as Partial<TRow>, getActivityAt);
         const prevMs = getActivityAt ? railActivitySortMs(getActivityAt(existing)) : 0;
         const nextMs = getActivityAt ? railActivitySortMs(getActivityAt(merged)) : prevMs;
         const next = rows.slice();
@@ -165,7 +173,7 @@ export function useSidebarRail<TRow>({
     };
     window.addEventListener(updateEvent, handlePatch);
     return () => window.removeEventListener(updateEvent, handlePatch);
-  }, [updateEvent, getId, sortRowsByActivity]);
+  }, [updateEvent, getId, getActivityAt, sortRowsByActivity]);
 
   // Ids removed via `deleteEvent`/`deleteGroupEvent`. These MUST outlive the
   // refetch: `app-refresh-data` invalidates the query right after a delete, but

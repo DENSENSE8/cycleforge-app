@@ -10,6 +10,7 @@ import {
 } from '@/lib/integrations/helpdesk';
 import { getIntegrationCredentials } from '@/lib/integrations/credentials';
 import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
+import { pairTicketShipmentFromEntity } from '@/lib/support/ticket-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,6 +166,17 @@ export const POST = withAuth(
           });
         } catch (linkErr) {
           console.warn('[POST /api/zendesk/tickets] linkTicket failed', linkErr);
+        }
+        try {
+          await pairTicketShipmentFromEntity({
+            orgId: ctx.organizationId,
+            ticketId: ticket.id,
+            entityType: input.entity.type,
+            entityId: input.entity.id,
+            staffId: ctx.staffId,
+          });
+        } catch (pairErr) {
+          console.warn('[POST /api/zendesk/tickets] STN pair failed', pairErr);
         }
       }
 

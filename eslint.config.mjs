@@ -292,6 +292,7 @@ export default [
       'src/lib/warranty/zendesk-link.ts',
       'src/lib/workflow/applyTransition.ts',
       'src/lib/zoho/core.ts',
+      'src/lib/ecwid/client.ts',
       'src/lib/zoho/tenant-context.ts',
       'src/lib/zoho/webhooks/resolve-org.ts',
       // Added 2026-07-10 (USAV→cycleforge SoT merge): the Wave-3 org-require

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
-import { deferInvalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { deferInvalidateReceivingFeeds, patchUnboxRailQtyByCarton } from '@/lib/queries/receiving-queries';
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyReceiveResponse } from '../../ReceiveResponsePanel';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
@@ -229,22 +229,43 @@ export function useReceiveAction(
             setResponseExpanded(true);
             playScanFeedback('reject');
           } else {
-            // Optimistic status flip: the POST response ALREADY carries the
-            // updated rows (workflow_status → UNBOXED/DONE + quantity_received),
-            // so patch every touched line into the table / accordion / rail
-            // within a frame instead of waiting on the fire-and-forget
-            // /api/receiving-lines refetch below (which can run 10–30s under
-            // load). dispatchUnboxRailLineUpdated is sort-safe for the Unboxed
-            // rail (strips last_activity_at / null unboxed_at). The row's rail
-            // SEGMENT move (Queue→Unboxed) reconciles on the deferred refetch;
-            // the visible dot + qty change is instant.
+            // Optimistic workspace + Unboxed dock: POST already carries updated
+            // qty/workflow. Narrow bus patches update accordion/selection;
+            // Unboxed is opted off that bus — allowlisted carton qty helper
+            // flips the dock within a frame. Segment membership (Queue→Unboxed)
+            // reconciles on the deferred invalidate below.
             const receivedRows = Array.isArray(markData?.receiving_lines)
               ? (markData.receiving_lines as Array<Partial<ReceivingLineRow> & { id?: unknown }>)
               : [];
+            const linesByCarton = new Map<number, Array<Partial<ReceivingLineRow> & { id: number }>>();
             for (const r of receivedRows) {
-              if (typeof r?.id === 'number' && r.id > 0) {
-                dispatchUnboxRailLineUpdated(r as Partial<ReceivingLineRow> & { id: number });
+              if (typeof r?.id !== 'number' || r.id <= 0) continue;
+              // Workspace/accordion only — never dump full hydrate onto the bus.
+              dispatchUnboxRailLineUpdated({
+                id: r.id,
+                workflow_status: r.workflow_status,
+                quantity_received: r.quantity_received,
+                quantity_expected: r.quantity_expected,
+                qa_status: r.qa_status,
+                disposition_code: r.disposition_code,
+              });
+              const rid = r.receiving_id;
+              if (typeof rid === 'number' && Number.isFinite(rid) && rid > 0) {
+                const list = linesByCarton.get(rid) ?? [];
+                list.push(r as Partial<ReceivingLineRow> & { id: number });
+                linesByCarton.set(rid, list);
               }
+            }
+            for (const [rid, lines] of linesByCarton) {
+              // Prefer the workspace line being received, else first marked line.
+              const src = lines.find((l) => l.id === row.id) ?? lines[0];
+              if (!src) continue;
+              patchUnboxRailQtyByCarton(queryClient, rid, {
+                quantity_received:
+                  typeof src.quantity_received === 'number' ? src.quantity_received : undefined,
+                quantity_expected: src.quantity_expected,
+                workflow_status: src.workflow_status ?? null,
+              });
             }
 
             // Reuse the panel's verdict taxonomy: emerald = a genuine success
@@ -327,12 +348,10 @@ export function useReceiveAction(
           deferInvalidateReceivingFeeds(queryClient);
           window.dispatchEvent(new CustomEvent('app-refresh-data'));
 
-          // Fire-and-forget row refresh. The /api/receiving-lines query can run
-          // 10–30s under load; awaiting it inline used to pin the loading state
-          // for the full statement_timeout window even when the receive itself
-          // had already succeeded. The receiving-logs realtime channel and the
-          // app-refresh-data event above reconcile the row independently if
-          // this is slow.
+          // Fire-and-forget workspace reconcile. Prefer narrow patches — a full
+          // by-id/by-carton GET row must not ride `receiving-line-updated` onto
+          // mode docks (Unboxed / Testing opted out; Triage still listens).
+          // Deferred invalidate + realtime channel cover dock membership.
           if (markRes.ok) {
             void (async () => {
               try {
@@ -343,7 +362,17 @@ export function useReceiveAction(
                 const lineData = await linesRes.json();
                 const rows = Array.isArray(lineData?.receiving_lines) ? lineData.receiving_lines : [];
                 for (const r of rows) {
-                  dispatchLineUpdated(r as ReceivingLineRow);
+                  if (typeof r?.id !== 'number' || r.id <= 0) continue;
+                  const line = r as ReceivingLineRow;
+                  dispatchLineUpdated({
+                    id: line.id,
+                    serials: line.serials ?? [],
+                    workflow_status: line.workflow_status,
+                    quantity_received: line.quantity_received,
+                    quantity_expected: line.quantity_expected,
+                    qa_status: line.qa_status,
+                    disposition_code: line.disposition_code,
+                  });
                 }
               } catch {
                 /* table may still reflect partial state — realtime channel reconciles */

@@ -26,6 +26,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-JOURNEY | `search-journey-handoff-plan.md` (main: ⌘K → Trace handoff + dim=unit + units journey mount), `journey-hop-emitters-plan.md` (parked, own lane: bin/ship/ticket/RMA hop completeness) |
 | WS-LOGIN | `org-login-gate-EXECUTION-PROMPT.md` |
 | WS-ONB | `onboarding-foundational-plan.md` |
+| WS-PHOTO | **`photo-evidence-chain-INDEX.md`** (hub) · `photo-evidence-stage-sot-plan.md` · `photo-evidence-station-mode-capture-plan.md` · `photo-evidence-library-identity-plan.md` · `photo-evidence-journey-timeline-plan.md` · `photo-evidence-policy-claims-insurance-plan.md` · **`photo-evidence-ultraco-EXECUTION-PROMPT.md`** (Fable 5 Ultraco fan-out) — station-staged carton/item photo insurance + library/journey |
 | WS-POLY | `schema-wide-polymorphic-refactor-plan.md`, `polymorphic-tables-database-refactor-plan.md`, `polymorphic-receiving-carton-EXECUTION-PROMPT.md` |
 | WS-REVIEW | `packer-review-station-plan.md` (packer photo bridge · guided slip/box capture · `pack_verification_events` · `/review?mode=packer` · EOD box counting) |
 | WS-ROI | `highest-roi-ops-ui-execution-plan.md` |

@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Barcode, Package, Wrench, Activity } from '@/components/Icons';
 import type { DashboardData } from '@/features/operations/types';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
+import { cn } from '@/utils/_cn';
 
 interface LiveFeedCardProps {
   feed: DashboardData['activityFeed'] | undefined;
@@ -85,7 +88,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
         </div>
       </div>
 
-      <div className="bg-surface-card rounded-[28px] shadow-[0_4px_24px_rgba(161,140,90,0.06)] p-3 sm:p-4">
+      <div className={cn(MONITOR_SECTION_CARD_CLASS, 'p-3 sm:p-4')}>
         {isLoading && rows.length === 0 ? (
           <ul className="divide-y divide-border-soft">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -111,11 +114,10 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                 return (
                   <motion.li
                     key={row.id}
-                    layout
-                    initial={{ opacity: 0, x: -8, height: 0 }}
-                    animate={{ opacity: 1, x: 0, height: 'auto' }}
-                    exit={{ opacity: 0, x: 8, height: 0 }}
-                    transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: motionBezier.easeOut }}
                     className="flex items-center gap-3 px-3 py-3"
                   >
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${ring} ${text}`}>

@@ -181,8 +181,21 @@ export function journeyHandoffHref(hit: JourneyHandoffHit): string | null {
 }
 
 /**
- * Header Enter / "See all" handoff. Order-heavy → Dashboard Search detail
- * (`openOrderId` + Search map). Cross-entity → Dashboard Search results list.
+ * Exact / only ORDER match — auto-open Search order detail from Overview or
+ * the L2 hit map. True only when the settled list is a single order hit
+ * (not "top of many"). Shared by DashboardSearchView + DashboardSearchSidebar.
+ */
+export function shouldAutoOpenSearchOrder(
+  hits: ReadonlyArray<{ entityType: string }>,
+): boolean {
+  return hits.length === 1 && hits[0]?.entityType === 'order';
+}
+
+/**
+ * Header Enter / "See all" handoff. Order preview hit → Dashboard Search order
+ * detail. Identifier with no ORDER hit → Search results list (receiving PO /
+ * tracking / serial may match other entities — never force openOrderId, which
+ * dead-ends on "Order not found"). Cross-entity NL → results list.
  * Journey Trace is a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
  * never the Enter default.
  */
@@ -198,7 +211,6 @@ export function globalSearchHandoffHref(
   if (looksLikeIdentifier(trimmed) || orderOnly) {
     const top = orderHits[0];
     if (top) return orderSearchHref(top.id, trimmed);
-    if (looksLikeIdentifier(trimmed)) return orderSearchHref(trimmed, trimmed);
     return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}&map=search`;
   }
   return `/dashboard?mode=search&q=${encodeURIComponent(trimmed)}`;

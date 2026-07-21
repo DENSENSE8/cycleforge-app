@@ -136,6 +136,23 @@ test('mode round-trip preserves unrelated params and still resolves', () => {
   }
 });
 
+// Dashboard L2 modes wipe Search-scoped selection so Receiving/Shipping never
+// inherit openOrderId/map/q from a prior Search handoff (and Search rail opens clean).
+test('dashboard modes clear Search-scoped openOrderId/map/q', () => {
+  const page = SIDEBAR_PAGE_NAV.find((p) => p.id === 'dashboard');
+  assert.ok(page?.modes);
+  const seed = new URLSearchParams(
+    'mode=search&openOrderId=42&map=search&q=05-14897-15602&sort=scanned_newest',
+  );
+  for (const mode of page!.modes!) {
+    const { search } = applyModeTarget({ pathname: '/dashboard', params: seed }, mode.to());
+    const params = new URLSearchParams(search);
+    assert.equal(params.get('openOrderId'), null, `${mode.id} should clear openOrderId`);
+    assert.equal(params.get('map'), null, `${mode.id} should clear map`);
+    assert.equal(params.get('q'), null, `${mode.id} should clear q`);
+  }
+});
+
 // A page's bare href must resolve to one of its declared modes (its default).
 // NB: the default isn't always the leftmost mode — FBA lists plan/combine/
 // shipped but defaults to `combine`. The specific defaults are pinned in the

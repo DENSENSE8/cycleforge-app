@@ -50,14 +50,16 @@ export function TestingPoUnboxingSection({
     // entry for a carton-less real line (attach-by-line-id). Package pairing +
     // the unfound auto-match strip both need a carton, so they're omitted here.
     return (
-      <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
-        <TestingPoItemsSection
-          row={row}
-          staffId={staffId}
-          c={c}
-          embedded
-          suppressHeader={suppressItemsHeader}
-        />
+      <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+        <div className="space-y-3">
+          <TestingPoItemsSection
+            row={row}
+            staffId={staffId}
+            c={c}
+            embedded
+            suppressHeader={suppressItemsHeader}
+          />
+        </div>
       </WorkspaceCard>
     );
   }
@@ -101,8 +103,8 @@ export function TestingPoUnboxingSection({
   );
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
-      <div>
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+      <div className="space-y-3">
         <TestingPoItemsSection
           row={row}
           staffId={staffId}

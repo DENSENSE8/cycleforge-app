@@ -11,36 +11,44 @@
  *
  * Replaces the old dual mount (OutboundDocumentsPrintView pane + the 420px
  * ShippedDetailsPanel slide-over) that flickered both surfaces at once.
- * Composes the station SoTs: `StationWorkbench` (dock-exempt, like Packing),
- * `SectionTabsSlider`, and the `CartonContextCard` waist via
- * `ShippingEntityContextHeader` — never a forked identity header.
+ * Composes the station SoTs: `StationContextBar` + `StationWorkbench` +
+ * `StationTerminalDock` (Print CTA), `SectionTabsSlider`, and the
+ * `CartonContextCard` waist via `ShippingEntityContextHeader` — never a
+ * forked identity header or hand-rolled Queue/title/Print toolbar.
  */
 
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { outboundOrderByIdQuery } from '@/lib/queries/outbound-queries';
 import { StationWorkbench, buildSectionTabs } from '@/components/station/workbench';
+import { StationContextBar } from '@/components/station/entity-context';
+import { StationTerminalDock } from '@/components/station/terminal';
 import { SectionTabsSlider } from '@/design-system/components/SectionTabsSlider';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button, Panel } from '@/design-system/primitives';
-import { ChevronLeft, FileText, History, Printer } from '@/components/Icons';
+import { FileText, History, Printer } from '@/components/Icons';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import {
   printOutboundDocuments,
   type PrintableOutboundDocument,
 } from '@/lib/print/printOutboundDocuments';
 import type { OutboundDocument, OutboundDocumentsResponse } from '@/lib/documents/types';
+import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { ActiveStationOrder } from '@/hooks/station/types';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
-/** application/pdf (or unknown-but-`.pdf`-named) → <iframe>; else <img>. */
+/** application/pdf (or unknown-but-`.pdf`-named) → iframe; else raster image. */
 function isPdfDocument(doc: OutboundDocument): boolean {
   const mime = doc.data.mimeType?.toLowerCase() ?? '';
   if (mime) return mime.includes('pdf');
   return /\.pdf(\?|$)/i.test(doc.data.url);
+}
+
+function isEcwidOrder(order: ShippedOrder): boolean {
+  return (order.account_source ?? '').toLowerCase().includes('ecwid');
 }
 
 /** Thin adapter: queue row → the station entity-context shape (identity only). */
@@ -74,9 +82,11 @@ function toActiveStationOrder(order: ShippedOrder): ActiveStationOrder {
 function DocumentPreviewPane({
   title,
   doc,
+  loading,
 }: {
   title: string;
   doc: OutboundDocument | undefined;
+  loading?: boolean;
 }) {
   return (
     <Panel padding="none" elevation="none" className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -104,6 +114,13 @@ function DocumentPreviewPane({
               className="max-h-full max-w-full rounded-lg border border-border-soft bg-surface-card object-contain"
             />
           )
+        ) : loading ? (
+          <div className="flex flex-col items-center gap-2 px-6 text-center">
+            <LoadingSpinner size="md" className="text-text-soft" />
+            <p className="text-role-caption font-semibold text-text-soft">
+              Fetching packing slip…
+            </p>
+          </div>
         ) : (
           <div className="flex flex-col items-center gap-2 px-6 text-center">
             <FileText className="h-8 w-8 text-text-faint" />
@@ -126,8 +143,9 @@ interface LabelsOrderWorkspaceProps {
 }
 
 export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceProps) {
+  const queryClient = useQueryClient();
   const { data: order, isLoading, isError } = useQuery(outboundOrderByIdQuery(orderId));
-  const { data: docsData } = useQuery({
+  const { data: docsData, isFetched: docsFetched } = useQuery({
     queryKey: ['order-documents', orderId],
     queryFn: async () => {
       const res = await fetch(`/api/orders/${orderId}/documents`);
@@ -139,15 +157,67 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
   });
 
   const [activeTab, setActiveTab] = useState('print');
+  const [slipAutoFetching, setSlipAutoFetching] = useState(false);
+  const autoFetchAttempted = useRef(false);
 
   const documents = docsData?.documents ?? [];
   const label = documents.find((d) => d.documentType === 'shipping_label');
   const slip = documents.find((d) => d.documentType === 'packing_slip');
-  const printableDocs: PrintableOutboundDocument[] = [label, slip]
-    .filter((d): d is OutboundDocument => Boolean(d))
-    .map((d) => ({ id: d.id, isPdf: isPdfDocument(d) }));
+  const printableDocs = useMemo((): PrintableOutboundDocument[] => {
+    return [label, slip]
+      .filter((d): d is OutboundDocument => Boolean(d))
+      .map((d) => ({ id: d.id, isPdf: isPdfDocument(d) }));
+  }, [label, slip]);
 
   const entityOrder = useMemo(() => (order ? toActiveStationOrder(order) : null), [order]);
+
+  // Ecwid dogfood: auto-fetch packing slip when missing (not shipping labels).
+  useEffect(() => {
+    if (!order || !docsFetched || autoFetchAttempted.current) return;
+    if (!isEcwidOrder(order)) return;
+    if (slip) return;
+
+    autoFetchAttempted.current = true;
+    let cancelled = false;
+
+    void (async () => {
+      setSlipAutoFetching(true);
+      try {
+        const res = await fetch(`/api/orders/${orderId}/documents/fetch`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ types: ['packing_slip'] }),
+        });
+        if (!cancelled && res.ok) {
+          await queryClient.invalidateQueries({ queryKey: ['order-documents', orderId] });
+        }
+      } catch {
+        // Quiet fail — Documents tab still has manual Fetch; generated fallback
+        // may have stored via the orchestrator on a partial response.
+      } finally {
+        if (!cancelled) setSlipAutoFetching(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [order, docsFetched, slip, orderId, queryClient]);
+
+  const printDockVm = useMemo((): TerminalActionVm => {
+    return {
+      label: printableDocs.length === 2 ? 'Print both' : 'Print',
+      icon: <Printer className="h-5 w-5" />,
+      disabled: printableDocs.length === 0,
+      disabledReason:
+        printableDocs.length === 0
+          ? 'Attach a shipping label or packing slip first'
+          : undefined,
+      onClick: () => {
+        printOutboundDocuments(printableDocs);
+      },
+    };
+  }, [printableDocs]);
 
   const tabs = useMemo(
     () =>
@@ -159,7 +229,11 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           content: (
             <div className="grid min-h-[60vh] grid-cols-1 gap-4 pt-3 lg:grid-cols-2">
               <DocumentPreviewPane title="Shipping Label" doc={label} />
-              <DocumentPreviewPane title="Packing Slip" doc={slip} />
+              <DocumentPreviewPane
+                title="Packing Slip"
+                doc={slip}
+                loading={slipAutoFetching && !slip}
+              />
             </div>
           ),
         },
@@ -189,7 +263,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           ),
         },
       ]),
-    [label, slip, documents.length, order, orderId],
+    [label, slip, documents.length, order, orderId, slipAutoFetching],
   );
 
   if (isLoading) {
@@ -212,48 +286,31 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
   }
 
   return (
-    <StationWorkbench
-      className="flex-1"
-      scrollClassName="pb-8"
-      toolbar={
-        <div className="flex shrink-0 items-center gap-2 border-b border-border-hairline bg-surface-card inset-field">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            icon={<ChevronLeft className="h-4 w-4" />}
-            onClick={onClose}
-          >
-            Queue
-          </Button>
-          <p className="min-w-0 truncate text-role-eyebrow font-bold uppercase tracking-widest text-text-soft">
-            Label station · #{order.order_id}
-          </p>
-          <div className="min-w-0 flex-1" aria-hidden />
-          <Button
-            type="button"
-            variant="primary"
-            icon={<Printer className="h-4 w-4" />}
-            disabled={printableDocs.length === 0}
-            onClick={() => printOutboundDocuments(printableDocs)}
-          >
-            {printableDocs.length === 2 ? 'Print both' : 'Print'}
-          </Button>
-        </div>
-      }
-      entityContext={
-        entityOrder ? (
-          <ShippingEntityContextHeader activeOrder={entityOrder} onExitToList={onClose} />
-        ) : null
-      }
-      tabs={
-        <SectionTabsSlider
-          tabs={tabs}
-          value={activeTab}
-          onChange={setActiveTab}
-          ariaLabel="Label order sections"
+    <div className="relative flex h-full min-h-0 flex-col bg-surface-canvas">
+      {entityOrder ? (
+        <StationContextBar
+          identity={
+            <ShippingEntityContextHeader
+              activeOrder={entityOrder}
+              onExitToList={onClose}
+            />
+          }
         />
-      }
-    />
+      ) : null}
+      <StationWorkbench
+        ambientWash={false}
+        className="relative z-0 flex-1 bg-transparent"
+        reserveScrollClearance
+        tabs={
+          <SectionTabsSlider
+            tabs={tabs}
+            value={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="Label order sections"
+          />
+        }
+        dock={<StationTerminalDock vm={printDockVm} />}
+      />
+    </div>
   );
 }

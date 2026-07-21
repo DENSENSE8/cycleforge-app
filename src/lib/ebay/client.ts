@@ -1,7 +1,7 @@
 import { eBayApi } from 'ebay-api';
 import pool from '@/lib/db';
 import { logger } from '@/lib/observability/logger';
-import { refreshEbayAccessToken, readEbayToken, writeEbayToken } from './token-refresh';
+import { refreshEbayAccessToken } from './token-refresh';
 import { getEbayAppCreds, EBAY_PLATFORM_PREDICATE, type EbayAppCreds } from './credentials';
 import {
   ebayScopeStringForRole,
@@ -200,37 +200,20 @@ export class EbayClient {
    */
   async getValidAccessToken(): Promise<{ accessToken: string; refreshToken: string }> {
     const orgId = await this.getOrganizationId();
-    // Query database for current token using tenantQuery for GUC/RLS context
-    const result = await tenantQuery(
-      orgId,
-      `SELECT access_token, token_expires_at, refresh_token, account_role FROM ebay_accounts
-        WHERE account_name = $1 AND organization_id = $2 AND ${EBAY_PLATFORM_PREDICATE}`,
-      [this.accountName, orgId]
-    );
+    const { resolveEbayUserTokens } = await import('@/lib/ebay/credentials');
+    const tokens = await resolveEbayUserTokens(orgId, this.accountName, this.accountRole);
+    this.accountRole = tokens.accountRole;
 
-    if (!result.rows[0]) {
-      throw new Error(`eBay account ${this.accountName} not found in database`);
-    }
-
-    const { access_token, token_expires_at, refresh_token, account_role } = result.rows[0];
-    this.accountRole = normalizeEbayRole(account_role);
-
-    // Read tokens, tolerating both plaintext and encrypted-at-rest storage
-    const decryptedAccessToken = readEbayToken(access_token);
-    const decryptedRefreshToken = readEbayToken(refresh_token);
-
-    // Check if token is expired or about to expire (within 5 minutes)
-    const expiresAt = new Date(token_expires_at);
     const now = new Date();
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
-    if (expiresAt < fiveMinutesFromNow) {
+    if (tokens.tokenExpiresAt < fiveMinutesFromNow || !tokens.accessToken) {
       logger.info(`[${this.accountName}] Access token expired or expiring soon, refreshing...`);
-      const newAccessToken = await this.refreshAccessToken(decryptedRefreshToken);
-      return { accessToken: newAccessToken, refreshToken: decryptedRefreshToken };
+      const newAccessToken = await this.refreshAccessToken(tokens.refreshToken);
+      return { accessToken: newAccessToken, refreshToken: tokens.refreshToken };
     }
 
-    return { accessToken: decryptedAccessToken, refreshToken: decryptedRefreshToken };
+    return { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
   }
 
   /**
@@ -241,9 +224,6 @@ export class EbayClient {
     try {
       logger.info(`[${this.accountName}] Refreshing access token...`);
 
-      // Resolve this account's app credentials (per-org / shared env app) and
-      // refresh against the matching environment's token endpoint with the
-      // SAME role scopes granted at consent (buyer vs seller).
       const creds = await this.ensureCreds();
       const role = await this.getAccountRole();
       const { accessToken, expiresIn } = await refreshEbayAccessToken(
@@ -253,19 +233,20 @@ export class EbayClient {
         creds.environment,
         ebayScopeStringForRole(role),
       );
-      
-      const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
-      const encryptedAccessToken = writeEbayToken(accessToken);
-      const orgId = await this.getOrganizationId();
 
-      // Update database with new token using tenantQuery
-      await tenantQuery(
-        orgId,
-        `UPDATE ebay_accounts
-         SET access_token = $1, token_expires_at = $2, updated_at = NOW()
-         WHERE account_name = $3 AND organization_id = $4`,
-        [encryptedAccessToken, newExpiresAt, this.accountName, orgId]
+      const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
+      const orgId = await this.getOrganizationId();
+      const { patchEbayUserAccessToken, touchEbayAccountTokenExpiry } = await import(
+        '@/lib/ebay/credentials'
       );
+      await patchEbayUserAccessToken({
+        orgId,
+        role,
+        accountName: this.accountName,
+        accessToken,
+        expiresAt: newExpiresAt,
+      });
+      await touchEbayAccountTokenExpiry(orgId, this.accountName, newExpiresAt);
 
       logger.info(
         `[${this.accountName}] Access token refreshed successfully (role=${role}, expires in ${expiresIn}s)`,

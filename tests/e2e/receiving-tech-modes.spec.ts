@@ -21,6 +21,10 @@
 
 import { test, expect } from '@playwright/test';
 
+// Desktop workspace smoke tests — phone layouts route these pages to /m/*
+// (MOBILE_ALLOWED_PREFIXES), so the desktop chrome under test never mounts there.
+test.skip(({ browserName }) => browserName !== 'chromium', 'desktop-only');
+
 // How long to wait for the BootGate / sign-in splash to clear and the initial
 // data fetch to land. The global timeout is 60 s; this is just the per-expect
 // wait on the first always-present chrome element.
@@ -49,22 +53,32 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
     await expect(page.getByText('Application error')).toHaveCount(0);
 
-    // The unbox workbench tabs (WorkbenchChromeHeader → TabSwitch = role="tablist",
-    // pills = role="tab") expose Queue · Unboxed · Viewed in the right pane.
+    // The unbox workbench tabs (WorkbenchChromeHeader, button pills) expose
+    // History (default) · Queue · Viewed in the right pane; the Unboxed list is
+    // the SIDEBAR rail only (unbox-workspace-state.ts is the tab SoT).
     // "Viewed" is the per-staff recents feed (receiving_line_views).
-    await expect(page.getByRole('tab', { name: 'Queue' })).toBeVisible({ timeout: PANEL_TIMEOUT });
-    await expect(page.getByRole('tab', { name: 'Unboxed' })).toBeVisible({ timeout: PANEL_TIMEOUT });
-    const viewedPill = page.getByRole('tab', { name: 'Viewed' });
+    const workbench = page.locator('main');
+    await expect(workbench.getByRole('button', { name: /^Queue\b/ }).first()).toBeVisible({
+      timeout: PANEL_TIMEOUT,
+    });
+    await expect(workbench.getByRole('button', { name: /^History\b/ }).first()).toBeVisible({
+      timeout: PANEL_TIMEOUT,
+    });
+    const viewedPill = workbench.getByRole('button', { name: /^Viewed\b/ }).first();
     await expect(viewedPill).toBeVisible({ timeout: PANEL_TIMEOUT });
+
+    // The Unboxed rail lives in the sidebar (mode-scoped; see
+    // unbox-rail-order.spec.ts for its full contract).
+    await expect(aside.locator('ul[aria-label="Unboxed activity"]')).toBeAttached({
+      timeout: PANEL_TIMEOUT,
+    });
 
     // Switching to "Viewed" deep-links ?unboxview=viewed (the recents feed).
     await viewedPill.click();
     await expect(page).toHaveURL(/unboxview=viewed/, { timeout: PANEL_TIMEOUT });
 
-    // Browse-first: land on the feed; open a line via list click when rows exist.
-    // Switch back to Unboxed (default feed with most rows) then click first option.
-    await page.getByRole('tab', { name: 'Unboxed' }).click();
-    const firstRow = page.getByRole('option').first();
+    // Browse-first: open a line from the sidebar Unboxed rail when rows exist.
+    const firstRow = aside.getByRole('option').first();
     const hasRow = await firstRow
       .waitFor({ state: 'visible', timeout: PANEL_TIMEOUT })
       .then(() => true)
@@ -174,19 +188,28 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
     await expect(page.getByText('Application error')).toHaveCount(0);
 
-    // Testing mode lands on the tested-lines browse (no cold restore).
-    await expect(page.getByText('Your tested lines')).toBeVisible({ timeout: PANEL_TIMEOUT });
+    // Testing mode lands on the workbench browse (no cold restore) — the
+    // WorkbenchChromeHeader tabs Returns (default) · Pending · History
+    // (testing-workspace-state.ts is the tab SoT).
+    const workbench = page.locator('main');
+    await expect(workbench.getByRole('button', { name: /^Returns\b/ }).first()).toBeVisible({
+      timeout: PANEL_TIMEOUT,
+    });
+    await expect(workbench.getByRole('button', { name: /^History\b/ }).first()).toBeVisible({
+      timeout: PANEL_TIMEOUT,
+    });
 
-    // Try to open the first item in the testing rail.
-    const railButtons = aside.locator('button');
-    const railCount = await railButtons.count();
+    // Try to open the first item in the testing rail (real rail rows only —
+    // the aside also hosts scan-arm / nav chrome buttons that must not count).
+    const railRows = aside.locator('[data-rail-row]');
+    const railCount = await railRows.count();
 
     if (railCount === 0) {
       console.log('[testing] No testing rail items found — skipping right-pane panel assertions.');
       return;
     }
 
-    await railButtons.first().click();
+    await railRows.first().click();
 
     // The testing toolbar (LineEditToolbar mode="testing") mounts with the panel.
     const auditBtn = page.getByRole('button', { name: 'View audit log' });
@@ -200,10 +223,10 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
       page.getByRole('button', { name: 'Back to all tested lines' }),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // The CartonContextCard is shared with receiving — Platform pill should
-    // render once the TestingPanel mounts.
+    // Shared station entity-context bookmark chrome (classify toggle) —
+    // the old standalone Platform pill is retired.
     await expect(
-      page.getByRole('button', { name: /Platform/i }),
+      page.getByRole('button', { name: /Show classification|Hide classification/i }).first(),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // The Pass · Print FloatingButton — the testing terminal action.
@@ -228,7 +251,9 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     await page.goto('/test?view=testing');
 
     await expect(page.locator('#__next-error-overlay, [data-nextjs-error]')).toHaveCount(0);
-    await expect(page.getByText('Your tested lines')).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(
+      page.locator('main').getByRole('button', { name: /^Returns\b/ }).first(),
+    ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // Open the line via the same event the history list / rail use (deterministic;
     // avoids flaky clicks on virtualized rows).
@@ -244,9 +269,11 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
         .first(),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
-    // Shared CartonContextCard header — proves testing reuses receiving's card.
+    // Shared station entity-context bookmark chrome (CartonContextCard
+    // density="bar") — the classify toggle proves testing reuses receiving's
+    // condensed identity header (the old standalone Platform pill is retired).
     await expect(
-      page.getByRole('button', { name: /Platform/i }),
+      page.getByRole('button', { name: /Show classification|Hide classification/i }).first(),
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // SectionTabsSlider — unbox-style display switcher under the carton header.
@@ -255,7 +282,8 @@ test.describe('Receiving + Tech workspace mode smoke tests', () => {
     ).toBeVisible({ timeout: PANEL_TIMEOUT });
     await expect(page.getByRole('tab', { name: 'Testing' })).toBeVisible({ timeout: PANEL_TIMEOUT });
     await expect(page.getByRole('tab', { name: 'SKU Pairing' })).toBeVisible({ timeout: PANEL_TIMEOUT });
-    await expect(page.getByRole('tab', { name: 'Claim' })).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(page.getByRole('tab', { name: 'Ticket' })).toBeVisible({ timeout: PANEL_TIMEOUT });
+    await expect(page.getByRole('tab', { name: 'Timeline' })).toBeVisible({ timeout: PANEL_TIMEOUT });
 
     // The Pass · Print FloatingButton — the testing terminal action.
     await expect(

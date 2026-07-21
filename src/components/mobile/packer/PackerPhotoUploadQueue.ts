@@ -30,6 +30,12 @@ export interface PackerPhotoScope {
   orderId?: string | null;
   /** One-based clean filename suffix, e.g. ORDER123_3.jpg. */
   fileIndex?: number | null;
+  /**
+   * `photos.photo_type` for this shot — the guided Review capture threads
+   * `pack_slip` / `pack_box` (src/lib/photos/types.ts) so slip vs box bucket
+   * without a schema change. Defaults to `packer_photo` (the spam-capture path).
+   */
+  photoType?: string | null;
 }
 
 export interface UploadEntry {
@@ -175,7 +181,7 @@ async function postPhoto(
     file: blob,
     entityType: 'PACKER_LOG',
     entityId: entry.scope.packerLogId,
-    photoType: 'packer_photo',
+    photoType: entry.scope.photoType ?? 'packer_photo',
     poRef: entry.scope.orderId ?? undefined,
   });
   return { id: result.id, url: result.url };

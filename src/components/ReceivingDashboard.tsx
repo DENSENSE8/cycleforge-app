@@ -51,7 +51,8 @@ export default function ReceivingDashboard() {
   const { mode, isTriageMode, isIncomingMode, isTableOnlyMode, incomingView } =
     useReceivingDashboardMode();
 
-  const { workspace, setWorkspace, nav, setNav, scanInFlight } = useReceivingWorkspacePane();
+  const { workspace, setWorkspace, nav, setNav, scanInFlight, restorePending } =
+    useReceivingWorkspacePane();
 
   const {
     overlayLog,
@@ -61,7 +62,7 @@ export default function ReceivingDashboard() {
     incomingDetails,
     setIncomingDetails,
     enrichOverlayLog,
-  } = useReceivingDetailOverlays(isIncomingMode);
+  } = useReceivingDetailOverlays(isIncomingMode, incomingView);
 
   const {
     selectMode,
@@ -107,6 +108,7 @@ export default function ReceivingDashboard() {
         workspace={workspace}
         nav={nav}
         scanInFlight={scanInFlight}
+        restorePending={restorePending}
         staffId={staffId}
         incomingDetails={incomingDetails}
         onCloseIncoming={() => {

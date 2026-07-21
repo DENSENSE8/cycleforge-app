@@ -5,12 +5,15 @@
  * strategy, and status/event wiring); this module pulls the data half into one
  * place so a rail is now a descriptor entry, not a bespoke component.
  *
- * Six feeds, all consumed through `ReceivingFeedRail`:
- *   - unboxRecent  → Received      (unboxed ∪ new-scanned ∪ unfound, newest-received)
+ * The feeds, all consumed through `ReceivingFeedRail`:
+ *   - unboxRecent  → Unboxed       (view=unbox_opened ONLY — SQL first-open order,
+ *                                   `unbox_opened_at` age axis, preserveServerOrder)
+ *   - unboxQueue   → Door queue    (triage door-scans mirrored into Unbox; own segment)
  *   - scanned      → Queue/Prioritize (view=scanned, sort=priority, no unmatched)
  *   - viewed       → Viewed        (view=viewed, per-staff recents)
- *   - triageCombined → Triage      (scanned ∪ unfound, recency-sorted)
+ *   - triageCombined → Triage      (scanned ∪ unfound, door-scan recency)
  *   - triageUnfound  → Unfound     (unfound-queue stubs)
+ *   - triageDone     → Done        (triage_complete stubs)
  *
  * Stable identity matters: `refreshEvents` arrays and the `getActivityAt` fns are
  * module-scope so the rail shell's listener effects subscribe once (a fresh
@@ -73,6 +76,11 @@ export interface ReceivingRailFeed {
   /** false ONLY for the unbox Recent feed (strict unboxed_at order, no pin bounce). */
   pinSelectedLead?: boolean;
   /**
+   * When true, trust SQL/fetcher order — shell does not re-sort by getActivityAt.
+   * Unboxed sets this so first-open is the only axis.
+   */
+  preserveServerOrder?: boolean;
+  /**
    * First-load stagger motion for the rail shell. Unboxed uses `slide` so new
    * rows enter from the left (matches CRUD `sidebarRailRow` presence).
    * Defaults to the shell's `sidebar` (opacity + y settle) when omitted.
@@ -98,6 +106,13 @@ export interface ReceivingRailFeed {
    * the same `carton:{id}` row instead of exit+enter.
    */
   listenLineDelete?: boolean;
+  /**
+   * When false, the rail does NOT subscribe to `receiving-line-updated`.
+   * Unboxed opts out so Testing/workspace rich patches (serials, type, workflow,
+   * by-id dumps) cannot mutate age/qty/status — title renames go through
+   * `patchUnboxRailTitleByCarton` only. Default true (triage / queue / viewed).
+   */
+  acceptLineUpdateBus?: boolean;
   // OR a custom multi-source fetch (combined / unfound-queue):
   buildFetcher?: (rt: RailFetchRuntime) => () => Promise<ApiResponse>;
 }
@@ -220,15 +235,25 @@ export async function fetchUnboxOpenedRows(rt: RailFetchRuntime): Promise<Receiv
 }
 
 /**
- * Unbox-open recency for the Unboxed rail — leads with unbox_opened_at so the
- * client sort matches both the rail's time label (getActivityAt) and the server's
- * ORDER BY. MUST ignore receive-button updates (never updated_at).
+ * Unbox-open stamp for the Unboxed rail age label — first-open
+ * (`unbox_opened_at`) only. Never triage door-scan / received / created times.
+ * Sort order is owned by SQL + preserveServerOrder (this helper is not a sorter).
  */
-function scannedRecencyMs(row: ReceivingLineRow): number {
-  const at = row.unboxed_at ?? row.unbox_opened_at ?? row.scanned_at ?? row.received_at ?? row.created_at ?? null;
+export function unboxOpenedRecencyMs(row: ReceivingLineRow): number {
+  const at = row.unbox_opened_at ?? null;
   if (!at) return 0;
   const t = Date.parse(at);
   return Number.isNaN(t) ? 0 : t;
+}
+
+/**
+ * Triage / door-queue age axis — intake time only.
+ * Prefer door-scan / received; fall back to `last_activity_at` for unfound/done
+ * stubs that fold intake into that field. Never bare `created_at` or
+ * `unbox_opened_at` (those are Unbox axes).
+ */
+function triageDoorScanAt(row: ReceivingLineRow): string | null {
+  return row.scanned_at ?? row.received_at ?? row.last_activity_at ?? null;
 }
 
 /** Unfound-queue rows mapped to stub lines (reused by the unfound + combined feeds). */
@@ -296,7 +321,7 @@ export function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<
 
 /**
  * Unbox "Unboxed" feed — every carton scanned on the Unbox surface (found or
- * unfound), keyed on ops_events UNBOX_SCAN_OPENED. Newest scan first.
+ * unfound). Order is SQL first-open only — do not client-re-sort.
  */
 export function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
   return async () => {
@@ -305,31 +330,29 @@ export function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<A
       includeSerials: false,
     }).then((d) => d.receiving_lines);
 
+    // Dedup by carton while preserving SQL order. Prefer a real line over a
+    // stub; never re-order by time (server owns the first-open axis).
     const bestByCarton = new Map<number, ReceivingLineRow>();
+    const order: number[] = [];
     for (const row of opened) {
       const rid = row.receiving_id;
       if (rid == null || !Number.isFinite(Number(rid))) continue;
       const existing = bestByCarton.get(rid);
       if (!existing) {
         bestByCarton.set(rid, row);
+        order.push(rid);
         continue;
       }
       const existingIsStub = existing.id < 0;
       const nextIsStub = row.id < 0;
       if (existingIsStub && !nextIsStub) {
         bestByCarton.set(rid, row);
-        continue;
-      }
-      if (existingIsStub === nextIsStub && scannedRecencyMs(row) > scannedRecencyMs(existing)) {
-        bestByCarton.set(rid, row);
       }
     }
 
     const merged = stampCartonRailTitleContext(
       opened,
-      Array.from(bestByCarton.values())
-        .sort((a, b) => scannedRecencyMs(b) - scannedRecencyMs(a))
-        .slice(0, UNBOX_SIDEBAR_LIMIT),
+      order.map((rid) => bestByCarton.get(rid)!).slice(0, UNBOX_SIDEBAR_LIMIT),
     ).map((r) => ({
       ...r,
       // Same durable carton identity as optimistic upserts + triage combined —
@@ -380,13 +403,12 @@ const FEEDS = {
     qty: 'received',
     status: 'unbox-recent',
     buildFetcher: buildUnboxReceivedFetcher,
-    // Unboxed rail time axis = the UNBOXED milestone (receiving.unboxed_at), stamped
-    // on the first Unbox-surface scan — the same value the right-pane Overview shows
-    // as "Unboxed". unbox_opened_at is the legacy fallback (equals unboxed_at for new
-    // cartons); scan/door times only for rows that predate the stamp. Never updated_at.
-    getActivityAt: (r) =>
-      r.unboxed_at ?? r.unbox_opened_at ?? r.scanned_at ?? r.received_at ?? r.created_at ?? null,
+    // Unboxed rail time axis = first Unbox-open (`unbox_opened_at`). Stable —
+    // a re-scan opens the carton but does not rewrite this stamp / reorder.
+    getActivityAt: (r) => r.unbox_opened_at ?? null,
     pinSelectedLead: false,
+    // Server owns sort (first-open). Shell must not re-sort by getActivityAt.
+    preserveServerOrder: true,
     // First-load reveal is a left→right slide-in cascade (x: -12 → 0), matching
     // the scan-dock / CRUD `framerPresence.sidebarRailRow` entrance language. Rows
     // fade in from fully transparent (not a dim gray hold) so the slide reads as a
@@ -395,6 +417,8 @@ const FEEDS = {
     staggerRevealMotion: 'slide',
     // One row per carton — line deletes retarget the carton row in place.
     listenLineDelete: false,
+    // Mode isolation: ignore shared line-update bus (title via carton helper).
+    acceptLineUpdateBus: false,
     // Honors the shared `?staff=` header filter (P1-WORK-02): the server's
     // view=unbox_opened staff clause matches on the unbox actor (unbox_opened_by
     // / UNBOX_SCAN_OPENED). Absent param = ALL staff (unchanged default).
@@ -417,6 +441,7 @@ const FEEDS = {
     view: 'scanned',
     sort: 'priority',
     postFilter: notUnmatched,
+    getActivityAt: triageDoorScanAt,
     usesStaffFilter: true,
     autoSelectFirstWhenEmpty: false,
     limit: 50,
@@ -433,6 +458,7 @@ const FEEDS = {
     view: 'scanned',
     sort: 'priority',
     postFilter: notUnmatched,
+    getActivityAt: triageDoorScanAt,
     usesStaffFilter: true,
     autoSelectFirstWhenEmpty: true,
     limit: 50,
@@ -458,6 +484,7 @@ const FEEDS = {
     qty: 'combined',
     status: 'receiving',
     buildFetcher: buildTriageCombinedFetcher,
+    getActivityAt: triageDoorScanAt,
     usesStaffFilter: true,
     autoSelectFirstWhenEmpty: true,
     limit: 200,
@@ -470,6 +497,7 @@ const FEEDS = {
     qty: 'unfound',
     status: 'receiving',
     buildFetcher: buildUnfoundFetcher,
+    getActivityAt: triageDoorScanAt,
     autoSelectFirstWhenEmpty: true,
     limit: 200,
     refreshEvents: TRIAGE_REFRESH,
@@ -481,6 +509,7 @@ const FEEDS = {
     qty: 'unfound',
     status: 'receiving',
     buildFetcher: buildDoneFetcher,
+    getActivityAt: triageDoorScanAt,
     autoSelectFirstWhenEmpty: true,
     limit: 200,
     refreshEvents: [...TRIAGE_REFRESH, 'receiving-triage-completed'],

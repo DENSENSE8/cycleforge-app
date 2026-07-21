@@ -3,18 +3,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Barcode, History } from '@/components/Icons';
 import { SectionTabsSlider } from '@/design-system/components';
+import { StationContextBar } from '@/components/station/entity-context';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
 import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
-import { ShippingEntityContextHeader } from './ShippingEntityContextHeader';
+import {
+  ShippingEntityContextHeader,
+  ShippingOutOfStockNotice,
+} from './ShippingEntityContextHeader';
 import { ShippingSkuSerialRows } from './ShippingSkuSerialRows';
 import { ShippingCapturedUnits } from './ShippingCapturedUnits';
 import type { ShippingView } from './terminal/shipping-terminal';
 
 /**
- * Unbox-shaped shipping workspace — entity-context header
- * ({@link ShippingEntityContextHeader} → CartonContextCard SoT) +
+ * Unbox-shaped shipping workspace — sticky {@link StationContextBar} identity
+ * ({@link ShippingEntityContextHeader} → CartonContextCard density=bar) +
  * {@link SectionTabsSlider} seam + focused tab bodies (SKU↔serial pairing,
  * captured units, timeline).
  *
@@ -124,13 +128,16 @@ export function ShippingScanWorkspace({
   );
 
   return (
-    <div className="space-y-4">
-      <ShippingEntityContextHeader
-        activeOrder={activeOrder}
-        outOfStock={previewOrder?.out_of_stock}
-        onExitToList={onExit}
+    <div className="relative flex min-h-0 flex-col space-y-4">
+      <StationContextBar
+        identity={
+          <ShippingEntityContextHeader
+            activeOrder={activeOrder}
+            onExitToList={onExit}
+          />
+        }
       />
-
+      <ShippingOutOfStockNotice outOfStock={previewOrder?.out_of_stock} />
       <SectionTabsSlider
         tabs={tabs}
         value={view}

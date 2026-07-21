@@ -223,6 +223,32 @@ test('unbox_opened membership: flag ON reads the committed column only', () => {
   );
 });
 
+test('unbox_opened sort prefers first-open column over ops MAX / triage door times', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=unbox_opened')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(
+    built.list.sql,
+    /ORDER BY COALESCE\(ru\.opened_at::text, unbox_open\.unbox_opened_at::text\) DESC NULLS LAST/,
+    'ORDER BY must lead with first-open ru.opened_at (re-scan must not reorder)',
+  );
+  assert.match(
+    built.list.sql,
+    /COALESCE\(ru\.opened_at, unbox_open\.unbox_opened_at\)::text AS unbox_opened_at/,
+    'select must expose first-open as unbox_opened_at for the rail age label',
+  );
+  // The ORDER BY clause must not fall through to triage door-scan times.
+  const orderByIdx = built.list.sql.indexOf('ORDER BY COALESCE(ru.opened_at');
+  assert.ok(orderByIdx >= 0);
+  const orderByChunk = built.list.sql.slice(orderByIdx, orderByIdx + 200);
+  assert.doesNotMatch(orderByChunk, /scan_first\.scanned_at/);
+  assert.doesNotMatch(orderByChunk, /rt\.door_received_at/);
+});
+
 // ── Single-row and by-receiving-id branches ───────────────────────────────────
 
 test('single-row (?id=) SQL matches legacy', () => {

@@ -38,6 +38,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk (device-token principal; no staff session)
   /^\/api\/kiosk\/pair(?:$|\/)/,         // tablet exchanges a pairing code for a device token (code IS the capability)
   /^\/api\/kiosk\/intake(?:$|\/)/,       // device-authed intake write (gated by withKioskAuth inside the handler)
+  /^\/api\/kiosk\/repair(?:$|\/)/,       // device-authed headless repair intake (withKioskAuth; NOT the staff enroll/revoke/devices siblings)
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
   /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)

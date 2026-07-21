@@ -75,9 +75,10 @@ workflow node — check `/ops-studio` routing.
   Gmail exists.
 - Reuse the primitives: design-system `Button`, `RowMetaColumns`/`RowTitle`, CopyChip
   family, receiving display chips, **inbound carton identity header**
-  (`CartonContextCard` from `@/components/station/entity-context` — never fork a
-  second condensed listing·PO·tracking·claim row), `SidebarRailShell` + rail-edit-mode
-  for bulk select, the 40px `sidebarHeaderSearchRowClass` band for any search row.
+  (`CartonContextCard` + `StationContextBar` from `@/components/station/entity-context`
+  — never fork a second condensed listing·PO·tracking·claim row), `SidebarRailShell`
+  + rail-edit-mode for bulk select, the 40px `sidebarHeaderSearchRowClass` band for
+  any search row.
   Match `SIDEBAR_GUTTER` and the z-index token scale.
 - Variants go in `configSchema` (e.g. Checklist `check_only | check_act | check_assign`),
   not as sibling block types, unless interaction models genuinely diverge.

@@ -11,6 +11,7 @@ import {
   NOTE_INSERT_TRIGGER_BTN_ACTIVE,
   NOTE_OVERLAY_ICON,
 } from './note-composer-helpers';
+import { WORKSPACE_NESTED_OVERLAY_CORNER } from '@/design-system/components';
 
 export type NoteComposerInsertAction = {
   id: string;
@@ -28,15 +29,31 @@ export type NoteComposerInsertAction = {
  * Top-right insert control for note composers. Faint `+` at rest; hover/open
  * shows white surface + gray ring with a visible gray glyph. Menu uses the
  * house dropdownPanel motion.
+ *
+ * @param className — absolute inset override. Default is
+ *   {@link WORKSPACE_NESTED_OVERLAY_CORNER}; compact 50px Notes pins with
+ *   {@link WORKSPACE_NESTED_OVERLAY_CORNER_COMPACT}.
  */
-export function NoteComposerInsertRail({ actions }: { actions: NoteComposerInsertAction[] }) {
+export function NoteComposerInsertRail({
+  actions,
+  className,
+}: {
+  actions: NoteComposerInsertAction[];
+  className?: string;
+}) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (actions.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute right-1.5 top-1.5 z-10">
+    <div
+      className={cn(
+        'pointer-events-none absolute z-10',
+        WORKSPACE_NESTED_OVERLAY_CORNER,
+        className,
+      )}
+    >
       <div className="pointer-events-auto">
         <HoverTooltip label="Insert into note" asChild>
           {/* ds-raw-button */}

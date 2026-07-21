@@ -14,4 +14,6 @@ export {
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,
+  detailStackBackdropClassName,
+  detailStackBackdropElevatedClassName,
 } from '@/design-system/shells/detail-stack';

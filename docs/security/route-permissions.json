@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-07-18T03:17:30Z",
-  "totalRoutes": 865,
+  "generatedAt": "2026-07-21T06:53:46Z",
+  "totalRoutes": 869,
   "summary": {
-    "permissionGated": 737,
+    "permissionGated": 741,
     "authenticatedNoPermission": 45,
     "anonymousIntentional": 81,
     "serviceToService": 2,
@@ -2723,6 +2723,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/kiosk/repair/submit/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/kiosk/revoke/route.ts",
       "methods": [
         "POST"
@@ -3589,7 +3598,7 @@
         "GET"
       ],
       "gate": "withAuth",
-      "permission": "sku_stock.view",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {
@@ -3830,6 +3839,33 @@
       ],
       "gate": "withAuth",
       "permission": "operations.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/packing/verification/decide/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/packing/verification/queue/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/packing/verification/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.complete_order",
       "exemptReason": null
     },
     {

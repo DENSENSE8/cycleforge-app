@@ -77,6 +77,12 @@ export function invalidateReceivingFeeds(queryClient: QueryClient): void {
 export const UNBOX_RAIL_SEGMENT = 'received' as const;
 
 /**
+ * Testing "You / Recent" rail segment (`TestingRecentRail` query key[2]).
+ * Line-keyed (not carton) — use {@link patchTestingRailByLine}, not carton merge.
+ */
+export const TESTING_RAIL_SEGMENT = 'tested' as const;
+
+/**
  * Unbox "Queue" — triage door-scanned matched POs waiting to unbox. The ONLY
  * feed that mirrors triage found-PO scans into Unbox mode.
  */
@@ -101,6 +107,8 @@ export interface ReceivingRailRow {
   id: number;
   receiving_id?: number | null;
   client_event_id?: string;
+  /** First Unbox-open stamp — stable; preserved across hydration merges. */
+  unbox_opened_at?: string | null;
 }
 
 /** Scoped target for `receiving-lines-prepended` — prevents cross-mode rail bleed. */
@@ -490,8 +498,16 @@ function mergeRailRows(
         || (key != null && r.client_event_id === key),
     );
     if (idx >= 0) {
-      next[idx] = { ...next[idx], ...row, client_event_id: key ?? next[idx].client_event_id };
+      const merged = { ...next[idx], ...row, client_event_id: key ?? next[idx].client_event_id };
+      // First-open stamp is stable — never let a re-scan / hydration overwrite
+      // with a newer (or null) unbox_opened_at and reshuffle the Unboxed rail.
+      if (next[idx].unbox_opened_at != null) {
+        merged.unbox_opened_at = next[idx].unbox_opened_at;
+      }
+      next[idx] = merged;
     } else {
+      // New carton only — prepend so a first Unbox scan lands at the top until
+      // the authoritative refetch settles (same first-open stamp).
       next = [row, ...next];
     }
   }
@@ -517,6 +533,148 @@ export function upsertReceivingRailRows(
   rows: ReceivingRailRow[],
 ): void {
   upsertRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, rows);
+}
+
+/**
+ * Title-only rename on the Unboxed dock, keyed by carton.
+ *
+ * Unboxed does not subscribe to `receiving-line-updated` — return-serial /
+ * product-title upgrades must call this instead of dumping rich bus patches.
+ * Allowlisted fields are exactly what `receivingProductTitle` / adaptive-po
+ * read. Age (`unbox_opened_at`), qty, status, serials are never written.
+ */
+type UnboxRailTitlePatch = {
+  item_name?: string | null;
+  catalog_product_title?: string | null;
+  zoho_item_title?: string | null;
+  sku?: string | null;
+  zoho_purchaseorder_number?: string | null;
+};
+
+export function patchUnboxRailTitleByCarton(
+  queryClient: QueryClient,
+  receivingId: number,
+  title: UnboxRailTitlePatch,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  const cartonKey = receivingRailCartonKey(receivingId);
+  let existingId: number | null = null;
+  for (const [, rows] of queryClient.getQueriesData<ReceivingRailRow[]>({
+    queryKey: ['receiving-lines-table', 'rail', UNBOX_RAIL_SEGMENT],
+  })) {
+    if (!Array.isArray(rows)) continue;
+    const hit = rows.find(
+      (r) => r.receiving_id === receivingId || r.client_event_id === cartonKey,
+    );
+    if (hit) {
+      existingId = hit.id;
+      break;
+    }
+  }
+  const patch: ReceivingRailRow & UnboxRailTitlePatch = {
+    id: existingId ?? -receivingId,
+    receiving_id: receivingId,
+    client_event_id: cartonKey,
+  };
+  if ('item_name' in title) patch.item_name = title.item_name;
+  if ('catalog_product_title' in title) patch.catalog_product_title = title.catalog_product_title;
+  if ('zoho_item_title' in title) patch.zoho_item_title = title.zoho_item_title;
+  if ('sku' in title) patch.sku = title.sku;
+  if ('zoho_purchaseorder_number' in title) {
+    patch.zoho_purchaseorder_number = title.zoho_purchaseorder_number;
+  }
+  upsertReceivingRailRows(queryClient, [patch]);
+}
+
+/**
+ * Qty / workflow-only patch on the Unboxed dock, keyed by carton.
+ *
+ * Unboxed ignores `receiving-line-updated` — mark-received must call this for
+ * instant dock qty/status instead of a full-row bus dump. Age
+ * (`unbox_opened_at`), titles, and serials are never written.
+ */
+type UnboxRailQtyPatch = {
+  quantity_received?: number;
+  quantity_expected?: number | null;
+  workflow_status?: string | null;
+};
+
+export function patchUnboxRailQtyByCarton(
+  queryClient: QueryClient,
+  receivingId: number,
+  qty: UnboxRailQtyPatch,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  const cartonKey = receivingRailCartonKey(receivingId);
+  let existingId: number | null = null;
+  for (const [, rows] of queryClient.getQueriesData<ReceivingRailRow[]>({
+    queryKey: ['receiving-lines-table', 'rail', UNBOX_RAIL_SEGMENT],
+  })) {
+    if (!Array.isArray(rows)) continue;
+    const hit = rows.find(
+      (r) => r.receiving_id === receivingId || r.client_event_id === cartonKey,
+    );
+    if (hit) {
+      existingId = hit.id;
+      break;
+    }
+  }
+  const patch: ReceivingRailRow & UnboxRailQtyPatch = {
+    id: existingId ?? -receivingId,
+    receiving_id: receivingId,
+    client_event_id: cartonKey,
+  };
+  if ('quantity_received' in qty) patch.quantity_received = qty.quantity_received;
+  if ('quantity_expected' in qty) patch.quantity_expected = qty.quantity_expected;
+  if ('workflow_status' in qty) patch.workflow_status = qty.workflow_status;
+  upsertReceivingRailRows(queryClient, [patch]);
+}
+
+/**
+ * Allowlisted fields on the Testing "You / Recent" dock, keyed by **line** id.
+ *
+ * TestingRecentRail does not subscribe to `receiving-line-updated`. Verdict /
+ * qty upgrades must call this instead of dumping a by-id GET row onto the bus.
+ * Age (`tested_at` / `last_activity_at`) and serials are never written —
+ * membership reconciles via `testing-result-recorded` refresh.
+ */
+type TestingRailPatch = {
+  workflow_status?: string | null;
+  qa_status?: string | null;
+  disposition_code?: string | null;
+  tested_count?: number | null;
+  quantity_received?: number;
+  quantity_expected?: number | null;
+  item_name?: string | null;
+  sku?: string | null;
+};
+
+export function patchTestingRailByLine(
+  queryClient: QueryClient,
+  lineId: number,
+  fields: TestingRailPatch,
+): void {
+  if (!Number.isFinite(lineId) || lineId <= 0) return;
+  queryClient.setQueriesData<Array<ReceivingRailRow & TestingRailPatch>>(
+    { queryKey: ['receiving-lines-table', 'rail', TESTING_RAIL_SEGMENT] },
+    (old) => {
+      if (!Array.isArray(old)) return old;
+      const idx = old.findIndex((r) => r.id === lineId);
+      if (idx < 0) return old;
+      const next = [...old];
+      const merged: ReceivingRailRow & TestingRailPatch = { ...next[idx], id: lineId };
+      if ('workflow_status' in fields) merged.workflow_status = fields.workflow_status;
+      if ('qa_status' in fields) merged.qa_status = fields.qa_status;
+      if ('disposition_code' in fields) merged.disposition_code = fields.disposition_code;
+      if ('tested_count' in fields) merged.tested_count = fields.tested_count;
+      if ('quantity_received' in fields) merged.quantity_received = fields.quantity_received;
+      if ('quantity_expected' in fields) merged.quantity_expected = fields.quantity_expected;
+      if ('item_name' in fields) merged.item_name = fields.item_name;
+      if ('sku' in fields) merged.sku = fields.sku;
+      next[idx] = merged;
+      return next;
+    },
+  );
 }
 
 /**

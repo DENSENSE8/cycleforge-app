@@ -4,13 +4,18 @@ import {
 } from '@/components/station/ReceivingLinesTable';
 
 /**
- * Like {@link dispatchLineUpdated}, but safe for the Unboxed recent rail.
+ * Like {@link dispatchLineUpdated}, but for Unbox **workspace / accordion**
+ * patches that ride the shared `receiving-line-updated` bus.
  *
- * The by-id / PATCH refreshes the workspace fires on every line-select can't
- * always reproduce the feed's sort axis (`unboxed_at` from the carton join).
- * When those responses omit or null the stamp, merging them verbatim clobbered
- * the rail copy and re-sorted the row to the bottom on click. Strip fields
- * that must not override the rail's ordering / time label.
+ * The Unboxed sidebar dock does **not** subscribe to that bus
+ * (`acceptLineUpdateBus: false` on `unboxRecent`). Dock renames go through
+ * `patchUnboxRailTitleByCarton` (title fields only). Prefer narrow
+ * patches here (`{ id, serials }`, scan-serial `line_patch` for siblings).
+ * Never broadcast a full by-id `GET ?id=` row — that Testing hydration pattern
+ * cannot reproduce feed sort axes.
+ *
+ * This helper only strips fields that historically arrived null/wrong on Unbox
+ * PATCH responses (`last_activity_at`, null `unboxed_at`).
  */
 export function dispatchUnboxRailLineUpdated(
   row: Partial<ReceivingLineRow> & { id: number },

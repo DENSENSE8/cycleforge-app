@@ -148,3 +148,21 @@ export const GATE_HINTS: Record<GateReason, string> = {
   dark: 'Needs more light',
   'too-bright': 'Reduce glare',
 };
+
+/**
+ * Still-capture gate (single shutter, no prev frame). Motion is forced to 0 by
+ * scoring the frame against itself — live-scan motion doesn't apply to a
+ * one-shot packer slip/box photo. Plan §2c.
+ */
+export function gateStillFrame(
+  curr: ImageDataLike,
+  thresholds: GateThresholds = DEFAULT_GATE_THRESHOLDS,
+): GateResult {
+  const gray = toGray(curr);
+  const { ok, reason, metrics } = gateFrame(curr, gray, thresholds);
+  return { ok, reason, metrics };
+}
+
+/** Packer Review floor copy (sketch, kept verbatim) when a slip gate fails. */
+export const PACK_SLIP_GATE_COACHING =
+  'Ensure lighting is clear, avoid blur, and hold the slip flat.';

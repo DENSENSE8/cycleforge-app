@@ -936,8 +936,10 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
           // Newest door-scan first — the triage to-do reads like an inbox.
           ? `ORDER BY rt.door_received_at::text DESC NULLS LAST, rl.id DESC`
         : view === 'unbox_opened'
-          // Newest Unbox-surface scan first — matches the Unboxed sidebar sort.
-          ? `ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, rt.door_received_at::text, rl.created_at::text) DESC NULLS LAST, rl.id DESC`
+          // First Unbox-open wins (COALESCE-once ru.opened_at). Re-scans append
+          // ops_events but must NOT reorder the rail — ops MAX is legacy fallback
+          // only when the column is missing. Never fall through to triage door times.
+          ? `ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) DESC NULLS LAST, rl.id DESC`
         : view === 'testing'
           // Sort the "tested" feed by the SAME verdict time the rail renders
           // (tr_agg.tested_at) so the timeline reads monotonically. Ordering by
@@ -987,9 +989,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
               AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
          ) unbox_open ON TRUE`
     : '';
-  // First-class "opened for unbox" axis for the unbox rail (label + sort). Only
-  // joined for view=unbox_opened (see unboxOpenedJoin); the column is the query
-  // SoT, the ops_event the legacy fallback — same COALESCE the Overview uses.
+  // Unbox rail time axis = first-open ru.opened_at (stable). ops MAX only fills
+  // legacy rows missing the column. Only joined for view=unbox_opened.
   const unboxOpenedSelect = view === 'unbox_opened'
     ? `, COALESCE(ru.opened_at, unbox_open.unbox_opened_at)::text AS unbox_opened_at`
     : '';
@@ -1582,7 +1583,7 @@ export function buildUnboxOpenedPlaceholdersSql(
                   AND rl.organization_id = r.organization_id
              )
              ${unboxSearchSql}
-           ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text, scan_first.scanned_at::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
+           ORDER BY COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) DESC NULLS LAST,
                     r.id DESC
            LIMIT 150`,
       params: unboxSearchVals,

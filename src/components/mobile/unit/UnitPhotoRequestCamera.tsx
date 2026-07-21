@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
-import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
 
 interface UnitPhotoRequestPayload {
   serial_unit_id?: number;
@@ -69,7 +68,7 @@ export function UnitPhotoRequestCamera() {
     stationBridgeChannel,
     'unit_photo_request',
     handleRequest,
-    UNIT_SCAN_PHOTOS && !!stationBridgeChannel && staffId > 0,
+    !!stationBridgeChannel && staffId > 0,
   );
 
   return null;

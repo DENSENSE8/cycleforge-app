@@ -161,7 +161,7 @@ export function CartonUnitsRollup({
   if (!enabled || totalSerials === 0) return null;
 
   return (
-    <WorkspaceCard variant="glass" label="Units on this carton" bodyClassName="inset-field">
+    <WorkspaceCard variant="glass" label="Units on this carton" bodyDensity="nested">
       <CartonUnitsRollupBody receivingId={receivingId} activeLineId={activeLineId} />
     </WorkspaceCard>
   );

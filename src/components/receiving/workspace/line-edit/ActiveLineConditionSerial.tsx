@@ -20,7 +20,7 @@ type SerialLookupView = Pick<
  *  - Multi-qty same-product line → one selectable {@link ReceivingUnitRows} row
  *    per physical unit, each with its own condition grade + serial.
  *  - Single-qty line → one {@link ConditionPills} picker + a flat serial list.
- * RETURN-type lines additionally surface a serial-match band.
+ * When a serial lookup is active, surfaces the serial-match band (RETURN flow).
  *
  * Purely presentational: every mutation is delegated to the parent's existing
  * handlers. The `window.confirm` guards on delete are gated by the
@@ -32,7 +32,6 @@ export function ActiveLineConditionSerial({
   receivingId,
   quantityExpected,
   cond,
-  receivingType,
   serialSubmitting,
   editingSerial,
   serialLookup,
@@ -55,7 +54,6 @@ export function ActiveLineConditionSerial({
   receivingId: number | null;
   quantityExpected: number | null;
   cond: string;
-  receivingType: string;
   serialSubmitting: boolean;
   editingSerial: ActiveRowSerial | null;
   serialLookup: SerialLookupView;
@@ -88,11 +86,12 @@ export function ActiveLineConditionSerial({
   );
   const shouldConfirmRemoval = confirmSerialRemoval ?? true;
   const isMultiQty = (quantityExpected ?? 0) > 1;
-  // Surface the serial-match band whenever a lookup is active (a return detected
-  // on ANY line) or on a pre-typed RETURN line. SerialMatchResult self-hides on
-  // idle, so this is only an allocation guard — a non-return scan shows nothing.
+  // Serial-match band only when a lookup is in flight / resolved. Idle must
+  // pass `undefined` (not a null-rendering element) so SerialCard does not
+  // reserve the resultSlot's mt-3 — that ghost margin was the extra bottom
+  // padding on RETURN / return-serial accordion rows vs the PO-line SoT.
   const matchResult =
-    serialLookup.state !== 'idle' || receivingType === 'RETURN' ? (
+    serialLookup.state !== 'idle' ? (
       <SerialMatchResult
         state={serialLookup.state}
         unit={serialLookup.unit}

@@ -13,18 +13,18 @@ import {
  * Station Workbench — named anatomy for Unbox-family station displays.
  *
  * Vertical slots (top → bottom):
- *   1. toolbar       — frozen utility icon bar (optional; Unbox embeds utilities
- *                      in ReceivingStationContextBar instead)
+ *   1. toolbar       — frozen utility icon bar (optional; Unbox-family embeds
+ *                      utilities in StationContextBar / StationMoreDetails)
  *   2. entityContext — CartonContextCard (or adapter) identity row (optional;
- *                      Unbox embeds density=bar identity in the station bar)
+ *                      Unbox-family embeds density=bar identity in StationContextBar)
  *   3. tabs          — SectionTabsSlider (bar + mounted panels) OR plain body
  *   4. children      — extra scroll-body content (triage card stack, siblings)
  *   5. feedback      — inline action / receive feedback bands
  *   6. dock          — StationTerminalDock (tab-aware FloatingButton)
  *
- * Unbox station chrome (corner utilities · identity column synced to workbench
+ * Station chrome (corner utilities · identity column synced to workbench
  * body via {@link STATION_WORKBENCH_IDENTITY_COLUMN}) lives in
- * ReceivingStationContextBar above this workbench. Carton pipeline stepper
+ * StationContextBar above this workbench. Carton pipeline stepper
  * lives only in ReceivingDetailsStack.
  *
  * Overlays (photo peek, modals) compose around StationWorkbench, not inside it.

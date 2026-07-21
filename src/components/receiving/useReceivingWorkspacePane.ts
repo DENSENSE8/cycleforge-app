@@ -49,6 +49,13 @@ export interface ReceivingWorkspacePane {
   nav: NavState | null;
   setNav: React.Dispatch<React.SetStateAction<NavState | null>>;
   scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
+  /**
+   * A deep-link restore (`?openReceivingId=`) is resolving but the overlay is
+   * not open yet. Seeded synchronously from the URL so the first paint shows the
+   * workspace skeleton instead of flashing the browse feed before the async
+   * carton fetch lands.
+   */
+  restorePending: boolean;
 }
 
 export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
@@ -60,6 +67,12 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const [scanInFlight, setScanInFlight] = useState<
     { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null
   >(null);
+  // Seed from the URL on first render so a deep-link load shows the workspace
+  // skeleton immediately — no browse-feed flash before the restore resolves.
+  const [restorePending, setRestorePending] = useState<boolean>(() => {
+    const target = searchParams.get('openReceivingId');
+    return !!target && /^\d+$/.test(target);
+  });
 
   const isUnboxSurface =
     receivingSurfaceBasePath(pathname) === UNBOX_SURFACE_ROUTE;
@@ -235,20 +248,31 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       // fetch skips its dispatch and a later re-open of the same id re-fetches.
       deepLinkedKeyRef.current = null;
       deepLinkInFlightRef.current = null;
+      setRestorePending(false);
       return;
     }
     const lineIdParam = searchParams.get('lineId');
     const deepLinkKey = `${target}:${lineIdParam ?? ''}`;
-    if (ignoredOpenKeyRef.current === deepLinkKey) return;
+    if (ignoredOpenKeyRef.current === deepLinkKey) {
+      setRestorePending(false);
+      return;
+    }
     if (pendingOpenKeyRef.current === deepLinkKey) {
       // Local open already wrote this URL — skip re-fetch; clear pending once URL matches.
       deepLinkedKeyRef.current = deepLinkKey;
       pendingOpenKeyRef.current = null;
+      setRestorePending(false);
       return;
     }
-    if (deepLinkedKeyRef.current === deepLinkKey) return; // already restored
+    if (deepLinkedKeyRef.current === deepLinkKey) {
+      setRestorePending(false);
+      return; // already restored
+    }
     if (deepLinkInFlightRef.current === deepLinkKey) return; // fetch already running — let it finish
     deepLinkInFlightRef.current = deepLinkKey;
+    // A fresh restore is resolving — hold the skeleton (covers a client-side nav
+    // into a deep link, where the seed above already elapsed).
+    setRestorePending(true);
     void (async () => {
       try {
         const res = await fetch(
@@ -264,6 +288,21 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         // or a switch to another carton clears/overwrites the in-flight ref.
         if (deepLinkInFlightRef.current === deepLinkKey && pick) {
           deepLinkedKeyRef.current = deepLinkKey;
+          // Open the overlay directly from this hook's own state. Routing the
+          // restore through `dispatchSelectLine` alone is a mount-order race: the
+          // sidebar's `receiving-select-line` listener lives in a Suspense-mounted
+          // sibling that can commit AFTER this fetch resolves, dropping the
+          // one-shot event so refresh lands on the browse feed. `handleOpen`
+          // (below) is registered in THIS hook, so setting the workspace here is
+          // race-free; `dispatchSelectLine` still fires so the sidebar rail
+          // highlights the restored line once it mounts.
+          const restored: WorkspaceState = {
+            row: pick,
+            accordionBootstrap: 'default',
+            scanDriven: false,
+          };
+          workspaceRef.current = restored;
+          setWorkspace(restored);
           dispatchSelectLine(pick);
         }
       } catch {
@@ -271,6 +310,9 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       } finally {
         if (deepLinkInFlightRef.current === deepLinkKey) {
           deepLinkInFlightRef.current = null;
+          // Restore resolved (opened, or missed with no carton) — drop the
+          // skeleton so a genuine miss falls back to the browse feed.
+          setRestorePending(false);
         }
       }
     })();
@@ -340,5 +382,5 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     return () => window.removeEventListener('receiving-entry-deleted', handler);
   }, [recoverRightPane]);
 
-  return { workspace, setWorkspace, nav, setNav, scanInFlight };
+  return { workspace, setWorkspace, nav, setNav, scanInFlight, restorePending };
 }

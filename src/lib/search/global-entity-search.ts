@@ -131,7 +131,8 @@ export async function searchFba(orgId: OrgId, query: string, limit: number): Pro
 export async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // Join shipping_tracking_numbers so search matches rows reachable only via
   // receiving.shipment_id (post inbound-tracking unification). Falls back to
-  // hyphens/spaces carriers sometimes include.
+  // hyphens/spaces carriers sometimes include. Also match Zoho PO /
+  // source_order_id — operators often paste those as the "order #" search.
   // Tenant scope: receiving carries organization_id, so filter on it. The
   // shipping_tracking_numbers join (`stn`) has NO organization_id column yet
   // (NEEDS-COL) — it is reachable only through this org-scoped receiving row,
@@ -141,14 +142,19 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
     orgId,
     `SELECT r.id,
             stn.tracking_number_raw AS tracking_number,
-            COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)             AS carrier
+            COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)             AS carrier,
+            r.zoho_purchaseorder_number AS po_number,
+            r.source_order_id
      FROM receiving_carton r
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
      WHERE r.organization_id = $5
        AND (stn.tracking_number_raw ILIKE $1
-        OR stn.tracking_number_raw     ILIKE $1
         OR stn.tracking_number_normalized = $3
-        OR CAST(r.id AS TEXT) = $2)
+        OR CAST(r.id AS TEXT) = $2
+        OR r.zoho_purchaseorder_number ILIKE $1
+        OR r.source_order_id ILIKE $1
+        OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.zoho_purchaseorder_number, '')), '[^A-Z0-9]', '', 'g') = $3)
+        OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
      ORDER BY r.id DESC
      LIMIT $4`,
     [`%${query}%`, query, normalizedQuery, limit, orgId],
@@ -157,8 +163,8 @@ export async function searchReceiving(orgId: OrgId, query: string, limit: number
   return result.rows.map((row: any) => ({
     id: Number(row.id),
     entityType: 'receiving' as const,
-    title: String(row.tracking_number || `Receiving #${row.id}`),
-    subtitle: String(row.carrier || 'Unknown carrier'),
+    title: String(row.tracking_number || row.po_number || `Receiving #${row.id}`),
+    subtitle: [row.carrier, row.po_number || row.source_order_id].filter(Boolean).join(' · ') || 'Unknown carrier',
     href: `/unbox?openReceivingId=${row.id}`,
     matchField: 'receiving',
   }));

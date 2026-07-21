@@ -480,9 +480,13 @@ export function SerialCard({
         </p>
       ) : null}
 
-      {/* Inline slot directly under the scan field — the RETURN flow renders
-          its serial-match result here (found / not found). */}
-      {resultSlot ? <div className="mt-3">{resultSlot}</div> : null}
+      {/* Inline slot under the scan field — RETURN serial-match (found /
+          not-found). `empty:hidden` drops the mt-3 when the slot renders null
+          (idle SerialMatchResult), so RETURN rows keep the same tight bottom
+          padding as a normal PO-line SoT accordion body. */}
+      {resultSlot ? (
+        <div className="mt-3 empty:hidden">{resultSlot}</div>
+      ) : null}
 
       {/* Saved serials — rendered BELOW the input as emerald copy-chips.
           Each chip exposes Edit / Delete in a hover menu below the chip;

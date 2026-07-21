@@ -15,9 +15,7 @@
  * EbayClient does — the Neon DB — when it isn't supplied via env.
  *
  * Token resolution per account: EBAY_REFRESH_TOKEN_<ACCT> env var first, else the
- * ebay_accounts.refresh_token column. Plaintext tokens (eBay "v^..." format) are
- * used directly; encrypted envelopes are decrypted via the repo's
- * decryptIntegrationPayload (needs INTEGRATION_KMS_KEY).
+ * organization_integrations vault row (provider=ebay, scope=seller:{acct}).
  *
  * Usage:
  *   npx tsx scripts/e2e-ebay-orders.ts [envFile] [limit]
@@ -37,7 +35,7 @@ loadEnv({ path: ENV_FILE });
 
 const ACCOUNTS = ['USAV', 'DRAGON', 'MEKONG'] as const;
 
-/** Read active eBay accounts' refresh tokens from the DB (read-only). */
+/** Read active eBay accounts' refresh tokens from the vault (read-only). */
 async function loadDbRefreshTokens(): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const url =
@@ -48,24 +46,31 @@ async function loadDbRefreshTokens(): Promise<Map<string, string>> {
   await client.connect();
   try {
     const res = await client.query(
-      `SELECT account_name, refresh_token FROM ebay_accounts
-       WHERE platform = 'EBAY' AND is_active = true`,
+      `SELECT ea.account_name, ea.account_role, oi.payload_encrypted
+         FROM ebay_accounts ea
+         JOIN organization_integrations oi
+           ON oi.organization_id = ea.organization_id
+          AND oi.provider = 'ebay'
+          AND oi.status = 'active'
+          AND oi.scope = CASE
+                WHEN lower(COALESCE(ea.account_role, 'seller')) = 'buyer'
+                  THEN 'buyer:' || ea.account_name
+                ELSE 'seller:' || ea.account_name
+              END
+        WHERE (ea.platform = 'EBAY' OR ea.platform IS NULL)
+          AND ea.is_active = true`,
     );
     for (const row of res.rows) {
       const acct = String(row.account_name || '').trim();
-      const raw = String(row.refresh_token || '').trim();
+      const raw = String(row.payload_encrypted || '').trim();
       if (!acct || !raw) continue;
-      // eBay plaintext refresh tokens start with "v^"; anything else is an
-      // encrypted envelope we decrypt with the same helper the client uses.
-      let token = raw;
-      if (!raw.startsWith('v^')) {
-        try {
-          token = decryptIntegrationPayload<string>(raw);
-        } catch {
-          continue; // can't decrypt (no/invalid INTEGRATION_KMS_KEY) — leave unset
-        }
+      try {
+        const payload = decryptIntegrationPayload<{ refreshToken?: string }>(raw);
+        const token = String(payload?.refreshToken || '').trim();
+        if (token) out.set(acct.toUpperCase(), token);
+      } catch {
+        continue;
       }
-      out.set(acct.toUpperCase(), token);
     }
   } finally {
     await client.end();

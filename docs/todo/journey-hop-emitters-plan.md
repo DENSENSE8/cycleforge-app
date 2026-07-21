@@ -15,22 +15,27 @@ handoff would have blocked a 4-file UI win on a multi-domain backend audit.
 
 ## Scope (from the original plan's Phase 3)
 
-### 1. Bin / putaway — audit reality FIRST
+### 1. Bin / putaway — audit reality FIRST → **ANSWERED: data present, display missing**
 
 Open question flagged in review: **does USAV actually record putaway with a bin today**, or is
-`bin_id`-on-`PUTAWAY` net-new lifecycle modeling? First task is an audit of putaway/post-test/post-pack
-placement writers. Then, for the paths that exist:
+`bin_id`-on-`PUTAWAY` net-new lifecycle modeling? **Audited 2026-07-20** (`scripts/probe-journey-coverage.mjs`,
+read-only): `PUTAWAY` = 93 rows org-wide, **93/93 carry `bin_id`**. Putaway-with-bin is real and consistent —
+**not** net-new modeling. So this task collapses to a **display-only** change:
 
-- Ensure `MOVED` / `PUTAWAY` / `PACKED` events carry `bin_id`.
+- ~~Ensure `PUTAWAY` events carry `bin_id`~~ — already true (93/93). No writer work.
 - Extend `inventoryEventsToTimeline` (adapter, per the timeline SoT — never the view) to emit a bin `ref` +
-  href → `/inventory/location/[barcode]`.
-- If bins are aspirational: cut bin from this plan's acceptance; leave the adapter ready.
+  href → `/inventory/location/[barcode]` from the existing `bin_id` column.
+- `MOVED`/`PACKED` don't exist as event types yet (see §2) — bin display is `PUTAWAY`-anchored for now.
 
-### 2. Ship / scan-out consistency
+### 2. Ship / scan-out consistency → **CONFIRMED GAP (org-wide, high confidence)**
 
-Audit pack→outbound writers so every scan-out emits inventory `SHIPPED` and/or SAL `SHIP_CONFIRM`
-consistently (the "ship gap" in staff/04-item-journey). All status changes via `transition()` /
-`applyTransition` — no raw writers.
+**Audited 2026-07-20:** zero `SHIPPED` inventory_events exist org-wide, and zero `PACKED` — despite **7,856**
+`shipping_tracking_numbers` rows. Ship/pack state is tracked on the shipment/order, **not** serial-anchored in
+`inventory_events`, so a shipped serial's Trace shows receive/test/label/putaway but **stops before pack and
+ship**. This is the "ship gap" from staff/04-item-journey, now confirmed at the data layer.
+
+- Emit a serial-anchored `SHIPPED` (and/or SAL `SHIP_CONFIRM`) at scan-out, and `PACKED` at pack-confirm.
+- All status changes via `transition()` / `applyTransition` — no raw writers.
 
 ### 3. Ticket spine on SERIAL_UNIT
 
@@ -42,11 +47,38 @@ ticket chips. **Blocked on** Entity Threads / `ticket_links` migrations applying
 Verify `RETURNED` + subsequent `RECEIVED` merge into one Trace with `countRoundTrips`; fix provenance when a
 return creates a new receiving line (second carton link). Round-trip badge already renders on Trace.
 
-## Gap ledger (filled by the handoff plan's acceptance run)
+## Gap ledger — filled by acceptance run 2026-07-20
 
-| # | Serial / order tested | Missing hop | Suspected writer | Status |
+**Method.** Handoff chain verified end-to-end as a deterministic contract check (helper URL → URL-state →
+`operations-journey-queries` → `/api/operations/journey` → `resolveEntity`): param names match across all four
+dims (`dim`/`order`/`serial`/`unit`/`tracking`). Live hop-completeness gathered read-only via
+`scripts/probe-journey-coverage.mjs` against the dev dogfood DB (org-wide `inventory_events` census; **1** fully
+shipped+allocated serial exists in dev, so per-unit sampling is thin — org-wide type counts are the real signal).
+
+**Org-wide `inventory_events` census (serial-anchored lifecycle hops):**
+
+| Hop / event_type | Rows | Distinct units | bin_id set | Emitter verdict |
 |---|---|---|---|---|
-| — | _(populate during handoff acceptance)_ | | | |
+| `RECEIVED` | 3920 | 921 | 0 | ✅ emits (bin N/A at receive) |
+| `TEST_START` / `TEST_PASS` / `TEST_FAIL` | 5 / 171 / 25 | ~168 | 0 | ✅ emits |
+| `GRADED` | 33 | 30 | 0 | ✅ emits |
+| `LABELED` | 235 | 232 | 0 | ✅ emits |
+| `PUTAWAY` | 93 | 91 | **93 (100%)** | ✅ emits **with bin** → display adapter is all that's missing |
+| `ALLOCATED` | 1 | 1 | 0 | ✅ emits (barely exercised in dev) |
+| **`PACKED`** | **0** | **0** | — | ❌ **GAP** — no serial-anchored pack hop |
+| **`SHIPPED`** | **0** | **0** | — | ❌ **GAP** — no serial-anchored ship hop (7,856 tracking rows exist on shipment side) |
+
+**Ledger items for this lane:**
+
+| # | Finding | Evidence | Fix owner (this lane) | Status |
+|---|---|---|---|---|
+| 1 | Pack hop absent from serial Trace | 0 `PACKED` events org-wide | §2 — emit `PACKED` at pack-confirm | open |
+| 2 | Ship hop absent from serial Trace | 0 `SHIPPED` events; 7,856 tracking rows | §2 — emit `SHIPPED`/`SHIP_CONFIRM` at scan-out | open |
+| 3 | Bin never shown though data exists | `PUTAWAY` 93/93 with `bin_id` | §1 — bin `ref`/href in `inventoryEventsToTimeline` (display only) | open |
+| 4 | Ticket spine unverifiable in dev | 0 `ticket_links(SERIAL_UNIT)` | §3 — blocked on Entity Threads migrations | blocked |
+| 5 | SAL / RMA round-trip unverifiable in dev | SAL census empty; 1 allocated unit | §4 — re-audit once dev has a returned+re-received unit | deferred |
+
+**Not gaps (verified emitting):** receive, test (start/pass/fail), grade, label, putaway, allocate.
 
 ## Acceptance (this lane)
 

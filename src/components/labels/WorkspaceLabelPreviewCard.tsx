@@ -7,7 +7,12 @@
  */
 
 import { useState, type ReactNode } from 'react';
-import { WorkspaceCard } from '@/design-system/components';
+import {
+  WorkspaceCard,
+  WORKSPACE_NESTED_FIELD,
+  WORKSPACE_NESTED_FIELD_PAD,
+  WORKSPACE_NESTED_OVERLAY_CORNER,
+} from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
@@ -63,8 +68,10 @@ export function WorkspaceLabelPreviewCard({
 
   return (
     <>
-      <WorkspaceCard variant="glass">
-        <div className="group relative rounded border border-border-soft bg-surface-card px-2 py-2 shadow-sm">
+      {/* Nested glass + rounded-xl inset — same concentric corners as Notes.
+          Face stays sticker density (print-faithful); only the frame matches. */}
+      <WorkspaceCard variant="glass" bodyDensity="nested">
+        <div className={`group relative ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`}>
           <LabelFacePreview model={face} embedded />
           {typeSelect ? (
             <div className="pointer-events-none absolute left-1.5 top-1.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
@@ -74,7 +81,7 @@ export function WorkspaceLabelPreviewCard({
             </div>
           ) : null}
           {canEdit ? (
-            <div className="pointer-events-none absolute right-1.5 top-1.5 w-[104px] opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+            <div className={`pointer-events-none absolute ${WORKSPACE_NESTED_OVERLAY_CORNER} w-[104px] opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100`}>
               <Button
                 variant="secondary"
                 size="sm"

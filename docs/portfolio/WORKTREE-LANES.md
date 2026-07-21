@@ -29,7 +29,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `fba` | 3020 | `studio` | 3070 |
 | `glass` | 3030 | `unbox` | 3080 |
 | `home` | 3040 | `warehouse` | 3090 |
-| `pending-grid` | 3100 | | |
+| `pending-grid` | 3100 | `photo` | 3110 |
 | | | switcher panel | 3099 |
 
 ## Lanes (target registry)
@@ -46,6 +46,7 @@ so `pnpm test:e2e` in a lane hits that lane's server (override via `PW_BASE_URL`
 | `ai-chat` | `topic/ai-chat` | WS-AI | AI chat (parked) |
 | `home` | `topic/home` | WS-HOME | My Day / home (parked) |
 | `pending-grid` | `topic/pending-grid` | WS-PENDING-GRID | To-Ship Pending full spreadsheet grid — **developed in `main`** until the uncommitted predecessor base is committed (no physical worktree yet) |
+| `photo` | `topic/photo` | WS-PHOTO | Photo evidence chain — station-staged capture (arrival → unbox → test → pack), library identity, journey media, photo policy. Plan hub: `docs/todo/photo-evidence-chain-INDEX.md` |
 
 ## Create another lane
 

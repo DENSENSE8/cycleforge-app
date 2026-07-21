@@ -34,6 +34,7 @@ import { getOrganization } from '@/lib/tenancy/organizations';
 import { getNasStorageTarget } from '@/lib/tenancy/settings';
 import { upsertClaimSellerMessage } from '@/lib/receiving-claim-seller-message';
 import { claimTicketLinkEntity } from '@/lib/support/tickets';
+import { pairTicketShipmentFromReceiving } from '@/lib/support/ticket-link';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 
@@ -329,11 +330,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           console.warn('[zendesk-claim] photo archive failed', archiveErr);
         }
 
-        // Write the ticket→entity link row (one primary entity per ticket —
-        // UNIQUE on org + zendesk_ticket_id). Prefer RECEIVING_LINE / RECEIVING
-        // when the carton is open; a separate SHIPMENT write after this would
-        // always DO NOTHING. Pre-intake SHIPMENT links promote to RECEIVING on
-        // first dock scan (promoteShipmentTicketToReceiving).
+        // Write the ticket→entity link row. Prefer RECEIVING_LINE / RECEIVING as
+        // the primary anchor when the carton is open; also reference the carton's
+        // STN (non-primary) so tracking↔ticket pairing is durable. Pre-intake
+        // SHIPMENT primaries promote to RECEIVING on first dock scan
+        // (promoteShipmentTicketToReceiving).
         try {
           await linkTicket({
             orgId: ctx.organizationId,
@@ -344,6 +345,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           });
         } catch (linkErr) {
           console.warn('[POST /api/receiving/zendesk-claim] ticket link backfill failed', linkErr);
+        }
+
+        try {
+          await pairTicketShipmentFromReceiving({
+            orgId: ctx.organizationId,
+            ticketId: ticket.id,
+            receivingId,
+            staffId: ctx.staffId,
+          });
+        } catch (pairErr) {
+          console.warn('[POST /api/receiving/zendesk-claim] STN pair failed', pairErr);
         }
 
         // Persist the human-visible ticket # onto the record so it shows back on

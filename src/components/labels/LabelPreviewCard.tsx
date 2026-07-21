@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import {
+  WorkspaceCard,
+  WORKSPACE_NESTED_FIELD,
+  WORKSPACE_NESTED_FIELD_PAD,
+} from '@/design-system/components';
 import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
@@ -60,6 +65,9 @@ interface LabelPreviewCardProps {
  * fields onto the common {@link LabelFaceModel} via `unitLabelToFace` — the exact
  * model `printProductLabel` prints — so the preview and the sticker can't drift.
  * Pass `onApplyAndPrint` to surface the Edit-label pencil.
+ *
+ * Shell = DS {@link WorkspaceCard} + {@link WORKSPACE_NESTED_FIELD}* (solid
+ * Products / MultiSku surface — not the glass overview worksheet).
  */
 export function LabelPreviewCard({
   sku,
@@ -88,28 +96,27 @@ export function LabelPreviewCard({
   const canEdit = Boolean(onEdit) || builtInEditor;
 
   return (
-    <section className="rounded-2xl bg-surface-card p-5 shadow-sm ring-1 ring-border-soft/60">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        {headerLeft ?? (
-          <h3 className="text-left text-xs font-semibold uppercase tracking-[0.14em] text-text-soft">
-            {heading}
-          </h3>
-        )}
-        {canEdit ? (
-          <IconButton
-            icon={<Pencil className="h-4 w-4" />}
-            ariaLabel="Edit label"
-            title="Edit label — custom print"
-            tone="accent"
-            onClick={() => (onEdit ? onEdit() : setEditorOpen(true))}
-          />
-        ) : null}
-      </div>
-      {/* Themed frame; the label face inside is theme-aware (dark card + inverted
-          barcode in dark mode). Print output stays black-on-white. */}
-      <div className="rounded border border-border-soft bg-surface-card px-2 py-2 shadow-sm">
-        <LabelFacePreview model={face} embedded />
-      </div>
+    <>
+      <WorkspaceCard
+        label={headerLeft ?? heading}
+        actions={
+          canEdit ? (
+            <IconButton
+              icon={<Pencil className="h-4 w-4" />}
+              ariaLabel="Edit label"
+              title="Edit label — custom print"
+              tone="accent"
+              onClick={() => (onEdit ? onEdit() : setEditorOpen(true))}
+            />
+          ) : undefined
+        }
+      >
+        {/* Themed frame; the label face inside is theme-aware (dark card + inverted
+            barcode in dark mode). Print output stays black-on-white. */}
+        <div className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`}>
+          <LabelFacePreview model={face} embedded />
+        </div>
+      </WorkspaceCard>
 
       {builtInEditor && !onEdit && onApplyAndPrint ? (
         <ProductLabelEditPopover
@@ -125,6 +132,6 @@ export function LabelPreviewCard({
           onClose={() => setEditorOpen(false)}
         />
       ) : null}
-    </section>
+    </>
   );
 }

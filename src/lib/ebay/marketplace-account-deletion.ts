@@ -318,7 +318,7 @@ export async function purgeEbayUserData(opts: {
     const accountName = await deleteEbayAccount(orgId, row.id);
     if (!accountName) continue;
 
-    // Best-effort catalog deactivate — connect mirrors ebay_accounts → platform_accounts by slug.
+    // Best-effort catalog deactivate — connect mirrors vault scope onto platform_accounts.
     try {
       await tenantQuery(
         orgId,
@@ -329,7 +329,11 @@ export async function purgeEbayUserData(opts: {
             AND pa.platform_id = p.id
             AND p.organization_id = $1
             AND p.slug = 'ebay'
-            AND pa.slug = $2`,
+            AND (
+              pa.slug = $2
+              OR pa.integration_scope = ('seller:' || $2)
+              OR pa.integration_scope = ('buyer:' || $2)
+            )`,
         [orgId, accountName],
       );
     } catch {

@@ -174,4 +174,4 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
   }
   return NextResponse.json({ ok: true, order: cached.order, activity: cached.activity });
-}, { permission: 'sku_stock.view' });
+}, { permission: 'orders.view' });

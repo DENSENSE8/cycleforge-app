@@ -8,7 +8,7 @@
  * so the main pane shows Search order detail (not `/o` / shipped panel).
  */
 
-import { useCallback, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Box, Clock, Search, X } from '@/components/Icons';
 import { SidebarShell } from '@/components/layout/SidebarShell';
@@ -24,7 +24,7 @@ import { useRecentDetailStacks } from '@/hooks/useRecentDetailStacks';
 import { useStaffSearchRecents } from '@/hooks/useStaffSearchRecents';
 import { removeDetailStack, type DetailStackEntry } from '@/lib/detail-stacks/history-store';
 import { formatRelativeTime } from '@/lib/search/search-recents';
-import { orderSearchHref } from '@/lib/search/search-hit';
+import { globalSearchHandoffHref, shouldAutoOpenSearchOrder } from '@/lib/search/search-hit';
 import { DASHBOARD_SEARCH_RECENTS_SCOPE } from '@/components/dashboard/search/dashboard-search-recents';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { cn } from '@/utils/_cn';
@@ -43,12 +43,6 @@ function parseMap(raw: string | null): DashboardSearchMapMode {
 function isSelectedEntry(entry: DetailStackEntry, openOrderId: string | null): boolean {
   if (!openOrderId) return false;
   return entry.id === openOrderId || entry.label.includes(openOrderId);
-}
-
-function hitMatchesOpen(hit: AiSearchHit, openOrderId: string | null): boolean {
-  if (!openOrderId) return false;
-  if (String(hit.id) === openOrderId) return true;
-  return hit.subtitle.includes(openOrderId) || hit.title.includes(openOrderId);
 }
 
 function relativeOpenedLabel(at: number): string {
@@ -93,7 +87,9 @@ export function DashboardSearchSidebar() {
     useStaffSearchRecents({ scope: DASHBOARD_SEARCH_RECENTS_SCOPE });
 
   const { hits, searching } = useAiQuickJump(map === 'search' ? q : '', {
-    entityTypes: ['ORDER'],
+    // Unscoped: identifier queries keep the exact parent-table arm (orders +
+    // receiving PO / tracking). ORDER-only scope skipped that arm and hid
+    // Zoho PO / carton matches operators paste as "order #".
     pageContext: pathname ?? '/dashboard',
     limit: 12,
     enabled: map === 'search',
@@ -119,33 +115,38 @@ export function DashboardSearchSidebar() {
     [q, map, router],
   );
 
-  // Auto-open / canonicalize the top near-match when Search map has results
-  // and nothing is selected yet (or the path was a human order #).
+  /** Last auto-open attempt for this query — blocks notfound→clear→retry flash. */
+  const autoOpenAttemptRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    autoOpenAttemptRef.current = null;
+  }, [q]);
+
+  // Exact/only ORDER hit → open detail when nothing selected yet.
+  // Human → numeric canonicalize is owned by SearchOrderDetailView.
   useEffect(() => {
     if (map !== 'search' || searching) return;
-    const orderHits = hits.filter((h) => h.entityType === 'order');
-    if (orderHits.length === 0) return;
-
-    const matched = orderHits.find((h) => hitMatchesOpen(h, openOrderId));
-    if (matched) {
-      if (openOrderId !== String(matched.id)) {
-        openOrder(String(matched.id), true);
-      }
-      return;
-    }
-
-    if (!openOrderId) {
-      openOrder(String(orderHits[0].id), true);
-    }
-  }, [map, searching, hits, openOrderId, openOrder]);
+    if (openOrderId) return;
+    if (!shouldAutoOpenSearchOrder(hits)) return;
+    const id = String(hits[0].id);
+    const attemptKey = `${q.trim()}::${id}`;
+    if (autoOpenAttemptRef.current === attemptKey) return;
+    autoOpenAttemptRef.current = attemptKey;
+    openOrder(id, true);
+  }, [map, searching, hits, openOrderId, openOrder, q]);
 
   const handleSelectHit = useCallback(
     (hit: AiSearchHit, event: ReactMouseEvent) => {
-      if (hit.entityType !== 'order') return;
+      if (hit.entityType === 'order') {
+        event.preventDefault();
+        openOrder(String(hit.id));
+        return;
+      }
+      // Receiving / unit / etc. — follow the hit deep-link (Unbox, inventory…).
       event.preventDefault();
-      openOrder(String(hit.id));
+      router.push(hit.href);
     },
-    [openOrder],
+    [openOrder, router],
   );
 
   const modeRail = (
@@ -179,7 +180,7 @@ export function DashboardSearchSidebar() {
           onSelectHit={handleSelectHit}
           searchRecents={searchRecents}
           onSelectRecent={(query) => {
-            router.push(orderSearchHref(query, query));
+            router.push(globalSearchHandoffHref(query, []));
           }}
           onRemoveRecent={removeSearchRecent}
           onClearRecents={() => void clearSearchRecents()}
@@ -312,9 +313,9 @@ function SearchOrdersBody({
     return (
       <div className="space-y-2">
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center">
-          <p className="text-role-caption font-semibold text-text-muted">No matching orders</p>
+          <p className="text-role-caption font-semibold text-text-muted">No matches</p>
           <p className="mt-1 text-role-micro font-medium text-text-faint">
-            Try a different order #, tracking, or serial.
+            Try a different order #, PO, tracking, or serial.
           </p>
         </div>
         <SearchRecentsDropdown

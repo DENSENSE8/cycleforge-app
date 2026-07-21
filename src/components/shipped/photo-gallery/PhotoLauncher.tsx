@@ -59,8 +59,13 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
     return (
       <div
         className={cn(
-          'flex w-fit max-w-full items-stretch gap-0 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100/50',
-          compact ? 'min-h-9 py-0.5 pl-1 pr-0.5' : 'min-h-[3.25rem] py-1 pl-2 pr-1',
+          'flex w-fit max-w-full items-stretch gap-0',
+          g.toolbarShowLabel
+            ? cn(
+                'rounded-xl border border-blue-200 bg-surface-card',
+                compact ? 'min-h-9 py-0.5 pl-0.5 pr-0.5' : 'min-h-[3.25rem] py-1 pl-1 pr-1',
+              )
+            : null,
           className,
         )}
       >
@@ -89,26 +94,18 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           </HoverTooltip>
         ) : null}
 
-        <div className="flex shrink-0 items-stretch self-center overflow-hidden rounded-lg border border-blue-200/90 bg-surface-card/90 shadow-sm">
-          <HoverTooltip label="View photos fullscreen" asChild>
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                g.openViewer(0);
-              }}
-              className={iconBtn}
-              ariaLabel="View photos fullscreen"
-              icon={<ImageIcon className="h-4 w-4 text-blue-700" />}
-            />
-          </HoverTooltip>
-
+        {/* Single horizontal strip: mutate/inspect → view → library (no L-layout). */}
+        <div
+          className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-blue-200 bg-surface-card shadow-sm"
+          data-testid="photo-launcher-toolbar"
+        >
           <HoverTooltip label="Show photo details" asChild>
             <IconButton
               onClick={(e) => {
                 e.stopPropagation();
                 g.openViewer(0, { details: true });
               }}
-              className={cn(iconBtn, sep)}
+              className={iconBtn}
               ariaLabel="Show photo details"
               icon={<Info className="h-4 w-4 text-blue-700" />}
             />
@@ -177,6 +174,18 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
             </HoverTooltip>
           ) : null}
 
+          <HoverTooltip label="View photos fullscreen" asChild>
+            <IconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                g.openViewer(0);
+              }}
+              className={cn(iconBtn, sep)}
+              ariaLabel="View photos fullscreen"
+              icon={<ImageIcon className="h-4 w-4 text-blue-700" />}
+            />
+          </HoverTooltip>
+
           {g.libraryHref ? (
             <HoverTooltip label="Open in media library" asChild>
               <a
@@ -184,7 +193,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className={cn(iconBtn, sep, 'inline-flex items-center justify-center')}
+                className={cn(iconBtn, sep, 'inline-flex shrink-0 items-center justify-center')}
                 aria-label="Open in media library"
               >
                 <ExternalLink className="h-4 w-4" />

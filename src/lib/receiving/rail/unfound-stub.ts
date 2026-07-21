@@ -58,6 +58,8 @@ export function toStubRow(r: UnfoundQueueRow): ReceivingLineRow {
     notes: null,
     created_at: r.created_at,
     last_activity_at: r.created_at,
+    // Door-scan surrogate so triage `getActivityAt` prefers intake over created_at.
+    scanned_at: r.created_at,
     image_url: null,
     source_platform: null,
     receiving_source: 'unmatched',

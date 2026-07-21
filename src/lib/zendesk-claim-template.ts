@@ -4,26 +4,17 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
+import {
+  CLAIM_TYPE_LABEL,
+  type ClaimSeverity,
+  type ClaimType,
+} from '@/lib/receiving-claim-type';
 
-export type ClaimType =
-  | 'damage'
-  | 'missing'
-  | 'wrong_item'
-  | 'vendor_defect'
-  | 'return'
-  | 'unfound'
-  | 'repair_service';
-export type ClaimSeverity = 'low' | 'medium' | 'high';
-
-export const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
-  damage: 'Damage',
-  missing: 'Missing item',
-  wrong_item: 'Wrong item',
-  vendor_defect: 'Vendor defect',
-  return: 'Return',
-  unfound: 'Unfound — no PO match',
-  repair_service: 'Repair service',
-};
+export type {
+  ClaimType,
+  ClaimSeverity,
+} from '@/lib/receiving-claim-type';
+export { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
 
 export const CLAIM_SEVERITY_LABEL: Record<ClaimSeverity, string> = {
   low: 'Low',

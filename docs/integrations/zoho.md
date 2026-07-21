@@ -13,9 +13,10 @@ ingestion, a local PO **mirror**, and a delta/full cron schedule. Fully built an
   `ZohoInventory.purchasereceives.{READ,CREATE}`, `ZohoInventory.bills.READ`,
   `ZohoInventory.items.READ`, `ZohoInventory.warehouses.READ`.
 - `GET /api/zoho/oauth/callback` (public) → exchanges the code for access + refresh
-  tokens and persists them via `setZohoTokens()`. **Quirk:** Zoho tokens are stored in
-  the `ebay_accounts` table under `account_name='ZOHO_MAIN'`, `platform='ZOHO'` (the
-  table is a generic OAuth-token store despite the name — do not refactor casually).
+  tokens and persists them via `setZohoTokens()` into **`organization_integrations`**
+  (`provider='zoho'`). Legacy `ebay_accounts.ZOHO_MAIN` token columns were removed in
+  the eBay vault migration (INT-002); transitional USAV fallback is `ZOHO_REFRESH_TOKEN`
+  env only when no vault row exists.
 - `GET|POST /api/zoho/refresh-token` → refresh the short-lived access token (GET kicks
   off a fresh authorize flow; POST refreshes from the stored refresh token).
 - `GET /api/zoho/health` → circuit-breaker state + rate-limit budget.
@@ -98,7 +99,8 @@ marks delivered (when tracking confirms) → creates an invoice. **Dry-run by de
 - **`zoho_po_mirror`** — one header row per PO (`zoho_purchaseorder_id` PK, normalized
   number for matching, vendor/status/dates/totals, full `raw` jsonb, sync timestamps).
 - **`zoho_webhook_events`** — webhook dedupe log.
-- **`ebay_accounts`** (`ZOHO_MAIN` row) — OAuth token store (see Auth quirk above).
+- **`organization_integrations`** (`provider='zoho'`) — OAuth token SoT (vault).
+  Transitional USAV env: `ZOHO_REFRESH_TOKEN` when no vault row exists.
 
 ## Status / notes
 

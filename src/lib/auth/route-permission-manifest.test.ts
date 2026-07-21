@@ -612,3 +612,27 @@ test('kiosk pair is public + capability-gated (the pairing code is the capabilit
   assert.equal(r.permission, null);
   assert.ok(r.gate.includes('anonymous'), `expected anonymous gate, got ${r.gate}`);
 });
+
+// ── Packer Review Station (WS-REVIEW — packer-review-station-plan Phase 3) ────
+
+test('packing.review gates the manager decide + queue routes', () => {
+  const paths = routesGatedBy('packing.review').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/packing/verification/decide/route.ts'),
+    'the manager decide route is gated by packing.review',
+  );
+  assert.ok(
+    paths.includes('/api/packing/verification/queue/route.ts'),
+    'the review queue read is gated by packing.review',
+  );
+});
+
+test('packing.review is a registered permission', () => {
+  assert.equal(isKnownPermission('packing.review'), true);
+});
+
+test('the packer verification submit is a packing.complete_order write', () => {
+  const r = routeByPath('/api/packing/verification/route.ts');
+  assert.ok(r, 'the verification submit route should be in the manifest');
+  assert.equal(r.permission, 'packing.complete_order');
+});

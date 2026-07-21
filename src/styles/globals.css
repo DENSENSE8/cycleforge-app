@@ -529,3 +529,11 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 :where(html[data-color-scheme='dark']) option { background-color: #0f172a; color: #e2e8f0; }
 /* (color-scheme: dark for native widgets is emitted by the generated theme
    stylesheet — see themeRegistryCssText.) */
+
+/* Orders-queue frozen identity pane (select · status · title): a soft right
+   shadow hangs off the pinned edge once the fact columns scroll under it. The
+   `.cf-grid-scrolled` class is toggled on the `[data-cf-grid]` scroll surface by
+   scrollLeft; `[data-frozen-edge]` marks the trailing frozen cell (title). */
+[data-cf-grid].cf-grid-scrolled [data-frozen-edge] {
+  box-shadow: 8px 0 8px -8px rgba(15, 23, 42, 0.22);
+}

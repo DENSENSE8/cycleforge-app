@@ -37,8 +37,9 @@ Each concern has one module — never inline or re-derive:
 | Z-index | `src/design-system/tokens/z-index.ts` |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing`) |
+| Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
-| Station entity-context header | `@/components/station/entity-context` (`CartonContextCard`) — Unbox/Triage/Testing/Shipping |
+| Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox/Triage/Testing/Shipping |
 | Integrations / capabilities | `src/lib/integrations/**` |
 | Cross-entity search | `src/lib/search/hybrid-retrieval.ts` → `SearchHit` |
 | Toasts | `@/lib/toast` + `AppToaster` (never Sonner `richColors`) |

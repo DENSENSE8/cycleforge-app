@@ -173,7 +173,9 @@ export function ReceivingFeedRail({
       excludedIds={excluded}
       loadSnapshot={loadSnapshot}
       persistSnapshot={persistSnapshot}
-      updateEvent="receiving-line-updated"
+      updateEvent={
+        feed.acceptLineUpdateBus === false ? undefined : 'receiving-line-updated'
+      }
       deleteEvent={feed.listenLineDelete === false ? undefined : 'receiving-line-deleted'}
       deleteGroupEvent="receiving-entry-deleted"
       refreshEvents={feed.refreshEvents}
@@ -187,6 +189,7 @@ export function ReceivingFeedRail({
       emptyText={emptyText}
       autoSelectFirstWhenEmpty={feed.autoSelectFirstWhenEmpty}
       pinSelectedLead={feed.pinSelectedLead}
+      preserveServerOrder={feed.preserveServerOrder}
       staggerRevealMotion={feed.staggerRevealMotion}
       getActivityAt={feed.getActivityAt}
       getStatusDot={dot.getStatusDot}

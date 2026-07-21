@@ -31,6 +31,8 @@ import {
   loadUnfoundQueueRow,
   unfoundParamsFromUrl,
 } from '@/lib/unfound-ticket';
+import { pairTicketShipmentFromReceiving } from '@/lib/support/ticket-link';
+import { linkTicket } from '@/lib/zendesk-links';
 
 interface PushBody {
   subject?: string;
@@ -134,6 +136,35 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
            updated_by        = EXCLUDED.updated_by`,
     [ctx.organizationId, kind, sourceId, ticketNumber, ctx.staffId],
   );
+
+  // Unmatched receiving cartons: anchor RECEIVING + reference the STN so
+  // tracking↔ticket pairing is durable (same waist as claim create).
+  if (kind === 'unmatched_receiving') {
+    const receivingId = Number(sourceId);
+    if (Number.isFinite(receivingId) && receivingId > 0) {
+      try {
+        await linkTicket({
+          orgId: ctx.organizationId,
+          zendeskTicketId: ticket.id,
+          entityType: 'RECEIVING',
+          entityId: receivingId,
+          staffId: ctx.staffId,
+        });
+      } catch (linkErr) {
+        console.warn('[push-to-zendesk] ticket link failed', linkErr);
+      }
+      try {
+        await pairTicketShipmentFromReceiving({
+          orgId: ctx.organizationId,
+          ticketId: ticket.id,
+          receivingId,
+          staffId: ctx.staffId,
+        });
+      } catch (pairErr) {
+        console.warn('[push-to-zendesk] STN pair failed', pairErr);
+      }
+    }
+  }
 
   after(async () => {
     try {

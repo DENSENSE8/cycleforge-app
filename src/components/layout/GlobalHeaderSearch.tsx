@@ -58,6 +58,19 @@ function hrefForPreviewHit(hit: AiSearchHit, query: string): string {
   return hit.href;
 }
 
+/** Same-dashboard handoffs replace so Back doesn't snap to Receiving/Shipping. */
+function navigateSearchHref(
+  router: { push: (href: string) => void; replace: (href: string) => void },
+  href: string,
+  pathname: string | null,
+) {
+  if (pathname === '/dashboard' && href.startsWith('/dashboard')) {
+    router.replace(href);
+    return;
+  }
+  router.push(href);
+}
+
 /** Sync the field from Dashboard Search URL `?q=`. */
 function readSyncedQuery(pathname: string | null): string | null {
   if (typeof window === 'undefined') return null;
@@ -232,9 +245,9 @@ export function GlobalHeaderSearch() {
   // Enter / See all → order workbench or Dashboard Search mode.
   const openSearchPage = useCallback(() => {
     if (!trimmedQuery) return;
-    router.push(globalSearchHandoffHref(trimmedQuery, previewHits));
+    navigateSearchHref(router, globalSearchHandoffHref(trimmedQuery, previewHits), pathname);
     setFocused(false);
-  }, [router, trimmedQuery, previewHits]);
+  }, [router, trimmedQuery, previewHits, pathname]);
 
   const emptyQuery = trimmedQuery.length === 0;
   const showRecents = unifiedOn && expanded && focused && emptyQuery && recents.length > 0;
@@ -274,7 +287,7 @@ export function GlobalHeaderSearch() {
     if (st === 'recents') {
       const entry = rec[activeIndex];
       if (!entry) return false;
-      router.push(recentRerunHref(entry));
+      navigateSearchHref(router, recentRerunHref(entry), pathname);
       return true;
     }
     if (st === 'preview') {
@@ -284,11 +297,11 @@ export function GlobalHeaderSearch() {
       }
       const hit = hits[activeIndex - 1];
       if (!hit) return false;
-      router.push(hrefForPreviewHit(hit, trimmedQuery));
+      navigateSearchHref(router, hrefForPreviewHit(hit, trimmedQuery), pathname);
       return true;
     }
     return false;
-  }, [activeIndex, router, openSearchPage, trimmedQuery]);
+  }, [activeIndex, router, openSearchPage, trimmedQuery, pathname]);
 
   // Arrow/Escape keyboard nav on the input (SearchField owns Enter → onSearch).
   useEffect(() => {
@@ -349,10 +362,10 @@ export function GlobalHeaderSearch() {
             : undefined,
         });
       }
-      router.push(href);
+      navigateSearchHref(router, href, pathname);
       setFocused(false);
     },
-    [router, unifiedOn, pushRecent, activeIndex, navigateActive],
+    [router, unifiedOn, pushRecent, activeIndex, navigateActive, pathname],
   );
 
   const handleFocusIn = () => {
@@ -457,14 +470,14 @@ export function GlobalHeaderSearch() {
             onSelectRecent={(entry) => {
               handleChange(entry.query);
               setFocused(false);
-              router.push(recentRerunHref(entry));
+              navigateSearchHref(router, recentRerunHref(entry), pathname);
             }}
             onRemoveRecent={removeRecent}
             onClearRecents={() => clearRecents()}
             onNavigateHit={(hit, event) => {
               event.preventDefault();
               setFocused(false);
-              router.push(hrefForPreviewHit(hit, trimmedQuery));
+              navigateSearchHref(router, hrefForPreviewHit(hit, trimmedQuery), pathname);
             }}
           />
         </div>

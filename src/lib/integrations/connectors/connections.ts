@@ -81,15 +81,70 @@ export async function getConnectionStatus(
 }
 
 /** Count of distinct connected providers — the unit `plans.ts.maxIntegrations`
- *  is measured in. */
+ *  is measured in. Includes vault rows plus active ebay/amazon account tables
+ *  so OAuth connections that have not yet (or no longer) land an unscoped vault
+ *  row still count (INT-006). */
 export async function countConnectedProviders(orgId: OrgId): Promise<number> {
   const r = await pool.query<{ n: string }>(
-    `SELECT COUNT(DISTINCT provider)::text AS n
-       FROM organization_integrations
-      WHERE organization_id = $1 AND status = 'active'`,
+    `SELECT COUNT(*)::text AS n FROM (
+       SELECT DISTINCT provider
+         FROM organization_integrations
+        WHERE organization_id = $1 AND status = 'active'
+       UNION
+       SELECT 'ebay'::text
+         WHERE EXISTS (
+           SELECT 1 FROM ebay_accounts
+            WHERE organization_id = $1
+              AND is_active = true
+              AND (platform = 'EBAY' OR platform IS NULL)
+         )
+       UNION
+       SELECT 'amazon'::text
+         WHERE EXISTS (
+           SELECT 1 FROM amazon_accounts
+            WHERE organization_id = $1 AND is_active = true
+         )
+     ) providers`,
     [orgId],
   );
   return Number(r.rows[0]?.n ?? 0);
+}
+
+/** True when the org already has any connection for this provider (any vault
+ *  scope, or an active ebay/amazon account row). Reconnecting / adding another
+ *  account for the same provider must not hit the plan ceiling. */
+async function hasAnyProviderConnection(
+  orgId: OrgId,
+  provider: IntegrationProvider,
+): Promise<boolean> {
+  const vault = await pool.query(
+    `SELECT 1 FROM organization_integrations
+      WHERE organization_id = $1 AND provider = $2 AND status = 'active'
+      LIMIT 1`,
+    [orgId, provider],
+  );
+  if (vault.rows[0]) return true;
+
+  if (provider === 'ebay') {
+    const r = await pool.query(
+      `SELECT 1 FROM ebay_accounts
+        WHERE organization_id = $1 AND is_active = true
+          AND (platform = 'EBAY' OR platform IS NULL)
+        LIMIT 1`,
+      [orgId],
+    );
+    return Boolean(r.rows[0]);
+  }
+  if (provider === 'amazon') {
+    const r = await pool.query(
+      `SELECT 1 FROM amazon_accounts
+        WHERE organization_id = $1 AND is_active = true
+        LIMIT 1`,
+      [orgId],
+    );
+    return Boolean(r.rows[0]);
+  }
+  return false;
 }
 
 export interface IntegrationLimit {
@@ -114,8 +169,7 @@ export async function wouldExceedIntegrationLimit(
   orgId: OrgId,
   provider: IntegrationProvider,
 ): Promise<boolean> {
-  const existing = await getConnectionStatus(orgId, provider);
-  if (existing?.connected) return false;
+  if (await hasAnyProviderConnection(orgId, provider)) return false;
   const { atLimit } = await integrationLimitStatus(orgId);
   return atLimit;
 }

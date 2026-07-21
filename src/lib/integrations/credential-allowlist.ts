@@ -37,8 +37,17 @@ const ALLOWLIST: Partial<Record<IntegrationProvider, ReadonlySet<CredentialOpera
     'shipments.write',
     'invoices.write',
   ]),
-  // ebay / amazon / ecwid / square / ups / fedex / usps / zendesk … declare
-  // their operation sets here as their service code is brought under scope.
+  ebay: new Set<CredentialOperation>([
+    'orders.read',
+    'purchases.read',
+    'identity.read',
+    'tokens.write',
+  ]),
+  amazon: new Set<CredentialOperation>([
+    'orders.read',
+    'identity.read',
+    'tokens.write',
+  ]),
 };
 
 /** Whether `operation` is allowed for `provider`'s credential. Pure + in-memory. */

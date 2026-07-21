@@ -7,20 +7,21 @@
  * GET /buy/order/v1/purchase_order/{id} when a purchaseOrderId is already known
  * (Track B / sync-one).
  *
- * Token: readEbayToken + refresh with ebayScopeStringForRole('buyer') so a
- * buyer refresh never silently downgrades to seller scopes.
+ * Token: vault SoT via resolveEbayUserTokens + refresh with
+ * ebayScopeStringForRole('buyer') so a buyer refresh never silently
+ * downgrades to seller scopes.
  */
 
 import { XMLParser } from 'fast-xml-parser';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { getEbayAppCreds, EBAY_PLATFORM_PREDICATE } from './credentials';
+import { EBAY_PLATFORM_PREDICATE } from './account-predicates';
 import {
   ebayScopeStringForRole,
   isEbaySandbox,
   type EbayEnvironment,
 } from './oauth-config';
-import { readEbayToken, refreshEbayAccessToken, writeEbayToken } from './token-refresh';
+import { refreshEbayAccessToken } from './token-refresh';
 
 /** A normalized purchase-order line — the neutral shape the sync ingests. */
 export interface BuyerPurchaseLine {
@@ -373,19 +374,21 @@ async function getValidBuyerAccessToken(
   orgId: OrgId,
   accountName: string,
 ): Promise<BuyerTokenContext> {
+  const {
+    getEbayAppCreds,
+    resolveEbayUserTokens,
+    patchEbayUserAccessToken,
+    touchEbayAccountTokenExpiry,
+  } = await import('@/lib/ebay/credentials');
   const creds = await getEbayAppCreds(orgId);
   if (!creds) {
     throw new Error(`No eBay app credentials configured for organization ${orgId}`);
   }
   const sandbox = isEbaySandbox(creds.environment);
 
-  const result = await tenantQuery<{
-    access_token: string;
-    refresh_token: string;
-    token_expires_at: string | Date | null;
-  }>(
+  const meta = await tenantQuery<{ account_role: string | null }>(
     orgId,
-    `SELECT access_token, refresh_token, token_expires_at
+    `SELECT account_role
        FROM ebay_accounts
       WHERE organization_id = $1
         AND account_name = $2
@@ -395,36 +398,33 @@ async function getValidBuyerAccessToken(
       LIMIT 1`,
     [orgId, accountName],
   );
-
-  const row = result.rows[0];
-  if (!row) {
+  if (!meta.rows[0]) {
     throw new Error(`eBay buyer account "${accountName}" not found or inactive`);
   }
 
-  const accessToken = readEbayToken(row.access_token);
-  const refreshToken = readEbayToken(row.refresh_token);
-  const expiresAt = row.token_expires_at ? new Date(row.token_expires_at) : new Date(0);
+  const tokens = await resolveEbayUserTokens(orgId, accountName, 'buyer');
   const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
 
-  if (expiresAt >= fiveMinutesFromNow) {
-    return { accessToken, sandbox, environment: creds.environment };
+  if (tokens.tokenExpiresAt >= fiveMinutesFromNow && tokens.accessToken) {
+    return { accessToken: tokens.accessToken, sandbox, environment: creds.environment };
   }
 
   const { accessToken: fresh, expiresIn } = await refreshEbayAccessToken(
     creds.appId,
     creds.certId,
-    refreshToken,
+    tokens.refreshToken,
     creds.environment,
     ebayScopeStringForRole('buyer'),
   );
   const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
-  await tenantQuery(
+  await patchEbayUserAccessToken({
     orgId,
-    `UPDATE ebay_accounts
-        SET access_token = $1, token_expires_at = $2, updated_at = NOW()
-      WHERE organization_id = $3 AND account_name = $4`,
-    [writeEbayToken(fresh), newExpiresAt, orgId, accountName],
-  );
+    role: 'buyer',
+    accountName,
+    accessToken: fresh,
+    expiresAt: newExpiresAt,
+  });
+  await touchEbayAccountTokenExpiry(orgId, accountName, newExpiresAt);
 
   return { accessToken: fresh, sandbox, environment: creds.environment };
 }

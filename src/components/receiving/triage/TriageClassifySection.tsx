@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { WorkspaceCard } from '@/design-system/components';
-import { InlinePillPicker, type InlinePillOption } from '../workspace/line-edit/InlinePillPicker';
+import { InlinePillPicker, INLINE_PILL_LEADING, type InlinePillOption } from '../workspace/line-edit/InlinePillPicker';
 import { receivingPriorityRank, receivingPriorityTone } from '../workspace/line-edit/receiving-priority';
 import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
@@ -80,7 +80,7 @@ export function TriageClassifySection({
     .map((o) => ({ value: o.value, label: o.label }));
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible">
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
       <div className="flex flex-wrap items-center gap-2">
         <InlinePillPicker
           ariaLabel="Urgency"
@@ -91,6 +91,7 @@ export function TriageClassifySection({
           collapsedClass={effectiveUrgencyClass}
           open={openPicker === 'urgency'}
           onOpenChange={(o) => setOpenPicker(o ? 'urgency' : null)}
+          leadingIcon={INLINE_PILL_LEADING.urgency}
         />
         <InlinePillPicker
           ariaLabel="Platform"
@@ -104,6 +105,7 @@ export function TriageClassifySection({
           onOpenChange={(o) => setOpenPicker(o ? 'platform' : null)}
           disabled={row.receiving_id == null}
           placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+          leadingIcon={INLINE_PILL_LEADING.platform}
         />
         <InlinePillPicker
           ariaLabel="Type"
@@ -116,6 +118,7 @@ export function TriageClassifySection({
           open={openPicker === 'type'}
           onOpenChange={(o) => setOpenPicker(o ? 'type' : null)}
           placeholder="Type"
+          leadingIcon={INLINE_PILL_LEADING.type}
         />
       </div>
     </WorkspaceCard>

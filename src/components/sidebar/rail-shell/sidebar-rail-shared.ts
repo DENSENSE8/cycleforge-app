@@ -14,6 +14,57 @@ export function railActivitySortMs(iso: string | null | undefined): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+/**
+ * Merge a `receiving-line-updated` (or feed `updateEvent`) patch into a rail row.
+ *
+ * Rails own their age/sort axis via `getActivityAt`. Workspace by-id refreshes
+ * (esp. Testing-style full-row dumps reused for Unbox serial hydration) often
+ * omit or null that stamp — spreading them verbatim blanks the age label and
+ * can reshuffle. When a patch would clear the feed's axis, restore any
+ * nullified keys from the existing row (same invariant as RQ `mergeRailRows`
+ * freezing `unbox_opened_at`). Non-axis fields (serials, title, …) still apply.
+ */
+export function mergeRailUpdatePatch<TRow>(
+  existing: TRow,
+  updated: Partial<TRow>,
+  getActivityAt?: (row: TRow) => string | null | undefined,
+): TRow {
+  const merged = { ...(existing as object), ...(updated as object) } as TRow;
+  if (!getActivityAt) return merged;
+  const prevAt = getActivityAt(existing);
+  if (prevAt == null || prevAt === '') return merged;
+  const nextAt = getActivityAt(merged);
+  if (nextAt != null && nextAt !== '') return merged;
+
+  const restored = { ...(merged as object) } as TRow;
+  for (const key of Object.keys(updated as object) as Array<keyof TRow>) {
+    if (updated[key] == null && existing[key] != null) {
+      restored[key] = existing[key];
+    }
+  }
+  return restored;
+}
+
+/**
+ * Client-side activity sort for rails that do not preserve server order.
+ * When `preserveServerOrder` is true, returns `rows` unchanged (Unboxed).
+ */
+export function orderRailRowsByActivity<TRow>(
+  rows: TRow[],
+  opts: {
+    preserveServerOrder?: boolean;
+    getActivityAt?: (row: TRow) => string | null | undefined;
+    getId: (row: TRow) => number;
+  },
+): TRow[] {
+  if (opts.preserveServerOrder || !opts.getActivityAt) return rows;
+  const getActivityAt = opts.getActivityAt;
+  return [...rows].sort((a, b) => {
+    const d = railActivitySortMs(getActivityAt(b)) - railActivitySortMs(getActivityAt(a));
+    return d !== 0 ? d : opts.getId(b) - opts.getId(a);
+  });
+}
+
 export interface SidebarRailRowContext {
   isSelected: boolean;
   isFocused: boolean;
@@ -92,6 +143,12 @@ export interface SidebarRailShellProps<TRow> {
    * position (a freshly-unboxed carton is at the top by `unboxed_at` anyway).
    */
   pinSelectedLead?: boolean;
+  /**
+   * When true, keep the fetcher/SQL order — do not re-sort by `getActivityAt`.
+   * Unboxed uses this so the server first-open axis is the only sort; client
+   * re-sort was fighting the SQL order and causing Unfound flicker.
+   */
+  preserveServerOrder?: boolean;
 
   eyebrowTitle: string;
   eyebrowSuffix?: string;

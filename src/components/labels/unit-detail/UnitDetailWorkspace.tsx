@@ -8,7 +8,6 @@ import { useSerialUnitDetail } from './types';
 import { UnitDetailHeader } from './UnitDetailHeader';
 import { UnitQualityPanel } from './UnitQualityPanel';
 import { SerialUnitTimelineSection } from './SerialUnitTimelineSection';
-import { UNIT_SCAN_PHOTOS } from '@/lib/station/flags';
 import {
   IdentityCard,
   LocationCard,
@@ -74,7 +73,7 @@ export function UnitDetailWorkspace() {
             onPhotoChanged={() => void refetch()}
           />
           <ConversationCard serialUnitId={unit.id} />
-          {UNIT_SCAN_PHOTOS && <SerialUnitTimelineSection serialUnitId={unit.id} />}
+          <SerialUnitTimelineSection serialUnitId={unit.id} />
           {allocations.length > 0 && <AllocationsCard rows={allocations} />}
           {(data.conditions?.length ?? 0) > 0 && <ConditionsCard rows={data.conditions ?? []} />}
           {(data.tsn_links?.length ?? 0) > 0 && <TsnLinksCard rows={data.tsn_links ?? []} />}

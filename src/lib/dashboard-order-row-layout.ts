@@ -113,6 +113,51 @@ export const ORDERS_QUEUE_RESIZABLE_KEYS: readonly string[] = ORDERS_QUEUE_COLUM
 ).map((c) => c.key);
 
 /**
+ * The frozen identity pane — select · status · title — pinned on the left while
+ * qty…tracking scroll horizontally (once resized columns push the total past the
+ * viewport). In grid order.
+ */
+const ORDERS_QUEUE_FROZEN_KEYS: readonly string[] = ['select', 'status', 'title'];
+
+/** Whether a column is part of the frozen identity pane. */
+export function isOrdersQueueFrozen(key: string): boolean {
+  return ORDERS_QUEUE_FROZEN_KEYS.includes(key);
+}
+
+/**
+ * The row's own left inset (`QUEUE_ROW.px` = `px-3`, density-aware) — the frozen
+ * pane must include it or every pinned cell drifts left by that amount when the
+ * body scrolls (the grid content starts *inside* the row padding).
+ */
+const ORDERS_QUEUE_ROW_PX = 'calc(0.75rem * var(--cf-density, 1))';
+
+/**
+ * Sticky-left offset (CSS) for a frozen cell — the row's left inset plus the sum
+ * of the width vars of the frozen columns *before* it (select → px; status → px
+ * + select; title → px + select + status), so the pane stays pinned exactly on
+ * its column origin even as those columns resize or density changes.
+ */
+export function ordersQueueFrozenLeft(key: string): string {
+  const idx = ORDERS_QUEUE_FROZEN_KEYS.indexOf(key);
+  const parts = [ORDERS_QUEUE_ROW_PX];
+  for (const k of ORDERS_QUEUE_FROZEN_KEYS.slice(0, Math.max(0, idx))) {
+    const col = ORDERS_QUEUE_COLUMNS.find((c) => c.key === k);
+    parts.push(`var(${ordersQueueColVar(k)}, ${col?.width ?? '0px'})`);
+  }
+  return `calc(${parts.join(' + ')})`;
+}
+
+/**
+ * Chrome that pins a frozen cell during horizontal scroll — sticky position, a z
+ * above the scrolling cells, and the row's own background (via `inherit`) so the
+ * scrolling fact cells don't bleed through the pinned pane. Compose with
+ * {@link ordersQueueGridCell}; set the `left` offset from {@link ordersQueueFrozenLeft}
+ * in `style`. The `title` frozen edge also carries `data-frozen-edge` so a scroll
+ * shadow can hang off it (see `.cf-grid-scrolled`).
+ */
+export const ORDERS_QUEUE_FROZEN_CELL = 'sticky z-raised bg-inherit';
+
+/**
  * Horizontal cell inset for the orders-queue grid.
  *
  * A Tier-1 density-aware scale step, deliberately NOT an `inset-*` intent: every

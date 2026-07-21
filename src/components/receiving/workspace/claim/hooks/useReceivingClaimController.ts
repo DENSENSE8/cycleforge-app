@@ -5,6 +5,7 @@ import {
   randomId,
   type ClaimType,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
@@ -89,18 +90,17 @@ export function useReceivingClaimController({
   // A real PO# (number or id) — when present, 'unfound' is neither defaulted nor
   // offered, even if the carton came in as an unmatched scan.
   const hasPo = !!(row.zoho_purchaseorder_number || row.zoho_purchaseorder_id);
-  // RETURN intake (per-line receiving_type, else carton default, else line
-  // intake_type) auto-selects the 'return' claim type.
-  const isReturnIntake =
-    row.receiving_type === 'RETURN' ||
-    row.carton_intake_type === 'RETURN' ||
-    row.intake_type === 'return';
-  // Default: return → 'return'; unmatched w/o PO → 'unfound'; otherwise 'damage'.
-  const initialClaimType: ClaimType = isReturnIntake
-    ? 'return'
-    : row.receiving_source === 'unmatched' && !hasPo
-      ? 'unfound'
-      : 'damage';
+  // Default: carrier RETURNED → RTS; return intake → 'return'; unmatched w/o PO
+  // → 'unfound'; otherwise 'damage'. (`shipment_status` is the line-row alias of
+  // STN `latest_status_category`.)
+  const initialClaimType: ClaimType = defaultReceivingClaimType({
+    shipmentStatus: row.shipment_status,
+    receivingType: row.receiving_type,
+    cartonIntakeType: row.carton_intake_type,
+    intakeType: row.intake_type,
+    receivingSource: row.receiving_source,
+    hasPo,
+  });
 
   // ── Wizard / mode state ──────────────────────────────────────────────────
   const [claimType, setClaimType] = useState<ClaimType>(initialClaimType);

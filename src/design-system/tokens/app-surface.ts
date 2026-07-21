@@ -78,9 +78,11 @@ export const appChromeMutedClass = 'bg-surface-card/95';
 export const appCanvasClass = 'bg-surface-canvas';
 
 /**
- * Depth-plane edge stroke — readable against page wash (mint / dark).
- * Do **not** use near-invisible `border-hairline` here; that token is for
- * internal row dividers, not the work-canvas / wash join.
+ * Depth-plane edge stroke — readable against chrome / page wash (mint / dark).
+ * Owned by the desktop content shell (`appContentShellClass`) so every page
+ * gets the same radius hairline. Do **not** use near-invisible
+ * `border-hairline` here; that token is for internal row dividers, not the
+ * content-corner / chrome join.
  */
 export const appWorkCanvasEdgeClass = 'border border-border-soft';
 
@@ -93,14 +95,14 @@ export const appChromeBandHairlineClass =
   'shadow-[inset_0_-1px_0_0_var(--ds-color-border-default)]';
 
 /**
- * Depth 1 — elevated station work canvas (UnboxLineWorkspace / Triage twin).
- * Full border so the hairline follows `rounded-tl-2xl`. No drop shadow — a
- * box-shadow at the soft join casts a gray strip into the sidebar cutout and
- * fights scan-band / wash depth. Edge stroke alone carries the plane; scan
- * chrome stays flush with chromatic glow (not elevation).
+ * Depth 1 — elevated station work fill (UnboxLineWorkspace / Triage / Pack).
+ * Layout + card surface only — the rounded cutout + depth-edge hairline live
+ * on the outer desktop content shell (`appContentShellClass`) so they render
+ * on every page, not only stations that opt into this host. No drop shadow —
+ * a box-shadow at the soft join casts a gray strip into the sidebar cutout.
  */
 export const appWorkCanvasClass =
-  `relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-tl-2xl ${appWorkCanvasEdgeClass} bg-surface-card`;
+  'relative flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card';
 
 /**
  * Page wash hosts (Unbox, receiving, admin tabs). Gradient stops come from

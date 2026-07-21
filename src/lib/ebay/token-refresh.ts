@@ -38,7 +38,7 @@ function isPlaintextEbayToken(value: string): boolean {
  * (written by /api/ebay/callback). Backward/forward compatible: returns plaintext
  * as-is and decrypts envelopes. Throws only when a value is neither.
  */
-export function readEbayToken(stored: string | null | undefined): string {
+function readEbayToken(stored: string | null | undefined): string {
   const raw = String(stored ?? '').trim();
   if (!raw) throw new Error('eBay token is empty');
   if (isPlaintextEbayToken(raw)) return raw;
@@ -54,7 +54,7 @@ export function readEbayToken(stored: string | null | undefined): string {
  * configured; otherwise stores plaintext so the integration keeps working until
  * the key is provisioned. readEbayToken() reads either form transparently.
  */
-export function writeEbayToken(plaintext: string): string {
+function writeEbayToken(plaintext: string): string {
   if (isIntegrationKmsConfigured()) return encryptIntegrationPayload(plaintext);
   // In production this throws (encryption-at-rest is required); in dev it warns
   // and falls back to plaintext so local work keeps going without a key.
@@ -81,7 +81,16 @@ export async function refreshEbayAccessToken(
 ): Promise<{ accessToken: string; expiresIn: number }> {
   const normalizedClientId = normalizeEnvValue(clientId);
   const normalizedClientSecret = normalizeEnvValue(clientSecret);
-  const normalizedRefreshToken = normalizeEnvValue(refreshToken);
+  // Accept plaintext or encrypted envelopes (legacy ebay_accounts columns /
+  // older vault rows) so callers don't have to decrypt first.
+  let normalizedRefreshToken = normalizeEnvValue(refreshToken);
+  if (normalizedRefreshToken) {
+    try {
+      normalizedRefreshToken = readEbayToken(normalizedRefreshToken);
+    } catch {
+      /* already plaintext without the v^ marker — keep as-is */
+    }
+  }
   if (!normalizedClientId || !normalizedClientSecret || !normalizedRefreshToken) {
     throw new Error('Missing eBay OAuth credentials (client_id/client_secret/refresh_token)');
   }
@@ -162,10 +171,13 @@ if (require.main === module) {
 
   refreshEbayAccessToken(CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN, ENVIRONMENT)
     .then(({ accessToken, expiresIn }) => {
+      // Round-trip encode so the write helper stays exercised by the CLI path.
+      const stored = writeEbayToken(accessToken);
+      const roundTrip = readEbayToken(stored);
       // Never print the raw token (it's a live credential) — redact to a prefix.
       /* eslint-disable no-console -- CLI entrypoint: direct operator stdout feedback */
       console.log('\n✅ eBay access token refreshed (redacted for safety):');
-      console.log(`   ${accessToken.slice(0, 12)}… (${accessToken.length} chars)`);
+      console.log(`   ${roundTrip.slice(0, 12)}… (${roundTrip.length} chars)`);
       console.log(`⏰ Expires in: ${expiresIn} seconds (${expiresIn / 3600} hours)`);
       /* eslint-enable no-console */
     })

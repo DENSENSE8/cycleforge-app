@@ -4,6 +4,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { cn } from '@/utils/_cn';
 
 interface FbaStageCountsResponse {
   success?: boolean;
@@ -48,7 +50,7 @@ function StageBar({ title, href, stages, isLoading, empty }: StageBarProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      className="block bg-surface-card rounded-2xl border border-border-soft p-5 shadow-[0_2px_12px_rgba(161,140,90,0.04)] hover:shadow-[0_4px_18px_rgba(161,140,90,0.08)] transition-shadow"
+      className={cn('block', MONITOR_SECTION_CARD_CLASS, 'p-5 transition-shadow hover:shadow-md')}
     >
       <div className="flex items-baseline justify-between mb-4">
         <p className="text-role-data font-extrabold text-text-default tracking-tight">{title}</p>
@@ -114,10 +116,10 @@ export function PipelineRow() {
 
   const fbaCounts = fba.data?.counts ?? {};
   const fbaStages = [
-    { label: 'Planned',      count: fbaCounts.PLANNED       ?? 0, color: 'bg-[#C4BAA8]' },
-    { label: 'Tested',       count: fbaCounts.TESTED        ?? 0, color: 'bg-emerald-500' },
-    { label: 'Packed',       count: fbaCounts.PACKED        ?? 0, color: 'bg-amber-500' },
-    { label: 'Out of stock', count: fbaCounts.OUT_OF_STOCK  ?? 0, color: 'bg-rose-500' },
+    { label: 'Planned',      count: fbaCounts.PLANNED       ?? 0, color: 'bg-surface-strong' },
+    { label: 'Tested',       count: fbaCounts.TESTED        ?? 0, color: 'bg-fill-success' },
+    { label: 'Packed',       count: fbaCounts.PACKED        ?? 0, color: 'bg-fill-warning' },
+    { label: 'Out of stock', count: fbaCounts.OUT_OF_STOCK  ?? 0, color: 'bg-fill-danger' },
   ];
 
   const rmaList = rma.data?.authorizations ?? [];
@@ -127,9 +129,9 @@ export function PipelineRow() {
     return acc;
   }, {});
   const rmaStages = [
-    { label: 'Authorized',    count: rmaByStatus['AUTHORIZED']    ?? 0, color: 'bg-blue-500' },
-    { label: 'Received',      count: rmaByStatus['RECEIVED']      ?? 0, color: 'bg-amber-500' },
-    { label: 'Dispositioned', count: rmaByStatus['DISPOSITIONED'] ?? 0, color: 'bg-emerald-500' },
+    { label: 'Authorized',    count: rmaByStatus['AUTHORIZED']    ?? 0, color: 'bg-fill-info' },
+    { label: 'Received',      count: rmaByStatus['RECEIVED']      ?? 0, color: 'bg-fill-warning' },
+    { label: 'Dispositioned', count: rmaByStatus['DISPOSITIONED'] ?? 0, color: 'bg-fill-success' },
   ];
 
   return (

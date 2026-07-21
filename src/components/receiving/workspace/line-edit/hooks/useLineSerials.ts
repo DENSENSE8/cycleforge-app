@@ -10,10 +10,12 @@
  * Serials are sidecar metadata — they attach an item identity + condition to a
  * line and never touch quantity_received or stock (that's the Receive action).
  *
- * Behaviour is unchanged: same endpoints, same toasts, same
- * `receiving-serial-scanned` broadcast and dispatchLineUpdated patches, same
- * RETURN-flow lookup ordering (the lookup runs BEFORE the upsert so it reflects
- * prior inventory rather than the row we're about to write).
+ * Behaviour is unchanged for scan attach/detach: same endpoints, same toasts,
+ * same `receiving-serial-scanned` broadcast and narrow bus patches. Line-select
+ * serial refresh uses {@link publishLineSerials} only — never a Testing-style
+ * full by-id row dump onto `receiving-line-updated` (that blanks Unboxed ages).
+ * RETURN-flow lookup ordering is unchanged (lookup runs BEFORE the upsert so it
+ * reflects prior inventory rather than the row we're about to write).
  */
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
@@ -23,7 +25,11 @@ import {
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
-import { receivingSiblingsQueryKey, publishLineSerials } from '@/lib/queries/receiving-queries';
+import {
+  patchUnboxRailTitleByCarton,
+  receivingSiblingsQueryKey,
+  publishLineSerials,
+} from '@/lib/queries/receiving-queries';
 import {
   appendOptimisticSerial,
   clearSerialRemoving,
@@ -86,14 +92,23 @@ export function useLineSerials({
       const res = await fetch(`/api/receiving-lines?id=${lineId}&include=serials`);
       const data = await res.json();
       if (data?.success && data.receiving_line) {
-        // dispatchLineUpdated patches the accordion's matching row, so editing
-        // a serial on a non-active sibling refreshes that sibling's chips too.
-        dispatchUnboxRailLineUpdated(data.receiving_line as ReceivingLineRow);
+        const line = data.receiving_line as ReceivingLineRow;
+        // Serials are sidecar metadata. Do NOT dump the by-id row onto the
+        // shared `receiving-line-updated` bus (Testing's refreshLineWithSerials
+        // pattern). That response cannot reproduce Unboxed's `unbox_opened_at`
+        // axis — normalizeRow fills null — and blanks the rail age on open /
+        // return-serial attach. Accordion + rail chips take the narrow dual-write.
+        publishLineSerials(
+          queryClient,
+          line.receiving_id ?? row.receiving_id,
+          line.id,
+          line.serials ?? [],
+        );
       }
     } catch {
       /* silent */
     }
-  }, [row.id]);
+  }, [queryClient, row.id, row.receiving_id]);
 
   // Parent list (table / sibling accordion) may have stale `row.serials` —
   // it's fetched on a different cadence than the per-line workspace. Pull
@@ -174,9 +189,26 @@ export function useLineSerials({
         // without the heavy refreshLineWithSerials refetch the scan path used to
         // fire (one of the app's most expensive queries). Null on a normal scan.
         if (data.line_patch) {
-          dispatchUnboxRailLineUpdated(
-            data.line_patch as Partial<ReceivingLineRow> & { id: number },
-          );
+          const linePatch = data.line_patch as Partial<ReceivingLineRow> & { id: number };
+          // Workspace/accordion only — Unboxed does not subscribe to this bus.
+          dispatchUnboxRailLineUpdated(linePatch);
+          // Title-only dock rename when return linkage supplies PO# / name fields.
+          const rid = row.receiving_id;
+          if (rid != null && Number.isFinite(rid)) {
+            const titlePatch: {
+              item_name?: string | null;
+              sku?: string | null;
+              zoho_purchaseorder_number?: string | null;
+            } = {};
+            if ('item_name' in linePatch) titlePatch.item_name = linePatch.item_name ?? null;
+            if ('sku' in linePatch) titlePatch.sku = linePatch.sku ?? null;
+            if ('zoho_purchaseorder_number' in linePatch) {
+              titlePatch.zoho_purchaseorder_number = linePatch.zoho_purchaseorder_number ?? null;
+            }
+            if (Object.keys(titlePatch).length > 0) {
+              patchUnboxRailTitleByCarton(queryClient, rid, titlePatch);
+            }
+          }
         }
         // Light up the return match band straight from the scan response — works
         // on ANY line (not just a pre-typed RETURN) and needs no extra round-trip,

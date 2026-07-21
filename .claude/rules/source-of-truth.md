@@ -21,10 +21,11 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Z-index | `src/design-system/tokens/z-index.ts` |
 | Spacing scale + intents | `src/design-system/tokens/spacing.mjs` (+ `Stack`/`Inset`/`Row` primitives) |
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
+| Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
-| App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` (`appWorkCanvasClass` owns the depth-edge hairline) |
+| App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` + `appContentShellClass` (`appWorkCanvasEdgeClass` owns the depth-edge hairline on every desktop page) |
 | Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `detailStackAsideClassName`, …) |
-| Station entity-context header | `@/components/station/entity-context` (`CartonContextCard`) — Unbox / Triage / Testing / Shipping active-order |
+| Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
 | Buttons | `src/design-system/primitives` `Button` |
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
@@ -73,6 +74,18 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
   (`:focus-within`). Semantic tones: `accent`/`danger`/`warning`/`success`/`neutral`.
 - Never hand-roll a `focus:ring-*`/`focus-visible:ring-*` recipe; compose `focusRing(...)`. Guard:
   `src/components/ui/focus-ring-tokens.guard.test.ts` (escape: same-line `ds-allow-focus`).
+
+## Depth elevation (flat · raised · overlay)
+
+- Source: `src/design-system/tokens/shadows.ts` — `elevationClass(role, intensity?)`.
+  Industry role ladder (Atlassian / M3-aligned): role = interaction plane, not
+  viewport position.
+  - `flat` — flush with canvas (no lift)
+  - `raised` — in-flow cards / panels; intensity `soft` (bookmark chrome) or
+    `default` (glass work cards)
+  - `overlay` — floating UI (menus, popovers, dialogs)
+- Never hand-roll `shadow-* shadow-scrim/*` for these jobs; dial ink/spread only in the SoT.
+- z-index remains separate (`tokens/z-index.ts`) — same elevation style can stack at different orders.
 
 ## Spacing (density-aware scale + intents)
 
@@ -130,12 +143,17 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 
 ## Station entity-context header (inbound carton + shipping active order)
 
-- **SoT:** `@/components/station/entity-context` → `CartonContextCard` (implementation under
-  `receiving/workspace/line-edit/`; barrel is the public waist).
+- **SoT:** `@/components/station/entity-context` → `CartonContextCard` + `StationContextBar` /
+  `StationMoreDetails` (card implementation under `receiving/workspace/line-edit/`; barrel is the
+  public waist).
 - Condensed one-row anatomy: listing · PO# / order# · tracking · CLAIM · photos · platform/type/priority.
   Editors slide below on demand — do not regroup into stacked form sections.
+- **Bookmark chrome:** mount identity as `density="bar"` inside `StationContextBar` above
+  `StationWorkbench`; corner utilities go in `StationMoreDetails` (embedded `LineEditToolbar`).
+  Do not put carton identity in the workbench `entityContext` / `toolbar` slots.
 - **Compose for Unbox / Triage / Testing / Shipping (active order)** via thin adapters
-  (`LineCartonContextSection`, `TestingCartonHeader`, `ShippingEntityContextHeader`).
+  (`LineCartonContextSection`, `TestingCartonHeader`, `ShippingEntityContextHeader`,
+  `PackOrderIdentity`, `PickupEntityContextHeader`).
   Omit optional props to hide claim / photos / classify per station.
 - **Never fork** a second condensed identity header (no page-local title + "Open listing" card).
 

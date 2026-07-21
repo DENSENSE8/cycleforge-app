@@ -53,6 +53,8 @@ export function toDoneStubRow(r: TriageDoneRow): ReceivingLineRow {
     notes: null,
     created_at: r.triage_completed_at,
     last_activity_at: r.triage_completed_at,
+    // Done age axis = staged-complete time (same stamp as last_activity_at).
+    scanned_at: r.triage_completed_at,
     image_url: null,
     source_platform: r.source_platform,
     receiving_source: r.source,

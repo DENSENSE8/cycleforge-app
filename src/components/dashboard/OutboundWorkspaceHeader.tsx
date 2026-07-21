@@ -12,7 +12,9 @@ import { useQuery } from '@tanstack/react-query';
 import {
   DASHBOARD_ORDER_VIEW_LABEL,
   type DashboardOrderView,
+  type DashboardPendingLayout,
 } from '@/utils/dashboard-search-state';
+import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
@@ -50,8 +52,26 @@ export function OutboundWorkspaceHeader({
 }: OutboundWorkspaceHeaderProps) {
   const active = isLifecycleView(orderView) ? orderView : 'unshipped';
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
-  const { searchQuery, setSearch } = useDashboardSearchController();
+  const { searchQuery, setSearch, pendingLayout, setPendingLayout } = useDashboardSearchController();
   useToShipFilterHotkeys(active === 'unshipped');
+
+  // Pending-only board|grid switch: the vertical shelf-board vs the flat
+  // spreadsheet grid view. Lives in the chrome (table/board-primary region), not
+  // a ?mode= sidebar.
+  const pendingLayoutToggle =
+    active === 'unshipped' ? (
+      <HorizontalButtonSlider
+        variant="nav"
+        dense
+        aria-label="Pending layout"
+        value={pendingLayout}
+        onChange={(id) => setPendingLayout(id as DashboardPendingLayout)}
+        items={[
+          { id: 'board', label: 'Board' },
+          { id: 'grid', label: 'Grid' },
+        ]}
+      />
+    ) : null;
 
   // Counts only on To Ship; Packed/Shipped stay label-only.
   const tabs = useMemo(
@@ -92,7 +112,9 @@ export function OutboundWorkspaceHeader({
       // a trailing pencil — keep the chrome pencil only for Packed / Shipped.
       right={<OutboundExactFilters mode={active} />}
       trailing={
-        onToggleSelectMode && active !== 'unshipped' ? (
+        active === 'unshipped' ? (
+          pendingLayoutToggle
+        ) : onToggleSelectMode ? (
           <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
         ) : undefined
       }

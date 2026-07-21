@@ -135,7 +135,7 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
       label: 'Checklist',
       icon: ClipboardList,
       content: (
-        <WorkspaceCard variant="glass" overflow="visible" bodyClassName="p-4">
+        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
           <LineChecklistTab
             lineId={row.id}
             sku={row.sku}
@@ -151,13 +151,15 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
       count: serialCount,
       visible: hasUnits,
       content: (
-        <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
-          <CartonUnitsRollupBody
-            receivingId={row.receiving_id ?? null}
-            activeLineId={row.id ?? null}
-            showEmpty
-            onBridgeChange={onUnitsBridge}
-          />
+        <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+          <div className="space-y-3">
+            <CartonUnitsRollupBody
+              receivingId={row.receiving_id ?? null}
+              activeLineId={row.id ?? null}
+              showEmpty
+              onBridgeChange={onUnitsBridge}
+            />
+          </div>
         </WorkspaceCard>
       ),
     },

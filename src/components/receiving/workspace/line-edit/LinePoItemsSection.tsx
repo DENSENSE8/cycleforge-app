@@ -182,6 +182,14 @@ export function LinePoItemsSection({
       suppressHeader={suppressHeader}
       placeholderActiveRow={row}
       readOnly={!editLines}
+      serialSplit={
+        editLines
+          ? {
+              staffId,
+              cartonSource: row.receiving_source,
+            }
+          : undefined
+      }
       onItemDescFeedback={onItemDescFeedback}
       onItemDescSaved={onItemDescSaved}
       activeConditionOverride={c.isMultiQtyLine ? (c.unitLabelCondition ?? c.cond) : c.cond}
@@ -202,7 +210,6 @@ export function LinePoItemsSection({
           receivingId={receivingId}
           quantityExpected={row.quantity_expected ?? null}
           cond={c.cond}
-          receivingType={c.receivingType}
           serialSubmitting={c.serialSubmitting}
           editingSerial={c.headerSerialEdit}
           serialLookup={c.serialLookup}

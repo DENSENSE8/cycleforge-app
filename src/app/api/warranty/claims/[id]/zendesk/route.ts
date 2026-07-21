@@ -15,6 +15,7 @@ import {
 } from '@/lib/zendesk';
 import { buildExternalId } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { pairTicketShipmentIfKnown } from '@/lib/support/ticket-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,6 +149,19 @@ export const POST = withAuth(async (request, ctx) => {
         organizationId: ctx.organizationId,
         actorStaffId: ctx.staffId ?? null,
       });
+
+      if (claim.sourceTrackingNumber) {
+        try {
+          await pairTicketShipmentIfKnown({
+            orgId: ctx.organizationId,
+            ticketId: ticket.id,
+            trackingNumber: claim.sourceTrackingNumber,
+            staffId: ctx.staffId ?? null,
+          });
+        } catch (pairErr) {
+          console.warn('[POST /api/warranty/claims/[id]/zendesk] STN pair failed', pairErr);
+        }
+      }
 
       await recordAudit(pool, ctx, request, {
         source: 'warranty-logger',

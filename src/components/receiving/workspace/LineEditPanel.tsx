@@ -41,8 +41,10 @@ import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
-import { ReceivingStationContextBar } from './ReceivingStationContextBar';
-import { ReceivingStationMoreDetails } from './ReceivingStationMoreDetails';
+import {
+  StationContextBar,
+  StationMoreDetails,
+} from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
@@ -370,7 +372,7 @@ export function LineEditPanel({
   );
 
   const moreDetails = (
-    <ReceivingStationMoreDetails>
+    <StationMoreDetails>
       <LineEditToolbar
         mode="unbox"
         embedded
@@ -386,11 +388,11 @@ export function LineEditPanel({
           movePhotos: () => c.openMovePhotos(),
         }}
       />
-    </ReceivingStationMoreDetails>
+    </StationMoreDetails>
   );
 
   const stationContextBar = (
-    <ReceivingStationContextBar
+    <StationContextBar
       identity={
         <LineCartonContextSection
           row={row}
@@ -426,7 +428,7 @@ export function LineEditPanel({
               transition={paneTransition}
               className="relative flex min-h-0 flex-1 flex-col overflow-visible"
             >
-              <ReceivingStationContextBar
+              <StationContextBar
                 identity={
                   <LineCartonContextSection
                     row={row}

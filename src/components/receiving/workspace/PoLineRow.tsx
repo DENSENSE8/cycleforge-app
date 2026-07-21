@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronDown, FileText, Check } from '@/components/Icons';
+import { ChevronDown, Check } from '@/components/Icons';
 import {
   framerPresence,
   framerTransition,
@@ -25,6 +25,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, TextField } from '@/design-system/primitives';
 import { META_COL } from '@/components/ui/RowMetaColumns';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
+import {
+  PoLineTitleMenu,
+  type PoLineSerialSplitContext,
+} from '@/components/receiving/workspace/PoLineTitleMenu';
 import { cn } from '@/utils/_cn';
 import { setSerialEditHandoff } from '@/components/receiving/workspace/serialEditHandoff';
 import {
@@ -83,6 +87,8 @@ interface Props {
   activeSerialActions?: PoLineSerialActions;
   activeRowSlot?: ActiveRowSlot;
   renderTitleActions?: (line: ReceivingLineRow) => React.ReactNode;
+  /** Unmatched-carton serial split (Testing UNLINK) — offered from the title ⋮ menu. */
+  serialSplit?: PoLineSerialSplitContext;
   desc: PoLineDescProps;
   /**
    * Enable framer `layout` position tracking. The accordion sets this false
@@ -97,10 +103,10 @@ interface Props {
 /**
  * One PO-item row. Collapsed sibling rows dispatch `receiving-select-line` on
  * click to re-seed the workspace on that line; the active row renders its
- * chevron toggle, the item-description toggle, per-serial chip menus, and the
- * expandable body (condition pills / serial adder, or the item-description
- * editor). Purely presentational — every mutation is delegated up to the shell's
- * hooks.
+ * chevron toggle, the title ⋮ (item description / unlink), per-serial chip
+ * menus, and the expandable body (condition pills / serial adder, or the
+ * item-description editor). Purely presentational — mutations are delegated
+ * up to the shell's hooks.
  */
 export function PoLineRow({
   line,
@@ -113,6 +119,7 @@ export function PoLineRow({
   activeSerialActions,
   activeRowSlot,
   renderTitleActions,
+  serialSplit,
   desc,
   animateLayout = true,
 }: Props) {
@@ -196,7 +203,7 @@ export function PoLineRow({
           ) : null}
           {/* Title is sourced from the listing/PO line — not editable as
               text. ds-allow-title: native tooltip shows full value when
-              truncated. Item description opens only via the notes icon. */}
+              truncated. Item description / unlink open from the title ⋮. */}
           <p
             className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default"
             title={line.item_name ?? undefined}
@@ -204,29 +211,12 @@ export function PoLineRow({
             {line.item_name || line.sku || `Line #${line.id}`}
           </p>
           {!readOnly ? (
-            <HoverTooltip label="Toggle item description (synced)" asChild>
-              <IconButton
-                ariaLabel="Toggle item description"
-                aria-pressed={descShown}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  desc.toggle(line);
-                }}
-                className={`group -m-1 flex shrink-0 items-center justify-center rounded-md p-1 transition-colors hover:bg-blue-100 ${
-                  descShown ? 'bg-blue-100' : ''
-                }`}
-                icon={
-                  <FileText
-                    className={`h-3.5 w-3.5 ${
-                      descShown
-                        ? 'text-blue-600'
-                        : 'text-text-faint group-hover:text-text-muted'
-                    }`}
-                    aria-hidden
-                  />
-                }
-              />
-            </HoverTooltip>
+            <PoLineTitleMenu
+              line={line}
+              descShown={descShown}
+              onToggleDesc={() => desc.toggle(line)}
+              serialSplit={serialSplit}
+            />
           ) : null}
           {!readOnly ? renderTitleActions?.(line) : null}
         </div>
@@ -346,7 +336,7 @@ export function PoLineRow({
           className="min-w-0 overflow-hidden border-t border-blue-200/60"
           aria-hidden={activeCollapsed}
         >
-          <div className="min-w-0 px-3 pb-1.5 pt-1">
+          <div className="min-w-0 px-3 pb-1 pt-1">
             {descShown ? (
               <div className="flex items-center gap-2">
                 <TextField

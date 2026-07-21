@@ -15,8 +15,6 @@ import { AnimatePresence } from 'framer-motion';
 import { ExternalLink, Package, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { ShippedOrder } from '@/types/orders';
-import { fetchDashboardOrderRowById } from '@/lib/dashboard-table-data';
-import { isFbaOrder } from '@/utils/order-platform';
 import { PackoutChecklistCard } from '@/components/shipped/PackoutChecklistCard';
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { usePanelActions } from '@/hooks/usePanelActions';
@@ -35,57 +33,15 @@ import {
 import { ShippedDetailsHeader } from '@/components/shipped/details-panel/ShippedDetailsHeader';
 import { ShippedDetailsBody } from '@/components/shipped/details-panel/ShippedDetailsBody';
 import { orderSearchHref } from '@/lib/search/search-hit';
+import {
+  resolveSearchOrder,
+  type ResolvedSearchOrder,
+} from '@/lib/search/resolve-search-order';
 
 export type OrderFullPageLayout = 'standalone' | 'workbench';
 
 /** Resolution outcome for a /o/[orderId] param. */
-type Resolved =
-  | { status: 'ok'; order: ShippedOrder }
-  | { status: 'fba' }
-  | { status: 'notfound' };
-
-/**
- * Resolve a /o/[orderId] param (numeric pk, or a scanned order_id string) to a
- * full ShippedOrder. FBA shipments live in a different workspace — detect them so
- * the page can route there instead of dead-ending on "not found".
- */
-async function resolveOrder(orderId: string): Promise<Resolved> {
-  const raw = decodeURIComponent(orderId || '').trim();
-  if (!raw) return { status: 'notfound' };
-
-  if (/^\d+$/.test(raw)) {
-    const order = await fetchDashboardOrderRowById(Number(raw));
-    if (order) return { status: 'ok', order };
-    try {
-      const res = await fetch(`/api/orders/${raw}`, { credentials: 'include', cache: 'no-store' });
-      if (res.ok) {
-        const o = (await res.json())?.order;
-        if (o && isFbaOrder(o.order_id, o.account_source)) return { status: 'fba' };
-      }
-    } catch {
-      /* fall through to not-found */
-    }
-    return { status: 'notfound' };
-  }
-
-  try {
-    const res = await fetch(`/api/orders/lookup/${encodeURIComponent(raw)}`, {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (!res.ok) return { status: 'notfound' };
-    const o = (await res.json())?.order;
-    if (!o) return { status: 'notfound' };
-    if (isFbaOrder(o.order_id, o.account_source)) return { status: 'fba' };
-    if (typeof o.id === 'number') {
-      const order = await fetchDashboardOrderRowById(o.id);
-      if (order) return { status: 'ok', order };
-    }
-    return { status: 'notfound' };
-  } catch {
-    return { status: 'notfound' };
-  }
-}
+type Resolved = ResolvedSearchOrder;
 
 function EmptyStateShell({
   title,
@@ -129,7 +85,7 @@ export function OrderFullPageView({
   }, [searchParams, orderId, router]);
 
   const load = useCallback(async () => {
-    setResolved(await resolveOrder(orderId));
+    setResolved(await resolveSearchOrder(orderId));
   }, [orderId]);
 
   useEffect(() => {

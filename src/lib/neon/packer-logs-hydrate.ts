@@ -17,7 +17,14 @@ export interface PackerLogHydration {
   deadline_at: string | null;
   tester_id: number | null;
   tester_name: string | null;
-  packer_photos_url: Array<{ id: number; url: string; uploadedAt: string }>;
+  packer_photos_url: Array<{
+    id: number;
+    url: string;
+    uploadedAt: string;
+    photoType?: string | null;
+  }>;
+  /** Latest pack_verification_events.outcome for this packer_log (plan §2e). */
+  verification_outcome: string | null;
 }
 
 export async function fetchPackerLogHydration(opts: {
@@ -88,6 +95,7 @@ export async function fetchPackerLogHydration(opts: {
     .filter((id): id is number => id != null);
 
   const photosByPackerLog: Record<number, PackerLogHydration['packer_photos_url']> = {};
+  const outcomeByPackerLog: Record<number, string> = {};
   if (packerLogIds.length > 0) {
     try {
       const photosResult = await pool.query<{
@@ -99,7 +107,8 @@ export async function fetchPackerLogHydration(opts: {
                   json_build_object(
                     'id', p.id,
                     'url', '/api/photos/' || p.id::text || '/content',
-                    'uploadedAt', p.created_at
+                    'uploadedAt', p.created_at,
+                    'photoType', p.photo_type
                   )
                   ORDER BY p.created_at
                 ) AS photos
@@ -121,6 +130,24 @@ export async function fetchPackerLogHydration(opts: {
       // Degrade-not-fail: a photo lookup failure hydrates without photos.
       console.warn('[packer-logs-hydrate] photo lookup failed; hydrating without photos', error);
     }
+
+    try {
+      const outcomeResult = await pool.query<{ entity_id: number; outcome: string }>(
+        `SELECT DISTINCT ON (entity_id) entity_id, outcome
+           FROM pack_verification_events
+          WHERE organization_id = $2
+            AND entity_type = 'PACKER_LOG'
+            AND entity_id = ANY($1::bigint[])
+          ORDER BY entity_id, created_at DESC, id DESC`,
+        [packerLogIds, organizationId],
+      );
+      for (const row of outcomeResult.rows) {
+        outcomeByPackerLog[row.entity_id] = row.outcome;
+      }
+    } catch (error) {
+      // Table may be unapplied — degrade without outcomes (plan Phase 3 migrate).
+      console.warn('[packer-logs-hydrate] verification outcome lookup skipped', error);
+    }
   }
 
   const out: Record<number, PackerLogHydration> = {};
@@ -132,6 +159,8 @@ export async function fetchPackerLogHydration(opts: {
       tester_id: row.tester_id,
       tester_name: row.tester_name,
       packer_photos_url: row.packer_log_id != null ? photosByPackerLog[row.packer_log_id] ?? [] : [],
+      verification_outcome:
+        row.packer_log_id != null ? outcomeByPackerLog[row.packer_log_id] ?? null : null,
     };
   }
   return out;

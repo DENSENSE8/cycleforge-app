@@ -15,8 +15,11 @@
  * "Unfound" pill amber while everything else uses the default blue active tone.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Flag, Globe, Tag } from '@/components/Icons';
+import { HEADER_ICON_GLYPH, HEADER_ICON_WRAP } from '@/components/layout/header-shell';
+import { cn } from '@/utils/_cn';
 
 export interface InlinePillOption {
   value: string;
@@ -27,6 +30,17 @@ export interface InlinePillOption {
   inactiveClass?: string;
   title?: string;
 }
+
+/**
+ * Expanded-row leading glyphs — Urgency / Platform / Type.
+ * Same glyph box as the station bar back / classify IconButtons so open-picker
+ * left edge lines up with the back-to-list column.
+ */
+export const INLINE_PILL_LEADING = {
+  urgency: <Flag className={HEADER_ICON_GLYPH} />,
+  platform: <Globe className={HEADER_ICON_GLYPH} />,
+  type: <Tag className={HEADER_ICON_GLYPH} />,
+} as const;
 
 const PILL_BASE =
   'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-role-micro uppercase tracking-wide transition-colors';
@@ -46,6 +60,7 @@ export function InlinePillPicker({
   placeholder = '—',
   collapsedLabel,
   collapsedClass,
+  leadingIcon,
 }: {
   ariaLabel: string;
   options: InlinePillOption[];
@@ -64,6 +79,11 @@ export function InlinePillPicker({
    */
   collapsedLabel?: string;
   collapsedClass?: string;
+  /**
+   * Expanded-row leading glyph (e.g. Globe / Tag / Flag). Prefer an icon over
+   * restating `ariaLabel` as eyebrow text — name stays on the radiogroup for a11y.
+   */
+  leadingIcon?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -107,9 +127,14 @@ export function InlinePillPicker({
             style={{ originX: 0 }}
             className="flex min-w-0 flex-1 items-center gap-1.5"
           >
-            <span className="mr-0.5 shrink-0 select-none text-role-eyebrow uppercase tracking-widest text-text-faint">
-              {ariaLabel}
-            </span>
+            {leadingIcon != null ? (
+              <span
+                className={cn(HEADER_ICON_WRAP, 'text-text-faint')}
+                aria-hidden
+              >
+                {leadingIcon}
+              </span>
+            ) : null}
             <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto scrollbar-hide">
               {options.map((opt, i) => {
               const isActive = opt.value === value;

@@ -124,6 +124,102 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-typed-headers.png', fullPage: false });
   });
 
+  test('grid view (?view=grid) activates the frozen identity pane on horizontal scroll', async ({ page }) => {
+    await page.goto('/dashboard?unshipped&view=grid');
+
+    // The flat spreadsheet grid view is rendered by the LedgerGrid primitive.
+    const grid = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(grid).toBeVisible({ timeout: 20_000 });
+    const row = grid.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    // The frozen identity pane (select · status · Product) is pinned: the title
+    // cell carries the frozen-edge marker and computes to position: sticky.
+    const titleCell = row.locator('[data-frozen-edge]').first();
+    await expect(titleCell).toHaveCount(1);
+    const position = await titleCell.evaluate((el) => getComputedStyle(el).position);
+    expect(position, 'frozen title cell is sticky').toBe('sticky');
+
+    // Force the grid wide enough to overflow horizontally, then scroll right and
+    // assert the frozen title stays pinned while a fact column scrolls under it —
+    // the proof Phase-4 freeze is finally ACTIVE on a real flat surface (§6 gap).
+    const canScroll = await grid.evaluate((el) => el.scrollWidth - el.clientWidth);
+    if (canScroll > 40) {
+      const trackingCell = row.locator('[data-col="tracking"]').first();
+      const titleX0 = (await titleCell.boundingBox())!.x;
+      const trkX0 = (await trackingCell.boundingBox())!.x;
+      await grid.evaluate((el) => { el.scrollLeft = Math.min(300, el.scrollWidth - el.clientWidth); });
+      await page.waitForTimeout(150);
+      const titleX1 = (await titleCell.boundingBox())!.x;
+      const trkX1 = (await trackingCell.boundingBox())!.x;
+      expect(Math.abs(titleX1 - titleX0), 'frozen title stays pinned on h-scroll').toBeLessThan(3);
+      expect(trkX0 - trkX1, 'fact columns scroll left under the frozen pane').toBeGreaterThan(20);
+    }
+
+    await page.screenshot({ path: 'test-results/to-ship-pending-grid-view.png', fullPage: false });
+  });
+
+  test('grid view: Board↔Grid toggle round-trips and drag-resize persists on the LedgerGrid surface', async ({ page }) => {
+    await page.goto('/dashboard?unshipped&view=grid');
+
+    // The grid surface is LedgerGrid (its own data-cf-grid resize/freeze anchor),
+    // NOT the legacy board table body.
+    const grid = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(grid).toBeVisible({ timeout: 20_000 });
+    await grid.locator('[data-order-row-id]').first().waitFor({ timeout: 20_000 });
+
+    const notesHeaderIn = (root: Locator) =>
+      root.locator('[role="row"]').filter({ hasText: 'Product' }).first().locator('[data-col="notes"]');
+    const notesHeader = notesHeaderIn(grid);
+    await expect(notesHeader).toHaveCount(1);
+    const notesWidth = async () => (await notesHeader.boundingBox())!.width;
+
+    const dragNotesHandle = async (dx: number) => {
+      await notesHeader.hover();
+      const handle = notesHeader.getByRole('button', { name: /resize notes column/i });
+      await expect(handle).toBeVisible();
+      const hb = (await handle.boundingBox())!;
+      await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(hb.x + hb.width / 2 + dx, hb.y + hb.height / 2, { steps: 12 });
+      await page.mouse.up();
+    };
+
+    // Order-independent baseline: drag NARROW first (clamps to the min width), so
+    // the subsequent widen always clears the threshold regardless of any width a
+    // prior test / session persisted. Poll for the resize to land (no fixed sleep).
+    await dragNotesHandle(-400);
+    await expect.poll(notesWidth, { timeout: 4000 }).toBeLessThan(90);
+    const wNarrow = await notesWidth();
+
+    await dragNotesHandle(160);
+    await expect.poll(notesWidth, { message: 'notes widened after drag on the LedgerGrid surface', timeout: 4000 })
+      .toBeGreaterThan(wNarrow + 80);
+    const wWide = await notesWidth();
+
+    // Toggle to Board via the chrome control, then back to Grid — the resized
+    // width survives the round-trip (shared `orders` staff_preferences store).
+    await page.getByRole('tab', { name: 'Board' }).click();
+    await expect(page.locator('[data-testid="pending-grid-body"]')).toHaveCount(0, { timeout: 10_000 });
+    await expect(page).toHaveURL(/[?&]unshipped/);
+    await expect(page).not.toHaveURL(/view=grid/);
+
+    await page.getByRole('tab', { name: 'Grid' }).click();
+    await expect(page).toHaveURL(/view=grid/);
+    const gridBack = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(gridBack).toBeVisible({ timeout: 20_000 });
+    await gridBack.locator('[data-order-row-id]').first().waitFor({ timeout: 20_000 });
+    await expect
+      .poll(async () => (await notesHeaderIn(gridBack).boundingBox())!.width, {
+        message: 'resized notes width persisted across the toggle',
+        timeout: 6000,
+      })
+      .toBeGreaterThan(wWide - 28);
+
+    // Reset to a content-fit width so the dogfood user isn't left with a stub.
+    await notesHeaderIn(gridBack).getByRole('button', { name: /resize notes column/i }).dblclick();
+  });
+
   test('columns are drag-resizable and the width persists across reload', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 

@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (191 files, regenerated 2026-07-18) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (210 files, regenerated 2026-07-21) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Switcher:** [`dev-worktrees.json`](../../dev-worktrees.json) · `pnpm dev:switcher`
 
@@ -36,12 +36,15 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 
 | WT-ID | Absolute path | Branch | HEAD | Switcher card | Unlock parked | Workstreams |
 |-------|---------------|--------|------|---------------|---------------|-------------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `50a24755c` | yes · :3000 | no | WS-DOGFOOD + lane=main |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `6b7aab4ce` | yes · :3000 | no | WS-DOGFOOD + lane=main |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes · :3010 | yes | WS-AI |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes · :3020 | yes | WS-FBA |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes · :3030 | yes | WS-GLASS |
 | `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes · :3040 | yes | WS-HOME |
 | `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes · :3050 | yes | WS-INV |
+| `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes · :3000 | yes | — |
+| `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes · :3110 | yes | — |
+| `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes · :3000 | yes | — |
 | `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes · :3060 | yes | WS-SRC |
 | `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `370521de9` | yes · :3080 | yes | — |
 | `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes · :3090 | yes | WS-WH |
@@ -56,6 +59,9 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | `glass` | `../cycleforge-glass` (parent: `cycleforge-glass`) |
 | `home` | `../cycleforge-home` (parent: `cycleforge-home`) |
 | `inventory` | `../cycleforge-inventory` (parent: `cycleforge-inventory`) |
+| `journey-hops` | `../cycleforge-journey-hops` (parent: `cycleforge-journey-hops`) |
+| `photo` | `../cycleforge-photo` (parent: `cycleforge-photo`) |
+| `review` | `../cycleforge-review` (parent: `cycleforge-review`) |
 | `sourcing` | `../cycleforge-sourcing` (parent: `cycleforge-sourcing`) |
 | `unbox` | `../cycleforge-unbox` (parent: `cycleforge-unbox`) |
 | `warehouse` | `../cycleforge-warehouse` (parent: `cycleforge-warehouse`) |
@@ -90,6 +96,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WS-INT | Integrations | [integrations/](../integrations/) + todo oauth | `main` | P2-build | — | — |
 | WS-INV | Inventory | inventory UI | **`inventory`** | P1-branch | `WS-INV` | — |
 | WS-JOURNEY | Search → Item Journey | [todo/search-journey-handoff…](../todo/search-journey-handoff-plan.md) · [emitters (parked)](../todo/journey-hop-emitters-plan.md) | `main` (emitters: own lane later) | P1-branch | — | — |
+| WS-PHOTO | Photo evidence chain | [todo/photo-evidence-chain-INDEX…](../todo/photo-evidence-chain-INDEX.md) (+ 5 child plans) | `main` → `topic/photo-evidence` | P0-catalog | — | — |
 | WS-LOGIN | Org login | [todo/org-login-gate…](../todo/org-login-gate-EXECUTION-PROMPT.md) | `main` | P4-human-review | — | needed |
 | WS-NEW | New-additions | [new-additions/](../new-additions/) | `main` | P0-catalog | — | — |
 | WS-ONB | Onboarding | [todo/onboarding…](../todo/onboarding-foundational-plan.md) | `main` | P0-catalog | — | — |

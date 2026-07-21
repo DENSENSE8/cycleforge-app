@@ -84,7 +84,9 @@ function buildUnboxRailMatchedRow(
     ...buildMatchedStubRow(receivingId, tracking, line),
     client_event_id: receivingRailCartonKey(receivingId),
     scanned_at: now,
-    // Unbox-open milestone for the rail — unboxed_at is set by the Unboxed action.
+    // Unbox-open milestone for the rail — first-open only (server COALESCE-once).
+    // Re-scans still set this optimistically; mergeRailRows keeps the cached
+    // first-open stamp so the Unboxed list does not reshuffle.
     unbox_opened_at: now,
     last_activity_at: now,
   };
@@ -226,7 +228,12 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
           const railPick = openRows[0] ?? rows[0];
           if (railPick) {
             upsertReceivingRailRows(ctx.queryClient, [
-              { ...railPick, client_event_id: receivingRailCartonKey(poCtx.receiving_id) },
+              {
+                ...railPick,
+                client_event_id: receivingRailCartonKey(poCtx.receiving_id),
+                // Do not stamp `now` here — mergeRailRows keeps the first-open
+                // unbox_opened_at so a re-scan cannot reshuffle the Unboxed rail.
+              },
             ]);
           }
         } else {

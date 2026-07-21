@@ -422,6 +422,9 @@ export const AUDIT_ACTION = {
   REPAIR_SERVICE_UNLINK: 'repair_service.unlink',
   // Pack / order (existing callers — keep their literals stable)
   PACK_COMPLETED: 'PACK_COMPLETED',
+  // Packer Review Station — verification capture + manager review decision
+  PACK_VERIFICATION: 'packing.verification',
+  PACK_REVIEW_DECISION: 'packing.review_decision',
   ORDER_ASSIGNMENT_UPDATED: 'ORDER_ASSIGNMENT_UPDATED',
   // Dock scan-out: the package physically left the warehouse (SHIP_CONFIRM event)
   SHIP_CONFIRM_SCAN: 'shipment.scan_out',

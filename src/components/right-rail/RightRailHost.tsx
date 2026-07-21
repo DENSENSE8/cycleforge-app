@@ -28,6 +28,8 @@ import {
   detailStackAsideClassName,
   detailStackAsideElevatedClassName,
   detailStackAsideStyle,
+  detailStackBackdropClassName,
+  detailStackBackdropElevatedClassName,
 } from '@/components/right-rail/DetailStackFrame';
 import {
   getRightRailTop,
@@ -64,11 +66,7 @@ export function RightRailHost() {
             exit={{ opacity: 0 }}
             transition={BACKDROP_FADE}
             onClick={renderable.onClose}
-            className={
-              isElevated
-                ? 'fixed inset-0 z-detailStackBackdrop bg-scrim/70 backdrop-blur-md'
-                : 'fixed inset-0 z-panelBackdrop bg-scrim/55 backdrop-blur-[2px]'
-            }
+            className={isElevated ? detailStackBackdropElevatedClassName : detailStackBackdropClassName}
           />
         ) : null}
       </AnimatePresence>

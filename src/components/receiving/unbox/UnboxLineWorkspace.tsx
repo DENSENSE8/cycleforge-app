@@ -8,6 +8,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
+import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
 import { UnboxWorkspaceView } from '@/components/receiving/unbox/UnboxWorkspaceView';
 import {
   framerPresence,
@@ -29,6 +30,8 @@ interface UnboxLineWorkspaceProps {
   staffId: string;
   workspace: WorkspaceState | null;
   nav: NavState | null;
+  /** A deep-link restore is resolving — show the workspace skeleton, not browse. */
+  restorePending?: boolean;
   onCloseWorkspace: () => void;
 }
 
@@ -36,12 +39,17 @@ export function UnboxLineWorkspace({
   staffId,
   workspace,
   nav,
+  restorePending = false,
   onCloseWorkspace,
 }: UnboxLineWorkspaceProps) {
   const panePresence = useMotionPresence(framerPresence.workbenchPaneSettle);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneSettle);
   const row = workspace?.row ?? null;
   const showOverlay = !!workspace;
+  // Deep-link load (`?openReceivingId=`): the carton is being fetched but the
+  // overlay is not open yet. Show the workspace skeleton in the underlay so a
+  // refresh never flashes the browse feed before the restore lands.
+  const showRestoreSkeleton = restorePending && !showOverlay;
 
   return (
     <div className={cn(appWorkCanvasClass, 'h-full')}>
@@ -51,7 +59,11 @@ export function UnboxLineWorkspace({
         inert={showOverlay ? true : undefined}
         style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
       >
-        <UnboxWorkspaceView selectedLine={row} />
+        {showRestoreSkeleton ? (
+          <ReceivingWorkspaceSkeleton />
+        ) : (
+          <UnboxWorkspaceView selectedLine={row} />
+        )}
       </div>
 
       <AnimatePresence initial={false} mode="wait">

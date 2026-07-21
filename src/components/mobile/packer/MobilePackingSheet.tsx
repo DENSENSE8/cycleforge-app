@@ -59,8 +59,12 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
   });
 
   // Carry the real order number so packer photos file under it in the library.
+  // Guided Review starts on the slip step (plan §2b).
   const photosHref = packerLogId
-    ? `/m/p/${packerLogId}/photos${orderId ? `?orderId=${encodeURIComponent(orderId)}` : ''}`
+    ? `/m/p/${packerLogId}/photos?${new URLSearchParams({
+        ...(orderId ? { orderId } : {}),
+        step: 'slip',
+      }).toString()}`
     : null;
 
   return (

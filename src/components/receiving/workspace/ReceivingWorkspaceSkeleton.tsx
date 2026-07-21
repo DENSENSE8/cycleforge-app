@@ -7,7 +7,7 @@ import {
 } from './receiving-workspace-layout';
 
 /** Stacked section cards that mirror LineEditPanel's hero column shape. */
-export function ReceivingWorkspaceSkeletonSections() {
+function ReceivingWorkspaceSkeletonSections() {
   return (
     <>
       <ReceivingWorkspaceSkeletonSection rows={2} />
@@ -17,7 +17,7 @@ export function ReceivingWorkspaceSkeletonSections() {
   );
 }
 
-export function ReceivingWorkspaceSkeletonSection({ rows }: { rows: number }) {
+function ReceivingWorkspaceSkeletonSection({ rows }: { rows: number }) {
   return (
     <div className="rounded-2xl border border-border-soft bg-surface-card px-5 py-4 shadow-sm">
       <SkeletonBase width="96px" height="10px" className="mb-3 rounded-full" />

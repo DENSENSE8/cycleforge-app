@@ -54,12 +54,36 @@ export type IntegrationProvider =
   | 'openai'
   | 'anthropic';
 
+/**
+ * Shared / BYO eBay **app** credentials (Client ID / Cert / RuName). Stored at
+ * `organization_integrations` scope=NULL. Not per-seller tokens.
+ */
 export interface EbayCredentials {
   appId: string;
   certId: string;
   ruName: string;
   environment: 'PRODUCTION' | 'SANDBOX';
+  /** @deprecated Legacy USAV env bootstrap — per-account tokens use EbayUserCredentials. */
   refreshToken?: string;
+}
+
+/**
+ * Per-account eBay **user** OAuth tokens (seller or buyer consent). Stored at
+ * `organization_integrations` scope=`seller:{slug}` | `buyer:{slug}` (see
+ * ebayScopeForAccount). This is the SoT for refresh/access after the vault migration.
+ */
+export interface EbayUserCredentials {
+  refreshToken: string;
+  accessToken?: string;
+  /** Access-token expiry, epoch ms (also mirrored to organization_integrations.expires_at). */
+  expiresAt?: number;
+  /** Refresh-token expiry, epoch ms (~18 months from consent). */
+  refreshTokenExpiresAt?: number;
+  scopes?: string[];
+  /** eBay user id / username from identity probe. */
+  accountRef?: string;
+  environment: 'PRODUCTION' | 'SANDBOX';
+  accountRole: 'seller' | 'buyer';
 }
 
 /**
@@ -406,20 +430,10 @@ function envFallback(provider: IntegrationProvider): unknown | null {
 
 // ─── Legacy env bridge (USAV Zoho only, transitional) ───────────────────────
 // USAV may still resolve Zoho from ZOHO_* env vars when the vault row is absent.
-// Refresh token: ZOHO_REFRESH_TOKEN env, else ebay_accounts.ZOHO_MAIN (pre-vault).
+// Refresh token: ZOHO_REFRESH_TOKEN env only — ebay_accounts.ZOHO_MAIN token
+// columns were removed in the eBay vault migration (INT-002).
 async function readLegacyZohoRefreshToken(): Promise<string> {
-  const fromEnv = (process.env.ZOHO_REFRESH_TOKEN ?? '').trim();
-  if (fromEnv) return fromEnv;
-  try {
-    const { rows } = await pool.query<{ refresh_token: string | null }>(
-      `SELECT refresh_token FROM ebay_accounts
-        WHERE account_name = 'ZOHO_MAIN' AND platform = 'ZOHO'
-        LIMIT 1`,
-    );
-    return (rows[0]?.refresh_token ?? '').trim();
-  } catch {
-    return '';
-  }
+  return (process.env.ZOHO_REFRESH_TOKEN ?? '').trim();
 }
 
 async function legacyZohoFromEnv(): Promise<ZohoCredentials | null> {
@@ -506,22 +520,33 @@ export interface UpsertIntegrationInput {
   payload: unknown;
   displayLabel?: string | null;
   createdBy?: number | null;
+  /** Access-token expiry — drives connectors/refresh-sweep.ts. */
+  expiresAt?: Date | null;
 }
 
 export async function upsertIntegrationCredentials(input: UpsertIntegrationInput): Promise<void> {
   const enc = serializeIntegrationPayload(input.payload);
   await pool.query(
     `INSERT INTO organization_integrations
-       (organization_id, provider, scope, payload_encrypted, display_label, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, 'active', $6)
+       (organization_id, provider, scope, payload_encrypted, display_label, status, created_by, expires_at)
+     VALUES ($1, $2, $3, $4, $5, 'active', $6, $7)
      ON CONFLICT (organization_id, provider, COALESCE(scope, ''))
      DO UPDATE SET
        payload_encrypted = EXCLUDED.payload_encrypted,
        display_label    = EXCLUDED.display_label,
        status           = 'active',
        last_error       = NULL,
+       expires_at       = COALESCE(EXCLUDED.expires_at, organization_integrations.expires_at),
        updated_at       = now()`,
-    [input.orgId, input.provider, input.scope ?? null, enc, input.displayLabel ?? null, input.createdBy ?? null],
+    [
+      input.orgId,
+      input.provider,
+      input.scope ?? null,
+      enc,
+      input.displayLabel ?? null,
+      input.createdBy ?? null,
+      input.expiresAt ?? null,
+    ],
   );
   invalidateCredentialCache(input.orgId, input.provider);
 }

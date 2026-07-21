@@ -120,8 +120,8 @@ export function POUnboxingSection({
   );
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyClassName="space-y-3 p-4">
-      <div>
+    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
+      <div className="space-y-3">
         {showPoItems ? poItemsSection : null}
 
         {showAutoMatch ? (
