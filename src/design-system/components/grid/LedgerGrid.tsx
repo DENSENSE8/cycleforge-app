@@ -64,6 +64,13 @@ interface LedgerGridProps<T> {
   /** Optional external scroll region (stacked lanes); default = the internal body. */
   scrollParentRef?: RefObject<HTMLElement | null>;
   className?: string;
+  /**
+   * Visual skin for the surface. `'airtable'` stamps `data-grid-skin="airtable"`,
+   * which the scoped stylesheet in `globals.css` targets to turn the flat grid
+   * into a closed white spreadsheet (strong gridline, white cells, opaque header).
+   * Omitted → the plain hairline look (the vertical shelf-board never opts in).
+   */
+  gridSkin?: 'airtable';
   /** Test hook on the scroll body. */
   'data-testid'?: string;
 }
@@ -82,6 +89,7 @@ export function LedgerGrid<T>({
   rowEstimate,
   scrollParentRef,
   className,
+  gridSkin,
   'data-testid': dataTestId = 'ledger-grid-body',
 }: LedgerGridProps<T>) {
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -109,6 +117,7 @@ export function LedgerGrid<T>({
     <div
       ref={bodyRef}
       data-cf-grid
+      data-grid-skin={gridSkin}
       data-testid={dataTestId}
       onScroll={
         scrollX

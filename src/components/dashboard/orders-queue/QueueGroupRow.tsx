@@ -14,6 +14,10 @@ export interface QueueGroupRowProps {
    *  children included), matching the flat `displayedRecords` order. */
   baseStripeIndex: number;
   isMobile: boolean;
+  /** Airtable grid-view skin. Passed to {@link OrderGroupSummary} so the collapsed
+   *  multi-product header emits `data-grid-summary-row` and picks up the scoped
+   *  spreadsheet gridlines. The leaf rows already carry the skin via `renderRow`. */
+  gridSkin?: boolean;
   /** Render a single queue row at the given zebra-stripe index. */
   renderRow: (record: ShippedOrder, stripeIndex: number) => ReactNode;
 }
@@ -25,7 +29,7 @@ export interface QueueGroupRowProps {
  * so the dense table body AND the virtualized lane body ({@link VirtualQueueSections})
  * render groups from ONE source — no duplicate row/group markup.
  */
-export function QueueGroupRow({ group, baseStripeIndex, isMobile, renderRow }: QueueGroupRowProps) {
+export function QueueGroupRow({ group, baseStripeIndex, isMobile, gridSkin = false, renderRow }: QueueGroupRowProps) {
   // Singleton order → a plain row (renderRow already sets the row key).
   if (group.rows.length === 1) {
     return <>{renderRow(group.rows[0], baseStripeIndex)}</>;
@@ -36,7 +40,7 @@ export function QueueGroupRow({ group, baseStripeIndex, isMobile, renderRow }: Q
     <CollapsibleGroupRow
       index={baseStripeIndex}
       showChevron={false}
-      summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} />}
+      summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} gridSkin={gridSkin} />}
     >
       {group.rows.map((row, i) => renderRow(row, baseStripeIndex + i))}
     </CollapsibleGroupRow>

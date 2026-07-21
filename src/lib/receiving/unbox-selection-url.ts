@@ -43,6 +43,25 @@ export function applyUnboxOpenReceivingParams(
 }
 
 /**
+ * Whether the `?openReceivingId=` deep-link restore should run for this surface.
+ *
+ * `openReceivingId` is the Unbox surface's focused-carton URL SoT — written only
+ * on `/unbox` (see `applyUnboxOpenReceivingParams` / the workspace-pane write
+ * side), and every search / deep-link href targets `/unbox?openReceivingId=`. A
+ * stale value that rides a mode switch onto Incoming/Triage/etc. must NOT trigger
+ * a restore: the restore's `dispatchSelectLine` is caught by the Incoming
+ * overlays listener and pops the details panel on load (the click-to-open
+ * regression). Gating the READ on `isUnboxSurface` keeps it symmetric with the
+ * Unbox-only WRITE side, so no other surface restores from a param it never wrote.
+ */
+export function shouldRestoreOpenReceiving(
+  isUnboxSurface: boolean,
+  openReceivingId: string | null,
+): boolean {
+  return isUnboxSurface && !!openReceivingId && /^\d+$/.test(openReceivingId);
+}
+
+/**
  * Prefer `lineId` among carton lines when restoring `?openReceivingId=`; fall
  * back to the first line (cmd+k / search carton-only deep links).
  */

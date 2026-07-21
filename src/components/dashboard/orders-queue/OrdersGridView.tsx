@@ -84,9 +84,13 @@ export function OrdersGridView({
   });
 
   const getRowId = useCallback((r: ShippedOrder) => Number(r.id), []);
+  // The grid view keeps selection LIVE regardless of the pencil (Airtable-style
+  // hover-select): the gutter checkboxes toggle the set even when `selectMode` is
+  // off, so `useTableSelectMode` tracks + broadcasts unconditionally here. The
+  // pencil (`selectMode`) still governs whether a row-BODY click toggles vs opens.
   const { selectedIds, toggle } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
-    selectMode,
+    selectMode: true,
     rows: displayedRecords,
     getId: getRowId,
   });
@@ -100,6 +104,14 @@ export function OrdersGridView({
       handleRowClick(record);
     },
     [selectMode, toggle, handleRowClick],
+  );
+
+  // Gutter checkbox → toggle this row's selection without opening the record.
+  const handleToggleSelect = useCallback(
+    (record: ShippedOrder, event: { shiftKey: boolean }) => {
+      toggle(Number(record.id), event.shiftKey);
+    },
+    [toggle],
   );
 
   // Render one leaf row. Mirrors OrdersQueueTable's builder but always virtualized
@@ -125,10 +137,12 @@ export function OrdersGridView({
           disableEnterAnimation
           disableLayoutAnimation
           opaqueStripe
+          gridSkin
+          onToggleSelect={handleToggleSelect}
           record={r}
-          isSelected={selectMode ? selectedIds.has(Number(record.id)) : selectedRecord?.id === record.id}
+          isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
           selectMode={selectMode}
-          isChecked={selectMode && selectedIds.has(Number(record.id))}
+          isChecked={selectedIds.has(Number(record.id))}
           isMobile={isMobile}
           useAlternateStripe={stripeIndex % 2 === 0}
           testerDisplay={normalizePersonName(testerName)}
@@ -145,7 +159,7 @@ export function OrdersGridView({
         />
       );
     },
-    [getStaffName, selectMode, selectedIds, selectedRecord, isMobile, handleRowAction],
+    [getStaffName, selectMode, selectedIds, selectedRecord, isMobile, handleRowAction, handleToggleSelect],
   );
 
   const renderGroup = useCallback(
@@ -154,6 +168,7 @@ export function OrdersGridView({
         group={group}
         baseStripeIndex={baseStripeIndex}
         isMobile={isMobile}
+        gridSkin
         renderRow={renderRow}
       />
     ),
@@ -165,6 +180,7 @@ export function OrdersGridView({
   return (
     <LedgerGrid<ShippedOrder>
       scrollX
+      gridSkin="airtable"
       data-testid="pending-grid-body"
       columnVars={columnVars}
       orderGroupsByDate={orderGroupsByDate}
@@ -175,6 +191,7 @@ export function OrdersGridView({
           selectMode={selectMode}
           selectionScope={selectionScope}
           onResizeColumn={setWidth}
+          gridSkin
         />
       }
       renderRow={renderRow}

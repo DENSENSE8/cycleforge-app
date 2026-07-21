@@ -36,7 +36,18 @@ import { cn } from '@/utils/_cn';
  * Identity cells are quiet (icon-less) and split platform / order / tracking so
  * each stays under its own column header.
  */
-export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; isMobile: boolean }) {
+export function OrderGroupSummary({
+  rows,
+  isMobile,
+  gridSkin = false,
+}: {
+  rows: ShippedOrder[];
+  isMobile: boolean;
+  /** Airtable grid-view skin. Marks the desktop container `data-grid-summary-row`
+   *  so the scoped `[data-grid-skin='airtable']` stylesheet draws the per-cell
+   *  spreadsheet gridlines on the collapsed header, matching its child rows. */
+  gridSkin?: boolean;
+}) {
   const orderChannelLabel = useOrderChannelLabel();
   const isHidden = useIsColumnHidden();
   const showQtyCol = !isHidden('qty');
@@ -127,6 +138,7 @@ export function OrderGroupSummary({ rows, isMobile }: { rows: ShippedOrder[]; is
     <div
       className={cn(ordersQueueRowShellClass(false), 'w-full')}
       style={{ gridTemplateColumns: ordersQueueGridTemplate() }}
+      {...(gridSkin ? { 'data-grid-summary-row': '' } : {})}
     >
       {/* select — empty (grip lives only in the sticky header); no lead rule */}
       <span
