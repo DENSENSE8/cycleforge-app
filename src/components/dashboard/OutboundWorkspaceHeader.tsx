@@ -4,7 +4,8 @@
  * Outbound workspace chrome — one unified header bar for Dashboard · Outbound.
  *
  * Left:  lifecycle tabs (To Ship count only).
- * Right: [⚡] [⫶] | staff / columns / options portal | Select (far right).
+ * Right: search · filters · Import · Add · staff/columns portal.
+ * Row select lives in the table left gutter (always on), not chrome.
  */
 
 import { useMemo, type Ref } from 'react';
@@ -12,17 +13,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   DASHBOARD_ORDER_VIEW_LABEL,
   type DashboardOrderView,
-  type DashboardPendingLayout,
 } from '@/utils/dashboard-search-state';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
-import {
-  OutboundExactFilters,
-  useToShipFilterHotkeys,
-} from '@/components/dashboard/OutboundFilterStrip';
+import { OutboundExactFilters, useToShipFilterHotkeys } from '@/components/dashboard/OutboundFilterStrip';
+import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
+import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
+import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 
 const LIFECYCLE_VIEWS = ['unshipped', 'packed', 'shipped'] as const;
@@ -36,9 +34,6 @@ export interface OutboundWorkspaceHeaderProps {
   orderView: DashboardOrderView;
   onSelectView: (view: DashboardOrderView) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  /** Select pencil — always far-right in chrome (not portaled from the table). */
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
   className?: string;
 }
 
@@ -46,32 +41,13 @@ export function OutboundWorkspaceHeader({
   orderView,
   onSelectView,
   controlsSlotRef,
-  selectMode = false,
-  onToggleSelectMode,
   className,
 }: OutboundWorkspaceHeaderProps) {
   const active = isLifecycleView(orderView) ? orderView : 'unshipped';
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
-  const { searchQuery, setSearch, pendingLayout, setPendingLayout } = useDashboardSearchController();
+  const { searchQuery, setSearch, openIntakeForm } = useDashboardSearchController();
+  const { sort, setSort } = useQueueDisplaySort();
   useToShipFilterHotkeys(active === 'unshipped');
-
-  // Pending-only board|grid switch: the vertical shelf-board vs the flat
-  // spreadsheet grid view. Lives in the chrome (table/board-primary region), not
-  // a ?mode= sidebar.
-  const pendingLayoutToggle =
-    active === 'unshipped' ? (
-      <HorizontalButtonSlider
-        variant="nav"
-        dense
-        aria-label="Pending layout"
-        value={pendingLayout}
-        onChange={(id) => setPendingLayout(id as DashboardPendingLayout)}
-        items={[
-          { id: 'board', label: 'Board' },
-          { id: 'grid', label: 'Grid' },
-        ]}
-      />
-    ) : null;
 
   // Counts only on To Ship; Packed/Shipped stay label-only.
   const tabs = useMemo(
@@ -107,16 +83,17 @@ export function OutboundWorkspaceHeader({
           tone="blue"
         />
       }
-      // [⚡] [⫶ lane/status] — All + saved views live in filter / table options.
-      // Select-all for To Ship lives in the table column header (grip + ☐), not
-      // a trailing pencil — keep the chrome pencil only for Packed / Shipped.
-      right={<OutboundExactFilters mode={active} />}
+      // [⚡] [⫶ lane/status] + Pending display sort (Priority|Newest|Deadline).
+      // Select-all lives in the table column header (left gutter ☐), not chrome.
+      right={
+        <>
+          {active === 'unshipped' ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
+          <OutboundExactFilters mode={active} />
+        </>
+      }
       trailing={
-        active === 'unshipped' ? (
-          pendingLayoutToggle
-        ) : onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
+        /* Import + Add — same CTAs as Labels / Pack / `/test` Shipping. */
+        <OutboundOrderChromeActions onNewOrder={openIntakeForm} />
       }
     />
   );

@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs';
 import { sheets as googleSheets } from '@googleapis/sheets';
 import { db } from '@/lib/drizzle/db';
 import pool from '@/lib/db';
@@ -424,16 +425,63 @@ export async function runGoogleSheetsTransferOrders(
       }
 
       sheetTotalRows = sourceRows.length - 1;
+      let skippedNoOrderId = 0;
+      let skippedNoTracking = 0;
+      let skippedEcwid = 0;
       eligibleSourceRows = sourceRows.slice(1).filter((row) => {
         const orderId = String(row[colIndices.orderNumber] || '').trim();
-        if (!orderId) return false;
+        if (!orderId) {
+          skippedNoOrderId += 1;
+          return false;
+        }
+        // Require tracking — blank-tracking rows used to land as AWAITING_LABEL
+        // on Shipping · Labels for "print later". Labels work needs a real
+        // shipment; skip the same way ShipStation sync does.
+        const tracking = normalizeTracking(row[colIndices.tracking]);
+        if (!tracking) {
+          skippedNoTracking += 1;
+          return false;
+        }
         // Ecwid orders are now fetched directly from the Ecwid API — skip them in the sheet.
         const platform = colIndices.platform >= 0
           ? String(row[colIndices.platform] || '').trim()
           : '';
-        if (platform.toLowerCase() === 'ecwid') return false;
+        if (platform.toLowerCase() === 'ecwid') {
+          skippedEcwid += 1;
+          return false;
+        }
         return true;
       });
+      // #region agent log
+      try {
+        appendFileSync(
+          '/Users/icecube/repos/cycleforge-app/.cursor/debug-7d3d46.log',
+          `${JSON.stringify({
+            sessionId: '7d3d46',
+            runId: 'pre-fix',
+            hypothesisId: 'D',
+            location: 'google-sheets-transfer-orders.ts:after-sheet-fetch',
+            message: 'sheet rows fetched and filtered',
+            data: {
+              targetTabName,
+              sheetTotalRows,
+              eligibleCount: eligibleSourceRows.length,
+              skippedNoOrderId,
+              skippedNoTracking,
+              skippedEcwid,
+              trackingCol: colIndices.tracking,
+              orderNumberCol: colIndices.orderNumber,
+              itemTitleCol: colIndices.itemTitle,
+              platformCol: colIndices.platform,
+              headerSample: (headerRow || []).slice(0, 12).map((c: unknown) => String(c ?? '')),
+            },
+            timestamp: Date.now(),
+          })}\n`,
+        );
+      } catch {
+        /* ignore debug log IO */
+      }
+      // #endregion
     }
 
     // ─── Ecwid API fetch (source: 'ecwid' | 'all') ───────────────────

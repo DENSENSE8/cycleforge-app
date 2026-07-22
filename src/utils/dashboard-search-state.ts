@@ -70,16 +70,13 @@ export function getDashboardViewGroup(view: DashboardOrderView): DashboardViewGr
 }
 
 /**
- * Pending (To Ship) presentation: the default vertical shelf-**board** (swimlane
- * bubbles) vs the flat full-width spreadsheet **grid** view. Orthogonal to the
- * lifecycle flags — carried by `?view=grid` (absence = board), Pending-only.
+ * Pending (To Ship) is grid-only. Legacy `?view=grid|board` is stripped on
+ * normalize — kept as a read helper so old bookmarks resolve without a switcher.
  */
-export type DashboardPendingLayout = 'board' | 'grid';
-
 export function getDashboardPendingLayoutFromSearch(
-  searchParams: Pick<URLSearchParams, 'get'>
-): DashboardPendingLayout {
-  return String(searchParams.get('view') || '').trim().toLowerCase() === 'grid' ? 'grid' : 'board';
+  _searchParams: Pick<URLSearchParams, 'get'>
+): 'grid' {
+  return 'grid';
 }
 
 /** Display labels for the outbound lifecycle slider (industry-standard wording). */
@@ -109,9 +106,9 @@ export function normalizeDashboardOrderViewParams(
   params.delete('wexp');
   // Nested board layout was retired — lists only on Pending / Packed / Shipped.
   params.delete('layout');
-  // The board|grid layout toggle is Pending-only — clear it off any other tab so
-  // `?view=grid` never bleeds onto Packed / Shipped / FBA.
-  if (nextView !== 'unshipped') params.delete('view');
+  // Board|Grid switcher retired — Pending is always the spreadsheet grid.
+  // Strip stale `?view=` from every tab (including Pending bookmarks).
+  params.delete('view');
   // Cross-tab status filters are view-specific; clear so they don't bleed.
   if (nextView !== 'unshipped') {
     params.delete('ustatus');
@@ -119,6 +116,8 @@ export function normalizeDashboardOrderViewParams(
     params.delete('late');
     params.delete('attention');
     params.delete('surface');
+    // Pending display-sort (`?sort=`) stays To Ship–scoped.
+    params.delete('sort');
   }
   if (nextView === 'packed') {
     // Packed is the exact staged list — status chips don't apply.

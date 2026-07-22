@@ -10,6 +10,7 @@
  * /api/ecwid/transfer-orders) stay in place — the cron fan-out and the legacy
  * DashboardManagementPanel importer still stream through them.
  */
+import { appendFileSync } from 'node:fs';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   GoogleSheetsTransferOrdersJobError,
@@ -19,7 +20,36 @@ import {
 } from '@/lib/jobs/google-sheets-transfer-orders';
 import type { SyncOutcome } from './types';
 
+const DEBUG_LOG = '/Users/icecube/repos/cycleforge-app/.cursor/debug-7d3d46.log';
+function debugLog(payload: Record<string, unknown>) {
+  // #region agent log
+  try {
+    appendFileSync(DEBUG_LOG, `${JSON.stringify({ sessionId: '7d3d46', timestamp: Date.now(), ...payload })}\n`);
+  } catch {
+    /* ignore debug log IO */
+  }
+  // #endregion
+}
+
 function toOutcome(r: GoogleSheetsTransferOrdersJobResult): SyncOutcome {
+  debugLog({
+    runId: 'pre-fix',
+    hypothesisId: 'B,D',
+    location: 'orders-transfer.ts:toOutcome',
+    message: 'job result stripped to SyncOutcome counts only',
+    data: {
+      tabName: r.tabName,
+      rowCount: r.rowCount,
+      processedRows: r.processedRows,
+      insertedOrders: r.insertedOrders,
+      updatedOrdersFields: r.updatedOrdersFields,
+      updatedOrdersTracking: r.updatedOrdersTracking,
+      detailsInserted: r.details?.inserted?.length ?? 0,
+      detailsUpdated: r.details?.updated?.length ?? 0,
+      detailsDeleted: r.details?.deleted?.length ?? 0,
+      strippingDetails: true,
+    },
+  });
   return {
     ok: true,
     imported: r.insertedOrders,
@@ -50,6 +80,17 @@ export async function googleSheetsSync(
     };
   }
   try {
+    debugLog({
+      runId: 'pre-fix',
+      hypothesisId: 'C,E',
+      location: 'orders-transfer.ts:googleSheetsSync:start',
+      message: 'googleSheetsSync start',
+      data: {
+        orgId,
+        spreadsheetIdSuffix: spreadsheetId.slice(-8),
+        manualSheetName: opts?.manualSheetName ?? null,
+      },
+    });
     const r = await runGoogleSheetsTransferOrders(
       opts?.manualSheetName,
       'sheets',
@@ -59,6 +100,17 @@ export async function googleSheetsSync(
     );
     return toOutcome(r);
   } catch (e) {
+    debugLog({
+      runId: 'pre-fix',
+      hypothesisId: 'C,D',
+      location: 'orders-transfer.ts:googleSheetsSync:error',
+      message: 'googleSheetsSync failed',
+      data: {
+        error: e instanceof Error ? e.message : String(e),
+        status: (e as { status?: number })?.status ?? null,
+        bodyError: (e as { body?: { error?: string } })?.body?.error ?? null,
+      },
+    });
     return toError(e);
   }
 }

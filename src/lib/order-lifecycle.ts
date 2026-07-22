@@ -100,13 +100,10 @@ export function resolveFulfillmentLane(signals: OrderLifecycleSignals): Fulfillm
 }
 
 // ─── Board descriptor (lane order + icon binding, as data — no React) ───────────
-/** Icon binding key; the board maps this to a concrete icon component. */
-export type FulfillmentLaneIconKey = 'clock' | 'check' | 'alert';
-
 interface FulfillmentLaneDescriptor {
   id: FulfillmentLane;
   /** Which structural icon sits next to the lane title. */
-  iconKey: FulfillmentLaneIconKey;
+  iconKey: 'clock' | 'check' | 'alert';
   /** Lane header icon color (icon only; the status dot keeps the meta hue). */
   iconClass: string;
 }

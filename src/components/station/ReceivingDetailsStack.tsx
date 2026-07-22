@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import { Copy, Edit, Package, RefreshCw, Trash2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives/Button';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { TRIAGE_SURFACE_ROUTE, UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+import { Copy, Edit, Package, PackageOpen, RefreshCw, Trash2 } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { copyToClipboard } from '@/utils/_dom';
 import { formatDateTimePST } from '@/utils/date';
 import { toast } from '@/lib/toast';
@@ -54,7 +55,10 @@ interface ReceivingDetailsStackProps {
 export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: ReceivingDetailsStackProps) {
   const form = useReceivingDetailForm({ log, onUpdated, onDeleted });
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isTriageSurface =
+    pathname === TRIAGE_SURFACE_ROUTE || pathname.startsWith(`${TRIAGE_SURFACE_ROUTE}/`);
   const [isOpeningEditor, setIsOpeningEditor] = useState(false);
   const [activeTab, setActiveTab] = useState<ReceivingTab>('progress');
   const [isCopying, setIsCopying] = useState(false);
@@ -269,6 +273,21 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
               value={activeTab}
               onChange={setActiveTab}
               className="px-6"
+              rightSlot={
+                isTriageSurface ? (
+                  <HoverTooltip label="Open this carton in unbox" asChild focusable={false}>
+                    <IconButton
+                      icon={<PackageOpen className="h-4 w-4" />}
+                      ariaLabel="Open in unbox"
+                      tone="accent"
+                      size="sm"
+                      onClick={() => void handleEditPO()}
+                      disabled={isOpeningEditor || form.isSaving}
+                      className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    />
+                  </HoverTooltip>
+                ) : null
+              }
             />
           </>
         }
@@ -277,7 +296,12 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
         <div className="space-y-4">
           {activeTab === 'progress' && (
-            <ReceivingProgressTab log={log} readiness={readiness} form={form} />
+            <ReceivingProgressTab
+              log={log}
+              readiness={readiness}
+              form={form}
+              journey={isTriageSurface ? 'arrival' : 'unbox'}
+            />
           )}
 
           {activeTab === 'items' && (

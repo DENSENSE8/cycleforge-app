@@ -108,14 +108,17 @@ export function ShippedRecordRow({
 
   return (
     <div
-      onClick={(e) => (selectMode ? onToggle(Number(record.id), e.shiftKey) : onRowClick(record))}
-      // Suppress native text-selection on shift-click so range-select reads cleanly.
-      onMouseDown={(e) => { if (selectMode && e.shiftKey) e.preventDefault(); }}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (selectMode) { onToggle(Number(record.id), e.shiftKey); } else { onRowClick(record); } } }}
-      role={selectMode ? 'checkbox' : 'button'}
+      onClick={() => onRowClick(record)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onRowClick(record);
+        }
+      }}
+      role="button"
       tabIndex={0}
-      aria-checked={selectMode ? checked : undefined}
-      aria-pressed={selectMode ? undefined : selected}
+      aria-pressed={selected}
+      aria-label={`Open order ${record.order_id || record.id}`}
       className={cn(
         dashboardOrderRowShellClass(isMobile),
         'border-b border-border-hairline py-2 transition-colors cursor-pointer hover:bg-blue-50/50',
@@ -131,13 +134,24 @@ export function ShippedRecordRow({
         <RowTitle
           leading={
             selectMode ? (
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                aria-label={checked ? 'Deselect row' : 'Select row'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle(Number(record.id), e.shiftKey);
+                }}
+                onMouseDown={(e) => {
+                  if (e.shiftKey) e.preventDefault();
+                }}
+                className={`ds-raw-button flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                   checked ? 'border-blue-600 bg-blue-600 text-white' : 'border-border-default bg-surface-card'
                 }`}
               >
                 {checked && <Check className="h-3 w-3" />}
-              </span>
+              </button>
             ) : undefined
           }
           dot={OUTBOUND_STATE_META[record.outboundState].dot}

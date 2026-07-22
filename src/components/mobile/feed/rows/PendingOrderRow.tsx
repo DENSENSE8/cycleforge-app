@@ -25,12 +25,13 @@ function deadlineOf(o: ShippedOrder): string | null {
   return o.ship_by_date || o.deadline_at || null;
 }
 
-/** Status dot bg by days late — mirrors getDaysLateTone (red/yellow/emerald/gray). */
+/** Status dot bg by days late — mirrors getDaysLateTone progressive SLA. */
 function dotTone(daysLate: number | null): string {
   if (daysLate === null) return 'bg-surface-strong';
-  if (daysLate > 1) return 'bg-rose-500';
-  if (daysLate === 1) return 'bg-amber-500';
-  return 'bg-emerald-500';
+  if (daysLate >= 8) return 'bg-rose-500';
+  if (daysLate >= 3) return 'bg-amber-500';
+  if (daysLate >= 1) return 'bg-amber-400';
+  return 'bg-surface-strong';
 }
 
 export function PendingOrderRow({

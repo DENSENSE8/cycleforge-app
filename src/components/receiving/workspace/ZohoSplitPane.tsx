@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { useHorizontalEdgeResize } from '@/design-system/hooks';
+import { cn } from '@/utils/_cn';
 
 type OpenPaneDetail = { poId?: string; poNumber?: string };
 
 const DEFAULT_WIDTH = 560;
 const MIN_WIDTH = 320;
-const MAX_WIDTH_PAD = 240; // keep at least this many px of main content visible
 const WIDTH_STORAGE_KEY = 'zoho-pane-width';
 
 function buildZohoUrl(detail: OpenPaneDetail): string {
@@ -29,24 +30,18 @@ function buildZohoUrl(detail: OpenPaneDetail): string {
  * deep link. Hidden by default; the flow-header action dispatches
  * `open-zoho-pane` with the PO id / number.
  *
- * The pane has a draggable left edge; width is persisted across sessions.
+ * The pane has a draggable left edge; width is persisted across sessions via
+ * {@link useHorizontalEdgeResize}.
  */
 export function ZohoSplitPane() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const widthRef = useRef(DEFAULT_WIDTH);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = Number(localStorage.getItem(WIDTH_STORAGE_KEY));
-    if (Number.isFinite(stored) && stored >= MIN_WIDTH) {
-      const cap = Math.max(MIN_WIDTH, window.innerWidth - MAX_WIDTH_PAD);
-      const next = Math.min(stored, cap);
-      setWidth(next);
-      widthRef.current = next;
-    }
-  }, []);
+  const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
+    storageKey: WIDTH_STORAGE_KEY,
+    defaultWidth: DEFAULT_WIDTH,
+    minWidth: MIN_WIDTH,
+    enabled: open,
+  });
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -62,39 +57,6 @@ export function ZohoSplitPane() {
     return () => window.removeEventListener('open-zoho-pane', handler);
   }, []);
 
-  const onDragStart = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startWidth = widthRef.current;
-      const onMove = (ev: MouseEvent) => {
-        const cap = Math.max(MIN_WIDTH, window.innerWidth - MAX_WIDTH_PAD);
-        const next = Math.max(
-          MIN_WIDTH,
-          Math.min(cap, startWidth - (ev.clientX - startX)),
-        );
-        widthRef.current = next;
-        setWidth(next);
-      };
-      const onUp = () => {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        try {
-          localStorage.setItem(WIDTH_STORAGE_KEY, String(widthRef.current));
-        } catch {
-          /* private mode / storage disabled */
-        }
-      };
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    },
-    [],
-  );
-
   if (!open || !url) return null;
 
   return (
@@ -105,11 +67,12 @@ export function ZohoSplitPane() {
       aria-label="Zoho PO viewer"
     >
       <div
-        onMouseDown={onDragStart}
-        className="absolute -left-0.5 top-0 z-10 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-blue-400/40 active:bg-blue-500/60"
-        role="separator"
+        {...edgeHandleProps}
+        className={cn(
+          'absolute -left-0.5 top-0 z-10 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-blue-400/40 active:bg-blue-500/60',
+          isDragging && 'bg-blue-500/60',
+        )}
         aria-label="Resize Zoho pane"
-        aria-orientation="vertical"
       />
 
       <header className="flex h-10 shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-3">

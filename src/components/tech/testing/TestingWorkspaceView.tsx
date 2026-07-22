@@ -14,12 +14,10 @@ import { useTestingWorkspaceTab } from '@/hooks/useTestingWorkspaceTab';
 export function TestingWorkspaceView({
   techId,
   selectMode,
-  onToggleSelectMode,
   onOpenLine,
 }: {
   techId: string;
   selectMode: boolean;
-  onToggleSelectMode: () => void;
   onOpenLine?: () => void;
 }) {
   const { testTab, setTestTab } = useTestingWorkspaceTab();
@@ -35,8 +33,6 @@ export function TestingWorkspaceView({
             tab={testTab}
             onSelectTab={setTestTab}
             controlsSlotRef={setControlsEl}
-            selectMode={selectMode}
-            onToggleSelectMode={onToggleSelectMode}
           />
         </div>
       }

@@ -23,12 +23,16 @@ import {
   type WorkspaceMode,
 } from './workspace-mode-registry';
 
-/** Unbox: refresh stays inline; share + the rest live in the overflow menu.
- *  Ticket (photoNote) is on the carton photo dropdown, not More. */
-const UNBOX_INLINE_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
+/**
+ * Unbox + Arrival (triage): refresh stays inline; share + the rest live in the
+ * overflow menu. Ticket (photoNote) is on the carton photo dropdown, not More.
+ * Testing keeps the full icon row (+ prev/next when not embedded).
+ */
+const COMPACT_OVERFLOW_MODES: ReadonlySet<WorkspaceMode> = new Set(['unbox', 'triage']);
+const COMPACT_INLINE_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
   'refresh',
 ];
-const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
+const COMPACT_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>> = [
   'share',
   'audit',
   'copy',
@@ -41,8 +45,8 @@ const UNBOX_OVERFLOW_ACTIONS: ReadonlyArray<Exclude<HeaderActionKey, 'details'>>
  * Icon-only actions driven by {@link workspaceMode} (`headerActions`).
  * Unbox-family stations mount this inside {@link StationMoreDetails}
  * (corner slot of {@link StationContextBar}, `embedded`) using GlobalHeader
- * icon hit-box / gap SoT. Unbox: refresh · ⋯ · info (no prev/next). Testing
- * keeps prev/next via navChannel when those handlers are provided.
+ * icon hit-box / gap SoT. Unbox + Arrival: refresh · ⋯ · info (no prev/next).
+ * Testing keeps prev/next via navChannel when those handlers are provided.
  *
  * Prefer this over page-local header icon clusters.
  */
@@ -142,16 +146,16 @@ export function StationHeaderToolbar({
     };
   };
 
-  const isUnbox = mode === 'unbox';
+  const useCompactOverflow = COMPACT_OVERFLOW_MODES.has(mode);
   const enabledKeys = def.headerActions.filter(
     (key): key is Exclude<HeaderActionKey, 'details'> => key !== 'details',
   );
 
-  const inlineKeys = isUnbox
-    ? enabledKeys.filter((k) => UNBOX_INLINE_ACTIONS.includes(k))
+  const inlineKeys = useCompactOverflow
+    ? enabledKeys.filter((k) => COMPACT_INLINE_ACTIONS.includes(k))
     : enabledKeys;
-  const overflowKeys = isUnbox
-    ? enabledKeys.filter((k) => UNBOX_OVERFLOW_ACTIONS.includes(k))
+  const overflowKeys = useCompactOverflow
+    ? enabledKeys.filter((k) => COMPACT_OVERFLOW_ACTIONS.includes(k))
     : [];
 
   const inlineActions = inlineKeys.map(toAction);
@@ -284,12 +288,12 @@ export function StationHeaderToolbar({
       actions={inlineActions}
       status={zohoSyncing ? 'Syncing' : undefined}
       onPrev={
-        isUnbox
+        useCompactOverflow
           ? undefined
           : () => window.dispatchEvent(new CustomEvent(def.navChannel, { detail: 'prev' }))
       }
       onNext={
-        isUnbox
+        useCompactOverflow
           ? undefined
           : () => window.dispatchEvent(new CustomEvent(def.navChannel, { detail: 'next' }))
       }

@@ -33,7 +33,6 @@ interface Props {
   onSelectedLineChange: (id: number | null) => void;
   /** Multi-select checkboxes on the history browse (when no line is open). */
   testingSelectMode?: boolean;
-  onToggleTestingSelect: () => void;
   /** Non-select history row click — already navigates via `dispatchSelectLine`. */
   onOpenTestingLine?: () => void;
 }
@@ -42,7 +41,6 @@ export function TestingLineWorkspace({
   staffId,
   onSelectedLineChange,
   testingSelectMode = false,
-  onToggleTestingSelect,
   onOpenTestingLine,
 }: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);
@@ -101,7 +99,6 @@ export function TestingLineWorkspace({
         <TestingWorkspaceView
           techId={staffId}
           selectMode={testingSelectMode}
-          onToggleSelectMode={onToggleTestingSelect}
           onOpenLine={onOpenTestingLine}
         />
       </div>

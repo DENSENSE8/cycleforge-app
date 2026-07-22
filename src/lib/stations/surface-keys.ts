@@ -40,6 +40,7 @@ export const SURFACE_KEYS = [
   'pack',
   'test',
   'outbound',
+  'support',
 ] as const;
 
 export type SurfaceKey = (typeof SURFACE_KEYS)[number];
@@ -232,6 +233,23 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     workflowNodeType: 'ship',
     // Key stays `outbound` for composition stability; URL graduated to `/shipping`.
     legacy: { pathname: '/outbound', bareResolves: true },
+  },
+  // Support — the helpdesk/ticket station. Promoted More → Stations: `/support`
+  // now mounts SurfaceGate + RouteShell like the other floor stations, and the
+  // Tickets mode focus pane adopts Unbox Station Workbench anatomy. It is a
+  // desktop console (mobile-restricted), not a scan floor — `scan: null`, and no
+  // `workflowNodeType` (Support isn't an engine step). Gated by
+  // `integrations.zendesk` (same as the /api/zendesk/* routes it calls).
+  support: {
+    key: 'support',
+    label: 'Support',
+    route: '/support',
+    archetype: 'station',
+    permission: 'integrations.zendesk',
+    pageKey: 'support',
+    modeKey: 'tickets',
+    scan: null,
+    // `/support` is already the canonical URL — no legacy alias to redirect from.
   },
 };
 

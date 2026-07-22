@@ -77,8 +77,6 @@ export function TriageWorkspaceView({
               <TriageWorkspaceHeader
                 tab={triageView}
                 onSelectTab={setTriageView}
-                selectMode={railEditMode}
-                onToggleSelectMode={toggleRailEditMode}
               />
             </div>
           }

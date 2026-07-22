@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   dashboardOrderHref,
+  DEFAULT_TICKET_STATUS,
   parseSupportMode,
+  parseTicketStatus,
   supportOrdersHref,
   SUPPORT_MODE_SCOPED_PARAMS,
 } from './support-sidebar-shared';
@@ -45,12 +47,42 @@ describe('SUPPORT_MODE_SCOPED_PARAMS', () => {
       'attention',
       'stage',
       'staff',
-      'view',
     ] as const) {
       assert.ok(
         (SUPPORT_MODE_SCOPED_PARAMS as readonly string[]).includes(key),
         `expected ${key} in SUPPORT_MODE_SCOPED_PARAMS`,
       );
     }
+    assert.equal(
+      (SUPPORT_MODE_SCOPED_PARAMS as readonly string[]).includes('view'),
+      false,
+      'board|grid ?view= retired — not in scoped params',
+    );
+  });
+
+  it('includes tickets workbench URL keys', () => {
+    for (const key of ['ticket', 'tstatus', 'tq'] as const) {
+      assert.ok(
+        (SUPPORT_MODE_SCOPED_PARAMS as readonly string[]).includes(key),
+        `expected ${key} in SUPPORT_MODE_SCOPED_PARAMS`,
+      );
+    }
+  });
+});
+
+describe('parseTicketStatus', () => {
+  it('defaults unknown / empty to open', () => {
+    assert.equal(parseTicketStatus(null), DEFAULT_TICKET_STATUS);
+    assert.equal(parseTicketStatus(undefined), 'open');
+    assert.equal(parseTicketStatus(''), 'open');
+    assert.equal(parseTicketStatus('nope'), 'open');
+  });
+
+  it('accepts known ticket status tabs', () => {
+    assert.equal(parseTicketStatus('pending'), 'pending');
+    assert.equal(parseTicketStatus('hold'), 'hold');
+    assert.equal(parseTicketStatus('solved'), 'solved');
+    assert.equal(parseTicketStatus('all'), 'all');
+    assert.equal(parseTicketStatus('open'), 'open');
   });
 });

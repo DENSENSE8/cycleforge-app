@@ -41,6 +41,7 @@ import {
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
+import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
@@ -102,6 +103,7 @@ export function TestingHistoryList({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { sort: displaySort } = useQueueDisplaySort();
   const parsed = staffId ? Number(staffId) : NaN;
   const ownTesterId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   const { staffId: filteredStaffId } = useStaffFilter({ allToken: 'all' });
@@ -259,8 +261,13 @@ export function TestingHistoryList({
       }
       (byDay[key] ??= []).push(row);
     }
-    return Object.entries(byDay).sort((a, b) => b[0].localeCompare(a[0]));
-  }, []);
+    const entries = Object.entries(byDay);
+    // `newest` = recent days first; Priority/Deadline = oldest first (FIFO queue).
+    if (displaySort === 'newest') {
+      return entries.sort((a, b) => b[0].localeCompare(a[0]));
+    }
+    return entries.sort((a, b) => a[0].localeCompare(b[0]));
+  }, [displaySort]);
   const daySections = useMemo(() => toDaySections(rows), [rows, toDaySections]);
   const boardEnabled =
     mode === 'history' && STATION_VIRTUAL_LIST && STATION_PIPELINE_BOARDS;

@@ -495,13 +495,20 @@ export const UnitPriceChip = ({
 /**
  * Condition grade on a PO line meta row. Tags icon + underlined label; hue comes
  * from `src/lib/condition-tone.ts` (same registry as {@link ConditionPills}).
+ * Pass `onActivate` to use the chip as a trigger (e.g. the Pending grid's
+ * chip-as-dropdown condition editor) — replaces copy-on-click, standard look.
  */
 export const ConditionGradeChip = ({
   grade,
   dense,
+  onActivate,
+  activationLabel,
 }: {
   grade: string | null | undefined;
   dense?: boolean;
+  /** Replaces copy-on-click while preserving the chip presentation. */
+  onActivate?: () => void;
+  activationLabel?: string;
 }) => {
   const { underline, iconClass, isPending } = conditionGradeChipStyleOrPending(grade);
   const code = String(grade || '').trim().toUpperCase();
@@ -517,6 +524,8 @@ export const ConditionGradeChip = ({
       truncateDisplay={false}
       fitDisplayWidth
       dense={dense}
+      onActivate={onActivate}
+      activationLabel={activationLabel}
     />
   );
 };

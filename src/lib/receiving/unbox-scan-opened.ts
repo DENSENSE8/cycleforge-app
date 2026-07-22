@@ -84,6 +84,12 @@ export const UNBOX_SCAN_OPENED_EXISTS_SQL = UNBOX_OPENED_PREDICATE_SQL;
  *
  * The "Unboxed" workflow milestone (unboxed_at, line UNBOXED transition) is
  * owned by the operator's Unboxed/Receive action — not this scan.
+ *
+ * Returns `firstOpen: true` when this call transitioned `opened_at` from NULL —
+ * i.e. the carton just LEFT triage membership. Callers that short-circuit
+ * lookup-po (touch-scan) publish the cross-surface realtime signal on exactly
+ * that transition, so other terminals' Arrival queues purge the carton instead
+ * of showing phantom dock inventory; re-scans stay publish-free.
  */
 export async function recordUnboxScanOpened(
   organizationId: string,
@@ -91,14 +97,22 @@ export async function recordUnboxScanOpened(
   actorStaffId: number | null,
   scanId: number | null,
   trackingNumber?: string,
-): Promise<void> {
+): Promise<{ firstOpen: boolean }> {
+  let firstOpen = false;
   try {
+    const prior = await pool.query<{ opened_at: string | null }>(
+      `SELECT opened_at FROM receiving_unbox
+        WHERE receiving_id = $1 AND organization_id = $2 LIMIT 1`,
+      [receivingId, organizationId],
+    );
+    firstOpen = (prior.rows[0]?.opened_at ?? null) == null;
     await upsertReceivingUnbox(pool, organizationId, receivingId, {
       openedAt: 'now',
       openedBy: actorStaffId,
       deriveIntakePath: true,
     });
   } catch (err) {
+    firstOpen = false;
     console.warn('[recordUnboxScanOpened] receiving_unbox.opened_at stamp skipped:', err);
   }
 
@@ -123,4 +137,6 @@ export async function recordUnboxScanOpened(
   } catch (err) {
     console.warn('[recordUnboxScanOpened] ops_events write skipped:', err);
   }
+
+  return { firstOpen };
 }

@@ -15,6 +15,7 @@ export type SupportTicketProvider = 'zendesk' | 'internal';
 // server callers keep their existing import path.
 export * from '@/lib/support/ticket-refs';
 import {
+  formatSupportTicketLabel,
   normalizeReceivingTicketEntityRefs,
   type TicketReceivingRef,
 } from '@/lib/support/ticket-refs';
@@ -27,14 +28,16 @@ export interface SupportTicketRow {
   statusCache: string | null;
 }
 
-/** Internal registry label — `#42`. */
-export function formatSupportTicketLabel(ticketId: number): string {
-  return `#${ticketId}`;
-}
-
 /**
- * Operator-facing label — matches the media library claims chip (`#9395` for
- * Zendesk tickets). Internal-only tickets still use the registry id.
+ * Provider-native display label — matches the media library claims chip (`#9395`
+ * for Zendesk tickets), so a claim photo and its ticket read the same id.
+ * Internal-only tickets fall back to the registry id.
+ *
+ * NOTE: this is the CLAIMS-PARITY label, deliberately provider-native (a real
+ * sibling contract with its own test). The Support-station OPERATOR PRIMARY is
+ * the internal registry id — use {@link primaryTicketLabel} +
+ * {@link secondaryProviderLabel} there, not this. Two labels for two genuinely
+ * different jobs (per the house "two shapes for two jobs is fine" rule).
  */
 export function formatSupportTicketDisplayLabel(ticket: SupportTicketRow): string {
   if (ticket.provider === 'zendesk' && ticket.externalTicketId) {

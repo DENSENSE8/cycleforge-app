@@ -23,6 +23,8 @@ import { ContextualSelectionBar } from '@/design-system/components/ContextualSel
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
+import { useNewOrderParam } from '@/hooks/useNewOrderParam';
+import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
@@ -45,12 +47,13 @@ export interface ShippingWorkspaceViewProps {
 
 export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
+  const { newOpen, openNew, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const parsedTechId = parseInt(techId, 10);
-  // Pending reuses the dashboard To Ship selection scope + actions. Keep the
-  // hook on `unshipped` for every tab so the Select pencil stays armed in chrome
-  // even on FBA / History (those tabs simply don't mount a selectable table).
-  const { selectMode, toggleSelectMode, selectedRows, selectionActions } =
+  // Pending reuses the dashboard To Ship selection scope + actions (always-on
+  // left-gutter select). Keep the hook on `unshipped` for every tab so selectMode
+  // stays live when Pending remounts (FBA / History don't mount a selectable table).
+  const { selectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection('unshipped');
 
   // Tab bodies crossfade as the singular focus surface (chrome + KPI strip stay
@@ -61,6 +64,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   };
 
   return (
+    <div className="relative h-full min-h-0 w-full overflow-hidden">
     <DashboardScrollShell
       className="h-full"
       // Pinned chrome (outside the scroll port) is the one top bar; the KPI
@@ -72,8 +76,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
             tab={shipTab}
             onSelectTab={setShipTab}
             controlsSlotRef={setControlsEl}
-            selectMode={selectMode}
-            onToggleSelectMode={toggleSelectMode}
+            onNewOrder={openNew}
           />
         </div>
       }
@@ -126,5 +129,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
         />
       ) : null}
     </DashboardScrollShell>
+    <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+    </div>
   );
 }

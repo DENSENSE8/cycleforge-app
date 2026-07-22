@@ -7,6 +7,34 @@
  * re-exports everything here, so server callers keep their import path.
  */
 
+/** Internal registry label — `#42`. The operator PRIMARY ticket id. Client-safe. */
+export function formatSupportTicketLabel(ticketId: number): string {
+  return `#${ticketId}`;
+}
+
+/**
+ * Operator PRIMARY ticket label — always the internal registry id (`#42`),
+ * platform-agnostic. What an operator scans/reads first on the Support station;
+ * the provider-native id is the SECONDARY chip. Pure; client-safe.
+ */
+export function primaryTicketLabel(supportTicketId: number): string {
+  return formatSupportTicketLabel(supportTicketId);
+}
+
+/**
+ * Provider-native SECONDARY label — `#9395` for a ticket that carries an external
+ * (provider) id, or `null` for an internal ticket (no external conversation).
+ * Vendor-neutral: any helpdesk provider's id renders the same way; the provider
+ * NAME comes from the capability-label SoT, never hardcoded here.
+ */
+export function secondaryProviderLabel(args: {
+  provider: string;
+  externalTicketId: string | null;
+}): string | null {
+  const trimmed = args.externalTicketId?.replace(/^#/, '').trim();
+  return trimmed ? `#${trimmed}` : null;
+}
+
 export interface TicketReceivingRef {
   receivingId: number;
   lineId?: number;

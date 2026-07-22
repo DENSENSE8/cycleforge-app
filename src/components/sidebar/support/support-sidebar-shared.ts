@@ -39,8 +39,9 @@ export type SupportMode =
   | 'orders';
 
 /**
- * - tickets   → Zendesk ticket queue → conversation (Workbench, the existing
- *   console; the default — stays on bare `/support`, no `?mode=`).
+ * - tickets   → recent dock in sidebar + full queue workbench in the right pane
+ *   (Orders/Unbox recipe); `?ticket=` opens Station focus. Default mode —
+ *   stays on bare `/support`, no `?mode=`.
  * - voicemail → voicemail / missed-call follow-up to-do list (Workbench):
  *   pick a voicemail → detail + linked case → act (call back, done, assign…).
  * - calls     → org call log (Monitor): observe inbound/outbound/missed,
@@ -96,6 +97,8 @@ export function dashboardOrderHref(orderPk: number): string {
  */
 export const SUPPORT_MODE_SCOPED_PARAMS = [
   'ticket', // tickets: selected Zendesk ticket
+  'tstatus', // tickets: workbench status tab (open | pending | hold | solved | all)
+  'tq', // tickets: workbench search query
   'vm', // voicemail: selected voicemail (durable, deep-linkable)
   'q', // search query (voicemail / calls / issues / orders)
   'status', // voicemail follow-up OR issues status filter
@@ -114,10 +117,14 @@ export const SUPPORT_MODE_SCOPED_PARAMS = [
   'attention', // orders: urgent-only
   'stage', // orders: coarse server facet (legacy)
   'staff', // orders: staff scope
-  'view', // orders: board | grid (`?view=grid`)
 ] as const;
 
-// ── Tickets mode — Zendesk status filter ────────────────────────────────────
+// ── Tickets mode — Zendesk status filter (workbench chrome tabs) ─────────────
+
+/** Workbench status tabs for Support · Tickets (mirrors Orders `ustatus`). */
+export type TicketStatusFilter = 'open' | 'pending' | 'hold' | 'solved' | 'all';
+
+export const DEFAULT_TICKET_STATUS: TicketStatusFilter = 'open';
 
 export const TICKET_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'open', label: 'Open', icon: Inbox },
@@ -126,6 +133,13 @@ export const TICKET_STATUS_ITEMS: HorizontalSliderItem[] = [
   { id: 'solved', label: 'Solved', icon: CheckCircle },
   { id: 'all', label: 'All', icon: Layers },
 ];
+
+/** Parse `?tstatus=` — default `open` (omit from URL when default). */
+export function parseTicketStatus(raw: string | null | undefined): TicketStatusFilter {
+  return raw === 'pending' || raw === 'hold' || raw === 'solved' || raw === 'all'
+    ? raw
+    : DEFAULT_TICKET_STATUS;
+}
 
 // ── Voicemail mode — follow-up status filter ────────────────────────────────
 

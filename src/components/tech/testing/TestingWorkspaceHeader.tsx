@@ -2,10 +2,11 @@
 
 import type { Ref } from 'react';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
+import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
+import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import {
   TESTING_WORKSPACE_TAB_LABEL,
   type TestingWorkspaceTab,
@@ -17,18 +18,16 @@ export function TestingWorkspaceHeader({
   tab,
   onSelectTab,
   controlsSlotRef,
-  selectMode = false,
-  onToggleSelectMode,
   className,
 }: {
   tab: TestingWorkspaceTab;
   onSelectTab: (tab: TestingWorkspaceTab) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
   className?: string;
 }) {
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
+  const { sort, setSort } = useQueueDisplaySort();
+  const showSort = tab === 'pending' || tab === 'returns';
   const tabs = TABS.map((id) => ({
     id,
     label: TESTING_WORKSPACE_TAB_LABEL[id],
@@ -64,19 +63,17 @@ export function TestingWorkspaceHeader({
         />
       }
       right={
-        tab === 'history' ? (
-          <StaffFilterButton
-            iconOnly
-            allLabel="All technicians"
-            allToken="all"
-            meLabel="You"
-          />
-        ) : undefined
-      }
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
+        <>
+          {showSort ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
+          {tab === 'history' ? (
+            <StaffFilterButton
+              iconOnly
+              allLabel="All technicians"
+              allToken="all"
+              meLabel="You"
+            />
+          ) : null}
+        </>
       }
     />
   );

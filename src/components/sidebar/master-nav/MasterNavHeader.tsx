@@ -3,6 +3,10 @@
 import { ChevronDown } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
+  SIDEBAR_MASTER_NAV_CHEVRON_PAD_X,
+  SIDEBAR_MASTER_NAV_GLYPH,
+  SIDEBAR_MASTER_NAV_MODE_GAP,
+  SIDEBAR_MASTER_NAV_MODE_PAD_X,
   SIDEBAR_MRU_CELL,
   SIDEBAR_MRU_CLUSTER,
   SIDEBAR_MRU_GLYPH,
@@ -65,11 +69,14 @@ export function MasterNavHeader({
     <>
       {LeadingIcon ? (
         <LeadingIcon
-          className={navIconStrokeClass('mode', 'h-4 w-4 shrink-0 text-text-muted')}
+          className={navIconStrokeClass('mode', `${SIDEBAR_MASTER_NAV_GLYPH} shrink-0 text-text-muted`)}
           aria-hidden
         />
       ) : null}
-      <span className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default">
+      <span
+        data-master-nav-label
+        className="min-w-0 truncate text-role-body font-bold tracking-tight text-text-default"
+      >
         {label}
       </span>
     </>
@@ -83,10 +90,13 @@ export function MasterNavHeader({
         onClick={onClick}
         aria-expanded={open}
         aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-        className="ds-raw-button flex shrink-0 items-center justify-center px-2.5 text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default"
+        className={cn(
+          'ds-raw-button flex shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-canvas hover:text-text-default',
+          SIDEBAR_MASTER_NAV_CHEVRON_PAD_X,
+        )}
       >
         <ChevronDown
-          className={cn('h-4 w-4 transition-transform duration-200', open && 'rotate-180')}
+          className={cn(SIDEBAR_MASTER_NAV_GLYPH, 'transition-transform duration-200', open && 'rotate-180')}
           aria-hidden
         />
       </button>
@@ -101,19 +111,24 @@ export function MasterNavHeader({
           onClick={onModesClick}
           aria-expanded={modesOpen}
           aria-label={modesOpen ? 'Close modes menu' : 'Open modes menu'}
-          className="ds-raw-button flex min-w-0 shrink items-center gap-1.5 px-2.5 text-left transition-colors hover:bg-surface-canvas"
+          className={cn(
+            'ds-raw-button flex min-w-0 shrink items-center text-left transition-colors hover:bg-surface-canvas',
+            SIDEBAR_MASTER_NAV_MODE_GAP,
+            SIDEBAR_MASTER_NAV_MODE_PAD_X,
+          )}
         >
           {modeIdentity}
           <ChevronDown
             className={cn(
-              'h-4 w-4 shrink-0 text-text-muted transition-transform duration-200',
+              SIDEBAR_MASTER_NAV_GLYPH,
+              'shrink-0 text-text-muted transition-transform duration-200',
               modesOpen && 'rotate-180',
             )}
             aria-hidden
           />
         </button>
       ) : (
-        <div className="flex min-w-0 shrink items-center gap-1.5 px-2.5">
+        <div className={cn('flex min-w-0 shrink items-center', SIDEBAR_MASTER_NAV_MODE_GAP, SIDEBAR_MASTER_NAV_MODE_PAD_X)}>
           {modeIdentity}
         </div>
       )}

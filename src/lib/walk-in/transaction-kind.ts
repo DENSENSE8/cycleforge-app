@@ -8,7 +8,7 @@
  * a component.
  */
 
-import { DollarSign, Package, Wrench } from '@/components/Icons';
+import { Package, SalesPrice, Wrench } from '@/components/Icons';
 import type { TransactionKind } from './transactions';
 
 interface TransactionKindMeta {
@@ -23,7 +23,7 @@ interface TransactionKindMeta {
 }
 
 const TRANSACTION_KINDS: Record<TransactionKind, TransactionKindMeta> = {
-  sale: { kind: 'sale', label: 'Sale', dot: 'bg-emerald-600', tabColor: 'emerald', icon: DollarSign },
+  sale: { kind: 'sale', label: 'Sale', dot: 'bg-emerald-600', tabColor: 'emerald', icon: SalesPrice },
   pickup: { kind: 'pickup', label: 'Pickup', dot: 'bg-blue-500', tabColor: 'blue', icon: Package },
   repair: { kind: 'repair', label: 'Repair', dot: 'bg-orange-500', tabColor: 'orange', icon: Wrench },
 };

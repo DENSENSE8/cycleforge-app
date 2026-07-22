@@ -17,6 +17,7 @@ import {
   buildExternalId,
   clearTicketExternalIdIfMatches,
   getTicketEntity,
+  linkSupportTicketEntity,
   linkTicket,
   unlinkTicket,
 } from '@/lib/zendesk-links';
@@ -357,6 +358,52 @@ export async function listTicketShipmentReferences(args: {
 }
 
 /**
+ * Injectable seam for {@link addTicketShipmentReference} so the re-keyed SQL is
+ * unit-testable DB-free (mirrors the `Deps` pattern in backend-patterns.md).
+ */
+export interface AddTicketShipmentReferenceDeps {
+  registerShipment: (trackingNumber: string, orgId: OrgId) => Promise<{ id: number } | null>;
+  resolveSupportTicket: (
+    zendeskTicketId: number,
+    orgId: OrgId,
+    staffId: number | null,
+  ) => Promise<{ id: number }>;
+  runQuery: (
+    orgId: OrgId,
+    sql: string,
+    params: unknown[],
+  ) => Promise<{ rows: Array<{ is_primary: boolean }> }>;
+  recordLinkEvent: (args: {
+    orgId: OrgId;
+    entityId: number;
+    ticketId: number;
+    staffId: number | null;
+  }) => Promise<void>;
+}
+
+const defaultAddTicketShipmentReferenceDeps: AddTicketShipmentReferenceDeps = {
+  registerShipment: (trackingNumber, orgId) =>
+    registerShipmentPermissive({ trackingNumber, sourceSystem: 'support_ticket_link' }, orgId),
+  resolveSupportTicket: (zendeskTicketId, orgId, staffId) =>
+    upsertSupportTicket({
+      orgId,
+      provider: 'zendesk',
+      externalTicketId: String(zendeskTicketId),
+      staffId,
+    }),
+  runQuery: (orgId, sql, params) => tenantQuery<{ is_primary: boolean }>(orgId, sql, params),
+  recordLinkEvent: ({ orgId, entityId, ticketId, staffId }) =>
+    recordTicketLinkEvent({
+      orgId,
+      kind: 'linked',
+      entityType: 'SHIPMENT',
+      entityId,
+      ticketId,
+      staffId,
+    }),
+};
+
+/**
  * Reference an STN from a ticket. Accepts a resolved shipment id or a raw
  * tracking number (which mints the STN on demand, as the tracking anchor does).
  *
@@ -364,40 +411,45 @@ export async function listTicketShipmentReferences(args: {
  * row becomes the anchor only when the ticket has none yet, so the first STN on a
  * fresh ticket anchors it and every later one is a reference. Computing it inline
  * keeps the decision inside one statement; if two callers race, the loser trips
- * ux_ticket_links_ticket_primary rather than silently creating a second anchor.
+ * ux_ticket_links_support_anchor rather than silently creating a second anchor.
+ *
+ * Keyed on `support_ticket_id` (2026-07-21 re-key): the anchor guard and the
+ * ON CONFLICT arbiter both use the support-led natural key, so this stays correct
+ * for Zendesk tickets AND works for internal tickets (NULL zendesk id). Requires
+ * the 2026-07-21 expand migration (ux_ticket_links_support_entity) to be applied.
  *
  * Idempotent: re-referencing the same STN is a no-op (natural-key conflict).
  */
-export async function addTicketShipmentReference(args: {
-  orgId: OrgId;
-  ticketId: number;
-  shipmentId?: number;
-  trackingNumber?: string;
-  staffId?: number | null;
-}): Promise<{ shipmentId: number; isPrimary: boolean; added: boolean }> {
+export async function addTicketShipmentReference(
+  args: {
+    orgId: OrgId;
+    ticketId: number;
+    shipmentId?: number;
+    trackingNumber?: string;
+    staffId?: number | null;
+  },
+  deps: AddTicketShipmentReferenceDeps = defaultAddTicketShipmentReferenceDeps,
+): Promise<{ shipmentId: number; isPrimary: boolean; added: boolean }> {
   let shipmentId = args.shipmentId ?? null;
   if (shipmentId == null) {
     const raw = args.trackingNumber?.trim();
     if (!raw) throw ApiError.badRequest('shipmentId or trackingNumber is required');
-    const stn = await registerShipmentPermissive(
-      { trackingNumber: raw, sourceSystem: 'support_ticket_link' },
-      args.orgId,
-    );
+    const stn = await deps.registerShipment(raw, args.orgId);
     if (!stn) throw ApiError.badRequest(`Invalid tracking number: ${raw}`);
     shipmentId = Number(stn.id);
   }
 
   // upsertSupportTicket via linkTicket is NOT reused here: that helper writes an
   // anchor. Resolve the registry row directly so a reference still carries
-  // support_ticket_id.
-  const supportTicket = await upsertSupportTicket({
-    orgId: args.orgId,
-    provider: 'zendesk',
-    externalTicketId: String(args.ticketId),
-    staffId: args.staffId ?? null,
-  });
+  // support_ticket_id — which is also the arbiter, so the conflict resolves on
+  // the same row family the anchor guard reads.
+  const supportTicket = await deps.resolveSupportTicket(
+    args.ticketId,
+    args.orgId,
+    args.staffId ?? null,
+  );
 
-  const res = await tenantQuery<{ is_primary: boolean }>(
+  const res = await deps.runQuery(
     args.orgId,
     `INSERT INTO ticket_links
        (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id,
@@ -405,20 +457,18 @@ export async function addTicketShipmentReference(args: {
      SELECT $1, $2, $3, 'SHIPMENT', $4,
             NOT EXISTS (
               SELECT 1 FROM ticket_links
-               WHERE organization_id = $1 AND zendesk_ticket_id = $3 AND is_primary
+               WHERE organization_id = $1 AND support_ticket_id = $2 AND is_primary
             ),
             $5
-     ON CONFLICT (organization_id, zendesk_ticket_id, entity_type, entity_id) DO NOTHING
+     ON CONFLICT (organization_id, support_ticket_id, entity_type, entity_id) DO NOTHING
      RETURNING is_primary`,
     [args.orgId, supportTicket.id, args.ticketId, shipmentId, args.staffId ?? null],
   );
 
   const row = res.rows[0];
   if (row) {
-    await recordTicketLinkEvent({
+    await deps.recordLinkEvent({
       orgId: args.orgId,
-      kind: 'linked',
-      entityType: 'SHIPMENT',
       entityId: shipmentId,
       ticketId: args.ticketId,
       staffId: args.staffId ?? null,
@@ -428,12 +478,12 @@ export async function addTicketShipmentReference(args: {
 
   // DO NOTHING fired — the link already existed. Report its current role.
   // No event: nothing changed, and a re-click must not litter the timeline.
-  const existing = await tenantQuery<{ is_primary: boolean }>(
+  const existing = await deps.runQuery(
     args.orgId,
     `SELECT is_primary FROM ticket_links
-      WHERE organization_id = $1 AND zendesk_ticket_id = $2
+      WHERE organization_id = $1 AND support_ticket_id = $2
         AND entity_type = 'SHIPMENT' AND entity_id = $3`,
-    [args.orgId, args.ticketId, shipmentId],
+    [args.orgId, supportTicket.id, shipmentId],
   );
   return { shipmentId, isPrimary: existing.rows[0]?.is_primary ?? false, added: false };
 }
@@ -660,21 +710,62 @@ export function isHelpdeskNotConnected(err: unknown): boolean {
 }
 
 /**
+ * Injectable seam for {@link promoteShipmentTicketToReceiving} — testable DB-free.
+ */
+export interface PromoteShipmentTicketDeps {
+  runQuery: (
+    orgId: OrgId,
+    sql: string,
+    params: unknown[],
+  ) => Promise<{
+    rows: Array<{ zendesk_ticket_id: string | null; support_ticket_id: string | null }>;
+  }>;
+  linkEntity: typeof linkSupportTicketEntity;
+  updateReceivingTicketColumn: (
+    orgId: OrgId,
+    receivingId: number,
+    ticketNumber: string,
+  ) => Promise<void>;
+}
+
+const defaultPromoteShipmentTicketDeps: PromoteShipmentTicketDeps = {
+  runQuery: (orgId, sql, params) =>
+    tenantQuery<{ zendesk_ticket_id: string | null; support_ticket_id: string | null }>(
+      orgId,
+      sql,
+      params,
+    ),
+  linkEntity: linkSupportTicketEntity,
+  updateReceivingTicketColumn: async (orgId, receivingId, ticketNumber) => {
+    await tenantQuery(
+      orgId,
+      `UPDATE receiving_carton SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3 AND zendesk_ticket IS NULL`,
+      [ticketNumber, receivingId, orgId],
+    );
+  },
+};
+
+/**
  * When a carton adopts an STN that already carries a ticket_links SHIPMENT row,
  * promote the primary entity to RECEIVING so unbox resolves the ticket on the
  * carton. Best-effort; never throws.
+ *
+ * Routes through {@link linkSupportTicketEntity} on the platform-agnostic
+ * `support_ticket_id` (2026-07-21 re-key), so an INTERNAL ticket anchored to the
+ * STN promotes onto the carton too — the pre-re-key path required a Zendesk id
+ * and silently skipped internal tickets.
  */
-export async function promoteShipmentTicketToReceiving(args: {
-  orgId: OrgId;
-  shipmentId: number;
-  receivingId: number;
-  staffId?: number | null;
-}): Promise<boolean> {
+export async function promoteShipmentTicketToReceiving(
+  args: {
+    orgId: OrgId;
+    shipmentId: number;
+    receivingId: number;
+    staffId?: number | null;
+  },
+  deps: PromoteShipmentTicketDeps = defaultPromoteShipmentTicketDeps,
+): Promise<boolean> {
   try {
-    const existing = await tenantQuery<{
-      zendesk_ticket_id: string;
-      support_ticket_id: string | null;
-    }>(
+    const existing = await deps.runQuery(
       args.orgId,
       // `AND is_primary` is load-bearing: an STN may now be referenced by MANY
       // tickets (the many-STN-per-ticket feature). Only a ticket ANCHORED to
@@ -692,22 +783,28 @@ export async function promoteShipmentTicketToReceiving(args: {
     );
     const row = existing.rows[0];
     if (!row) return false;
-    const zendeskTicketId = Number(row.zendesk_ticket_id);
-    if (!Number.isFinite(zendeskTicketId) || zendeskTicketId <= 0) return false;
 
-    await linkTicket({
+    const supportTicketId = row.support_ticket_id != null ? Number(row.support_ticket_id) : NaN;
+    if (!Number.isFinite(supportTicketId) || supportTicketId <= 0) return false;
+    const zendeskTicketId = row.zendesk_ticket_id != null ? Number(row.zendesk_ticket_id) : NaN;
+    const providerId =
+      Number.isFinite(zendeskTicketId) && zendeskTicketId > 0 ? zendeskTicketId : null;
+
+    await deps.linkEntity({
       orgId: args.orgId,
-      zendeskTicketId,
+      supportTicketId,
+      zendeskTicketId: providerId,
       entityType: 'RECEIVING',
       entityId: args.receivingId,
       staffId: args.staffId ?? null,
     });
 
-    const ticketNumber = `#${zendeskTicketId}`;
-    await tenantQuery(
+    // Denormalized display cache: prefer the provider id when present, else the
+    // internal registry id (dual-# is resolved at the UI layer in Phase 3).
+    await deps.updateReceivingTicketColumn(
       args.orgId,
-      `UPDATE receiving_carton SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3 AND zendesk_ticket IS NULL`,
-      [ticketNumber, args.receivingId, args.orgId],
+      args.receivingId,
+      `#${providerId ?? supportTicketId}`,
     );
     return true;
   } catch (err) {

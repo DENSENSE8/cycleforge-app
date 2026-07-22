@@ -30,7 +30,6 @@ interface TechRightPaneProps {
   testingLineId: number | null;
   onTestingLineChange: React.Dispatch<React.SetStateAction<number | null>>;
   testingSelectMode: boolean;
-  onToggleTestingSelect: () => void;
   onOpenTestingLine: () => void;
   activeOrderPane: TechActiveOrderPane | null;
   onCloseActiveOrder: () => void;
@@ -45,7 +44,6 @@ export function TechRightPane({
   testingLineId,
   onTestingLineChange,
   testingSelectMode,
-  onToggleTestingSelect,
   onOpenTestingLine,
   activeOrderPane,
   onCloseActiveOrder,
@@ -67,7 +65,6 @@ export function TechRightPane({
         selectedLineId={testingLineId}
         onSelectedLineChange={onTestingLineChange}
         testingSelectMode={testingSelectMode}
-        onToggleTestingSelect={onToggleTestingSelect}
         onOpenTestingLine={onOpenTestingLine}
       />
     );

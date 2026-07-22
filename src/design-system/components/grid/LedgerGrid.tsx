@@ -14,20 +14,16 @@ import { cn } from '@/utils/_cn';
 /**
  * `LedgerGrid<T>` — the house spreadsheet/ledger grid primitive.
  *
- * A single, clean orchestrator for a **date-banded, order-grouped** ledger table:
+ * A single, clean orchestrator for a **date-ordered, order-grouped** ledger table:
  * one always-virtualized body (via {@link VirtualGroupedSections}), one sticky
- * mechanism, and a per-surface `scrollX` contract. It is the ground-up
- * replacement for the `OrdersQueueTable` branch-soup orchestrator (30 props / four
- * nested-ternary layout blocks / a forked dense-vs-virtual render path). The grid
- * is deliberately *dumb* about columns and cells: the caller supplies the sticky
- * `columnHeader`, the width-override `columnVars`, and `renderRow` / `renderGroup`
- * — LedgerGrid owns only the scroll shell, sticky docking, and windowing.
+ * column header, and a per-surface `scrollX` contract. Absolute civil dates live
+ * in a per-row **Date** column — no floating day-band chrome (Pending Grid).
+ * Board / Packed keep day bands via {@link OrdersQueueTable} + DateGroupHeader.
  *
  * Design invariants (the defects this primitive exists to kill):
  *  • **One sticky layer, measured — no magic number.** The column header docks at
- *    `top-0`; a ResizeObserver publishes its real height as `--cf-grid-header-h`,
- *    and the day-band headers dock at exactly that offset. Nothing hardcodes the
- *    old `top-9`/`36px` coupling.
+ *    `top-0`; a ResizeObserver publishes its real height as `--cf-grid-header-h`
+ *    for consumers that still need it (scroll shadows / future chrome).
  *  • **Per-surface `scrollX`.** Flat spreadsheet consumers pass `scrollX` (frozen
  *    identity pane pins while fact columns scroll under it, scroll-shadow on);
  *    vertical board consumers pass `scrollX={false}` (overflow clipped, frozen
@@ -40,7 +36,7 @@ import { cn } from '@/utils/_cn';
  * (`bg-inherit`) never bleed the scrolling fact columns through the pinned pane.
  */
 interface LedgerGridProps<T> {
-  /** Date bands → folded order groups, in canonical render order. */
+  /** Date-ordered → folded order groups (sort/fold only; no day-band UI). */
   orderGroupsByDate: [string, RowGroup<T>[]][];
   /** Horizontal scroll (flat spreadsheet). `false` clips overflow (vertical board). */
   scrollX?: boolean;
@@ -96,8 +92,8 @@ export function LedgerGrid<T>({
   const headerRef = useRef<HTMLDivElement>(null);
 
   // Publish the column header's REAL rendered height as `--cf-grid-header-h` on
-  // the scroll surface, so day-band headers dock right beneath it with zero magic
-  // numbers. Kills the `ORDERS_QUEUE_DATE_STICKY='top-9'`↔header-height coupling.
+  // the scroll surface (frozen-edge / chrome consumers). Day bands are not used
+  // on this surface — Date is a per-row column.
   useLayoutEffect(() => {
     const header = headerRef.current;
     const surface = bodyRef.current;
@@ -120,14 +116,13 @@ export function LedgerGrid<T>({
       data-grid-skin={gridSkin}
       data-testid={dataTestId}
       onScroll={
-        scrollX
-          ? (e) => {
-              // Frozen-edge shadow only while fact columns scroll under the pinned
-              // identity pane. Direct classList (no React state) → no re-render.
-              const el = e.currentTarget;
-              el.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
-            }
-          : undefined
+        (e) => {
+          const el = e.currentTarget;
+          // Frozen-edge shadow while fact columns scroll under the pinned identity pane.
+          if (scrollX) el.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
+          // Depth under the sticky column header once rows scroll beneath it.
+          el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
+        }
       }
       className={cn(
         'relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto no-scrollbar bg-surface-card',
@@ -142,10 +137,16 @@ export function LedgerGrid<T>({
         </div>
       ) : (
         <>
-          {/* One sticky layer #1 — the column header (self-pins at top-0). The
-              wrapper stays a plain in-flow block purely so its height can be
-              measured; the sticky header inside still pins to the scroll body. */}
-          <div ref={headerRef}>{columnHeader}</div>
+          {/* Sticky + frozen column header — pins to the grid scrollport top;
+              opaque so virtualized rows never paint through. Frozen select/title
+              cells keep sticky-left inside this band. */}
+          <div
+            ref={headerRef}
+            data-grid-col-header=""
+            className="sticky top-0 z-sticky isolate shrink-0 bg-surface-card"
+          >
+            {columnHeader}
+          </div>
           <VirtualGroupedSections
             orderGroupsByDate={orderGroupsByDate}
             scrollParentRef={scrollParentRef ?? bodyRef}
@@ -154,8 +155,7 @@ export function LedgerGrid<T>({
             renderGroup={renderGroup}
             headerEstimate={headerEstimate}
             rowEstimate={rowEstimate}
-            // Sticky layer #2 — day bands dock at the measured header height.
-            stickyHeaderTop="var(--cf-grid-header-h, 36px)"
+            showDayHeaders={false}
           />
         </>
       )}

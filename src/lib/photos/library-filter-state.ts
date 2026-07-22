@@ -101,8 +101,25 @@ export const PHOTO_SEARCH_FIELD_LABELS: Record<PhotoSearchField, string> = {
   serial: 'Serial #',
 };
 
-/** First built-in media type — default sidebar selection on bare page load. */
+/** First built-in media type — used when an operator explicitly picks Unboxing. */
 export const DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE = BUILTIN_IMAGE_TYPES[0].key;
+
+/** Chrome recency tabs — Recent is the bare-load landing (all types, no date pin). */
+export type PhotoLibraryRecencyTab = 'recent' | 'today' | 'last7' | 'all';
+
+export const PHOTO_LIBRARY_RECENCY_TABS: readonly PhotoLibraryRecencyTab[] = [
+  'recent',
+  'today',
+  'last7',
+  'all',
+];
+
+export const PHOTO_LIBRARY_RECENCY_TAB_LABEL: Record<PhotoLibraryRecencyTab, string> = {
+  recent: 'Recent',
+  today: 'Today',
+  last7: 'Last 7',
+  all: 'All',
+};
 
 /** True when no explicit media type is pinned in the URL (bare or `sourceScope=all`). */
 export function isPhotoLibraryMediaTypeUnset(filters: PhotoLibraryFilterState): boolean {
@@ -111,15 +128,44 @@ export function isPhotoLibraryMediaTypeUnset(filters: PhotoLibraryFilterState): 
   return !scope || scope === 'all';
 }
 
-/** Patch applied when the library opens without a media-type selection. */
-export function defaultPhotoLibraryMediaTypePatch(): Partial<PhotoLibraryFilterState> {
+/**
+ * Bare-load landing — all media types, newest first, no date pin.
+ * (Formerly pinned the first built-in scope + Today.)
+ */
+function defaultPhotoLibraryLandingPatch(): Partial<PhotoLibraryFilterState> {
   return {
-    sourceScope: DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE,
+    sourceScope: undefined,
     imageType: undefined,
-    ...todayFoldersDateFilter(),
+    dateFrom: undefined,
+    dateTo: undefined,
+    sort: 'recent',
     poRef: undefined,
     label: undefined,
   };
+}
+
+/** @deprecated Prefer {@link defaultPhotoLibraryLandingPatch} — kept for call-site migrations. */
+export function defaultPhotoLibraryMediaTypePatch(): Partial<PhotoLibraryFilterState> {
+  return defaultPhotoLibraryLandingPatch();
+}
+
+/** Map URL date range → chrome recency tab. Empty dates = Recent; custom drill = All. */
+export function recencyTabFromFilters(filters: PhotoLibraryFilterState): PhotoLibraryRecencyTab {
+  const preset = datePresetFromFilters(filters);
+  if (preset === 'today') return 'today';
+  if (preset === 'last7') return 'last7';
+  if (preset === 'custom') return 'all';
+  return 'recent';
+}
+
+/** Apply a chrome recency tab to date (+ sort for Recent). */
+export function applyRecencyTab(tab: PhotoLibraryRecencyTab): Partial<PhotoLibraryFilterState> {
+  if (tab === 'recent') {
+    return { ...applyDatePreset('all'), sort: 'recent' };
+  }
+  if (tab === 'today') return applyDatePreset('today');
+  if (tab === 'last7') return applyDatePreset('last7');
+  return applyDatePreset('all');
 }
 
 export function isPhotoFinderKind(value: string | null | undefined): value is PhotoFinderKind {

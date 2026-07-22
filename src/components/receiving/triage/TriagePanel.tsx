@@ -14,9 +14,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { PackageOpen } from '@/components/Icons';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import { PairingTogglePill, StationWorkbench } from '@/components/station/workbench';
 import {
@@ -24,6 +26,9 @@ import {
   StationHeaderToolbar,
   StationMoreDetails,
 } from '@/components/station/entity-context';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
+import { openInUnboxHref } from '@/lib/receiving/surface-path';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
@@ -172,7 +177,9 @@ export function TriagePanel({
     ],
   );
 
-  const editPoControl = (
+  // Unfound: pairing stays visible with no Edit-PO toggle (product not at
+  // door yet — Arrival pairing has no Inventory Item / Auto-match to hide).
+  const editPoControl = c.isUnfound ? undefined : (
     <PairingTogglePill
       open={pairingOpen}
       onToggle={togglePairing}
@@ -180,6 +187,30 @@ export function TriagePanel({
       openLabel="Hide package pairing"
     />
   );
+
+  const router = useRouter();
+  const openInUnboxControl =
+    row.receiving_id != null ? (
+      <HoverTooltip label="Open this carton in unbox (serials, photos, receive)" asChild focusable={false}>
+        <IconButton
+          icon={<PackageOpen className="h-4 w-4" />}
+          ariaLabel="Open in unbox"
+          tone="accent"
+          size="sm"
+          onClick={() => router.push(openInUnboxHref(row.receiving_id!, row.id))}
+          className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+        />
+      </HoverTooltip>
+    ) : null;
+
+  // SectionTabsSlider rightSlot: Open-in-unbox always (far right); Edit-PO when matched.
+  const sectionTabsRightSlot =
+    editPoControl || openInUnboxControl ? (
+      <div className="flex shrink-0 items-center gap-1.5">
+        {editPoControl}
+        {openInUnboxControl}
+      </div>
+    ) : undefined;
 
   const buildTerminal = useCallback(
     (kind: string) =>
@@ -247,7 +278,7 @@ export function TriagePanel({
               tabs={triageTabs}
               value={activeTab}
               onChange={(id) => setActiveTab(id as TriageView)}
-              rightSlot={activeTab === 'overview' ? editPoControl : undefined}
+              rightSlot={sectionTabsRightSlot}
             />
           }
           feedback={

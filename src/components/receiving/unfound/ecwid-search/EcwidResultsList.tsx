@@ -19,7 +19,7 @@ export function EcwidResultsList({ c }: { c: EcwidProductSearchController }) {
             : 'Recent repair-service order lines'
           : 'Storefront product results'
       }
-      className="min-h-[120px] flex-1 overflow-y-auto"
+      className="min-h-[120px] min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
     >
       {error && (
         <li className="px-3 py-3 text-role-caption text-red-600">{error}</li>

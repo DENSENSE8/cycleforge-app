@@ -3,7 +3,7 @@
 // Product chrome imports these names — not the underlying primitives — so a
 // glyph can be swapped without touching sidebar-navigation, mode rails, or mobile
 // nav. Each export documents its layer:
-//   • Station*     — data/SoT page icon (not rendered in MasterNav L1 — pages are text)
+//   • Station*     — data/SoT page icon (MasterNav L1 + SIDEBAR_PAGE_NAV)
 //   • *Mode*       — L2 mode chrome (rails, dropdowns, MRU, header “now”)
 //
 // Hard law: every MODE glyph key must be unique across floor stations
@@ -11,14 +11,15 @@
 // with their default mode. Primitives stay generic for timelines / badges
 // unless aliased here.
 //
-// Stroke weight (nav-weight.tsx): **modes own icons** (heavier); page wrappers
-// stay light for rare non-chrome callers.
+// Stroke weight (nav-weight.tsx): page lighter; mode heavier.
 
 import { Send } from './actions';
 import {
+  Banknote,
   Barcode,
   Box,
   Boxes,
+  CircleDollarSign,
   Package,
   PackageCheck,
   PackageOpen,
@@ -37,14 +38,22 @@ type IconComponent = (props: { className?: string }) => JSX.Element;
 /** Receiving station — default surface `/unbox`. Not rendered in MasterNav L1. */
 export const StationReceiving: IconComponent = withNavIconPageStroke(PackageOpen);
 
-/** Testing / QC station — `/test`. Not repair (Wrench). */
-export const StationTesting: IconComponent = withNavIconPageStroke(ShieldCheck);
+/** Testing / QC station — `/test`. Bench repair/tooling (Wrench), not warranty shield. */
+export const StationTesting: IconComponent = withNavIconPageStroke(Wrench);
 
 /** Outbound Shipping station — `/shipping`. Not carrier motion (Truck). */
 export const StationShipping: IconComponent = withNavIconPageStroke(PackageCheck);
 
 /** Packing station — `/pack`. */
 export const StationPacking: IconComponent = withNavIconPageStroke(Box);
+
+// ── Sales (walk-in) page + price mode ────────────────────────────────────────
+
+/** Sales page — front-desk commerce hub (`/walk-in`). */
+export const SalesPage: IconComponent = withNavIconPageStroke(Banknote);
+
+/** Sales mode / sale-line price mark. */
+export const SalesPrice: IconComponent = withNavIconModeStroke(CircleDollarSign);
 
 // ── Receiving L2 modes (chrome — modes own icons) ────────────────────────────
 

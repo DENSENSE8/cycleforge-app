@@ -6,6 +6,7 @@ import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
   isShippedByLatestStatus,
+  queueRowBandDateSource,
   saleAmountValue,
   staffSortKey,
   type OrdersQueueMode,
@@ -49,14 +50,12 @@ export function useOrdersQueueRows({
     const groupedRecords: Record<string, ShippedOrder[]> = {};
     visibleRecords.forEach((record) => {
       // `newest` bands by when the order was added; otherwise by its deadline.
-      const dateSource = sort === 'newest'
-        ? (record.created_at || record.deadline_at)
-        : (record.deadline_at || record.created_at);
-      if (!dateSource || dateSource === '1') return;
+      const dateSource = queueRowBandDateSource(record, sort);
+      if (!dateSource) return;
 
       let date = '';
       try {
-        date = toPSTDateKey(String(dateSource)) || 'Unknown';
+        date = toPSTDateKey(dateSource) || 'Unknown';
       } catch {
         date = 'Unknown';
       }

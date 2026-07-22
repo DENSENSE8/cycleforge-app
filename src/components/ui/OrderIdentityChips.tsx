@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { Clipboard, Copy, ExternalLink, RefreshCw } from '@/components/Icons';
+import { Clipboard, Copy, ExternalLink, Pencil, RefreshCw } from '@/components/Icons';
 import {
   OrderIdChip,
   OrderIdChipPlaceholder,
@@ -11,7 +11,10 @@ import {
 } from '@/components/ui/CopyChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { dashboardOrderRowChipsClass } from '@/lib/dashboard-order-row-layout';
 import { cn } from '@/utils/_cn';
 import { useClipboardHistory, recordCopy } from '@/lib/clipboard-history';
@@ -24,9 +27,15 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  *
  * Hover menus (unbox IdentityLinkChip pattern via {@link CopyChipHoverMenu}):
  *   • Platform — primary **open listing** (new tab); hover: Copy listing link
+ *     (+ Edit listing link when the host row supplies an editor)
  *   • Order id — primary **copy**; hover: Open on platform
  *   • Tracking filled — primary **copy**; hover: Open tracking page · Replace tracking
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
+ *
+ * Grid surfaces (`layout="cells"` / {@link useOrderIdentityCellNodes}) render
+ * the platform as a FIXED-footprint brand mark ({@link PlatformMark} — vendored
+ * monochrome icon or lettermark), never a variable-width marketplace name; the
+ * label lives in tooltip + sr-only.
  */
 export interface OrderIdentityChipsProps {
   platformLabel: string;
@@ -38,7 +47,7 @@ export interface OrderIdentityChipsProps {
   productPageUrl: string | null;
   /** Marketplace order detail URL (secondary open on order chip). */
   marketplaceOrderUrl?: string | null;
-  /** FBA orders carry no platform chip — the column stays empty for alignment. */
+  /** FBA orders carry no listing chip; grid cells show the FBA mark instead. */
   isFba: boolean;
   orderId: string;
   /** SKU-source rows hide the order-id chip (placeholder keeps columns aligned). */
@@ -52,6 +61,9 @@ export interface OrderIdentityChipsProps {
   /** Optional callback to replace an EXISTING tracking number (from the chip
    *  menu → "Replace tracking", reads the OS clipboard). */
   onReplaceTracking?: (tracking: string) => void;
+  /** Opens the host row's listing-link (`item_number`) editor — surfaces the
+   *  "Edit listing link" hover action on the platform cell (Pending grid). */
+  onEditListingLink?: () => void;
   /** Optional 4th column — serial chip on station (Tech) rows. */
   serialChip?: React.ReactNode;
   isMobile: boolean;
@@ -67,8 +79,9 @@ export interface OrderIdentityChipsProps {
   /**
    * `cluster` (default) — one right-aligned {@link ChipColumns} flex blob.
    * `cells` — return the platform / order / tracking chips as three SEPARATE
-   * fixed-width grid cells (React fragment) so the parent grid can lock each
-   * column to its own header. Staged serial folds into the tracking cell.
+   * grid cells (React fragment) so the parent grid can lock each column to its
+   * own header. Staged serial folds into the tracking cell. Column-reorderable
+   * grids place single cells via {@link useOrderIdentityCellNodes} instead.
    */
   layout?: 'cluster' | 'cells';
   /**
@@ -96,7 +109,13 @@ function copyValue(value: string, kind?: string, display?: string) {
   recordCopy(v, { kind, display });
 }
 
-export function OrderIdentityChips({
+/**
+ * Build the platform / order / tracking chip nodes once per row. The default
+ * layouts consume all three; a column-reorderable grid places each node in its
+ * own registry-rendered cell (any column order — the three cells no longer
+ * need to be adjacent siblings).
+ */
+export function useOrderIdentityCellNodes({
   platformLabel,
   platformIconClass,
   platformBorderClass,
@@ -109,19 +128,20 @@ export function OrderIdentityChips({
   trackingAction,
   onPasteTracking,
   onReplaceTracking,
+  onEditListingLink,
   serialChip,
-  isMobile,
   variant = 'icons',
-  layout = 'cluster',
-  gridCellClass,
   onMenuOpenChange,
-}: OrderIdentityChipsProps) {
+}: Omit<OrderIdentityChipsProps, 'isMobile' | 'layout' | 'gridCellClass'>): {
+  /** Fixed-footprint brand mark (grid cells) — sr-only + tooltip carry the label. */
+  platformMark: React.ReactNode;
+  /** Text platform chip (cluster / mobile layouts). */
+  platformChip: React.ReactNode;
+  order: React.ReactNode;
+  tracking: React.ReactNode;
+  emptyTracking: React.ReactNode;
+} {
   const plain = variant === 'plain';
-  // Grid `cells` layout honors the per-staff column config so the per-column
-  // header "Hide field" actually drops platform/order/tracking (their hide-keys
-  // in the `orders` registry: platform / orderid / tracking). No-op outside a
-  // provider, so the `cluster`/mobile consumers are unaffected.
-  const isColumnHidden = useIsColumnHidden();
   const history = useClipboardHistory();
   const lastTracking = history.find((e) => e.kind === 'tracking' && e.value.trim());
   const trackingUrl = tracking ? getTrackingUrl(tracking) : null;
@@ -138,7 +158,7 @@ export function OrderIdentityChips({
   );
 
   // Clicking the platform chip opens the listing in a new tab (primary); the menu
-  // carries the secondary "copy listing link".
+  // carries the secondary "copy listing link" + the row-supplied link editor.
   const platformItems: CopyChipHoverMenuItem[] = [];
   if (productPageUrl) {
     platformItems.push({
@@ -146,6 +166,14 @@ export function OrderIdentityChips({
       label: 'Copy listing link',
       icon: <Copy />,
       onSelect: () => copyValue(productPageUrl, 'listing', platformLabel),
+    });
+  }
+  if (onEditListingLink) {
+    platformItems.push({
+      id: 'edit-listing',
+      label: 'Edit listing link',
+      icon: <Pencil />,
+      onSelect: onEditListingLink,
     });
   }
 
@@ -227,6 +255,49 @@ export function OrderIdentityChips({
     return trackingAction ?? null;
   })();
 
+  // Fixed-footprint brand mark for grid cells. FBA rows show the FBA mark
+  // (identity without a listing target); unknown platforms show the quiet
+  // empty mark. Tooltip + sr-only carry the label — never icon-only unnamed.
+  const platformMeta = sourcePlatformMetaFromLabel(isFba ? 'fba' : platformLabel);
+  const markLabel = isFba ? 'FBA' : platformLabel || 'No platform';
+  const markTooltip = productPageUrl && !isFba ? `${markLabel} — open listing` : markLabel;
+  const markNode = (
+    <HoverTooltip label={markTooltip} focusable={false}>
+      <button
+        type="button"
+        aria-label={markTooltip}
+        disabled={!productPageUrl || isFba}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (productPageUrl && !isFba) openExternal(productPageUrl);
+        }}
+        className={cn(
+          'ds-raw-button inline-flex items-center justify-center rounded-md',
+          productPageUrl && !isFba ? 'hover:bg-surface-hover' : 'cursor-default',
+        )}
+      >
+        <PlatformMark
+          platformValue={platformMeta.value}
+          empty={!platformMeta.value}
+          textClassName={platformIconClass || undefined}
+        />
+        <span className="sr-only">{markLabel}</span>
+      </button>
+    </HoverTooltip>
+  );
+  const platformMarkNode =
+    platformItems.length > 0 ? (
+      <CopyChipHoverMenu
+        menuLabel={`${markLabel} actions`}
+        items={platformItems}
+        onOpenChange={handleMenuOpenChange}
+      >
+        {markNode}
+      </CopyChipHoverMenu>
+    ) : (
+      markNode
+    );
+
   const platformChipNode = !isFba ? (
     <CopyChipHoverMenu menuLabel={`${platformLabel || 'Platform'} actions`} items={platformItems} onOpenChange={handleMenuOpenChange}>
       <PlatformChip
@@ -260,31 +331,55 @@ export function OrderIdentityChips({
     emptyTrackingNode ?? serialChip ?? null
   );
 
+  return {
+    platformMark: platformMarkNode,
+    platformChip: platformChipNode,
+    order: orderChipNode,
+    tracking: trackingChipNode,
+    emptyTracking: emptyTrackingNode,
+  };
+}
+
+export function OrderIdentityChips(props: OrderIdentityChipsProps) {
+  const {
+    tracking,
+    serialChip,
+    isMobile,
+    layout = 'cluster',
+    gridCellClass,
+  } = props;
+  // Grid `cells` layout honors the per-staff column config so the per-column
+  // header "Hide field" actually drops platform/order/tracking (their hide-keys
+  // in the `orders` registry: platform / orderid / tracking). No-op outside a
+  // provider, so the `cluster`/mobile consumers are unaffected.
+  const isColumnHidden = useIsColumnHidden();
+  const nodes = useOrderIdentityCellNodes(props);
+
   // Sheets-like grid: three fixed-width cells the parent grid locks to its
   // Platform / Order / Tracking headers. Left-aligned so values sit under labels.
   if (layout === 'cells') {
     return (
       <>
         <div data-col="platform" className={cn('flex min-w-0 items-center', gridCellClass?.('platform'))}>
-          {isColumnHidden('platform') ? null : platformChipNode}
+          {isColumnHidden('platform') ? null : nodes.platformMark}
         </div>
         <div data-col="order" className={cn('flex min-w-0 items-center', gridCellClass?.('order'))}>
-          {isColumnHidden('orderid') ? null : orderChipNode}
+          {isColumnHidden('orderid') ? null : nodes.order}
         </div>
         <div data-col="tracking" className={cn('flex min-w-0 items-center', gridCellClass?.('tracking'))}>
-          {isColumnHidden('tracking') ? null : trackingChipNode}
+          {isColumnHidden('tracking') ? null : nodes.tracking}
         </div>
       </>
     );
   }
 
   const columns: ChipColumn[] = [
-    { key: 'platform', width: CHIP_COL.platform, node: platformChipNode },
-    { key: 'orderid', width: CHIP_COL.id, node: orderChipNode },
+    { key: 'platform', width: CHIP_COL.platform, node: nodes.platformChip },
+    { key: 'orderid', width: CHIP_COL.id, node: nodes.order },
     {
       key: 'tracking',
       width: CHIP_COL.tracking,
-      node: tracking ? trackingChipNode : emptyTrackingNode,
+      node: tracking ? nodes.tracking : nodes.emptyTracking,
     },
   ];
 

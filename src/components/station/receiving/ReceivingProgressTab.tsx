@@ -8,7 +8,11 @@ import { CopyableValueFieldBlock } from '@/components/shipped/details-panel/bloc
 import { ReceivingPhotosSection } from './ReceivingPhotosSection';
 import { ReceivingReadinessCallout } from './ReceivingReadinessCallout';
 import { ReceivingCartonPipeline } from './ReceivingCartonPipeline';
+import { ArrivalCartonPipeline } from './ArrivalCartonPipeline';
 import { ReceivingInventoryLinkageSection } from './ReceivingInventoryLinkageSection';
+
+/** Progress journey — Arrival (triage details) vs Unbox carton lifecycle. */
+type ReceivingProgressJourney = 'arrival' | 'unbox';
 
 function resolveOptionalRows(log: ReceivingDetailsLog): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
@@ -25,19 +29,31 @@ export function ReceivingProgressTab({
   log,
   readiness,
   form,
+  journey = 'unbox',
 }: {
   log: ReceivingDetailsLog;
   readiness: CartonReadiness;
   form: ReceivingDetailFormActions;
+  /**
+   * `arrival` — Door→Classified→Staged→Ready (triage `/triage` details only).
+   * `unbox` — Scanned→Unboxed→Received (default Unbox / History details).
+   */
+  journey?: ReceivingProgressJourney;
 }) {
   const [showMore, setShowMore] = useState(false);
   const extraRows = useMemo(() => resolveOptionalRows(log), [log]);
+  const isArrival = journey === 'arrival';
 
   return (
     <div className="space-y-4">
-      <ReceivingReadinessCallout readiness={readiness} />
-
-      <ReceivingCartonPipeline log={log} readiness={readiness} />
+      {isArrival ? (
+        <ArrivalCartonPipeline log={log} />
+      ) : (
+        <>
+          <ReceivingReadinessCallout readiness={readiness} />
+          <ReceivingCartonPipeline log={log} readiness={readiness} />
+        </>
+      )}
 
       <ReceivingPhotosSection
         receivingId={log.id}

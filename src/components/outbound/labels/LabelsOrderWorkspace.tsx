@@ -5,7 +5,7 @@
  * crossfades over the Queue/Recent browse workbench when an order is opened
  * (`?open=`). Owns the whole label + packing-slip flow with station tabs:
  *
- *   Print     — full-size shipping-label + packing-slip previews, one Print job
+ *   Print     — open the document slide-over (all outbound types) + Print dock
  *   Documents — attach / marketplace-fetch / delete tray + Buy label
  *   Timeline  — order event history
  *
@@ -24,12 +24,16 @@ import { StationWorkbench, buildSectionTabs } from '@/components/station/workben
 import { StationContextBar } from '@/components/station/entity-context';
 import { StationTerminalDock } from '@/components/station/terminal';
 import { SectionTabsSlider } from '@/design-system/components/SectionTabsSlider';
+import {
+  DocumentSlideOver,
+  type DocumentSlideItem,
+} from '@/design-system/components/DocumentSlideOver';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button, Panel } from '@/design-system/primitives';
-import { FileText, History, Printer } from '@/components/Icons';
+import { CheckCircle, FileText, History, Printer } from '@/components/Icons';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import {
   printOutboundDocuments,
@@ -79,61 +83,37 @@ function toActiveStationOrder(order: ShippedOrder): ActiveStationOrder {
   };
 }
 
-function DocumentPreviewPane({
-  title,
-  doc,
+function docContentSrc(doc: OutboundDocument | undefined): string | null {
+  return doc ? `/api/documents/${doc.id}/content` : null;
+}
+
+function DocTypeStatusRow({
+  label,
+  attached,
   loading,
 }: {
-  title: string;
-  doc: OutboundDocument | undefined;
+  label: string;
+  attached: boolean;
   loading?: boolean;
 }) {
   return (
-    <Panel padding="none" elevation="none" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between border-b border-border-hairline inset-field">
-        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</h3>
-        {doc?.data.platform ? (
-          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
-            {sourcePlatformLabel(doc.data.platform)}
-          </span>
-        ) : null}
-      </div>
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-surface-canvas p-3">
-        {doc ? (
-          isPdfDocument(doc) ? (
-            <iframe
-              src={`/api/documents/${doc.id}/content`}
-              title={title}
-              className="h-full w-full rounded-lg border border-border-soft bg-surface-card"
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- arbitrary externally-stored document, not a Next-optimizable local asset
-            <img
-              src={`/api/documents/${doc.id}/content`}
-              alt={title}
-              className="max-h-full max-w-full rounded-lg border border-border-soft bg-surface-card object-contain"
-            />
-          )
-        ) : loading ? (
-          <div className="flex flex-col items-center gap-2 px-6 text-center">
-            <LoadingSpinner size="md" className="text-text-soft" />
-            <p className="text-role-caption font-semibold text-text-soft">
-              Fetching packing slip…
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2 px-6 text-center">
-            <FileText className="h-8 w-8 text-text-faint" />
-            <p className="text-role-caption font-semibold text-text-soft">
-              No {title.toLowerCase()} attached
-            </p>
-            <p className="text-role-eyebrow text-text-faint">
-              Attach or fetch one from the Documents tab
-            </p>
-          </div>
-        )}
-      </div>
-    </Panel>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border-soft/70 bg-surface-card px-3 py-2.5">
+      <span className="text-role-caption font-semibold text-text-default">{label}</span>
+      {loading ? (
+        <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
+          Fetching…
+        </span>
+      ) : attached ? (
+        <span className="inline-flex items-center gap-1 text-role-micro font-bold uppercase tracking-wider text-emerald-600">
+          <CheckCircle className="h-3.5 w-3.5" />
+          Attached
+        </span>
+      ) : (
+        <span className="text-role-micro font-bold uppercase tracking-wider text-text-faint">
+          Missing
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -157,6 +137,8 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
   });
 
   const [activeTab, setActiveTab] = useState('print');
+  const [docsPanelOpen, setDocsPanelOpen] = useState(false);
+  const [docsPanelActiveId, setDocsPanelActiveId] = useState('shipping_label');
   const [slipAutoFetching, setSlipAutoFetching] = useState(false);
   const autoFetchAttempted = useRef(false);
 
@@ -168,6 +150,38 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
       .filter((d): d is OutboundDocument => Boolean(d))
       .map((d) => ({ id: d.id, isPdf: isPdfDocument(d) }));
   }, [label, slip]);
+
+  const slideItems = useMemo((): DocumentSlideItem[] => {
+    return [
+      {
+        id: 'shipping_label',
+        title: 'Shipping Label',
+        src: docContentSrc(label),
+        mimeHint: label ? (isPdfDocument(label) ? 'pdf' : 'image') : 'pdf',
+        count: label ? 1 : undefined,
+        emptyHint: 'Attach or fetch one from the Documents tab',
+        meta: label?.data.platform ? (
+          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+            {sourcePlatformLabel(label.data.platform)}
+          </span>
+        ) : null,
+      },
+      {
+        id: 'packing_slip',
+        title: 'Packing Slip',
+        src: docContentSrc(slip),
+        mimeHint: slip ? (isPdfDocument(slip) ? 'pdf' : 'image') : 'pdf',
+        count: slip ? 1 : undefined,
+        loading: slipAutoFetching && !slip,
+        emptyHint: 'Attach or fetch one from the Documents tab',
+        meta: slip?.data.platform ? (
+          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+            {sourcePlatformLabel(slip.data.platform)}
+          </span>
+        ) : null,
+      },
+    ];
+  }, [label, slip, slipAutoFetching]);
 
   const entityOrder = useMemo(() => (order ? toActiveStationOrder(order) : null), [order]);
 
@@ -227,13 +241,40 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           label: 'Print',
           icon: Printer,
           content: (
-            <div className="grid min-h-[60vh] grid-cols-1 gap-4 pt-3 lg:grid-cols-2">
-              <DocumentPreviewPane title="Shipping Label" doc={label} />
-              <DocumentPreviewPane
-                title="Packing Slip"
-                doc={slip}
-                loading={slipAutoFetching && !slip}
-              />
+            <div className="flex min-h-[50vh] flex-col gap-4 pt-3">
+              <Panel padding="md" elevation="none" className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                      Outbound documents
+                    </h3>
+                    <p className="mt-1 text-role-caption text-text-faint">
+                      Preview shipping label and packing slip in the right panel. Print from the
+                      dock below when ready.
+                    </p>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<FileText className="h-4 w-4" />}
+                    onClick={() => {
+                      setDocsPanelActiveId(label ? 'shipping_label' : 'packing_slip');
+                      setDocsPanelOpen(true);
+                    }}
+                    data-testid="open-document-slide-over"
+                  >
+                    View documents
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <DocTypeStatusRow label="Shipping Label" attached={Boolean(label)} />
+                  <DocTypeStatusRow
+                    label="Packing Slip"
+                    attached={Boolean(slip)}
+                    loading={slipAutoFetching && !slip}
+                  />
+                </div>
+              </Panel>
             </div>
           ),
         },
@@ -310,6 +351,16 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           />
         }
         dock={<StationTerminalDock vm={printDockVm} />}
+      />
+      <DocumentSlideOver
+        open={docsPanelOpen}
+        onClose={() => setDocsPanelOpen(false)}
+        title="Documents"
+        items={slideItems}
+        activeId={docsPanelActiveId}
+        onActiveIdChange={setDocsPanelActiveId}
+        storageKey="labels-document-slide-over-width"
+        aria-label="Outbound document preview"
       />
     </div>
   );

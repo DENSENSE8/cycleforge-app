@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { CollapsibleGroupRow } from '@/components/ui/CollapsibleGroupRow';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import { OrderGroupSummary } from './OrderGroupSummary';
 
 export interface QueueGroupRowProps {
@@ -18,6 +19,9 @@ export interface QueueGroupRowProps {
    *  multi-product header emits `data-grid-summary-row` and picks up the scoped
    *  spreadsheet gridlines. The leaf rows already carry the skin via `renderRow`. */
   gridSkin?: boolean;
+  /** Ordered column models (sanitized). Threaded to the group summary so it
+   *  tracks the same drag-reordered order as the leaf rows. */
+  columns?: readonly OrdersQueueColumn[];
   /** Render a single queue row at the given zebra-stripe index. */
   renderRow: (record: ShippedOrder, stripeIndex: number) => ReactNode;
 }
@@ -29,7 +33,7 @@ export interface QueueGroupRowProps {
  * so the dense table body AND the virtualized lane body ({@link VirtualQueueSections})
  * render groups from ONE source — no duplicate row/group markup.
  */
-export function QueueGroupRow({ group, baseStripeIndex, isMobile, gridSkin = false, renderRow }: QueueGroupRowProps) {
+export function QueueGroupRow({ group, baseStripeIndex, isMobile, gridSkin = false, columns, renderRow }: QueueGroupRowProps) {
   // Singleton order → a plain row (renderRow already sets the row key).
   if (group.rows.length === 1) {
     return <>{renderRow(group.rows[0], baseStripeIndex)}</>;
@@ -41,7 +45,7 @@ export function QueueGroupRow({ group, baseStripeIndex, isMobile, gridSkin = fal
       index={baseStripeIndex}
       showChevron={false}
       nestRail={!gridSkin}
-      summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} gridSkin={gridSkin} />}
+      summary={<OrderGroupSummary rows={group.rows} isMobile={isMobile} gridSkin={gridSkin} columns={columns} />}
     >
       {group.rows.map((row, i) => renderRow(row, baseStripeIndex + i))}
     </CollapsibleGroupRow>

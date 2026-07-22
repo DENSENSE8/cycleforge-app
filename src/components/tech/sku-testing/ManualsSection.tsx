@@ -1,13 +1,19 @@
-import { useCallback, useState } from 'react';
+'use client';
+
+import { useCallback, useMemo, useState } from 'react';
 import { ExternalLink, FileText, Plus, Printer, Unlink } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  DocumentSlideOver,
+  type DocumentSlideItem,
+} from '@/design-system/components/DocumentSlideOver';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { unpairManual } from './sku-testing-api';
 import { EYEBROW, SECTION, type Bundle } from './sku-testing-types';
 import { ManualPicker } from './ManualPicker';
 
-/** Paired SKU manuals — open/print, unpair, and pair a new one from the library. */
+/** Paired SKU manuals — open/print in DocumentSlideOver, unpair, and pair from library. */
 export function ManualsSection({
   receivingLineId,
   bundle,
@@ -21,6 +27,8 @@ export function ManualsSection({
   embedded?: boolean;
 }) {
   const [pairing, setPairing] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerActiveId, setViewerActiveId] = useState<string | undefined>();
   const manuals = bundle.manuals;
 
   const unpair = useCallback(
@@ -35,21 +43,61 @@ export function ManualsSection({
     [receivingLineId, onChanged],
   );
 
+  const slideItems = useMemo((): DocumentSlideItem[] => {
+    return manuals.map((m) => {
+      const name = m.display_name || m.file_name || `Manual #${m.id}`;
+      return {
+        id: `manual:${m.id}`,
+        title: name,
+        src: m.source_url,
+        mimeHint: 'pdf',
+        count: m.source_url ? 1 : undefined,
+        emptyTitle: 'Manual file unavailable',
+        emptyHint: 'Re-pair from the library or open the Products manuals library.',
+        meta: m.type ? (
+          <span className="text-role-eyebrow font-bold uppercase tracking-widest text-text-faint">
+            {m.type}
+          </span>
+        ) : null,
+      };
+    });
+  }, [manuals]);
+
+  const openViewer = (manualId?: number) => {
+    if (manualId != null) setViewerActiveId(`manual:${manualId}`);
+    else if (manuals[0]) setViewerActiveId(`manual:${manuals[0].id}`);
+    setViewerOpen(true);
+  };
+
   const Wrapper = embedded ? 'div' : 'section';
 
   return (
     <Wrapper className={embedded ? undefined : SECTION}>
       <div className={`mb-3 flex items-center ${embedded ? 'justify-end' : 'justify-between'}`}>
         {!embedded ? <h3 className={EYEBROW}>Manuals</h3> : null}
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={<Plus />}
-          onClick={() => setPairing((v) => !v)}
-          className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-        >
-          Pair
-        </Button>
+        <div className="flex items-center gap-1">
+          {manuals.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<Printer />}
+              onClick={() => openViewer()}
+              data-testid="open-manuals-slide-over"
+              className="text-text-soft hover:bg-blue-50 hover:text-blue-700"
+            >
+              View
+            </Button>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Plus />}
+            onClick={() => setPairing((v) => !v)}
+            className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+          >
+            Pair
+          </Button>
+        </div>
       </div>
 
       {pairing ? (
@@ -86,16 +134,13 @@ export function ManualsSection({
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
                   {m.source_url ? (
-                    <HoverTooltip label="Open / print manual" asChild>
-                      <a
-                        href={m.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="Open / print manual"
+                    <HoverTooltip label="View / print manual" asChild>
+                      <IconButton
+                        icon={<Printer className="h-4 w-4" />}
+                        onClick={() => openViewer(m.id)}
+                        ariaLabel="View / print manual"
                         className="rounded-md p-1.5 text-text-soft hover:bg-blue-50 hover:text-blue-600"
-                      >
-                        <Printer className="h-4 w-4" />
-                      </a>
+                      />
                     </HoverTooltip>
                   ) : null}
                   {m.source_url ? (
@@ -125,6 +170,17 @@ export function ManualsSection({
           })}
         </ul>
       )}
+
+      <DocumentSlideOver
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        title="Manuals"
+        items={slideItems}
+        activeId={viewerActiveId}
+        onActiveIdChange={setViewerActiveId}
+        storageKey="testing-manuals-slide-over-width"
+        aria-label="SKU manuals preview"
+      />
     </Wrapper>
   );
 }

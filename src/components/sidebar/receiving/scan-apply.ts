@@ -12,6 +12,7 @@ import {
   deferInvalidateTriageReceivingFeeds,
   dispatchReceivingLinesPrepended,
   dispatchReceivingTriageRefresh,
+  purgeTriageRailsAfterUnboxOpen,
   receivingSiblingsQueryKey,
   removePendingScanRailRow,
   seedReceivingSiblingsCache,
@@ -167,6 +168,11 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   );
 
   const unboxRailLine = pickPoLineSummary(poCtx.lines);
+  if (ctx.intakeSurface === 'unbox') {
+    // The server stamped unbox_opened (lookup-po intakeSurface) — the carton
+    // just left triage membership; purge Arrival caches so it exits instantly.
+    purgeTriageRailsAfterUnboxOpen(ctx.queryClient, poCtx.receiving_id);
+  }
   if (ctx.intakeSurface === 'unbox' && unboxRailLine) {
     removePendingScanRailRow(ctx.queryClient, pendingScanReconcileKey(ctx.trackingNumber));
     upsertReceivingRailRows(ctx.queryClient, [
@@ -338,6 +344,9 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     upsertReceivingRailRows(ctx.queryClient, [
       buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
     ]);
+    // Server stamped unbox_opened for this unfound carton — it must exit the
+    // Arrival Unfound / combined rails immediately, not on the next stale fetch.
+    purgeTriageRailsAfterUnboxOpen(ctx.queryClient, unmatchedReceivingId);
   }
 
   // Auto-open the unfound workspace so the operator can immediately add items via

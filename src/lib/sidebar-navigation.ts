@@ -11,7 +11,6 @@ import {
   Clipboard,
   ClipboardList,
   Clock,
-  DollarSign,
   FileText,
   History,
   Inbox,
@@ -28,6 +27,8 @@ import {
   Printer,
   Search,
   Settings,
+  SalesPage,
+  SalesPrice,
   ShieldCheck,
   ShoppingCart,
   Sparkles,
@@ -169,7 +170,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // this page keeps the commerce/history side and owns the Sales job. `id` stays
   // `walk-in` for bookmark/test stability (id migration is a later pass — see
   // the plan's Overlap register, "Nav id rename").
-  { id: 'walk-in',           label: 'Sales',       href: '/walk-in',            icon: ShoppingCart,    kind: 'main',    requires: 'walk_in.view' },
+  { id: 'walk-in',           label: 'Sales',       href: '/walk-in',            icon: SalesPage,       kind: 'main',    requires: 'walk_in.view' },
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
   // surface — so the primary nav lands on the canonical URL without a redirect
@@ -198,7 +199,11 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // (see SIDEBAR_PAGE_NAV note).
   { id: 'review',            label: 'Review',      href: '/review',             icon: ClipboardList,                kind: 'station', requires: 'packing.review' },
   // Visible with Zendesk tickets *or* warranty (Warranty Logger lives under Support).
-  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'bottom', requires: 'integrations.zendesk' },
+  // Support is a floor Station (promoted More → Stations): `/support` mounts
+  // SurfaceGate + RouteShell like the other stations. Stays desktop-only
+  // (mobile-restricted); no floor-station glyph, so it keeps a plain lucide icon
+  // (same precedent as Review, a `kind: 'station'` item with `ClipboardList`).
+  { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'station', requires: 'integrations.zendesk' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
@@ -779,10 +784,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // new modes; `?new=true` / `?openRepair=` still redirect to the station
   // (`useWalkInTaskRedirect`).
   {
-    id: 'walk-in', label: 'Sales', href: WALK_IN, icon: ShoppingCart, kind: 'main', requires: 'walk_in.view',
+    id: 'walk-in', label: 'Sales', href: WALK_IN, icon: SalesPage, kind: 'main', requires: 'walk_in.view',
     modes: [
       { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, to: () => ({ pathname: WALK_IN, params: { mode: 'pickup', tab: null, category: null } }) },
-      { id: 'sales',  label: 'Sales',        icon: DollarSign,   to: () => ({ pathname: WALK_IN, params: { mode: null, tab: null, category: null } }) },
+      { id: 'sales',  label: 'Sales',        icon: SalesPrice,   to: () => ({ pathname: WALK_IN, params: { mode: null, tab: null, category: null } }) },
       { id: 'repair', label: 'Repair',       icon: Wrench,       to: () => ({ pathname: WALK_IN, params: { mode: 'repair', tab: null, category: null } }) },
     ],
     // Reads the new `?mode=`, falling back to legacy `?category=` for old links.
@@ -795,7 +800,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Every switch clears mode-scoped params so each mode opens clean — see
   // SUPPORT_MODE_SCOPED_PARAMS.
   {
-    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'bottom', requires: 'integrations.zendesk',
+    id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'station', requires: 'integrations.zendesk',
     modes: [
       {
         id: 'tickets',

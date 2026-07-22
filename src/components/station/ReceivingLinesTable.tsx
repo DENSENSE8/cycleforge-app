@@ -122,8 +122,6 @@ export { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 
 export interface ReceivingLinesTableProps {
   selectMode?: boolean;
-  /** Workbench chrome Select toggle — Incoming / History trailing pencil. */
-  onToggleSelectMode?: () => void;
   /**
    * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
    * own DateRangeHeader / Incoming chrome and portals week + column controls
@@ -136,7 +134,6 @@ export interface ReceivingLinesTableProps {
 
 export default function ReceivingLinesTable({
   selectMode = false,
-  onToggleSelectMode,
   embedded = false,
   toolbarPortalTarget = null,
 }: ReceivingLinesTableProps = {}) {
@@ -384,8 +381,6 @@ export default function ReceivingLinesTable({
                   : Number(data?.total ?? 0)
               }
               page={incomingPage}
-              selectMode={selectMode}
-              onToggleSelectMode={onToggleSelectMode}
             />
           </div>
           <div className={`shrink-0 ${WORKBENCH_GUTTERS}`}>
@@ -414,8 +409,6 @@ export default function ReceivingLinesTable({
               weekCount={getWeekCount()}
               onPrevWeek={() => setWeekOffset(weekOffset + 1)}
               onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-              selectMode={selectMode}
-              onToggleSelectMode={onToggleSelectMode}
             />
           </div>
           <WorkbenchTablePane>

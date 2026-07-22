@@ -181,11 +181,12 @@ export interface SidebarRailShellProps<TRow> {
    */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
   /**
-   * Horizontal inset for the eyebrow + list host.
+   * Horizontal inset for the list host.
    *   - `gutter` (shell default) — symmetric SIDEBAR_GUTTER.
-   *   - `scanDock` — left gutter, flush right (SIDEBAR_RAIL_INSET_X) so ages /
-   *     edit pencil align with full-bleed scan mode cells. Recent rails default
-   *     this via SidebarRecentRailBase.
+   *   - `scanDock` — flush left + flush right (SIDEBAR_RAIL_INSET_X); the status
+   *     dot rides a compact FLOW leading track (SIDEBAR_RAIL_LEADING_PAD) at the
+   *     row's left and the title/eyebrow sit one tight gap after it — the dense
+   *     scan-dock column. Recent rails default this via SidebarRecentRailBase.
    */
   railInset?: 'scanDock' | 'gutter';
 

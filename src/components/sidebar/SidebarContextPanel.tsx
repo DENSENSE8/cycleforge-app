@@ -35,7 +35,6 @@ const WarehouseSidebarPanel = dynamic(() => import('@/components/sidebar/Warehou
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
 const ManualsLibrarySidebar = dynamic(() => import('@/components/manuals/ManualsLibrarySidebar').then((m) => m.ManualsLibrarySidebar));
 const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
-const PhotoLibrarySidebarPanel = dynamic(() => import('@/components/photos/PhotoLibrarySidebarPanel').then((m) => m.PhotoLibrarySidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
@@ -93,7 +92,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
     );
   }
 
-  if (routeKey === 'ops-photos') return <PhotoLibrarySidebarPanel />;
+  if (routeKey === 'ops-photos') return null;
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;

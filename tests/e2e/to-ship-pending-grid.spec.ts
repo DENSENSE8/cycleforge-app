@@ -1,20 +1,16 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 
 /**
- * To Ship · Pending → Sheets-like WMS grid.
+ * To Ship · Pending → connected ledger grid (grid-only; Board|Grid retired).
  *
- * Verifies the queue table renders as a single continuous spreadsheet where every
- * fact owns its own column and the sticky column header locks vertically to each
- * cell (docs/todo/to-ship-pending-sheets-grid-handoff.md):
- *   select · status · product · qty · cond · age · notes · platform · order · tracking
- *
- * Asserts against the REAL Pending board (the dogfood tenant's live orders):
- *   (1) one sticky column header with a label per track;
- *   (2) the per-row drag grip is gone — the grip exists ONLY in the header;
- *   (3) notes / platform / order / tracking each render in their own cell,
- *       horizontally locked under their header label (the "locked track" proof).
- *
- * Desktop-only — the grid is a desktop layout (mobile stacks).
+ * Asserts against the live Pending spreadsheet (`pending-grid-body` / LedgerGrid):
+ *   (1) sticky column header with a label per track;
+ *   (2) drag grip only in the header (grid skin: no grip — select-all only);
+ *   (3) stock / platform / order / tracking lock under their headers;
+ *   (4) frozen identity pane on h-scroll;
+ *   (5) header drag-reorder persists per staff (select · title locked);
+ *   (6) platform renders a fixed brand mark (icon/lettermark), never wide text;
+ *   (7) Sheets-style in-cell edit (qty) commits through the assign waist.
  */
 
 test.describe('To Ship · Pending Sheets-like grid', () => {
@@ -26,35 +22,62 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     return box.x;
   };
 
-  test('every fact owns its own locked column and rows have no drag grip', async ({ page }) => {
+  /** Header cells for the canonical assertions. */
+  const headerRowIn = (table: Locator) =>
+    table.locator('[role="row"]:has([data-col="title"])').first();
+
+  /** Drag one header cell onto another (dnd-kit PointerSensor, 6px activation). */
+  const dragHeader = async (page: Page, from: Locator, to: Locator) => {
+    const a = await from.boundingBox();
+    const b = await to.boundingBox();
+    if (!a || !b) throw new Error('no header boxes');
+    await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+    await page.mouse.down();
+    // Clear the 6px activation constraint, then travel in steps so dnd-kit
+    // tracks the pointer.
+    await page.mouse.move(a.x + a.width / 2 + 10, a.y + a.height / 2, { steps: 3 });
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 });
+    await page.waitForTimeout(120);
+    await page.mouse.up();
+    await page.waitForTimeout(250);
+  };
+
+  test('every fact owns its own locked column', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
-    // Scope to one queue table (a Pending lane) so the header and its rows share
-    // one grid origin. The column header + rows live in the same scroll body.
-    const table = page.locator('[data-testid="column-table-body"]').first();
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(table).toBeVisible({ timeout: 20_000 });
 
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
 
-    // (1) One sticky column header carrying a text label per track.
-    const headerRow = table.locator('[role="row"]').filter({ hasText: 'Product' }).first();
+    const headerRow = headerRowIn(table);
     await expect(headerRow).toBeVisible();
-    for (const label of ['Product', 'Age', 'Notes', 'Platform', 'Order', 'Tracking']) {
-      await expect(headerRow.getByText(label, { exact: true })).toBeVisible();
+    // Icon-only headers — labels live in sr-only + tooltips.
+    for (const col of ['title', 'date', 'age', 'stock', 'platform', 'order', 'tracking'] as const) {
+      await expect(headerRow.locator(`[data-col="${col}"]`)).toHaveCount(1);
+      await expect(headerRow.locator(`[data-col="${col}"] .sr-only`).first()).toHaveText(
+        col === 'title' ? 'Product' : col === 'age' ? 'Age' : col === 'date' ? 'Ship by' : col === 'stock' ? 'Stock' : col === 'platform' ? 'Platform' : col === 'order' ? 'Order' : 'Tracking',
+      );
     }
 
-    // (2) The drag grip lives ONLY in the header (select-all context) — never on
-    // a row. The grip is the sole `.cursor-grab` affordance in the header.
-    await expect(headerRow.locator('.cursor-grab')).toHaveCount(1);
+    // Grid skin: no drag grip on rows; header may omit grip (select-all only).
     await expect(row.locator('.cursor-grab')).toHaveCount(0);
 
-    // (3) Notes / Platform / Order / Tracking each occupy their own cell, and each
-    // header cell locks vertically to its body cell. Compare the header [data-col]
-    // cell to the row [data-col] cell (not the label text): the typed-header glyph
-    // offsets the label inside its cell, so a text-based check would read the
-    // glyph width, not the column origin.
-    for (const col of ['notes', 'platform', 'order', 'tracking'] as const) {
+    // Flat Ship-by column — no floating day-band chrome; no status gutter;
+    // no retired notes column. Age docks directly to the right of Ship by.
+    await expect(table.locator('[data-grid-day-band]')).toHaveCount(0);
+    await expect(row.locator('[data-col="status"]')).toHaveCount(0);
+    await expect(row.locator('[data-col="notes"]')).toHaveCount(0);
+    await expect(row.locator('[data-col="date"]')).toHaveCount(1);
+    await expect(row.locator('[data-col="age"]')).toHaveCount(1);
+    const dateHeader = headerRow.locator('[data-col="date"]');
+    const ageHeader = headerRow.locator('[data-col="age"]');
+    await expect(dateHeader).toHaveCount(1);
+    expect(Math.abs((await leftX(dateHeader)) - (await leftX(row.locator('[data-col="date"]'))))).toBeLessThan(4);
+    expect((await leftX(ageHeader)) > (await leftX(dateHeader)), 'Age header sits right of Ship by').toBe(true);
+
+    for (const col of ['stock', 'platform', 'order', 'tracking'] as const) {
       const cell = row.locator(`[data-col="${col}"]`);
       await expect(cell).toHaveCount(1);
       const headerCell = headerRow.locator(`[data-col="${col}"]`);
@@ -64,17 +87,13 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
       expect(Math.abs(headerX - cellX), `${col} header cell locks to its body cell`).toBeLessThan(4);
     }
 
-    // Status dots share one vertical x across rows (own track, centered).
-    const statusDots = table.locator('[data-order-row-id] .rounded-full');
-    expect(await statusDots.count()).toBeGreaterThan(0);
-
     await page.screenshot({ path: 'test-results/to-ship-pending-grid.png', fullPage: false });
   });
 
   test('renders as a gridlined spreadsheet — cells carry column rules, last column does not', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
-    const table = page.locator('[data-testid="column-table-body"]').first();
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(table).toBeVisible({ timeout: 20_000 });
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
@@ -82,73 +101,63 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const borderRight = (loc: Locator) =>
       loc.evaluate((el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0);
 
-    // A mid-grid body cell is bounded by a vertical column rule (right hairline) —
-    // the Phase-1 proof the table reads as a spreadsheet, not a hairline list.
-    const notes = row.locator('[data-col="notes"]');
-    await expect(notes).toHaveCount(1);
-    expect(await borderRight(notes), 'notes cell has a vertical column rule').toBeGreaterThan(0);
+    const stock = row.locator('[data-col="stock"]');
+    await expect(stock).toHaveCount(1);
+    expect(await borderRight(stock), 'stock cell has a vertical column rule').toBeGreaterThan(0);
 
-    // The last column (tracking) closes the grid — no trailing rule.
     const tracking = row.locator('[data-col="tracking"]');
     await expect(tracking).toHaveCount(1);
     expect(await borderRight(tracking), 'last (tracking) column has no trailing rule').toBe(0);
 
-    // The sticky header exposes columnheader roles locked to the same tracks.
-    const headerRow = table.locator('[role="row"]').filter({ hasText: 'Product' }).first();
+    const headerRow = headerRowIn(table);
     const columnHeaders = headerRow.locator('[role="columnheader"]');
     expect(await columnHeaders.count(), 'header cells expose role="columnheader"').toBeGreaterThanOrEqual(6);
 
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-lines.png', fullPage: false });
   });
 
-  test('typed column headers carry a data-type glyph on the roomy columns', async ({ page }) => {
+  test('typed column headers are icon-only with sr-only labels', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
-    const table = page.locator('[data-testid="column-table-body"]').first();
+    const table = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(table).toBeVisible({ timeout: 20_000 });
-    const headerRow = table.locator('[role="row"]').filter({ hasText: 'Product' }).first();
+    const headerRow = headerRowIn(table);
     await expect(headerRow).toBeVisible();
 
-    // The roomy prose column (Product = text) shows its type glyph before the
-    // label, resolved from the column-type registry.
-    const productHeader = headerRow.locator('[data-col="title"]');
-    await expect(productHeader).toHaveCount(1);
-    await expect(productHeader.locator('svg').first()).toBeVisible();
+    for (const col of ['title', 'date', 'qty', 'age'] as const) {
+      const cell = headerRow.locator(`[data-col="${col}"]`);
+      await expect(cell.locator('svg')).toHaveCount(1);
+      await expect(cell.locator('.sr-only').first()).toBeAttached();
+    }
 
-    // Narrow fact columns stay label-first (no glyph) so their short labels don't
-    // truncate to an ambiguous icon (three columns share the # glyph).
-    const qtyHeader = headerRow.locator('[data-col="qty"]');
-    await expect(qtyHeader).toHaveCount(1);
-    await expect(qtyHeader.locator('svg')).toHaveCount(0);
+    // Chrome sort switcher for Priority | Newest | Deadline.
+    await expect(page.locator('[data-queue-sort-switch]')).toBeVisible();
 
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-typed-headers.png', fullPage: false });
   });
 
-  test('grid view (?view=grid) activates the frozen identity pane on horizontal scroll', async ({ page }) => {
-    await page.goto('/dashboard?unshipped&view=grid');
+  test('frozen identity pane pins on horizontal scroll', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
 
-    // The flat spreadsheet grid view is rendered by the LedgerGrid primitive.
     const grid = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(grid).toBeVisible({ timeout: 20_000 });
     const row = grid.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
 
-    // The frozen identity pane (select · status · Product) is pinned: the title
-    // cell carries the frozen-edge marker and computes to position: sticky.
     const titleCell = row.locator('[data-frozen-edge]').first();
     await expect(titleCell).toHaveCount(1);
     const position = await titleCell.evaluate((el) => getComputedStyle(el).position);
     expect(position, 'frozen title cell is sticky').toBe('sticky');
 
-    // Force the grid wide enough to overflow horizontally, then scroll right and
-    // assert the frozen title stays pinned while a fact column scrolls under it —
-    // the proof Phase-4 freeze is finally ACTIVE on a real flat surface (§6 gap).
-    const canScroll = await grid.evaluate((el) => el.scrollWidth - el.clientWidth);
+    // Scroll the inner LedgerGrid surface (shell wrapper owns the testid).
+    const canScroll = await page.locator('[data-testid="pending-grid-scroll"]').evaluate((el) => el.scrollWidth - el.clientWidth);
     if (canScroll > 40) {
       const trackingCell = row.locator('[data-col="tracking"]').first();
       const titleX0 = (await titleCell.boundingBox())!.x;
       const trkX0 = (await trackingCell.boundingBox())!.x;
-      await grid.evaluate((el) => { el.scrollLeft = Math.min(300, el.scrollWidth - el.clientWidth); });
+      await page.locator('[data-testid="pending-grid-scroll"]').evaluate((el) => {
+        el.scrollLeft = Math.min(300, el.scrollWidth - el.clientWidth);
+      });
       await page.waitForTimeout(150);
       const titleX1 = (await titleCell.boundingBox())!.x;
       const trkX1 = (await trackingCell.boundingBox())!.x;
@@ -159,116 +168,117 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-view.png', fullPage: false });
   });
 
-  test('grid view: Board↔Grid toggle round-trips and drag-resize persists on the LedgerGrid surface', async ({ page }) => {
-    await page.goto('/dashboard?unshipped&view=grid');
-
-    // The grid surface is LedgerGrid (its own data-cf-grid resize/freeze anchor),
-    // NOT the legacy board table body.
-    const grid = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(grid).toBeVisible({ timeout: 20_000 });
-    await grid.locator('[data-order-row-id]').first().waitFor({ timeout: 20_000 });
-
-    const notesHeaderIn = (root: Locator) =>
-      root.locator('[role="row"]').filter({ hasText: 'Product' }).first().locator('[data-col="notes"]');
-    const notesHeader = notesHeaderIn(grid);
-    await expect(notesHeader).toHaveCount(1);
-    const notesWidth = async () => (await notesHeader.boundingBox())!.width;
-
-    const dragNotesHandle = async (dx: number) => {
-      await notesHeader.hover();
-      const handle = notesHeader.getByRole('button', { name: /resize notes column/i });
-      await expect(handle).toBeVisible();
-      const hb = (await handle.boundingBox())!;
-      await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(hb.x + hb.width / 2 + dx, hb.y + hb.height / 2, { steps: 12 });
-      await page.mouse.up();
-    };
-
-    // Order-independent baseline: drag NARROW first (clamps to the min width), so
-    // the subsequent widen always clears the threshold regardless of any width a
-    // prior test / session persisted. Poll for the resize to land (no fixed sleep).
-    await dragNotesHandle(-400);
-    await expect.poll(notesWidth, { timeout: 4000 }).toBeLessThan(90);
-    const wNarrow = await notesWidth();
-
-    await dragNotesHandle(160);
-    await expect.poll(notesWidth, { message: 'notes widened after drag on the LedgerGrid surface', timeout: 4000 })
-      .toBeGreaterThan(wNarrow + 80);
-    const wWide = await notesWidth();
-
-    // Toggle to Board via the chrome control, then back to Grid — the resized
-    // width survives the round-trip (shared `orders` staff_preferences store).
-    await page.getByRole('tab', { name: 'Board' }).click();
-    await expect(page.locator('[data-testid="pending-grid-body"]')).toHaveCount(0, { timeout: 10_000 });
-    await expect(page).toHaveURL(/[?&]unshipped/);
-    await expect(page).not.toHaveURL(/view=grid/);
-
-    await page.getByRole('tab', { name: 'Grid' }).click();
-    await expect(page).toHaveURL(/view=grid/);
-    const gridBack = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(gridBack).toBeVisible({ timeout: 20_000 });
-    await gridBack.locator('[data-order-row-id]').first().waitFor({ timeout: 20_000 });
-    await expect
-      .poll(async () => (await notesHeaderIn(gridBack).boundingBox())!.width, {
-        message: 'resized notes width persisted across the toggle',
-        timeout: 6000,
-      })
-      .toBeGreaterThan(wWide - 28);
-
-    // Reset to a content-fit width so the dogfood user isn't left with a stub.
-    await notesHeaderIn(gridBack).getByRole('button', { name: /resize notes column/i }).dblclick();
-  });
-
-  test('columns are drag-resizable and the width persists across reload', async ({ page }) => {
+  test('platform column renders a fixed brand mark, never wide text', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
 
-    const table = page.locator('[data-testid="column-table-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    await table.locator('[data-order-row-id]').first().waitFor({ timeout: 20_000 });
-    const headerRow = table.locator('[role="row"]').filter({ hasText: 'Product' }).first();
-    const notesHeader = headerRow.locator('[data-col="notes"]');
-    await expect(notesHeader).toHaveCount(1);
+    const grid = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(grid).toBeVisible({ timeout: 20_000 });
+    const row = grid.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
 
-    const notesWidth = async () => {
-      const box = await notesHeader.boundingBox();
-      if (!box) throw new Error('no notes header box');
-      return box.width;
-    };
+    const platformCell = row.locator('[data-col="platform"]').first();
+    await expect(platformCell).toHaveCount(1);
+    // Fixed narrow icon track (3rem ≈ 48px) — a variable-width marketplace
+    // name cannot fit; the mark (SVG brand icon or lettermark box) can.
+    const width = (await platformCell.boundingBox())!.width;
+    expect(width, 'platform track is the fixed icon width').toBeLessThan(64);
 
-    const dragNotesHandle = async (dx: number) => {
-      await notesHeader.hover();
-      const handle = notesHeader.getByRole('button', { name: /resize notes column/i });
-      const hb = await handle.boundingBox();
-      if (!hb) throw new Error('no resize handle box');
-      const cx = hb.x + hb.width / 2;
-      const cy = hb.y + hb.height / 2;
-      await page.mouse.move(cx, cy);
-      await page.mouse.down();
-      await page.mouse.move(cx + dx, cy, { steps: 10 });
-      await page.mouse.up();
-      await page.waitForTimeout(500); // let the optimistic staff-prefs PUT settle
-    };
+    // Accessible name survives icon-only presentation (sr-only inside the mark
+    // button, when the row has a platform at all).
+    const markButtons = platformCell.locator('button');
+    if ((await markButtons.count()) > 0) {
+      await expect(markButtons.first().locator('.sr-only')).toBeAttached();
+    }
 
-    const w0 = await notesWidth();
-    await dragNotesHandle(120);
-    const w1 = await notesWidth();
-    expect(w1, 'notes column widened after the drag').toBeGreaterThan(w0 + 60);
+    await page.screenshot({ path: 'test-results/to-ship-pending-grid-platform-icons.png', fullPage: false });
+  });
 
-    // An untouched column still locks header↔body after the resize (all rows
-    // reflow together through the shared CSS var).
-    const trkHeaderX = await leftX(headerRow.locator('[data-col="tracking"]'));
-    const trkCellX = await leftX(table.locator('[data-order-row-id]').first().locator('[data-col="tracking"]'));
-    expect(Math.abs(trkHeaderX - trkCellX), 'tracking still locks after resize').toBeLessThan(4);
+  test('column reorder: drag Platform before Cond, persist across reload, reset restores canonical', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
 
-    // Persist across reload (per-staff staff_preferences).
+    const grid = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(grid).toBeVisible({ timeout: 20_000 });
+    await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
+
+    const headerRow = headerRowIn(grid);
+    const platformHeader = headerRow.locator('[data-col="platform"]');
+    const condHeader = headerRow.locator('[data-col="condition"]');
+    await expect(platformHeader).toBeVisible();
+    await expect(condHeader).toBeVisible();
+
+    const condX0 = await leftX(condHeader);
+    expect((await leftX(platformHeader)) > condX0, 'canonical: platform right of condition').toBe(true);
+
+    await dragHeader(page, platformHeader, condHeader);
+
+    // Live reorder: platform now left of condition — header AND body agree.
+    expect((await leftX(platformHeader)) < (await leftX(condHeader)), 'platform moved before condition').toBe(true);
+    const row = grid.locator('[data-order-row-id]').first();
+    expect(
+      (await leftX(row.locator('[data-col="platform"]'))) < (await leftX(row.locator('[data-col="condition"]'))),
+      'body cells follow the header order',
+    ).toBe(true);
+
+    // Select + title stay locked first/frozen.
+    const titleCell = row.locator('[data-col="title"]');
+    expect(await titleCell.evaluate((el) => getComputedStyle(el).position)).toBe('sticky');
+    expect((await leftX(titleCell)) < (await leftX(row.locator('[data-col="date"], [data-col="platform"]').first()))).toBe(true);
+
+    // Persisted per staff: survive a reload.
     await page.reload();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    await table.locator('[data-order-row-id]').first().waitFor({ timeout: 20_000 });
-    const w2 = await notesWidth();
-    expect(Math.abs(w2 - w1), 'notes width persisted across reload').toBeLessThan(28);
+    await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
+    const headerRow2 = headerRowIn(grid);
+    expect(
+      (await leftX(headerRow2.locator('[data-col="platform"]'))) < (await leftX(headerRow2.locator('[data-col="condition"]'))),
+      'order persists across reload',
+    ).toBe(true);
 
-    // Restore ~original so the dogfood user's saved width isn't left widened.
-    await dragNotesHandle(-(w2 - w0));
+    await page.screenshot({ path: 'test-results/to-ship-pending-grid-reorder.png', fullPage: false });
+
+    // Reset path: double-click a movable header → canonical order again.
+    await headerRow2.locator('[data-col="platform"]').dblclick();
+    await page.waitForTimeout(300);
+    expect(
+      (await leftX(headerRow2.locator('[data-col="platform"]'))) > (await leftX(headerRow2.locator('[data-col="condition"]'))),
+      'double-click reset restores canonical order',
+    ).toBe(true);
+  });
+
+  test('qty edits in-cell (Sheets contract) and commits through assign', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+
+    const grid = page.locator('[data-testid="pending-grid-body"]').first();
+    await expect(grid).toBeVisible({ timeout: 20_000 });
+    const row = grid.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+
+    const qtyCell = row.locator('[data-col="qty"]');
+    const before = (await qtyCell.innerText()).trim();
+
+    // Click → in-cell editor opens with the value; Esc reverts without saving.
+    await qtyCell.click();
+    const editor = qtyCell.locator('input');
+    await expect(editor).toBeVisible();
+    await expect(editor).toBeFocused();
+    await editor.press('Escape');
+    await expect(editor).toHaveCount(0);
+    expect((await qtyCell.innerText()).trim(), 'Esc reverts the draft').toBe(before);
+
+    // Click → type a new value → Enter commits (optimistic patch, no remount).
+    const assign = page.waitForResponse((r) => r.url().includes('/api/orders/assign') && r.request().method() === 'POST');
+    await qtyCell.click();
+    await qtyCell.locator('input').fill('3');
+    await qtyCell.locator('input').press('Enter');
+    const res = await assign;
+    expect(res.ok(), 'assign commit succeeded').toBe(true);
+    await expect(qtyCell).toContainText('3');
+
+    // Restore the original quantity (leave dogfood data as found).
+    const restore = page.waitForResponse((r) => r.url().includes('/api/orders/assign') && r.request().method() === 'POST');
+    await qtyCell.click();
+    await qtyCell.locator('input').fill(before || '1');
+    await qtyCell.locator('input').press('Enter');
+    await restore;
+    await expect(qtyCell).toContainText(before || '1');
   });
 });

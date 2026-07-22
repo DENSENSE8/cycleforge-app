@@ -1,14 +1,20 @@
 'use client';
 
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, Check, FileText } from '@/components/Icons';
-import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
+import { AlertTriangle, Check, ChevronDown, FileText, Maximize2 } from '@/components/Icons';
+import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { RowInlineEditBubble } from './RowInlineEditBubble';
-import { RowFieldPreview } from './RowFieldPreview';
+import { ConditionGradeChip } from '@/components/ui/CopyChip';
+import { LedgerCellEditor } from '@/design-system/components/grid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import {
+  CellTextEditPopover,
+  ConditionSelectPopover,
+  ShipByDatePopover,
+} from './cell-editors';
 import {
   RowTitle,
   RowMetaColumns,
@@ -26,23 +32,40 @@ import {
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import { getExternalUrlByItemNumber, skuScanPrefixBeforeColon } from '@/hooks/useExternalItemUrl';
 import {
+  formatDateWithOrdinal,
   formatLaneAgeCompact,
   getDaysLateTone,
   getLaneAgeHours,
   getLaneAgeTone,
+  toPSTDateKey,
 } from '@/utils/date';
 import { isSkuSourceRecord } from '@/utils/source-dot';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
+  ORDERS_QUEUE_COLUMNS,
   ORDERS_QUEUE_FROZEN_CELL,
   ordersQueueFrozenLeft,
   ordersQueueGridCell,
   ordersQueueGridTemplate,
   ordersQueueRowShellClass,
+  type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
 import { orderRowQtyTone } from '@/lib/condition-tone';
-import { formatSalePrice, type OrdersQueueMode, type QueueRowRecord, type RowStatusMeta } from './helpers';
-import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { EMPTY_META_DASH } from '@/lib/conditions';
+import {
+  replenishmentStatusMeta,
+  replenishmentTooltip,
+  rowReplenishmentFacts,
+} from '@/lib/orders/replenishment-display';
+import {
+  formatQueueRowDateCell,
+  formatSalePrice,
+  queueRowShipBySource,
+  type OrdersQueueMode,
+  type QueueRowRecord,
+  type RowStatusMeta,
+} from './helpers';
+import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTableDensity } from '@/hooks/useTableDensity';
 import { toast } from '@/lib/toast';
@@ -79,24 +102,40 @@ export interface OrdersQueueTableRowProps {
   opaqueStripe?: boolean;
   /**
    * Airtable grid-view skin. Flattens the zebra to solid white cells (the scoped
-   * gridline carries row separation) and renders a hover-reveal row-select
-   * checkbox in the gutter wired to {@link onToggleSelect}, so selection works
-   * without the pencil while a row-body click still opens the record.
+   * gridline carries row separation), renders an always-visible row-select
+   * checkbox in the gutter wired to {@link onToggleSelect}, and arms the
+   * Sheets-style in-cell editors (title / ship-by / qty / condition + the
+   * corner-indicator popovers). Off → board/Packed row: display-only cells;
+   * the Product-cell note/OOS corner indicators stay (they replaced the
+   * retired notes column for every consumer).
    */
   gridSkin?: boolean;
   /** Grid skin only — toggle this row's selection from the gutter checkbox
    *  (stops propagation, so it never opens the record). */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   queueMode?: OrdersQueueMode;
+  /** Ordered column models (already sanitized). Default = canonical order.
+   *  Header + rows + group summaries must receive the SAME list. */
+  columns?: readonly OrdersQueueColumn[];
   onRowClick: (record: ShippedOrder, event?: { shiftKey: boolean }) => void;
 }
 
+/** In-cell / popover editors this row can host (one open at a time). */
+type RowEditField = 'title' | 'qty' | 'date' | 'condition' | 'note' | 'oos' | 'link';
+
 /**
- * Pending / fulfillment queue row — Sheets-like 10-column WMS grid:
- *   select(☐) · status · product · qty · cond · age · notes · platform · order · tracking
- * Every fact owns a track; platform/order/tracking render as quiet, icon-less
- * cells so the sticky {@link OrdersQueueColumnHeader} label locks to each column.
- * The drag grip lives only in the header. Matches the header track-for-track.
+ * Pending / fulfillment queue row — Sheets-like WMS grid:
+ *   select(☐) · product · date · age · qty · cond · stock · platform · order · tracking
+ * Every fact owns a track; cells render through a per-column registry mapped
+ * over ONE ordered column list, so drag-reorder is a list change — header,
+ * rows, and group summaries can never disagree (`columns` prop).
+ *
+ * Grid skin adds the adopted industry in-cell editing contract (click → edit ·
+ * Enter/F2 start · typing replaces · Esc revert · Tab/blur commit); note + OOS
+ * are corner indicators on the frozen Product cell (Excel/Sheets corner
+ * vocabulary) with cell-anchored popover editors; the record opens via the
+ * explicit expand affordance or any non-editable cell (Airtable's
+ * click-to-select vs expand-to-open split).
  */
 export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   record,
@@ -118,16 +157,23 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   gridSkin = false,
   onToggleSelect,
   queueMode = 'fulfillment',
+  columns = ORDERS_QUEUE_COLUMNS,
   onRowClick,
 }: OrdersQueueTableRowProps) {
   const orderChannelLabel = useOrderChannelLabel();
   const { has } = useAuth();
   const assignOrder = useOrderAssignment();
   const canOos = has('orders.create');
-  const [editorField, setEditorField] = useState<'oos' | 'notes' | null>(null);
-  const [editorAnchor, setEditorAnchor] = useState<HTMLElement | null>(null);
-  const [editorDraft, setEditorDraft] = useState('');
-  const editorOpen = editorField !== null;
+  const [editing, setEditing] = useState<RowEditField | null>(null);
+  const [editSeed, setEditSeed] = useState<string | null>(null);
+  // Anchors for the cell-anchored editor popovers. The title cell doubles as
+  // the note/OOS/link anchor (the indicators live on it); mobile anchors the
+  // same ref to the meta flag cluster instead.
+  const titleCellRef = useRef<HTMLDivElement | null>(null);
+  const mobileFlagsRef = useRef<HTMLSpanElement | null>(null);
+  const dateCellRef = useRef<HTMLDivElement | null>(null);
+  const conditionCellRef = useRef<HTMLDivElement | null>(null);
+  const editorAnchorRef = isMobile ? mobileFlagsRef : titleCellRef;
 
   const qty = parseInt(String(record.quantity || '1'), 10) || 1;
   const trackingRaw =
@@ -151,6 +197,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   );
   const orderMarketplaceUrl = marketplaceOrderUrl(record.order_id, record.account_source);
   const salePrice = formatSalePrice(record.sale_amount, record.currency);
+  const replenishment = rowReplenishmentFacts(record);
+  const stockMeta = replenishmentStatusMeta(replenishment.status);
 
   const hasTester = Boolean(
     (record.test_date_time || record.test_activity_at) &&
@@ -170,11 +218,43 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const showQtyCol = !isHidden('qty');
   const showConditionCol = !isHidden('condition');
 
+  // In-cell editing is a Pending-grid affordance: board/Packed/station rows
+  // stay display-only; bulk-select mode keeps every click a selection toggle.
+  const gridEditable = gridSkin && !isMobile && !selectMode;
+  const canEditNotes = canOos;
+
   const animatePresence = !disableEnterAnimation;
   const animateLayout = !disableLayoutAnimation;
   const rowPresence = useMotionPresence(framerPresence.tableRow);
   const mountTransition = useMotionTransition(framerTransition.tableRowMount);
   const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
+
+  const closeEditor = useCallback(() => {
+    setEditing(null);
+    setEditSeed(null);
+  }, []);
+
+  const openEditor = useCallback((field: RowEditField, seed: string | null = null) => {
+    setEditSeed(seed);
+    setEditing(field);
+  }, []);
+
+  // One mutation waist for every editor — optimistic patch + rollback live in
+  // useOrderAssignment; editors never add their own mutation hooks.
+  const commitAssign = useCallback(
+    (payload: Omit<OrderAssignPayload, 'orderId'>, okMessage: string, failMessage: string) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      assignOrder.mutate(
+        { orderId: id, ...payload },
+        {
+          onSuccess: () => toast.success(okMessage),
+          onError: (e) => toast.error(e instanceof Error ? e.message : failMessage),
+        },
+      );
+    },
+    [assignOrder, record.id],
+  );
 
   const onPasteTracking = useCallback(
     (value: string) => {
@@ -208,49 +288,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     [assignOrder, record.id],
   );
 
-  const openEditor = useCallback(
-    (field: 'oos' | 'notes', e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      setEditorField(field);
-      setEditorAnchor(e.currentTarget);
-      setEditorDraft((field === 'oos' ? outOfStockValue : notesValue) || '');
-    },
-    [outOfStockValue, notesValue],
-  );
-
-  const closeEditor = useCallback(() => {
-    setEditorField(null);
-    setEditorAnchor(null);
-  }, []);
-
-  const saveEditor = useCallback(() => {
-    const field = editorField;
-    if (!field) return;
-    const id = Number(record.id);
-    const trimmed = editorDraft.trim();
-    const current = ((field === 'oos' ? outOfStockValue : notesValue) || '').trim();
-    if (Number.isFinite(id) && trimmed !== current) {
-      assignOrder.mutate(
-        field === 'oos' ? { orderId: id, outOfStock: trimmed } : { orderId: id, notes: trimmed },
-        {
-          onSuccess: () =>
-            toast.success(
-              field === 'oos'
-                ? trimmed
-                  ? 'Marked out of stock'
-                  : 'Cleared out of stock'
-                : trimmed
-                  ? 'Notes saved'
-                  : 'Notes cleared',
-            ),
-          onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to save'),
-        },
-      );
-    }
-    closeEditor();
-  }, [assignOrder, closeEditor, editorDraft, editorField, notesValue, outOfStockValue, record.id]);
-
   const hasNotes = notesValue.trim().length > 0;
+  const conditionValue = String(record.condition || '').trim();
+  const hasConditionValue = Boolean(conditionValue) && conditionValue !== EMPTY_META_DASH;
 
   const identityChipProps = {
     platformLabel,
@@ -265,82 +305,61 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     trackingAction,
     onPasteTracking: queueMode === 'fulfillment' || queueMode === 'labels' ? onPasteTracking : undefined,
     onReplaceTracking: queueMode === 'fulfillment' || queueMode === 'labels' ? onReplaceTracking : undefined,
+    onEditListingLink: gridEditable ? () => openEditor('link') : undefined,
     serialChip,
-  } as const;
+    variant: 'plain' as const,
+  };
 
-  // Mobile keeps the right-packed icon cluster; desktop splits into quiet,
-  // icon-less Platform / Order / Tracking grid cells that lock to the header.
-  const chipsNode = <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />;
-  const chipsCells = (
-    <OrderIdentityChips
-      {...identityChipProps}
-      isMobile={false}
-      variant="plain"
-      layout="cells"
-      // Shared grid chrome so platform/order/tracking cells carry the same
-      // vertical rule + inset as the rest of the row; tracking is the last
-      // column (no trailing rule).
-      gridCellClass={(col) => ordersQueueGridCell({ rule: col !== 'tracking' })}
-    />
-  );
+  // Chip nodes built once per row; the registry places each in its own cell so
+  // platform / order / tracking survive any column order.
+  const identityNodes = useOrderIdentityCellNodes(identityChipProps);
 
-  const notesFlagsNode =
-    hasNotes || hasOutOfStock ? (
-      <span className="inline-flex shrink-0 items-center gap-0.5">
-        {hasNotes ? (
-          canOos ? (
-            <RowFieldPreview label="Notes" value={notesValue.trim()} editable onEdit={(e) => openEditor('notes', e)}>
-              <span className="inline-flex min-w-0 max-w-[5.5rem] items-center gap-0.5 text-text-muted" aria-label="Order notes">
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 truncate text-role-caption font-normal normal-case tracking-normal">
-                  {notesValue.trim()}
-                </span>
-              </span>
-            </RowFieldPreview>
-          ) : (
-            <HoverTooltip label={notesValue.trim()} focusable={false}>
-              <span className="inline-flex min-w-0 max-w-[5.5rem] items-center gap-0.5 text-text-muted" aria-label="Order notes">
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                <span className="min-w-0 truncate text-role-caption font-normal normal-case tracking-normal">
-                  {notesValue.trim()}
-                </span>
-              </span>
-            </HoverTooltip>
-          )
-        ) : null}
-        {hasOutOfStock ? (
-          canOos ? (
-            <RowFieldPreview
-              label="Out of stock"
-              value={outOfStockValue.trim()}
-              tone="danger"
-              editable
-              onEdit={(e) => openEditor('oos', e)}
-            >
-              <span className="inline-flex items-center text-red-600" aria-label="Out of stock">
-                <AlertTriangle className="h-3.5 w-3.5" />
-              </span>
-            </RowFieldPreview>
-          ) : (
-            <HoverTooltip label={outOfStockValue.trim()} focusable={false}>
-              <span className="inline-flex items-center text-red-600" aria-label="Out of stock">
-                <AlertTriangle className="h-3.5 w-3.5" />
-              </span>
-            </HoverTooltip>
-          )
-        ) : null}
+  const gridTemplate = isMobile ? undefined : ordersQueueGridTemplate(columns.map((c) => c.key));
+  const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
+  const dataCell = (rule = true) => ordersQueueGridCell({ rule, inset: cellInset });
+
+  // Mobile keeps the right-packed icon cluster.
+  const chipsNode = <OrderIdentityChips {...identityChipProps} variant="icons" isMobile={isMobile} />;
+
+  const deadlineKey = toPSTDateKey(record.deadline_at);
+  const deadlineLabel = deadlineKey ? formatDateWithOrdinal(deadlineKey) : null;
+  const dateCellData = formatQueueRowDateCell(queueRowShipBySource(record));
+  const ageTooltip =
+    daysLate !== null
+      ? [
+          `${daysLate} day${daysLate === 1 ? '' : 's'} past ship-by`,
+          deadlineLabel ? deadlineLabel : null,
+          laneAgeLabel ? `in lane ${laneAgeLabel}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : laneAgeLabel
+        ? `In lane ${laneAgeLabel}`
+        : '';
+
+  const dateNode = dateCellData ? (
+    <HoverTooltip label={dateCellData.tooltip} focusable={false}>
+      <span
+        className={cn(
+          'tabular-nums normal-case tracking-normal text-text-muted',
+          densityClasses.metaText,
+        )}
+      >
+        {dateCellData.label}
       </span>
-    ) : null;
+    </HoverTooltip>
+  ) : (
+    <span className="text-text-faint" aria-hidden>
+      —
+    </span>
+  );
 
   const ageNode =
     daysLate !== null ? (
-      <HoverTooltip
-        label={`${daysLate} day${daysLate === 1 ? '' : 's'} late${laneAgeLabel ? ` · in lane ${laneAgeLabel}` : ''}`}
-        focusable={false}
-      >
+      <HoverTooltip label={ageTooltip} focusable={false}>
         <span
           className={cn(
-            'font-mono tabular-nums normal-case tracking-normal',
+            'tabular-nums normal-case tracking-normal',
             getDaysLateTone(daysLate),
             densityClasses.metaText,
           )}
@@ -349,10 +368,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         </span>
       </HoverTooltip>
     ) : showLaneAge ? (
-      <HoverTooltip label={`In lane ${laneAgeLabel}`} focusable={false}>
+      <HoverTooltip label={ageTooltip} focusable={false}>
         <span
           className={cn(
-            'font-mono tabular-nums normal-case tracking-normal',
+            'tabular-nums normal-case tracking-normal',
             getLaneAgeTone(laneAgeHours),
             densityClasses.metaText,
           )}
@@ -366,14 +385,177 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       </span>
     );
 
+  // ── Navigate-mode cell trigger (the adopted Sheets keyboard contract) ────
+  // Click → edit (stopPropagation so the row doesn't open); Enter/F2 → edit
+  // preserving content; a printable char → edit REPLACING content; Esc clears
+  // cell focus. Absent when the surface isn't grid-editable, so clicks fall
+  // through to the row (open / select-toggle).
+  const cellTriggerProps = (field: RowEditField, opts: { typing?: boolean; label: string }) =>
+    gridEditable
+      ? {
+          tabIndex: 0,
+          'aria-label': opts.label,
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            openEditor(field);
+          },
+          onKeyDown: (e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === 'F2') {
+              e.preventDefault();
+              e.stopPropagation();
+              openEditor(field);
+            } else if (
+              opts.typing &&
+              e.key.length === 1 &&
+              !e.ctrlKey &&
+              !e.metaKey &&
+              !e.altKey
+            ) {
+              e.preventDefault();
+              e.stopPropagation();
+              openEditor(field, e.key);
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
+              (e.currentTarget as HTMLElement).blur();
+            }
+          },
+        }
+      : {};
+
+  // ── Corner indicators on the Product cell (Phase 4b) ─────────────────────
+  // Sparse facts never earn a column: note = slate triangle top-right, OOS =
+  // rose triangle top-left (Excel/Sheets corner vocabulary). Both live on the
+  // FROZEN title cell so the exception signal survives horizontal scroll.
+  // Hover/focus = exact text; click (or Shift+F2) = cell-anchored editor.
+  const oosTooltip = [
+    outOfStockValue.trim() || 'Out of stock',
+    replenishment.requestId ? replenishmentTooltip(replenishment) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const oosIndicator = hasOutOfStock ? (
+    <HoverTooltip label={oosTooltip} focusable={false}>
+      <button
+        type="button"
+        data-indicator="oos"
+        aria-label={`Out of stock: ${outOfStockValue.trim() || 'flagged'}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (canOos) openEditor('oos');
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+        className={cn(
+          'absolute left-0 top-0 z-raised flex h-4 w-4 items-start justify-start',
+          focusRing('cell'),
+          canOos ? 'cursor-pointer' : 'cursor-default',
+        )}
+      >
+        <svg viewBox="0 0 8 8" className="h-2 w-2 text-rose-500" aria-hidden>
+          <path d="M0 0h8L0 8Z" fill="currentColor" />
+        </svg>
+        <span className="sr-only">Out of stock</span>
+      </button>
+    </HoverTooltip>
+  ) : null;
+
+  const noteIndicator = hasNotes ? (
+    <HoverTooltip label={notesValue.trim()} focusable={false}>
+      <button
+        type="button"
+        data-indicator="note"
+        aria-label={`Has note: ${notesValue.trim()}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (canEditNotes) openEditor('note');
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+        className={cn(
+          'absolute right-0 top-0 z-raised flex h-4 w-4 items-start justify-end',
+          focusRing('cell'),
+          canEditNotes ? 'cursor-pointer' : 'cursor-default',
+        )}
+      >
+        <svg viewBox="0 0 8 8" className="h-2 w-2 text-slate-400" aria-hidden>
+          <path d="M0 0h8v8Z" fill="currentColor" />
+        </svg>
+        <span className="sr-only">Has note</span>
+      </button>
+    </HoverTooltip>
+  ) : null;
+
+  // Explicit expand affordance (Airtable): editable cells select→edit on
+  // click, so opening the record from the Product cell is this control.
+  const expandAffordance =
+    gridSkin && !isMobile ? (
+      <HoverTooltip label="Open order" focusable={false}>
+        <button
+          type="button"
+          data-expand-row
+          aria-label={`Open order ${record.order_id || record.id}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRowClick(record);
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
+          className={cn(
+            'ml-auto shrink-0 rounded p-0.5 text-text-soft opacity-0 transition-opacity hover:bg-surface-hover hover:text-text-default focus-visible:opacity-100 group-hover/row:opacity-100',
+            focusRing('control'),
+          )}
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+      </HoverTooltip>
+    ) : null;
+
+  // Mobile meta flags — the same note/OOS facts; tap opens the same editors.
+  const notesFlagsNode =
+    hasNotes || hasOutOfStock ? (
+      <span ref={mobileFlagsRef} className="inline-flex shrink-0 items-center gap-0.5">
+        {hasNotes ? (
+          <HoverTooltip label={notesValue.trim()} focusable={false}>
+            <button
+              type="button"
+              aria-label={`Order note: ${notesValue.trim()}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canEditNotes) openEditor('note');
+              }}
+              className="ds-raw-button inline-flex min-w-0 max-w-[5.5rem] items-center gap-0.5 text-text-muted"
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate text-role-caption font-normal normal-case tracking-normal">
+                {notesValue.trim()}
+              </span>
+            </button>
+          </HoverTooltip>
+        ) : null}
+        {hasOutOfStock ? (
+          <HoverTooltip label={oosTooltip} focusable={false}>
+            <button
+              type="button"
+              aria-label={`Out of stock: ${outOfStockValue.trim() || 'flagged'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (canOos) openEditor('oos');
+              }}
+              className="ds-raw-button inline-flex items-center text-red-600"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+            </button>
+          </HoverTooltip>
+        ) : null}
+      </span>
+    ) : null;
+
   // Select cell — checkbox only. The drag grip lives solely in the sticky header
   // (select-all context). Grid skin + selectMode both show the checkbox always
   // (no hover-reveal) so the select bubble is discoverable without hunting.
   const leadControls = (
     <div
       className={cn(
-        ordersQueueGridCell({ inset: 'none', rule: false }),
-        gridSkin && 'justify-center',
+        ordersQueueGridCell({ inset: 'none', rule: true }),
+        'justify-center',
         ORDERS_QUEUE_FROZEN_CELL,
       )}
       style={{ left: ordersQueueFrozenLeft('select') }}
@@ -417,65 +599,188 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     </div>
   );
 
-  // Pipeline status dot — its own grid cell so every row's dot shares one x.
-  const statusDotNode = (
-    <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
-      <span className={cn('h-2 w-2 shrink-0 rounded-full', rowStatus.dot)} />
-    </HoverTooltip>
-  );
-
-  // Desktop Notes cell — truncated notes text + OOS exception flag (both are
-  // "attention" signals; distinct tones). Empty → quiet em-dash.
-  const desktopNotesCell = (
-    <>
-      {hasOutOfStock ? (
-        canOos ? (
-          <RowFieldPreview
-            label="Out of stock"
-            value={outOfStockValue.trim()}
-            tone="danger"
-            editable
-            onEdit={(e) => openEditor('oos', e)}
+  // ── Per-column cell registry (desktop) ───────────────────────────────────
+  // The ONLY desktop cell render path: header, rows, and group summaries map
+  // over the same ordered list, so reorder is a list change — not a CSS trick.
+  const renderDesktopCell = (col: OrdersQueueColumn, last: boolean): ReactNode => {
+    const rule = !last;
+    switch (col.key) {
+      case 'select':
+        return leadControls;
+      case 'title':
+        return (
+          <div
+            data-col="title"
+            ref={titleCellRef}
+            className={cn(dataCell(rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5', gridEditable && focusRing('cell'))}
+            style={{ left: ordersQueueFrozenLeft('title') }}
+            data-frozen-edge
+            {...cellTriggerProps('title', {
+              typing: true,
+              label: `Edit title — ${record.product_title || 'Unknown Product'}`,
+            })}
           >
-            <span className="inline-flex shrink-0 items-center text-red-600" aria-label="Out of stock">
-              <AlertTriangle className="h-3.5 w-3.5" />
+            {oosIndicator}
+            <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', rowStatus.dot)} />
+            </HoverTooltip>
+            <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
+              {record.product_title || 'Unknown Product'}
             </span>
-          </RowFieldPreview>
-        ) : (
-          <HoverTooltip label={outOfStockValue.trim()} focusable={false}>
-            <span className="inline-flex shrink-0 items-center text-red-600" aria-label="Out of stock">
-              <AlertTriangle className="h-3.5 w-3.5" />
-            </span>
-          </HoverTooltip>
-        )
-      ) : null}
-      {hasNotes ? (
-        canOos ? (
-          <RowFieldPreview
-            label="Notes"
-            value={notesValue.trim()}
-            editable
-            onEdit={(e) => openEditor('notes', e)}
-            className="min-w-0 max-w-full"
+            {expandAffordance}
+            {noteIndicator}
+            {editing === 'title' && gridEditable ? (
+              <LedgerCellEditor
+                initialValue={String(record.product_title || '')}
+                replaceWith={editSeed}
+                ariaLabel="Edit product title"
+                onCommit={(next) =>
+                  commitAssign({ productTitle: next }, 'Title updated', 'Failed to update title')
+                }
+                onClose={closeEditor}
+              />
+            ) : null}
+          </div>
+        );
+      case 'date':
+        return (
+          <div
+            data-col="date"
+            ref={dateCellRef}
+            className={cn(dataCell(rule), gridEditable && cn('relative', focusRing('cell')))}
+            {...cellTriggerProps('date', { label: 'Edit ship-by date' })}
           >
-            <span className="block min-w-0 flex-1 truncate text-role-caption font-normal normal-case tracking-normal text-text-muted" aria-label="Order notes">
-              {notesValue.trim()}
+            {dateNode}
+          </div>
+        );
+      case 'age':
+        return (
+          <div data-col="age" className={dataCell(rule)}>
+            {ageNode}
+          </div>
+        );
+      case 'qty':
+        return showQtyCol ? (
+          <div
+            data-col="qty"
+            className={cn(
+              dataCell(rule),
+              gridEditable && cn('relative', focusRing('cell')),
+              // Numbers right-align (place-value scan) — grid skin only; the
+              // board keeps its legacy left alignment.
+              gridSkin && 'justify-end',
+            )}
+            {...cellTriggerProps('qty', { typing: true, label: `Edit quantity (${qty})` })}
+          >
+            <span className={cn('min-w-0 truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qty))}>
+              {qty}
             </span>
-          </RowFieldPreview>
+            {editing === 'qty' && gridEditable ? (
+              <LedgerCellEditor
+                variant="number"
+                min={1}
+                initialValue={String(qty)}
+                replaceWith={editSeed}
+                ariaLabel="Edit quantity"
+                onCommit={(next) =>
+                  commitAssign({ quantity: next }, 'Quantity updated', 'Failed to update quantity')
+                }
+                onClose={closeEditor}
+              />
+            ) : null}
+          </div>
         ) : (
-          <HoverTooltip label={notesValue.trim()} focusable={false} className="min-w-0 max-w-full">
-            <span className="block min-w-0 flex-1 truncate text-role-caption font-normal normal-case tracking-normal text-text-muted" aria-label="Order notes">
-              {notesValue.trim()}
-            </span>
-          </HoverTooltip>
-        )
-      ) : !hasOutOfStock ? (
-        <span className="text-text-faint" aria-hidden>—</span>
-      ) : null}
-    </>
-  );
-
-  const gridTemplate = isMobile ? undefined : ordersQueueGridTemplate();
+          <span className={dataCell(rule)} />
+        );
+      case 'condition':
+        return showConditionCol ? (
+          <div
+            data-col="condition"
+            ref={conditionCellRef}
+            className={cn(dataCell(rule), 'text-role-eyebrow uppercase text-text-muted')}
+          >
+            {gridEditable ? (
+              hasConditionValue ? (
+                // Chip-as-trigger (Airtable single-select): the SoT-toned chip
+                // IS the dropdown button.
+                <ConditionGradeChip
+                  grade={conditionValue}
+                  dense
+                  onActivate={() => openEditor('condition')}
+                  activationLabel="Change condition"
+                />
+              ) : (
+                // Quiet set-affordance for empty cells (Canva-sheet `Not set ⌄`).
+                <button
+                  type="button"
+                  aria-label="Set condition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditor('condition');
+                  }}
+                  className={cn(
+                    'ds-raw-button inline-flex items-center gap-0.5 rounded text-text-faint hover:bg-surface-hover hover:text-text-muted',
+                    focusRing('cell'),
+                  )}
+                >
+                  <span aria-hidden>—</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              )
+            ) : (
+              <span className="min-w-0 truncate">
+                <RowConditionMeta condition={record.condition} />
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className={dataCell(rule)} />
+        );
+      case 'stock':
+        // Data-driven backorder metrics only (shortfall · status; PO + notes in
+        // the tooltip); quiet-empty when in stock — the free-text OOS reason
+        // lives on the Product-cell indicator, never here.
+        return (
+          <div data-col="stock" className={dataCell(rule)}>
+            {replenishment.requestId ? (
+              <HoverTooltip label={replenishmentTooltip(replenishment)} focusable={false} className="min-w-0">
+                <span
+                  className={cn(
+                    'inline-flex min-w-0 max-w-full items-center gap-1 rounded inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
+                    stockMeta.chip,
+                  )}
+                >
+                  {replenishment.quantityToOrder != null ? (
+                    <span className="font-mono tabular-nums">{replenishment.quantityToOrder}</span>
+                  ) : null}
+                  <span className="min-w-0 truncate">{stockMeta.short}</span>
+                </span>
+              </HoverTooltip>
+            ) : null}
+          </div>
+        );
+      case 'platform':
+        return (
+          <div data-col="platform" className={dataCell(rule)}>
+            {isHidden('platform') ? null : identityNodes.platformMark}
+          </div>
+        );
+      case 'order':
+        return (
+          <div data-col="order" className={dataCell(rule)}>
+            {isHidden('orderid') ? null : identityNodes.order}
+          </div>
+        );
+      case 'tracking':
+        return (
+          <div data-col="tracking" className={dataCell(rule)}>
+            {isHidden('tracking') ? null : identityNodes.tracking}
+          </div>
+        );
+      default:
+        return <span className={dataCell(rule)} />;
+    }
+  };
 
   return (
     <motion.div
@@ -497,6 +802,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         if (selectMode && event.shiftKey) event.preventDefault();
       }}
       onKeyDown={(event) => {
+        // Sheets' insert/edit-note key (Shift+F2) on the focused row.
+        if (gridEditable && canEditNotes && event.shiftKey && event.key === 'F2') {
+          event.preventDefault();
+          openEditor('note');
+          return;
+        }
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           onRowClick(record, event);
@@ -516,15 +827,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         'group/row relative',
         ordersQueueRowShellClass(isMobile),
         'cursor-pointer border-b border-border-hairline transition-colors',
-        QUEUE_ROW.px,
-        isStagedRow
-          ? 'py-2.5 hover:bg-blue-50/50'
-          : cn(
-              'hover:bg-surface-hover',
-              // Spreadsheet skin: denser than comfortable — horizontal rules sit
-              // closer so the grid reads as connected cells, not padded pillows.
-              gridSkin ? 'py-1' : densityClasses.rowPadding,
-            ),
+        // Grid skin: flush shell — cells own px/py so vertical rules meet edges.
+        gridSkin ? 'px-0 py-0' : QUEUE_ROW.px,
+        !gridSkin &&
+          (isStagedRow
+            ? 'py-2.5 hover:bg-blue-50/50'
+            : cn('hover:bg-surface-hover', densityClasses.rowPadding)),
+        gridSkin && 'hover:bg-surface-hover',
         isStagedRow
           ? (selectMode ? isChecked : isSelected)
             ? 'bg-blue-50/80'
@@ -559,6 +868,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                   {salePrice ? (
                     <span className="normal-case tracking-normal text-text-success">{salePrice}</span>
                   ) : null}
+                  {dateNode}
                   {ageNode}
                   {notesFlagsNode}
                 </>
@@ -568,61 +878,82 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           {chipsNode}
         </>
       ) : (
-        <>
-          {leadControls}
-          <div
-            className={cn(ordersQueueGridCell({ inset: 'none' }), 'justify-center', ORDERS_QUEUE_FROZEN_CELL)}
-            style={{ left: ordersQueueFrozenLeft('status') }}
-          >
-            {statusDotNode}
-          </div>
-          <div
-            className={cn(ordersQueueGridCell(), ORDERS_QUEUE_FROZEN_CELL)}
-            style={{ left: ordersQueueFrozenLeft('title') }}
-            data-frozen-edge
-          >
-            <span className="min-w-0 truncate text-role-data text-text-default">
-              {record.product_title || 'Unknown Product'}
-            </span>
-          </div>
-          {showQtyCol ? (
-            <div data-col="qty" className={ordersQueueGridCell()}>
-              <span className={cn('min-w-0 truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qty))}>
-                {qty}
-              </span>
-            </div>
-          ) : (
-            <span className={ordersQueueGridCell()} />
-          )}
-          {showConditionCol ? (
-            <div data-col="condition" className={cn(ordersQueueGridCell(), 'text-role-eyebrow uppercase text-text-muted')}>
-              <span className="min-w-0 truncate">
-                <RowConditionMeta condition={record.condition} />
-              </span>
-            </div>
-          ) : (
-            <span className={ordersQueueGridCell()} />
-          )}
-          <div data-col="age" className={ordersQueueGridCell()}>
-            {ageNode}
-          </div>
-          <div data-col="notes" className={cn(ordersQueueGridCell(), 'gap-1')}>
-            {desktopNotesCell}
-          </div>
-          {chipsCells}
-        </>
+        columns.map((col, i) => (
+          <span key={col.key} className="contents">
+            {renderDesktopCell(col, i === columns.length - 1)}
+          </span>
+        ))
       )}
 
-      {editorOpen ? (
-        <RowInlineEditBubble
-          anchor={editorAnchor}
-          title={editorField === 'oos' ? 'Out of stock' : 'Notes'}
-          tone={editorField === 'oos' ? 'danger' : 'default'}
-          value={editorDraft}
-          onChange={setEditorDraft}
-          onSave={saveEditor}
-          onClose={closeEditor}
-          placeholder={editorField === 'oos' ? 'What needs to be ordered?' : 'Add a note…'}
+      {/* Cell-anchored editor popovers (body-portaled — never clipped). */}
+      {editing === 'date' && gridEditable ? (
+        <ShipByDatePopover
+          anchorRef={dateCellRef}
+          currentKey={dateCellData?.key ?? null}
+          onSelect={(key) =>
+            commitAssign({ shipByDate: key }, 'Ship-by date updated', 'Failed to update ship-by date')
+          }
+          onDone={closeEditor}
+        />
+      ) : null}
+      {editing === 'condition' && gridEditable ? (
+        <ConditionSelectPopover
+          anchorRef={conditionCellRef}
+          current={conditionValue || null}
+          onSelect={(value) =>
+            commitAssign(
+              { condition: value },
+              value ? 'Condition updated' : 'Condition cleared',
+              'Failed to update condition',
+            )
+          }
+          onDone={closeEditor}
+        />
+      ) : null}
+      {editing === 'note' ? (
+        <CellTextEditPopover
+          anchorRef={editorAnchorRef}
+          title="Notes"
+          initialValue={notesValue.trim()}
+          multiline
+          placeholder="Add a note…"
+          onCommit={(next) =>
+            commitAssign({ notes: next }, next ? 'Notes saved' : 'Notes cleared', 'Failed to save')
+          }
+          onDone={closeEditor}
+          saving={assignOrder.isPending}
+        />
+      ) : null}
+      {editing === 'oos' ? (
+        <CellTextEditPopover
+          anchorRef={editorAnchorRef}
+          title="Out of stock"
+          tone="danger"
+          initialValue={outOfStockValue.trim()}
+          multiline
+          placeholder="What needs to be ordered?"
+          onCommit={(next) =>
+            commitAssign(
+              { outOfStock: next },
+              next ? 'Marked out of stock' : 'Cleared out of stock',
+              'Failed to save',
+            )
+          }
+          onDone={closeEditor}
+          saving={assignOrder.isPending}
+        />
+      ) : null}
+      {editing === 'link' ? (
+        <CellTextEditPopover
+          anchorRef={editorAnchorRef}
+          title="Listing link — item #"
+          initialValue={String(record.item_number || '').trim()}
+          placeholder="ASIN / eBay item # / SKU"
+          hint={productPageUrl ? `Opens ${productPageUrl}` : 'Listing URL derives from the item #'}
+          onCommit={(next) =>
+            commitAssign({ itemNumber: next }, 'Listing link updated', 'Failed to update listing link')
+          }
+          onDone={closeEditor}
           saving={assignOrder.isPending}
         />
       ) : null}
@@ -637,6 +968,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
   if (prev.opaqueStripe !== next.opaqueStripe) return false;
   if (prev.gridSkin !== next.gridSkin) return false;
+  if (prev.columns !== next.columns) return false;
   if (prev.rowStatus.dot !== next.rowStatus.dot) return false;
   if (prev.rowStatus.label !== next.rowStatus.label) return false;
   if (prev.hasOutOfStock !== next.hasOutOfStock) return false;
@@ -651,5 +983,15 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.sale_amount !== next.record.sale_amount) return false;
   if (prev.record.currency !== next.record.currency) return false;
   if (prev.record.label_printed_at !== next.record.label_printed_at) return false;
+  if (prev.record.deadline_at !== next.record.deadline_at) return false;
+  if (prev.record.created_at !== next.record.created_at) return false;
+  if (prev.record.item_number !== next.record.item_number) return false;
+  const prevR = prev.record as Record<string, unknown>;
+  const nextR = next.record as Record<string, unknown>;
+  if (prevR.replenishment_request_id !== nextR.replenishment_request_id) return false;
+  if (prevR.replenishment_status !== nextR.replenishment_status) return false;
+  if (prevR.replenishment_quantity_to_order !== nextR.replenishment_quantity_to_order) return false;
+  if (prevR.replenishment_po_number !== nextR.replenishment_po_number) return false;
+  if (prevR.replenishment_notes !== nextR.replenishment_notes) return false;
   return true;
 });

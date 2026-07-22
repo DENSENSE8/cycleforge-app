@@ -72,7 +72,7 @@ export function UnboxWorkspaceView(_props: {
 
   useSurfacePaintMark('unbox:chrome', true);
 
-  const { selectMode, selectedRows, toggleSelectMode, bulkActions } =
+  const { selectMode, selectedRows, bulkActions } =
     useReceivingLineBulkSelection({
       scope: RECEIVING_SELECTION_SCOPE,
       active: true,
@@ -89,8 +89,6 @@ export function UnboxWorkspaceView(_props: {
               tab={unboxView}
               onSelectTab={setUnboxView}
               controlsSlotRef={setControlsEl}
-              selectMode={selectMode}
-              onToggleSelectMode={toggleSelectMode}
             />
           </div>
         }

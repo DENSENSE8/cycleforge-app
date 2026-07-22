@@ -22,6 +22,7 @@ import {
   STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
   STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
   STATION_SCAN_BAR_ICON_SLOT_CLASS,
+  STATION_SCAN_BAR_ICON_SLOT_DENSE_CLASS,
   STATION_SCAN_BAR_INPUT_CLASS,
   STATION_SCAN_BAR_MODE_BTN,
   STATION_SCAN_BAR_MODE_BTN_ARMED,
@@ -29,6 +30,7 @@ import {
   STATION_SCAN_BAR_MODE_BTN_INACTIVE,
   STATION_SCAN_BAR_MODE_GLYPH_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_CLASS,
+  STATION_SCAN_BAR_PAD_LEFT_DENSE_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS,
   STATION_SCAN_BAR_RIGHT_CELL,
   STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
@@ -60,6 +62,14 @@ export interface StationScanBarProps {
   submitTraceClassName?: string;
   /** Omit left icon slot and use horizontal padding (e.g. labeled fields in FBA sidebar). */
   leadingIcon?: boolean;
+  /**
+   * Which column the leading icon + typed text align to.
+   *   - `masternav` (default) — icon under the MasterNav mode glyph, text under
+   *     the MasterNav label (deep inset). For benches with no rail below.
+   *   - `rail` — icon centered on the recent-rail status-dot track, text on the
+   *     row title (dense). For scan-dock bars stacked directly above a recent rail.
+   */
+  leadingColumn?: 'masternav' | 'rail';
   onInputBlur?: () => void;
   disabled?: boolean;
   /** Show clipboard paste button when input is empty — calls onChange with clipboard text. */
@@ -111,6 +121,7 @@ export function StationScanBar({
   theme,
   submitTraceClassName,
   leadingIcon = true,
+  leadingColumn = 'masternav',
   onInputBlur,
   disabled = false,
   onPaste,
@@ -156,7 +167,15 @@ export function StationScanBar({
   const rightChipCount =
     modeButtonCount + (showPaste ? 1 : 0) + (hasActiveRightContent ? 1 : 0);
 
-  const padLeft = leadingIcon ? STATION_SCAN_BAR_PAD_LEFT_CLASS : STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS;
+  // `rail` = dense scan-dock column (icon on the rail dot track, text on the row
+  // title); `masternav` = default deep inset under the MasterNav label/glyph.
+  const dense = leadingColumn === 'rail';
+  const iconSlotClass = dense ? STATION_SCAN_BAR_ICON_SLOT_DENSE_CLASS : STATION_SCAN_BAR_ICON_SLOT_CLASS;
+  const padLeft = dense
+    ? STATION_SCAN_BAR_PAD_LEFT_DENSE_CLASS
+    : leadingIcon
+      ? STATION_SCAN_BAR_PAD_LEFT_CLASS
+      : STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS;
   const padRight = !showRight
     ? 'pr-4'
     : rightChipCount >= 3
@@ -180,7 +199,7 @@ export function StationScanBar({
     >
       <div className="relative isolate">
         {leadingIcon ? (
-          <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
+          <div className={cn(iconSlotClass, iconClassName)}>
             {showHotkeyGear ? (
               <ScanHotkeyControl>{icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />}</ScanHotkeyControl>
             ) : (

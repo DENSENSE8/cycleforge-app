@@ -48,9 +48,16 @@ export interface EscalateThreadInput {
 export interface EscalateThreadDeps {
   /** Resolve the thread by id (entity anchor + current ticket link). */
   loadThread: (orgId: OrgId, threadId: number) => Promise<EntityThread | null>;
-  /** Create an internal support ticket; returns its registry id. */
+  /**
+   * Create an internal support ticket AND link it to the thread's entity in
+   * ticket_links; returns its registry id. Internal tickets are now first-class
+   * in the polymorphic hub (2026-07-21 re-key made zendesk_ticket_id nullable +
+   * keyed the anchor on support_ticket_id).
+   */
   createInternalTicket: (args: {
     orgId: OrgId;
+    entityType: string;
+    entityId: number;
     subject: string;
     staffId?: number | null;
   }) => Promise<{ supportTicketId: number }>;
@@ -73,12 +80,23 @@ export interface EscalateThreadDeps {
 
 export const defaultEscalateDeps: EscalateThreadDeps = {
   loadThread: (orgId, threadId) => getThread(orgId, threadId),
-  createInternalTicket: async ({ orgId, subject, staffId }) => {
+  createInternalTicket: async ({ orgId, entityType, entityId, subject, staffId }) => {
     const { upsertSupportTicket } = await import('@/lib/support/tickets');
+    const { linkSupportTicketEntity } = await import('@/lib/zendesk-links');
     const ticket = await upsertSupportTicket({
       orgId,
       provider: 'internal',
       subjectCache: subject,
+      staffId: staffId ?? null,
+    });
+    // Internal tickets now own a ticket_links anchor (zendesk_ticket_id NULL),
+    // so the support hub / Connections graph resolves them like Zendesk tickets.
+    await linkSupportTicketEntity({
+      orgId,
+      supportTicketId: ticket.id,
+      zendeskTicketId: null,
+      entityType,
+      entityId,
       staffId: staffId ?? null,
     });
     return { supportTicketId: ticket.id };
@@ -149,7 +167,13 @@ export async function escalateThreadToTicket(
 
   const { supportTicketId } =
     input.mode === 'internal'
-      ? await deps.createInternalTicket({ orgId: input.orgId, subject, staffId: input.staffId })
+      ? await deps.createInternalTicket({
+          orgId: input.orgId,
+          entityType: thread.entityType,
+          entityId: thread.entityId,
+          subject,
+          staffId: input.staffId,
+        })
       : await deps.createZendeskTicket({
           orgId: input.orgId,
           entityType: thread.entityType,

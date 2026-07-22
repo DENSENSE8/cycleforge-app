@@ -1,6 +1,7 @@
 import type { Variants } from 'framer-motion';
 import { motion } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { SIDEBAR_RAIL_ROW_PAD_RIGHT } from '@/components/layout/header-shell';
 import { ChevronDown } from '@/components/Icons';
 
 export function PkgGroupHeader({
@@ -26,7 +27,7 @@ export function PkgGroupHeader({
       {...motionProps}
       // Match the grouped rows' right inset (see RailRow) so the header's bordered
       // box lines up with the row rings and clears the rounded canvas cutout.
-      className="relative pr-1.5"
+      className={`relative ${SIDEBAR_RAIL_ROW_PAD_RIGHT}`}
     >
       <button
         type="button"

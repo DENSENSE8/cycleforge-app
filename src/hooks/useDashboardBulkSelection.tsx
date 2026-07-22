@@ -1,19 +1,16 @@
 'use client';
 
 /**
- * Dashboard bulk-selection (the in-board "Select" toggle) for the Unshipped +
- * Shipped order tables.
+ * Dashboard bulk-selection for the Unshipped / Packed / Shipped order tables.
  *
- * The two tables share one selection scope (only one mounts per `?view`); FBA +
- * Warranty opt out. This hook owns the select-mode state, the view-flip resets,
- * and the Copy / Print / Send / Delete bulk actions. The Select toggle lives in
- * workbench chrome (`WorkbenchChromeHeader` trailing slot) so it stays top-right
- * on Dashboard and Shipping; this hook exposes `toggleSelectMode` for that
- * chrome control. The floating action bar is rendered by the page from
- * `selectionActions`.
+ * The tables share one selection scope (only one mounts per `?view`); FBA opts
+ * out. Selection is always on when the surface supports it — left-gutter
+ * checkboxes + column select-all, no chrome pencil. This hook owns the clear-
+ * on-view-flip resets and the Copy / Print / Send / Delete bulk actions. The
+ * floating action bar is rendered by the page from `selectionActions`.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Copy, Printer, Smartphone, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
@@ -42,12 +39,10 @@ export type DashSelectableRow = {
 };
 
 export interface DashboardBulkSelection {
-  /** True on the surfaces that support selection (Unshipped / Shipped). */
+  /** True on the surfaces that support selection (Unshipped / Packed / Shipped). */
   selectionEnabled: boolean;
-  /** Whether select-mode is currently armed. */
+  /** Always true when selectionEnabled — left-gutter checkboxes stay live. */
   selectMode: boolean;
-  /** Flip select-mode on/off — driven by each board's in-toolbar Select toggle. */
-  toggleSelectMode: () => void;
   /** The currently checked rows for the shared dashboard scope. */
   selectedRows: DashSelectableRow[];
   /** Copy / Print / Send / Delete actions for the contextual selection bar. */
@@ -60,41 +55,24 @@ export function useDashboardBulkSelection(
   const selectionEnabled = orderView !== 'fba';
   // Packed reuses the shipped row/delete path (packer records with packed_at).
   const isShippedView = orderView === 'shipped' || orderView === 'packed';
-  // To Ship (unshipped): checkboxes always on — select-all lives in the table
-  // column header (grip + ☐), not a chrome pencil toggle.
-  const alwaysSelect = orderView === 'unshipped';
-  const [selectModeArmed, setSelectModeArmed] = useState(false);
-  const selectMode = alwaysSelect || selectModeArmed;
+  // Always-on left gutter when the surface supports selection (To Ship / Packed /
+  // Shipped). Select-all lives in the table column header, not chrome.
+  const selectMode = selectionEnabled;
   const selectedRows = useTableSelection<DashSelectableRow>(
     DASHBOARD_ORDERS_SELECTION_SCOPE,
     (r) => Number(r.id),
   );
   const deleteOrderRow = useDeleteOrderRow();
 
-  const exitSelectMode = useCallback(() => {
+  const clearSelection = useCallback(() => {
     emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
-    setSelectModeArmed(false);
   }, []);
 
-  const toggleSelectMode = useCallback(() => {
-    if (alwaysSelect) return; // header select-all owns To Ship selection
-    setSelectModeArmed((armed) => {
-      if (armed) emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
-      return !armed;
-    });
-  }, [alwaysSelect]);
-
-  // Switching view (or losing the selectable surface) exits select mode so a
-  // stale toggle never lingers on FBA/Warranty.
+  // Clear checks on view flip — row types + delete semantics differ. Also clear
+  // when leaving a selectable surface (FBA) so a stale set never lingers.
   useEffect(() => {
-    if (!selectionEnabled && selectModeArmed) exitSelectMode();
-  }, [selectionEnabled, selectModeArmed, exitSelectMode]);
-  useEffect(() => {
-    // Reset armed mode on any view flip — the row types + delete semantics differ.
-    // Unshipped stays selectable via alwaysSelect.
-    setSelectModeArmed(false);
-    emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
-  }, [orderView]);
+    clearSelection();
+  }, [orderView, clearSelection]);
 
   const handleCopyDetails = useCallback((rows: DashSelectableRow[]) => {
     const text = rows
@@ -165,11 +143,11 @@ export function useDashboardBulkSelection(
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Delete failed');
       } finally {
-        exitSelectMode();
+        clearSelection();
         window.dispatchEvent(new CustomEvent('dashboard-refresh'));
       }
     },
-    [isShippedView, deleteOrderRow, exitSelectMode],
+    [isShippedView, deleteOrderRow, clearSelection],
   );
 
   const selectionActions = useMemo<SelectionAction<DashSelectableRow>[]>(
@@ -183,5 +161,5 @@ export function useDashboardBulkSelection(
     [handleCopyDetails, handlePrintLabels, handleDelete],
   );
 
-  return { selectionEnabled, selectMode, toggleSelectMode, selectedRows, selectionActions };
+  return { selectionEnabled, selectMode, selectedRows, selectionActions };
 }

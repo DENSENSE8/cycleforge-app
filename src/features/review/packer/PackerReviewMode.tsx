@@ -159,19 +159,7 @@ export function PackerReviewMode({
           icon: Camera,
           count: photos.length > 0 ? photos.length : undefined,
           content: (
-            <WorkspaceCard
-              label="Slip & box"
-              actions={
-                photos.length > 0 ? (
-                  <span className="text-role-micro font-black uppercase tracking-widest text-text-faint tabular-nums">
-                    {photos.length}
-                  </span>
-                ) : null
-              }
-              tone="blue"
-              variant="glass"
-              bodyDensity="nested"
-            >
+            <WorkspaceCard variant="glass" bodyDensity="nested">
               {photosQuery.isLoading ? (
                 <div className="flex items-center gap-2 text-role-caption text-text-muted">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -215,7 +203,7 @@ export function PackerReviewMode({
           label: 'Tracking',
           icon: Truck,
           content: (
-            <WorkspaceCard label="Tracking" tone="gray" variant="glass" bodyDensity="nested">
+            <WorkspaceCard variant="glass" bodyDensity="nested">
               {row.productTitle ? (
                 <p className="mb-2 truncate text-role-caption text-text-muted">{row.productTitle}</p>
               ) : null}
@@ -240,17 +228,7 @@ export function PackerReviewMode({
           label: 'Note',
           icon: FileText,
           content: (
-            <WorkspaceCard
-              label="Review note"
-              actions={
-                <span className="text-role-micro font-semibold text-text-faint">
-                  Required to flag
-                </span>
-              }
-              tone="orange"
-              variant="glass"
-              bodyDensity="nested"
-            >
+            <WorkspaceCard variant="glass" bodyDensity="nested">
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -360,7 +338,6 @@ export function PackerReviewMode({
       <StationWorkbench
         className="min-h-0 flex-1"
         reserveScrollClearance={false}
-        ambientWash
         tabs={
           <motion.div initial="hidden" animate="show" variants={revealContainer}>
             <motion.div variants={revealItem}>

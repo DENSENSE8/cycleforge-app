@@ -1,20 +1,22 @@
 'use client';
 
 /**
- * LineMatchingSection — the "Package Pairing" hub.
+ * LineMatchingSection — the Unbox / Testing "Package Pairing" hub.
  *
- * Rendered by `POUnboxingSection` in both panels: always in `TriagePanel`, and
- * in `LineEditPanel` (unbox) for UNFOUND cartons. In triage the separate
- * PO-items card is removed and its carton actions move here: Open-in-unbox + the
- * add "+" sit top-right. In unbox the Open-in-unbox jump is hidden (already
- * there) via `showOpenInUnbox`.
+ * Arrival / triage uses the sibling {@link TriageLineMatchingSection} instead
+ * (no Inventory Item tab; never autofocuses so the station scan bar stays hot).
+ *
+ * Rendered by `POUnboxingSection` in unbox and by Testing's wrapper. In triage
+ * the separate PO-items card is removed and carton actions moved to the Arrival
+ * hub. In unbox the Open-in-unbox jump is hidden (already there) via
+ * `showOpenInUnbox`.
  *
  * The body is a switchable tab list (same `HorizontalButtonSlider` the
  * Notes/Checklist card uses):
- *   • Zendesk tickets          — search + link a real customer claim ticket
- *   • Repair Service / Trade in — an INLINE list of recent Ecwid orders (reusing
- *                            the Ecwid search hook + list), relaxed to include
- *                            normal orders (returns/trade-ins) too, not just -RS.
+ *   • Inventory Item — search & add by inventory SKU
+ *   • Zendesk tickets — search + link a real customer claim ticket
+ *   • Store — INLINE list of recent Ecwid orders (relaxed to include
+ *     normal orders / returns / trade-ins, not just -RS)
  *
  * Pairing uses REAL signals only (no fabricated score); the "Paired" row shows
  * the linked ticket + Ecwid/PO order # (last-4 copy chips).
@@ -587,7 +589,7 @@ function TriageMatchingCard({
 }
 
 /** The Zendesk-tickets tab body — search + candidate match cards + delivery hints. */
-function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
+export function ZendeskMatchTab({ t }: { t: ReturnType<typeof useTriagePanel> }) {
   return (
     <>
       {/* Search */}

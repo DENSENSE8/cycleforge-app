@@ -8,8 +8,8 @@ import {
 } from '@/lib/selection/table-selection';
 
 /**
- * Table-side wiring for the pencil "Select → pick rows → act" flow, factored
- * out of {@link ReceivingLinesTable} so any list can opt in with one call.
+ * Table-side wiring for always-on multi-select (left-gutter checkboxes → act),
+ * factored out of {@link ReceivingLinesTable} so any list can opt in with one call.
  *
  * Owns the checked-id set and:
  *   • broadcasts the resolved selected rows on `scope` (for useTableSelection),
@@ -17,9 +17,8 @@ import {
  *   • publishes the selectable total so the action bar's ring can fill,
  *   • clears the selection when select mode turns off.
  *
- * The owning page renders the pencil (`BoardSelectToggle` on workbench chrome
- * trailing) and the <ContextualSelectionBar>; the table just calls this with
- * its visible rows.
+ * The owning page keeps selectMode always on for selectable surfaces and renders
+ * the <ContextualSelectionBar>; the table just calls this with its visible rows.
  *
  * `rows` / `getId` are read through refs so the broadcast fires only when the
  * *selection* changes — not on every parent re-render. That matters because the
@@ -35,7 +34,7 @@ export function useTableSelectMode<T>({
 }: {
   /** Shared with the page's useTableSelection + the action bar. */
   scope: string;
-  /** True while the pencil toggle is on — rows render checkboxes. */
+  /** True while left-gutter checkboxes are live (always-on for selectable surfaces). */
   selectMode: boolean;
   /** Visible rows in render order — drives Select-all + the broadcast payload. */
   rows: T[];

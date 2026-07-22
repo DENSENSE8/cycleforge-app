@@ -11,7 +11,7 @@
  * that already encoded the recipe — `TextField.toneClass` (field),
  * `Button` (control), `SearchField.toneClass` (wrapper).
  *
- * Three archetypes, by how the element takes focus:
+ * Four archetypes, by how the element takes focus:
  *  - `field`   — the element itself is the input (`:focus`): a 2px tinted ring
  *                + a border-colour shift. (`TextField`, raw `<input>`.)
  *  - `control` — a button/actionable (`:focus-visible`, so a mouse click does
@@ -19,6 +19,10 @@
  *                `IconButton`.)
  *  - `wrapper` — a container whose child input takes focus (`:focus-within`):
  *                a border-colour shift on the frame. (`SearchField`.)
+ *  - `cell`    — a navigable spreadsheet-grid cell (`:focus-visible`): a 2px
+ *                INSET ring — an offset ring would paint outside the cell and
+ *                be clipped by adjacent cells / the frozen pane. (Pending grid
+ *                editable cells; the Sheets navigate-mode cell cursor.)
  *
  * Tones are SEMANTIC (accent/danger/warning/success/neutral) — not the 9 raw
  * Tailwind shades the old recipes sprawled across. `accent` (blue) is the
@@ -33,7 +37,7 @@
  * `focus:ring-*` recipe (guard: control-size sibling `focus-ring-tokens.guard.test.ts`).
  */
 
-export type FocusArchetype = 'field' | 'control' | 'wrapper';
+export type FocusArchetype = 'field' | 'control' | 'wrapper' | 'cell';
 export type FocusTone = 'accent' | 'danger' | 'warning' | 'success' | 'neutral';
 
 const FIELD_BASE = 'outline-none focus:ring-2';
@@ -62,6 +66,15 @@ const WRAPPER: Record<FocusTone, string> = {
   neutral: 'focus-within:border-border-strong',
 };
 
+const CELL_BASE = 'outline-none focus-visible:ring-2 focus-visible:ring-inset';
+const CELL: Record<FocusTone, string> = {
+  accent: 'focus-visible:ring-blue-500/40',
+  danger: 'focus-visible:ring-red-500/40',
+  warning: 'focus-visible:ring-amber-500/40',
+  success: 'focus-visible:ring-emerald-500/40',
+  neutral: 'focus-visible:ring-border-strong/40',
+};
+
 /**
  * The focus recipe for an archetype + tone, as a `cn()`-ready class string.
  * @example className={cn('rounded-lg border', focusRing('field', 'warning'))}
@@ -69,5 +82,6 @@ const WRAPPER: Record<FocusTone, string> = {
 export function focusRing(archetype: FocusArchetype = 'field', tone: FocusTone = 'accent'): string {
   if (archetype === 'field') return `${FIELD_BASE} ${FIELD[tone]}`;
   if (archetype === 'control') return `${CONTROL_BASE} ${CONTROL[tone]}`;
+  if (archetype === 'cell') return `${CELL_BASE} ${CELL[tone]}`;
   return WRAPPER[tone];
 }

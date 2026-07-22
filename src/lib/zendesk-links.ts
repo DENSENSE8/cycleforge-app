@@ -5,6 +5,7 @@
  * Zendesk attachments. To show them we resolve the ticket's internal entity,
  * then fetch that entity's photos. See migration 2026-06-01_ticket_links.sql.
  */
+import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { getTicket, updateTicket } from './zendesk';
 import { upsertSupportTicket } from '@/lib/support/tickets';
@@ -34,22 +35,90 @@ export function parseExternalId(value: string | null | undefined): TicketEntityR
   return { type: m[1].toUpperCase(), id: Number(m[2]) };
 }
 
+/** Minimal tenant-tx client — the query surface these writers touch. */
+type TxClient = Pick<PoolClient, 'query'>;
+
+export interface LinkSupportTicketEntityDeps {
+  /**
+   * Run the demote + upsert in ONE tenant transaction. Defaults to
+   * `withTenantTransaction`; injected by unit tests to capture the SQL DB-free.
+   */
+  runInTenantTx: <T>(orgId: string, fn: (c: TxClient) => Promise<T>) => Promise<T>;
+}
+
+const defaultLinkSupportTicketEntityDeps: LinkSupportTicketEntityDeps = {
+  runInTenantTx: (orgId, fn) => withTenantTransaction(orgId, (c) => fn(c)),
+};
+
 /**
- * Upsert a ticket's PRIMARY entity link (its anchor). Best-effort callers should
- * wrap in try/catch.
+ * Canonical entity-link writer — the ONE place a support ticket's PRIMARY entity
+ * link (its anchor) is written, provider-agnostic. Both the Zendesk path
+ * ({@link linkTicket}) and the internal-escalation path (threads/escalate.ts)
+ * compose this rather than forking a second link writer.
  *
- * Mirrors `linkShipment` (src/lib/shipping/shipment-links.ts): demote the
- * ticket's other primary first, then upsert on the NATURAL key. A single
- * `ON CONFLICT (organization_id, zendesk_ticket_id) WHERE is_primary` is NOT
- * enough — since ticket_links gained many-link support there are two unique
- * indexes and only one can be an ON CONFLICT target. Re-anchoring a ticket onto
- * an entity it already holds as a NON-primary reference row conflicts on
- * `ux_ticket_links_ticket_entity`, which a primary-inferred ON CONFLICT would
- * miss — so that case must promote the existing row, not error.
+ * Keyed on `support_ticket_id` (2026-07-21 re-key), so it works for INTERNAL
+ * tickets (whose `zendesk_ticket_id` is NULL) as well as Zendesk ones. The
+ * ON CONFLICT arbiter is `ux_ticket_links_support_entity`; it is safe to name
+ * that arbiter while the legacy zendesk-led uniques still exist because they are
+ * equivalent (1:1) for Zendesk rows — an equivalent conflict resolves on the same
+ * row — and internal rows only ever conflict on the support-led index.
  *
- * Handles all three cases: fresh anchor (insert), re-anchor to a different
- * entity (demote + insert), and promote an existing reference row (demote +
- * conflict → set is_primary).
+ * REQUIRES the 2026-07-21 expand migration to be applied (support-led indexes +
+ * nullable zendesk_ticket_id). Do not deploy this ahead of that migration.
+ *
+ * Handles all three cases: fresh anchor (insert), re-anchor to a different entity
+ * (demote + insert), and promote an existing reference row (conflict → anchor).
+ */
+export async function linkSupportTicketEntity(args: {
+  orgId: string;
+  supportTicketId: number;
+  /** Provider cache for Zendesk tickets; NULL for internal. */
+  zendeskTicketId?: number | null;
+  entityType: string;
+  entityId: number;
+  staffId?: number | null;
+}, deps: LinkSupportTicketEntityDeps = defaultLinkSupportTicketEntityDeps): Promise<void> {
+  await deps.runInTenantTx(args.orgId, async (c) => {
+    // Demote whatever else held this ticket's anchor, so ux_ticket_links_support_anchor
+    // can never see two anchors mid-statement. Keyed on support_ticket_id so it
+    // covers internal tickets too. (is_primary follows link_role via the DB sync
+    // trigger; we set both explicitly and consistently.)
+    await c.query(
+      `UPDATE ticket_links
+          SET is_primary = false, link_role = 'reference', updated_at = NOW()
+        WHERE organization_id = $1
+          AND support_ticket_id = $2
+          AND link_role = 'anchor'
+          AND NOT (entity_type = $3 AND entity_id = $4)`,
+      [args.orgId, args.supportTicketId, args.entityType, args.entityId],
+    );
+    await c.query(
+      `INSERT INTO ticket_links
+         (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id,
+          is_primary, link_role, created_by)
+       VALUES ($1, $2, $3, $4, $5, true, 'anchor', $6)
+       ON CONFLICT (organization_id, support_ticket_id, entity_type, entity_id) DO UPDATE
+         SET is_primary        = true,
+             link_role         = 'anchor',
+             zendesk_ticket_id = COALESCE(EXCLUDED.zendesk_ticket_id, ticket_links.zendesk_ticket_id),
+             updated_at        = NOW()`,
+      [
+        args.orgId,
+        args.supportTicketId,
+        args.zendeskTicketId ?? null,
+        args.entityType,
+        args.entityId,
+        args.staffId ?? null,
+      ],
+    );
+    return null;
+  });
+}
+
+/**
+ * Upsert a ZENDESK ticket's PRIMARY entity link (its anchor). Best-effort callers
+ * should wrap in try/catch. Thin provider wrapper: resolve/mint the zendesk
+ * `support_tickets` row, then delegate to {@link linkSupportTicketEntity}.
  */
 export async function linkTicket(args: {
   orgId: string;
@@ -64,36 +133,13 @@ export async function linkTicket(args: {
     externalTicketId: String(args.zendeskTicketId),
     staffId: args.staffId ?? null,
   });
-  await withTenantTransaction(args.orgId, async (c) => {
-    // Demote whatever else held the anchor, so ux_ticket_links_ticket_primary
-    // can never see two primaries mid-statement.
-    await c.query(
-      `UPDATE ticket_links SET is_primary = false, updated_at = NOW()
-        WHERE organization_id = $1
-          AND zendesk_ticket_id = $2
-          AND is_primary
-          AND NOT (entity_type = $3 AND entity_id = $4)`,
-      [args.orgId, args.zendeskTicketId, args.entityType, args.entityId],
-    );
-    await c.query(
-      `INSERT INTO ticket_links
-         (organization_id, support_ticket_id, zendesk_ticket_id, entity_type, entity_id,
-          is_primary, created_by)
-       VALUES ($1, $2, $3, $4, $5, true, $6)
-       ON CONFLICT (organization_id, zendesk_ticket_id, entity_type, entity_id) DO UPDATE
-         SET support_ticket_id = EXCLUDED.support_ticket_id,
-             is_primary        = true,
-             updated_at        = NOW()`,
-      [
-        args.orgId,
-        supportTicket.id,
-        args.zendeskTicketId,
-        args.entityType,
-        args.entityId,
-        args.staffId ?? null,
-      ],
-    );
-    return null;
+  await linkSupportTicketEntity({
+    orgId: args.orgId,
+    supportTicketId: supportTicket.id,
+    zendeskTicketId: args.zendeskTicketId,
+    entityType: args.entityType,
+    entityId: args.entityId,
+    staffId: args.staffId ?? null,
   });
   return { supportTicketId: supportTicket.id };
 }
@@ -105,9 +151,10 @@ export async function linkTicket(args: {
  *
  * The guard is a `WHERE NOT EXISTS` rather than `ON CONFLICT (org, ticket)
  * DO NOTHING` because that inference target no longer exists on its own: the
- * primary index is partial. Keeping the ON CONFLICT on the natural key means a
- * ticket that already references this STN as a non-primary row gets PROMOTED
- * instead of erroring on ux_ticket_links_ticket_entity.
+ * primary index is partial. Keeping the ON CONFLICT on the support-led natural
+ * key (2026-07-21 re-key) means a ticket that already references this STN as a
+ * non-primary row gets PROMOTED instead of erroring on
+ * ux_ticket_links_support_entity.
  *
  * NOTE: this is the anchor writer. Adding an extra STN to a ticket that already
  * has an anchor is a *reference* link — see addTicketShipmentReference.
@@ -132,11 +179,11 @@ export async function linkTicketToShipment(args: {
      SELECT $1, $2, $3, 'SHIPMENT', $4, true, $5
       WHERE NOT EXISTS (
         SELECT 1 FROM ticket_links
-         WHERE organization_id = $1 AND zendesk_ticket_id = $3 AND is_primary
+         WHERE organization_id = $1 AND support_ticket_id = $2 AND is_primary
       )
-     ON CONFLICT (organization_id, zendesk_ticket_id, entity_type, entity_id) DO UPDATE
+     ON CONFLICT (organization_id, support_ticket_id, entity_type, entity_id) DO UPDATE
        SET is_primary        = true,
-           support_ticket_id = EXCLUDED.support_ticket_id,
+           zendesk_ticket_id = COALESCE(EXCLUDED.zendesk_ticket_id, ticket_links.zendesk_ticket_id),
            updated_at        = NOW()`,
     [
       args.orgId,

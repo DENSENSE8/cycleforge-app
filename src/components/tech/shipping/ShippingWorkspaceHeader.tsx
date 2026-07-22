@@ -2,8 +2,8 @@
 
 /**
  * Shipping workspace chrome — tabs left (Pending · FBA | History), filters +
- * controls portal right · Select far-right. Mirrors OutboundWorkspaceHeader
- * for `/test` Shipping.
+ * controls portal right. Mirrors OutboundWorkspaceHeader for `/test` Shipping.
+ * Row select lives in the table left gutter (always on), not chrome.
  */
 
 import { useMemo, type ReactNode, type Ref } from 'react';
@@ -14,7 +14,7 @@ import {
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
+import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
@@ -31,9 +31,8 @@ export interface ShippingWorkspaceHeaderProps {
   tab: ShippingWorkspaceTab;
   onSelectTab: (tab: ShippingWorkspaceTab) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  /** Select pencil — always far-right in chrome. */
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
+  /** Open new-order entry (slide-over). */
+  onNewOrder?: () => void;
   className?: string;
 }
 
@@ -41,8 +40,7 @@ export function ShippingWorkspaceHeader({
   tab,
   onSelectTab,
   controlsSlotRef,
-  selectMode = false,
-  onToggleSelectMode,
+  onNewOrder,
   className,
 }: ShippingWorkspaceHeaderProps) {
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
@@ -116,11 +114,7 @@ export function ShippingWorkspaceHeader({
       // only shown where the tab's list actually filters on it.
       search={chrome.search}
       right={chrome.right}
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
-      }
+      trailing={onNewOrder ? <OutboundOrderChromeActions onNewOrder={onNewOrder} /> : undefined}
     />
   );
 }

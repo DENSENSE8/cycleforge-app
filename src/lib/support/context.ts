@@ -28,6 +28,7 @@ import {
   pickSupportContextThreadEntity,
 } from '@/lib/support/context-anchor';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
 import { getOrCreateThread, listThreadMessages } from '@/lib/threads/threads';
 import {
@@ -88,6 +89,10 @@ function mapTicket(row: SupportTicketRow): SupportContextTicket {
     provider: row.provider,
     externalTicketId: row.externalTicketId,
     providerTicketId: valid ? providerTicketId : null,
+    // Resolved from THIS ticket's own provider (a ticket minted under Zendesk
+    // stays "Zendesk" even if the org later switches helpdesks) — vendor-neutral,
+    // no per-ticket query. See capability-labels SoT.
+    providerLabel: providerCatalogLabel(row.provider),
     openUrl: valid ? zendeskTicketUrl(providerTicketId!) : null,
     subject: row.subjectCache,
     status: row.statusCache,

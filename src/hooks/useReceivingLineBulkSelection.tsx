@@ -1,18 +1,17 @@
 'use client';
 
 /**
- * Shared bulk-selection for the receiving-line history feeds (workbench
- * `BoardSelectToggle` + contextual action bar). Both the Receiving dashboard's
- * History / Incoming list and the Tech dashboard's testing browse list select
+ * Shared bulk-selection for the receiving-line history feeds (left-gutter
+ * checkboxes + contextual action bar). Both the Receiving dashboard's History /
+ * Incoming list and the Tech dashboard's testing browse list select
  * `ReceivingLineRow`s with the IDENTICAL action set — Copy / Print / Create
  * support ticket / Send to staff / Send to phone — and the same single-line
- * claim modal. They differ only in the selection scope, which surface gates the
- * pencil, and the per-row copy format. This hook owns the universal mechanic so
- * neither dashboard hand-rolls its own copy.
+ * claim modal. They differ only in the selection scope and the per-row copy
+ * format. Selection is always on while `active`; this hook owns the clear +
+ * bulk actions so neither dashboard hand-rolls its own copy.
  *
  * Consolidates the previously-duplicated bulk-selection blocks from
- * TechDashboard and ReceivingDashboard. The owning page mounts Select on the
- * workbench chrome trailing slot — not the global header.
+ * TechDashboard and ReceivingDashboard.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,21 +25,22 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 
 interface UseReceivingLineBulkSelectionArgs {
-  /** table-selection scope shared by the table, the header toggle, and the bar. */
+  /** table-selection scope shared by the table and the action bar. */
   scope: string;
-  /** Whether the selectable surface is currently shown (gates the pencil). */
+  /** Whether the selectable surface is currently shown (gates always-on select). */
   active: boolean;
   /** Per-row copy line (the surfaces order their fields differently). */
   formatCopyRow: (row: ReceivingLineRow) => string;
 }
 
 export interface ReceivingLineBulkSelection {
+  /** Always true while `active` — left-gutter checkboxes stay live. */
   selectMode: boolean;
   selectedRows: ReceivingLineRow[];
   /** Single-line claim row opened from the "Create support ticket" action. */
   claimRow: ReceivingLineRow | null;
   setClaimRow: React.Dispatch<React.SetStateAction<ReceivingLineRow | null>>;
-  toggleSelectMode: () => void;
+  /** Clear checks (does not turn select mode off — mode follows `active`). */
   exitSelectMode: () => void;
   bulkActions: SelectionAction<ReceivingLineRow>[];
 }
@@ -50,23 +50,18 @@ export function useReceivingLineBulkSelection({
   active,
   formatCopyRow,
 }: UseReceivingLineBulkSelectionArgs): ReceivingLineBulkSelection {
-  const [selectMode, setSelectMode] = useState(false);
+  const selectMode = active;
   const selectedRows = useTableSelection<ReceivingLineRow>(scope, (r) => r.id);
   const [claimRow, setClaimRow] = useState<ReceivingLineRow | null>(null);
 
-  // Leaving the selectable surface exits select mode.
-  useEffect(() => {
-    if (!active && selectMode) setSelectMode(false);
-  }, [active, selectMode]);
-
   const exitSelectMode = useCallback(() => {
     emitToggleAll(scope, 'none');
-    setSelectMode(false);
   }, [scope]);
-  const toggleSelectMode = useCallback(() => {
-    if (selectMode) exitSelectMode();
-    else setSelectMode(true);
-  }, [exitSelectMode, selectMode]);
+
+  // Leaving the selectable surface clears checks so a stale set never lingers.
+  useEffect(() => {
+    if (!active) exitSelectMode();
+  }, [active, exitSelectMode]);
 
   const handleCopyDetails = useCallback(
     (rows: ReceivingLineRow[]) => {
@@ -234,16 +229,11 @@ export function useReceivingLineBulkSelection({
     [handleCopyDetails, handlePrintLabels],
   );
 
-  // Selection mode is toggled by the workbench chrome `BoardSelectToggle`
-  // (Incoming / History / Testing headers). This hook only owns the state +
-  // bulk actions; callers pass `toggleSelectMode` into the header trailing slot.
-
   return {
     selectMode,
     selectedRows,
     claimRow,
     setClaimRow,
-    toggleSelectMode,
     exitSelectMode,
     bulkActions,
   };

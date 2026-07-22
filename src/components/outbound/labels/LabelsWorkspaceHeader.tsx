@@ -16,10 +16,9 @@ import {
 } from '@/components/dashboard/OutboundFilterStrip';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
-import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
+import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ArrowUpDown, Plus } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { ArrowUpDown } from '@/components/Icons';
 import {
   awaitingLabelsQuery,
   stagedOrdersQuery,
@@ -121,16 +120,7 @@ export function LabelsWorkspaceHeader({
         <>
           {/* Sort (ghost) → Import (blue CTA) → Add (green CTA). */}
           <SortToggle sort={sort} onToggle={onToggleSort} />
-          <OrdersSyncPopover triggerVariant="header" />
-          <Button
-            size="sm"
-            onClick={onNewOrder}
-            ariaLabel="New order entry"
-            icon={<Plus />}
-            className="rounded-full font-bold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
-          >
-            Add
-          </Button>
+          <OutboundOrderChromeActions onNewOrder={onNewOrder} />
         </>
       }
     />

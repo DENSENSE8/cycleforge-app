@@ -24,6 +24,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   deferInvalidateTriageAndUnboxQueueFeeds,
   dispatchReceivingLinesPrepended,
+  purgeTriageRailsAfterUnboxOpen,
   removePendingScanRailRow,
   upsertReceivingRailRows,
   upsertUnboxQueueRows,
@@ -338,6 +339,9 @@ export function useTrackingScan({
                       },
                     ]);
                   }
+                  if (internal.receivingId != null) {
+                    purgeTriageRailsAfterUnboxOpen(queryClient, internal.receivingId);
+                  }
                 } else {
                   dispatchReceivingLinesPrepended({
                     segments: ['scanned', 'triage-combined'],
@@ -436,6 +440,9 @@ export function useTrackingScan({
               // stale scan simply stays visible in the queue rather than yanking
               // the current view to it.
               clearUnboxPendingRail();
+              if (intakeSurfaceRef.current === 'unbox') {
+                purgeTriageRailsAfterUnboxOpen(queryClient, cached.receivingId);
+              }
               if (isCurrent()) dispatchSelectLine(cached.row);
               window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
               return;
@@ -485,6 +492,9 @@ export function useTrackingScan({
                     client_event_id: receivingRailCartonKey(local.receivingId),
                   },
                 ]);
+              }
+              if (local.receivingId != null) {
+                purgeTriageRailsAfterUnboxOpen(queryClient, local.receivingId);
               }
             } else {
               dispatchReceivingLinesPrepended({

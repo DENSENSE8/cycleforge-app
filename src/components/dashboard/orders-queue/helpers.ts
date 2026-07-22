@@ -1,6 +1,11 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { deriveFulfillmentState, FULFILLMENT_STATE_META, UNSHIPPED_STATE_META } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META } from '@/lib/outbound-state';
+import {
+  formatDateKeyMedium,
+  formatDateKeyShort,
+  toPSTDateKey,
+} from '@/utils/date';
 
 export interface WeekRange {
   startStr: string;
@@ -21,22 +26,55 @@ export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged';
  *  - `staff`: keeps deadline date bands; clusters by assigned tester/packer name. */
 export type OrdersQueueSort = 'priority' | 'newest' | 'deadline' | 'price' | 'staff';
 
-/** The full set of selectable sort values, in cycle/menu order. */
-export const ORDERS_QUEUE_SORTS: OrdersQueueSort[] = ['priority', 'newest', 'deadline', 'price', 'staff'];
-
-/** Human label per sort, shared by the board cycle button and any sort menu. */
-export const ORDERS_QUEUE_SORT_LABEL: Record<OrdersQueueSort, string> = {
-  priority: 'Priority',
-  newest: 'Newest',
-  deadline: 'Deadline',
-  price: 'Price',
-  staff: 'Staff',
-};
-
 /** Best-effort numeric sale amount for sorting (NaN-safe → treated as lowest). */
 export function saleAmountValue(record: QueueRowRecord): number {
   const n = Number(record.sale_amount);
   return Number.isFinite(n) ? n : -Infinity;
+}
+
+/**
+ * Instant used for day banding / within-day sort keys — matches
+ * {@link useOrdersQueueRows}. `newest` prefers created; otherwise ship-by
+ * (deadline) with created fallback.
+ */
+export function queueRowBandDateSource(
+  record: Pick<ShippedOrder, 'deadline_at' | 'created_at'>,
+  sort: OrdersQueueSort,
+): string | null {
+  const raw =
+    sort === 'newest'
+      ? record.created_at || record.deadline_at
+      : record.deadline_at || record.created_at;
+  if (!raw || raw === '1') return null;
+  return String(raw);
+}
+
+/**
+ * Absolute date for the Date column cell — always ship-by first (deadline →
+ * created). Independent of sort so the column stays a stable “when” fact;
+ * Age owns relative urgency beside it.
+ */
+export function queueRowShipBySource(
+  record: Pick<ShippedOrder, 'deadline_at' | 'created_at'>,
+): string | null {
+  return queueRowBandDateSource(record, 'priority');
+}
+
+/** Compact ship-by Date-column presentation (warehouse civil day). */
+export function formatQueueRowDateCell(source: string | null | undefined): {
+  key: string;
+  label: string;
+  tooltip: string;
+} | null {
+  if (!source) return null;
+  const key = toPSTDateKey(source);
+  if (!key || key === 'Unknown') return null;
+  const when = formatDateKeyMedium(key, { weekday: 'short', withYear: true });
+  return {
+    key,
+    label: formatDateKeyShort(key),
+    tooltip: `Ship by · ${when}`,
+  };
 }
 
 /** Assigned-staff sort key — tester then packer name, lowercased; empty sorts last. */

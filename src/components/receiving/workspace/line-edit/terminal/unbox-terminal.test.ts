@@ -83,11 +83,27 @@ test('registry kind: every unbox tab has a non-none kind', () => {
 });
 
 test('resolveUnboxReceiveTerminal: primary label from controller', () => {
-  const vm = resolveUnboxReceiveTerminal(mockCtx());
+  const vm = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        labelSelectOptions: [
+          { key: 'carton', name: 'Carton label' },
+          { key: 'unit', name: 'Unit label' },
+        ],
+        activeLabelKind: 'carton',
+        selectedLabelKind: 'carton',
+      },
+    }),
+  );
   assert.equal(vm.label, 'Receive');
   assert.equal(vm.docked, true);
   assert.ok(vm.menu && vm.menu.some((m) => m.label.startsWith('Print only')));
   assert.ok(vm.menu && vm.menu.some((m) => m.label === 'Save all to inventory'));
+  const carton = vm.menu?.find((m) => m.label === 'Carton label');
+  const printOnly = vm.menu?.find((m) => m.label.startsWith('Print only'));
+  assert.equal(carton?.selected, true);
+  assert.equal(printOnly?.separatorBefore, true);
 });
 
 test('resolveUnboxReceiveTerminal: unfound hides Save all to inventory', () => {
