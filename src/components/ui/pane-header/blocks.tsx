@@ -232,6 +232,8 @@ interface PaneHeaderTabsProps<TValue extends string> {
    * every existing consumer (Lines / Receiving / Audit / Photos) relies on.
    */
   dense?: boolean;
+  /** Far-right affordance on the tab row (e.g. Open in unbox). */
+  rightSlot?: ReactNode;
 }
 
 export function PaneHeaderTabs<TValue extends string>({
@@ -240,50 +242,59 @@ export function PaneHeaderTabs<TValue extends string>({
   onChange,
   className,
   dense = false,
+  rightSlot,
 }: PaneHeaderTabsProps<TValue>) {
   return (
     <div
-      role="tablist"
       className={cn(
-        'flex items-center bg-surface-card',
-        dense ? 'gap-0.5 px-1 py-0.5' : 'gap-1 px-2 py-1',
+        'flex min-w-0 items-center justify-between gap-2 bg-surface-card',
+        dense ? 'px-1 py-0.5' : 'px-2 py-1',
         className,
       )}
     >
-      {tabs.map((tab) => {
-        const active = tab.value === value;
-        return (
-          // ds-raw-button: segmented tab (role="tab" + aria-selected + active fill + count), not a Button/IconButton
-          <button
-            key={tab.value}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(tab.value)}
-            className={cn(
-              'inline-flex items-center font-semibold transition-colors',
-              dense
-                ? 'gap-1 rounded px-2 py-1 text-role-caption'
-                : 'gap-1.5 rounded-md px-3 py-1.5 text-xs',
-              active
-                ? 'bg-surface-inverse text-white'
-                : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
-            )}
-          >
-            <span>{tab.label}</span>
-            {tab.count != null ? (
-              <span
-                className={cn(
-                  'tabular-nums',
-                  active ? 'text-white/70' : 'text-text-faint',
-                )}
-              >
-                {tab.count}
-              </span>
-            ) : null}
-          </button>
-        );
-      })}
+      <div
+        role="tablist"
+        className={cn(
+          'flex min-w-0 items-center',
+          dense ? 'gap-0.5' : 'gap-1',
+        )}
+      >
+        {tabs.map((tab) => {
+          const active = tab.value === value;
+          return (
+            // ds-raw-button: segmented tab (role="tab" + aria-selected + active fill + count), not a Button/IconButton
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(tab.value)}
+              className={cn(
+                'ds-raw-button inline-flex items-center font-semibold transition-colors',
+                dense
+                  ? 'gap-1 rounded px-2 py-1 text-role-caption'
+                  : 'gap-1.5 rounded-md px-3 py-1.5 text-xs',
+                active
+                  ? 'bg-surface-inverse text-white'
+                  : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
+              )}
+            >
+              <span>{tab.label}</span>
+              {tab.count != null ? (
+                <span
+                  className={cn(
+                    'tabular-nums',
+                    active ? 'text-white/70' : 'text-text-faint',
+                  )}
+                >
+                  {tab.count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {rightSlot ? <div className="flex shrink-0 items-center">{rightSlot}</div> : null}
     </div>
   );
 }

@@ -83,7 +83,43 @@ export function getReceivingStatusDotLabel(row: ReceivingLineRow): string {
  * finalizes the carton they read Received. Same 3-state SoT as every other rail.
  */
 export function getUnboxRecentStatusDot(row: ReceivingLineRow): string {
-  return COARSE_DOT[railCoarseStatus(row)];
+  const coarse = railCoarseStatus(row);
+  const dot = COARSE_DOT[coarse];
+  // #region agent log
+  if (
+    row.zoho_purchaseorder_number === '63931720'
+    || row.receiving_id === 14221
+    || row.id === 8694
+  ) {
+    fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
+      body: JSON.stringify({
+        sessionId: '1348cc',
+        runId: 'pre-fix',
+        hypothesisId: 'A',
+        location: 'rail/status.ts:getUnboxRecentStatusDot',
+        message: 'Unboxed rail status dot for target PO',
+        data: {
+          id: row.id,
+          receiving_id: row.receiving_id,
+          po: row.zoho_purchaseorder_number,
+          workflow_status: row.workflow_status,
+          receiving_line_status: (row as { receiving_line_status?: string | null }).receiving_line_status ?? null,
+          receiving_source: row.receiving_source,
+          zoho_status: row.zoho_status ?? null,
+          qty_r: row.quantity_received,
+          qty_e: row.quantity_expected,
+          unboxed_at: row.unboxed_at ?? null,
+          coarse,
+          dot,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
+  return dot;
 }
 
 /** Dot tooltip for the Unboxed rail — mirrors {@link getUnboxRecentStatusDot}. */

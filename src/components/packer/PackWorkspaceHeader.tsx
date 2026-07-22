@@ -2,7 +2,8 @@
 
 /**
  * Pack workspace chrome — tabs left (Queue | History), filters + controls
- * portal right · Select far-right. Mirrors ShippingWorkspaceHeader for `/pack`.
+ * portal right. Mirrors ShippingWorkspaceHeader for `/pack`.
+ * Row select lives in the table left gutter (always on), not chrome.
  */
 
 import { useEffect, useMemo, type ReactNode, type Ref } from 'react';
@@ -13,7 +14,7 @@ import {
   useToShipFilterHotkeys,
 } from '@/components/dashboard/OutboundFilterStrip';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
+import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
@@ -29,15 +30,14 @@ export function PackWorkspaceHeader({
   tab,
   onSelectTab,
   controlsSlotRef,
-  selectMode = false,
-  onToggleSelectMode,
+  onNewOrder,
   className,
 }: {
   tab: PackWorkspaceTab;
   onSelectTab: (tab: PackWorkspaceTab) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
+  /** Open new-order entry (slide-over). */
+  onNewOrder?: () => void;
   className?: string;
 }) {
   const pathname = usePathname();
@@ -107,11 +107,7 @@ export function PackWorkspaceHeader({
       className={className}
       search={chrome.search}
       right={chrome.right}
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
-      }
+      trailing={onNewOrder ? <OutboundOrderChromeActions onNewOrder={onNewOrder} /> : undefined}
     />
   );
 }

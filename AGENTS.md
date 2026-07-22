@@ -40,6 +40,7 @@ Each concern has one module — never inline or re-derive:
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox/Triage/Testing/Shipping |
+| Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) |
 | Integrations / capabilities | `src/lib/integrations/**` |
 | Cross-entity search | `src/lib/search/hybrid-retrieval.ts` → `SearchHit` |
 | Toasts | `@/lib/toast` + `AppToaster` (never Sonner `richColors`) |

@@ -86,6 +86,17 @@ export async function GET(
          r.source,
          r.source_platform,
          r.intake_type,
+         rt.staging_location_id,
+         CASE
+           WHEN loc.id IS NULL THEN NULL
+           WHEN loc.room IS NOT NULL AND BTRIM(loc.room) <> ''
+             THEN loc.room || ' · ' || loc.name
+           ELSE loc.name
+         END AS staging_location_label,
+         rt.priority_lane,
+         COALESCE(rt.pairing_state, 'UNFOUND') AS pairing_state,
+         COALESCE(rt.triage_complete, false) AS triage_complete,
+         to_char(rt.triage_completed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS triage_completed_at,
          lpo.id AS local_pickup_order_id,
          r.is_return,
          r.return_platform,
@@ -136,6 +147,9 @@ export async function GET(
        LEFT JOIN receiving_triage rt
          ON rt.receiving_id = r.id
         AND rt.organization_id = r.organization_id
+       LEFT JOIN locations loc
+         ON loc.id = rt.staging_location_id
+        AND loc.organization_id = r.organization_id
        LEFT JOIN receiving_unbox ru
          ON ru.receiving_id = r.id
         AND ru.organization_id = r.organization_id

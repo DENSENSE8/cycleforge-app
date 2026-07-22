@@ -15,24 +15,59 @@ export const receivingHeaderHairlineClass = appChromeBandHairlineClass;
  * wins over any baked-in `px-*` on the shared band constants below. Single knob:
  * change it here and every section that references it re-aligns together.
  *
- * 6px (px-1.5) is the house sidebar gutter. Mode pills and section eyebrows inset
- * to this line. The **scan band** is full-bleed (`receivingScanBandClass` /
- * {@link ScanBandShell}) so the staff bottom-rule runs edge-to-edge; content
- * inset lives inside the scan input (icon + mode rail pads), not on the band.
- *
- * Station recent-activity rails under a scan band use
- * {@link SIDEBAR_RAIL_INSET_X} instead — left gutter for status dots / titles,
- * flush right so ages + edit pencil align with MRU / mode cells (`pr-0`).
+ * 6px (px-1.5) is the house sidebar gutter. Mode pills inset to this line.
+ * Scan-dock rails keep the list flush ({@link SIDEBAR_RAIL_INSET_X}); the status
+ * dot rides a compact FLOW track at the row's left and the title sits one tight
+ * {@link SIDEBAR_MASTER_NAV_MODE_GAP} after it (see {@link SIDEBAR_RAIL_LEADING_PAD}).
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
+// ── MasterNav geometry (closed header) — pad / glyph / gap SoT ────────────────
+/** Horizontal pad on the full-nav chevron hit box. */
+export const SIDEBAR_MASTER_NAV_CHEVRON_PAD_X = 'px-2.5';
+/** Chevron + mode glyph box (pairs with `h-4 w-4`). */
+export const SIDEBAR_MASTER_NAV_GLYPH = 'h-4 w-4';
+/** Horizontal pad on the mode-identity control. */
+export const SIDEBAR_MASTER_NAV_MODE_PAD_X = 'px-2.5';
+/** Gap between mode glyph and label. */
+export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
+
 /**
- * Horizontal inset for scan-dock recent rails (`SidebarRailShell` / Unboxed).
- * Left matches {@link SIDEBAR_GUTTER}; right is flush so row ages and the eyebrow
- * pencil mount to the sidebar edge (same flush language as scan mode cells).
- * Row chrome owns any additional left pad (`pl-2` / `pl-3`); never add `pr-*` there.
+ * Recent-rail **leading track** (scan-dock column SoT). The status dot / edit
+ * checkbox ride a compact FLOW track at the row's left; the row title sits one
+ * tight {@link SIDEBAR_MASTER_NAV_MODE_GAP} (`gap-1.5`) after it. This replaced
+ * an absolute dot near the edge + a deep MasterNav-label title inset — a combo
+ * that opened a ~50px canyon between the dot and the title. Composed as
+ * Tailwind tokens (density-aware) — never a magic rem — so the column tracks
+ * `--cf-density`.
+ *
+ * Column math: `pl-2` (8) + `w-4` track (16) + `gap-1.5` (6) ⇒ title at 30px.
+ * The eyebrow ({@link SidebarRailShell}) mirrors the same `pad → track → gap`
+ * so its title shares the row-title x; the dense scan bar
+ * (`STATION_SCAN_BAR_*_DENSE` in `station/scan-bar/tokens.ts`) centers its icon
+ * on the dot track and lands its typed text on the title — one clean column.
+ * The MasterNav "now" label deliberately stays deeper (its chevron + hairline +
+ * mode glyph own the 0→47px chrome column above the dock).
  */
-export const SIDEBAR_RAIL_INSET_X = 'pl-1.5 pr-0';
+export const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';
+/** Dot / edit-checkbox flow-track width (centers the `h-2` dot / `h-3.5` box). */
+export const SIDEBAR_RAIL_DOT_TRACK = 'w-4';
+
+/**
+ * Horizontal inset for scan-dock recent-rail **list hosts**. Flush left so the
+ * row button's {@link SIDEBAR_RAIL_LEADING_PAD} leading track is measured from
+ * the sidebar edge — the status dot hugs the left with no dead gutter, and the
+ * title lands on the dense rail column. Right flush for
+ * {@link SIDEBAR_RAIL_ROW_PAD_RIGHT}.
+ */
+export const SIDEBAR_RAIL_INSET_X = 'pl-0 pr-0';
+
+/**
+ * Right pad on scan-dock rail rows (and the matching eyebrow). Narrows the
+ * selection ring + age so they clear `rounded-tl-2xl` and share one right edge
+ * with the eyebrow pencil / optical `#` mode glyph.
+ */
+export const SIDEBAR_RAIL_ROW_PAD_RIGHT = 'pr-1.5';
 
 /** 40px identity / mode-pill row — aligns sidebar mode slider with workspace PaneHeader. */
 export const receivingIdentityBandClass = `flex h-[40px] shrink-0 items-center ${appChromeClass} px-3 ${receivingHeaderHairlineClass}`;

@@ -1,12 +1,15 @@
 /**
- * Fixed-width platform lettermark — listing chrome uses this instead of the
+ * Fixed-width platform mark — listing chrome uses this instead of the
  * variable-width platform name so PO# / tracking chips stay aligned across
- * marketplaces. Label lives in tooltip / aria; mark comes from
+ * marketplaces. Renders the vendored monochrome brand icon when the platform
+ * has one (`SourcePlatformMeta.icon`, CC0 Simple Icons paths), else the 1–2
+ * char lettermark. Label lives in tooltip / aria; meta comes from
  * {@link sourcePlatformMeta}.
  */
 
 import { cn } from '@/utils/_cn';
 import { sourcePlatformMeta } from '@/lib/source-platform';
+import { PLATFORM_BRAND_ICON_VIEWBOX } from '@/lib/platform-brand-icons';
 
 const MARK_BOX =
   'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-role-micro font-black uppercase leading-none tracking-tight';
@@ -32,6 +35,15 @@ export function PlatformMark({
     return (
       <span className={cn(MARK_BOX, 'text-text-faint', className)} aria-hidden>
         <span className="border-b-2 border-border-default pb-px">—</span>
+      </span>
+    );
+  }
+  if (meta.icon) {
+    return (
+      <span className={cn(MARK_BOX, textClassName ?? meta.text, className)} aria-hidden>
+        <svg viewBox={PLATFORM_BRAND_ICON_VIEWBOX} fill="currentColor" className="h-4 w-4 shrink-0">
+          <path d={meta.icon} />
+        </svg>
       </span>
     );
   }

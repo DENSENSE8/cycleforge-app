@@ -1,12 +1,17 @@
 'use client';
 
 /**
- * Classify controls for the triage Overview tab — platform / type / urgency
- * pickers. The SectionTabsSlider eyebrow owns the "Classify" label — this
- * body is unlabeled so we don't double the title.
+ * Classify controls for the triage Overview tab — platform / type / urgency.
+ *
+ * Matches {@link CartonContextCard}: one picker owns the row when open — siblings
+ * unmount so clicking Platform shows only platform options (not urgency/type
+ * pills beside the full list). Selecting / dismissing collapses back.
+ *
+ * SectionTabsSlider owns the "Classify" label — this body stays unlabeled.
  */
 
 import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { WorkspaceCard } from '@/design-system/components';
 import { InlinePillPicker, INLINE_PILL_LEADING, type InlinePillOption } from '../workspace/line-edit/InlinePillPicker';
 import { receivingPriorityRank, receivingPriorityTone } from '../workspace/line-edit/receiving-priority';
@@ -79,48 +84,124 @@ export function TriageClassifySection({
     .filter((o) => o.value !== 'PICKUP')
     .map((o) => ({ value: o.value, label: o.label }));
 
+  const handleUrgencySelect = (v: string) => {
+    void c.handlePrioritySelect(v === 'auto' ? null : Number(v));
+  };
+
   return (
     <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested">
-      <div className="flex flex-wrap items-center gap-2">
-        <InlinePillPicker
-          ariaLabel="Urgency"
-          options={urgencyOptions}
-          value={urgencyValue}
-          onSelect={(v) => void c.handlePrioritySelect(v === 'auto' ? null : Number(v))}
-          collapsedLabel={effectiveUrgencyLabel}
-          collapsedClass={effectiveUrgencyClass}
-          open={openPicker === 'urgency'}
-          onOpenChange={(o) => setOpenPicker(o ? 'urgency' : null)}
-          leadingIcon={INLINE_PILL_LEADING.urgency}
-        />
-        <InlinePillPicker
-          ariaLabel="Platform"
-          options={platformOptions}
-          value={c.sourcePlatform}
-          onSelect={(next) => {
-            c.setSourcePlatform(next);
-            void c.savePlatform(next);
-          }}
-          open={openPicker === 'platform'}
-          onOpenChange={(o) => setOpenPicker(o ? 'platform' : null)}
-          disabled={row.receiving_id == null}
-          placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-          leadingIcon={INLINE_PILL_LEADING.platform}
-        />
-        <InlinePillPicker
-          ariaLabel="Type"
-          options={typeOptions}
-          value={c.receivingType}
-          onSelect={(next) => {
-            c.setReceivingType(next);
-            void c.saveType(next);
-          }}
-          open={openPicker === 'type'}
-          onOpenChange={(o) => setOpenPicker(o ? 'type' : null)}
-          placeholder="Type"
-          leadingIcon={INLINE_PILL_LEADING.type}
-        />
-      </div>
+      <AnimatePresence initial={false} mode="wait">
+        {openPicker == null ? (
+          <motion.div
+            key="classify-collapsed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="flex min-w-0 flex-wrap items-center gap-2"
+          >
+            <InlinePillPicker
+              ariaLabel="Urgency"
+              options={urgencyOptions}
+              value={urgencyValue}
+              onSelect={handleUrgencySelect}
+              collapsedLabel={effectiveUrgencyLabel}
+              collapsedClass={effectiveUrgencyClass}
+              open={false}
+              onOpenChange={(o) => {
+                if (o) setOpenPicker('urgency');
+              }}
+              leadingIcon={INLINE_PILL_LEADING.urgency}
+            />
+            <InlinePillPicker
+              ariaLabel="Platform"
+              options={platformOptions}
+              value={c.sourcePlatform}
+              onSelect={(next) => {
+                c.setSourcePlatform(next);
+                void c.savePlatform(next);
+              }}
+              open={false}
+              onOpenChange={(o) => {
+                if (o) setOpenPicker('platform');
+              }}
+              disabled={row.receiving_id == null}
+              placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+              leadingIcon={INLINE_PILL_LEADING.platform}
+            />
+            <InlinePillPicker
+              ariaLabel="Type"
+              options={typeOptions}
+              value={c.receivingType}
+              onSelect={(next) => {
+                c.setReceivingType(next);
+                void c.saveType(next);
+              }}
+              open={false}
+              onOpenChange={(o) => {
+                if (o) setOpenPicker('type');
+              }}
+              placeholder="Type"
+              leadingIcon={INLINE_PILL_LEADING.type}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="classify-focused"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className="flex min-w-0 items-center"
+          >
+            {openPicker === 'urgency' ? (
+              <InlinePillPicker
+                ariaLabel="Urgency"
+                options={urgencyOptions}
+                value={urgencyValue}
+                onSelect={handleUrgencySelect}
+                open
+                onOpenChange={(o) => {
+                  if (!o) setOpenPicker(null);
+                }}
+                leadingIcon={INLINE_PILL_LEADING.urgency}
+              />
+            ) : openPicker === 'platform' ? (
+              <InlinePillPicker
+                ariaLabel="Platform"
+                options={platformOptions}
+                value={c.sourcePlatform}
+                onSelect={(next) => {
+                  c.setSourcePlatform(next);
+                  void c.savePlatform(next);
+                }}
+                open
+                onOpenChange={(o) => {
+                  if (!o) setOpenPicker(null);
+                }}
+                placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+                leadingIcon={INLINE_PILL_LEADING.platform}
+              />
+            ) : (
+              <InlinePillPicker
+                ariaLabel="Type"
+                options={typeOptions}
+                value={c.receivingType}
+                onSelect={(next) => {
+                  c.setReceivingType(next);
+                  void c.saveType(next);
+                }}
+                open
+                onOpenChange={(o) => {
+                  if (!o) setOpenPicker(null);
+                }}
+                placeholder="Type"
+                leadingIcon={INLINE_PILL_LEADING.type}
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </WorkspaceCard>
   );
 }

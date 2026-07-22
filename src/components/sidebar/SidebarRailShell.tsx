@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
-import { SIDEBAR_GUTTER, SIDEBAR_RAIL_INSET_X } from '@/components/layout/header-shell';
+import {
+  SIDEBAR_GUTTER,
+  SIDEBAR_MASTER_NAV_MODE_GAP,
+  SIDEBAR_RAIL_DOT_TRACK,
+  SIDEBAR_RAIL_INSET_X,
+  SIDEBAR_RAIL_LEADING_PAD,
+  SIDEBAR_RAIL_ROW_PAD_RIGHT,
+} from '@/components/layout/header-shell';
+import { cn } from '@/utils/_cn';
 import {
   STAGGER_REVEAL_STEP,
   staggerRevealContainer,
@@ -133,15 +141,28 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     () => staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP),
     [reduceMotion],
   );
-  const insetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
+  // scanDock: list stays flush (dots hug the left); pencil shares the row ring's
+  // right edge. The eyebrow OUTER inset mirrors the list host so the leading
+  // `pad → dot-track → gap` spacer below lands the eyebrow title on the row-title
+  // x (dense scan-dock column) — no deep MasterNav-label inset.
+  const listInsetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
+  const eyebrowOuterX =
+    railInset === 'scanDock'
+      ? cn('pl-0', SIDEBAR_RAIL_ROW_PAD_RIGHT)
+      : SIDEBAR_GUTTER;
 
   return (
     <section className="min-w-0 border-t border-border-hairline bg-surface-card">
       {!hideEyebrow ? (
-        <div className={`flex items-center justify-between ${insetX} py-1`}>
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-            {eyebrowTitle} · {topCount}
-          </p>
+        <div className={cn('flex items-center justify-between py-1', eyebrowOuterX)}>
+          {/* Leading spacer = RailRow's dot track (pad → w-4 → gap) so the
+              eyebrow title shares the row-title x. */}
+          <div className={cn('flex min-w-0 items-center', SIDEBAR_RAIL_LEADING_PAD, SIDEBAR_MASTER_NAV_MODE_GAP)}>
+            <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
+            <p data-rail-eyebrow className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+              {eyebrowTitle} · {topCount}
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             {eyebrowAction
               ? eyebrowAction
@@ -160,7 +181,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
         </div>
       ) : null}
       {showSkeleton ? (
-        <div className={`space-y-1 ${insetX} py-2`}>
+        <div className={`space-y-1 ${listInsetX} py-2`}>
           {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 w-full animate-pulse rounded-md bg-surface-sunken" />)}
         </div>
       ) : (
@@ -176,7 +197,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           {listPainted || rows.length > 0 ? (
           <motion.ul
             ref={listRef}
-            className={`${insetX} overflow-x-clip py-0.5 outline-none ${isFetching ? 'opacity-90' : ''}`}
+            className={`${listInsetX} overflow-x-clip py-0.5 outline-none ${isFetching ? 'opacity-90' : ''}`}
             role="listbox"
             aria-label={`${eyebrowTitle} activity`}
             aria-busy={isFetching || undefined}
@@ -237,7 +258,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           </motion.ul>
           ) : null}
           {rows.length === 0 && !isFetching ? (
-            <p className={`${insetX} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
+            <p className={`${listInsetX} py-3 text-role-micro font-semibold text-text-faint`}>{emptyText}</p>
           ) : null}
         </>
       )}

@@ -155,6 +155,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       itemNumber,
       condition,
       quantity,
+      productTitle,
       sku,
       skuCatalogId,
       performedByStaffId,
@@ -331,6 +332,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         updates.push(`quantity = $${paramCount++}`);
         values.push(quantity || '1');
       }
+      // Operator-corrected product title (Pending grid in-cell edit). Empty
+      // commits are rejected client-side; keep NULL out of a display column.
+      if (productTitle !== undefined) {
+        updates.push(`product_title = $${paramCount++}`);
+        values.push(String(productTitle || '').trim() || null);
+      }
       if (sku !== undefined) {
         updates.push(`sku = $${paramCount++}`);
         values.push(sku || null);
@@ -366,6 +373,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (itemNumber !== undefined) changedFields.itemNumber = itemNumber;
       if (condition !== undefined) changedFields.condition = condition;
       if (quantity !== undefined) changedFields.quantity = quantity;
+      if (productTitle !== undefined) changedFields.productTitle = productTitle;
       if (sku !== undefined) changedFields.sku = sku;
       if (skuCatalogId !== undefined) changedFields.skuCatalogId = skuCatalogId;
 

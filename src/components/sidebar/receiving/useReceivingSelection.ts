@@ -18,12 +18,14 @@ import { useRouter } from 'next/navigation';
 import {
   readSelectLineDetail,
   type ReceivingMode,
-  type ReceivingSelectLineDetail,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
+import { emitReceiving } from '@/components/receiving/receiving-events';
+import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 
 interface UseReceivingSelectionArgs {
   mode: ReceivingMode;
@@ -56,89 +58,59 @@ export function useReceivingSelection({
   const [scanDriven, setScanDriven] = useState(false);
   const [scanMatchedRows, setScanMatchedRows] = useState<ReceivingLineRow[]>([]);
 
-  // Workspace X-button → clear our own state so both panes converge on empty.
+  // Refs the handlers read so the single subscription never re-binds on
+  // selection/mode change: the id-compare (delete/entry) and the live-mode gate
+  // (select/open) always see the current value. Without the mode ref, a
+  // History-mode click captures a stale closure and tries to open the workspace.
+  const selectedLineRef = useRef<ReceivingLineRow | null>(selectedLine);
+  selectedLineRef.current = selectedLine;
+  const modeRef = useRef<ReceivingMode>(mode);
   useEffect(() => {
-    const handler = () => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  // Inbound cross-pane bus (typed). Every receiving event that mutates this
+  // hook's selection lands in one declarative subscription instead of a dozen
+  // hand-wired addEventListener effects. Dispatch side: `emitReceiving` and the
+  // `dispatch*` helpers in `@/utils/events`.
+  useReceivingEvents({
+    // Workspace X-button → clear our own state so both panes converge on empty.
+    'receiving-workspace-close': () => {
       setSelectedLine(null);
       setLineAccordionBootstrap('default');
       setScanDriven(false);
       setScanMatchedRows([]);
       clearScanSession();
-    };
-    window.addEventListener('receiving-workspace-close', handler);
-    return () => window.removeEventListener('receiving-workspace-close', handler);
-    // clearScanSession is a stable useCallback — referenced in the handler, not
-    // synchronously; mounting once mirrors the original empty-deps effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // `receiving-clear-line` is a full deselect signal — fired on mode switch and
-  // when the triage Found/Unfound sub-view changes. Clear the panel's selection
-  // too (not just the right pane) so the rail highlight resets and the new
-  // list/sub-list auto-selects its own top instead of pinning the prior pick.
-  useEffect(() => {
-    const handler = () => {
+    },
+    // Full deselect — fired on mode switch and the triage Found/Unfound flip.
+    // Clear the panel selection too so the rail highlight resets and the new
+    // list auto-selects its own top instead of pinning the prior pick.
+    'receiving-clear-line': () => {
       setSelectedLine(null);
       setScanDriven(false);
       setScanMatchedRows([]);
       clearScanSession();
-    };
-    window.addEventListener('receiving-clear-line', handler);
-    return () => window.removeEventListener('receiving-clear-line', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Line deleted (e.g. last item removed from a carton) → if it was the active
-  // line, converge both panes on empty so the Recent rail can't re-pin it from
-  // the stale `selectedLine`. Read the id from a ref to avoid re-subscribing on
-  // every selection change.
-  const selectedLineRef = useRef<ReceivingLineRow | null>(selectedLine);
-  selectedLineRef.current = selectedLine;
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const id = (e as CustomEvent<{ id?: number }>).detail?.id;
+    },
+    // Line deleted → if it was the active line, converge both panes on empty so
+    // the Recent rail can't re-pin it from the stale `selectedLine`.
+    'receiving-line-deleted': ({ id }) => {
       if (typeof id !== 'number') return;
       setScanMatchedRows((rows) => rows.filter((r) => r.id !== id));
-      if (selectedLineRef.current?.id === id) {
-        window.dispatchEvent(new CustomEvent('receiving-workspace-close'));
-      }
-    };
-    window.addEventListener('receiving-line-deleted', handler);
-    return () => window.removeEventListener('receiving-line-deleted', handler);
-  }, []);
-
-  // Whole carton (receiving log) deleted from the detail panel → if the active
-  // line belongs to it, converge both panes on empty so the Recent rail can
-  // auto-select the most-recent survivor.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const cartonId = Number((e as CustomEvent<unknown>).detail);
-      if (!Number.isFinite(cartonId)) return;
-      setScanMatchedRows((rows) => rows.filter((r) => r.receiving_id !== cartonId));
-      if (selectedLineRef.current?.receiving_id === cartonId) {
-        window.dispatchEvent(new CustomEvent('receiving-workspace-close'));
-      }
-    };
-    window.addEventListener('receiving-entry-deleted', handler);
-    return () => window.removeEventListener('receiving-entry-deleted', handler);
-  }, []);
-
-  // ─── Selected line from table row click ──────────────────────────────────
-  // The listener is mounted once and reads `mode` via a ref so it always sees
-  // the current pill value — without the ref, a History-mode click captured
-  // the original closure and tried to open the workspace.
-  const modeRef = useRef<ReceivingMode>(mode);
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-  useEffect(() => {
-    const handleSelect = (e: Event) => {
-      const { row, expandFlowSections } = readSelectLineDetail(
-        (e as CustomEvent<ReceivingSelectLineDetail>).detail,
-      );
-      // Browse clicks always open LineEdit (never ReceivingDetailsStack).
-      // Graduated History has no workspace mount — deep-link into Unbox so the
-      // pane opens after navigation (same contract as cmd+k / search hits).
+      if (selectedLineRef.current?.id === id) dispatchReceivingWorkspaceClose();
+    },
+    // Whole carton deleted → if the active line belongs to it, converge on empty
+    // so the Recent rail auto-selects the most-recent survivor.
+    'receiving-entry-deleted': (cartonId) => {
+      const id = Number(cartonId);
+      if (!Number.isFinite(id)) return;
+      setScanMatchedRows((rows) => rows.filter((r) => r.receiving_id !== id));
+      if (selectedLineRef.current?.receiving_id === id) dispatchReceivingWorkspaceClose();
+    },
+    // Table/rail click or deep-link restore. Browse clicks always open LineEdit;
+    // a History-mode click has no workspace mount, so deep-link into Unbox
+    // (same contract as cmd+k / search hits).
+    'receiving-select-line': (detail) => {
+      const { row, expandFlowSections } = readSelectLineDetail(detail);
       const liveMode =
         typeof window !== 'undefined'
           ? resolveLiveReceivingMode(
@@ -148,11 +120,11 @@ export function useReceivingSelection({
           : modeRef.current;
       if (liveMode === 'history' && row != null) {
         const cartonId = row.receiving_id;
-        if (cartonId != null) {
-          router.replace(`${UNBOX_SURFACE_ROUTE}?openReceivingId=${cartonId}`);
-        } else {
-          router.replace(UNBOX_SURFACE_ROUTE);
-        }
+        router.replace(
+          cartonId != null
+            ? `${UNBOX_SURFACE_ROUTE}?openReceivingId=${cartonId}`
+            : UNBOX_SURFACE_ROUTE,
+        );
         return;
       }
       const expand = Boolean(row != null && expandFlowSections);
@@ -161,17 +133,15 @@ export function useReceivingSelection({
       // Row clicks always open the full LineEditPanel (scan-driven → compact).
       setScanDriven(false);
       setScanMatchedRows([]);
-    };
-    const handleUpdated = (e: Event) => {
-      const updated = (e as CustomEvent<Partial<ReceivingLineRow> & { id: number }>).detail;
+    },
+    'receiving-line-updated': (updated) => {
       if (!updated || typeof updated.id !== 'number') return;
       setSelectedLine((prev) => (prev?.id === updated.id ? { ...prev, ...updated } : prev));
       setScanMatchedRows((rows) =>
         rows.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)),
       );
-    };
-    const handlePackageMeta = (e: Event) => {
-      const detail = (e as CustomEvent<Parameters<typeof mergeReceivingPackageMetaIntoRow>[1]>).detail;
+    },
+    'receiving-package-updated': (detail) => {
       if (!detail || detail.receiving_id == null) return;
       setSelectedLine((prev) => {
         if (!prev || prev.receiving_id !== detail.receiving_id) return prev;
@@ -180,18 +150,14 @@ export function useReceivingSelection({
       setScanMatchedRows((rows) =>
         rows.map((r) => mergeReceivingPackageMetaIntoRow(r, detail) ?? r),
       );
-    };
-    // Mirror selectedLine from workspace-open events so the rail highlights
-    // restored lines (localStorage + most-recent fallback go directly through
-    // dispatchReceivingWorkspaceOpen, bypassing handleSelect). Id-compare guards
-    // the setState→workspace-open useEffect from looping.
-    const handleWorkspaceOpen = (e: Event) => {
-      const detail = (e as CustomEvent<{ row?: ReceivingLineRow } | null>).detail;
+    },
+    // Mirror selectedLine from workspace-open so the rail highlights restored
+    // lines (localStorage + most-recent fallback dispatch open directly,
+    // bypassing select-line). Id-compare guards the open→setState loop.
+    // History/Incoming are table-only — never mirror a workspace pick there.
+    'receiving-workspace-open': (detail) => {
       const row = detail?.row;
       if (!row || typeof row.id !== 'number') return;
-      // History/Incoming are table-only — never mirror a workspace pick into
-      // sidebar selection while those modes are active (prevents a stale open
-      // event from re-arming the unbox bridge after a mode flip).
       const liveMode =
         typeof window !== 'undefined'
           ? resolveLiveReceivingMode(
@@ -201,18 +167,8 @@ export function useReceivingSelection({
           : modeRef.current;
       if (liveMode === 'history' || liveMode === 'incoming') return;
       setSelectedLine((prev) => (prev?.id === row.id ? prev : row));
-    };
-    window.addEventListener('receiving-select-line', handleSelect);
-    window.addEventListener('receiving-line-updated', handleUpdated);
-    window.addEventListener('receiving-package-updated', handlePackageMeta);
-    window.addEventListener('receiving-workspace-open', handleWorkspaceOpen);
-    return () => {
-      window.removeEventListener('receiving-select-line', handleSelect);
-      window.removeEventListener('receiving-line-updated', handleUpdated);
-      window.removeEventListener('receiving-package-updated', handlePackageMeta);
-      window.removeEventListener('receiving-workspace-open', handleWorkspaceOpen);
-    };
-  }, [router]);
+    },
+  });
 
   // Selection must NOT carry across modes. On a genuine mode SWITCH (not the
   // initial mount — that would clobber a deep-linked carton), converge both
@@ -228,7 +184,7 @@ export function useReceivingSelection({
     setScanDriven(false);
     setScanMatchedRows([]);
     clearScanSession();
-    window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+    emitReceiving('receiving-clear-line');
   }, [mode, clearScanSession]);
 
   return {

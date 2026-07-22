@@ -1,10 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Loader2 } from '@/components/Icons';
+import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { operatorAccentClasses } from '@/utils/operator-accent';
+import { Popover } from './Popover';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,10 @@ export interface FloatingButtonMenuItem {
   icon?: ReactNode;
   disabled?: boolean;
   title?: string;
+  /** Marks the active choice (e.g. selected label kind). */
+  selected?: boolean;
+  /** Quiet rule above this item — group outcomes below selections. */
+  separatorBefore?: boolean;
 }
 
 export interface FloatingButtonProps {
@@ -41,7 +46,7 @@ export interface FloatingButtonProps {
   /** Override the tone with arbitrary Tailwind classes (e.g. a per-row theme). */
   toneClasses?: { bg: string; hover: string };
   /** Optional split-button menu — a chevron on the left opens an upward menu
-   *  on hover/focus. */
+   *  on click (Escape / outside click dismiss). */
   menu?: FloatingButtonMenuItem[];
   /** aria-label for the chevron trigger. Defaults to "More actions". */
   menuLabel?: string;
@@ -93,7 +98,8 @@ const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
  *   (pass the same `max-w-*` token the column uses). Set `fullWidth` to stretch
  *   the pill across that width, or leave it for a compact centered pill.
  * - Pass `menu` to make it a split button: a chevron on the left opens an
- *   upward menu on hover/focus.
+ *   upward menu on **click** (not hover) — Escape / outside-click dismiss via
+ *   the shared Popover + AnchoredLayer.
  * - Spring press feedback (framer-motion `whileTap`) like the `Button` primitive.
  *
  * The host must be `position: relative` and full-height; the scroll surface
@@ -125,7 +131,18 @@ export function FloatingButton({
       : TONE_BG_SOLID[tone];
   const hasMenu = Array.isArray(menu) && menu.length > 0;
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuListId = useId();
+
+  // Lock the menu closed while an action is in flight.
+  useEffect(() => {
+    if (loading) setMenuOpen(false);
+  }, [loading]);
+
   const leadingIcon = loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon;
+
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <div
@@ -159,52 +176,85 @@ export function FloatingButton({
               fullWidth ? 'w-full min-w-0' : 'max-w-full',
             )}
           >
-            <div className="group/split-menu relative flex shrink-0 self-stretch">
+            <div className="relative flex shrink-0 self-stretch">
               {/* The chevron stays interactive even when the PRIMARY CTA is
                   disabled — each menu item carries its own `disabled`, and a
-                  disabled <button> here would suppress pointer events over the
-                  chevron, so `group-hover` never fires and the menu can't open
-                  at all (the classic "hover does nothing" bug). Only an in-flight
+                  disabled <button> here would suppress opening the menu for
+                  print-only / receive-without-print paths. Only an in-flight
                   action (`loading`) locks it. */}
+              {/* ds-raw-button: split-menu chevron; Popover owns dismissal */}
               <button
+                ref={menuTriggerRef}
                 type="button"
                 aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls={menuOpen ? menuListId : undefined}
                 aria-label={menuLabel ?? 'More actions'}
                 title={menuTitle}
                 disabled={loading}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((open) => !open);
+                }}
                 className="flex h-12 items-center justify-center rounded-l-2xl border-r border-white/20 bg-transparent px-3 text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <ChevronDown className="h-4 w-4 opacity-95" />
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 opacity-95 transition-transform duration-150',
+                    menuOpen && 'rotate-180',
+                  )}
+                />
               </button>
-              <div
-                className="invisible absolute bottom-full left-0 z-dropdown pb-0.5 opacity-0 transition-opacity duration-75 group-hover/split-menu:pointer-events-auto group-hover/split-menu:visible group-hover/split-menu:opacity-100 group-focus-within/split-menu:pointer-events-auto group-focus-within/split-menu:visible group-focus-within/split-menu:opacity-100"
-                role="presentation"
+              <Popover
+                open={menuOpen}
+                onClose={closeMenu}
+                anchorRef={menuTriggerRef}
+                placement="top-start"
+                gap={6}
+                padded={false}
+                role="menu"
+                id={menuListId}
+                aria-label={menuLabel ?? 'More actions'}
+                className="min-w-[14rem] py-1 shadow-xl ring-1 ring-border-soft/80"
               >
-                <ul
-                  role="menu"
-                  aria-label={menuLabel ?? 'More actions'}
-                  className="min-w-[12rem] rounded-lg border border-border-soft bg-surface-card py-1 shadow-xl ring-1 ring-border-soft/80"
-                >
-                  {menu!.map((item) => (
-                    <li key={item.label} role="none">
-                      <button
-                        role="menuitem"
-                        type="button"
-                        disabled={item.disabled}
-                        title={item.title}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          item.onClick();
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-role-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
-                      >
+                {menu!.map((item) => (
+                  <div key={item.label} role="none">
+                    {item.separatorBefore ? (
+                      <div
+                        role="separator"
+                        className="my-1 border-t border-border-hairline"
+                      />
+                    ) : null}
+                    {/* ds-raw-button: menu item inside Popover role=menu */}
+                    <button
+                      role="menuitem"
+                      type="button"
+                      disabled={item.disabled}
+                      title={item.title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (item.disabled) return;
+                        item.onClick();
+                        closeMenu();
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-black uppercase tracking-wider transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35',
+                        item.selected ? 'bg-surface-hover text-text-default' : 'text-text-default',
+                      )}
+                    >
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-muted">
                         {item.icon}
-                        {item.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {item.selected ? (
+                        <Check className="h-3.5 w-3.5 shrink-0 text-text-default" aria-hidden />
+                      ) : (
+                        <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </Popover>
             </div>
             <button
               type="button"

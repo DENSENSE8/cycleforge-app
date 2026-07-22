@@ -21,7 +21,7 @@ function thread(overrides: Partial<EntityThread> = {}): EntityThread {
 }
 
 interface Captured {
-  internal: Array<{ orgId: string; subject: string; staffId?: number | null }>;
+  internal: Array<{ orgId: string; entityType: string; entityId: number; subject: string; staffId?: number | null }>;
   zendesk: Array<{ orgId: string; entityType: string; entityId: number; subject: string; note?: string | null }>;
   attach: Array<{ orgId: string; threadId: number; supportTicketId: number }>;
 }
@@ -62,6 +62,10 @@ test('escalate internal: creates internal ticket then attaches (no zendesk)', as
   assert.equal(cap.internal.length, 1);
   assert.equal(cap.zendesk.length, 0); // internal path never calls the helpdesk
   assert.equal(cap.internal[0].subject, 'order #42'); // entity-anchored default subject
+  // Internal tickets now thread the entity so the default dep writes a
+  // ticket_links anchor (2026-07-21 re-key) — mirrors the zendesk path.
+  assert.equal(cap.internal[0].entityType, 'ORDER');
+  assert.equal(cap.internal[0].entityId, 42);
   assert.equal(cap.attach.length, 1);
   assert.equal(cap.attach[0].supportTicketId, 100);
 });

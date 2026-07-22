@@ -1,7 +1,9 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, Check, ChevronDown, Loader2 } from '@/components/Icons';
+import { Popover } from '@/design-system/primitives/Popover';
+import { cn } from '@/utils/_cn';
 
 export type StickyActionTone = 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
 
@@ -27,8 +29,8 @@ interface PrimaryAction {
   icon?: ReactNode;
   /** Title attribute for the main CTA (helps explain disabled states). */
   title?: string;
-  /** Optional split-button menu shown above the CTA on hover/focus of the
-   *  leading chevron. Items render top-to-bottom in a card that opens upward. */
+  /** Optional split-button menu — chevron opens an upward menu on click
+   *  (Escape / outside click dismiss). */
   menu?: StickyActionMenuItem[];
   /** aria-label for the chevron trigger. Defaults to "More actions". */
   menuLabel?: string;
@@ -109,7 +111,7 @@ const TONE_BG_SOLID: Record<StickyActionTone, string> = {
  *  - **Leading**: keyboard `hints` or arbitrary `leading` content (badge counts).
  *  - **Secondary**: optional outline button (Discard, Cancel).
  *  - **Primary**: solid-tone CTA. Pass `primary.menu` to turn it into a
- *    split button — a chevron on the left opens an upward menu on hover/focus.
+ *    split button — a chevron on the left opens an upward menu on click.
  *
  * Pinned `bottom-0 z-10` inside its containing scroll surface. Parent must
  * leave room (e.g. `pb-32` on the scroll inner) so content isn't hidden.
@@ -162,6 +164,16 @@ export function StickyActionBar({
   const menu = primary.menu;
   const hasMenu = Array.isArray(menu) && menu.length > 0;
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuListId = useId();
+
+  useEffect(() => {
+    if (primary.isLoading) setMenuOpen(false);
+  }, [primary.isLoading]);
+
+  const closeMenu = () => setMenuOpen(false);
+
   const hasLeadingContent = (hints?.length ?? 0) > 0 || leading != null;
   /** One wide CTA only — skips an empty leading flex column eating half the bar. */
   const soloWideCta = primaryFullWidth && !secondary && !hasLeadingContent && !stackLeading;
@@ -202,46 +214,63 @@ export function StickyActionBar({
             primary.disabled ? 'cursor-not-allowed' : 'hover:brightness-[0.96] active:brightness-[0.92]'
           } ${splitTrackBg} ${stretch ? 'w-full min-w-0 flex-1' : 'flex-1 sm:flex-initial'}`}
         >
-          <div className="group/split-menu relative flex shrink-0 self-stretch">
+          <div className="relative flex shrink-0 self-stretch">
+            {/* ds-raw-button: split-menu chevron; Popover owns dismissal */}
             <button
+              ref={menuTriggerRef}
               type="button"
               aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-controls={menuOpen ? menuListId : undefined}
               aria-label={primary.menuLabel ?? 'More actions'}
               title={primary.menuTitle}
               className={`flex ${primaryHeight} items-center justify-center ${primaryRadius.replace('rounded', 'rounded-l')} border-r border-white/20 bg-transparent px-3 text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60`}
-              disabled={primary.disabled}
+              disabled={primary.isLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((open) => !open);
+              }}
             >
-              <ChevronDown className="h-4 w-4 opacity-95" />
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 opacity-95 transition-transform duration-150',
+                  menuOpen && 'rotate-180',
+                )}
+              />
             </button>
-            <div
-              className="invisible absolute left-0 bottom-full z-dropdown pb-0.5 opacity-0 transition-opacity duration-75 group-hover/split-menu:pointer-events-auto group-hover/split-menu:visible group-hover/split-menu:opacity-100 group-focus-within/split-menu:pointer-events-auto group-focus-within/split-menu:visible group-focus-within/split-menu:opacity-100"
-              role="presentation"
+            <Popover
+              open={menuOpen}
+              onClose={closeMenu}
+              anchorRef={menuTriggerRef}
+              placement="top-start"
+              gap={6}
+              padded={false}
+              role="menu"
+              id={menuListId}
+              aria-label={primary.menuLabel ?? 'More actions'}
+              className="min-w-[14rem] py-1 shadow-xl ring-1 ring-border-soft/80"
             >
-              <ul
-                role="menu"
-                aria-label={primary.menuLabel ?? 'More actions'}
-                className="min-w-[12rem] rounded-lg border border-border-soft bg-surface-card py-1 shadow-xl ring-1 ring-border-soft/80"
-              >
-                {menu!.map((item) => (
-                  <li key={item.label} role="none">
-                    <button
-                      role="menuitem"
-                      type="button"
-                      disabled={item.disabled}
-                      title={item.title}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        item.onClick();
-                      }}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-role-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
-                    >
-                      {item.icon}
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+              {menu!.map((item) => (
+                // ds-raw-button: menu item inside Popover role=menu
+                <button
+                  key={item.label}
+                  role="menuitem"
+                  type="button"
+                  disabled={item.disabled}
+                  title={item.title}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (item.disabled) return;
+                    item.onClick();
+                    closeMenu();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-black uppercase tracking-wider text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  {item.icon}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                </button>
+              ))}
+            </Popover>
           </div>
           <button
             type="button"

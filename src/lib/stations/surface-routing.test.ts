@@ -4,6 +4,7 @@ import { SURFACE_KEYS, getSurface, surfaceForRoute, type SurfaceKey } from '@/li
 import {
   getSidebarRouteKey,
   isMobileAllowedPath,
+  isSidebarRouteMobileRestricted,
   permissionForPath,
   type SidebarRouteKey,
 } from '@/lib/sidebar-navigation';
@@ -31,6 +32,8 @@ const SURFACE_TO_ROUTE_KEY: Record<SurfaceKey, SidebarRouteKey> = {
   pack: 'packer',
   test: 'tech',
   outbound: 'outbound',
+  // Support is its own nav route-key (desktop-only helpdesk console).
+  support: 'support',
 };
 
 test('every SurfaceKey route resolves to its expected nav route-key', () => {
@@ -55,9 +58,12 @@ test('every SurfaceKey route is permission-gated (ROUTE_PERMISSIONS)', () => {
   }
 });
 
-test('every SurfaceKey route is mobile-allowed', () => {
+test('every floor SurfaceKey route is mobile-allowed (desktop-only consoles exempt)', () => {
   for (const key of SURFACE_KEYS) {
     const { route } = getSurface(key);
+    // Desktop-only consoles (Support) are mobile-restricted by design — they are
+    // not floor scan stations, so they never need to resolve on the /m allow-list.
+    if (isSidebarRouteMobileRestricted(SURFACE_TO_ROUTE_KEY[key])) continue;
     assert.equal(isMobileAllowedPath(route), true, `${key} (${route}) should be mobile-allowed`);
   }
 });

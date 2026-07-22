@@ -529,11 +529,12 @@ export function formatLaneAgeCompact(
   return `${days}d`;
 }
 
-/** Tone for lane-age chips — older ages get hotter; fresh ages stay muted (readable, not urgent). */
+/** Tone for lane-age chips — progressive SLA (fresh stays muted; older heats up). */
 export function getLaneAgeTone(hoursApprox: number | null): string {
   if (hoursApprox == null) return 'text-text-muted';
-  if (hoursApprox >= 48) return 'text-red-600';
-  if (hoursApprox >= 24) return 'text-amber-600';
+  if (hoursApprox >= 192) return 'text-text-danger'; // ≥8d
+  if (hoursApprox >= 72) return 'text-text-warning'; // ≥3d
+  if (hoursApprox >= 24) return 'text-amber-600'; // ≥1d
   if (hoursApprox >= 8) return 'text-yellow-700';
   return 'text-text-muted';
 }
@@ -826,12 +827,15 @@ export function getDaysLateNullable(deadlineAt: string | null | undefined): numb
   return Math.max(0, todayIndex - deadlineIndex);
 }
 
-/** Tailwind text-color class based on days late. Accepts null for "no deadline" styling. */
+/** Tailwind text-color class based on days late — progressive SLA tiers for
+ *  ops backlog tables (not alarm-red at day 1). Null = no deadline.
+ *  0 on-time · 1–2 mild warn · 3–7 elevated · 8+ critical. */
 export function getDaysLateTone(daysLate: number | null): string {
   if (daysLate === null) return 'text-text-soft';
-  if (daysLate > 1) return 'text-red-600';
-  if (daysLate === 1) return 'text-yellow-600';
-  return 'text-emerald-600';
+  if (daysLate >= 8) return 'text-text-danger';
+  if (daysLate >= 3) return 'text-text-warning';
+  if (daysLate >= 1) return 'text-amber-600';
+  return 'text-text-muted';
 }
 
 // ─── Week range helpers ─────────────────────────────────────────────────────

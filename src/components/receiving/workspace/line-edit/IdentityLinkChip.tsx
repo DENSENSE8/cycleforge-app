@@ -179,6 +179,9 @@ export function IdentityLinkChip({
             disableCopy={disableCopy}
             fitDisplayWidth={!grow}
             truncateDisplay={grow}
+            // Hover owns the downward Open/Edit menu — site copy tooltip only on click
+            // (avoids a side-clamped bubble that visually “pushes” neighbors).
+            tooltipTrigger={actionsInMenu ? 'click' : 'hover'}
             onActivate={chipAction === 'open' ? openExternal : undefined}
             activationLabel={chipAction === 'open' ? openTitle : undefined}
             activationTitle={

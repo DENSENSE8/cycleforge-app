@@ -555,13 +555,13 @@ export function useUnboxLineController(
   const splitMenuAriaLabel = isUnfound
     ? 'Print only, or receive all locally (no print)'
     : isSinglePoItem
-      ? 'Print only, mark as scanned, or receive (no print)'
-      : 'Print only, mark as scanned, or receive all (no print)';
+      ? 'Print only, or receive without print'
+      : 'Print only, or receive all without print';
   const splitMenuHoverTitle = isUnfound
-    ? 'Hover for print-only or receive all locally — external inventory is not touched'
+    ? 'More options: print-only or receive all locally — external inventory is not touched'
     : isSinglePoItem
-      ? 'Hover for print-only, mark as scanned, or receive without print'
-      : 'Hover for print-only, mark as scanned, or receive all without print';
+      ? 'More options: print-only or receive without print'
+      : 'More options: print-only or receive all without print';
   const receiveMenuTitle = isUnfound
     ? 'Unfound carton — no external PO to receive against; use Receive locally'
     : row.receiving_id == null

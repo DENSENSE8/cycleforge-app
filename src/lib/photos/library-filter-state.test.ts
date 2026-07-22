@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  applyRecencyTab,
   clearStructuredPhotoFilters,
   countActivePhotoLibraryFilters,
   defaultPhotoLibraryMediaTypePatch,
@@ -9,6 +10,7 @@ import {
   isPhotoLibraryMediaTypeUnset,
   parsePhotoLibraryFilters,
   photoLibraryFiltersToParams,
+  recencyTabFromFilters,
   todayFoldersDateFilter,
   DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE,
   PHOTO_LIBRARY_VIEW_ORDER,
@@ -201,7 +203,7 @@ test('a saved-view filter snapshot round-trips through parse + serialize', () =>
   assert.deepEqual(restored, snapshot);
 });
 
-test('default media type targets the first built-in scope and is separate from structured filters', () => {
+test('default media type landing is all-types recent (no scope or date pin)', () => {
   assert.equal(DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE, 'unboxing');
   assert.equal(isPhotoLibraryMediaTypeUnset({}), true);
   assert.equal(isPhotoLibraryMediaTypeUnset({ sourceScope: 'all' }), true);
@@ -209,9 +211,11 @@ test('default media type targets the first built-in scope and is separate from s
   assert.equal(isPhotoLibraryMediaTypeUnset({ imageType: 'listing' }), false);
 
   const patch = defaultPhotoLibraryMediaTypePatch();
-  assert.equal(patch.sourceScope, 'unboxing');
+  assert.equal(patch.sourceScope, undefined);
   assert.equal(patch.imageType, undefined);
-  assert.equal(patch.dateFrom, patch.dateTo);
+  assert.equal(patch.dateFrom, undefined);
+  assert.equal(patch.dateTo, undefined);
+  assert.equal(patch.sort, 'recent');
 
   const withStructured = parsePhotoLibraryFilters(
     new URLSearchParams('sourceScope=unboxing&poFinder=SN-1&dateFrom=2026-01-01'),
@@ -219,4 +223,16 @@ test('default media type targets the first built-in scope and is separate from s
   const cleared = clearStructuredPhotoFilters(withStructured);
   assert.equal(cleared.sourceScope, 'unboxing');
   assert.equal(countActivePhotoLibraryFilters(cleared), 0);
+});
+
+test('recencyTabFromFilters maps empty → recent, presets, and custom → all', () => {
+  assert.equal(recencyTabFromFilters({}), 'recent');
+  assert.equal(recencyTabFromFilters(applyRecencyTab('today')), 'today');
+  assert.equal(recencyTabFromFilters(applyRecencyTab('last7')), 'last7');
+  assert.equal(recencyTabFromFilters(applyRecencyTab('all')), 'recent');
+  assert.equal(recencyTabFromFilters(applyRecencyTab('recent')), 'recent');
+  assert.equal(
+    recencyTabFromFilters({ dateFrom: '2026-01-01', dateTo: '2026-01-03' }),
+    'all',
+  );
 });

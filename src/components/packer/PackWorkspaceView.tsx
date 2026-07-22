@@ -22,6 +22,8 @@ import { ContextualSelectionBar } from '@/design-system/components/ContextualSel
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
 import { usePackWorkspaceTab } from '@/hooks/usePackWorkspaceTab';
+import { useNewOrderParam } from '@/hooks/useNewOrderParam';
+import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
 import { shippedOrderToPackPane } from '@/components/packer/shipped-order-to-pack-pane';
 import type { ShippedOrder } from '@/types/orders';
@@ -32,8 +34,9 @@ function TableFallback() {
 
 export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
+  const { newOpen, openNew, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { selectMode, toggleSelectMode, selectedRows, selectionActions } =
+  const { selectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection('unshipped');
 
   const paneMotionProps = {
@@ -46,6 +49,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   };
 
   return (
+    <div className="relative h-full min-h-0 w-full overflow-hidden">
     <DashboardScrollShell
       className="h-full bg-transparent"
       chrome={
@@ -54,8 +58,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
             tab={packView}
             onSelectTab={setPackView}
             controlsSlotRef={setControlsEl}
-            selectMode={selectMode}
-            onToggleSelectMode={toggleSelectMode}
+            onNewOrder={openNew}
           />
         </div>
       }
@@ -100,5 +103,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
         />
       ) : null}
     </DashboardScrollShell>
+    <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+    </div>
   );
 }

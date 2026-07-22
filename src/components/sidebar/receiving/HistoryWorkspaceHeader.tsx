@@ -6,8 +6,8 @@
  * sidebar (`ReceivingHistorySearchSection`) into the top bar.
  *
  * Left:   carton-source tabs — All / Unfound.
- * Right:  [⌕ search] · [⫶ field / sort] · [week pill] · [columns toolbar] ·
- *         [Select trailing].
+ * Right:  [⌕ search] · [⫶ field / sort] · [week pill] · [columns toolbar].
+ * Row select lives in the table left gutter.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,7 +19,6 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
@@ -46,8 +45,6 @@ interface HistoryWorkspaceHeaderProps {
   weekCount: number;
   onPrevWeek: () => void;
   onNextWeek: () => void;
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
 }
 
 export function HistoryWorkspaceHeader({
@@ -56,8 +53,6 @@ export function HistoryWorkspaceHeader({
   weekCount,
   onPrevWeek,
   onNextWeek,
-  selectMode = false,
-  onToggleSelectMode,
 }: HistoryWorkspaceHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -227,11 +222,6 @@ export function HistoryWorkspaceHeader({
 
           <ColumnConfigButton variant="toolbar" />
         </>
-      }
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
       }
     />
   );

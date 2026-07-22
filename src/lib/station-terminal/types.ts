@@ -35,6 +35,10 @@ export interface TerminalMenuItem {
   icon?: ReactNode;
   disabled?: boolean;
   title?: string;
+  /** Marks the active choice (e.g. selected label kind). */
+  selected?: boolean;
+  /** Quiet rule above this item — group outcomes below selections. */
+  separatorBefore?: boolean;
 }
 
 /**

@@ -11,7 +11,7 @@ import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
+import { TriagePoUnboxingSection } from './TriagePoUnboxingSection';
 import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
 import type { UnboxLineController } from '../workspace/line-edit/unbox-line-controller';
@@ -59,8 +59,10 @@ export function buildTriageTabs({
       icon: ClipboardList,
       content: (
         <div className="space-y-4">
+          {/* Arrival Door→Classified→Staged→Ready lives only in the Arrival
+              receiving-details Progress tab (Info → details), not here. */}
           <TriageClassifySection row={row} c={c} />
-          <POUnboxingSection
+          <TriagePoUnboxingSection
             row={row}
             staffId={staffId}
             poItems={linkedPo}
@@ -94,7 +96,7 @@ export function buildTriageTabs({
       label: 'Pairing',
       icon: Link2,
       content: (
-        <POUnboxingSection
+        <TriagePoUnboxingSection
           row={row}
           staffId={staffId}
           poItems={false}

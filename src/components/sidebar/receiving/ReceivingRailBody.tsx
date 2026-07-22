@@ -50,14 +50,14 @@ export function ReceivingRailBody({
   if (mode === 'history') return null;
 
   if (mode === 'triage') {
+    // Eyebrow (Triage · N + pencil dismiss) matches Unbox rail chrome.
+    // Right-pane table left-gutter owns multi-select, not rail dismiss.
     return (
       <TriageSidebarBody
         selectedLineId={selectedLineId}
         selectedRow={selectedRow}
         leadingRow={triageLeadingRow}
         filterText={triageFilterText}
-        // Select lives on TriageWorkspaceHeader — hide the rail pencil.
-        hideEyebrow
       />
     );
   }
@@ -65,7 +65,7 @@ export function ReceivingRailBody({
   // Unbox (and any other non-triage/history mode that still mounts this rail):
   // short Unboxed recent dock only — browse tabs are right-pane table.
   // Eyebrow (Unboxed · N + pencil dismiss) stays on the sidebar rail; the
-  // right-pane BoardSelectToggle owns table multi-select, not rail dismiss.
+  // right-pane table left-gutter owns multi-select, not rail dismiss.
   return (
     <ReceivingFeedRail
       key="rail-unbox-recent"

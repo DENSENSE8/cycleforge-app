@@ -657,6 +657,23 @@ export function patchUnboxRailQtyByCarton(
   if ('quantity_received' in qty) patch.quantity_received = qty.quantity_received;
   if ('quantity_expected' in qty) patch.quantity_expected = qty.quantity_expected;
   if ('workflow_status' in qty) patch.workflow_status = qty.workflow_status;
+  // #region agent log
+  if (receivingId === 14221) {
+    fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
+      body: JSON.stringify({
+        sessionId: '1348cc',
+        runId: 'pre-fix',
+        hypothesisId: 'B',
+        location: 'receiving-queries.ts:patchUnboxRailQtyByCarton',
+        message: 'Unboxed rail qty/status patch for target carton',
+        data: { receivingId, existingId, qty },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
   upsertReceivingRailRows(queryClient, [patch]);
 }
 
@@ -746,6 +763,31 @@ function filterRailSegmentRows(
       return next.length === old.length ? old : next;
     },
   );
+}
+
+/**
+ * After a scan OPENS a carton on the Unbox surface: surgically drop that carton
+ * from every triage rail cache (Prioritize / combined / Unfound) and mark the
+ * triage feeds stale.
+ *
+ * Server membership already excludes unbox-opened cartons (`view=scanned`'s
+ * NOT-unbox-opened arm + unfound-queue `exclude_unbox_intake`), but the triage
+ * rails are `staleTime: 20_000` caches with no cross-surface signal — a soft
+ * return to Arrival kept painting the carton as phantom dock inventory until a
+ * stale refetch. Surgical remove fixes the very next paint; the light
+ * invalidate makes inactive triage queries refetch on their next mount (and
+ * stamps the local-invalidation window so a near-simultaneous Ably echo does
+ * not double-refetch). Unbox rails are never touched here.
+ */
+export function purgeTriageRailsAfterUnboxOpen(
+  queryClient: QueryClient,
+  receivingId: number,
+): void {
+  if (!Number.isFinite(receivingId) || receivingId <= 0) return;
+  for (const segment of TRIAGE_RAIL_SEGMENTS) {
+    filterRailSegmentRows(queryClient, segment, (r) => r.receiving_id !== receivingId);
+  }
+  invalidateTriageReceivingFeeds(queryClient);
 }
 
 /**

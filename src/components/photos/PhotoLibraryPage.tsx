@@ -13,11 +13,9 @@ import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
   photoLibraryViewToggleModes,
   sourceScopeFromFilters,
-  todayFoldersDateFilter,
 } from '@/lib/photos/library-filter-state';
 import { useMediaLibraryShortcuts } from '@/hooks/useMediaLibraryShortcuts';
 import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
-import { photoLibraryShowsGridControls, photoLibraryShowsSecondHeaderControls } from '@/lib/photos/photo-grid-density';
 import { describeFolderBrowseHeader } from '@/components/photos/photo-library-grid/date-folder-tree';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
@@ -28,12 +26,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ZendeskClaimModal } from '@/components/support/zendesk/claim/ZendeskClaimModal';
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
+import { DashboardScrollShell, useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
+import {
+  WORKBENCH_BODY_COLUMN,
+  WORKBENCH_CHROME_COLUMN,
+} from '@/components/dashboard/workbench-shell';
+import { cn } from '@/utils/_cn';
 import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu';
 import { PhotoDateBreadcrumb } from './PhotoDateBreadcrumb';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
-import { PhotoDisplayControls } from './PhotoDisplayControls';
 import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
+import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
 
@@ -49,7 +53,7 @@ export type { LibraryPhoto } from './photo-library-types';
 import type { LibraryPhoto } from './photo-library-types';
 import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 
-/** Right pane: 40px header + inline bulk toolbar + photo grid. Filters in sidebar. */
+/** Right pane: workbench chrome + folders grid. Filters live in the header. */
 export function PhotoLibraryPage() {
   const { filters, display, setView, patch } = usePhotoLibraryUrlState();
   const { query, photos } = usePhotoLibrary(filters);
@@ -154,30 +158,18 @@ export function PhotoLibraryPage() {
   }, [view, photos, scope, filters.dateFrom, filters.dateTo, resolvedPoRef, resolvedTicketId]);
 
   const folderIsLeaf = Boolean(folderBrowse?.isLeaf);
-  const showGridControls = photoLibraryShowsGridControls(view, folderIsLeaf);
-  const showSecondHeaderControls = photoLibraryShowsSecondHeaderControls(view, folderIsLeaf);
   const viewToggleModes = useMemo(() => photoLibraryViewToggleModes(view, folderIsLeaf), [view, folderIsLeaf]);
 
   // Date breadcrumb quick-jump defaults: today + the most recent
   // capture day across the loaded photos — both keyed off `created_at` (PST),
   // never the most-recent PO or photo type.
   const today = useMemo(() => getCurrentPSTDateKey(), []);
-  const foldersDateInitialized = useRef(false);
 
-  // Folders view opens on today when the URL has no date drill (first load).
-  useEffect(() => {
-    if (foldersDateInitialized.current) return;
-    if (view !== 'folders') return;
-    // A finder search owns the result set — don't clobber it with today's date.
-    if (filters.dateFrom || filters.dateTo || filters.poRef || filters.ticketId || filters.poFinder) return;
-    foldersDateInitialized.current = true;
-    patch(todayFoldersDateFilter());
-  }, [view, filters.dateFrom, filters.dateTo, filters.poRef, filters.ticketId, filters.poFinder, patch]);
-
+  // Folders stay folders — do not force Today on view switch (Recent landing owns bare load).
   const handleViewChange = useCallback(
     (next: typeof view) => {
       if (next === 'folders') {
-        patch({ ...todayFoldersDateFilter(), poRef: undefined, ticketId: undefined });
+        patch({ poRef: undefined, ticketId: undefined });
       }
       setView(next);
     },
@@ -249,24 +241,7 @@ export function PhotoLibraryPage() {
     onSelectViewIndex: selectViewByIndex,
   });
 
-  // Infinite scroll: load the next page when the sentinel near the bottom of the
-  // scroll region scrolls into view. `rootMargin` pre-fetches ~600px early so the
-  // grid fills before the user reaches the end. Replaces the old prev/next pager.
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
-          void query.fetchNextPage();
-        }
-      },
-      { rootMargin: '600px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [query.hasNextPage, query.isFetchingNextPage, query]);
+  // Infinite scroll lives in {@link PhotoLibraryLoadMoreSentinel} (needs scroll-shell root).
 
   const metaLine = query.isLoading
     ? 'Loading…'
@@ -559,97 +534,92 @@ export function PhotoLibraryPage() {
 
   return (
     <RightPaneOverlayHost className="flex h-full min-h-0 flex-col">
-    <div className="relative flex h-full min-h-0 flex-col bg-surface-card">
-      {/* Single consolidated header — the display toolbar by default, swapped
-          whole-cloth for the bulk-action bar while selecting. Both are one 40px
-          bordered row, so toggling selection never shifts the layout. */}
-      {selectionActive ? (
-        <PhotoLibraryToolbar
-          rows={selectedPhotos}
-          total={photos.length}
-          selectedCount={selected.size}
-          hasMore={query.hasNextPage}
-          onSelectAllMatching={() => void selectAllMatching()}
-          actions={photoBulkActions}
-          onDeleteSelected={deleteSelectedPhotos}
-          onSelectAll={selectAll}
-          onClear={exitSelectMode}
-        />
-      ) : (
-        <PhotoLibraryHeader
-          breadcrumb={
-            <PhotoDateBreadcrumb
-              filters={displayFilters}
-              today={today}
-              mostRecentDay={mostRecentDay}
-              folderLeafLabel={folderIsLeaf ? folderBrowse?.title : undefined}
-              onNavigate={({ dateFrom, dateTo }) =>
-                patch({ dateFrom, dateTo, poRef: undefined, ticketId: undefined })
-              }
+    <DashboardScrollShell
+      chrome={
+        <div className={WORKBENCH_CHROME_COLUMN}>
+          {selectionActive ? (
+            <PhotoLibraryToolbar
+              rows={selectedPhotos}
+              total={photos.length}
+              selectedCount={selected.size}
+              hasMore={query.hasNextPage}
+              onSelectAllMatching={() => void selectAllMatching()}
+              actions={photoBulkActions}
+              onDeleteSelected={deleteSelectedPhotos}
+              onSelectAll={selectAll}
+              onClear={exitSelectMode}
             />
-          }
-          metaLine={metaLine}
-          sort={filters.sort ?? 'recent'}
-          onSortChange={(sort) => patch({ sort })}
-          controls={
-            <PhotoDisplayControls
+          ) : (
+            <PhotoLibraryWorkspaceHeader
               view={view}
-              onViewChange={handleViewChange}
-              density={gridDensity}
+              folderIsLeaf={folderIsLeaf}
+              gridDensity={gridDensity}
               onDensityChange={setGridDensity}
-              showToggle={showSecondHeaderControls}
-              showDensity={showGridControls}
-              showSelect={showSecondHeaderControls}
+              onViewChange={handleViewChange}
               selectionActive={selectionActive}
               onStartSelect={() => setSelectMode(true)}
               onRefresh={() => void query.refetch()}
               isRefreshing={query.isFetching && !query.isLoading}
             />
-          }
-        />
-      )}
-
-      <div className="relative min-h-0 flex-1 overflow-y-auto p-4 pb-6 lg:p-6">
-        <PhotoLibraryGrid
-          photos={photos}
-          view={view}
-          gridDensity={gridDensity}
-          sourceScope={sourceScopeFromFilters(filters)}
-          dateFrom={filters.dateFrom}
-          dateTo={filters.dateTo}
-          poRef={resolvedPoRef}
-          ticketId={resolvedTicketId}
-          onNavigate={({ dateFrom, dateTo, poRef, ticketId }) =>
-            patch({ dateFrom, dateTo, poRef, ticketId })
-          }
-          onPhotoDeleted={() => void query.refetch()}
-          selectionActive={selectionActive}
-          selected={selected}
-          onSelectTile={selectTile}
-          onToggleGroupSelection={toggleGroupSelection}
-          onPhotoContextMenu={(photo, e) => {
-            e.preventDefault();
-            setCtxMenu({ photo, x: e.clientX, y: e.clientY });
-          }}
-          isLoading={query.isLoading}
-          error={query.error instanceof Error ? query.error.message : null}
-        />
-        {query.hasNextPage ? (
-          <div
-            ref={sentinelRef}
-            className="flex items-center justify-center py-6 text-role-micro font-bold uppercase tracking-widest text-text-faint"
-          >
-            {query.isFetchingNextPage ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading more…
-              </>
-            ) : null}
-          </div>
-        ) : !query.isLoading && photos.length > 0 ? (
-          <p className="mt-6 text-center text-role-micro font-bold uppercase tracking-widest text-text-faint">
-            {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
-          </p>
+          )}
+        </div>
+      }
+    >
+      <div className={cn(WORKBENCH_BODY_COLUMN, 'pt-0')}>
+        {!selectionActive ? (
+          <PhotoLibraryHeader
+            breadcrumb={
+              <PhotoDateBreadcrumb
+                filters={displayFilters}
+                today={today}
+                mostRecentDay={mostRecentDay}
+                folderLeafLabel={folderIsLeaf ? folderBrowse?.title : undefined}
+                onNavigate={({ dateFrom, dateTo }) =>
+                  patch({ dateFrom, dateTo, poRef: undefined, ticketId: undefined })
+                }
+              />
+            }
+            metaLine={metaLine}
+          />
         ) : null}
+
+        <div className="relative min-h-0 flex-1 pb-6">
+          <PhotoLibraryGrid
+            photos={photos}
+            view={view}
+            gridDensity={gridDensity}
+            sourceScope={sourceScopeFromFilters(filters)}
+            dateFrom={filters.dateFrom}
+            dateTo={filters.dateTo}
+            poRef={resolvedPoRef}
+            ticketId={resolvedTicketId}
+            onNavigate={({ dateFrom, dateTo, poRef, ticketId }) =>
+              patch({ dateFrom, dateTo, poRef, ticketId })
+            }
+            onPhotoDeleted={() => void query.refetch()}
+            selectionActive={selectionActive}
+            selected={selected}
+            onSelectTile={selectTile}
+            onToggleGroupSelection={toggleGroupSelection}
+            onPhotoContextMenu={(photo, e) => {
+              e.preventDefault();
+              setCtxMenu({ photo, x: e.clientX, y: e.clientY });
+            }}
+            isLoading={query.isLoading}
+            error={query.error instanceof Error ? query.error.message : null}
+          />
+          {query.hasNextPage ? (
+            <PhotoLibraryLoadMoreSentinel
+              hasNextPage={query.hasNextPage}
+              isFetchingNextPage={query.isFetchingNextPage}
+              onLoadMore={() => void query.fetchNextPage()}
+            />
+          ) : !query.isLoading && photos.length > 0 ? (
+            <p className="mt-6 text-center text-role-micro font-bold uppercase tracking-widest text-text-faint">
+              {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {claimPhotos !== null ? (
@@ -682,7 +652,50 @@ export function PhotoLibraryPage() {
       ) : null}
 
       <MediaLibraryShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
-    </div>
+    </DashboardScrollShell>
     </RightPaneOverlayHost>
+  );
+}
+
+/** Sentinel inside {@link DashboardScrollShell} so IntersectionObserver roots on the scroll port. */
+function PhotoLibraryLoadMoreSentinel({
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+}: {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+}) {
+  const scrollParent = useDashboardScrollParent();
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    const root = scrollParent.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { root, rootMargin: '600px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore, scrollParent]);
+
+  return (
+    <div
+      ref={sentinelRef}
+      className="flex items-center justify-center py-6 text-role-micro font-bold uppercase tracking-widest text-text-faint"
+    >
+      {isFetchingNextPage ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading more…
+        </>
+      ) : null}
+    </div>
   );
 }

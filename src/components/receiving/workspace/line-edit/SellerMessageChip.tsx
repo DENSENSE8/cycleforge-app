@@ -119,7 +119,7 @@ export function SellerMessageChip({
 
   return (
     <>
-      <HoverTooltip label="Seller message draft" asChild>
+      <HoverTooltip label="Seller message draft" placement="below" asChild>
         <IconButton
           ref={anchorRef}
           type="button"

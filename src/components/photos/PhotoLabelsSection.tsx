@@ -45,7 +45,7 @@ export function PhotoLabelsSection({
   };
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 px-1">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Labels</p>
         <div className="flex items-center gap-1">

@@ -5,7 +5,7 @@
  *
  * Logic lives in focused hooks under `@/components/tech/`:
  *   - useTechRightView ........... `?view=` → right-pane mode
- *   - useTechTestingSelection .... Testing workbench pencil multi-select + actions
+ *   - useTechTestingSelection .... Testing workbench always-on multi-select + actions
  *   - useTechOrderPanes .......... active-order + Up Next preview (event bridges)
  *   - useTechDetailOverlays ...... selected log + repair panel (event bridges)
  *
@@ -45,7 +45,6 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     testingSelectedRows,
     testingClaimRow,
     setTestingClaimRow,
-    toggleTestingSelect,
     exitTestingSelect,
     openTestingLine,
     testingBulkActions,
@@ -74,7 +73,6 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               testingLineId={testingLineId}
               onTestingLineChange={setTestingLineId}
               testingSelectMode={testingSelectMode}
-              onToggleTestingSelect={toggleTestingSelect}
               onOpenTestingLine={openTestingLine}
               activeOrderPane={activeOrderPane}
               onCloseActiveOrder={() => setActiveOrderPane(null)}

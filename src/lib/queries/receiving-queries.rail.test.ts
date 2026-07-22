@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { QueryClient } from '@tanstack/react-query';
 import {
   TESTING_RAIL_SEGMENT,
+  TRIAGE_RAIL_SEGMENTS,
   UNBOX_QUEUE_SEGMENT,
   UNBOX_RAIL_SEGMENT,
   patchTestingRailByLine,
   patchUnboxRailQtyByCarton,
   patchUnboxRailTitleByCarton,
+  purgeTriageRailsAfterUnboxOpen,
   receivingRailCartonKey,
   receivingRailReconcileId,
   reconcileUnboxRailAfterLineDelete,
@@ -473,5 +475,70 @@ describe('reconcileUnboxRailAfterLineDelete', () => {
     assert.equal(next[0]?.id, -5);
     assert.equal(next[0]?.client_event_id, 'carton:5');
     assert.equal(receivingRailReconcileId(next[0]!), 'carton:5');
+  });
+});
+
+describe('purgeTriageRailsAfterUnboxOpen', () => {
+  const triageRows = (): ReceivingRailRow[] => [
+    { id: -10, receiving_id: 10, client_event_id: 'carton:10' },
+    { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
+  ];
+
+  it('drops the opened carton from every triage segment, leaves siblings', () => {
+    const qc = new QueryClient();
+    for (const segment of TRIAGE_RAIL_SEGMENTS) {
+      qc.setQueryData(railKey(segment), triageRows());
+    }
+
+    purgeTriageRailsAfterUnboxOpen(qc, 10);
+
+    for (const segment of TRIAGE_RAIL_SEGMENTS) {
+      assert.deepEqual(
+        qc.getQueryData(railKey(segment)),
+        [{ id: 2, receiving_id: 20, client_event_id: 'carton:20' }],
+        `segment ${segment} should drop carton 10 only`,
+      );
+    }
+  });
+
+  it('never touches Unbox rails (Unboxed / Queue keep the carton)', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), triageRows());
+    qc.setQueryData(railKey(UNBOX_QUEUE_SEGMENT), triageRows());
+
+    purgeTriageRailsAfterUnboxOpen(qc, 10);
+
+    assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), triageRows());
+    assert.deepEqual(qc.getQueryData(railKey(UNBOX_QUEUE_SEGMENT)), triageRows());
+  });
+
+  it('marks triage rail queries stale so the next mount refetches server truth', () => {
+    const qc = new QueryClient();
+    for (const segment of TRIAGE_RAIL_SEGMENTS) {
+      qc.setQueryData(railKey(segment), triageRows());
+    }
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), triageRows());
+
+    purgeTriageRailsAfterUnboxOpen(qc, 10);
+
+    for (const segment of TRIAGE_RAIL_SEGMENTS) {
+      assert.equal(
+        qc.getQueryState(railKey(segment))?.isInvalidated,
+        true,
+        `segment ${segment} should be invalidated`,
+      );
+    }
+    assert.equal(qc.getQueryState(railKey(UNBOX_RAIL_SEGMENT))?.isInvalidated, false);
+  });
+
+  it('no-ops on a non-materialized receiving id', () => {
+    const qc = new QueryClient();
+    qc.setQueryData(railKey('triage-combined'), triageRows());
+
+    purgeTriageRailsAfterUnboxOpen(qc, Number.NaN);
+    purgeTriageRailsAfterUnboxOpen(qc, -3);
+
+    assert.deepEqual(qc.getQueryData(railKey('triage-combined')), triageRows());
+    assert.equal(qc.getQueryState(railKey('triage-combined'))?.isInvalidated, false);
   });
 });

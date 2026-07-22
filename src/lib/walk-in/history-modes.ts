@@ -13,7 +13,7 @@
  * Legacy `?category=` coercion still lives in `history-categories.ts`.
  */
 
-import { DollarSign, ShoppingCart, Wrench } from '@/components/Icons';
+import { SalesPrice, ShoppingCart, Wrench } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { RepairTab } from '@/lib/neon/repair-service-queries';
@@ -28,7 +28,7 @@ export const DEFAULT_WALK_IN_HISTORY_MODE: WalkInHistoryMode = 'sales';
 /** Mode rail items (sidebar `HorizontalButtonSlider`). Local Pickup leads with the cart. */
 export const WALK_IN_HISTORY_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart },
-  { id: 'sales', label: 'Sales', icon: DollarSign },
+  { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'repair', label: 'Repair', icon: Wrench },
 ];
 

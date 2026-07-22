@@ -52,6 +52,11 @@ export interface PopoverProps
   level?: ZIndexToken;
   /** Match the trigger width (always true for `*-stretch` placements). */
   matchWidth?: boolean;
+  /**
+   * Close on Escape (default true). Editors that must distinguish Esc-cancel
+   * from outside-click-commit pass false and handle Escape on their own input.
+   */
+  closeOnEscape?: boolean;
   /** Inner padding. Default true. */
   padded?: boolean;
   /** Classes on the styled panel. */
@@ -67,6 +72,7 @@ export function Popover({
   gap = 6,
   level = 'dropdown',
   matchWidth = false,
+  closeOnEscape = true,
   padded = true,
   className,
   children,
@@ -94,6 +100,7 @@ export function Popover({
       gap={gap}
       level={level}
       matchWidth={matchWidth}
+      closeOnEscape={closeOnEscape}
     >
       <AnimatePresence
         onExitComplete={() => {

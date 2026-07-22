@@ -4,10 +4,10 @@
  * Support · Orders primary surface — compose Dashboard To Ship SoT, do not
  * hand-roll a sidebar list.
  *
- * Chrome: WorkbenchChromeHeader + OutboundExactFilters + Board|Grid + search
- * Body:   OutboundKpiStrip + UnshippedTable → OrdersQueueTable family
+ * Chrome: WorkbenchChromeHeader + OutboundExactFilters + search
+ * Body:   OutboundKpiStrip + UnshippedTable → OrdersGridView (Pending grid)
  *
- * URL stays on `/support?mode=orders` (+ `search` / `ustatus` / `view` / …).
+ * URL stays on `/support?mode=orders` (+ `search` / `ustatus` / …).
  * Row open writes `?openOrderId=` for the Station focus pane.
  */
 
@@ -23,14 +23,9 @@ import {
   WORKBENCH_CHROME_COLUMN,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
-import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import {
-  DASHBOARD_ORDER_VIEW_LABEL,
-  getDashboardPendingLayoutFromSearch,
-  type DashboardPendingLayout,
-} from '@/utils/dashboard-search-state';
+import { DASHBOARD_ORDER_VIEW_LABEL } from '@/utils/dashboard-search-state';
 import type { ShippedOrder } from '@/types/orders';
 
 const SUPPORT_ORDERS_PATH = '/support';
@@ -44,6 +39,8 @@ function useSupportOrdersUrl() {
       const params = new URLSearchParams(searchParams.toString());
       params.set('mode', 'orders');
       mutator(params);
+      // Stale board|grid toggle — Pending is grid-only now.
+      params.delete('view');
       const qs = params.toString();
       router.replace(qs ? `${SUPPORT_ORDERS_PATH}?${qs}` : `${SUPPORT_ORDERS_PATH}?mode=orders`, {
         scroll: false,
@@ -53,7 +50,6 @@ function useSupportOrdersUrl() {
   );
 
   const searchQuery = String(searchParams.get('search') || '').trim();
-  const pendingLayout = getDashboardPendingLayoutFromSearch(searchParams);
 
   const setSearch = useCallback(
     (nextValue: string) => {
@@ -69,16 +65,6 @@ function useSupportOrdersUrl() {
     [replaceParams, searchParams],
   );
 
-  const setPendingLayout = useCallback(
-    (next: DashboardPendingLayout) => {
-      replaceParams((params) => {
-        if (next === 'grid') params.set('view', 'grid');
-        else params.delete('view');
-      });
-    },
-    [replaceParams],
-  );
-
   const openOrder = useCallback(
     (record: ShippedOrder) => {
       const id = Number(record.id);
@@ -90,14 +76,13 @@ function useSupportOrdersUrl() {
     [replaceParams],
   );
 
-  return { searchQuery, pendingLayout, setSearch, setPendingLayout, openOrder };
+  return { searchQuery, setSearch, openOrder };
 }
 
 export function SupportOrdersBoard() {
   const [outboundControlsEl, setOutboundControlsEl] = useState<HTMLDivElement | null>(null);
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery());
-  const { searchQuery, pendingLayout, setSearch, setPendingLayout, openOrder } =
-    useSupportOrdersUrl();
+  const { searchQuery, setSearch, openOrder } = useSupportOrdersUrl();
   useToShipFilterHotkeys(true);
 
   const tabs = useMemo(
@@ -110,20 +95,6 @@ export function SupportOrdersBoard() {
       },
     ],
     [queueCounts?.total],
-  );
-
-  const pendingLayoutToggle = (
-    <HorizontalButtonSlider
-      variant="nav"
-      dense
-      aria-label="Pending layout"
-      value={pendingLayout}
-      onChange={(id) => setPendingLayout(id as DashboardPendingLayout)}
-      items={[
-        { id: 'board', label: 'Board' },
-        { id: 'grid', label: 'Grid' },
-      ]}
-    />
   );
 
   return (
@@ -149,7 +120,6 @@ export function SupportOrdersBoard() {
               />
             }
             right={<OutboundExactFilters mode="unshipped" />}
-            trailing={pendingLayoutToggle}
           />
         </div>
       }

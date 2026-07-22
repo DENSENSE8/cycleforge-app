@@ -625,3 +625,15 @@ Code already treats apex without slug as nil org (empty staff). Hosting/DNS is y
 
 > Cross-refs: §A4 (Upstash / app_tenant), §B2 (session collapse hold), §G4 (P3-BIZ-02 / P3-ADM-02 now verify-only),
 > `docs/todo/README.md` owner-gated migrations list, `docs/tier0-go-live-runbook.md`.
+
+---
+
+### K — Support Station full waist (Phase 2 re-key) — **UNAPPLIED migration + deploy ordering**
+
+SoT: [`docs/todo/support-station-full-waist-handoff.md`](../todo/support-station-full-waist-handoff.md). Phases 0–1 (nav + shell + Unbox-shaped ticket focus) are pure UI, already in tree. Phase 2 re-keys `ticket_links` onto `support_ticket_id` (follow-up #2 of [`ticket-stn-many-link-plan.md`](../todo/ticket-stn-many-link-plan.md)).
+
+- ☐ **APPLY the expand migration** `src/lib/migrations/2026-07-21_ticket_links_rekey_support_ticket_id.sql` via `/db-migrate` (dry-run confirmed: it is the only pending file). It is additive + permissive (backfill support_ticket_id → NOT NULL; zendesk_ticket_id → nullable; add `ux_ticket_links_support_entity` + `ux_ticket_links_support_anchor`). Safe under currently-deployed code.
+- ⚠️ **DEPLOY ORDER (hard):** apply the migration **before** deploying the code in this change. `linkTicket` now routes through `linkSupportTicketEntity`, whose `ON CONFLICT (organization_id, support_ticket_id, entity_type, entity_id)` names `ux_ticket_links_support_entity` — which does not exist until the migration applies. Deploying the code first breaks **all** ticket linking (same hazard class as `2026-07-16c`).
+- ☐ After apply: `npm run tenancy:coverage` (support_tickets was already enforced in 2026-07-01f; ticket_links unchanged) and run the VERIFY queries in the migration header (0 null support_ticket_id; ≤1 anchor per support ticket).
+- ☐ **Deferred CONTRACT migration (do NOT author until the support-led writers are deployed):** drop the zendesk-led uniques (`ux_ticket_links_ticket_entity` / `_ticket_primary` / `_ticket_anchor`) + the `is_primary` sync trigger; re-key the READERS (`getTicketEntity`, `listTicketShipmentReferences`, `removeTicketShipmentReference`, `promoteShipmentTicketToReceiving`) and the remaining shipment-reference WRITERS (`linkTicketToShipment`, `addTicketShipmentReference`) from `zendesk_ticket_id` onto `support_ticket_id`. They stay correct for Zendesk tickets in the interim (column still populated).
+- ☐ **Still-open pre-existing gap:** RECEIVING / RECEIVING_LINE parent-delete triggers for `ticket_links` (orphan cleanup). Needs an audit of the right parent table (`receiving` vs `receiving_carton`, `receiving_line` vs `receiving_lines`) — the same audit `2026-07-16` deferred.

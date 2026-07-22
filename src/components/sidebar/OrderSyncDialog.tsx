@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, Loader2, X } from '@/components/Icons';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
@@ -354,6 +354,27 @@ export function OrderSyncDialog({
   exceptions,
 }: OrderSyncDialogProps) {
   const [activeTab, setActiveTab] = useState<TabId>('sheets');
+  const tabsRailRef = useRef<HTMLDivElement | null>(null);
+
+  // #region agent log
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setTimeout(() => {
+      const rail = tabsRailRef.current;
+      const dialog = rail?.closest('[role="dialog"]') as HTMLElement | null;
+      const buttons = rail ? Array.from(rail.querySelectorAll('button')) : [];
+      const tabMetrics = buttons.map((btn) => ({
+        label: (btn.textContent || '').trim(),
+        clientWidth: btn.clientWidth,
+        scrollWidth: btn.scrollWidth,
+        clipped: btn.scrollWidth > btn.clientWidth + 1,
+      }));
+      const body = dialog?.querySelector('.overflow-y-auto') as HTMLElement | null;
+      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'F',location:'OrderSyncDialog.tsx:layout',message:'dialog/tab truncation metrics',data:{dialogW:dialog?.clientWidth??null,dialogH:dialog?.clientHeight??null,railW:rail?.clientWidth??null,bodyScrollH:body?.scrollHeight??null,bodyClientH:body?.clientHeight??null,bodyClipped:(body?(body.scrollHeight>body.clientHeight+1):null),persistedSize:(()=>{try{return JSON.parse(window.localStorage.getItem('order-sync-dialog-size')||'null');}catch{return null;}})(),tabMetrics,sheetsStatus:sheets.status,sheetsInserted:sheets.inserted??null,sheetsDetailsLen:sheets.details?.inserted?.length??null},timestamp:Date.now()})}).catch(()=>{});
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [open, activeTab, sheets, ecwid, exceptions]);
+  // #endregion
 
   // Pill TabSwitch SoT — same solid/accent recipe as WorkbenchChromeHeader
   // (dashboard / Labels top-left). Per-source status stays in the footer.
@@ -440,7 +461,7 @@ export function OrderSyncDialog({
         </div>
       </header>
 
-      <div className="shrink-0 border-b border-border-soft px-4 py-2.5">
+      <div ref={tabsRailRef} className="shrink-0 border-b border-border-soft px-4 py-2.5">
         <TabSwitch
           tabs={switchTabs}
           activeTab={activeTab}

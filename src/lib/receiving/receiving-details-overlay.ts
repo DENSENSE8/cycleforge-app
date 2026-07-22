@@ -44,6 +44,9 @@ export function receivingLineRowToDetailsSeed(row: ReceivingLineRow): Partial<Re
     timestamp: row.received_at ?? row.last_activity_at ?? row.created_at ?? new Date().toISOString(),
     tracking: row.tracking_number ?? undefined,
     status: row.carrier ?? undefined,
+    source: row.receiving_source ?? undefined,
+    source_platform: row.source_platform ?? row.source_platform_pill ?? undefined,
+    intake_type: row.carton_intake_type ?? row.intake_type ?? undefined,
     qa_status: row.qa_status,
     disposition_code: row.disposition_code,
     condition_grade: row.condition_grade,
@@ -60,6 +63,11 @@ export function receivingLineRowToDetailsSeed(row: ReceivingLineRow): Partial<Re
     zoho_purchaseorder_id: row.zoho_purchaseorder_id ?? undefined,
     zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? undefined,
     listing_url: row.receiving_listing_url ?? undefined,
+    staging_location_id: row.staging_location_id ?? undefined,
+    priority_lane: row.priority_lane ?? undefined,
+    pairing_state: row.pairing_state ?? undefined,
+    triage_complete: row.triage_complete ?? undefined,
+    triage_completed_at: row.triage_completed_at ?? undefined,
   };
 }
 

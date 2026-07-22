@@ -5,8 +5,15 @@ import type { Variants } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import {
+  SIDEBAR_MASTER_NAV_MODE_GAP,
+  SIDEBAR_RAIL_DOT_TRACK,
+  SIDEBAR_RAIL_LEADING_PAD,
+  SIDEBAR_RAIL_ROW_PAD_RIGHT,
+} from '@/components/layout/header-shell';
 import { Check, ChevronDown } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { cn } from '@/utils/_cn';
 import { railRelativeTime, type SidebarRailRowContext } from './sidebar-rail-shared';
 import { RailPopover } from './RailPopover';
 import { useRailHoverPreview } from './useRailHoverPreview';
@@ -115,11 +122,12 @@ export function RailRow<TRow>({
       // `layout` so a dismissed row reflows its siblings smoothly.
       layout={!staggerItemVariants}
       {...motionProps}
-      // Right inset lives on the ROW, not the flush list host: it narrows the
-      // `w-full` button so the selection ring + hover fill (both `ring-inset` on
-      // the button box) clear the work-canvas `rounded-tl-2xl` cutout instead of
-      // tucking under it. The button keeps a small inner `pr` for the age.
-      className="relative pr-1.5"
+      // Right inset on the ROW: selection ring clears the canvas cutout and
+      // shares a right edge with the eyebrow pencil. The status dot rides a FLOW
+      // leading track (SIDEBAR_RAIL_LEADING_PAD + SIDEBAR_RAIL_DOT_TRACK) so the
+      // title tucks one tight gap after it — no absolute dot + deep title inset
+      // (that combo opened a ~50px canyon between the dot and the title).
+      className={`relative ${SIDEBAR_RAIL_ROW_PAD_RIGHT}`}
       onMouseEnter={scheduleOpen}
       onMouseLeave={scheduleClose}
     >
@@ -141,43 +149,49 @@ export function RailRow<TRow>({
         disabled={isDisabled}
         aria-disabled={isDisabled || undefined}
         onClick={onClick}
-        // Shift-click range select: stop the browser's native shift-click text
-        // selection from highlighting row labels across the range.
         onMouseDown={(e) => { if (editActive && e.shiftKey) e.preventDefault(); }}
-        // Flush band, inset affordance: the list host stays flush-right
-        // (`SIDEBAR_RAIL_INSET_X = pl-1.5 pr-0`) so its eyebrow / MRU band chrome
-        // hugs the scan-dock edge; the row's box inset lives on the <li> (above)
-        // so the ring clears the rounded canvas cutout. Here `pr-1` is just the
-        // age's breathing room inside that inset affordance.
-        className={`ds-raw-button group relative flex w-full gap-2.5 text-left transition-colors ${isGrouped ? 'pl-3 pr-1' : 'pl-2 pr-1'} ${
-          isDisabled ? 'cursor-wait opacity-80' : ''
-        } ${
+        className={cn(
+          // Leading FLOW track (pl-2 + w-4) holds the dot/checkbox; the title
+          // sits one gap-1.5 after it. No deep title inset — that's the canyon.
+          'ds-raw-button group relative flex w-full items-center text-left transition-colors pr-1',
+          SIDEBAR_RAIL_LEADING_PAD,
+          SIDEBAR_MASTER_NAV_MODE_GAP,
+          isDisabled ? 'cursor-wait opacity-80' : '',
           (editActive ? isChecked : isSelected)
-            ? 'items-center rounded-md bg-blue-50 ring-1 ring-inset ring-blue-400 py-1'
-            : `items-center rounded-md py-1 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`
-        }`}
-      >
-        {editActive ? (
-          <span
-            aria-hidden
-            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors ${
-              isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-border-default bg-surface-card'
-            }`}
-          >
-            {isChecked ? <Check className="h-2.5 w-2.5" /> : null}
-          </span>
-        ) : null}
-        {getStatusDotLabel ? (
-          <HoverTooltip label={getStatusDotLabel(row)} focusable={false} asChild>
-            <span
-              className={`block h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
-              aria-label={getStatusDotLabel(row)}
-            />
-          </HoverTooltip>
-        ) : (
-          <span className={`h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`} aria-hidden />
+            ? 'rounded-md bg-blue-50 ring-1 ring-inset ring-blue-400 py-1'
+            : `rounded-md py-1 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`,
         )}
-        <div className="min-w-0 flex-1">
+      >
+        {/* Leading track — dot hugs the far-left; edit mode swaps in the checkbox
+            (same track width so the title never shifts on toggle). */}
+        <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'flex shrink-0 items-center justify-center')}>
+          {editActive ? (
+            <span
+              aria-hidden
+              data-rail-select-box
+              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition-colors ${
+                isChecked ? 'border-blue-600 bg-blue-600 text-white' : 'border-border-default bg-surface-card'
+              }`}
+            >
+              {isChecked ? <Check className="h-2.5 w-2.5" /> : null}
+            </span>
+          ) : getStatusDotLabel ? (
+            <HoverTooltip label={getStatusDotLabel(row)} focusable={false} asChild>
+              <span
+                data-rail-status-dot
+                className={`block h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
+                aria-label={getStatusDotLabel(row)}
+              />
+            </HoverTooltip>
+          ) : (
+            <span
+              data-rail-status-dot
+              className={`h-2 w-2 shrink-0 rounded-full ${getStatusDot(row)}`}
+              aria-hidden
+            />
+          )}
+        </span>
+        <div data-rail-row-title className="min-w-0 flex-1">
           {renderRowMain(row, { isSelected, isFocused, pkgChip })}
         </div>
         {activityAt != null ? (

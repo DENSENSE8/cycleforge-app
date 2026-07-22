@@ -6,11 +6,19 @@ import type { ThreadConnection } from '@/lib/threads/types';
 import type { TimelineItem } from '@/lib/timeline/types';
 
 export interface SupportContextTicket {
+  /** Internal registry id (support_tickets.id) — the operator PRIMARY `#`. */
   id: number;
+  /** Provider-native display label (claims parity). Operator primary is `id`. */
   label: string;
   provider: string;
   externalTicketId: string | null;
   providerTicketId: number | null;
+  /**
+   * Runtime helpdesk provider display name for THIS ticket's provider (e.g.
+   * "Zendesk"), resolved from the capability-label SoT — never hardcoded in a
+   * view. Labels the "Open in <provider>" deep link + the secondary chip tooltip.
+   */
+  providerLabel: string;
   openUrl: string | null;
   subject: string | null;
   status: string | null;

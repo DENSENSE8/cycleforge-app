@@ -3,7 +3,6 @@
 import type { Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import {
   TRIAGE_WORKSPACE_TAB_LABEL,
@@ -12,21 +11,18 @@ import {
 
 // Active-work tabs first; Done (history-like) sits rightmost with a divider —
 // mirrors UnboxWorkspaceHeader (Queue · Viewed · History).
+// Rail bulk-dismiss uses the sidebar RailEditPencil, not chrome.
 const TABS: TriageWorkspaceTab[] = ['triage', 'found', 'unfound', 'done'];
 
 export function TriageWorkspaceHeader({
   tab,
   onSelectTab,
   controlsSlotRef,
-  selectMode = false,
-  onToggleSelectMode,
   className,
 }: {
   tab: TriageWorkspaceTab;
   onSelectTab: (tab: TriageWorkspaceTab) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
   className?: string;
 }) {
   const { data: unfoundCount } = useQuery({
@@ -75,11 +71,6 @@ export function TriageWorkspaceHeader({
       controlsSlotProps={{ 'data-triage-controls': '' }}
       className={className}
       right={<StaffFilterButton iconOnly align="end" />}
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
-      }
     />
   );
 }

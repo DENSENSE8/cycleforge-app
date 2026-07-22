@@ -1,10 +1,8 @@
 /**
  * Nav icon stroke weights — visual hierarchy for Kinetic Ledger chrome.
  *
- * Law: **modes own icons; pages are text.** Mode glyphs use the heavier
- * stroke so L2 switches read at a glance. Page-layer stroke exists only for
- * rare non-chrome callers (data still carries `page.icon`); master-nav L1
- * rows and page lists do not render page icons.
+ * MasterNav L1 page rows render SoT page icons at the lighter page stroke.
+ * Mode glyphs use the heavier stroke so L2 switches still read at a glance.
  */
 
 import { cn } from '@/utils/_cn';
@@ -13,15 +11,15 @@ type NavIconProps = { className?: string };
 type NavIconComponent = (props: NavIconProps) => JSX.Element;
 
 /**
- * Reserved for non-chrome / fallback page glyphs (not rendered in MasterNav L1).
- * Lighter than mode so a stray page icon never outranks a mode mark.
+ * L1 page glyphs (MasterNav dropdown rows). Lighter than mode so page marks
+ * never outrank L2 mode switches.
  */
 export const NAV_ICON_PAGE_STROKE_CLASS =
-  '![stroke-width:1.5] [&_path]:![stroke-width:1.5] [&_circle]:![stroke-width:1.5] [&_rect]:![stroke-width:1.5] [&_line]:![stroke-width:1.5] [&_polyline]:![stroke-width:1.5]';
+  '![stroke-width:2] [&_path]:![stroke-width:2] [&_circle]:![stroke-width:2] [&_rect]:![stroke-width:2] [&_line]:![stroke-width:2] [&_polyline]:![stroke-width:2]';
 
 /** L2 mode glyphs (rails, dropdown modes, hover modes, MRU jump chips, header now). */
 export const NAV_ICON_MODE_STROKE_CLASS =
-  '![stroke-width:2.25] [&_path]:![stroke-width:2.25] [&_circle]:![stroke-width:2.25] [&_rect]:![stroke-width:2.25] [&_line]:![stroke-width:2.25] [&_polyline]:![stroke-width:2.25]';
+  '![stroke-width:2.75] [&_path]:![stroke-width:2.75] [&_circle]:![stroke-width:2.75] [&_rect]:![stroke-width:2.75] [&_line]:![stroke-width:2.75] [&_polyline]:![stroke-width:2.75]';
 
 export function navIconStrokeClass(layer: 'page' | 'mode', className?: string): string {
   return cn(layer === 'page' ? NAV_ICON_PAGE_STROKE_CLASS : NAV_ICON_MODE_STROKE_CLASS, className);

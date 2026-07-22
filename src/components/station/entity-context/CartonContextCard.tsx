@@ -588,12 +588,13 @@ export function CartonContextCard({
             </AnimatePresence>
             </div>
 
-            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: right side). */}
+            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: pin right,
+                same as Unbox receiving — numbers flush to the bookmark edge). */}
             <div
               className={cn(
                 'flex min-w-0 items-center',
                 density === 'bar'
-                  ? 'min-w-0 flex-nowrap justify-end gap-2'
+                  ? 'ml-auto min-w-0 flex-nowrap justify-end gap-2'
                   : 'flex-wrap gap-2',
               )}
             >
@@ -724,7 +725,7 @@ export function CartonContextCard({
             {showStaffPhotoRow ? (
             <div className="flex shrink-0 items-center gap-2">
               {zendeskTrimmed ? (
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-2">
                   <ReceivingTicketChip
                     value={zendeskTrimmed}
                     display={zendeskChipDisplay}
@@ -740,6 +741,7 @@ export function CartonContextCard({
                   {onToggleTicketView && providerTicketId != null ? (
                     <HoverTooltip
                       label={ticketViewActive ? 'Close ticket editor' : 'Reply on this ticket'}
+                      placement="below"
                       asChild
                     >
                       <IconButton

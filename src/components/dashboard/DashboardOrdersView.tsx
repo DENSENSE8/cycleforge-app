@@ -45,8 +45,6 @@ interface DashboardOrdersViewProps {
   /** Switch the lifecycle tab (To Ship · Packed · Shipped) — writes the URL view flag. */
   onSelectView: (view: DashboardOrderView) => void;
   selectMode: boolean;
-  /** Flip select-mode — handed to each order list's in-toolbar Select toggle. */
-  onToggleSelectMode: () => void;
   selectionEnabled: boolean;
   selectedRows: DashSelectableRow[];
   selectionActions: SelectionAction<DashSelectableRow>[];
@@ -56,7 +54,6 @@ export function DashboardOrdersView({
   orderView,
   onSelectView,
   selectMode,
-  onToggleSelectMode,
   selectionEnabled,
   selectedRows,
   selectionActions,
@@ -78,8 +75,6 @@ export function DashboardOrdersView({
               orderView={orderView}
               onSelectView={onSelectView}
               controlsSlotRef={setOutboundControlsEl}
-              selectMode={selectMode}
-              onToggleSelectMode={onToggleSelectMode}
             />
           </div>
         ) : undefined

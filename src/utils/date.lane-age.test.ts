@@ -40,17 +40,18 @@ describe('getLaneAgeHours / tone', () => {
     assert.ok(h != null && h >= 4.9 && h <= 5.1);
   });
 
-  it('heats tone for older ages', () => {
+  it('heats tone for older ages (progressive SLA)', () => {
     assert.equal(getLaneAgeTone(null), 'text-text-muted');
     assert.equal(getLaneAgeTone(2), 'text-text-muted');
     assert.equal(getLaneAgeTone(12), 'text-yellow-700');
-    assert.equal(getLaneAgeTone(30), 'text-amber-600');
-    assert.equal(getLaneAgeTone(60), 'text-red-600');
+    assert.equal(getLaneAgeTone(30), 'text-amber-600'); // ≥1d
+    assert.equal(getLaneAgeTone(80), 'text-text-warning'); // ≥3d
+    assert.equal(getLaneAgeTone(200), 'text-text-danger'); // ≥8d
   });
 
   it('keeps lane age muted when days-late already owns urgency', () => {
     assert.equal(getLaneAgeToneBesideDeadline(60, 38), 'text-text-muted');
-    assert.equal(getLaneAgeToneBesideDeadline(60, null), 'text-red-600');
+    assert.equal(getLaneAgeToneBesideDeadline(200, null), 'text-text-danger');
     assert.equal(getLaneAgeToneBesideDeadline(12, null), 'text-yellow-700');
   });
 });

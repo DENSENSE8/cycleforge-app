@@ -1,0 +1,99 @@
+/**
+ * Typed contract for the receiving cross-pane event bus — the single source of
+ * truth for every `receiving-*` window CustomEvent name and its payload.
+ *
+ * Why this exists: the receiving surface coordinates its sidebar, right pane,
+ * and workspace through ~110 hand-wired `window.dispatchEvent(new CustomEvent(
+ * 'receiving-…'))` / `addEventListener('receiving-…')` call sites. Untyped and
+ * one-shot, that bus silently drops events when a listener mounts late (the
+ * Suspense mount-order race behind the Unbox refresh-stickiness bug) and hides
+ * every producer/consumer edge behind a string literal.
+ *
+ * The migration target (see `AGENTS.md` → URL-as-SoT + this cluster's docs):
+ *   - durable selection lives in the URL, not events;
+ *   - volatile cross-pane state flows through the TanStack Query cache;
+ *   - the residual fire-and-forget notifications route through THIS registry so
+ *     they are typed, greppable, and counted.
+ *
+ * Dispatch with `emitReceiving(name, detail)`. Subscribe with
+ * `useReceivingEvents({ [name]: (detail) => … })` (`@/hooks/useReceivingEvents`).
+ * A ratchet guard (`receiving-events.guard.test.ts`) bans raw
+ * `new CustomEvent('receiving-…')` / `addEventListener('receiving-…')` outside
+ * the sanctioned bus modules and only lets the count shrink.
+ *
+ * Add a new receiving event by adding its name + payload type here first.
+ */
+
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingPackageUpdatedDetail } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingSelectLineDetail } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { ScanIntakeSurface } from '@/lib/receiving/scan/types';
+import type {
+  NavState,
+  WorkspaceState,
+} from '@/components/receiving/useReceivingWorkspacePane';
+
+/**
+ * Name → detail payload for every receiving cross-pane event. `undefined` marks
+ * a bare signal event (no `detail`). Extend as more of the bus migrates onto the
+ * typed path; the guard's baseline shrinks with each raw call site retired.
+ */
+export interface ReceivingEventDetail {
+  /** Sidebar → pane: open the focused-line workspace for this carton/line. */
+  'receiving-workspace-open': WorkspaceState;
+  /** Close the focused workspace and converge both panes on empty. */
+  'receiving-workspace-close': undefined;
+  /** Pane header prev/next + "Line N of M" mirror. */
+  'receiving-workspace-nav-state': NavState | null;
+  /** Select a line (table/rail click or deep-link restore). */
+  'receiving-select-line': ReceivingSelectLineDetail;
+  /** Full deselect (mode switch, triage sub-view flip). */
+  'receiving-clear-line': undefined;
+  /** Optimistic line patch broadcast; listeners merge by `id`. */
+  'receiving-line-updated': Partial<ReceivingLineRow> & { id: number };
+  /** Carton-level patch broadcast; listeners merge by `receiving_id`. */
+  'receiving-package-updated': ReceivingPackageUpdatedDetail;
+  /** A single line was removed (e.g. last item pulled from a carton). */
+  'receiving-line-deleted': { id?: number };
+  /** A whole carton (receiving log) was removed; detail is the bare carton id. */
+  'receiving-entry-deleted': number;
+  /** A scan is in flight; drives the per-surface skeleton loader. */
+  'receiving-scan-in-flight': {
+    tracking: string;
+    startedAt: number;
+    surface?: ScanIntakeSurface;
+  };
+  /** The in-flight scan resolved; clear the skeleton loader. */
+  'receiving-scan-resolved': undefined;
+}
+
+export type ReceivingEventName = keyof ReceivingEventDetail;
+
+/** Event names whose payload is `undefined` — dispatched without a detail. */
+type BareReceivingEvent = {
+  [K in ReceivingEventName]: ReceivingEventDetail[K] extends undefined ? K : never;
+}[ReceivingEventName];
+
+/**
+ * Typed dispatch for a receiving event. Bare (payload-less) events take no
+ * second argument; all others require their typed detail.
+ *
+ *   emitReceiving('receiving-clear-line');
+ *   emitReceiving('receiving-line-deleted', { id: 42 });
+ */
+export function emitReceiving<K extends BareReceivingEvent>(name: K): void;
+export function emitReceiving<K extends Exclude<ReceivingEventName, BareReceivingEvent>>(
+  name: K,
+  detail: ReceivingEventDetail[K],
+): void;
+export function emitReceiving<K extends ReceivingEventName>(
+  name: K,
+  detail?: ReceivingEventDetail[K],
+): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    detail === undefined
+      ? new CustomEvent(name)
+      : new CustomEvent(name, { detail }),
+  );
+}

@@ -5,7 +5,7 @@
  * Pickup / Repair share a counter shell and diverge on process.
  */
 
-import { DollarSign, Package, Wrench } from '@/components/Icons';
+import { Package, SalesPrice, Wrench } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 
@@ -15,7 +15,7 @@ export type WalkInJob = (typeof WALK_IN_JOBS)[number];
 export const DEFAULT_WALK_IN_JOB: WalkInJob = 'pickup';
 
 export const WALK_IN_JOB_ITEMS: HorizontalSliderItem[] = [
-  { id: 'sales', label: 'Sales', icon: DollarSign },
+  { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'pickup', label: 'Local Pickup', icon: Package },
   { id: 'repair', label: 'Repair', icon: Wrench },
 ];

@@ -126,6 +126,9 @@ export function useOrdersSync() {
 
       let data: Record<string, unknown> = {};
       let lastError: string | undefined;
+      // #region agent log
+      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'C',location:'useOrdersSync.ts:runConnectorSync:start',message:'connector sync request start',data:{provider,body:body??null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       try {
         const res = await fetch(`/api/integrations/${provider}/sync`, {
           method: 'POST',
@@ -134,11 +137,17 @@ export function useOrdersSync() {
           signal: controller.signal,
         });
         data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        // #region agent log
+        fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'A,B,C,E',location:'useOrdersSync.ts:runConnectorSync:response',message:'connector sync response',data:{provider,httpStatus:res.status,ok:data.ok,keys:Object.keys(data),imported:data.imported,updated:data.updated,error:data.error,hasDetails:Boolean((data as {details?:unknown}).details)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         if (!res.ok || data.ok === false) {
           lastError = String(data.error || `HTTP ${res.status}`);
         }
       } catch (err: any) {
         lastError = err?.name === 'AbortError' ? 'Cancelled' : (err?.message || 'Network error');
+        // #region agent log
+        fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'C',location:'useOrdersSync.ts:runConnectorSync:catch',message:'connector sync threw',data:{provider,errorName:err?.name,errorMessage:err?.message||String(err)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
       }
 
       const success = !lastError;
@@ -146,6 +155,9 @@ export function useOrdersSync() {
       const upd = Number(data.updated ?? 0);
       if (success && (ins > 0 || upd > 0)) void refreshDashboard();
       const parts = [ins && `${ins} inserted`, upd && `${upd} updated`].filter(Boolean);
+      // #region agent log
+      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'A',location:'useOrdersSync.ts:runConnectorSync:setter',message:'UI tab state will force empty details',data:{provider,success,ins,upd,forcingEmptyDetails:true,detailRowCount:(Array.isArray((data as any).details?.inserted)?(data as any).details.inserted.length:0)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setter({
         status: success ? 'done' : 'error',
         summary: success

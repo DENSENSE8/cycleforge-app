@@ -6,7 +6,7 @@
  *
  * Left:   purchasing-source tabs — All / Zoho / eBay.
  * Right:  [⌕ search] · [⫶ filters] · [⟳ Sync menu] · pagination ·
- *         [columns toolbar] · [Select trailing].
+ *         [columns toolbar]. Row select lives in the table left gutter.
  *
  * Search + filters write the SAME URL params the list reads (`?rh_q` / `?state` /
  * `?sort` / `?po_from` / `?po_to`). Sync / import actions live in the header
@@ -23,7 +23,6 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { PaneHeaderPagination } from '@/components/ui/pane-header';
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
@@ -45,15 +44,11 @@ interface IncomingWorkspaceHeaderProps {
   total: number;
   /** Current 1-based page index (`?page=`). */
   page: number;
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
 }
 
 export function IncomingWorkspaceHeader({
   total,
   page,
-  selectMode = false,
-  onToggleSelectMode,
 }: IncomingWorkspaceHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -277,11 +272,6 @@ export function IncomingWorkspaceHeader({
 
           <ColumnConfigButton variant="toolbar" />
         </>
-      }
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
       }
     />
   );

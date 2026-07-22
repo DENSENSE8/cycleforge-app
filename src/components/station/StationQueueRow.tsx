@@ -26,6 +26,7 @@ export function StationQueueRow({
   isChecked,
   isSelected,
   isMobile,
+  onToggleSelect,
   onRowClick,
 }: {
   record: QueueRowRecord;
@@ -35,6 +36,8 @@ export function StationQueueRow({
   isChecked: boolean;
   isSelected: boolean;
   isMobile: boolean;
+  /** Left-gutter checkbox — toggles selection without opening the row. */
+  onToggleSelect?: (event: { shiftKey: boolean }) => void;
   onRowClick: (record: QueueRowRecord, event?: { shiftKey: boolean }) => void;
 }) {
   const src = resolveStationSource({
@@ -73,6 +76,11 @@ export function StationQueueRow({
       notesValue={String(record.notes || '')}
       daysLate={null}
       disableEnterAnimation
+      onToggleSelect={
+        onToggleSelect
+          ? (_rec, event) => onToggleSelect(event)
+          : undefined
+      }
       onRowClick={(_rec, event) => onRowClick(record, event)}
     />
   );

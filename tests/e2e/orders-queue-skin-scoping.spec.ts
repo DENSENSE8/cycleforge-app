@@ -3,29 +3,22 @@ import { test, expect, type Locator } from '@playwright/test';
 /**
  * Pending Grid skin SCOPING guard.
  *
- * The Pending → Grid view (`?view=grid`) re-skins the SHARED orders-queue
- * components into a light connected spreadsheet (rounded shell, hairline
- * internal grid, label-only headers). Those exact components are ALSO imported
- * by the flat/shelf `OrdersQueueTable` (Pending board, Packed, …). This spec
- * proves the skin is OPT-IN and never leaks: board stays GRAY / hairline /
- * label-first.
+ * Pending is grid-only (`OrdersGridView` / `LedgerGrid`). Shared queue components
+ * are ALSO imported by Packed (`OrdersQueueTable`). This spec proves the skin is
+ * OPT-IN and never leaks: Packed stays GRAY / hairline / label-first.
  *
  * Token truth (light theme — the default under test):
- *   background-canvas #f8fafc → 248,250,252   (board header, /95 alpha)
+ *   background-canvas #f8fafc → 248,250,252   (packed header, /95 alpha)
  *   background-surface #ffffff → 255,255,255   (grid header + cells)
- *   border-hairline #f1f5f9 → 241,245,249      (board cell gridline)
- *   border-subtle  #e2e8f0 → 226,232,240      (grid-skin outer shell)
- *   border-default #cbd5e1 → 203,213,225      (grid-skin internal 2px stroke)
+ *   border-hairline #f1f5f9 → 241,245,249      (packed cell gridline)
+ *   border-subtle  #e2e8f0 → 226,232,240      (grid-skin outer shell + internal)
  */
 
-const CANVAS_GRAY = '248,250,252'; // board/packed header fill
-const WHITE = '255,255,255'; // grid header + cells
-const HAIRLINE = '241,245,249'; // board cell gridline
-const SHELL = '226,232,240'; // grid outer shell (border-subtle)
-const GRID_STROKE = '203,213,225'; // grid internal stroke (border-default)
+const CANVAS_GRAY = '248,250,252';
+const WHITE = '255,255,255';
+const HAIRLINE = '241,245,249';
+const SUBTLE = '226,232,240';
 
-/** Normalize any computed color — `rgb()`, `rgba()`, or CSS Color-4
- *  `color(srgb r g b / a)` — to `r,g,b` ints. */
 function toRgb(s: string): string {
   let m = s.match(/rgba?\(([^)]+)\)/);
   if (m) {
@@ -43,34 +36,14 @@ const bgRgb = async (loc: Locator) => toRgb(await loc.evaluate((el) => getComput
 const backdropOf = (loc: Locator) =>
   loc.evaluate((el) => getComputedStyle(el).backdropFilter || (getComputedStyle(el) as { webkitBackdropFilter?: string }).webkitBackdropFilter || 'none');
 const cellBorderRgb = async (root: Locator) =>
-  toRgb(await root.locator('[data-order-row-id]').first().locator('[data-col="notes"]').evaluate((el) => getComputedStyle(el).borderRightColor));
+  toRgb(await root.locator('[data-order-row-id]').first().locator('[data-col="stock"]').evaluate((el) => getComputedStyle(el).borderRightColor));
 const glyphCount = (headerRow: Locator, col: string) => headerRow.locator(`[data-col="${col}"] svg`).count();
 
 test.describe('orders-queue Airtable skin scoping (shared components stay gray off-skin)', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'orders-queue grid is a desktop layout');
 
-  test('Pending BOARD — imported header + cells stay GRAY / hairline (no skin leak)', async ({ page }) => {
+  test('Pending GRID — rounded light shell, icon-only headers, always-select, flush padding', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
-    const board = page.locator('[data-testid="column-table-body"]').first();
-    await expect(board).toBeVisible({ timeout: 20_000 });
-    await expect(board.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
-
-    const header = headerRowIn(board);
-    await expect(header).toBeVisible();
-
-    expect(await bgRgb(header), 'board header is the canvas-gray token, not white').toBe(CANVAS_GRAY);
-    expect(await backdropOf(header), 'board header keeps its backdrop blur').toContain('blur');
-
-    expect(await glyphCount(header, 'qty'), 'board qty header has no glyph').toBe(0);
-    expect(await glyphCount(header, 'order'), 'board order header has no glyph').toBe(0);
-
-    expect(await cellBorderRgb(board), 'board cell gridline is the hairline token').toBe(HAIRLINE);
-
-    await page.screenshot({ path: 'test-results/orders-queue-scoping-board-gray.png' });
-  });
-
-  test('Pending GRID view — rounded light shell, icon headers, always-select, compact', async ({ page }) => {
-    await page.goto('/dashboard?unshipped&view=grid');
     const grid = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(grid).toBeVisible({ timeout: 20_000 });
     await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -78,63 +51,78 @@ test.describe('orders-queue Airtable skin scoping (shared components stay gray o
     const header = headerRowIn(grid);
     await expect(header).toBeVisible();
 
-    // Skin ON: opaque white header, no backdrop blur.
     expect(await bgRgb(header), 'grid header is white').toBe(WHITE);
     expect(await backdropOf(header), 'grid header drops the backdrop blur').toBe('none');
 
-    // Icon-only typed headers (T / # / tags / clock / …) — each narrow fact
-    // column leads with a type glyph; human labels live in tooltips.
-    expect(await glyphCount(header, 'qty'), 'grid qty header shows # glyph').toBeGreaterThan(0);
-    expect(await glyphCount(header, 'condition'), 'grid cond header shows tags glyph').toBeGreaterThan(0);
-    expect(await glyphCount(header, 'age'), 'grid age header shows clock glyph').toBeGreaterThan(0);
-    expect(await glyphCount(header, 'platform'), 'grid platform header shows external glyph').toBeGreaterThan(0);
-    expect(await glyphCount(header, 'order'), 'grid order header shows # glyph').toBeGreaterThan(0);
-    expect(await glyphCount(header, 'tracking'), 'grid tracking header shows map glyph').toBeGreaterThan(0);
+    // Icon-only — glyphs visible; text labels are sr-only.
+    expect(await glyphCount(header, 'qty'), 'qty has type glyph').toBeGreaterThanOrEqual(1);
+    expect(await glyphCount(header, 'age'), 'age has type glyph').toBeGreaterThanOrEqual(1);
+    expect(await glyphCount(header, 'order'), 'order has type glyph').toBeGreaterThanOrEqual(1);
+    await expect(header.locator('[data-col="qty"] .sr-only')).toHaveText('Qty');
 
-    // Select bubble always visible (not hover-reveal).
     const selectAll = header.getByRole('checkbox', { name: /select all/i });
     await expect(selectAll).toBeVisible();
     const rowSelect = grid.locator('[data-order-row-id]').first().getByRole('checkbox').first();
     await expect(rowSelect).toBeVisible();
-    const rowSelectOpacity = await rowSelect.evaluate((el) => getComputedStyle(el).opacity);
-    expect(rowSelectOpacity, 'row select bubble is fully visible').toBe('1');
+    expect(await rowSelect.evaluate((el) => getComputedStyle(el).opacity), 'row select visible').toBe('1');
 
-    // Connected internal vertical: mid cell has a visible 2px stroke (not black,
-    // not near-invisible hairline).
-    const notesCell = grid.locator('[data-order-row-id]').first().locator('[data-col="notes"]');
-    const notesStyle = await notesCell.evaluate((el) => {
+    await expect(page.locator('[data-queue-sort-switch]')).toBeVisible();
+
+    const stockCell = grid.locator('[data-order-row-id]').first().locator('[data-col="stock"]');
+    const stockStyle = await stockCell.evaluate((el) => {
       const s = getComputedStyle(el);
       return { width: s.borderRightWidth, color: s.borderRightColor };
     });
-    expect(parseFloat(notesStyle.width), 'grid mid-cell stroke is ≥2px (anchor)').toBeGreaterThanOrEqual(2);
-    expect(toRgb(notesStyle.color), 'grid vertical is border-default (visible)').toBe(GRID_STROKE);
+    expect(parseFloat(stockStyle.width), 'grid mid-cell has a vertical rule').toBeGreaterThan(0);
+    expect(toRgb(stockStyle.color), 'grid vertical is border-subtle').toBe(SUBTLE);
 
-    // Compact row padding — spreadsheet density, not comfortable pillow.
+    // Row container has no vertical pad — cells own the inset so borders connect.
     const rowPad = await grid.locator('[data-order-row-id]').first().evaluate((el) => {
       const s = getComputedStyle(el);
-      return { top: parseFloat(s.paddingTop), bottom: parseFloat(s.paddingBottom) };
+      return { top: parseFloat(s.paddingTop), bottom: parseFloat(s.paddingBottom), left: parseFloat(s.paddingLeft) };
     });
-    expect(rowPad.top, 'grid row top pad is compact (≤4px / py-1)').toBeLessThanOrEqual(4);
-    expect(rowPad.bottom, 'grid row bottom pad is compact (≤4px / py-1)').toBeLessThanOrEqual(4);
+    expect(rowPad.top, 'grid row top pad is 0').toBe(0);
+    expect(rowPad.bottom, 'grid row bottom pad is 0').toBe(0);
+    expect(rowPad.left, 'grid row left pad is 0 (flush to shell)').toBe(0);
 
-    // Last column closes against the shell — no trailing vertical.
     const trackingCell = grid.locator('[data-order-row-id]').first().locator('[data-col="tracking"]');
-    const trackRight = await trackingCell.evaluate((el) => getComputedStyle(el).borderRightWidth);
-    expect(trackRight, 'last column has no trailing vertical').toBe('0px');
+    expect(await trackingCell.evaluate((el) => getComputedStyle(el).borderRightWidth), 'last col no trailing vertical').toBe('0px');
 
-    // Rounded light outer shell.
     const shell = await grid.evaluate((el) => {
       const s = getComputedStyle(el);
       return { radius: s.borderRadius, color: s.borderTopColor, width: s.borderTopWidth };
     });
     expect(parseFloat(shell.radius), 'grid shell is rounded').toBeGreaterThan(0);
     expect(parseFloat(shell.width), 'grid shell has a border').toBeGreaterThan(0);
-    expect(toRgb(shell.color), 'grid shell is border-subtle (light)').toBe(SHELL);
+    expect(toRgb(shell.color), 'grid shell is border-subtle').toBe(SUBTLE);
 
     await page.screenshot({ path: 'test-results/orders-queue-scoping-grid-white.png' });
   });
 
-  test('Packed tab — a second OrdersQueueTable consumer also stays GRAY', async ({ page }) => {
+  test('column header stays sticky at the grid scrollport top', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+    const grid = page.locator('[data-testid="pending-grid-scroll"]').first();
+    await expect(grid).toBeVisible({ timeout: 20_000 });
+    await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
+
+    const headerBand = grid.locator('[data-grid-col-header]').first();
+    await expect(headerBand).toBeVisible();
+    const pos = await headerBand.evaluate((el) => getComputedStyle(el).position);
+    expect(pos, 'header band is position:sticky').toBe('sticky');
+    const top = await headerBand.evaluate((el) => getComputedStyle(el).top);
+    expect(top === '0px' || top === '0', 'header band docks at top:0').toBe(true);
+
+    // Scroll rows; sticky band stays at the scrollport top.
+    const before = await headerBand.boundingBox();
+    await grid.evaluate((el) => {
+      el.scrollTop = Math.min(240, el.scrollHeight);
+    });
+    const after = await headerBand.boundingBox();
+    expect(before && after, 'header still measurable after scroll').toBeTruthy();
+    expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0)), 'sticky header y stays put').toBeLessThan(2);
+  });
+
+  test('Packed tab — a second OrdersQueueTable consumer stays GRAY (no skin leak)', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
     const packedTab = page.getByRole('button', { name: 'Packed', exact: true });
     await expect(packedTab).toBeVisible({ timeout: 20_000 });
@@ -149,6 +137,7 @@ test.describe('orders-queue Airtable skin scoping (shared components stay gray o
     expect(await bgRgb(header), 'packed header is the canvas-gray token, not white').toBe(CANVAS_GRAY);
     expect(await backdropOf(header), 'packed header keeps its backdrop blur').toContain('blur');
     expect(await glyphCount(header, 'qty'), 'packed qty header stays label-first').toBe(0);
+    expect(await cellBorderRgb(packed), 'packed cell gridline is the hairline token').toBe(HAIRLINE);
 
     await page.screenshot({ path: 'test-results/orders-queue-scoping-packed-gray.png' });
   });

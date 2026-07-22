@@ -21,6 +21,7 @@ import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
   RECEIVING_SELECTION_SCOPE,
   type ReceivingLineRow,
@@ -70,7 +71,6 @@ export default function ReceivingDashboard() {
     claimRow,
     setClaimRow,
     exitSelectMode,
-    toggleSelectMode,
     bulkActions,
   } = useReceivingLineBulkSelection({
     scope: RECEIVING_SELECTION_SCOPE,
@@ -82,7 +82,7 @@ export default function ReceivingDashboard() {
     setWorkspace(null);
     setNav(null);
     dispatchReceivingWorkspaceClose();
-    window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+    emitReceiving('receiving-clear-line');
     // Triage stays in triage (its rail auto-selects the next top). Unbox
     // browse-first — clear selection and return to the workbench feed (no
     // jump to History).
@@ -102,7 +102,6 @@ export default function ReceivingDashboard() {
         isIncomingMode={isIncomingMode}
         incomingView={incomingView}
         selectMode={selectMode}
-        onToggleSelectMode={toggleSelectMode}
         selectedRows={selectedRows}
         bulkActions={bulkActions}
         workspace={workspace}
@@ -113,7 +112,7 @@ export default function ReceivingDashboard() {
         incomingDetails={incomingDetails}
         onCloseIncoming={() => {
           setIncomingDetails(null);
-          window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+          emitReceiving('receiving-clear-line');
         }}
         onCloseWorkspace={closeWorkspace}
       />

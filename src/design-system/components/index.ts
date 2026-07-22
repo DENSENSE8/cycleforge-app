@@ -37,3 +37,6 @@ export * from './VerticalSplitStack';
 export * from './SearchableSelectField';
 export * from './DataTable';
 export * from './monitor';
+export * from './DocumentPreviewFrame';
+export * from './DocumentSlideOver';
+export * from './document-preview-mime';

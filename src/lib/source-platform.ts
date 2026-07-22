@@ -8,6 +8,8 @@
  * present two ways again. Mirrors the condition-label SoT pattern.
  */
 
+import { PLATFORM_BRAND_ICON_PATHS } from '@/lib/platform-brand-icons';
+
 export interface SourcePlatformMeta {
   /** Stored `source_platform` value (lowercase, what the DB holds). */
   value: string;
@@ -22,6 +24,13 @@ export interface SourcePlatformMeta {
   text: string;
   /** Tailwind border tone for the chip's underline accent. */
   border: string;
+  /**
+   * Monochrome brand-mark SVG path (24×24, `currentColor`) from the vendored
+   * CC0 set in `src/lib/platform-brand-icons.ts`. Absent → surfaces fall back
+   * to the {@link mark} lettermark (amazon/fba/ecwid/goodwill/other have no
+   * legally-clean simple mark).
+   */
+  icon?: string;
 }
 
 /**
@@ -30,17 +39,17 @@ export interface SourcePlatformMeta {
  * from here. Add a platform once, in this list.
  */
 export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
-  { value: 'ebay',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400' },
+  { value: 'ebay',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', icon: PLATFORM_BRAND_ICON_PATHS.ebay },
   { value: 'amazon',     label: 'Amazon',     mark: 'az', text: 'text-orange-600', border: 'border-orange-600' },
   { value: 'fba',        label: 'FBA',        mark: 'FB', text: 'text-orange-600', border: 'border-orange-600' },
-  { value: 'aliexpress', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500' },
-  { value: 'walmart',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700' },
+  { value: 'aliexpress', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
+  { value: 'walmart',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
   { value: 'goodwill',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600' },
   // ECWID-RS (not plain ECWID): today this pill only appears when the carton
   // was paired with an Ecwid repair-service (-RS) order.
   { value: 'ecwid',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600' },
-  { value: 'square',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600' }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
-  { value: 'shopify',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600' },
+  { value: 'square',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
+  { value: 'shopify',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
   { value: 'other',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis' },
 ];
 
@@ -69,4 +78,21 @@ export function sourcePlatformLabel(value: string | null | undefined): string {
 /** Fixed lettermark for icon-only listing chrome. */
 export function sourcePlatformMark(value: string | null | undefined): string {
   return sourcePlatformMeta(value).mark;
+}
+
+const BY_LABEL = new Map(SOURCE_PLATFORMS.map((p) => [p.label.toLowerCase(), p]));
+
+/**
+ * Resolve a *display label* (e.g. the order-derived channel label "Amazon",
+ * "ebay", "FBA", "ECWID", "ECWID-RS") back to its canonical platform meta.
+ * Order surfaces carry labels rather than stored `source_platform` values —
+ * this is the one bridge so their tones/icons come from the same registry.
+ * Unknown labels → {@link UNKNOWN_PLATFORM}.
+ */
+export function sourcePlatformMetaFromLabel(label: string | null | undefined): SourcePlatformMeta {
+  const key = String(label ?? '').trim().toLowerCase();
+  if (!key) return UNKNOWN_PLATFORM;
+  // Value match first (labels like "ebay"/"FBA" lowercase to the raw value —
+  // this also catches bare "ECWID" → the ECWID-RS entry), then canonical label.
+  return BY_VALUE.get(key) ?? BY_LABEL.get(key) ?? UNKNOWN_PLATFORM;
 }

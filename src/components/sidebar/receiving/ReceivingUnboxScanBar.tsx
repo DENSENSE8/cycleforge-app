@@ -106,6 +106,8 @@ export function ReceivingUnboxScanBar({
       placeholder={armedMode ? `Scan ${active.label}` : 'Ticket · Tracking · PO'}
       autoFocus
       className="w-full"
+      // Align the scan icon/text to the recent rail's dot/title column below.
+      leadingColumn="rail"
       rightPadClass="pr-32"
       isResolving={isResolving}
       icon={

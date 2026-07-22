@@ -20,6 +20,8 @@ export type OrderAssignPayload = {
   itemNumber?: string | null;
   condition?: string | null;
   quantity?: string | null;
+  /** Operator-corrected product title (orders.product_title). */
+  productTitle?: string | null;
   sku?: string | null;
   /** Canonical SKU linkage → orders.sku_catalog_id (resolved via get-title-by-sku). */
   skuCatalogId?: number | null;
@@ -91,6 +93,10 @@ export function useOrderAssignment() {
       }
       if (payload.quantity !== undefined) {
         next.quantity = payload.quantity;
+      }
+      if (payload.productTitle !== undefined) {
+        next.product_title = payload.productTitle;
+        next.productTitle = payload.productTitle;
       }
       if (payload.sku !== undefined) {
         next.sku = payload.sku;
@@ -174,6 +180,7 @@ export function useOrderAssignment() {
             shippingTrackingNumber: payload.shippingTrackingNumber,
             itemNumber: payload.itemNumber,
             condition: payload.condition,
+            productTitle: payload.productTitle,
           },
         })
       );

@@ -249,17 +249,19 @@ export function OrdersQueueTable({
     getId: getRowId,
   });
 
-  // In select mode a click toggles the checkbox instead of opening the detail;
-  // shift-click extends the range from the last-clicked anchor.
+  // In select mode the left-gutter checkbox toggles; row-body click opens detail.
   const handleRowAction = useCallback(
-    (record: ShippedOrder, event?: { shiftKey: boolean }) => {
-      if (selectMode) {
-        toggle(Number(record.id), event?.shiftKey ?? false);
-        return;
-      }
+    (record: ShippedOrder, _event?: { shiftKey: boolean }) => {
       handleRowClick(record);
     },
-    [selectMode, toggle, handleRowClick],
+    [handleRowClick],
+  );
+
+  const handleToggleSelect = useCallback(
+    (record: ShippedOrder, event: { shiftKey: boolean }) => {
+      toggle(Number(record.id), event.shiftKey);
+    },
+    [toggle],
   );
 
   // Render one queue row. Shared by the flat (single-line) case and the children
@@ -314,11 +316,12 @@ export function OrdersQueueTable({
           notesValue={notesValue}
           daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
           queueMode={queueMode}
+          onToggleSelect={selectMode ? handleToggleSelect : undefined}
           onRowClick={handleRowAction}
         />
       );
     },
-    [getStaffName, useWaForDisplay, selectMode, selectedIds, selectedRecord, isMobile, handleRowAction, queueMode, virtualized],
+    [getStaffName, useWaForDisplay, selectMode, selectedIds, selectedRecord, isMobile, handleRowAction, handleToggleSelect, queueMode, virtualized],
   );
 
   const wrapColumnConfig = (node: ReactNode) =>

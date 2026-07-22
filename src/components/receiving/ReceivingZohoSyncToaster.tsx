@@ -39,6 +39,21 @@ export function ReceivingZohoSyncToaster() {
       if (verdict !== 'ok' && verdict !== 'failed' && verdict !== 'skipped') return;
       const rowId = Number(msg?.data?.rowId);
       if (!Number.isFinite(rowId) || rowId <= 0) return;
+      // #region agent log
+      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
+        body: JSON.stringify({
+          sessionId: '1348cc',
+          runId: 'pre-fix',
+          hypothesisId: 'F',
+          location: 'ReceivingZohoSyncToaster.tsx:zohoReceive',
+          message: 'Zoho receive verdict toast only (no rail DONE patch)',
+          data: { rowId, verdict },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       resolvePendingZohoSync({ orgId, lineId: rowId, verdict });
     },
     Boolean(orgId) && Boolean(channel),

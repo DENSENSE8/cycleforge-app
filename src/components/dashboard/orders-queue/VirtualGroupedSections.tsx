@@ -8,17 +8,22 @@ import type { RowGroup } from '@/lib/group-rows';
 
 /**
  * `VirtualGroupedSections<T>` — the generic, record-agnostic windowed renderer
- * for a date-banded list. It is the generalization of the ShippedOrder-only
+ * for a date-ordered list (optionally day-banded). It is the generalization of
+ * the ShippedOrder-only
  * {@link import('./VirtualQueueSections').VirtualQueueSections} (which now
  * delegates here) and the flat-list twin of `VirtualShippedSections`.
  *
  * A surface supplies EITHER folded order groups per day (`orderGroupsByDate`,
  * with a `renderGroup` that owns the singleton/multi-product collapse) OR a flat
  * `daySections` list (each day is just rows — testing history, station logs), and
- * a `renderRow`. Both shapes flatten into ONE linear item stream — a `header`
- * per day, then either `group` items or `row` items — handed to a single
+ * a `renderRow`. Both shapes flatten into ONE linear item stream — optionally a
+ * `header` per day, then either `group` items or `row` items — handed to a single
  * `useVirtualizer`, so only the items intersecting the viewport (plus overscan)
  * are in the DOM regardless of list length.
+ *
+ * **Pending Grid** passes `showDayHeaders={false}`: absolute Date lives in a
+ * per-row column; day-band chrome is omitted. Board / Packed / station feeds
+ * keep sticky {@link DateGroupHeader} bands (`showDayHeaders` default true).
  *
  * The scroll container is caller-owned (`scrollParentRef`). When embedded in a
  * stacked SwimlaneBoard lane that shares the board's single scroll region, pass
@@ -62,9 +67,16 @@ export interface VirtualGroupedSectionsProps<T> {
    * CSS `top` for the pinned day-band header (default `'0'`). A ledger/spreadsheet
    * shell that renders its own sticky column header ABOVE this list passes the
    * header's measured height (e.g. `var(--cf-grid-header-h)`) so day bands dock
-   * directly beneath it instead of colliding at `top:0`.
+   * directly beneath it instead of colliding at `top:0`. Ignored when
+   * `showDayHeaders` is false.
    */
   stickyHeaderTop?: string;
+  /**
+   * When true (default), emit a sticky {@link DateGroupHeader} per day.
+   * When false, flatten to groups/rows only — Pending Grid Date column replaces
+   * floating day chrome.
+   */
+  showDayHeaders?: boolean;
 }
 
 const HEADER_ESTIMATE = 36;
@@ -82,13 +94,16 @@ export function VirtualGroupedSections<T>({
   rowEstimate = ROW_ESTIMATE,
   scrollToKey,
   stickyHeaderTop = '0',
+  showDayHeaders = true,
 }: VirtualGroupedSectionsProps<T>) {
   const items = useMemo<FlatItem<T>[]>(() => {
     const flat: FlatItem<T>[] = [];
     if (orderGroupsByDate) {
       for (const [date, groups] of orderGroupsByDate) {
         const dayTotal = groups.reduce((sum, g) => sum + g.rows.length, 0);
-        flat.push({ kind: 'header', key: `h:${date}`, date, count: dayTotal });
+        if (showDayHeaders) {
+          flat.push({ kind: 'header', key: `h:${date}`, date, count: dayTotal });
+        }
         // `baseStripeIndex` runs across the whole day (group children included)
         // so zebra striping matches the dense section exactly.
         let stripeIndex = 0;
@@ -99,7 +114,9 @@ export function VirtualGroupedSections<T>({
       }
     } else if (daySections) {
       for (const [date, rows] of daySections) {
-        flat.push({ kind: 'header', key: `h:${date}`, date, count: rows.length });
+        if (showDayHeaders) {
+          flat.push({ kind: 'header', key: `h:${date}`, date, count: rows.length });
+        }
         rows.forEach((record, dayIndex) => {
           const key = getRowKey ? `r:${getRowKey(record, dayIndex)}` : `r:${date}:${dayIndex}`;
           flat.push({ kind: 'row', key, record, stripeIndex: dayIndex });
@@ -107,12 +124,15 @@ export function VirtualGroupedSections<T>({
       }
     }
     return flat;
-  }, [orderGroupsByDate, daySections, getRowKey]);
+  }, [orderGroupsByDate, daySections, getRowKey, showDayHeaders]);
 
   // Indices of the day-band headers — candidates for the sticky pin.
   const stickyIndexes = useMemo(
-    () => items.reduce<number[]>((acc, it, i) => (it.kind === 'header' ? (acc.push(i), acc) : acc), []),
-    [items],
+    () =>
+      showDayHeaders
+        ? items.reduce<number[]>((acc, it, i) => (it.kind === 'header' ? (acc.push(i), acc) : acc), [])
+        : [],
+    [items, showDayHeaders],
   );
 
   // The header currently pinned to the top of the viewport, updated inside
@@ -136,12 +156,15 @@ export function VirtualGroupedSections<T>({
     getItemKey: (index) => items[index].key,
     rangeExtractor: useCallback(
       (range: Range) => {
+        if (!showDayHeaders || stickyIndexes.length === 0) {
+          return defaultRangeExtractor(range);
+        }
         const active = [...stickyIndexes].reverse().find((i) => range.startIndex >= i) ?? 0;
         activeStickyIndexRef.current = active;
         const next = new Set([active, ...defaultRangeExtractor(range)]);
         return [...next].sort((a, b) => a - b);
       },
-      [stickyIndexes],
+      [stickyIndexes, showDayHeaders],
     ),
     scrollMargin,
   });

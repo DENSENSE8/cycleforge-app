@@ -52,6 +52,8 @@ export function TriageScanBand({
         placeholder="Scan tracking #"
         autoFocus
         className="w-full"
+        // Align the scan icon/text to the recent rail's dot/title column below.
+        leadingColumn="rail"
         isResolving={isResolving}
       />
     </ScanBandShell>

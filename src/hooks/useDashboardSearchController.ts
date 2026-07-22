@@ -4,10 +4,8 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   getDashboardOrderViewFromSearch,
-  getDashboardPendingLayoutFromSearch,
   normalizeDashboardOrderViewParams,
   type DashboardOrderView,
-  type DashboardPendingLayout,
 } from '@/utils/dashboard-search-state';
 import {
   readDetailsOpenBehaviorPreference,
@@ -27,7 +25,6 @@ export function useDashboardSearchController() {
   const searchParams = useSearchParams();
 
   const orderView = getDashboardOrderViewFromSearch(searchParams);
-  const pendingLayout = getDashboardPendingLayoutFromSearch(searchParams);
   const searchQuery = String(searchParams.get('search') || '').trim();
   const shippedFilterParam = searchParams.get('shippedFilter');
   const shippedFilter: ShippedTypeFilter = useMemo(() => {
@@ -81,14 +78,6 @@ export function useDashboardSearchController() {
     }, '/dashboard');
   }, [updateSearch]);
 
-  // Pending board|grid toggle (`?view=grid`, absence = board). Pending-only.
-  const setPendingLayout = useCallback((next: DashboardPendingLayout) => {
-    updateSearch((params) => {
-      if (next === 'grid') params.set('view', 'grid');
-      else params.delete('view');
-    }, '/dashboard');
-  }, [updateSearch]);
-
   const setShippedFilter = useCallback((value: ShippedTypeFilter) => {
     writeShippedFilterPreference(value);
     updateSearch((params) => {
@@ -131,7 +120,6 @@ export function useDashboardSearchController() {
 
   return {
     orderView,
-    pendingLayout,
     searchQuery,
     shippedFilter,
     shippedSearchField,
@@ -140,7 +128,6 @@ export function useDashboardSearchController() {
     detailsEnabled,
     setSearch,
     setOrderView,
-    setPendingLayout,
     setShippedFilter,
     setShippedSearchField,
     setDetailsOpenBehavior,

@@ -10,7 +10,6 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { BoardSelectToggle } from '@/components/board/BoardSelectToggle';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { SearchField } from '@/design-system/primitives/SearchField';
@@ -42,15 +41,11 @@ export function UnboxWorkspaceHeader({
   tab,
   onSelectTab,
   controlsSlotRef,
-  selectMode = false,
-  onToggleSelectMode,
   className,
 }: {
   tab: UnboxWorkspaceTab;
   onSelectTab: (tab: UnboxWorkspaceTab) => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  selectMode?: boolean;
-  onToggleSelectMode?: () => void;
   className?: string;
 }) {
   const router = useRouter();
@@ -247,11 +242,6 @@ export function UnboxWorkspaceHeader({
             </WorkbenchFilterPopover>
           ) : null}
         </>
-      }
-      trailing={
-        onToggleSelectMode ? (
-          <BoardSelectToggle active={selectMode} onToggle={onToggleSelectMode} />
-        ) : undefined
       }
     />
   );

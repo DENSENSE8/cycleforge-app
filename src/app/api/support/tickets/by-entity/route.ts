@@ -8,6 +8,7 @@ import {
   normalizeReceivingTicketEntityRefs,
 } from '@/lib/support/tickets';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         id: ticket.id,
         label: formatSupportTicketDisplayLabel(ticket),
         provider: ticket.provider,
+        providerLabel: providerCatalogLabel(ticket.provider),
         externalTicketId: ticket.externalTicketId,
         providerTicketId:
           providerTicketId != null && Number.isFinite(providerTicketId) ? providerTicketId : null,

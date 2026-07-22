@@ -47,8 +47,9 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
     labelOpts.find((o) => o.key === activeKind)?.name ?? 'label';
 
   const labelMenuItems = labelOpts.map((opt) => ({
-    label: opt.key === activeKind ? `✓ ${opt.name}` : opt.name,
+    label: opt.name,
     icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
+    selected: opt.key === activeKind,
     onClick: () => {
       r.setSelectedLabelKind?.(opt.key);
       r.printKind?.(opt.key);
@@ -73,6 +74,7 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
       {
         label: `Print only · ${activeName}`,
         icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
+        separatorBefore: labelMenuItems.length > 0,
         onClick: () => r.runPrintLabel(),
         disabled: !r.canPrintReview,
         title: `Print the selected ${activeName} without receiving`,

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Recently-opened Zendesk tickets, persisted to localStorage so the support
- * sidebar can show a "Recently opened" group at the top of the queue (per the
- * brief: recents live in the sidebar, not an overhead bar). Capped + de-duped.
+ * sidebar recent dock can show them (Orders/Unbox recipe: recents in the
+ * sidebar map; full queue lives in the right-pane workbench). Capped + de-duped.
  */
 export interface RecentTicket {
   id: number;

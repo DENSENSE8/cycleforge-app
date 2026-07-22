@@ -72,9 +72,10 @@ export interface WorkbenchChromeHeaderProps {
   /** Right-aligned filters/controls, rendered left of the toolbar portal. */
   right?: ReactNode;
   /**
-   * Far-right chrome slot — always after the table-controls portal (e.g. Select
-   * pencil). Owned by the workspace so it stays top-right even before a table
-   * mounts or when the portal is empty.
+   * Far-right chrome slot — always after the table-controls portal (e.g. Import
+   * / Add CTAs). Owned by the workspace so it stays top-right even before a
+   * table mounts or when the portal is empty. Row select lives in the table
+   * left gutter, not here.
    */
   trailing?: ReactNode;
   /** Ref for the table-toolbar portal target (tables `createPortal` into it). */
@@ -86,7 +87,7 @@ export interface WorkbenchChromeHeaderProps {
 
 /**
  * The rounded-card tab strip: solid `TabSwitch` left · flex spacer · right
- * controls + toolbar portal · trailing (Select). The single content-chrome tab
+ * controls + toolbar portal · trailing CTAs. The single content-chrome tab
  * band for every workbench page (replaces the sidebar mode rail on migrating
  * surfaces).
  */

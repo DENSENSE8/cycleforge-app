@@ -10,6 +10,7 @@ import { TicketStnLinkPopover } from '@/components/support/link/TicketStnLinkPop
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import type { SupportContextBundle } from '@/lib/support/context-types';
+import { primaryTicketLabel, secondaryProviderLabel } from '@/lib/support/ticket-refs';
 import { TicketLinkPopover, invalidateSupportContextCaches } from './TicketLinkPopover';
 
 /**
@@ -29,6 +30,11 @@ export function LinkageStrip({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const { linkage, ticket, linkable } = bundle;
+  // Operator PRIMARY = internal registry id; provider-native id is SECONDARY.
+  const ticketPrimary = ticket ? primaryTicketLabel(ticket.id) : null;
+  const ticketSecondary = ticket
+    ? secondaryProviderLabel({ provider: ticket.provider, externalTicketId: ticket.externalTicketId })
+    : null;
 
   const unlink = useMutation({
     mutationFn: async () => {
@@ -115,7 +121,8 @@ export function LinkageStrip({
         {ticket && linkable && canZendesk ? (
           <div className="flex items-center gap-2">
             <span className="text-role-caption font-semibold text-text-muted">
-              Ticket {ticket.label}
+              Ticket {ticketPrimary}
+              {ticketSecondary ? ` · ${ticketSecondary}` : ''}
               {ticket.subject ? ` · ${ticket.subject}` : ''}
             </span>
             <Button
@@ -160,7 +167,7 @@ export function LinkageStrip({
           open
           onClose={() => setTrackingOpen(false)}
           ticketId={ticket.providerTicketId}
-          ticketLabel={`Ticket ${ticket.label}`}
+          ticketLabel={`Ticket ${ticketPrimary}`}
         />
       ) : null}
     </div>

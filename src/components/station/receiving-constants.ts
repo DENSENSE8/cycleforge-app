@@ -172,22 +172,48 @@ export function getStatusDotBg(
   qtyReceived?: number,
   qtyExpected?: number | null,
 ): string {
+  let reason: 'qty-complete' | 'workflow' | 'fallback' = 'fallback';
+  let result = 'bg-border-emphasis';
   if (
     qtyExpected != null &&
     qtyExpected > 0 &&
     qtyReceived != null &&
     qtyReceived >= qtyExpected
   ) {
-    return 'bg-emerald-500';
+    reason = 'qty-complete';
+    result = 'bg-emerald-500';
+  } else {
+    const value = String(status || '').trim().toUpperCase();
+    reason = 'workflow';
+    if (value === 'EXPECTED') result = 'bg-amber-400';
+    else if (value === 'ARRIVED' || value === 'MATCHED') result = 'bg-blue-500';
+    else if (value === 'UNBOXED') result = 'bg-indigo-500';
+    else if (value === 'AWAITING_TEST' || value === 'IN_TEST') result = 'bg-violet-500';
+    else if (value === 'PASSED' || value === 'DONE') result = 'bg-emerald-500';
+    else if (value.startsWith('FAILED') || value === 'SCRAP' || value === 'RTV') result = 'bg-rose-500';
+    else {
+      reason = 'fallback';
+      result = 'bg-border-emphasis';
+    }
   }
-  const value = String(status || '').trim().toUpperCase();
-  if (value === 'EXPECTED') return 'bg-amber-400';
-  if (value === 'ARRIVED' || value === 'MATCHED') return 'bg-blue-500';
-  if (value === 'UNBOXED') return 'bg-indigo-500';
-  if (value === 'AWAITING_TEST' || value === 'IN_TEST') return 'bg-violet-500';
-  if (value === 'PASSED' || value === 'DONE') return 'bg-emerald-500';
-  if (value.startsWith('FAILED') || value === 'SCRAP' || value === 'RTV') return 'bg-rose-500';
-  return 'bg-border-emphasis';
+  // #region agent log
+  if (String(status || '').toUpperCase() === 'UNBOXED' || String(status || '').toUpperCase() === 'DONE') {
+    fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
+      body: JSON.stringify({
+        sessionId: '1348cc',
+        runId: 'pre-fix',
+        hypothesisId: 'C',
+        location: 'receiving-constants.ts:getStatusDotBg',
+        message: 'Table/header status dot',
+        data: { status, qtyReceived, qtyExpected, reason, result },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
+  return result;
 }
 
 // ─── Shared row-display contract (desktop ⇄ mobile) ──────────────────────────

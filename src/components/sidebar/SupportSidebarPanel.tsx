@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMasterNavEnabled } from '@/components/sidebar/master-nav/MasterNavContext';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
-import { SupportTicketQueue } from '@/components/support/zendesk/queue/SupportTicketQueue';
+import { SupportTicketsRecentRail } from '@/components/support/zendesk/queue/SupportTicketsRecentRail';
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
 import { CallLogSidebar } from '@/components/support/voice/CallLogSidebar';
 import { WarrantyLoggerSidebar } from '@/components/warranty/WarrantyLoggerSidebar';
@@ -20,7 +20,8 @@ import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
  * Contextual sidebar for /support. Modes (the house sidebar-mode contract,
  * `?mode=` is the single source of truth):
  *
- * - tickets   → Zendesk ticket queue → conversation (Workbench; the default).
+ * - tickets   → recently selected dock only; full queue + status tabs live in
+ *   the right-pane workbench (`SupportTicketsBoard` / `?ticket=` focus).
  * - orders    → To Ship filter map (UnshippedSidebar SoT); body is OrdersQueueTable board.
  * - voicemail → voicemail / missed-call follow-up to-do list (Workbench);
  *   selecting one sets `?vm=<id>` for the page body.
@@ -162,7 +163,7 @@ export function SupportSidebarPanel() {
       ) : mode === 'calls' ? (
         <CallLogSidebar modeToggle={modeToggle} />
       ) : (
-        <SupportTicketQueue modeToggle={modeToggle} />
+        <SupportTicketsRecentRail modeToggle={modeToggle} />
       )}
     </div>
   );

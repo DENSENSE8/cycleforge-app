@@ -13,6 +13,10 @@ export interface ReceivingDetailsLog {
   tracking?: string;
   status?: string;
   count?: number;
+  /** Carton `receiving_carton.source` (e.g. unmatched vs provider). */
+  source?: string | null;
+  source_platform?: string | null;
+  intake_type?: string | null;
   qa_status?: string | null;
   disposition_code?: string | null;
   condition_grade?: string | null;
@@ -43,4 +47,11 @@ export interface ReceivingDetailsLog {
   zoho_purchaseorder_number?: string | null;
   /** First-line listing URL when present. */
   listing_url?: string | null;
+  /** Arrival / triage street facts — Progress tab on `/triage` details only. */
+  staging_location_id?: number | null;
+  staging_location_label?: string | null;
+  priority_lane?: string | null;
+  pairing_state?: string | null;
+  triage_complete?: boolean | null;
+  triage_completed_at?: string | null;
 }

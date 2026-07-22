@@ -74,13 +74,13 @@ export interface SwimlaneLaneDef<LaneId extends string> {
 }
 
 /** A selectable sort for the per-lane sort menu. */
-export interface SwimlaneSortOption<SortId extends string> {
+interface SwimlaneSortOption<SortId extends string> {
   id: SortId;
   label: string;
 }
 
 /** Context handed to the consumer's lane-body renderer (the embedded table). */
-export interface SwimlaneLaneBodyContext<Row, LaneId extends string, SortId extends string> {
+interface SwimlaneLaneBodyContext<Row, LaneId extends string, SortId extends string> {
   laneId: LaneId;
   laneLabel: string;
   rows: Row[];

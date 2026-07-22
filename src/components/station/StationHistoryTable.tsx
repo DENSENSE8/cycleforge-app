@@ -10,8 +10,8 @@ import { TableColumnConfigProvider } from '@/components/ui/table-column-config/T
 import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
-import { ToolbarButton } from '@/components/ui/ToolbarButton';
-import { Copy, Pencil, X } from '@/components/Icons';
+import { Copy, X } from '@/components/Icons';
+import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { toTsvBlock } from '@/lib/station/format-station-copy-row';
@@ -128,7 +128,8 @@ export function StationHistoryTable<T>({
   useStationReconnectSync();
 
   // ── Bulk select + keyboard focus (converged rendering only) ───────────────
-  const [selectMode, setSelectMode] = useState(false);
+  // Always-on when `selection` is provided — left gutter ☐, no week-band pencil.
+  const selectMode = Boolean(selection);
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const orderedRecords = useMemo(() => daySections.flatMap(([, recs]) => recs), [daySections]);
   const getRecordId = useCallback(
@@ -137,7 +138,7 @@ export function StationHistoryTable<T>({
   );
   const { selectedIds, toggle } = useTableSelectMode<T>({
     scope: selection?.scope ?? 'station-noop',
-    selectMode: selectMode && Boolean(selection),
+    selectMode,
     rows: orderedRecords,
     getId: getRecordId,
   });
@@ -166,14 +167,11 @@ export function StationHistoryTable<T>({
           index={index}
           queueMode={selection.queueMode}
           selectMode={selectMode}
-          isChecked={selectMode && selectedIds.has(id)}
-          isSelected={!selectMode && focusedId === id}
+          isChecked={selectedIds.has(id)}
+          isSelected={focusedId === id}
           isMobile={isMobile}
-          onRowClick={(mapped, event) => {
-            if (selectMode) {
-              toggle(id, event?.shiftKey ?? false);
-              return;
-            }
+          onToggleSelect={(event) => toggle(id, event.shiftKey)}
+          onRowClick={(mapped) => {
             const source = getStationSourceRecord<T>(mapped) ?? record;
             selection.onOpen(source);
           }}
@@ -217,12 +215,10 @@ export function StationHistoryTable<T>({
         setFocusedId(selection.getRecordId(orderedRecords[next]));
       } else if (e.key === 'Enter' && curIdx >= 0) {
         e.preventDefault();
-        const rec = orderedRecords[curIdx];
-        if (selectMode) toggle(selection.getRecordId(rec), e.shiftKey);
-        else selection.onOpen(rec);
+        selection.onOpen(orderedRecords[curIdx]);
       }
     },
-    [selection, orderedRecords, focusedId, selectMode, toggle],
+    [selection, orderedRecords, focusedId],
   );
 
   const boardEnabled = Boolean(pipeline) && STATION_PIPELINE_BOARDS;
@@ -247,15 +243,6 @@ export function StationHistoryTable<T>({
   );
   const headerControls = (
     <div className="flex items-center gap-2">
-      {selection ? (
-        <ToolbarButton
-          active={selectMode}
-          aria-label={selectMode ? 'Exit select mode' : 'Select rows'}
-          onClick={() => setSelectMode((v) => !v)}
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </ToolbarButton>
-      ) : null}
       {toolbarPortalTarget ? null : optionsMenu}
     </div>
   );
@@ -272,7 +259,7 @@ export function StationHistoryTable<T>({
   // Bulk-action bar — pinned to the bottom of the table's relative region when
   // rows are selected. Copy-TSV + clear (Phase 7 §5.4).
   const bulkBar =
-    selection && selectMode && selectedCount > 0 ? (
+    selection && selectedCount > 0 ? (
       <div className="absolute inset-x-0 bottom-3 z-toast flex justify-center">
         <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5 shadow-lg ring-1 ring-black/5">
           <span className="text-role-caption font-bold text-text-muted">{selectedCount} selected</span>
@@ -288,7 +275,7 @@ export function StationHistoryTable<T>({
           <button
             type="button"
             aria-label="Clear selection"
-            onClick={() => setSelectMode(false)}
+            onClick={() => emitToggleAll(selection.scope, 'none')}
             className="inline-flex items-center rounded-full p-1 text-text-faint transition-colors hover:text-text-default"
           >
             <X className="h-3.5 w-3.5" />

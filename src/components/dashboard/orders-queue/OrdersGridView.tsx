@@ -1,15 +1,22 @@
 'use client';
 
-import { useCallback, type CSSProperties } from 'react';
+import { useCallback, useMemo } from 'react';
 import { getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
+import { useColumnOrder } from '@/components/ui/table-column-config/useColumnOrder';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LedgerGrid } from '@/design-system/components/grid';
-import { ordersQueueColumnVars } from '@/lib/dashboard-order-row-layout';
-import { useColumnWidths } from '@/components/ui/table-column-config/useColumnWidths';
+import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
+import {
+  ORDERS_QUEUE_COLUMNS,
+  orderedOrdersQueueColumns,
+  sanitizeOrdersQueueColumnOrder,
+  type OrdersQueueColumnKey,
+} from '@/lib/dashboard-order-row-layout';
+import { toast } from '@/lib/toast';
 import {
   normalizePersonName,
   resolveRowStatus,
@@ -38,19 +45,13 @@ interface OrdersGridViewProps {
 }
 
 /**
- * **Pending → Grid view** — the flat, full-width spreadsheet sibling to the
- * vertical shelf-board, composed from the house {@link LedgerGrid} primitive.
+ * **Pending grid** — the To Ship spreadsheet, composed from {@link LedgerGrid}.
  *
- * This is the surface where the frozen identity pane (`select · status · Product`)
- * is finally *active*: `scrollX` lets qty…tracking scroll horizontally under the
- * pinned pane. Rows use an OPAQUE zebra (`opaqueStripe`) so nothing bleeds through
- * the frozen cells. Column widths / visibility persist via the same `orders`
- * `staff_preferences` store as every other consumer (providers are inherited from
- * the enclosing {@link UnshippedShelfBoard}).
- *
- * Intentionally self-contained (its own `renderRow`) so Stage 1 touches none of
- * the live `OrdersQueueTable` code paths; the small row-builder overlap is retired
- * when `OrdersQueueTable` migrates onto `LedgerGrid` in Stage 2.
+ * Frozen identity pane (`select · Product`) is active: `scrollX` lets
+ * date…tracking scroll under the pinned pane. Opaque zebra so nothing bleeds
+ * through frozen cells. Column tracks use the SoT defaults (no live resize /
+ * column-config chrome). Absolute ship-by date is a per-row **Date** column —
+ * no floating day bands.
  */
 export function OrdersGridView({
   records,
@@ -68,11 +69,11 @@ export function OrdersGridView({
 }: OrdersGridViewProps) {
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
-  const { widths, setWidth } = useColumnWidths('orders');
+  const { sort } = useQueueDisplaySort();
 
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records,
-    sort: 'priority',
+    sort,
     queueMode: 'fulfillment',
   });
 
@@ -84,10 +85,8 @@ export function OrdersGridView({
   });
 
   const getRowId = useCallback((r: ShippedOrder) => Number(r.id), []);
-  // The grid view keeps selection LIVE regardless of the pencil (Airtable-style
-  // hover-select): the gutter checkboxes toggle the set even when `selectMode` is
-  // off, so `useTableSelectMode` tracks + broadcasts unconditionally here. The
-  // pencil (`selectMode`) still governs whether a row-BODY click toggles vs opens.
+  // The grid view keeps selection LIVE (Airtable-style left gutter): checkboxes
+  // toggle the set; row-body click opens the record.
   const { selectedIds, toggle } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
     selectMode: true,
@@ -95,15 +94,36 @@ export function OrdersGridView({
     getId: getRowId,
   });
 
+  // Per-staff drag-reordered column order (locked `select · title` enforced by
+  // the sanitizer; stale keys — e.g. the retired notes column — drop out).
+  const { order: persistedOrder, setOrder, resetOrder } = useColumnOrder('orders');
+  const orderedColumns = useMemo(() => orderedOrdersQueueColumns(persistedOrder), [persistedOrder]);
+  const isCustomOrder = useMemo(
+    () =>
+      orderedColumns.some((col, i) => col.key !== ORDERS_QUEUE_COLUMNS[i]?.key),
+    [orderedColumns],
+  );
+
+  const handleReorderColumns = useCallback(
+    (nextMovable: OrdersQueueColumnKey[]) => {
+      // Persist the FULL sanitized order (locked keys re-prepended) so the
+      // stored pref is self-describing.
+      setOrder(sanitizeOrdersQueueColumnOrder(nextMovable));
+    },
+    [setOrder],
+  );
+
+  const handleResetColumnOrder = useCallback(() => {
+    resetOrder();
+    toast.success('Column order reset');
+  }, [resetOrder]);
+
   const handleRowAction = useCallback(
-    (record: ShippedOrder, event?: { shiftKey: boolean }) => {
-      if (selectMode) {
-        toggle(Number(record.id), event?.shiftKey ?? false);
-        return;
-      }
+    (record: ShippedOrder, _event?: { shiftKey: boolean }) => {
+      // Always-on left-gutter select: checkbox toggles; row body opens detail.
       handleRowClick(record);
     },
-    [selectMode, toggle, handleRowClick],
+    [handleRowClick],
   );
 
   // Gutter checkbox → toggle this row's selection without opening the record.
@@ -155,11 +175,12 @@ export function OrdersGridView({
           notesValue={notesValue}
           daysLate={getDaysLateNullable(r.deadline_at as string | null | undefined)}
           queueMode="fulfillment"
+          columns={orderedColumns}
           onRowClick={handleRowAction}
         />
       );
     },
-    [getStaffName, selectMode, selectedIds, selectedRecord, isMobile, handleRowAction, handleToggleSelect],
+    [getStaffName, selectMode, selectedIds, selectedRecord, isMobile, handleRowAction, handleToggleSelect, orderedColumns],
   );
 
   const renderGroup = useCallback(
@@ -169,47 +190,54 @@ export function OrdersGridView({
         baseStripeIndex={baseStripeIndex}
         isMobile={isMobile}
         gridSkin
+        columns={orderedColumns}
         renderRow={renderRow}
       />
     ),
-    [isMobile, renderRow],
+    [isMobile, renderRow, orderedColumns],
   );
 
-  const columnVars = ordersQueueColumnVars(widths) as CSSProperties;
-
   return (
-    <LedgerGrid<ShippedOrder>
-      scrollX
-      gridSkin="airtable"
+    // Outer shell owns border + radius + overflow clip so the LedgerGrid scroll
+    // surface keeps overflow-x/y-auto (freeze + virtualization).
+    <div
       data-testid="pending-grid-body"
-      columnVars={columnVars}
-      orderGroupsByDate={orderGroupsByDate}
-      isSearching={Boolean(searchValue.trim())}
-      columnHeader={
-        <OrdersQueueColumnHeader
-          isMobile={isMobile}
-          selectMode={selectMode}
-          selectionScope={selectionScope}
-          onResizeColumn={setWidth}
-          gridSkin
-        />
-      }
-      renderRow={renderRow}
-      renderGroup={renderGroup}
-      emptyState={
-        <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
-          {loading ? 'Loading…' : emptyMessage}
-        </div>
-      }
-      searchEmptyState={
-        <OrderSearchEmptyState
-          query={searchValue}
-          title={searchEmptyTitle}
-          resultLabel={searchResultLabel}
-          clearLabel={clearSearchLabel}
-          onClear={onClearSearch}
-        />
-      }
-    />
+      className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border-subtle bg-surface-card"
+    >
+      <LedgerGrid<ShippedOrder>
+        scrollX
+        gridSkin="airtable"
+        data-testid="pending-grid-scroll"
+        orderGroupsByDate={orderGroupsByDate}
+        isSearching={Boolean(searchValue.trim())}
+        columnHeader={
+          <OrdersQueueColumnHeader
+            isMobile={isMobile}
+            selectMode={selectMode}
+            selectionScope={selectionScope}
+            gridSkin
+            columns={orderedColumns}
+            onReorderColumns={handleReorderColumns}
+            onResetColumnOrder={isCustomOrder ? handleResetColumnOrder : undefined}
+          />
+        }
+        renderRow={renderRow}
+        renderGroup={renderGroup}
+        emptyState={
+          <div className="mx-auto max-w-xs rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-muted">
+            {loading ? 'Loading…' : emptyMessage}
+          </div>
+        }
+        searchEmptyState={
+          <OrderSearchEmptyState
+            query={searchValue}
+            title={searchEmptyTitle}
+            resultLabel={searchResultLabel}
+            clearLabel={clearSearchLabel}
+            onClear={onClearSearch}
+          />
+        }
+      />
+    </div>
   );
 }

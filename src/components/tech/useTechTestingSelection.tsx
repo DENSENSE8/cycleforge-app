@@ -3,10 +3,9 @@
 /**
  * Testing browse bulk selection for the tech dashboard. A thin wrapper over the
  * shared {@link useReceivingLineBulkSelection} (Copy / Print / Ticket / Send +
- * claim modal). Select toggles via {@link TestingWorkspaceHeader}
- * `BoardSelectToggle`. This layer only supplies the tech-specific scope and
- * copy format. Active when Testing mode is showing the history list (no line
- * selected).
+ * claim modal). Selection is always on while the Testing history browse is
+ * active (no line open). This layer only supplies the tech-specific scope and
+ * copy format.
  */
 
 import { useCallback } from 'react';
@@ -35,7 +34,6 @@ export interface TechTestingSelection {
   testingSelectedRows: ReceivingLineRow[];
   testingClaimRow: ReceivingLineRow | null;
   setTestingClaimRow: ReceivingLineBulkSelection['setClaimRow'];
-  toggleTestingSelect: () => void;
   exitTestingSelect: () => void;
   /** History row already opens via `dispatchSelectLine`; no URL hop needed. */
   openTestingLine: () => void;
@@ -51,7 +49,6 @@ export function useTechTestingSelection(
     selectedRows,
     claimRow,
     setClaimRow,
-    toggleSelectMode,
     exitSelectMode,
     bulkActions,
   } =
@@ -70,7 +67,6 @@ export function useTechTestingSelection(
     testingSelectedRows: selectedRows,
     testingClaimRow: claimRow,
     setTestingClaimRow: setClaimRow,
-    toggleTestingSelect: toggleSelectMode,
     exitTestingSelect: exitSelectMode,
     openTestingLine,
     testingBulkActions: bulkActions,

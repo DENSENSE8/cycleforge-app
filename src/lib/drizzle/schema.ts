@@ -1187,6 +1187,33 @@ export const shipmentLinks = pgTable('shipment_links', {
 }));
 
 /**
+ * Platform-agnostic support ticket registry (migration 2026-07-01f_support_tickets.sql).
+ *
+ * Operators see `id` as the ticket number (#42). Provider-native ids (Zendesk
+ * today; Freshdesk/internal later) live in `external_ticket_id`; `provider` is a
+ * CHECK'd discriminator ('zendesk' | 'internal') — modeled as plain text here
+ * (Drizzle has no first-class enumerated-CHECK column). ticket_links.support_ticket_id
+ * FKs this ON DELETE CASCADE.
+ */
+export const supportTickets = pgTable('support_tickets', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  // CHECK (provider IN ('zendesk','internal')) — enforced in the DB migration.
+  provider: text('provider').notNull().default('zendesk'),
+  externalTicketId: text('external_ticket_id'),
+  subjectCache: text('subject_cache'),
+  statusCache: text('status_cache'),
+  createdBy: integer('created_by').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  providerExternalUx: uniqueIndex('ux_support_tickets_provider_external')
+    .on(table.organizationId, table.provider, table.externalTicketId)
+    .where(sql`external_ticket_id IS NOT NULL`),
+  orgIdx: index('idx_support_tickets_org').on(table.organizationId, table.id),
+}));
+
+/**
  * Universal support-ticket ↔ internal-entity map (migration 2026-06-01_ticket_links.sql).
  *
  * MANY rows per ticket, exactly ONE flagged `is_primary` — the same shape
@@ -1216,18 +1243,31 @@ export const shipmentLinks = pgTable('shipment_links', {
 export const ticketLinks = pgTable('ticket_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
-  zendeskTicketId: bigint('zendesk_ticket_id', { mode: 'number' }).notNull(),
+  // Nullable provider cache as of 2026-07-21 (re-key onto support_ticket_id):
+  // internal tickets carry no Zendesk id.
+  zendeskTicketId: bigint('zendesk_ticket_id', { mode: 'number' }),
+  // The platform-agnostic key. NOT NULL as of 2026-07-21; anchor writes conflict
+  // on ux_ticket_links_support_entity.
+  supportTicketId: bigint('support_ticket_id', { mode: 'number' }).notNull(),
   // 'RECEIVING' | 'RECEIVING_LINE' | 'SHIPMENT' | 'ZENDESK_TICKET' | 'SERIAL_UNIT'
   // | 'voicemail' | 'ORDER' | 'FBA_SHIPMENT' | 'REPAIR' | 'WARRANTY_CLAIM' | …
   entityType: text('entity_type').notNull(),
   entityId: bigint('entity_id', { mode: 'number' }).notNull(),
-  /** Exactly one per (organization_id, zendesk_ticket_id) — see ticketPrimaryUx. */
+  /** Exactly one per ticket — see ticketPrimaryUx / supportAnchorUx (kept in sync
+   *  with link_role by fn_sync_ticket_links_link_role until the contract phase). */
   isPrimary: boolean('is_primary').notNull().default(false),
-  supportTicketId: bigint('support_ticket_id', { mode: 'number' }),
+  /** 'anchor' (what the ticket is about) | 'reference' (other entities it touches). */
+  linkRole: text('link_role').notNull().default('reference'),
   createdBy: integer('created_by').references(() => staff.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
+  // Support-led invariants (2026-07-21 re-key) — the arbiter for anchor writes
+  // and the first index that enforces one-anchor-per-ticket for INTERNAL tickets.
+  supportEntityUx: uniqueIndex('ux_ticket_links_support_entity').on(table.organizationId, table.supportTicketId, table.entityType, table.entityId),
+  supportAnchorUx: uniqueIndex('ux_ticket_links_support_anchor').on(table.organizationId, table.supportTicketId).where(sql`link_role = 'anchor'`),
+  // Legacy zendesk-led invariants — still present (dropped by the deploy-gated
+  // CONTRACT migration once every writer uses the support-led arbiter).
   ticketEntityUx: uniqueIndex('ux_ticket_links_ticket_entity').on(table.organizationId, table.zendeskTicketId, table.entityType, table.entityId),
   ticketPrimaryUx: uniqueIndex('ux_ticket_links_ticket_primary').on(table.organizationId, table.zendeskTicketId).where(sql`is_primary`),
   orgEntityIdx: index('idx_ticket_links_org_entity').on(table.organizationId, table.entityType, table.entityId),

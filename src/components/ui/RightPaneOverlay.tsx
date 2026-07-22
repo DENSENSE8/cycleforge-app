@@ -14,7 +14,11 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
-import { useBodyScrollLock, useEscapeClose } from '@/design-system/hooks';
+import {
+  useBodyScrollLock,
+  useEscapeClose,
+  useHorizontalEdgeResize,
+} from '@/design-system/hooks';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
@@ -73,7 +77,7 @@ interface RightPaneOverlayProps {
    * drawer runs top-to-bottom over the global header too (the audit log).
    */
   anchor?: 'pane' | 'viewport';
-  /** Slide-over width in px for `align="right"`. Ignored for `center`. */
+  /** Slide-over width in px for `align="right"`. Ignored for `center`. Default / seed when resizable. */
   width?: number;
   /** Dim + click-to-close layer. Covers the WHOLE viewport (sidebar + header). Default true. */
   backdrop?: boolean;
@@ -81,13 +85,18 @@ interface RightPaneOverlayProps {
   lockScroll?: boolean;
   /** Close on Escape. Default true. */
   closeOnEscape?: boolean;
-  /** Bottom-right drag-to-resize grip. Center align only. Default false. */
+  /**
+   * Drag-to-resize. Center → bottom-right corner grip. Right → left-edge
+   * handle (document slide-overs). Default false.
+   */
   resizable?: boolean;
   /** localStorage key to persist the resized dimensions across opens. */
   storageKey?: string;
   /** Resize lower clamps in px. */
   minWidth?: number;
   minHeight?: number;
+  /** Leave at least this many px of main content when resizing a right slide-over. */
+  maxWidthPad?: number;
   /** Extra classes on the panel surface (the white card / drawer). */
   className?: string;
   children: ReactNode;
@@ -122,6 +131,7 @@ export function RightPaneOverlay({
   storageKey,
   minWidth = 420,
   minHeight = 360,
+  maxWidthPad = 240,
   className,
   children,
   'aria-label': ariaLabel,
@@ -133,6 +143,14 @@ export function RightPaneOverlay({
   const host = anchor === 'viewport' ? null : hostFromContext;
   useBodyScrollLock(open && lockScroll);
   useEscapeClose(open && closeOnEscape, onClose);
+
+  const rightEdgeResize = useHorizontalEdgeResize({
+    storageKey: align === 'right' && resizable ? storageKey : undefined,
+    defaultWidth: width,
+    minWidth,
+    maxWidthPad,
+    enabled: open && align === 'right' && resizable,
+  });
 
   // Keep the portal mounted through exit animations, then tear it down so an
   // invisible backdrop can't keep intercepting clicks after close.
@@ -255,9 +273,10 @@ export function RightPaneOverlay({
 
   // A resized center panel switches to explicit px dims; `none` lifts the
   // className max-* clamps so the operator can grow past the default frame.
+  // Right slide-overs use the horizontal edge-resize SoT when `resizable`.
   const panelStyle: CSSProperties | undefined =
     align === 'right'
-      ? { width }
+      ? { width: resizable ? rightEdgeResize.width : width }
       : resizable && size
         ? { width: size.w, height: size.h, maxWidth: 'none', maxHeight: 'none' }
         : undefined;
@@ -298,6 +317,18 @@ export function RightPaneOverlay({
             className={cn('relative flex flex-col overflow-hidden bg-surface-card', panelClass, className)}
           >
             {children}
+            {resizable && align === 'right' ? (
+              <HoverTooltip label="Drag to resize" asChild focusable={false}>
+                <div
+                  {...rightEdgeResize.edgeHandleProps}
+                  className={cn(
+                    'absolute -left-0.5 top-0 z-10 h-full w-1.5 cursor-col-resize bg-transparent transition-colors',
+                    'hover:bg-accent-bg/40 active:bg-accent-bg/60',
+                    rightEdgeResize.isDragging && 'bg-accent-bg/60',
+                  )}
+                />
+              </HoverTooltip>
+            ) : null}
             {resizable && align === 'center' ? (
               <HoverTooltip label="Drag to resize" asChild focusable={false}>
                 <div

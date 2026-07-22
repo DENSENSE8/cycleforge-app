@@ -17,8 +17,7 @@ import { VoicemailDetail } from '@/components/support/voice/VoicemailDetail';
 import { CallLogView } from '@/components/support/voice/CallLogView';
 import { IssuesWorkspace } from '@/components/support/issues/IssuesWorkspace';
 import { SupportOrdersWorkspace } from '@/components/support/orders/SupportOrdersWorkspace';
-import { SupportTicketDetail } from './chat/SupportTicketDetail';
-import { SupportTicketQueue } from './queue/SupportTicketQueue';
+import { SupportTicketsWorkspace } from './SupportTicketsWorkspace';
 
 const WarrantyWorkspace = dynamic(
   () => import('@/components/warranty/WarrantyWorkspace').then((m) => m.WarrantyWorkspace),
@@ -30,10 +29,11 @@ const WarrantyWorkspace = dynamic(
 
 /**
  * /support page body. The contextual sidebar (SupportSidebarPanel) owns the
- * per-mode picker/filter; this body shows the selected detail / stream and
- * reacts to the same `?mode=` URL param:
+ * per-mode map (filters / recents); this body is the visual display and reacts
+ * to the same `?mode=` URL param:
  *
- * - tickets   → selected Zendesk conversation (`?ticket=`).
+ * - tickets   → full queue workbench (`SupportTicketsBoard`) + Station focus
+ *   when `?ticket=` is set. Sidebar shows recently selected only.
  * - orders    → Dashboard To Ship board (`UnshippedTable` / OrdersQueueTable) +
  *   Station order focus when `?openOrderId=` is set.
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
@@ -41,15 +41,14 @@ const WarrantyWorkspace = dynamic(
  * - warranty  → Warranty Logger (coverage + claims table + claim detail).
  * - issues    → Reported-Issues console (KPI strip + fact stack, `?issueId=`).
  *
- * Below md the contextual sidebar isn't shown, so the mode's list falls back to
- * rendering here (full-screen list ⇄ detail swap) for tickets/voicemail/issues/orders.
+ * Below md the contextual sidebar isn't shown, so tickets/orders still render
+ * their board here; voicemail/issues keep list ⇄ detail swap.
  */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = parseSupportMode(searchParams.get('mode'));
-  const ticketId = Number(searchParams.get('ticket')) || null;
   const vmId = Number(searchParams.get('vm')) || null;
 
   const canTickets = !isLoaded || has('integrations.zendesk');
@@ -71,7 +70,7 @@ export function SupportWorkspace() {
     );
   }
 
-  const clearParam = (key: 'ticket' | 'vm') => {
+  const clearParam = (key: 'vm') => {
     const sp = new URLSearchParams(searchParams.toString());
     sp.delete(key);
     const qs = sp.toString();
@@ -202,29 +201,10 @@ export function SupportWorkspace() {
     );
   }
 
-  // ── Tickets — Workbench (the existing Zendesk console; default) ────────────
+  // ── Tickets — workbench board + Station focus (Orders/Unbox recipe) ─────────
   return (
     <div className="flex h-full min-h-0 w-full bg-surface-canvas">
-      {/* Mobile/tablet (<md): no contextual sidebar, so the queue lives here. */}
-      {!ticketId ? (
-        <div className="flex h-full w-full flex-col border-r border-border-soft bg-surface-card md:hidden">
-          <SupportTicketQueue />
-        </div>
-      ) : null}
-
-      {/* Detail: full page on md+, full screen on mobile once a ticket is picked. */}
-      <div className={`${ticketId ? 'flex' : 'hidden md:flex'} h-full min-h-0 w-full flex-col`}>
-        {ticketId != null ? (
-          <SupportTicketDetail ticketId={ticketId} onBack={() => clearParam('ticket')} />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <EmptyState
-              title="Select a ticket"
-              description="Choose a ticket from the queue to view the conversation."
-            />
-          </div>
-        )}
-      </div>
+      <SupportTicketsWorkspace />
     </div>
   );
 }

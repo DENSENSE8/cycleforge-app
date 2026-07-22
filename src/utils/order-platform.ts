@@ -1,3 +1,5 @@
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+
 export function getOrderPlatformLabel(orderId: string | null | undefined, accountSource: string | null | undefined): string {
   const oid = String(orderId ?? '').trim();
   if (oid === 'Not available' || oid === 'N/A') return '';
@@ -40,28 +42,32 @@ export function isFbaOrder(orderId: string | null | undefined, accountSource: st
   return normalizedOrderId.includes('FBA') || normalizedAccountSource === 'fba';
 }
 
-const PLATFORM_COLORS: Record<string, { text: string; border: string }> = {
-  amazon: { text: 'text-orange-600', border: 'border-orange-600' },
-  fba: { text: 'text-orange-600', border: 'border-orange-600' },
-  ebay: { text: 'text-yellow-400', border: 'border-yellow-400' },
-  ecwid: { text: 'text-blue-600', border: 'border-blue-600' },
+/**
+ * Order-channel tones converge on the source-platform SoT
+ * (`src/lib/source-platform.ts`) so a platform can never present two hues.
+ * Only channels with NO `source_platform` entry keep a local tone here
+ * (zoho / mercari — order-derived labels that aren't receiving platforms).
+ */
+const EXTRA_PLATFORM_COLORS: Record<string, { text: string; border: string }> = {
   zoho: { text: 'text-red-600', border: 'border-red-600' },
-  walmart: { text: 'text-amber-800', border: 'border-amber-800' },
   mercari: { text: 'text-purple-600', border: 'border-purple-600' },
-  // ds-allow-raw-neutral: identity hue — Shopify brand black among colored platform siblings
-  shopify: { text: 'text-black', border: 'border-black' },
 };
 
 const DEFAULT_PLATFORM_COLOR = { text: 'text-text-faint', border: 'border-border-emphasis' };
 
-export function getOrderPlatformColor(label: string): string {
+function orderPlatformTone(label: string): { text: string; border: string } {
   const key = label.toLowerCase().split(/\s*-\s*/)[0].trim();
-  return (PLATFORM_COLORS[key] || DEFAULT_PLATFORM_COLOR).text;
+  const meta = sourcePlatformMetaFromLabel(key);
+  if (meta.value) return { text: meta.text, border: meta.border };
+  return EXTRA_PLATFORM_COLORS[key] || DEFAULT_PLATFORM_COLOR;
+}
+
+export function getOrderPlatformColor(label: string): string {
+  return orderPlatformTone(label).text;
 }
 
 export function getOrderPlatformBorderColor(label: string): string {
-  const key = label.toLowerCase().split(/\s*-\s*/)[0].trim();
-  return (PLATFORM_COLORS[key] || DEFAULT_PLATFORM_COLOR).border;
+  return orderPlatformTone(label).border;
 }
 
 export function getOrderSourceTag(

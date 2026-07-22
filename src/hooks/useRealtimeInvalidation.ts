@@ -146,7 +146,7 @@ export function useRealtimeInvalidation({
   useAblyChannel(
     stationChannel,
     'receiving-log.changed',
-    () => {
+    (msg?: { data?: { rowId?: unknown; zohoReceive?: unknown; source?: unknown } }) => {
       // The Ably echo of a LOCAL scan/receive arrives just after this client
       // already ran invalidateReceivingFeeds optimistically. Skip re-invalidating
       // the two overlapping desktop-rail roots in that window so one scan doesn't
@@ -155,6 +155,27 @@ export function useRealtimeInvalidation({
       // no desktop-rail observers (mobile / serials / pending), so invalidating
       // them here either way is a harmless no-op.
       const localCovered = receivingFeedsRecentlyInvalidatedLocally();
+      // #region agent log
+      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
+        body: JSON.stringify({
+          sessionId: '1348cc',
+          runId: 'pre-fix',
+          hypothesisId: 'B',
+          location: 'useRealtimeInvalidation.ts:receiving-log.changed',
+          message: 'Ably receiving-log.changed invalidation gate',
+          data: {
+            localCovered,
+            willInvalidateRails: !localCovered,
+            rowId: msg?.data?.rowId ?? null,
+            zohoReceive: msg?.data?.zohoReceive ?? null,
+            source: msg?.data?.source ?? null,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       if (!localCovered) queryClient.invalidateQueries({ queryKey: ['receiving'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-pending-unboxing'] });
       if (!localCovered) queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });

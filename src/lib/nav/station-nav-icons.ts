@@ -4,10 +4,10 @@
  * data, receiving mode pills, tech top-mode pills, shipping modes, and packing
  * modes.
  *
- * Chrome law: **modes own icons; pages are text** (MasterNav L1 / page lists
- * do not render {@link STATION_PAGE_ICONS}). Mode stroke is heavier than page
- * (see icons/stations.tsx + icons/nav-weight.tsx). Mode *glyphs* must be unique
- * across floor stations — enforced via {@link MODE_ICON_GLYPH_KEYS}.
+ * MasterNav L1 renders {@link STATION_PAGE_ICONS} (and other page SoT icons).
+ * Mode stroke is heavier than page (see icons/stations.tsx + icons/nav-weight.tsx).
+ * Mode *glyphs* must be unique across floor stations — enforced via
+ * {@link MODE_ICON_GLYPH_KEYS}.
  */
 
 import {
@@ -37,7 +37,7 @@ type StationPageId = 'receiving' | 'outbound' | 'tech' | 'packer';
 
 /**
  * Floor-station page icons on SIDEBAR_PAGE_NAV / APP_SIDEBAR_NAV data.
- * Not rendered in MasterNav L1 or mobile page rows — modes own chrome icons.
+ * Rendered in MasterNav L1; mobile page rows stay label-only for now.
  */
 export const STATION_PAGE_ICONS: Record<StationPageId, NavIconComponent> = {
   receiving: StationReceiving,

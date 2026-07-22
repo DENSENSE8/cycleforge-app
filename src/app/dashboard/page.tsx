@@ -6,7 +6,7 @@
  * Logic lives in focused hooks:
  *   - useDashboardSearchController .. URL ⇄ active view + search (existing)
  *   - useDashboardSelectedOrder ..... selected order + details context (existing)
- *   - useDashboardBulkSelection ..... pencil multi-select + Copy/Print/Delete
+ *   - useDashboardBulkSelection ..... always-on multi-select + Copy/Print/Delete
  *   - useDashboardViewWarmup ........ React Query prefetch warm-up
  *   - useDashboardRealtime .......... realtime invalidation + toasts
  *
@@ -50,7 +50,7 @@ function DashboardPageContent() {
 
   const isOutbound = mode === 'shipping';
 
-  const { selectionEnabled, selectMode, toggleSelectMode, selectedRows, selectionActions } =
+  const { selectionEnabled, selectMode, selectedRows, selectionActions } =
     useDashboardBulkSelection(orderView);
 
   // Only the outbound (Shipping) mode resolves/opens the order panel — receiving
@@ -97,7 +97,6 @@ function DashboardPageContent() {
         orderView={orderView}
         onSelectView={setOrderView}
         selectMode={selectMode}
-        onToggleSelectMode={toggleSelectMode}
         selectionEnabled={selectionEnabled}
         selectedRows={selectedRows}
         selectionActions={selectionActions}

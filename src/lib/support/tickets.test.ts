@@ -5,6 +5,8 @@ import {
   formatSupportTicketLabel,
   normalizeReceivingTicketEntityRefs,
   pickTicketLinkAnchor,
+  primaryTicketLabel,
+  secondaryProviderLabel,
 } from './tickets';
 
 test('formatSupportTicketLabel uses internal registry id', () => {
@@ -35,6 +37,18 @@ test('formatSupportTicketDisplayLabel falls back to internal id for internal tic
     }),
     '#42',
   );
+});
+
+test('primaryTicketLabel is always the internal registry id (operator primary)', () => {
+  assert.equal(primaryTicketLabel(42), '#42');
+  // Unlike formatSupportTicketDisplayLabel, it never prefers the provider id.
+});
+
+test('secondaryProviderLabel renders the provider id, or null for internal tickets', () => {
+  assert.equal(secondaryProviderLabel({ provider: 'zendesk', externalTicketId: '9395' }), '#9395');
+  assert.equal(secondaryProviderLabel({ provider: 'zendesk', externalTicketId: '#9395' }), '#9395');
+  assert.equal(secondaryProviderLabel({ provider: 'internal', externalTicketId: null }), null);
+  assert.equal(secondaryProviderLabel({ provider: 'zendesk', externalTicketId: '  ' }), null);
 });
 
 test('normalizeReceivingTicketEntityRefs drops placeholder line id without inventing carton', () => {

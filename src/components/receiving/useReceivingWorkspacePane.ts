@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
+import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
@@ -363,7 +364,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       setNav(null);
       syncUnboxOpenUrl(null);
       dispatchReceivingWorkspaceClose();
-      window.dispatchEvent(new CustomEvent('receiving-clear-line'));
+      emitReceiving('receiving-clear-line');
       recoveringRef.current = false;
     },
     [syncUnboxOpenUrl],
