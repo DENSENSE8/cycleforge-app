@@ -1,15 +1,13 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { AnimatePresence } from 'framer-motion';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
 import { Image as ImageIcon, Upload } from '../Icons';
 import { Button } from '@/design-system/primitives';
 import { usePhotoGallery, type PhotoGalleryProps } from './photo-gallery/usePhotoGallery';
 import { PhotoLauncher } from './photo-gallery/PhotoLauncher';
-import { PhotoViewerModal } from './photo-gallery/PhotoViewerModal';
+import { PhotoViewerPortal } from './photo-gallery/PhotoViewerPortal';
 import { PhotoUploadOverlay } from './photo-gallery/PhotoUploadOverlay';
 import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 
@@ -112,17 +110,7 @@ export function PhotoGallery(props: PhotoGalleryProps) {
           onDelete={handleDelete}
         />
       ) : (
-        g.mounted && typeof document !== 'undefined' && createPortal(
-          // A stable `key` + default (sync) mode is required for AnimatePresence
-          // to reliably run the scrim's exit and UNMOUNT it. A keyless child under
-          // `mode="wait"` deadlocks when the parent re-renders mid-exit, leaving a
-          // full-screen scrim mounted that blocks every click until a page reload
-          // (see LightboxPortal, which fixed the same "ghost overlay" bug).
-          <AnimatePresence>
-            {g.viewerOpen ? <PhotoViewerModal key="photo-lightbox" g={g} /> : null}
-          </AnimatePresence>,
-          document.body,
-        )
+        <PhotoViewerPortal g={g} />
       )}
     </>
   );

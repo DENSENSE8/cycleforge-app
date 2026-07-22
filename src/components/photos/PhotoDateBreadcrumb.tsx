@@ -27,9 +27,12 @@ interface PhotoDateBreadcrumbProps {
 /**
  * The library's date breadcrumb in the right-panel context bar. When a
  * date is active it renders the simplified Year → Month → Week → Day path; with
- * no date it surfaces two quick jumps — **Today** and the **most recent** capture
+ * no date it surfaces two quick jumps — **Today** and the **latest** capture
  * day (both keyed off `created_at`, never the most-recent PO or photo type). The
  * root "All dates" crumb clears the filter; each path crumb widens to its span.
+ *
+ * The chip is labeled **Latest** (not Recent) so it is not confused with the
+ * workbench chrome **Recent** tab (all types, no date pin).
  *
  * When a PO folder is open the folder name is appended as the active leaf after
  * the day (`folderLeafLabel`, or derived from `filters.poRef` / `ticketId`).
@@ -117,7 +120,7 @@ export function PhotoDateBreadcrumb({
           ) : null}
           {showRecent && mostRecentDay ? (
             <DateQuickChip
-              label={`Recent · ${dayLabel(mostRecentDay)}`}
+              label={`Latest · ${dayLabel(mostRecentDay)}`}
               onClick={() => onNavigate({ dateFrom: mostRecentDay, dateTo: mostRecentDay })}
             />
           ) : null}

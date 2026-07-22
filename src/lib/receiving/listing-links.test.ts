@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { collectCartonListingLinks, formatListingLinkMenuOptions } from './listing-links';
+import {
+  collectCartonListingLinks,
+  formatListingLinkMenuOptions,
+  listingUrlIdentityKey,
+} from './listing-links';
 
 test('manual listing URL wins as primary', () => {
   const links = collectCartonListingLinks({
@@ -155,4 +159,12 @@ test('formatListingLinkMenuOptions numbers links 1-indexed with href tooltips', 
   assert.equal(menu?.[0]?.title, menu?.[0]?.href);
   assert.equal(menu?.[1]?.title, menu?.[1]?.href);
   assert.equal(menu?.[2]?.title, menu?.[2]?.href);
+});
+
+test('listingUrlIdentityKey extracts marketplace item ids for last-4 chips', () => {
+  assert.equal(listingUrlIdentityKey('https://www.ebay.com/itm/123456789012'), '123456789012');
+  assert.equal(listingUrlIdentityKey('https://www.amazon.com/dp/B012345678'), 'B012345678');
+  assert.equal(listingUrlIdentityKey('https://shopgoodwill.com/item/267952401'), '267952401');
+  assert.equal(listingUrlIdentityKey(''), '');
+  assert.equal(listingUrlIdentityKey('not-a-url'), '');
 });

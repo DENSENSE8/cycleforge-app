@@ -120,6 +120,8 @@ export function TestingScanBar({
         staffId={staffId}
         placeholder={armedMode ? `Scan ${active.label}…` : 'Tracking · PO · Serial · SKU'}
         autoFocus
+        // Align the scan icon/text to the recent rail's dot/title column below.
+        leadingColumn="rail"
         rightPadClass="pr-36"
         isResolving={isResolving}
         icon={

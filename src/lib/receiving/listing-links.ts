@@ -132,6 +132,41 @@ export interface ListingLinkMenuOption {
   title: string;
 }
 
+/**
+ * Stable listing identity key for chip last-4 faces — prefers marketplace item
+ * ids embedded in the URL (eBay `/itm/`, Amazon `/dp/`, Goodwill `/item/`),
+ * then a cleaned last path segment / query id. Empty when nothing useful parses.
+ */
+export function listingUrlIdentityKey(href: string | null | undefined): string {
+  const raw = String(href ?? '').trim();
+  if (!raw) return '';
+  try {
+    const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const u = new URL(withProto);
+    const path = u.pathname;
+    const ebay = path.match(/\/itm\/(\d{6,})/i);
+    if (ebay?.[1]) return ebay[1];
+    const amazon = path.match(/\/(?:dp|gp\/product)\/([A-Z0-9]{10})/i);
+    if (amazon?.[1]) return amazon[1];
+    const goodwill = path.match(/\/item\/(\d{6,})/i);
+    if (goodwill?.[1]) return goodwill[1];
+    const q =
+      u.searchParams.get('itemId') ||
+      u.searchParams.get('item') ||
+      u.searchParams.get('id');
+    if (q?.trim()) {
+      const digits = q.replace(/\D/g, '');
+      return digits.length >= 4 ? digits : q.trim();
+    }
+    const last = path.split('/').filter(Boolean).pop() ?? '';
+    const cleaned = last.replace(/[^a-zA-Z0-9]/g, '');
+    return cleaned.length >= 4 ? cleaned : '';
+  } catch {
+    const digits = raw.replace(/\D/g, '');
+    return digits.length >= 4 ? digits : '';
+  }
+}
+
 /** 1-indexed menu rows for the listing chip hover menu (only when count > 1). */
 export function formatListingLinkMenuOptions(
   links: CartonListingLink[],

@@ -1,10 +1,12 @@
 /**
  * Fixed-width platform mark — listing chrome uses this instead of the
  * variable-width platform name so PO# / tracking chips stay aligned across
- * marketplaces. Renders the vendored monochrome brand icon when the platform
- * has one (`SourcePlatformMeta.icon`, CC0 Simple Icons paths), else the 1–2
- * char lettermark. Label lives in tooltip / aria; meta comes from
- * {@link sourcePlatformMeta}.
+ * marketplaces. Mark resolution (all from {@link sourcePlatformMeta}):
+ *   1. **favicon** — the platform's real colored favicon, vendored under
+ *      `public/icons/platforms/` (the Airtable-style channel mark);
+ *   2. monochrome CC0 brand icon (`SourcePlatformMeta.icon`), tinted;
+ *   3. 1–2 char lettermark.
+ * Label lives in tooltip / aria — the mark itself is always `aria-hidden`.
  */
 
 import { cn } from '@/utils/_cn';
@@ -35,6 +37,23 @@ export function PlatformMark({
     return (
       <span className={cn(MARK_BOX, 'text-text-faint', className)} aria-hidden>
         <span className="border-b-2 border-border-default pb-px">—</span>
+      </span>
+    );
+  }
+  if (meta.favicon) {
+    return (
+      <span className={cn(MARK_BOX, className)} aria-hidden>
+        {/* Tiny same-origin favicon — next/image is overkill for a 16px mark. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={meta.favicon}
+          alt=""
+          width={16}
+          height={16}
+          loading="lazy"
+          decoding="async"
+          className="h-4 w-4 shrink-0 rounded-sm object-contain"
+        />
       </span>
     );
   }

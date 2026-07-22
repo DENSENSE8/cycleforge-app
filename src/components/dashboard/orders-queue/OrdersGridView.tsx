@@ -202,7 +202,7 @@ export function OrdersGridView({
     // surface keeps overflow-x/y-auto (freeze + virtualization).
     <div
       data-testid="pending-grid-body"
-      className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border-subtle bg-surface-card"
+      className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border-soft bg-surface-card"
     >
       <LedgerGrid<ShippedOrder>
         scrollX

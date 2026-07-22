@@ -11,6 +11,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
+import { capabilityNoun } from '@/lib/integrations/capability-labels';
 import { parseSupportMode } from '@/components/sidebar/support/support-sidebar-shared';
 import { VoicemailQueue } from '@/components/support/voice/VoicemailQueue';
 import { VoicemailDetail } from '@/components/support/voice/VoicemailDetail';
@@ -64,7 +65,7 @@ export function SupportWorkspace() {
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to Support"
-          description="You need Zendesk ticket access, orders, warranty, or reported-issues permissions to use the support console."
+          description={`You need ${capabilityNoun('helpdesk')} ticket access, orders, warranty, or reported-issues permissions to use the support console.`}
         />
       </div>
     );
@@ -195,7 +196,7 @@ export function SupportWorkspace() {
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to tickets"
-          description="Switch to Issues or Warranty in the mode rail, or ask for Zendesk ticket permission."
+          description={`Switch to Issues or Warranty in the mode rail, or ask for ${capabilityNoun('helpdesk')} ticket permission.`}
         />
       </div>
     );

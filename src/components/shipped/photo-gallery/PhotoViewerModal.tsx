@@ -93,21 +93,21 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const isHeroFrame = !reduceMotion && !heroSpentRef.current && currentIndex === heroIndexRef.current;
   const heroLayoutId = isHeroFrame ? photoHeroLayoutId(photoItems[currentIndex]?.id) : undefined;
 
-  // Click-off to close: a click that lands on a backdrop region itself (the
-  // scrim or the empty stage area around the photo) — not on the image,
-  // toolbar, arrows, thumbnails, or details drawer, which all stopPropagation —
-  // dismisses the viewer, the standard lightbox affordance.
+  // Click-off to close: only a click whose target is the backdrop region itself
+  // (scrim / empty stage around the photo) dismisses — image, toolbar, arrows,
+  // thumbs, and the details drawer stopPropagation so they never reach here.
   const handleBackdropClick = (e: ReactMouseEvent) => {
     if (e.target !== e.currentTarget) return;
     e.stopPropagation();
     g.closeViewer();
   };
 
-  // Portal via Layer so the lightbox escapes <main>'s stacking context —
-  // without this, GlobalHeader (z-header sibling of main) paints above the
-  // viewer even when the modal token is higher.
+  // Portal lives in PhotoViewerPortal — Layer only applies the modal z-token.
+  // `pointer-events-none` on the shell so a fading/exiting scrim cannot leave a
+  // dead hit target; the motion.div re-enables hits while open and drops them
+  // on exit via Framer's pointerEvents style.
   return (
-    <Layer level="modal" className="fixed inset-0">
+    <Layer level="modal" portal={false} className="pointer-events-none fixed inset-0">
     <motion.div
       ref={trapRef}
       data-testid="photo-lightbox"

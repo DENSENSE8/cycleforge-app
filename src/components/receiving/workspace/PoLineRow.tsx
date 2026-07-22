@@ -35,6 +35,7 @@ import {
   dispatchSelectLine,
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
+import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import { ScannedBadge, ProgressBadge } from './PoLineBadges';
 import type {
   ActiveRowSerial,
@@ -126,6 +127,7 @@ export function PoLineRow({
   const rowBodyCollapse = useMotionPresence(framerPresence.collapseHeight);
   const rowBodyTransition = useMotionTransition(PO_LINE_BODY_COLLAPSE);
   const rowLayoutTransition = useMotionTransition(PO_LINE_LAYOUT_SPRING);
+  const lineTitle = receivingWorkspaceLineTitle(line);
   const chevronTransition = useMotionTransition(framerTransition.stationChevron);
 
   const descShown = desc.shownId === line.id;
@@ -206,9 +208,9 @@ export function PoLineRow({
               truncated. Item description / unlink open from the title ⋮. */}
           <p
             className="min-w-0 flex-1 truncate text-role-caption font-bold text-text-default"
-            title={line.item_name ?? undefined}
+            title={lineTitle}
           >
-            {line.item_name || line.sku || `Line #${line.id}`}
+            {lineTitle}
           </p>
           {!readOnly ? (
             <PoLineTitleMenu

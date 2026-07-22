@@ -6,6 +6,9 @@
  * WorkspaceCard. Pure wiring from the controller bag to the station SoT
  * {@link CartonContextCard} (`@/components/station/entity-context`);
  * extracted from LineEditPanel so the panel stays a short composition surface.
+ *
+ * Listing / tracking Edit navigate to Unbox SectionTabsSlider tabs (parent
+ * passes `onEdit*` + `*EditOpen`). PO# is copy/open-only.
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
@@ -46,6 +49,14 @@ interface LineCartonContextSectionProps {
   showClassifyControls?: boolean;
   /** Forwarded to {@link CartonContextCard} — `bar` for the sticky station chrome. */
   density?: 'card' | 'bar';
+  /** Switch Unbox workspace to the Tracking tab. */
+  onEditTracking?: () => void;
+  /** Switch Unbox workspace to the Listings tab. */
+  onEditListing?: () => void;
+  /** Pulse tracking chip while Tracking tab is active. */
+  trackingEditOpen?: boolean;
+  /** Pulse listing chip while Listings tab is active. */
+  listingEditOpen?: boolean;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -61,6 +72,10 @@ export function LineCartonContextSection({
   expandClassifyWhenPending = true,
   showClassifyControls = true,
   density = 'card',
+  onEditTracking,
+  onEditListing,
+  trackingEditOpen = false,
+  listingEditOpen = false,
 }: LineCartonContextSectionProps) {
   // An unfound carton whose intake kind isn't set yet: the unbox stepper's
   // Classify dot is active, so surface the classify pills (platform + type)
@@ -84,23 +99,14 @@ export function LineCartonContextSection({
       showStaffPhotoRow
       onMakeClaim={() => c.openClaimModal('create')}
       listingLink={c.listingLink}
-      setListingLink={c.setListingLink}
-      listingEditorOpen={c.listingEditorOpen}
-      setListingEditorOpen={c.setListingEditorOpen}
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
+      onEditListing={onEditListing}
+      listingEditOpen={listingEditOpen}
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={c.poNumber}
       linkedOrderNumber={linkedOrderNumber}
-      poEditorOpen={c.poEditorOpen}
-      setPoEditorOpen={c.setPoEditorOpen}
-      poNumberEdit={c.poNumberEdit}
-      setPoNumberEdit={c.setPoNumberEdit}
-      // Try a sales-order import first (an order# → classify the carton as a
-      // return), falling back to a plain PO# persist. The changed-check + both
-      // paths live in the controller method.
-      onCommitPoNumber={(v) => void c.commitPoNumberOrImportOrder(v)}
       lineId={row.id ?? null}
       zendeskTrimmed={c.zendeskTrimmed}
       zendeskHref={c.zendeskHref}
@@ -112,19 +118,8 @@ export function LineCartonContextSection({
       primaryTrackingTrimmed={c.primaryTrackingTrimmed}
       filledExtraTrackingsCount={c.filledExtraTrackingsCount}
       isLocalPickup={isLocalPickupFulfillment(row)}
-      trackingEditorsOpen={c.trackingEditorsOpen}
-      onToggleTrackingEditors={c.toggleTrackingEditors}
-      trackingEdit={c.trackingEdit}
-      setTrackingEdit={c.setTrackingEdit}
-      onCommitTracking={(v) => {
-        const trimmed = v.trim();
-        if (trimmed !== (row.tracking_number || '').trim()) {
-          c.patch({ zoho_reference_number: trimmed || null });
-        }
-      }}
-      extraTrackings={c.extraTrackings}
-      setExtraTrackings={c.setExtraTrackings}
-      onCommitExtraTracking={(v, i) => void c.attachExtraBox(v, i)}
+      onEditTracking={onEditTracking}
+      trackingEditOpen={trackingEditOpen}
       platformValue={c.sourcePlatform}
       onPlatformSelect={(next) => {
         c.setSourcePlatform(next);

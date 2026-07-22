@@ -28,6 +28,8 @@ export interface FloatingButtonMenuItem {
   selected?: boolean;
   /** Quiet rule above this item — group outcomes below selections. */
   separatorBefore?: boolean;
+  /** Keep the menu open after click (selection toggles). Default closes. */
+  keepOpen?: boolean;
 }
 
 export interface FloatingButtonProps {
@@ -235,7 +237,7 @@ export function FloatingButton({
                         e.stopPropagation();
                         if (item.disabled) return;
                         item.onClick();
-                        closeMenu();
+                        if (!item.keepOpen) closeMenu();
                       }}
                       className={cn(
                         'flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-role-caption font-black uppercase tracking-wider transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-35',

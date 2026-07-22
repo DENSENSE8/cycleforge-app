@@ -16,6 +16,7 @@ import { Button, EmptyState, IconButton } from '@/design-system/primitives';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { formatPhoneNumber } from '@/utils/phone';
+import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import {
   VOICEMAIL_STATUS_LABEL,
   VOICEMAIL_STATUS_TONE,
@@ -170,7 +171,7 @@ export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; 
               className="flex items-center justify-between gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 transition-colors hover:bg-violet-100"
             >
               <span className="inline-flex items-center gap-1.5 text-role-caption font-bold text-violet-800">
-                <Link2 className="h-3.5 w-3.5" /> Zendesk ticket #{data.linkedTicketId}
+                <Link2 className="h-3.5 w-3.5" /> {capabilityTitle('helpdesk')} ticket #{data.linkedTicketId}
               </span>
               <ExternalLink className="h-3.5 w-3.5 text-violet-500" />
             </a>

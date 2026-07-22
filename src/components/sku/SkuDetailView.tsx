@@ -1,6 +1,5 @@
 'use client';
 
-import { AnimatePresence } from 'framer-motion';
 import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import DeleteButton from '@/components/ui/DeleteButton';
@@ -11,7 +10,7 @@ import { SkuDetailHeader } from './sku-detail/SkuDetailHeader';
 import { SkuStockCard } from './sku-detail/SkuStockCard';
 import { SkuLocationCard } from './sku-detail/SkuLocationCard';
 import { SkuDetailCards } from './sku-detail/SkuDetailCards';
-import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 
 /**
  * SKU detail view (panel slide-over or full page). Thin composition layer —
@@ -85,9 +84,7 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
         </div>
       ) : null}
 
-      <AnimatePresence>
-        {c.gallery.viewerOpen ? <PhotoViewerModal g={c.gallery} /> : null}
-      </AnimatePresence>
+      <PhotoViewerPortal g={c.gallery} />
     </div>,
   );
 }

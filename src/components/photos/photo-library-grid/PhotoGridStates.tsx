@@ -25,7 +25,7 @@ export function PhotoEmptyState() {
       <p className="text-sm font-semibold text-text-default">No photos in this view</p>
       <p className="text-xs leading-relaxed text-text-soft">
         Unboxing, packing, and claim photos land here as staff capture them. Widen the
-        source or date range in the sidebar to see more.
+        date range or media type in the header to see more.
       </p>
     </div>
   );

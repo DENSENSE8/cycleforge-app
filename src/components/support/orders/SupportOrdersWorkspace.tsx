@@ -20,8 +20,10 @@ import {
   FileText,
   MessageSquare,
   Package,
+  Plus,
   Ticket,
 } from '@/components/Icons';
+import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState, IconButton, Spinner } from '@/design-system/primitives';
 import { SectionTabsSlider } from '@/design-system/components';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -51,6 +53,8 @@ import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { dashboardOrderHref } from '@/components/sidebar/support/support-sidebar-shared';
 import { SupportOrderIdentity } from './SupportOrderIdentity';
 import { SupportOrdersBoard } from './SupportOrdersBoard';
+import { useSupportTicketClaimHost } from '@/components/support/station/useSupportTicketClaimHost';
+import { SupportCreateTicketModal } from '@/components/support/station/SupportCreateTicketModal';
 import {
   useInvalidateSupportOrderCaches,
   useSupportOrderDetail,
@@ -69,6 +73,9 @@ function SupportOrderFocus({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { has, isLoaded } = useAuth();
+  const canCreateTicket = !isLoaded || has('integrations.zendesk');
+  const claim = useSupportTicketClaimHost();
   const paneMotion = useMotionPresence(framerPresence.workbenchPane);
   const paneTransition = useMotionTransition(framerTransition.workbenchPaneMount);
   const [view, setView] = useState<OrdersView>('order');
@@ -250,6 +257,16 @@ function SupportOrderFocus({
                 }
               />
             </HoverTooltip>
+            {canCreateTicket ? (
+              <HoverTooltip label="Create ticket">
+                <IconButton
+                  size="sm"
+                  icon={<Plus className="h-3.5 w-3.5" />}
+                  ariaLabel="Create a ticket for this order"
+                  onClick={() => claim.openCreate({ type: 'order', orderId: Number(shipped.id) })}
+                />
+              </HoverTooltip>
+            ) : null}
             <HoverTooltip label="Open on Dashboard">
               <IconButton
                 size="sm"
@@ -305,6 +322,23 @@ function SupportOrderFocus({
               onReload();
             }}
           />
+        }
+      />
+
+      {/* Create a helpdesk ticket anchored to this order → open the new ticket. */}
+      <SupportCreateTicketModal
+        open={claim.createOpen}
+        defaultSubject={`Order #${meta.orderIdDisplay}`}
+        submitting={claim.createTicket.isPending}
+        onClose={claim.closeCreate}
+        onCreate={({ subject, note }) =>
+          claim.createTicket.mutate(
+            { subject, note },
+            {
+              onSuccess: (data) =>
+                router.push(`/support?mode=tickets&ticket=${data.providerTicketId}`),
+            },
+          )
         }
       />
     </motion.div>

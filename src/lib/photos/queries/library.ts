@@ -1,5 +1,6 @@
 import pool from '@/lib/db';
 import { mapPhotoRow } from './list-for-entity';
+import { dayLabel, weekRange, weekRangeLabel } from '@/lib/photos/date-hierarchy';
 
 export interface LibraryFilters {
   organizationId: string;
@@ -616,3 +617,198 @@ export async function listPhotoLibraryIds(
 
   return { ids, total, capped: total > ids.length };
 }
+
+// ── Folder aggregation (cheap browse — no photo row materialization) ─────────
+
+import type { PhotoLibraryFolderLevel } from '@/lib/photos/folder-level';
+
+export interface PhotoLibraryFolderTile {
+  key: string;
+  label: string;
+  count: number;
+  latestAt: string;
+  previewPhotoId: number | null;
+  dateFrom?: string;
+  dateTo?: string;
+  poRef?: string;
+  ticketId?: string;
+}
+
+interface ListPhotoLibraryFoldersInput extends LibraryFilters {
+  level: PhotoLibraryFolderLevel;
+  /** Drives entity-folder labels (PO vs Order vs Ticket). */
+  sourceScope?: string | null;
+}
+
+const FOLDER_MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+] as const;
+
+function folderYearRange(y: string): { dateFrom: string; dateTo: string } {
+  return { dateFrom: `${y}-01-01`, dateTo: `${y}-12-31` };
+}
+
+function folderMonthRange(mKey: string): { dateFrom: string; dateTo: string } {
+  const [y, m] = mKey.split('-').map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { dateFrom: `${mKey}-01`, dateTo: `${mKey}-${String(last).padStart(2, '0')}` };
+}
+
+function folderEntityLabel(key: string, scope: string | null | undefined): {
+  label: string;
+  poRef?: string;
+  ticketId?: string;
+} {
+  if (key === '__unlinked__') return { label: 'Unlinked' };
+  if (key.startsWith('ticket:')) {
+    const ticketId = key.slice('ticket:'.length);
+    return { label: `#${ticketId}`, ticketId };
+  }
+  const poRef = key.replace(/^po:/, '');
+  if (scope === 'local_pickup') return { label: `Pickup ${poRef}`, poRef };
+  if (scope === 'packing') return { label: `Order ${poRef}`, poRef };
+  if (scope === 'repair') return { label: `Unit ${poRef}`, poRef };
+  return { label: `PO ${poRef}`, poRef };
+}
+
+/**
+ * Aggregate folder tiles for Media Library browse. Reuses {@link buildLibraryWhere}
+ * so counts match list/ids. Does not return photo rows — only GROUP BY buckets.
+ */
+export async function listPhotoLibraryFolders(
+  filters: ListPhotoLibraryFoldersInput,
+): Promise<{ tiles: PhotoLibraryFolderTile[]; level: PhotoLibraryFolderLevel }> {
+  const { clauses, params } = buildLibraryWhere(filters);
+  const where = clauses.join(' AND ');
+  const level = filters.level;
+  const claims = filters.sourceScope === 'claims' || filters.entityType === 'ZENDESK_TICKET';
+
+  const pstDate = `(p.created_at AT TIME ZONE 'America/Los_Angeles')::date`;
+
+  let bucketExpr: string;
+  let orderExpr: string;
+
+  if (level === 'year') {
+    bucketExpr = `to_char(${pstDate}, 'YYYY')`;
+    orderExpr = `bucket_key DESC`;
+  } else if (level === 'month') {
+    bucketExpr = `to_char(${pstDate}, 'YYYY-MM')`;
+    orderExpr = `bucket_key DESC`;
+  } else if (level === 'week') {
+    // Calendar year + ISO week (matches client `${y}-W${week}` keys; IW is zero-padded).
+    bucketExpr = `to_char(${pstDate}, 'YYYY') || '-W' || (EXTRACT(WEEK FROM ${pstDate})::int)`;
+    orderExpr = `MAX(${pstDate}) DESC`;
+  } else if (level === 'day') {
+    bucketExpr = `to_char(${pstDate}, 'YYYY-MM-DD')`;
+    orderExpr = `bucket_key DESC`;
+  } else {
+    bucketExpr = claims
+      ? `COALESCE(
+           (SELECT 'ticket:' || lz.entity_id::text
+              FROM photo_entity_links lz
+             WHERE lz.photo_id = p.id
+               AND lz.organization_id = p.organization_id
+               AND lz.entity_type = 'ZENDESK_TICKET'
+             LIMIT 1),
+           '__unlinked__'
+         )`
+      : `CASE
+           WHEN NULLIF(TRIM(p.po_ref), '') IS NOT NULL THEN 'po:' || TRIM(p.po_ref)
+           ELSE '__unlinked__'
+         END`;
+    orderExpr = `MAX(p.created_at) DESC`;
+  }
+
+  const res = await pool.query<{
+    bucket_key: string;
+    cnt: number;
+    latest_at: Date | string;
+    preview_photo_id: number | null;
+    date_from: string | null;
+    date_to: string | null;
+  }>(
+    `SELECT ${bucketExpr} AS bucket_key,
+            COUNT(*)::int AS cnt,
+            MAX(p.created_at) AS latest_at,
+            (ARRAY_AGG(p.id ORDER BY p.created_at DESC, p.id DESC))[1] AS preview_photo_id,
+            MIN(${pstDate})::text AS date_from,
+            MAX(${pstDate})::text AS date_to
+       FROM photos p
+      WHERE ${where}
+      GROUP BY 1
+      ORDER BY ${orderExpr}`,
+    params,
+  );
+
+  const tiles: PhotoLibraryFolderTile[] = res.rows.map((row) => {
+    const key = String(row.bucket_key);
+    const count = Number(row.cnt) || 0;
+    const latestAt =
+      row.latest_at instanceof Date ? row.latest_at.toISOString() : String(row.latest_at ?? '');
+    const previewPhotoId =
+      row.preview_photo_id != null && Number.isFinite(Number(row.preview_photo_id))
+        ? Number(row.preview_photo_id)
+        : null;
+    const dateFrom = row.date_from ?? undefined;
+    const dateTo = row.date_to ?? undefined;
+
+    if (level === 'year') {
+      const nav = folderYearRange(key);
+      return { key, label: key, count, latestAt, previewPhotoId, ...nav };
+    }
+    if (level === 'month') {
+      const nav = folderMonthRange(key);
+      const mo = Number(key.slice(5, 7)) - 1;
+      return {
+        key,
+        label: FOLDER_MONTH_NAMES[mo] ?? key,
+        count,
+        latestAt,
+        previewPhotoId,
+        ...nav,
+      };
+    }
+    if (level === 'week') {
+      const anchor = dateFrom ?? `${key.slice(0, 4)}-01-01`;
+      const nav = weekRange(new Date(`${anchor}T00:00:00Z`));
+      return {
+        key,
+        label: weekRangeLabel(nav.dateFrom, nav.dateTo),
+        count,
+        latestAt,
+        previewPhotoId,
+        dateFrom: nav.dateFrom,
+        dateTo: nav.dateTo,
+      };
+    }
+    if (level === 'day') {
+      return {
+        key,
+        label: dayLabel(key),
+        count,
+        latestAt,
+        previewPhotoId,
+        dateFrom: key,
+        dateTo: key,
+      };
+    }
+
+    const entity = folderEntityLabel(key, filters.sourceScope);
+    return {
+      key,
+      label: entity.label,
+      count,
+      latestAt,
+      previewPhotoId,
+      dateFrom: filters.dateFrom ?? dateFrom,
+      dateTo: filters.dateTo ?? dateTo,
+      poRef: entity.poRef,
+      ticketId: entity.ticketId,
+    };
+  });
+
+  return { tiles, level };
+}
+
+

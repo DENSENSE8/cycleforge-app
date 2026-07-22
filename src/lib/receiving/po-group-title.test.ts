@@ -7,7 +7,9 @@ import {
   isReceivingPoGroupTitleRow,
   receivingAdaptiveRailTitle,
   receivingPoGroupKey,
+  receivingProductTitle,
   receivingRailRowTitle,
+  receivingWorkspaceLineTitle,
   stampPoRailTitleContext,
 } from './po-group-title';
 
@@ -227,5 +229,83 @@ test('filterLinesByPoGroup — unmatched stub isolates by line id', () => {
   assert.deepEqual(
     filterLinesByPoGroup([stub, other], stub).map((r) => r.id),
     [9],
+  );
+});
+
+test('receivingWorkspaceLineTitle — uses product SoT when present', () => {
+  const r = row({
+    id: 8696,
+    catalog_product_title: null,
+    zoho_item_title: null,
+    item_name: 'Bose TV Speaker Soundbar',
+    sku: '00138-BK',
+    zoho_purchaseorder_number: '63931700',
+  });
+  assert.equal(receivingWorkspaceLineTitle(r), 'Bose TV Speaker Soundbar');
+  assert.equal(receivingProductTitle(r), 'Bose TV Speaker Soundbar');
+});
+
+test('receivingWorkspaceLineTitle — thin PO placeholder never paints Line #', () => {
+  const r = row({
+    id: 8696,
+    catalog_product_title: null,
+    zoho_item_title: null,
+    item_name: null,
+    sku: null,
+    zoho_item_id: null,
+    zoho_purchaseorder_number: '63931700',
+    source_platform: 'goodwill',
+  });
+  assert.equal(receivingProductTitle(r), 'Line #8696');
+  assert.equal(
+    receivingWorkspaceLineTitle(r, (p) => (p === 'goodwill' ? 'Goodwill' : p)),
+    'Goodwill · PO 63931700',
+  );
+});
+
+test('receivingWorkspaceLineTitle — unmatched without product still Line #', () => {
+  const r = row({
+    id: 42,
+    receiving_source: 'unmatched',
+    item_name: null,
+    sku: null,
+    zoho_item_id: null,
+    zoho_purchaseorder_number: null,
+  });
+  assert.equal(receivingWorkspaceLineTitle(r), 'Line #42');
+});
+
+test('PO 63931700 / line 8696 — thin multi-SKU open never flashes Line #', () => {
+  // Mirrors the dogfood Unboxed open: adaptive rail shows Goodwill · PO 63931700
+  // while a carton-deduped placeholder can lack item_name until siblings hydrate.
+  const thinPlaceholder = row({
+    id: 8696,
+    receiving_id: 14222,
+    catalog_product_title: null,
+    zoho_item_title: null,
+    item_name: null,
+    sku: null,
+    zoho_item_id: null,
+    zoho_purchaseorder_number: '63931700',
+    source_platform: 'goodwill',
+    rail_title_context: { line_count: 2, distinct_sku_count: 2 },
+  });
+  assert.equal(
+    receivingWorkspaceLineTitle(thinPlaceholder, (p) =>
+      p === 'goodwill' ? 'Goodwill' : p,
+    ),
+    'Goodwill · PO 63931700',
+  );
+  const hydrated = row({
+    id: 8696,
+    receiving_id: 14222,
+    item_name: 'Bose TV Speaker Soundbar Model No. 431974 - Tested',
+    sku: '00138-BK',
+    zoho_purchaseorder_number: '63931700',
+    source_platform: 'goodwill',
+  });
+  assert.equal(
+    receivingWorkspaceLineTitle(hydrated),
+    'Bose TV Speaker Soundbar Model No. 431974 - Tested',
   );
 });

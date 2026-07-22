@@ -1,6 +1,4 @@
 import { useCallback, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { AnimatePresence } from 'framer-motion';
 import { Camera, Loader2, Pencil, Plus, ZoomIn } from '@/components/Icons';
 import { PhotoGridDisplayControls } from '@/components/photos/PhotoGridDisplayControls';
 import {
@@ -16,7 +14,7 @@ import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { publishReceivingPhotoRequest } from '@/lib/realtime/receiving-photo-request';
 import { photoGridLeafClass } from '@/lib/photos/photo-grid-density';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
-import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
@@ -236,12 +234,7 @@ export function ClaimPhotoPicker({ photos, receivingId }: Props) {
         a folder named after the Ticket #.
       </p>
 
-      {g.mounted && typeof document !== 'undefined'
-        ? createPortal(
-            <AnimatePresence mode="wait">{g.viewerOpen ? <PhotoViewerModal g={g} /> : null}</AnimatePresence>,
-            document.body,
-          )
-        : null}
+      {g.photoItems.length > 0 ? <PhotoViewerPortal g={g} /> : null}
     </div>
   );
 }

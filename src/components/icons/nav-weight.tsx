@@ -17,7 +17,7 @@ type NavIconComponent = (props: NavIconProps) => JSX.Element;
 export const NAV_ICON_PAGE_STROKE_CLASS =
   '![stroke-width:2] [&_path]:![stroke-width:2] [&_circle]:![stroke-width:2] [&_rect]:![stroke-width:2] [&_line]:![stroke-width:2] [&_polyline]:![stroke-width:2]';
 
-/** L2 mode glyphs (rails, dropdown modes, hover modes, MRU jump chips, header now). */
+/** L2 mode glyphs (rails, dropdown modes, hover modes, mode MRU chips, header now). */
 export const NAV_ICON_MODE_STROKE_CLASS =
   '![stroke-width:2.75] [&_path]:![stroke-width:2.75] [&_circle]:![stroke-width:2.75] [&_rect]:![stroke-width:2.75] [&_line]:![stroke-width:2.75] [&_polyline]:![stroke-width:2.75]';
 

@@ -300,8 +300,12 @@ function HeaderCell({
   const frozen = isOrdersQueueFrozen(column.key);
   const cellInset = gridSkin ? 'grid' : 'cell';
 
+  // Grid skin: every typed column leads with its glyph (icon-only headers).
+  // Board look: glyph only on the roomy flexible (fr) columns — a glyph would
+  // crowd the narrow fact columns' labels (skin-scoping guardrail).
+  const showGlyph = gridSkin ? Boolean(column.type) : column.width.includes('fr');
   // Date = calendar; Age = clock — both share ColumnType `date` otherwise.
-  const glyph =
+  const glyph = !showGlyph ? null :
     column.key === 'date' ? (
       <Calendar className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
     ) : column.key === 'age' ? (

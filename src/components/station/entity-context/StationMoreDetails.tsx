@@ -29,7 +29,7 @@ export function StationMoreDetails({
   return (
     <Panel
       padding="none"
-      radius="xl"
+      radius="2xl"
       elevation="none"
       borderless
       className={cn(

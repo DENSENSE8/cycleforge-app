@@ -5,11 +5,11 @@ import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
 import {
   SIDEBAR_GUTTER,
-  SIDEBAR_MASTER_NAV_MODE_GAP,
   SIDEBAR_RAIL_DOT_TRACK,
+  SIDEBAR_RAIL_INSET_LEFT,
   SIDEBAR_RAIL_INSET_X,
-  SIDEBAR_RAIL_LEADING_PAD,
   SIDEBAR_RAIL_ROW_PAD_RIGHT,
+  SIDEBAR_SCAN_DOCK_LEADING_ROW,
 } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 import {
@@ -141,14 +141,13 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     () => staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP),
     [reduceMotion],
   );
-  // scanDock: list stays flush (dots hug the left); pencil shares the row ring's
-  // right edge. The eyebrow OUTER inset mirrors the list host so the leading
-  // `pad → dot-track → gap` spacer below lands the eyebrow title on the row-title
-  // x (dense scan-dock column) — no deep MasterNav-label inset.
+  // scanDock: list + eyebrow share SIDEBAR_RAIL_INSET_LEFT (sidebar gutter) so
+  // selection rings clear the pane edge; leading `pad → track → gap` then lands
+  // titles on the dense scan-dock column with the scan bar above.
   const listInsetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
   const eyebrowOuterX =
     railInset === 'scanDock'
-      ? cn('pl-0', SIDEBAR_RAIL_ROW_PAD_RIGHT)
+      ? cn(SIDEBAR_RAIL_INSET_LEFT, SIDEBAR_RAIL_ROW_PAD_RIGHT)
       : SIDEBAR_GUTTER;
 
   return (
@@ -157,7 +156,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
         <div className={cn('flex items-center justify-between py-1', eyebrowOuterX)}>
           {/* Leading spacer = RailRow's dot track (pad → w-4 → gap) so the
               eyebrow title shares the row-title x. */}
-          <div className={cn('flex min-w-0 items-center', SIDEBAR_RAIL_LEADING_PAD, SIDEBAR_MASTER_NAV_MODE_GAP)}>
+          <div className={SIDEBAR_SCAN_DOCK_LEADING_ROW}>
             <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
             <p data-rail-eyebrow className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               {eyebrowTitle} · {topCount}

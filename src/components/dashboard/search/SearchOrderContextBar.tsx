@@ -27,7 +27,7 @@ export function SearchOrderContextBar({
     <div className={cn('w-full shrink-0', className)} data-testid="search-order-context-bar">
       <Panel
         padding="none"
-        radius="xl"
+        radius="2xl"
         elevation="none"
         borderless
         className={cn(

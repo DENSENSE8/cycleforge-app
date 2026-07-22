@@ -98,7 +98,13 @@ export function LedgerCellEditor({
   const settleRef = useRef(settle);
   settleRef.current = settle;
 
+  // Commit-on-unmount must survive StrictMode's dev double-effect (cleanup +
+  // immediate re-run with the instance still mounted): the cleanup only
+  // SCHEDULES the commit; a synchronous re-mount cancels it, so only a REAL
+  // unmount (virtualized row scrolled away) settles the draft.
+  const unmountingRef = useRef(false);
   useEffect(() => {
+    unmountingRef.current = false;
     const input = inputRef.current;
     if (input) {
       input.focus();
@@ -107,9 +113,12 @@ export function LedgerCellEditor({
       const end = input.value.length;
       input.setSelectionRange(end, end);
     }
-    // Commit-on-unmount: a virtualized row scrolling out of the window must
-    // never eat an open draft.
-    return () => settleRef.current(true);
+    return () => {
+      unmountingRef.current = true;
+      setTimeout(() => {
+        if (unmountingRef.current) settleRef.current(true);
+      }, 0);
+    };
   }, []);
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {

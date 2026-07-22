@@ -22,6 +22,7 @@ import { SerialPreviewStrip, BoxMembershipHint } from '@/components/receiving/Se
 import { PreboxWizard, type PreboxWizardSerial } from '@/components/receiving/PreboxWizard';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { UnitsTabBridge } from '@/components/receiving/workspace/line-edit/terminal/unbox-tab-bridges';
 
 interface ApiResponse {
@@ -115,7 +116,7 @@ export function CartonUnitsRollupBody({
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="min-w-0 truncate text-role-caption font-bold text-text-default">
-                      {line.item_name || line.sku || `Line #${line.id}`}
+                      {receivingWorkspaceLineTitle(line)}
                     </span>
                     <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
                       {line.quantity_received ?? 0}/{line.quantity_expected ?? '?'}

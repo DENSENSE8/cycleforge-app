@@ -20,9 +20,10 @@ interface ScanHotkeyControlProps {
  * left icon slot.
  *
  * At rest the bar's contextual icon shows. On bar hover the icon cross-fades to
- * a gear + hotkey chip. Horizontal position comes from
- * Horizontal position comes from `STATION_SCAN_BAR_ICON_SLOT_CLASS` in
- * `@/components/station/scan-bar/tokens` — do not add per-caller `-ml-1`.
+ * a gear in the same 17px slot (opacity only — no slide, no padding push). The
+ * current hotkey lives in the reassign dropdown, not beside the gear. Slot
+ * geometry comes from `STATION_SCAN_BAR_ICON_SLOT_CLASS` /
+ * `SIDEBAR_RAIL_DOT_TRACK` — do not add per-caller `-ml-1` or hover `pl-*`.
  */
 export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
   const { hotkey, setHotkey, setCapturing } = useScanHotkey();
@@ -31,7 +32,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
   const gearRef = useRef<HTMLButtonElement>(null);
 
   // Close + blur the gear. Capturing a key flips the button into :focus-visible
-  // (it's keyboard focus now), which would otherwise pin the chip visible via
+  // (it's keyboard focus now), which would otherwise pin the gear visible via
   // focus-visible:opacity-100 even after the mouse leaves. Blurring clears that.
   const close = useCallback(() => {
     setOpen(false);
@@ -55,7 +56,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
         setHotkey(e.key);
         close();
       } else {
-        setError('Pick a function key (F1–F12)');
+        setError('Pick Insert, ScrollLock, or F1–F12');
       }
     };
     window.addEventListener('keydown', onKey, true);
@@ -66,13 +67,13 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
   }, [open, setHotkey, setCapturing, close]);
 
   return (
-    <span className="relative inline-flex items-center justify-center leading-none">
+    <span className="relative inline-flex size-[17px] items-center justify-center leading-none">
       {/* Contextual icon — fades out on hover / while configuring. In-flow so
-          the slot keeps the same height as a direct icon child; inline-flex
+          the slot keeps the same box as a direct icon child; inline-flex
           avoids inline-SVG baseline drift. */}
       <span
         className={cn(
-          'inline-flex items-center justify-center leading-none transition-opacity duration-150',
+          'inline-flex size-[17px] items-center justify-center leading-none transition-opacity duration-150',
           open ? 'opacity-0' : 'opacity-100 group-hover:opacity-0',
         )}
         aria-hidden={open}
@@ -80,8 +81,8 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
         {children}
       </span>
 
-      {/* Gear + current key — revealed on hover / while configuring. Gear matches
-          the 17px resting icon slot; kbd row height tracks the same baseline. */}
+      {/* Gear — same box as the resting icon; opacity cross-fade only. Hotkey
+          chip lives in the dropdown below so the input never shifts. */}
       <HoverTooltip label={`Focus scan — press ${hotkey}. Click to change.`} asChild>
         <button
           ref={gearRef}
@@ -90,21 +91,13 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           aria-label={`Focus-scan hotkey is ${hotkey}. Click to reassign.`}
           className={cn(
             'ds-raw-button',
-            // Slide-in from the left (translate-x) + fade, so the gear + key chip
-            // "arrives" into the slot while the input placeholder shifts right to
-            // make room (see group-hover:pl-16 in StationScanBar).
-            'absolute inset-y-0 left-0 inline-flex items-center gap-1 rounded-md pr-0.5 text-text-soft transition-all duration-150 hover:text-blue-600 focus-visible:opacity-100 focus-visible:outline-none',
+            'absolute inset-0 inline-flex items-center justify-center rounded-md text-text-soft transition-opacity duration-150 hover:text-blue-600 focus-visible:opacity-100 focus-visible:outline-none',
             open
-              ? 'pointer-events-auto translate-x-0 opacity-100 text-blue-600'
-              : 'pointer-events-none -translate-x-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100',
+              ? 'pointer-events-auto opacity-100 text-blue-600'
+              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100',
           )}
         >
-          <span className="inline-flex size-[17px] shrink-0 items-center justify-center">
-            <Settings className="block size-[17px]" />
-          </span>
-          <kbd className="inline-flex h-[17px] items-center rounded border border-border-soft bg-surface-card px-1 font-mono text-role-micro font-bold leading-none text-text-muted">
-            {hotkey}
-          </kbd>
+          <Settings className="block size-[17px]" />
         </button>
       </HoverTooltip>
 
@@ -138,7 +131,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
               {hotkey}
             </kbd>
             <span className="text-xs font-semibold text-text-muted">
-              Press a function key…
+              Press a key…
             </span>
           </div>
 
@@ -148,7 +141,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
               error ? 'text-rose-600' : 'text-text-faint',
             )}
           >
-            {error ?? 'F1–F12 only · Esc to cancel'}
+            {error ?? 'Insert · ScrollLock · F1–F12 · Esc to cancel'}
           </p>
         </motion.div>
       </AnchoredLayer>

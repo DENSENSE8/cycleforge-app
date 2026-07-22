@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Download, ExternalLink, Link2, Loader2, Tag, TicketHelp, Trash2 } from '@/components/Icons';
 import { usePhotoLibrary, photoLibraryFilterParams } from '@/hooks/usePhotoLibrary';
+import { usePhotoLibraryFolders } from '@/hooks/usePhotoLibraryFolders';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
 import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
@@ -11,12 +12,13 @@ import { describePhotoLibraryContext } from '@/lib/photos/library-context-label'
 import { photoShareTitle } from '@/lib/photos/display-names';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
+  PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE,
   photoLibraryViewToggleModes,
   sourceScopeFromFilters,
 } from '@/lib/photos/library-filter-state';
+import { resolvePhotoLibraryFolderLevel } from '@/lib/photos/folder-level';
 import { useMediaLibraryShortcuts } from '@/hooks/useMediaLibraryShortcuts';
 import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
-import { describeFolderBrowseHeader } from '@/components/photos/photo-library-grid/date-folder-tree';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import { toast } from '@/lib/toast';
@@ -34,12 +36,17 @@ import {
 import { cn } from '@/utils/_cn';
 import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu';
 import { PhotoDateBreadcrumb } from './PhotoDateBreadcrumb';
+import { PhotoDisplayControls } from './PhotoDisplayControls';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
 import { PhotoLibraryToolbar } from './PhotoLibraryToolbar';
 import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
+import {
+  photoLibraryShowsGridControls,
+  photoLibraryShowsSecondHeaderControls,
+} from '@/lib/photos/photo-grid-density';
 
 /** Fixed share-link lifetime (24h) for copied links + share pages. */
 const DEFAULT_SHARE_TTL_SECONDS = 24 * 60 * 60;
@@ -56,7 +63,28 @@ import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 /** Right pane: workbench chrome + folders grid. Filters live in the header. */
 export function PhotoLibraryPage() {
   const { filters, display, setView, patch } = usePhotoLibraryUrlState();
-  const { query, photos } = usePhotoLibrary(filters);
+  const { view } = display;
+  const foldersBrowse = useMemo(
+    () =>
+      resolvePhotoLibraryFolderLevel({
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        poRef: filters.poRef,
+        ticketId: filters.ticketId,
+      }),
+    [filters.dateFrom, filters.dateTo, filters.poRef, filters.ticketId],
+  );
+  const foldersIsLeaf = view === 'folders' && foldersBrowse.isLeaf;
+  const fetchPhotos =
+    view !== 'folders' || foldersIsLeaf;
+
+  const { query, photos, isSettled } = usePhotoLibrary(filters, {
+    pageSize: foldersIsLeaf ? PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE : undefined,
+    enabled: fetchPhotos,
+  });
+  const foldersQuery = usePhotoLibraryFolders(filters, {
+    enabled: view === 'folders' && !foldersIsLeaf,
+  });
   const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
   const queryClient = useQueryClient();
 
@@ -128,6 +156,7 @@ export function PhotoLibraryPage() {
   // mirroring how receiving photos already propagate into the library.
   const refreshLibraryOnPackerPhoto = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
+    void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
   }, [queryClient]);
   usePackerPhotosRealtimeRefresh(null, refreshLibraryOnPackerPhoto);
 
@@ -143,22 +172,28 @@ export function PhotoLibraryPage() {
   const shareLinks = usePhotoShareLinks();
   const { subtitle } = describePhotoLibraryContext(displayFilters);
 
-  const { view } = display;
+  const folderIsLeaf = foldersIsLeaf;
+  const viewToggleModes = useMemo(
+    () => photoLibraryViewToggleModes(view, folderIsLeaf),
+    [view, folderIsLeaf],
+  );
+  const showGridControls = photoLibraryShowsGridControls(view, folderIsLeaf);
+  const showSecondHeaderControls = photoLibraryShowsSecondHeaderControls(view, folderIsLeaf);
 
-  const folderBrowse = useMemo(() => {
-    if (view !== 'folders') return null;
-    return describeFolderBrowseHeader({
-      photos,
-      scope,
-      dateFrom: filters.dateFrom,
-      dateTo: filters.dateTo,
-      poRef: resolvedPoRef,
-      ticketId: resolvedTicketId,
-    });
-  }, [view, photos, scope, filters.dateFrom, filters.dateTo, resolvedPoRef, resolvedTicketId]);
+  const refreshLibrary = useCallback(() => {
+    // Folders browse disables the photo infinite query — refetching it no-ops.
+    // Invalidate so year/month tiles and leaf pages both pick up new captures.
+    if (view === 'folders' && !folderIsLeaf) {
+      void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
+  }, [view, folderIsLeaf, queryClient]);
 
-  const folderIsLeaf = Boolean(folderBrowse?.isLeaf);
-  const viewToggleModes = useMemo(() => photoLibraryViewToggleModes(view, folderIsLeaf), [view, folderIsLeaf]);
+  const isRefreshing =
+    view === 'folders' && !folderIsLeaf
+      ? foldersQuery.query.isFetching && !foldersQuery.query.isLoading
+      : query.isFetching && !query.isLoading;
 
   // Date breadcrumb quick-jump defaults: today + the most recent
   // capture day across the loaded photos — both keyed off `created_at` (PST),
@@ -243,11 +278,16 @@ export function PhotoLibraryPage() {
 
   // Infinite scroll lives in {@link PhotoLibraryLoadMoreSentinel} (needs scroll-shell root).
 
-  const metaLine = query.isLoading
-    ? 'Loading…'
-    : folderBrowse?.isLeaf
-      ? `${folderBrowse.count} photo${folderBrowse.count === 1 ? '' : 's'}`
-      : `${photos.length} photo${photos.length === 1 ? '' : 's'} in view · ${subtitle}`;
+  const metaLine =
+    view === 'folders' && !foldersIsLeaf
+      ? foldersQuery.isLoading
+        ? 'Loading…'
+        : `${foldersQuery.tiles.length} folder${foldersQuery.tiles.length === 1 ? '' : 's'} · ${foldersQuery.eyebrow}`
+      : query.isLoading
+        ? 'Loading…'
+        : foldersIsLeaf
+          ? `${photos.length} photo${photos.length === 1 ? '' : 's'}${query.hasNextPage ? '+' : ''}`
+          : `${photos.length} photo${photos.length === 1 ? '' : 's'} in view · ${subtitle}`;
 
   const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
     const res = await fetch(url);
@@ -550,17 +590,7 @@ export function PhotoLibraryPage() {
               onClear={exitSelectMode}
             />
           ) : (
-            <PhotoLibraryWorkspaceHeader
-              view={view}
-              folderIsLeaf={folderIsLeaf}
-              gridDensity={gridDensity}
-              onDensityChange={setGridDensity}
-              onViewChange={handleViewChange}
-              selectionActive={selectionActive}
-              onStartSelect={() => setSelectMode(true)}
-              onRefresh={() => void query.refetch()}
-              isRefreshing={query.isFetching && !query.isLoading}
-            />
+            <PhotoLibraryWorkspaceHeader />
           )}
         </div>
       }
@@ -572,14 +602,37 @@ export function PhotoLibraryPage() {
               <PhotoDateBreadcrumb
                 filters={displayFilters}
                 today={today}
-                mostRecentDay={mostRecentDay}
-                folderLeafLabel={folderIsLeaf ? folderBrowse?.title : undefined}
+                mostRecentDay={isSettled ? mostRecentDay : undefined}
+                folderLeafLabel={
+                  folderIsLeaf
+                    ? filters.ticketId
+                      ? `#${filters.ticketId}`
+                      : filters.poRef
+                        ? `PO ${filters.poRef}`
+                        : undefined
+                    : undefined
+                }
                 onNavigate={({ dateFrom, dateTo }) =>
                   patch({ dateFrom, dateTo, poRef: undefined, ticketId: undefined })
                 }
               />
             }
             metaLine={metaLine}
+            controls={
+              <PhotoDisplayControls
+                view={view}
+                onViewChange={handleViewChange}
+                density={gridDensity}
+                onDensityChange={setGridDensity}
+                showToggle={showSecondHeaderControls}
+                showDensity={showGridControls}
+                showSelect={showSecondHeaderControls}
+                selectionActive={selectionActive}
+                onStartSelect={() => setSelectMode(true)}
+                onRefresh={refreshLibrary}
+                isRefreshing={isRefreshing}
+              />
+            }
           />
         ) : null}
 
@@ -596,7 +649,10 @@ export function PhotoLibraryPage() {
             onNavigate={({ dateFrom, dateTo, poRef, ticketId }) =>
               patch({ dateFrom, dateTo, poRef, ticketId })
             }
-            onPhotoDeleted={() => void query.refetch()}
+            onPhotoDeleted={() => {
+              void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
+              void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
+            }}
             selectionActive={selectionActive}
             selected={selected}
             onSelectTile={selectTile}
@@ -605,16 +661,31 @@ export function PhotoLibraryPage() {
               e.preventDefault();
               setCtxMenu({ photo, x: e.clientX, y: e.clientY });
             }}
-            isLoading={query.isLoading}
-            error={query.error instanceof Error ? query.error.message : null}
+            isLoading={foldersIsLeaf || view !== 'folders' ? query.isLoading : foldersQuery.isLoading}
+            isSettled={
+              foldersIsLeaf || view !== 'folders' ? isSettled : foldersQuery.isSettled
+            }
+            error={
+              foldersIsLeaf || view !== 'folders'
+                ? query.error instanceof Error
+                  ? query.error.message
+                  : null
+                : foldersQuery.error
+            }
+            folderTiles={foldersQuery.tiles}
+            foldersLoading={foldersQuery.isLoading}
+            foldersIsLeaf={foldersIsLeaf}
+            hasMorePhotos={Boolean(query.hasNextPage)}
+            isFetchingMorePhotos={query.isFetchingNextPage}
+            onLoadMorePhotos={() => void query.fetchNextPage()}
           />
-          {query.hasNextPage ? (
+          {view !== 'folders' && query.hasNextPage ? (
             <PhotoLibraryLoadMoreSentinel
               hasNextPage={query.hasNextPage}
               isFetchingNextPage={query.isFetchingNextPage}
               onLoadMore={() => void query.fetchNextPage()}
             />
-          ) : !query.isLoading && photos.length > 0 ? (
+          ) : view !== 'folders' && !query.isLoading && photos.length > 0 ? (
             <p className="mt-6 text-center text-role-micro font-bold uppercase tracking-widest text-text-faint">
               {`Showing all ${photos.length} photo${photos.length === 1 ? '' : 's'}`}
             </p>

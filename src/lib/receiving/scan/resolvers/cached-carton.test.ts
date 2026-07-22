@@ -88,6 +88,41 @@ test('auto mode matches either a PO# or a tracking#', () => {
   );
 });
 
+test('ticket mode matches zendesk_ticket (#9575 / 9575), ignoring PO/tracking-only rows', () => {
+  const tnRow = row({ id: 2, receiving_id: 2, tracking_number: '9575' });
+  const ticketRow = row({ id: 1, receiving_id: 50, zendesk_ticket: '#9575' });
+  const withHash = resolveCachedCarton(
+    { value: '#9575', mode: 'ticket' },
+    { readCachedRows: () => [tnRow, ticketRow] },
+  );
+  assert.equal(withHash?.receivingId, 50);
+  const digitsOnly = resolveCachedCarton(
+    { value: '9575', mode: 'ticket' },
+    { readCachedRows: () => [tnRow, ticketRow] },
+  );
+  assert.equal(digitsOnly?.receivingId, 50);
+});
+
+test('ticket mode does not match a tracking# that happens to be the same digits', () => {
+  const tnOnly = row({ receiving_id: 2, tracking_number: '9575' });
+  const res = resolveCachedCarton(
+    { value: '#9575', mode: 'ticket' },
+    { readCachedRows: () => [tnOnly] },
+  );
+  assert.equal(res, null);
+});
+
+test('auto mode matches a ticket# when the scan looks like a ticket id', () => {
+  const ticketRow = row({ receiving_id: 50, zendesk_ticket: '#9575' });
+  assert.equal(
+    resolveCachedCarton(
+      { value: '#9575', mode: 'auto' },
+      { readCachedRows: () => [ticketRow] },
+    )?.receivingId,
+    50,
+  );
+});
+
 test('carries the PO id through to poIds for the onResult echo', () => {
   const r = row({ receiving_id: 7, tracking_number: 'T7', zoho_purchaseorder_id: '  88  ' });
   const res = resolveCachedCarton(

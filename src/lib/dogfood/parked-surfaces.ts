@@ -12,8 +12,8 @@
 
 export const PARKED_SURFACE_KEYS = [
   'home',
+  'operations',
   'sourcing',
-  'inventory',
   'warehouse',
   'fba',
   'studio',
@@ -48,6 +48,14 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
     secondaryCta: { href: '/pack', label: 'Open Packing' },
   },
+  operations: {
+    key: 'operations',
+    label: 'Operations',
+    href: '/operations',
+    blurb: 'We’re still building this view. Floor work continues from shipping, packing, and the stations.',
+    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
+    secondaryCta: { href: '/pack', label: 'Open Packing' },
+  },
   sourcing: {
     key: 'sourcing',
     label: 'Sourcing',
@@ -55,14 +63,6 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     blurb: 'Sourcing is still being built. You can keep working from orders and receiving for now.',
     primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
     secondaryCta: { href: '/unbox', label: 'Open Unbox' },
-  },
-  inventory: {
-    key: 'inventory',
-    label: 'Inventory',
-    href: '/inventory',
-    blurb: 'This inventory workspace is still in progress. Stock work continues through packing and receiving.',
-    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
-    secondaryCta: { href: '/pack', label: 'Open Packing' },
   },
   warehouse: {
     key: 'warehouse',
@@ -84,17 +84,17 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     key: 'studio',
     label: 'Studio',
     href: '/studio',
-    blurb: 'Studio is still in progress. Floor activity is available under Operations.',
-    primaryCta: { href: '/operations', label: 'Go to Operations' },
-    secondaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
+    blurb: 'Studio is still in progress. Floor activity continues from shipping and the stations.',
+    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
+    secondaryCta: { href: '/pack', label: 'Open Packing' },
   },
   'ai-chat': {
     key: 'ai-chat',
     label: 'AI Chat',
     href: '/ai-chat',
-    blurb: 'This chat workspace is still in progress. You can continue from Operations or shipping.',
-    primaryCta: { href: '/operations', label: 'Go to Operations' },
-    secondaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
+    blurb: 'This chat workspace is still in progress. You can continue from shipping or packing.',
+    primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
+    secondaryCta: { href: '/pack', label: 'Open Packing' },
   },
 };
 

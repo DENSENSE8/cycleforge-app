@@ -18,18 +18,24 @@ import {
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import { PhotoDateBreadcrumb } from '@/components/photos/PhotoDateBreadcrumb';
 import { MediaLibraryPickerFolders } from '@/components/photos/MediaLibraryPickerFolders';
-import { useMediaLibraryPickerPhotos } from '@/components/photos/useMediaLibraryPickerPhotos';
+import {
+  buildMediaLibraryPickerFilters,
+  useMediaLibraryPickerPhotos,
+} from '@/components/photos/useMediaLibraryPickerPhotos';
 import type { PhotoDateNav } from '@/components/photos/photo-library-grid/types';
 import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { PhotoGridDisplayControls } from '@/components/photos/PhotoGridDisplayControls';
-import { resolveFolderBrowseState } from '@/components/photos/photo-library-grid/date-folder-tree';
 import { SearchBar } from '@/components/ui/SearchBar';
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
+import { Button } from '@/design-system/primitives';
 import { useImageTypes } from '@/hooks/useImageTypes';
 import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
+import { usePhotoLibraryFolders } from '@/hooks/usePhotoLibraryFolders';
+import { resolvePhotoLibraryFolderLevel } from '@/lib/photos/folder-level';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import { mediaPickerShowsGridControls, photoGridLeafClass, photoGridTileProps } from '@/lib/photos/photo-grid-density';
 import { sourceScopeFromFilters } from '@/lib/photos/library-filter-state';
+import { claimsTicketLabel, photoGroupHeaderLabel } from '@/lib/photos/display-names';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
@@ -107,8 +113,8 @@ function seedNavForTab(
 }
 
 /**
- * Media-selection form — pick a media type, drill Year → Month → Week → Day, then
- * select photos. Scoped API reads keep each fetch bounded to the active folder.
+ * Media-selection form — pick a media type, drill Year → Month → Week → Day via
+ * the folders aggregation API, then select photos (leaf = 5 + Load more).
  */
 export function MediaLibraryPickerContent({
   ticketId,
@@ -143,15 +149,65 @@ export function MediaLibraryPickerContent({
   const browseActive = onTicketTab || onCartonTab || (tab === 'browse' && mediaType !== null);
   const searchActive = Boolean(debounced) && tab === 'browse' && !onTicketTab && !onCartonTab;
 
-  const { photos, query: photosQuery, filters } = useMediaLibraryPickerPhotos({
-    enabled: browseActive,
-    mediaType,
-    ticketTab: onTicketTab,
-    cartonTab: onCartonTab,
-    ticketId,
-    receivingId,
-    dateNav,
-    search: searchActive ? debounced : undefined,
+  const resolvedPickerTicketId =
+    dateNav.ticketId ?? (onTicketTab && ticketId ? String(ticketId) : undefined);
+  const resolvedPickerPoRef = dateNav.poRef;
+
+  const pickerFilterArgs = useMemo(
+    () => ({
+      mediaType,
+      ticketTab: onTicketTab,
+      cartonTab: onCartonTab,
+      ticketId,
+      receivingId,
+      dateNav: {
+        ...dateNav,
+        ...(resolvedPickerTicketId ? { ticketId: resolvedPickerTicketId } : {}),
+        ...(resolvedPickerPoRef ? { poRef: resolvedPickerPoRef } : {}),
+      },
+      search: searchActive ? debounced : undefined,
+    }),
+    [
+      mediaType,
+      onTicketTab,
+      onCartonTab,
+      ticketId,
+      receivingId,
+      dateNav,
+      resolvedPickerTicketId,
+      resolvedPickerPoRef,
+      searchActive,
+      debounced,
+    ],
+  );
+
+  const filters = useMemo(
+    () => buildMediaLibraryPickerFilters(pickerFilterArgs),
+    [pickerFilterArgs],
+  );
+
+  const foldersBrowse = useMemo(
+    () =>
+      resolvePhotoLibraryFolderLevel({
+        dateFrom: dateNav.dateFrom,
+        dateTo: dateNav.dateTo,
+        poRef: resolvedPickerPoRef,
+        ticketId: resolvedPickerTicketId,
+      }),
+    [dateNav.dateFrom, dateNav.dateTo, resolvedPickerPoRef, resolvedPickerTicketId],
+  );
+
+  const folderIsLeaf = onCartonTab || foldersBrowse.isLeaf;
+  const fetchPhotos = browseActive && (searchActive || folderIsLeaf);
+  const fetchFolders = browseActive && !searchActive && !folderIsLeaf;
+
+  const { photos, query: photosQuery } = useMediaLibraryPickerPhotos({
+    ...pickerFilterArgs,
+    enabled: fetchPhotos,
+  });
+
+  const foldersQuery = usePhotoLibraryFolders(filters ?? {}, {
+    enabled: fetchFolders && filters !== null,
   });
 
   const scope: PhotoLibrarySourceScope = onTicketTab
@@ -213,17 +269,6 @@ export function MediaLibraryPickerContent({
     setDebounced('');
   };
 
-  const resolvedPickerTicketId =
-    dateNav.ticketId ?? (onTicketTab && ticketId ? String(ticketId) : undefined);
-
-  const cartonPoRef = useMemo(() => {
-    if (!onCartonTab || photos.length === 0) return undefined;
-    const refs = new Set(photos.map((p) => p.poRef ?? '').filter(Boolean));
-    return refs.size === 1 ? [...refs][0] : undefined;
-  }, [onCartonTab, photos]);
-
-  const resolvedPickerPoRef = dateNav.poRef ?? cartonPoRef;
-
   const breadcrumbFilters = useMemo(
     () => ({
       dateFrom: dateNav.dateFrom,
@@ -236,11 +281,13 @@ export function MediaLibraryPickerContent({
 
   const onBreadcrumbNavigate = ({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string }) => {
     // Keep contextual leaf ids when navigating dates on ticket/carton tabs.
+    // Browse-tab date crumbs clear PO/ticket so year/month tiles can reopen.
+    const keepLeafIds = onTicketTab || onCartonTab;
     setDateNav({
       dateFrom,
       dateTo,
-      ...(resolvedPickerTicketId ? { ticketId: resolvedPickerTicketId } : {}),
-      ...(resolvedPickerPoRef ? { poRef: resolvedPickerPoRef } : {}),
+      ...(keepLeafIds && resolvedPickerTicketId ? { ticketId: resolvedPickerTicketId } : {}),
+      ...(keepLeafIds && resolvedPickerPoRef ? { poRef: resolvedPickerPoRef } : {}),
     });
   };
 
@@ -249,58 +296,35 @@ export function MediaLibraryPickerContent({
     return photos.filter((p) => !excludePhotoIds?.has(p.id));
   }, [searchActive, photos, excludePhotoIds]);
 
-  const folderIsLeaf = useMemo(() => {
-    if (!browseActive || onTypeList || searchActive) return false;
-    if (onCartonTab) return true;
-    return resolveFolderBrowseState({
-      photos,
-      scope,
-      dateFrom: dateNav.dateFrom,
-      dateTo: dateNav.dateTo,
-      poRef: resolvedPickerPoRef,
-      ticketId: resolvedPickerTicketId,
-    }).isLeaf;
-  }, [
-    browseActive,
-    onTypeList,
-    searchActive,
-    onCartonTab,
-    photos,
-    scope,
-    dateNav.dateFrom,
-    dateNav.dateTo,
-    resolvedPickerPoRef,
-    resolvedPickerTicketId,
-  ]);
-
   const showGridControls = mediaPickerShowsGridControls({
     onMediaTypeList: onTypeList,
     searchActive,
-    folderIsLeaf,
+    folderIsLeaf: browseActive && !searchActive && folderIsLeaf,
   });
 
   const folderLeafLabel = useMemo(() => {
-    if (!folderIsLeaf) return undefined;
+    if (!folderIsLeaf || searchActive) return undefined;
     if (onCartonTab && receivingId) return `Carton #${receivingId}`;
-    return resolveFolderBrowseState({
-      photos,
-      scope,
-      dateFrom: dateNav.dateFrom,
-      dateTo: dateNav.dateTo,
-      poRef: resolvedPickerPoRef,
-      ticketId: resolvedPickerTicketId,
-    }).leafTitle;
+    if (resolvedPickerTicketId) return claimsTicketLabel(resolvedPickerTicketId);
+    if (resolvedPickerPoRef) {
+      return photoGroupHeaderLabel(`po:${resolvedPickerPoRef}`, scope, resolvedPickerPoRef);
+    }
+    return undefined;
   }, [
     folderIsLeaf,
+    searchActive,
     onCartonTab,
     receivingId,
-    photos,
-    scope,
-    dateNav.dateFrom,
-    dateNav.dateTo,
-    resolvedPickerPoRef,
     resolvedPickerTicketId,
+    resolvedPickerPoRef,
+    scope,
   ]);
+
+  const bodyLoading =
+    (fetchFolders && foldersQuery.isLoading && foldersQuery.tiles.length === 0) ||
+    (fetchPhotos && photosQuery.isLoading && photos.length === 0);
+  const bodyError =
+    (fetchFolders && foldersQuery.error) || (fetchPhotos && photosQuery.isError);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -384,8 +408,18 @@ export function MediaLibraryPickerContent({
               <PhotoGridDisplayControls
                 density={gridDensity}
                 onDensityChange={setGridDensity}
-                onRefresh={() => void photosQuery.refetch()}
-                isRefreshing={photosQuery.isFetching && !photosQuery.isLoading}
+                onRefresh={() => {
+                  if (fetchFolders) {
+                    void foldersQuery.query.refetch();
+                    return;
+                  }
+                  void photosQuery.refetch();
+                }}
+                isRefreshing={
+                  fetchFolders
+                    ? foldersQuery.query.isFetching && !foldersQuery.query.isLoading
+                    : photosQuery.isFetching && !photosQuery.isLoading
+                }
               />
             ) : null}
           </div>
@@ -437,13 +471,13 @@ export function MediaLibraryPickerContent({
               ) : null}
             </ul>
           </div>
-        ) : photosQuery.isLoading ? (
+        ) : bodyLoading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-role-caption text-text-faint">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
-        ) : photosQuery.isError ? (
+        ) : bodyError ? (
           <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-600">
-            Failed to load photos
+            {fetchFolders ? 'Failed to load folders' : 'Failed to load photos'}
           </div>
         ) : searchActive ? (
           visibleSearchPhotos.length === 0 ? (
@@ -453,45 +487,70 @@ export function MediaLibraryPickerContent({
               <p className="mt-1 text-role-micro text-text-faint">Try a different search.</p>
             </div>
           ) : (
-            <div className={photoGridLeafClass(gridDensity)}>
-              {visibleSearchPhotos.map((p) => {
-                const on = selectedIds.has(p.id);
-                const tile = photoGridTileProps(p, gridDensity);
-                return (
-                  <button
-                    key={p.id}
+            <div className="space-y-3">
+              <div className={photoGridLeafClass(gridDensity)}>
+                {visibleSearchPhotos.map((p) => {
+                  const on = selectedIds.has(p.id);
+                  const tile = photoGridTileProps(p, gridDensity);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggle(p)}
+                      aria-pressed={on}
+                      className={cn(
+                        'ds-raw-button relative overflow-hidden rounded-lg border-2 transition',
+                        on ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent hover:border-border-default',
+                      )}
+                    >
+                      <PhotoThumb src={tile.imageUrl} alt={p.caption ?? ''} ratio={tile.ratio} />
+                      {on ? (
+                        <span className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
+                          <Check className="h-3 w-3" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+              {photosQuery.hasNextPage ? (
+                <div className="flex justify-center py-2">
+                  <Button
                     type="button"
-                    onClick={() => toggle(p)}
-                    aria-pressed={on}
-                    className={cn(
-                      'ds-raw-button relative overflow-hidden rounded-lg border-2 transition',
-                      on ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent hover:border-border-default',
-                    )}
+                    variant="secondary"
+                    size="sm"
+                    disabled={photosQuery.isFetchingNextPage}
+                    onClick={() => void photosQuery.fetchNextPage()}
+                    icon={
+                      photosQuery.isFetchingNextPage ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : undefined
+                    }
                   >
-                    <PhotoThumb src={tile.imageUrl} alt={p.caption ?? ''} ratio={tile.ratio} />
-                    {on ? (
-                      <span className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
-                        <Check className="h-3 w-3" />
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
+                    {photosQuery.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           )
         ) : (
           <MediaLibraryPickerFolders
-            photos={photos}
-            scope={scope}
             gridDensity={gridDensity}
-            dateNav={dateNav}
-            onDateNav={setDateNav}
             selectedIds={selectedIds}
             onToggle={toggle}
             excludePhotoIds={excludePhotoIds}
-            resolvedTicketId={resolvedPickerTicketId}
-            resolvedPoRef={resolvedPickerPoRef}
             forceLeaf={onCartonTab}
+            isLeaf={foldersBrowse.isLeaf}
+            eyebrow={foldersBrowse.eyebrow}
+            folderTiles={foldersQuery.tiles}
+            foldersLoading={foldersQuery.isLoading}
+            onDateNav={setDateNav}
+            photos={photos}
+            photosLoading={photosQuery.isLoading}
+            hasMorePhotos={Boolean(photosQuery.hasNextPage)}
+            isFetchingMorePhotos={photosQuery.isFetchingNextPage}
+            onLoadMorePhotos={() => void photosQuery.fetchNextPage()}
+            leafTitle={folderLeafLabel}
           />
         )}
       </div>

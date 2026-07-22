@@ -19,25 +19,12 @@ export function SupportOrderIdentity({ order }: { order: ShippedOrder }) {
   const orderId = String(order.order_id || '').trim();
   const poDisplay = orderId || tracking || '—';
 
-  const [listingLink, setListingLink] = useState('');
-  const [listingEditorOpen, setListingEditorOpen] = useState(false);
-  const [poEditorOpen, setPoEditorOpen] = useState(false);
-  const [poNumberEdit, setPoNumberEdit] = useState(poDisplay);
-  const [trackingEditorsOpen, setTrackingEditorsOpen] = useState(false);
-  const [trackingEdit, setTrackingEdit] = useState(tracking);
-  const [extraTrackings, setExtraTrackings] = useState<string[]>([]);
   const [platformValue, setPlatformValue] = useState(String(order.account_source || ''));
   const [receivingType, setReceivingType] = useState('');
 
   useEffect(() => {
-    setPoNumberEdit(poDisplay);
-    setTrackingEdit(tracking);
-    setExtraTrackings([]);
-    setListingEditorOpen(false);
-    setPoEditorOpen(false);
-    setTrackingEditorsOpen(false);
     setPlatformValue(String(order.account_source || ''));
-  }, [order.id, order.order_id, order.shipping_tracking_number, order.account_source, poDisplay, tracking]);
+  }, [order.id, order.order_id, order.shipping_tracking_number, order.account_source]);
 
   return (
     <CartonContextCard
@@ -46,23 +33,13 @@ export function SupportOrderIdentity({ order }: { order: ShippedOrder }) {
       staffId=""
       isUnmatched={false}
       showStaffPhotoRow={false}
-      listingLink={listingLink}
-      setListingLink={setListingLink}
-      listingEditorOpen={listingEditorOpen}
-      setListingEditorOpen={setListingEditorOpen}
+      listingLink=""
       listingOpenHref={null}
       listingLinks={[]}
       poOpenHref={null}
       trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
       poDisplay={poDisplay}
       linkedOrderNumber={orderId || null}
-      poEditorOpen={poEditorOpen}
-      setPoEditorOpen={setPoEditorOpen}
-      poNumberEdit={poNumberEdit}
-      setPoNumberEdit={setPoNumberEdit}
-      onCommitPoNumber={() => {
-        /* support orders — identity is read-only; edits in Order tab */
-      }}
       lineId={null}
       zendeskTrimmed=""
       zendeskHref={null}
@@ -70,15 +47,6 @@ export function SupportOrderIdentity({ order }: { order: ShippedOrder }) {
       primaryTrackingTrimmed={tracking}
       filledExtraTrackingsCount={0}
       isLocalPickup={false}
-      trackingEditorsOpen={trackingEditorsOpen}
-      onToggleTrackingEditors={() => setTrackingEditorsOpen((v) => !v)}
-      trackingEdit={trackingEdit}
-      setTrackingEdit={setTrackingEdit}
-      onCommitTracking={() => {
-        /* support orders — tracking edits via Order tab shipping fields */
-      }}
-      extraTrackings={extraTrackings}
-      setExtraTrackings={setExtraTrackings}
       platformValue={platformValue}
       onPlatformSelect={setPlatformValue}
       receivingType={receivingType}

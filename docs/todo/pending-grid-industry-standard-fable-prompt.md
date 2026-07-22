@@ -601,11 +601,19 @@ Ship only when:
 - Multi-tenant schema migrations without asking
 - Changing Packed / Board / Testing table chrome beyond shared primitive needs (if a shared primitive must grow, keep board consumers safe via props)
 
-### Compound opportunities (fill at end)
+### Compound opportunities (filled 2026-07-21 — landed run; detail in the handoff)
 
-- Do now (in scope / low blast radius): …
-- Promote to DS next (2+ call sites): …
-- Deferred (ask first / multi-page): …
+- Do now (in scope / low blast radius — DONE): converged `order-platform.ts`
+  tones on the source-platform SoT (`sourcePlatformMetaFromLabel`); grew
+  `focusRing` with the `cell` archetype (inset grid-cell focus); grew `Popover`
+  with `closeOnEscape`; `ConditionGradeChip.onActivate` (chip-as-trigger).
+- Promote to DS next (2+ call sites): `useColumnOrder` + header drag-reorder
+  recipe for other queue tables; `CellTextEditPopover`/`ConditionSelectPopover`/
+  `ShipByDatePopover` → DS grid family beside `LedgerCellEditor` when a second
+  grid adopts in-cell editing; a corner-indicator primitive for sparse facts.
+- Deferred (ask first / multi-page): stored listing-URL column + route;
+  stock-on-hand join for need-vs-available; `replenishment_requests.created_at`
+  in the ranked CTE (age-of-exception); full APG 2-D arrow-key grid navigation.
 
 ---
 

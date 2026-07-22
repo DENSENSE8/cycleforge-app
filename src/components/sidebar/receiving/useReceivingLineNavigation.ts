@@ -9,6 +9,11 @@
  * (one receiving_id, multiple Zoho POs) never let prev/next step into a foreign
  * PO's lines.
  *
+ * Prefers the shared `['receiving-siblings', id]` cache (seeded by Tier-A
+ * hydrate / usePoLinesData) so row-click does not fire a duplicate
+ * `include=serials` GET — serials reconcile stays on usePoLinesData's parallel
+ * query.
+ *
  * Extracted from ReceivingSidebarPanel. The selection STATE stays in the panel
  * (many event handlers mutate it); this hook owns only the derived nav logic +
  * the lazy prefetch + the arrow-key bridge, taking the state and setters as
@@ -16,8 +21,13 @@
  */
 
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
+import {
+  receivingSiblingsQueryKey,
+  seedReceivingSiblingsCache,
+} from '@/lib/queries/receiving-queries';
 
 interface UseReceivingLineNavigationArgs {
   selectedLine: ReceivingLineRow | null;
@@ -27,6 +37,25 @@ interface UseReceivingLineNavigationArgs {
   setLineAccordionBootstrap: Dispatch<SetStateAction<'default' | 'all'>>;
 }
 
+function applySiblingPool(
+  rows: ReceivingLineRow[],
+  selectedLine: ReceivingLineRow,
+  setScanMatchedRows: Dispatch<SetStateAction<ReceivingLineRow[]>>,
+  setSelectedLine: Dispatch<SetStateAction<ReceivingLineRow | null>>,
+): void {
+  const scoped = filterLinesByPoGroup(rows, selectedLine);
+  const pool = scoped.length > 0 ? scoped : rows;
+  setScanMatchedRows(pool);
+  setSelectedLine((prev) => {
+    if (!prev) return prev;
+    const hit = pool.find((r) => r.id === prev.id);
+    if (!hit) return prev;
+    return hit.serials == null && prev.serials != null
+      ? { ...hit, serials: prev.serials }
+      : hit;
+  });
+}
+
 export function useReceivingLineNavigation({
   selectedLine,
   scanMatchedRows,
@@ -34,6 +63,8 @@ export function useReceivingLineNavigation({
   setScanMatchedRows,
   setLineAccordionBootstrap,
 }: UseReceivingLineNavigationArgs) {
+  const queryClient = useQueryClient();
+
   // PO-scoped sibling list for nav + progress. Defensive: even if the store
   // briefly holds a full carton, the UI only walks the active PO group.
   const navRows = useMemo(() => {
@@ -42,10 +73,9 @@ export function useReceivingLineNavigation({
   }, [selectedLine, scanMatchedRows]);
 
   // When the user row-clicks a line in the dashboard table, scanMatchedRows
-  // is empty — which would disable the up/down nav. Populate it lazily by
-  // fetching all sibling lines for the same receiving_id, then scoping to the
-  // selected line's PO group. When the selected line is already present but the
-  // list still contains foreign-PO siblings, re-scope in place (no refetch).
+  // is empty — which would disable the up/down nav. Populate it lazily from
+  // the shared siblings cache when warm; otherwise fetch METADATA only (no
+  // include=serials — that reconcile lives on usePoLinesData).
   useEffect(() => {
     const receivingId = selectedLine?.receiving_id;
     if (!receivingId || !selectedLine) return;
@@ -58,38 +88,42 @@ export function useReceivingLineNavigation({
       return;
     }
 
+    const cached = queryClient.getQueryData<{
+      success?: boolean;
+      receiving_lines?: ReceivingLineRow[];
+    }>(receivingSiblingsQueryKey(receivingId));
+    const cachedRows = cached?.receiving_lines;
+    if (cachedRows && cachedRows.some((r) => r.id === selectedLine.id)) {
+      applySiblingPool(cachedRows, selectedLine, setScanMatchedRows, setSelectedLine);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
-        // `include=serials` so the sibling rows carry serial_units — without it
-        // the replacement row below has `serials: undefined`, which momentarily
-        // drops the stepper's serial count to 0 and flashes the Serial dot.
-        const res = await fetch(`/api/receiving-lines?receiving_id=${receivingId}&include=serials`);
+        const res = await fetch(`/api/receiving-lines?receiving_id=${receivingId}`);
         const data = await res.json();
         if (cancelled) return;
         const rows = Array.isArray(data?.receiving_lines)
           ? (data.receiving_lines as ReceivingLineRow[])
           : [];
         if (rows.length > 0) {
-          const scoped = filterLinesByPoGroup(rows, selectedLine);
-          const pool = scoped.length > 0 ? scoped : rows;
-          setScanMatchedRows(pool);
-          setSelectedLine((prev) => {
-            if (!prev) return prev;
-            const hit = pool.find((r) => r.id === prev.id);
-            if (!hit) return prev;
-            // Guard: if this fetch somehow lacks serials, keep the ones the
-            // previously-selected row already had so the Serial step never
-            // flashes back to pending mid-swap.
-            return hit.serials == null && prev.serials != null
-              ? { ...hit, serials: prev.serials }
-              : hit;
+          // Preserve any serials already seeded on the siblings cache / selection.
+          const withSerials = rows.map((r) => {
+            const prior =
+              cachedRows?.find((c) => c.id === r.id)?.serials ??
+              (selectedLine.id === r.id ? selectedLine.serials : undefined);
+            return prior != null && r.serials == null
+              ? ({ ...r, serials: prior } as ReceivingLineRow)
+              : r;
           });
+          seedReceivingSiblingsCache(queryClient, receivingId, withSerials, data?.receiving_package);
+          applySiblingPool(withSerials, selectedLine, setScanMatchedRows, setSelectedLine);
         }
       } catch { /* silent — nav stays disabled if fetch fails */ }
     })();
     return () => { cancelled = true; };
-  }, [selectedLine, scanMatchedRows, setScanMatchedRows, setSelectedLine]);
+  }, [selectedLine, scanMatchedRows, setScanMatchedRows, setSelectedLine, queryClient]);
 
   // Navigation + progress derived from the PO-scoped sibling list. Counter
   // sums *units* across every matched line (received vs expected) so the pill

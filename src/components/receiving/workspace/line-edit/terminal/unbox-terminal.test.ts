@@ -103,7 +103,33 @@ test('resolveUnboxReceiveTerminal: primary label from controller', () => {
   const carton = vm.menu?.find((m) => m.label === 'Carton label');
   const printOnly = vm.menu?.find((m) => m.label.startsWith('Print only'));
   assert.equal(carton?.selected, true);
+  assert.equal(carton?.keepOpen, true);
   assert.equal(printOnly?.separatorBefore, true);
+
+  let selected: string | null = null;
+  let printed: string | null = null;
+  const selectOnly = resolveUnboxReceiveTerminal(
+    mockCtx({
+      receive: {
+        ...mockCtx().receive,
+        labelSelectOptions: [
+          { key: 'carton', name: 'Carton label' },
+          { key: 'unit', name: 'Unit label' },
+        ],
+        activeLabelKind: 'carton',
+        setSelectedLabelKind: (key) => {
+          selected = key;
+        },
+        printKind: (kind) => {
+          printed = kind;
+          return true;
+        },
+      },
+    }),
+  );
+  selectOnly.menu?.find((m) => m.label === 'Unit label')?.onClick();
+  assert.equal(selected, 'unit');
+  assert.equal(printed, null);
 });
 
 test('resolveUnboxReceiveTerminal: unfound hides Save all to inventory', () => {

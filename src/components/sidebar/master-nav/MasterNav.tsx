@@ -182,7 +182,8 @@ export function MasterNav({
       const mode = ref.modeId ? page.modes?.find((m) => m.id === ref.modeId) : undefined;
       // Mode id unknown / gated out — skip when the stored mode no longer exists.
       if (ref.modeId && !mode && page.modes && page.modes.length > 0) continue;
-      // Modes own icons; modeless page jumps use a short text mark (no page Lucide).
+      // Modes own glyphs (heavy stroke); modeless page jumps use the page SoT icon
+      // (light stroke) — same as MasterNav L1 rows. Never invent a text mark.
       const label =
         mode && page.modes && page.modes.length > 1
           ? `${page.label} · ${mode.label}`
@@ -190,8 +191,8 @@ export function MasterNav({
       chips.push({
         key,
         label,
-        icon: mode?.icon,
-        textMark: mode ? undefined : page.label.replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || page.label.slice(0, 2),
+        icon: mode?.icon ?? page.icon,
+        iconLayer: mode ? 'mode' : 'page',
         onSelect: () => handleNavigate(ref.pageId, ref.modeId ?? undefined),
         onHover: () => prefetchNavData(page.href, queryClient),
       });

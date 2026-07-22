@@ -6,10 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import {
-  SIDEBAR_MASTER_NAV_MODE_GAP,
   SIDEBAR_RAIL_DOT_TRACK,
-  SIDEBAR_RAIL_LEADING_PAD,
   SIDEBAR_RAIL_ROW_PAD_RIGHT,
+  SIDEBAR_SCAN_DOCK_LEADING_ROW,
 } from '@/components/layout/header-shell';
 import { Check, ChevronDown } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -124,7 +123,7 @@ export function RailRow<TRow>({
       {...motionProps}
       // Right inset on the ROW: selection ring clears the canvas cutout and
       // shares a right edge with the eyebrow pencil. The status dot rides a FLOW
-      // leading track (SIDEBAR_RAIL_LEADING_PAD + SIDEBAR_RAIL_DOT_TRACK) so the
+      // leading track (SIDEBAR_SCAN_DOCK_LEADING_ROW) so the
       // title tucks one tight gap after it — no absolute dot + deep title inset
       // (that combo opened a ~50px canyon between the dot and the title).
       className={`relative ${SIDEBAR_RAIL_ROW_PAD_RIGHT}`}
@@ -151,11 +150,11 @@ export function RailRow<TRow>({
         onClick={onClick}
         onMouseDown={(e) => { if (editActive && e.shiftKey) e.preventDefault(); }}
         className={cn(
-          // Leading FLOW track (pl-2 + w-4) holds the dot/checkbox; the title
-          // sits one gap-1.5 after it. No deep title inset — that's the canyon.
-          'ds-raw-button group relative flex w-full items-center text-left transition-colors pr-1',
-          SIDEBAR_RAIL_LEADING_PAD,
-          SIDEBAR_MASTER_NAV_MODE_GAP,
+          // Leading FLOW track (SIDEBAR_SCAN_DOCK_LEADING_ROW) holds the
+          // dot/checkbox; the title sits one gap after it — same column as the
+          // dense scan bar + UNBOXED eyebrow. No deep title inset (canyon).
+          'ds-raw-button group relative w-full text-left transition-colors pr-1',
+          SIDEBAR_SCAN_DOCK_LEADING_ROW,
           isDisabled ? 'cursor-wait opacity-80' : '',
           (editActive ? isChecked : isSelected)
             ? 'rounded-md bg-blue-50 ring-1 ring-inset ring-blue-400 py-1'

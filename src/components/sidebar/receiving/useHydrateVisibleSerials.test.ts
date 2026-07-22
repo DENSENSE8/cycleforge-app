@@ -7,8 +7,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { rowsNeedingSerials, patchRowsWithSerials } from './useHydrateVisibleSerials';
+import { rowsNeedingSerials, patchRowsWithSerials, seedOrPatchSiblingsSerials } from './useHydrateVisibleSerials';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { QueryClient } from '@tanstack/react-query';
+import {
+  receivingSiblingsQueryKey,
+  receivingSiblingsSerialsQueryKey,
+} from '@/lib/queries/receiving-queries';
 
 function row(partial: Partial<ReceivingLineRow>): ReceivingLineRow {
   return { id: 1, receiving_id: 100, ...partial } as ReceivingLineRow;
@@ -68,4 +73,22 @@ test('patchRowsWithSerials: no matching lines → unchanged', () => {
   const { next, changed } = patchRowsWithSerials(rows, { '999': [{ id: 1, serial_number: 'X' }] });
   assert.equal(changed, false);
   assert.equal(next[0].serials, undefined);
+});
+
+test('seedOrPatchSiblingsSerials: seeds empty siblings + serials caches from feed row', () => {
+  const qc = new QueryClient();
+  const feed = [row({ id: 8696, receiving_id: 14222, item_name: null, sku: null })];
+  seedOrPatchSiblingsSerials(qc, 14222, feed, {
+    '8696': [{ id: 11, serial_number: 'SN-11' }],
+  });
+  const siblings = qc.getQueryData<{ receiving_lines: ReceivingLineRow[] }>(
+    receivingSiblingsQueryKey(14222),
+  );
+  const serials = qc.getQueryData<{ receiving_lines: ReceivingLineRow[] }>(
+    receivingSiblingsSerialsQueryKey(14222),
+  );
+  assert.equal(siblings?.receiving_lines.length, 1);
+  assert.deepEqual(siblings?.receiving_lines[0].serials, [{ id: 11, serial_number: 'SN-11' }]);
+  assert.equal(serials?.receiving_lines.length, 1);
+  assert.deepEqual(serials?.receiving_lines[0].serials, [{ id: 11, serial_number: 'SN-11' }]);
 });

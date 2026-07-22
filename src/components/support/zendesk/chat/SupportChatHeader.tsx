@@ -10,6 +10,7 @@ import {
 } from '@/hooks/useZendeskQueries';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { Check, ChevronLeft, ExternalLink, Link2, Package, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -55,6 +56,9 @@ export function SupportChatHeader({
   const { data: agents = [] } = useZendeskAgents();
   const { data: assignment } = useTicketAssignment(ticket.id);
   const url = hideExternalLink ? null : zendeskTicketUrl(ticket.id);
+  // Runtime provider name so the deep-link reads the org's own helpdesk.
+  const { label: helpdeskLabel } = useCapabilityProviderLabel('helpdesk');
+  const openLabel = `Open in ${helpdeskLabel}`;
   const requester = requesterFrom(ticket);
   const reqName = requester.name || requester.email || 'Requester';
   // Inline title (subject) edit — click the title, confirm with the checkmark.
@@ -220,12 +224,12 @@ export function SupportChatHeader({
           ) : null}
           <SupportDetailsStack ticket={ticket} />
           {url ? (
-            <HoverTooltip label="Open in Zendesk" asChild>
+            <HoverTooltip label={openLabel} asChild>
               <a
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Open in Zendesk"
+                aria-label={openLabel}
                 className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
               >
                 <ExternalLink className="h-4 w-4" />

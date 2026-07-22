@@ -206,9 +206,20 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await expect(platformHeader).toBeVisible();
     await expect(condHeader).toBeVisible();
 
+    // Self-heal a stale persisted order from an earlier failed run: double-click
+    // resets to canonical when a custom order is active, and is a no-op when
+    // the order is already canonical (no reset handler armed).
+    await platformHeader.dblclick();
+    await page.waitForTimeout(400);
+
     const condX0 = await leftX(condHeader);
     expect((await leftX(platformHeader)) > condX0, 'canonical: platform right of condition').toBe(true);
 
+    // The order persists via a BACKGROUND PUT — capture it so the later reload
+    // can't race (and abort) the in-flight save under parallel-worker load.
+    const prefsSaved = page.waitForResponse(
+      (r) => r.url().includes('/api/staff-preferences') && r.request().method() === 'PUT',
+    );
     await dragHeader(page, platformHeader, condHeader);
 
     // Live reorder: platform now left of condition — header AND body agree.
@@ -224,24 +235,34 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     expect(await titleCell.evaluate((el) => getComputedStyle(el).position)).toBe('sticky');
     expect((await leftX(titleCell)) < (await leftX(row.locator('[data-col="date"], [data-col="platform"]').first()))).toBe(true);
 
-    // Persisted per staff: survive a reload.
+    // Persisted per staff: survive a reload. The header renders canonical until
+    // the staff-prefs fetch resolves — poll, don't one-shot (slow under load).
+    const saveRes = await prefsSaved;
+    expect(saveRes.ok(), 'staff-preferences order PUT succeeded').toBe(true);
     await page.reload();
     await expect(grid.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     const headerRow2 = headerRowIn(grid);
-    expect(
-      (await leftX(headerRow2.locator('[data-col="platform"]'))) < (await leftX(headerRow2.locator('[data-col="condition"]'))),
-      'order persists across reload',
-    ).toBe(true);
+    await expect
+      .poll(
+        async () =>
+          (await leftX(headerRow2.locator('[data-col="platform"]'))) <
+          (await leftX(headerRow2.locator('[data-col="condition"]'))),
+        { timeout: 10_000, message: 'order persists across reload' },
+      )
+      .toBe(true);
 
     await page.screenshot({ path: 'test-results/to-ship-pending-grid-reorder.png', fullPage: false });
 
     // Reset path: double-click a movable header → canonical order again.
     await headerRow2.locator('[data-col="platform"]').dblclick();
-    await page.waitForTimeout(300);
-    expect(
-      (await leftX(headerRow2.locator('[data-col="platform"]'))) > (await leftX(headerRow2.locator('[data-col="condition"]'))),
-      'double-click reset restores canonical order',
-    ).toBe(true);
+    await expect
+      .poll(
+        async () =>
+          (await leftX(headerRow2.locator('[data-col="platform"]'))) >
+          (await leftX(headerRow2.locator('[data-col="condition"]'))),
+        { timeout: 10_000, message: 'double-click reset restores canonical order' },
+      )
+      .toBe(true);
   });
 
   test('qty edits in-cell (Sheets contract) and commits through assign', async ({ page }) => {
@@ -265,15 +286,19 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     expect((await qtyCell.innerText()).trim(), 'Esc reverts the draft').toBe(before);
 
     // Click → type a new value → Enter commits (optimistic patch, no remount).
+    // A no-change draft never POSTs, so the target must DIFFER from `before`
+    // even when a previously-failed run left its value behind.
+    const next = before === '3' ? '4' : '3';
     const assign = page.waitForResponse((r) => r.url().includes('/api/orders/assign') && r.request().method() === 'POST');
     await qtyCell.click();
-    await qtyCell.locator('input').fill('3');
+    await qtyCell.locator('input').fill(next);
     await qtyCell.locator('input').press('Enter');
     const res = await assign;
     expect(res.ok(), 'assign commit succeeded').toBe(true);
-    await expect(qtyCell).toContainText('3');
+    await expect(qtyCell).toContainText(next);
 
-    // Restore the original quantity (leave dogfood data as found).
+    // Restore the original quantity (leave dogfood data as found) — always a
+    // real change (`next` ≠ `before`), so the POST always fires.
     const restore = page.waitForResponse((r) => r.url().includes('/api/orders/assign') && r.request().method() === 'POST');
     await qtyCell.click();
     await qtyCell.locator('input').fill(before || '1');

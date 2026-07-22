@@ -29,23 +29,14 @@ export function PackOrderIdentity({
         : orderId || tracking || '—';
 
   const [listingLink, setListingLink] = useState('');
-  const [listingEditorOpen, setListingEditorOpen] = useState(false);
-  const [poEditorOpen, setPoEditorOpen] = useState(false);
-  const [poNumberEdit, setPoNumberEdit] = useState(poDisplay);
-  const [trackingEditorsOpen, setTrackingEditorsOpen] = useState(false);
-  const [trackingEdit, setTrackingEdit] = useState(tracking);
-  const [extraTrackings, setExtraTrackings] = useState<string[]>([]);
   const [platformValue, setPlatformValue] = useState('');
   const [receivingType, setReceivingType] = useState('');
 
   useEffect(() => {
-    setPoNumberEdit(poDisplay);
-    setTrackingEdit(tracking);
-    setExtraTrackings([]);
-    setListingEditorOpen(false);
-    setPoEditorOpen(false);
-    setTrackingEditorsOpen(false);
-  }, [activeOrder.orderRowId, activeOrder.orderId, activeOrder.tracking, poDisplay, tracking]);
+    setListingLink('');
+    setPlatformValue('');
+    setReceivingType('');
+  }, [activeOrder.orderRowId, activeOrder.orderId, activeOrder.tracking]);
 
   return (
     <CartonContextCard
@@ -55,22 +46,12 @@ export function PackOrderIdentity({
       isUnmatched={false}
       showStaffPhotoRow={false}
       listingLink={listingLink}
-      setListingLink={setListingLink}
-      listingEditorOpen={listingEditorOpen}
-      setListingEditorOpen={setListingEditorOpen}
       listingOpenHref={null}
       listingLinks={[]}
       poOpenHref={null}
       trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
       poDisplay={poDisplay}
       linkedOrderNumber={orderId || null}
-      poEditorOpen={poEditorOpen}
-      setPoEditorOpen={setPoEditorOpen}
-      poNumberEdit={poNumberEdit}
-      setPoNumberEdit={setPoNumberEdit}
-      onCommitPoNumber={() => {
-        /* pack session — order id is read-only */
-      }}
       lineId={null}
       zendeskTrimmed=""
       zendeskHref={null}
@@ -78,15 +59,6 @@ export function PackOrderIdentity({
       primaryTrackingTrimmed={tracking}
       filledExtraTrackingsCount={0}
       isLocalPickup={false}
-      trackingEditorsOpen={trackingEditorsOpen}
-      onToggleTrackingEditors={() => setTrackingEditorsOpen((v) => !v)}
-      trackingEdit={trackingEdit}
-      setTrackingEdit={setTrackingEdit}
-      onCommitTracking={() => {
-        /* pack session — tracking comes from the scanned order */
-      }}
-      extraTrackings={extraTrackings}
-      setExtraTrackings={setExtraTrackings}
       platformValue={platformValue}
       onPlatformSelect={setPlatformValue}
       receivingType={receivingType}

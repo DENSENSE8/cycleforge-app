@@ -183,8 +183,9 @@ export interface SidebarRailShellProps<TRow> {
   /**
    * Horizontal inset for the list host.
    *   - `gutter` (shell default) — symmetric SIDEBAR_GUTTER.
-   *   - `scanDock` — flush left + flush right (SIDEBAR_RAIL_INSET_X); the status
-   *     dot rides a compact FLOW leading track (SIDEBAR_RAIL_LEADING_PAD) at the
+   *   - `scanDock` — left = SIDEBAR_RAIL_INSET_LEFT (sidebar gutter), right flush
+   *     (SIDEBAR_RAIL_INSET_X); the status
+   *     dot rides a compact FLOW leading track (SIDEBAR_SCAN_DOCK_LEADING_ROW) at the
    *     row's left and the title/eyebrow sit one tight gap after it — the dense
    *     scan-dock column. Recent rails default this via SidebarRecentRailBase.
    */

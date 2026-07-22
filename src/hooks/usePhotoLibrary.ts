@@ -1,6 +1,6 @@
 'use client';
 
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import {
@@ -75,21 +75,34 @@ export function photoLibraryFilterParams(filters: PhotoLibraryFilterState): URLS
   return params;
 }
 
-function buildQueryString(filters: PhotoLibraryFilterState, cursor?: number | null): string {
+function buildQueryString(
+  filters: PhotoLibraryFilterState,
+  cursor: number | null | undefined,
+  pageSize: number,
+): string {
   const params = photoLibraryFilterParams(filters);
-  params.set('limit', String(PHOTO_LIBRARY_PAGE_SIZE));
+  params.set('limit', String(pageSize));
   if (cursor) params.set('cursor', String(cursor));
   return params.toString();
 }
 
-export function usePhotoLibrary(filters: PhotoLibraryFilterState) {
-  const queryKey = useMemo(() => ['photo-library', filters], [filters]);
+export function usePhotoLibrary(
+  filters: PhotoLibraryFilterState,
+  opts: { pageSize?: number; enabled?: boolean } = {},
+) {
+  const pageSize = opts.pageSize ?? PHOTO_LIBRARY_PAGE_SIZE;
+  const enabled = opts.enabled ?? true;
+  const queryKey = useMemo(
+    () => ['photo-library', filters, pageSize] as const,
+    [filters, pageSize],
+  );
 
   const query = useInfiniteQuery({
     queryKey,
+    enabled,
     initialPageParam: null as number | null,
     queryFn: async ({ pageParam }) => {
-      const qs = buildQueryString(filters, pageParam);
+      const qs = buildQueryString(filters, pageParam, pageSize);
       const res = await fetch(`/api/photos/library?${qs}`);
       if (!res.ok) throw new Error('Failed to load photos');
       return res.json() as Promise<{
@@ -99,6 +112,9 @@ export function usePhotoLibrary(filters: PhotoLibraryFilterState) {
       }>;
     },
     getNextPageParam: (last) => (last.hasMore ? last.nextCursor : undefined),
+    // Keep prior folders visible while the next filter settles — avoids skeleton
+    // remount flicker on Today / Latest-day / type switches.
+    placeholderData: keepPreviousData,
   });
 
   const photos = useMemo(
@@ -106,5 +122,9 @@ export function usePhotoLibrary(filters: PhotoLibraryFilterState) {
     [query.data],
   );
 
-  return { query, photos };
+  // Settled = real data for this filter key (not a keepPreviousData placeholder).
+  // Empty-day widen and empty-state must wait for this to avoid URL thrash flicker.
+  const isSettled = !query.isPending && !query.isPlaceholderData;
+
+  return { query, photos, isSettled, pageSize };
 }

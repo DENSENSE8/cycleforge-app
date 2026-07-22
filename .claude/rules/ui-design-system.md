@@ -140,10 +140,11 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 ## Icons: structural and paired, never decorative
 
 - Import from `@/components/Icons`. Always pair an icon with text (e.g. `<Check className="h-3.5 w-3.5"/> Resolve`),
-  except the status dot — and **MasterNav MRU mode chips** (icon-only with `HoverTooltip`; modes own recognition).
-- **Nav chrome law:** MasterNav L1 page rows render SoT page icons (lighter stroke); L2 modes
-  (dropdown, hover, header “now”, MRU, scan rails) keep glyphs with heavier stroke. CommandBar Pages /
-  mobile page rows stay label-only until those surfaces are migrated. Stroke SoT: `nav-weight.tsx`.
+  except the status dot — and **MasterNav MRU jump chips** (icon-only with `HoverTooltip`; mode or page SoT glyph).
+- **Nav chrome law:** MasterNav L1 page rows (and modeless MRU jumps) render SoT page icons
+  (lighter stroke); L2 modes (dropdown, hover, header “now”, mode MRU, scan rails) keep glyphs
+  with heavier stroke. CommandBar Pages / mobile page rows stay label-only until those surfaces
+  are migrated. Stroke SoT: `nav-weight.tsx`.
 - Size by context: row dot `h-2 w-2` · field/inline `h-3.5 w-3.5` · button/loader `h-4 w-4` (`Loader2 animate-spin`).
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a

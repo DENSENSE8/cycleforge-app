@@ -99,6 +99,8 @@ export function LabelsScanBand({ autoFocus = true }: { autoFocus?: boolean } = {
         isResolving={resolving}
         onPaste={(text) => setValue(text)}
         className="w-full"
+        // Align the scan icon/text to the Labels recent-rail title column below.
+        leadingColumn="rail"
       />
     </ScanBandShell>
   );

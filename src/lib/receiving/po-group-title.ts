@@ -170,6 +170,30 @@ export function receivingProductTitle(row: ReceivingLineRow): string {
   );
 }
 
+/**
+ * Workspace accordion / line-picker title — same product SoT as the rail, but
+ * never paints bare `Line #N` when the carton already has a PO/order identity
+ * (common on multi-SKU Unboxed opens: adaptive rail shows "Goodwill · PO …"
+ * while a thin placeholder still lacks item_name until siblings hydrate).
+ */
+export function receivingWorkspaceLineTitle(
+  row: ReceivingLineRow,
+  resolvePlatformLabel: (raw: string) => string = (raw) => raw,
+): string {
+  const hasProductField = Boolean(
+    row.catalog_product_title ||
+      row.zoho_item_title ||
+      row.item_name ||
+      row.sku ||
+      row.zoho_item_id,
+  );
+  if (hasProductField) return receivingProductTitle(row);
+  if (isReceivingPoGroupTitleRow(row)) {
+    return getReceivingPoGroupTitle(row, resolvePlatformLabel);
+  }
+  return receivingProductTitle(row);
+}
+
 /** True when adaptive mode should show PO summary instead of product title. */
 export function shouldUsePoGroupRailTitle(row: ReceivingLineRow): boolean {
   const ctx = row.rail_title_context;

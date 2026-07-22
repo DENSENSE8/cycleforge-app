@@ -22,6 +22,7 @@ import {
   type WarrantyTimelineEntry,
 } from '@/lib/warranty/zendesk-format';
 import { formatDateTimePST } from '@/utils/date';
+import { renderInlineMarkdown } from '@/lib/support/markdown';
 
 /**
  * Single icon-button entry point for a claim's support thread. Click → anchored
@@ -106,7 +107,9 @@ function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
         </span>
         <span className="text-text-faint normal-case">{formatDateTimePST(comment.createdAt)}</span>
       </div>
-      <p className="whitespace-pre-wrap text-role-data leading-snug text-text-default">{comment.body}</p>
+      <div className="break-words text-role-data leading-snug text-text-default">
+        {renderInlineMarkdown(comment.body)}
+      </div>
     </li>
   );
 }

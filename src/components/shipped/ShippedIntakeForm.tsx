@@ -4,12 +4,9 @@ import React, { useCallback, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Loader2, Lock, Check, AlertCircle } from '../Icons';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
+import { normalizeCondition } from '@/components/tech/StationConditionEditor';
 import { Button } from '@/design-system/primitives';
-
-const INTAKE_MODE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'replacement', label: 'Replacement' },
-  { id: 'add_order', label: 'Add Order' },
-];
 import {
   SidebarIntakeFormField,
   SidebarIntakeFormShell,
@@ -18,11 +15,13 @@ import {
   SIDEBAR_INTAKE_SUBMIT_BUTTON_CLASS,
 } from '@/design-system/components';
 
-const CONDITION_ITEMS: HorizontalSliderItem[] = [
-  { id: 'Used', label: 'Used' },
-  { id: 'New', label: 'New' },
-  { id: 'Parts', label: 'Parts' },
+const INTAKE_MODE_ITEMS: HorizontalSliderItem[] = [
+  { id: 'replacement', label: 'Replacement' },
+  { id: 'add_order', label: 'Add Order' },
 ];
+
+/** Default grade — legacy intake used coarse "Used" (maps to USED_B). */
+const DEFAULT_CONDITION = 'USED_B';
 
 interface ShippedIntakeFormProps {
   onClose: () => void;
@@ -80,7 +79,7 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
     order_id: '',
     product_title: '',
     reason: '',
-    condition: 'Used',
+    condition: DEFAULT_CONDITION,
     shipping_tracking_number: '',
     sku: '',
   });
@@ -90,7 +89,7 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
     order_id: '',
     shipping_tracking_number: '',
     product_title: '',
-    condition: 'Used',
+    condition: DEFAULT_CONDITION,
     sku: '',
   });
 
@@ -302,13 +301,11 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
           </SidebarIntakeFormField>
 
           <SidebarIntakeFormField label="Condition" required>
-            <HorizontalButtonSlider
-              aria-label="Condition"
-              variant="nav"
-              size="md"
-              items={CONDITION_ITEMS}
+            <ConditionPills
               value={replacementData.condition}
-              onChange={(next) => setReplacementData((prev) => ({ ...prev, condition: next }))}
+              onChange={(next) =>
+                setReplacementData((prev) => ({ ...prev, condition: normalizeCondition(next) }))
+              }
             />
           </SidebarIntakeFormField>
 
@@ -357,13 +354,11 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
           </SidebarIntakeFormField>
 
           <SidebarIntakeFormField label="Condition" required>
-            <HorizontalButtonSlider
-              aria-label="Condition"
-              variant="nav"
-              size="md"
-              items={CONDITION_ITEMS}
+            <ConditionPills
               value={addOrderData.condition}
-              onChange={(next) => setAddOrderData((prev) => ({ ...prev, condition: next }))}
+              onChange={(next) =>
+                setAddOrderData((prev) => ({ ...prev, condition: normalizeCondition(next) }))
+              }
             />
           </SidebarIntakeFormField>
 

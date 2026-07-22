@@ -16,6 +16,8 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
       'po-note': 'po-note',
       checklist: 'checklist',
       units: 'units',
+      tracking: 'none',
+      listings: 'none',
       timeline: 'timeline',
       ticket: 'ticket',
       support: 'support',

@@ -4,8 +4,8 @@ import {
   Inbox,
   Layers,
   MessageSquare,
+  Monitor,
   Search,
-  ShelvingUnit,
   Warehouse,
 } from '@/components/Icons';
 import type { ParkedSurfaceKey } from '@/lib/dogfood/parked-surfaces';
@@ -16,8 +16,8 @@ export const PARKED_SURFACE_ICONS: Record<
   (props: { className?: string }) => JSX.Element
 > = {
   home: Inbox,
+  operations: Monitor,
   sourcing: Search,
-  inventory: ShelvingUnit,
   warehouse: Warehouse,
   fba: Boxes,
   studio: Layers,
