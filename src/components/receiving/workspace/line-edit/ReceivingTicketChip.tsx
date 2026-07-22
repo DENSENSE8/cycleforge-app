@@ -10,6 +10,7 @@ import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityLinkChip } from './IdentityLinkChip';
+import { renderInlineMarkdown } from '@/lib/support/markdown';
 
 /**
  * Prefer the server's field-level `details` (e.g. a Zod issue string like
@@ -248,7 +249,9 @@ function TicketThreadPanel({
                     {formatDateTimePST(c.createdAt)}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-role-data leading-snug text-text-default">{c.body}</p>
+                <div className="break-words text-role-data leading-snug text-text-default">
+                  {renderInlineMarkdown(c.body)}
+                </div>
               </li>
             ))}
           </ul>

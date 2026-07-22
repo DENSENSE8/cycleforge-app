@@ -202,8 +202,12 @@ export function usePoLinesData({
 
   // First-load only (no serial data cached yet) → drive the per-row skeleton.
   // A background refetch of already-shown serials keeps `isLoading` false, so
-  // resolved serial chips never flash back to a skeleton.
-  const serialsLoading = serialsQuery.isLoading;
+  // resolved serial chips never flash back to a skeleton. Tier-A hydrate / warm
+  // placeholder serials also suppress the skeleton so row-click opens like scan.
+  const hasCachedSerials =
+    (data?.receiving_lines ?? []).some((r) => r.serials != null) ||
+    placeholderActiveRow?.serials != null;
+  const serialsLoading = serialsQuery.isLoading && !hasCachedSerials;
 
   // Optimistic `receiving-line-updated` patches go straight into the QUERY
   // CACHE, so the render derives from a SINGLE source of truth (`data`). See

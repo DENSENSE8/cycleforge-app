@@ -657,23 +657,6 @@ export function patchUnboxRailQtyByCarton(
   if ('quantity_received' in qty) patch.quantity_received = qty.quantity_received;
   if ('quantity_expected' in qty) patch.quantity_expected = qty.quantity_expected;
   if ('workflow_status' in qty) patch.workflow_status = qty.workflow_status;
-  // #region agent log
-  if (receivingId === 14221) {
-    fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
-      body: JSON.stringify({
-        sessionId: '1348cc',
-        runId: 'pre-fix',
-        hypothesisId: 'B',
-        location: 'receiving-queries.ts:patchUnboxRailQtyByCarton',
-        message: 'Unboxed rail qty/status patch for target carton',
-        data: { receivingId, existingId, qty },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-  // #endregion
   upsertReceivingRailRows(queryClient, [patch]);
 }
 

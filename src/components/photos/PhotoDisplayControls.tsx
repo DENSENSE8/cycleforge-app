@@ -26,11 +26,8 @@ const DISPLAY_ITEMS: DisplayItem[] = [
 ];
 
 /**
- * The media-library header's right-side control cluster: display toggle, grid
- * density, refresh, and Select — in left→right order so that (with the sort
- * anchor rendered after this by {@link PhotoLibraryHeader}) the right-to-left
- * reading is Sort → Select → Refresh → density → toggle. Refresh stays present
- * in every view; the toggle/density/Select show only where they apply.
+ * Path-strip control cluster for in-folder photos: density · refresh · select ·
+ * icons/list. Sort / media type / filters stay in {@link PhotoLibraryWorkspaceHeader}.
  */
 export function PhotoDisplayControls({
   view,
@@ -57,9 +54,7 @@ export function PhotoDisplayControls({
   onRefresh: () => void;
   isRefreshing: boolean;
 }) {
-  // Left→right: density → refresh → Select → display toggle, with the sort anchor
-  // rendered after this by PhotoLibraryHeader. So the toggle sits between Select
-  // and the Newest/Oldest sort. All tooltips open above (header is at the top).
+  // Left→right on the breadcrumb row: density → refresh → Select → display toggle.
   return (
     <>
       {showDensity ? (
@@ -70,7 +65,7 @@ export function PhotoDisplayControls({
         />
       ) : null}
 
-      {/* Refresh stays in the header across every view. */}
+      {/* Refresh stays on the path strip across every view. */}
       <HoverTooltip label="Refresh photos" placement="above" asChild>
         <button
           type="button"
@@ -104,8 +99,7 @@ export function PhotoDisplayControls({
         </HoverTooltip>
       ) : null}
 
-      {/* Display toggle — sits between Select and the sort anchor. Same group +
-          button primitives as the grid-density toggle, so both match in size. */}
+      {/* Display toggle — Icons (folders) vs List. */}
       {showToggle ? (
         <div className={cn(photoLibraryControlGroupClass, 'shrink-0')} role="group" aria-label="Photo display">
           {DISPLAY_ITEMS.map(({ id, label, icon: Icon }) => {

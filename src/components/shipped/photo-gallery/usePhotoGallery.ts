@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { dispatchReceivingPhotoChanged } from '@/utils/events';
 import {
@@ -11,6 +11,11 @@ import {
 } from './photo-gallery-api';
 import { usePhotoItems } from './usePhotoItems';
 import { useImageZoom } from './useImageZoom';
+import {
+  nextViewerCloseState,
+  type ViewerCloseAction,
+  type ViewerCloseState,
+} from './viewer-close-state';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 import type { PhotoEntityType } from '@/lib/photos/types';
@@ -18,6 +23,35 @@ import type { PhotoGalleryInput, PhotoItem } from './photo-gallery-utils';
 
 /** Soft exit duration for MovePhotosBetweenPoModal / RightPaneOverlay fade. */
 const MOVE_PHOTOS_SOFT_MS = 180;
+
+const INITIAL_CLOSE_STATE: ViewerCloseState = {
+  viewerOpen: false,
+  panelOpen: false,
+  deferViewerClose: false,
+};
+
+type CloseMachineAction =
+  | ViewerCloseAction
+  | { type: 'open'; details?: boolean }
+  | { type: 'setPanel'; open: boolean }
+  | { type: 'togglePanel' };
+
+function closeMachineReducer(state: ViewerCloseState, action: CloseMachineAction): ViewerCloseState {
+  if (action === 'requestClose' || action === 'panelExitComplete' || action === 'forceDismiss') {
+    return nextViewerCloseState(state, action);
+  }
+  if (action.type === 'open') {
+    return {
+      viewerOpen: true,
+      panelOpen: Boolean(action.details),
+      deferViewerClose: false,
+    };
+  }
+  if (action.type === 'togglePanel') {
+    return { ...state, panelOpen: !state.panelOpen };
+  }
+  return { ...state, panelOpen: action.open };
+}
 
 /**
  * Entity a viewer upload attaches to. Upload always targets the gallery's OWN
@@ -115,12 +149,10 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   const { photoItems, setPhotoItems, resetFingerprint, loadedCount, errorCount } = usePhotoItems(photos);
   const zoom = useImageZoom();
 
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const [closeState, dispatchClose] = useReducer(closeMachineReducer, INITIAL_CLOSE_STATE);
+  const { viewerOpen, panelOpen, deferViewerClose } = closeState;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
-  /** True while the details panel is playing its exit before the viewer tears down. */
-  const [deferViewerClose, setDeferViewerClose] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState(false);
@@ -143,6 +175,8 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     [],
   );
 
+  // Mobile swipe path has no PhotoViewerPortal — lock while intent is open.
+  // Desktop portal also locks through `present` (covers the exit fade).
   useBodyScrollLock(viewerOpen);
 
   const trackMovePhotosOpen = useCallback(
@@ -169,33 +203,41 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     setUploadError(null);
   }, [photoItems.length, zoom]);
 
-  const dismissViewer = useCallback(() => {
-    setViewerOpen(false);
-    setPanelOpen(false);
-    setDeferViewerClose(false);
+  const clearViewerChrome = useCallback(() => {
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
     setUploadError(null);
   }, [zoom]);
 
+  /** Hard teardown — upload overlay, move-photos, and any path that must not defer. */
+  const dismissViewer = useCallback(() => {
+    dispatchClose('forceDismiss');
+    clearViewerChrome();
+  }, [clearViewerChrome]);
+
   const closePanel = useCallback(() => {
-    setPanelOpen(false);
+    dispatchClose({ type: 'setPanel', open: false });
   }, []);
 
   const closeViewer = useCallback(() => {
-    if (panelOpen) {
-      setDeferViewerClose(true);
-      setPanelOpen(false);
-      return;
+    dispatchClose('requestClose');
+    // Chrome clears when the machine actually closes (not when only deferring).
+  }, []);
+
+  // When requestClose dismisses immediately, clear chrome; when it only defers,
+  // wait for panelExitComplete / forceDismiss.
+  const prevViewerOpen = useRef(viewerOpen);
+  useEffect(() => {
+    if (prevViewerOpen.current && !viewerOpen) {
+      clearViewerChrome();
     }
-    dismissViewer();
-  }, [panelOpen, dismissViewer]);
+    prevViewerOpen.current = viewerOpen;
+  }, [viewerOpen, clearViewerChrome]);
 
   const completeViewerClose = useCallback(() => {
-    if (!deferViewerClose) return;
-    dismissViewer();
-  }, [deferViewerClose, dismissViewer]);
+    dispatchClose('panelExitComplete');
+  }, []);
 
   const closeMovePhotos = useCallback(() => {
     if (movePhotosReopenTimer.current != null) {
@@ -232,13 +274,16 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
 
   const openViewer = useCallback((index: number, opts?: { details?: boolean }) => {
     setCurrentIndex(index);
-    setViewerOpen(true);
+    dispatchClose({ type: 'open', details: opts?.details });
     zoom.resetZoom();
     setDeleteArmed(false);
     setDeleteError(null);
     setUploadError(null);
-    setPanelOpen(Boolean(opts?.details));
   }, [zoom]);
+
+  const togglePanel = useCallback(() => {
+    dispatchClose({ type: 'togglePanel' });
+  }, []);
 
   useEffect(() => {
     if (!viewerOpen) return;
@@ -287,14 +332,14 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
         case 'i':
         case 'I':
           e.preventDefault();
-          setPanelOpen((prev) => !prev);
+          togglePanel();
           break;
       }
     };
     // Capture so we win over page-level listeners (library grid, command bar).
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [viewerOpen, closeViewer, handlePrevious, handleNext, zoom]);
+  }, [viewerOpen, closeViewer, handlePrevious, handleNext, zoom, togglePanel]);
 
   const downloadFilename = (index: number, photoId: number | null) => {
     if (orderId && photoId != null) return `${orderId}_photo_${photoId}.jpg`;
@@ -432,13 +477,11 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     setUploadError(null);
     // Upload popover uses z-panelPopover; the lightbox is z-modal — close the
     // viewer so the RightPaneOverlay isn't trapped behind the scrim.
-    if (viewerOpen) {
-      setViewerOpen(false);
-      setPanelOpen(false);
-      setDeferViewerClose(false);
+    if (viewerOpen || deferViewerClose) {
+      dismissViewer();
     }
     setUploadOverlayOpenSafe(true);
-  }, [canUpload, uploading, viewerOpen, setUploadOverlayOpenSafe]);
+  }, [canUpload, uploading, viewerOpen, deferViewerClose, dismissViewer, setUploadOverlayOpenSafe]);
 
   const closeUploadOverlay = useCallback(() => {
     if (uploading) return;
@@ -524,7 +567,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     viewerOpen, currentIndex, mounted, openViewer, closeViewer, handleNext, handlePrevious, setCurrentIndex,
     panelOpen,
     closePanel,
-    togglePanel: () => setPanelOpen((prev) => !prev),
+    togglePanel,
     deferViewerClose,
     completeViewerClose,
     ...zoom,

@@ -39,6 +39,8 @@ export interface TerminalMenuItem {
   selected?: boolean;
   /** Quiet rule above this item — group outcomes below selections. */
   separatorBefore?: boolean;
+  /** Keep the menu open after click (selection toggles). Default closes. */
+  keepOpen?: boolean;
 }
 
 /**

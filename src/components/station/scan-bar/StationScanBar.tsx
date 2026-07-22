@@ -15,6 +15,11 @@ import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
+import {
+  SIDEBAR_RAIL_DOT_TRACK,
+  SIDEBAR_RAIL_INSET_LEFT,
+  SIDEBAR_SCAN_DOCK_LEADING_ROW,
+} from '@/components/layout/header-shell';
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 import {
@@ -22,7 +27,6 @@ import {
   STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
   STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
   STATION_SCAN_BAR_ICON_SLOT_CLASS,
-  STATION_SCAN_BAR_ICON_SLOT_DENSE_CLASS,
   STATION_SCAN_BAR_INPUT_CLASS,
   STATION_SCAN_BAR_MODE_BTN,
   STATION_SCAN_BAR_MODE_BTN_ARMED,
@@ -30,7 +34,6 @@ import {
   STATION_SCAN_BAR_MODE_BTN_INACTIVE,
   STATION_SCAN_BAR_MODE_GLYPH_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_CLASS,
-  STATION_SCAN_BAR_PAD_LEFT_DENSE_CLASS,
   STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS,
   STATION_SCAN_BAR_RIGHT_CELL,
   STATION_SCAN_BAR_RIGHT_SLOT_CLASS,
@@ -66,8 +69,9 @@ export interface StationScanBarProps {
    * Which column the leading icon + typed text align to.
    *   - `masternav` (default) — icon under the MasterNav mode glyph, text under
    *     the MasterNav label (deep inset). For benches with no rail below.
-   *   - `rail` — icon centered on the recent-rail status-dot track, text on the
-   *     row title (dense). For scan-dock bars stacked directly above a recent rail.
+   *   - `rail` — composes {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}: icon in the
+   *     status-dot track, typed text on the row title. For scan-dock bars
+   *     stacked directly above a recent rail.
    */
   leadingColumn?: 'masternav' | 'rail';
   onInputBlur?: () => void;
@@ -84,8 +88,8 @@ export interface StationScanBarProps {
   visibleModes?: Array<'plan' | 'select'>;
   /**
    * Wire the shared focus-scan hotkey: registers this bar as the global key's
-   * focus target and reveals the gear (reassign) affordance in the left icon
-   * slot on hover. Default true — every primary scan bar gets it for free.
+   * focus target and cross-fades the left icon slot to a gear (reassign
+   * dropdown) on hover. Default true — every primary scan bar gets it for free.
    * Set false for secondary/inline fields that shouldn't steal the hotkey.
    * Only renders the gear when `leadingIcon` is true (needs the icon slot).
    */
@@ -167,12 +171,12 @@ export function StationScanBar({
   const rightChipCount =
     modeButtonCount + (showPaste ? 1 : 0) + (hasActiveRightContent ? 1 : 0);
 
-  // `rail` = dense scan-dock column (icon on the rail dot track, text on the row
-  // title); `masternav` = default deep inset under the MasterNav label/glyph.
+  // `rail` = structural share of SIDEBAR_SCAN_DOCK_LEADING_ROW (icon in the
+  // status-dot track, text on the row title); `masternav` = deep inset under
+  // the MasterNav label/glyph.
   const dense = leadingColumn === 'rail';
-  const iconSlotClass = dense ? STATION_SCAN_BAR_ICON_SLOT_DENSE_CLASS : STATION_SCAN_BAR_ICON_SLOT_CLASS;
   const padLeft = dense
-    ? STATION_SCAN_BAR_PAD_LEFT_DENSE_CLASS
+    ? 'pl-0'
     : leadingIcon
       ? STATION_SCAN_BAR_PAD_LEFT_CLASS
       : STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS;
@@ -184,10 +188,42 @@ export function StationScanBar({
         ? 'pr-36'
         : 'pr-24';
   const modeBtnShell = modeButtonCount >= 2 ? STATION_SCAN_BAR_MODE_BTN_COMPACT : STATION_SCAN_BAR_MODE_BTN;
+  const bottomRule = inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
 
   const traceClass =
     submitTraceClassName
     ?? (theme ? STATION_SCAN_BAR_SUBMIT_TRACE_CLASS[theme] : STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS);
+
+  const leadingGlyph = showHotkeyGear ? (
+    <ScanHotkeyControl>{icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />}</ScanHotkeyControl>
+  ) : (
+    icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />
+  );
+
+  const inputEl = (
+    <input
+      ref={setInputRef}
+      type="text"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onInputBlur}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      disabled={disabled}
+      className={cn(
+        STATION_SCAN_BAR_INPUT_CLASS,
+        'relative z-base',
+        dense ? 'min-w-0 w-auto flex-1 border-0' : null,
+        padLeft,
+        padRight,
+        // Dense: bottom rule lives on the leading-row shell so it spans the
+        // icon track + input. MasterNav: rule stays on the full-bleed input.
+        // Hotkey gear cross-fades in the fixed icon slot — never bump pl on hover.
+        dense ? null : bottomRule,
+        inputClassName,
+      )}
+    />
+  );
 
   return (
     <motion.form
@@ -198,34 +234,45 @@ export function StationScanBar({
       className={cn('group relative', className)}
     >
       <div className="relative isolate">
-        {leadingIcon ? (
-          <div className={cn(iconSlotClass, iconClassName)}>
-            {showHotkeyGear ? (
-              <ScanHotkeyControl>{icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />}</ScanHotkeyControl>
-            ) : (
-              icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />
+        {dense ? (
+          <div
+            className={cn(
+              // Gutter matches scan-dock list/eyebrow; leading row then shares
+              // the title column with UNBOXED / rail rows.
+              SIDEBAR_RAIL_INSET_LEFT,
+              'h-10 w-full',
+              bottomRule,
+              // Focus brightens the shell rule (input is border-0 in dense mode).
+              theme ? `focus-within:border-b-${theme}-600` : null,
             )}
+          >
+            <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'h-full w-full')}>
+              {leadingIcon ? (
+                <span
+                  className={cn(
+                    SIDEBAR_RAIL_DOT_TRACK,
+                    'relative z-raised flex shrink-0 items-center justify-center',
+                    iconClassName,
+                  )}
+                >
+                  {leadingGlyph}
+                </span>
+              ) : (
+                <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
+              )}
+              {inputEl}
+            </div>
           </div>
-        ) : null}
-        <input
-          ref={setInputRef}
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onBlur={onInputBlur}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          disabled={disabled}
-          className={cn(
-            STATION_SCAN_BAR_INPUT_CLASS,
-            'relative z-base',
-            padLeft,
-            padRight,
-            showHotkeyGear ? 'group-hover:pl-16' : '',
-            inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
-            inputClassName,
-          )}
-        />
+        ) : (
+          <>
+            {leadingIcon ? (
+              <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
+                {leadingGlyph}
+              </div>
+            ) : null}
+            {inputEl}
+          </>
+        )}
 
         {/* Center→edges submit confirm on the bottom rule (same hue family). */}
         <div

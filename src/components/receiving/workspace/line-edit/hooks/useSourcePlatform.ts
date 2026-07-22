@@ -28,7 +28,9 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
   const [platformSaving, setPlatformSaving] = useState(false);
 
   // Load the parent receiving row's source_platform so the dropdown reflects
-  // the current shipment-level override.
+  // the current shipment-level override. Skip the GET when the list/rail row
+  // already carries a platform — opens share the siblings metadata cache and
+  // must not add a third receiving_id round-trip on every line click.
   useEffect(() => {
     if (row.receiving_id == null) {
       setSourcePlatform('');
@@ -36,6 +38,7 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
     }
     // Re-seed synchronously from the row on every line change — no empty frame.
     setSourcePlatform((row.source_platform || '').toLowerCase());
+    if ((row.source_platform || '').trim()) return;
     let cancelled = false;
     fetch(`/api/receiving-lines?receiving_id=${row.receiving_id}`)
       .then((r) => r.json())

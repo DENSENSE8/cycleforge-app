@@ -1,16 +1,19 @@
 /**
  * Phase 0 resolver — find an already-MATERIALIZED carton row (`receiving_id`
  * set) among the receiving-feed rows that matches the scanned value: PO number
- * in order mode, tracking number in tracking mode, either in `auto`. Among
- * multiple lines of the same carton, prefer an OPEN line so the workspace lands
- * on something actionable. Returns `null` on no confident match (the caller
- * falls through to the next rung). EXPECTED-only incoming lines (`receiving_id`
- * null) never match here — they still need the lookup-po adopt/stamp pass.
+ * in order mode, tracking number in tracking mode, support-ticket # in ticket
+ * mode (`zendesk_ticket` display, e.g. `#9575`), and the matching identities in
+ * `auto` (ticket only when the scan looks like a ticket id). Among multiple
+ * lines of the same carton, prefer an OPEN line so the workspace lands on
+ * something actionable. Returns `null` on no confident match (the caller falls
+ * through to the next rung). EXPECTED-only incoming lines (`receiving_id` null)
+ * never match here — they still need the lookup-po adopt/stamp pass.
  *
  * Pure + dependency-injected: the only input beyond the scan is `readCachedRows`
  * (a snapshot of the feed caches), so this runs DB/React-free in unit tests.
  */
 
+import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import type { CachedCartonDeps, CachedCartonResolution, ScanInput } from '../types';
 import { normalizeScanKey } from '../normalize';
 
@@ -21,11 +24,14 @@ export function resolveCachedCarton(
   const key = normalizeScanKey(input.value);
   if (!key) return null;
 
-  // `auto` (un-armed) matches EITHER identity; an armed mode matches only its
-  // own field — what lets an already-in-system carton win instantly regardless
-  // of whether the operator scanned its PO# or its tracking#.
+  // Armed mode matches only its own field; `auto` deep-scans PO# / tracking# /
+  // ticket# (ticket only when the value looks like `#NNNN`) so an already-open
+  // Unboxed row wins instantly — same identities as lookup-po.
   const matchOrder = input.mode === 'order' || input.mode === 'auto';
   const matchTracking = input.mode === 'tracking' || input.mode === 'auto';
+  const matchTicket =
+    input.mode === 'ticket'
+    || (input.mode === 'auto' && looksLikeTicketScan(input.value));
 
   const matches = deps.readCachedRows().filter((r) => {
     if (r.receiving_id == null) return false;
@@ -33,6 +39,11 @@ export function resolveCachedCarton(
       return true;
     }
     if (matchTracking && r.tracking_number && normalizeScanKey(r.tracking_number) === key) {
+      return true;
+    }
+    // `zendesk_ticket` is stored as `#<id>` (rail / carton-context chip); strip
+    // via normalizeScanKey so `#9575` and `9575` both hit.
+    if (matchTicket && r.zendesk_ticket && normalizeScanKey(r.zendesk_ticket) === key) {
       return true;
     }
     return false;

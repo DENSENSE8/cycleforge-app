@@ -1,95 +1,74 @@
 'use client';
 
-import { Check, Folder } from '@/components/Icons';
+import { Check, Folder, Loader2 } from '@/components/Icons';
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import { PhotoThumb } from '@/components/photos/PhotoThumb';
-import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
+import { FolderTileCover } from '@/components/photos/photo-library-grid/FolderTileCover';
+import type { PhotoDateNav } from '@/components/photos/photo-library-grid/types';
+import { Button } from '@/design-system/primitives';
+import type { LibraryFolderTile } from '@/hooks/usePhotoLibraryFolders';
+import { photoContentUrl } from '@/lib/photos/display-url';
 import { photoGridLeafClass, photoGridTileProps, type PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { formatDateTimePST } from '@/utils/date';
-import {
-  describeFolderBrowseHeader,
-  type FolderTileData,
-} from '@/components/photos/photo-library-grid/date-folder-tree';
-import { FolderTileCover } from '@/components/photos/photo-library-grid/FolderTileCover';
-import { useDateFolders } from '@/components/photos/photo-library-grid/useDateFolders';
-import type { PhotoDateNav } from '@/components/photos/photo-library-grid/types';
 import { cn } from '@/utils/_cn';
 
 interface MediaLibraryPickerFoldersProps {
-  photos: LibraryPhoto[];
-  scope: PhotoLibrarySourceScope;
   gridDensity: PhotoGridDensity;
-  dateNav: PhotoDateNav;
-  onDateNav: (nav: PhotoDateNav) => void;
   selectedIds: Set<number>;
   onToggle: (photo: LibraryPhoto) => void;
   excludePhotoIds?: Set<number>;
-  /**
-   * Contextual leaf ids from the picker host (ticket / carton tab). Prefer these
-   * over `dateNav` so "This ticket" / "Current carton" open the photo grid
-   * immediately instead of the year drill.
-   */
-  resolvedTicketId?: string;
-  resolvedPoRef?: string;
-  /** Skip the date folder drill and show the photo grid (e.g. carton receivingId tab). */
+  /** Skip folder drill (e.g. carton receivingId tab). */
   forceLeaf?: boolean;
+  isLeaf: boolean;
+  eyebrow: string;
+  folderTiles: LibraryFolderTile[];
+  foldersLoading?: boolean;
+  onDateNav: (nav: PhotoDateNav) => void;
+  /** Leaf / forceLeaf photo page. */
+  photos: LibraryPhoto[];
+  photosLoading?: boolean;
+  hasMorePhotos?: boolean;
+  isFetchingMorePhotos?: boolean;
+  onLoadMorePhotos?: () => void;
+  leafTitle?: string;
 }
 
 /**
- * Year → Month → Week → Day folder drill (same model as the main library folders
- * view) with a selectable photo grid at the leaf.
+ * Year → Month → Week → Day folder drill (same aggregation API as the main
+ * library folders view) with a selectable photo grid at the leaf (5 + Load more).
  */
 export function MediaLibraryPickerFolders({
-  photos,
-  scope,
   gridDensity,
-  dateNav,
-  onDateNav,
   selectedIds,
   onToggle,
   excludePhotoIds,
-  resolvedTicketId,
-  resolvedPoRef,
   forceLeaf = false,
+  isLeaf,
+  eyebrow,
+  folderTiles,
+  foldersLoading = false,
+  onDateNav,
+  photos,
+  photosLoading = false,
+  hasMorePhotos = false,
+  isFetchingMorePhotos = false,
+  onLoadMorePhotos,
+  leafTitle,
 }: MediaLibraryPickerFoldersProps) {
-  const visible = excludePhotoIds?.size
+  const showLeaf = forceLeaf || isLeaf;
+
+  const leafVisible = excludePhotoIds?.size
     ? photos.filter((p) => !excludePhotoIds.has(p.id))
     : photos;
 
-  const ticketId = resolvedTicketId ?? dateNav.ticketId;
-  const poRef = resolvedPoRef ?? dateNav.poRef;
-
-  const folders = useDateFolders({
-    photos: visible,
-    scope,
-    dateFrom: dateNav.dateFrom,
-    dateTo: dateNav.dateTo,
-    poRef,
-    ticketId,
-    onNavigate: onDateNav,
-  });
-
-  const isLeaf = forceLeaf || folders.isLeaf;
-  const leafPhotos = forceLeaf ? visible : folders.leafPhotos;
-  const tiles = folders.tiles;
-  const onOpen = folders.onOpen;
-
-  const header = forceLeaf
-    ? { title: 'Photos', count: visible.length }
-    : describeFolderBrowseHeader({
-        photos: visible,
-        scope,
-        dateFrom: dateNav.dateFrom,
-        dateTo: dateNav.dateTo,
-        poRef,
-        ticketId,
-      });
-
-  const leafVisible = excludePhotoIds?.size
-    ? leafPhotos.filter((p) => !excludePhotoIds.has(p.id))
-    : leafPhotos;
-
-  if (isLeaf) {
+  if (showLeaf) {
+    if (photosLoading && leafVisible.length === 0) {
+      return (
+        <div className="flex items-center justify-center gap-2 py-10 text-role-caption text-text-faint">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </div>
+      );
+    }
     if (leafVisible.length === 0) {
       return (
         <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
@@ -101,8 +80,11 @@ export function MediaLibraryPickerFolders({
     return (
       <div className="space-y-3">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-          {header.title}
+          {leafTitle ?? 'Photos'}
           <span className="ml-2 font-semibold text-text-faint">{leafVisible.length}</span>
+          {hasMorePhotos ? (
+            <span className="ml-1 font-normal normal-case tracking-normal text-text-faint">+</span>
+          ) : null}
         </p>
         <div className={photoGridLeafClass(gridDensity)}>
           {leafVisible.map((p) => {
@@ -129,11 +111,33 @@ export function MediaLibraryPickerFolders({
             );
           })}
         </div>
+        {hasMorePhotos && onLoadMorePhotos ? (
+          <div className="flex justify-center py-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={isFetchingMorePhotos}
+              onClick={onLoadMorePhotos}
+              icon={isFetchingMorePhotos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : undefined}
+            >
+              {isFetchingMorePhotos ? 'Loading…' : 'Load more'}
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   }
 
-  if (tiles.length === 0) {
+  if (foldersLoading && folderTiles.length === 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-10 text-role-caption text-text-faint">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+      </div>
+    );
+  }
+
+  if (folderTiles.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
         <p className="text-role-caption font-semibold text-text-muted">No folders here</p>
@@ -142,32 +146,59 @@ export function MediaLibraryPickerFolders({
     );
   }
 
+  const folderCount = folderTiles.reduce((sum, t) => sum + t.count, 0);
+
   return (
     <div className="space-y-3">
       <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-        {header.title}
-        <span className="ml-2 font-semibold text-text-faint">{header.count}</span>
+        {eyebrow}
+        <span className="ml-2 font-semibold text-text-faint">{folderCount}</span>
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {tiles.map((t) => (
-          <PickerFolderTile key={t.key} tile={t} onOpen={() => onOpen(t)} />
+        {folderTiles.map((t) => (
+          <PickerFolderTile
+            key={t.key}
+            tile={t}
+            onOpen={() =>
+              onDateNav({
+                dateFrom: t.dateFrom,
+                dateTo: t.dateTo,
+                poRef: t.poRef,
+                ticketId: t.ticketId,
+              })
+            }
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function PickerFolderTile({ tile, onOpen }: { tile: FolderTileData; onOpen: () => void }) {
+function PickerFolderTile({ tile, onOpen }: { tile: LibraryFolderTile; onOpen: () => void }) {
+  const ariaLabel = `${tile.label} · ${tile.count} photo${tile.count === 1 ? '' : 's'}`;
+  const previewAsPhoto: LibraryPhoto | undefined =
+    tile.previewPhotoId != null
+      ? {
+          id: tile.previewPhotoId,
+          photoType: null,
+          poRef: tile.poRef ?? null,
+          createdAt: tile.latestAt,
+          thumbUrl: tile.previewThumbUrl ?? photoContentUrl(tile.previewPhotoId, 'thumb'),
+          displayUrl: photoContentUrl(tile.previewPhotoId),
+        }
+      : undefined;
+
   return (
     <button
       type="button"
       onClick={onOpen}
+      aria-label={ariaLabel}
       className="ds-raw-button group flex flex-col overflow-hidden rounded-lg border border-border bg-surface-card text-left transition-colors hover:border-primary/70 hover:bg-surface-hover"
     >
       <div className="relative h-28 w-full p-1.5">
         <div className="absolute left-3 right-2 top-0.5 h-3 rounded-t-md bg-surface-strong" aria-hidden="true" />
         <div className="relative h-full w-full overflow-hidden rounded-md border border-border-soft">
-          <FolderTileCover photo={tile.previewPhoto} />
+          <FolderTileCover photo={previewAsPhoto} />
           <span className="absolute right-2 top-2 rounded-full bg-scrim/70 px-1.5 py-0.5 text-role-micro font-bold tabular-nums text-white">
             {tile.count}
           </span>

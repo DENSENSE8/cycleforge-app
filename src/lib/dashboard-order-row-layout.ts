@@ -84,7 +84,8 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'date', width: '4.5rem', label: 'Ship by', type: 'date' },
   { key: 'age', width: '3.25rem', label: 'Age', type: 'date' },
   { key: 'qty', width: '3rem', label: 'Qty', type: 'number', hideKey: 'qty' },
-  { key: 'condition', width: '4rem', label: 'Cond', type: 'tag', hideKey: 'condition' },
+  // Sized for the widest pill-dropdown value (`PARTS` / `L-NEW` + caret).
+  { key: 'condition', width: '5.5rem', label: 'Cond', type: 'tag', hideKey: 'condition' },
   { key: 'stock', width: '5.5rem', label: 'Stock', type: 'number' },
   { key: 'platform', width: '3rem', label: 'Platform', type: 'external', hideKey: 'platform' },
   { key: 'order', width: '4rem', label: 'Order', type: 'id', hideKey: 'orderid' },

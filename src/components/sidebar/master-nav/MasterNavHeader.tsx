@@ -16,17 +16,14 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 
-/** Resolved recent jump chip for the closed trigger. Modes = icon; pages = text mark. */
+/** Resolved recent jump chip for the closed trigger. Always a SoT icon. */
 export interface MasterNavRecentModeChip {
   key: string;
   label: string;
-  /** Mode glyph when the jump targets a mode; omit for modeless page jumps. */
-  icon?: SidebarIconComponent;
-  /**
-   * Short text mark for modeless page jumps (pages are text — no page Lucide).
-   * Typically 1–2 letters from the page label.
-   */
-  textMark?: string;
+  /** Mode glyph or page SoT icon (see `iconLayer`). */
+  icon: SidebarIconComponent;
+  /** Stroke weight — mode jumps use heavier stroke; modeless page jumps use page. */
+  iconLayer?: 'page' | 'mode';
   onSelect: () => void;
   /** Optional hover hook — warms the destination's data (nav-data-prefetch). */
   onHover?: () => void;
@@ -137,6 +134,7 @@ export function MasterNavHeader({
         <div className={SIDEBAR_MRU_CLUSTER}>
           {recentModes.map((mode) => {
             const Icon = mode.icon;
+            const layer = mode.iconLayer ?? 'mode';
             return (
               <div
                 key={mode.key}
@@ -144,33 +142,18 @@ export function MasterNavHeader({
                 onMouseEnter={mode.onHover}
               >
                 <HoverTooltip label={mode.label} asChild placement="below">
-                  {Icon ? (
-                    <IconButton
-                      size="xs"
-                      tone="accent"
-                      ariaLabel={mode.label}
-                      icon={
-                        <Icon className={navIconStrokeClass('mode', SIDEBAR_MRU_GLYPH)} />
-                      }
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        mode.onSelect();
-                      }}
-                    />
-                  ) : (
-                    // ds-raw-button: text-mark MRU for modeless page jumps (pages = text)
-                    <button
-                      type="button"
-                      aria-label={mode.label}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        mode.onSelect();
-                      }}
-                      className="ds-raw-button flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-role-micro font-bold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-50"
-                    >
-                      {mode.textMark ?? mode.label.slice(0, 2)}
-                    </button>
-                  )}
+                  <IconButton
+                    size="xs"
+                    tone="accent"
+                    ariaLabel={mode.label}
+                    icon={
+                      <Icon className={navIconStrokeClass(layer, SIDEBAR_MRU_GLYPH)} />
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      mode.onSelect();
+                    }}
+                  />
                 </HoverTooltip>
               </div>
             );

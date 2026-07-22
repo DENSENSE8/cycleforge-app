@@ -176,10 +176,15 @@ test.describe('unbox scan-dock dense column geometry', () => {
     const sel = g.selectedButton as Box;
 
     // The button box carries the ring-inset selection ring; it must sit a few px
-    // inside the sidebar edge so it clears the work-canvas rounded-tl-2xl cutout.
-    const ringGap = g.sectionRight - sel.right;
-    expect(ringGap, 'selection ring clears the rounded canvas edge (~6px)').toBeGreaterThanOrEqual(4);
-    expect(ringGap, 'ring inset is not excessive').toBeLessThanOrEqual(10);
+    // inside the sidebar edge so it clears the work-canvas rounded-tl-2xl cutout
+    // (right) and respects SIDEBAR_RAIL_INSET_LEFT / sidebar gutter (left).
+    const ringGapRight = g.sectionRight - sel.right;
+    expect(ringGapRight, 'selection ring clears the rounded canvas edge (~6px)').toBeGreaterThanOrEqual(4);
+    expect(ringGapRight, 'ring inset is not excessive').toBeLessThanOrEqual(10);
+
+    const ringGapLeft = sel.left - g.sectionLeft;
+    expect(ringGapLeft, 'selection ring respects sidebar gutter (~6px)').toBeGreaterThanOrEqual(4);
+    expect(ringGapLeft, 'left gutter is not excessive').toBeLessThanOrEqual(10);
 
     // Eyebrow pencil shares the row ring's right edge (both narrowed by
     // SIDEBAR_RAIL_ROW_PAD_RIGHT).

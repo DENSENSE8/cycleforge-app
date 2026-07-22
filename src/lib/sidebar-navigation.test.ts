@@ -53,7 +53,7 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   assert.equal(navIds.includes('support'), false);
   assert.equal(navIds.includes('admin'), false);
   assert.equal(navIds.includes('dashboard'), true);
-  // FBA / inventory / studio / etc. are parked off prod nav (dogfood surface).
+  // FBA / studio / etc. are parked off prod nav (dogfood surface).
   assert.equal(navIds.includes('fba'), false);
   // /repair is a Receiving mode route now; the front-desk history page (Sales)
   // keeps the 'walk-in' nav id.
@@ -64,8 +64,8 @@ test('dogfood prod nav omits parked surfaces', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
   for (const id of [
     'home',
+    'operations',
     'sourcing',
-    'inventory',
     'warehouse',
     'fba',
     'studio',
@@ -73,8 +73,8 @@ test('dogfood prod nav omits parked surfaces', () => {
   ]) {
     assert.equal(navIds.has(id), false, `${id} should be parked off APP_SIDEBAR_NAV`);
   }
-  // Stations + shipping stay visible.
-  for (const id of ['dashboard', 'receiving', 'outbound', 'tech', 'packer']) {
+  // Stations + shipping + inventory stay visible.
+  for (const id of ['dashboard', 'receiving', 'outbound', 'tech', 'packer', 'inventory']) {
     assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
   }
 });

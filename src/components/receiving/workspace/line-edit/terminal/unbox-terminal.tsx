@@ -25,6 +25,8 @@ export const UNBOX_TAB_TERMINAL: Record<UnboxView, UnboxTerminalKind> = {
   'po-note': 'po-note',
   checklist: 'checklist',
   units: 'units',
+  tracking: 'none',
+  listings: 'none',
   timeline: 'timeline',
   ticket: 'ticket',
   support: 'support',
@@ -50,12 +52,13 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
     label: opt.name,
     icon: <Printer className="h-3.5 w-3.5 shrink-0" />,
     selected: opt.key === activeKind,
+    keepOpen: true,
     onClick: () => {
+      // Selection only — print stays on primary / Print only.
       r.setSelectedLabelKind?.(opt.key);
-      r.printKind?.(opt.key);
     },
     disabled: !r.canPrintReview,
-    title: `Select and print ${opt.name}`,
+    title: `Use ${opt.name} for the next print`,
   }));
 
   return {

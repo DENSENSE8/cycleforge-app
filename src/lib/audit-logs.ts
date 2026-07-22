@@ -111,6 +111,8 @@ export const AUDIT_ENTITY = {
   STAFF_MESSAGE: 'staff_message',
   // Entity-anchored conversation thread (entity_threads)
   ENTITY_THREAD: 'entity_thread',
+  // Platform-agnostic support ticket registry row (support_tickets)
+  SUPPORT_TICKET: 'support_ticket',
   STAFF_PREFERENCE: 'staff_preference',
   // Settings Registry — per-page org/staff configurable behavior (docs/settings-registry.md)
   SETTINGS: 'settings',
@@ -309,6 +311,8 @@ export const AUDIT_ACTION = {
   // route skeleton (backend-patterns.md step 5), which this waist never had.
   SUPPORT_TICKET_LINKED:   'support.ticket.linked',
   SUPPORT_TICKET_UNLINKED: 'support.ticket.unlinked',
+  // Station-generic ticket create (POST /api/support/tickets) via the helpdesk facade.
+  SUPPORT_TICKET_CREATE:   'support.ticket.create',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',

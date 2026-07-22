@@ -51,7 +51,7 @@ export type BoardPrefsKey =
 
 /** Known, typed preference keys. The column is open JSONB; this is the contract. */
 export interface StaffPreferences {
-  /** Function key (F1–F12) that focuses the active scan bar. Absent = default (F2). */
+  /** Insert / ScrollLock / F1–F12 that focuses the active scan bar. Absent = default (Insert). */
   focusScanHotkey?: string | null;
   /**
    * Color theme name from the theme registry (light | dark | mono | slate —

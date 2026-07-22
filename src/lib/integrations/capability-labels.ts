@@ -46,6 +46,11 @@ const CAPABILITY_TITLE: Record<Capability, string> = {
   ai: 'AI provider',
 };
 
+/** Runtime guard for a capability key coming off the wire (e.g. a query param). */
+export function isCapability(value: string): value is Capability {
+  return Object.prototype.hasOwnProperty.call(CAPABILITY_TITLE, value);
+}
+
 export function capabilityNoun(cap: Capability): string {
   return CAPABILITY_NOUN[cap];
 }

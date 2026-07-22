@@ -18,13 +18,17 @@
  *
  * On resolve it patches `serials` onto BOTH the feed's own row cache (so the
  * clicked row — `placeholderActiveRow` — carries serials on frame 1) and each
- * `['receiving-siblings', id]` cache (so PoLinesAccordion mounts warm), never
- * clobbering an in-flight optimistic serial (the scan path owns those).
+ * `['receiving-siblings', id]` / serials-hydrate cache (so PoLinesAccordion
+ * mounts warm), never clobbering an in-flight optimistic serial (the scan path
+ * owns those).
  */
 
 import { useEffect } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
-import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
+import {
+  receivingSiblingsQueryKey,
+  receivingSiblingsSerialsQueryKey,
+} from '@/lib/queries/receiving-queries';
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -70,6 +74,57 @@ export function patchRowsWithSerials(
     return { ...r, serials: incoming } as ReceivingLineRow;
   });
   return { next, changed };
+}
+
+/**
+ * Seed or patch one carton's siblings (+ serials) caches from feed rows + the
+ * batch serial map. Empty siblings caches are seeded from the visible feed
+ * row(s) so a row-click opens warm instead of waiting on `include=serials`.
+ */
+export function seedOrPatchSiblingsSerials(
+  queryClient: QueryClient,
+  receivingId: number,
+  feedRows: ReceivingLineRow[],
+  serialsByLine: Record<string, LineSerials>,
+): void {
+  const cartonFeedRows = feedRows.filter(
+    (r) =>
+      r.receiving_id === receivingId &&
+      typeof r.id === 'number' &&
+      r.id > 0,
+  );
+
+  queryClient.setQueryData<{ success?: boolean; receiving_lines?: ReceivingLineRow[] }>(
+    receivingSiblingsQueryKey(receivingId),
+    (prev) => {
+      const base =
+        prev?.receiving_lines && prev.receiving_lines.length > 0
+          ? prev.receiving_lines
+          : cartonFeedRows;
+      if (base.length === 0) return prev;
+      const { next, changed } = patchRowsWithSerials(base, serialsByLine);
+      const seededFresh = !prev?.receiving_lines?.length;
+      if (!seededFresh && !changed) return prev;
+      return { success: true, receiving_lines: next };
+    },
+  );
+
+  // Seed the parallel serials key so usePoLinesData does not flash skeletons
+  // while its authoritative include=serials reconcile is still in flight.
+  queryClient.setQueryData<{ success?: boolean; receiving_lines?: ReceivingLineRow[] }>(
+    receivingSiblingsSerialsQueryKey(receivingId),
+    (prev) => {
+      const base =
+        prev?.receiving_lines && prev.receiving_lines.length > 0
+          ? prev.receiving_lines
+          : cartonFeedRows;
+      if (base.length === 0) return prev;
+      const { next, changed } = patchRowsWithSerials(base, serialsByLine);
+      const seededFresh = !prev?.receiving_lines?.length;
+      if (!seededFresh && !changed) return prev;
+      return { success: true, receiving_lines: next };
+    },
+  );
 }
 
 /**
@@ -121,16 +176,18 @@ export function useHydrateVisibleSerials(
             },
           );
 
-          // 2) Overlay onto each carton's siblings cache so PoLinesAccordion —
-          //    which reads `['receiving-siblings', id]` — mounts warm.
+          // 2) Seed/patch each carton's siblings + serials caches so
+          //    PoLinesAccordion / nav mount warm (including empty caches).
+          const feedSnapshot =
+            queryClient.getQueryData<ReceivingLineRow[]>(railQueryKey as unknown[]) ??
+            rows ??
+            [];
           for (const receivingId of receivingIds) {
-            queryClient.setQueryData<{ success?: boolean; receiving_lines?: ReceivingLineRow[] }>(
-              receivingSiblingsQueryKey(receivingId),
-              (prev) => {
-                if (!prev?.receiving_lines) return prev;
-                const { next, changed } = patchRowsWithSerials(prev.receiving_lines, serialsByLine);
-                return changed ? { ...prev, receiving_lines: next } : prev;
-              },
+            seedOrPatchSiblingsSerials(
+              queryClient,
+              receivingId,
+              feedSnapshot,
+              serialsByLine,
             );
           }
         } catch {

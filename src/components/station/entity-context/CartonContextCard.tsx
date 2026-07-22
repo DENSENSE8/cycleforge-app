@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ExternalLink, MapPin, Plus, Reply, SlidersHorizontal, X } from '@/components/Icons';
+import { ChevronLeft, Reply, SlidersHorizontal } from '@/components/Icons';
 import { getLast4 } from '@/components/ui/CopyChip';
-import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { WorkspaceCard } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -16,11 +15,6 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import {
-  RECEIVING_SCAN_RULE_LINE_CLASS,
-  TRACKING_ADD_BTN_CLASS,
-} from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { WorkspaceFieldLabel } from '@/components/receiving/workspace/WorkspaceSectionLabel';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
@@ -60,35 +54,35 @@ import { STATION_CONTEXT_CLAIM_PILL_CLASS } from './station-context-action-pill'
  *   `import { CartonContextCard } from '@/components/station/entity-context'`
  *
  * Staff dropdown + photo strip, the listing / Zendesk / PO# / tracking chip
- * row, the matching below-row inline editors, and the source-platform +
- * receiving-type pickers.
+ * row. Identity editors now live in Unbox SectionTabsSlider tabs 
+ * (tracking/listings), not below-row drawers. PO is copy/open-only.
  *
  * DENSITY CONTRACT: this is an operations-heavy surface — the identity facts
  * stay on ONE condensed row (chips + actions). Classify pills open **inline on
- * that same first row** (Framer Motion slide-in from the toggle); only identity
- * editors (PO# / tracking / listing URL) slide in below. Do not regroup it into
- * stacked form sections; the one-row identity anatomy is the display method.
- * The card renders on the frosted glass workspace surface
- * (`WorkspaceCard variant="glass"`) shared by the whole unbox column.
+ * that same first row** (Framer Motion slide-in from the toggle). The one-row 
+ * identity anatomy is the display method. The card renders on the frosted glass 
+ * workspace surface (`WorkspaceCard variant="glass"`) shared by the whole unbox column.
  *
  * Bar density (`density="bar"`): fills the workbench identity column (same
  * max-width + pad as line-edit cards) — exit + classify-toggle (+ open classify
- * pills) on the left, listing/PO/tracking · Claim/Photos on the right (nowrap).
- * Listing uses ExternalLink + platform mark (same CopyChip anatomy as PO# /
- * tracking). Refresh · more · info live in a separate corner bookmark —
- * {@link StationMoreDetails}.
+ * pills) on the left; listing/PO/tracking · Claim/Photos stay flush right
+ * whether classify is open or closed (classify never moves or hides the right
+ * cluster). Listing uses ExternalLink + platform title (same CopyChip anatomy
+ * as PO# / tracking). Refresh · more · info live in a separate corner bookmark
+ * — {@link StationMoreDetails}.
  *
  * Card density (`density="card"`): same inline classify-on-row-1 pattern on the
  * wrap-friendly identity row (legacy glass card body).
  *
  * Layout decisions preserved from the original inline implementation:
- *  - The listing chip reads "----" (gray, no platform tone) until a URL or a
- *    derived storefront href exists (unmatched cartons have no listing until a
- *    PO# binds them).
- *  - All three identity editors (PO# / tracking / listing URL) live in the
- *    below-row drawer; the condensed top row stays chips + hover menus only.
- *  - Opening a detail editor collapses classify so update-details and classify
- *    never both demand attention.
+ *  - The listing chip face is the platform title (eBay / Amazon / …); gray
+ *    `----` until a URL / derived storefront href exists. Platform tone stays
+ *    on the icon/underline — unmatched cartons have no listing until a PO#
+ *    binds them.
+ *  - Identity editing: listing/tracking editors accessible via chip edit actions,
+ *    open external editing tabs. PO# is copy-only (no editor).
+ *  - Classify opens pills on the left only — right-side identity/actions are
+ *    unchanged.
  *
  * Purely presentational/controlled — all state lives in the parent.
  * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `classifyPending`, …)
@@ -103,23 +97,16 @@ export function CartonContextCard({
   onMakeClaim,
   showStaffPhotoRow = true,
   listingLink,
-  setListingLink,
   showListing = true,
-  listingEditorOpen,
-  setListingEditorOpen,
+  listingEditOpen = false,
+  onEditListing,
   listingOpenHref,
   listingLinks = [],
   poOpenHref,
   trackingOpenHref,
   poDisplay,
   showOrderIdentity = true,
-  poEditable = true,
   linkedOrderNumber = null,
-  poEditorOpen,
-  setPoEditorOpen,
-  poNumberEdit,
-  setPoNumberEdit,
-  onCommitPoNumber,
   lineId,
   zendeskTrimmed,
   zendeskHref,
@@ -129,14 +116,8 @@ export function CartonContextCard({
   primaryTrackingTrimmed,
   filledExtraTrackingsCount,
   isLocalPickup = false,
-  trackingEditorsOpen,
-  onToggleTrackingEditors,
-  trackingEdit,
-  setTrackingEdit,
-  onCommitTracking,
-  extraTrackings,
-  setExtraTrackings,
-  onCommitExtraTracking,
+  trackingEditOpen = false,
+  onEditTracking,
   platformValue,
   onPlatformSelect,
   receivingType,
@@ -156,8 +137,8 @@ export function CartonContextCard({
   /**
    * `card` — glass WorkspaceCard in the scroll body (legacy).
    * `bar` — fills the centered identity bookmark (no card chrome;
-   * exit+classify left, identity+actions right; listing = ExternalLink +
-   * platform mark, same CopyChip anatomy as PO# / tracking).
+   * exit+classify (+pills) left, identity+actions always right; listing =
+   * ExternalLink + platform title, same CopyChip anatomy as PO# / tracking).
    */
   density?: 'card' | 'bar';
   /**
@@ -176,11 +157,12 @@ export function CartonContextCard({
   /** Photos + Claim row. Hidden in triage (unbox-only). */
   showStaffPhotoRow?: boolean;
   listingLink: string;
-  setListingLink: (v: string) => void;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
   showListing?: boolean;
-  listingEditorOpen: boolean;
-  setListingEditorOpen: Dispatch<SetStateAction<boolean>>;
+  /** When true, pulses the listing chip to show edit is active. */
+  listingEditOpen?: boolean;
+  /** Called when listing chip edit is requested - opens external editor. */
+  onEditListing?: () => void;
   listingOpenHref: string | null | undefined;
   /** All resolvable listing URLs (inventory catalog + manual + derived). */
   listingLinks?: CartonListingLink[];
@@ -192,20 +174,12 @@ export function CartonContextCard({
   poDisplay: string;
   /** Hide the PO/order identifier slot when the station has no identity yet. */
   showOrderIdentity?: boolean;
-  /** Disable the PO/identifier editor for read-only station adapters. */
-  poEditable?: boolean;
   /**
    * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-4,
    * copy-only) ONLY when the carton has no PO# of its own — never clobbers a
    * bound PO#. This is the lifted LINKAGE identity (the standalone panel is gone).
    */
   linkedOrderNumber?: string | null;
-  poEditorOpen: boolean;
-  setPoEditorOpen: Dispatch<SetStateAction<boolean>>;
-  poNumberEdit: string;
-  setPoNumberEdit: (v: string) => void;
-  /** Commit a typed/scanned PO# (parent decides whether it changed). */
-  onCommitPoNumber: (raw: string) => void;
   /** Active line id — the entity a filed ticket is linked to (RECEIVING_LINE). */
   lineId: number | null;
   zendeskTrimmed: string;
@@ -218,21 +192,10 @@ export function CartonContextCard({
   filledExtraTrackingsCount: number;
   /** Local-pickup fulfillment — suppress tracking chip/editor; show Pickup pill. */
   isLocalPickup?: boolean;
-  trackingEditorsOpen: boolean;
-  onToggleTrackingEditors: () => void;
-  trackingEdit: string;
-  setTrackingEdit: (v: string) => void;
-  /** Commit a typed/scanned primary tracking# (parent decides if it changed). */
-  onCommitTracking: (raw: string) => void;
-  extraTrackings: string[];
-  setExtraTrackings: Dispatch<SetStateAction<string[]>>;
-  /**
-   * Commit a typed/scanned EXTRA tracking# — attaches it to the carton's PO as
-   * an additional box (POST /api/receiving/[id]/attach-box). Unlike the primary
-   * tracking (which is the Zoho reference# anchor), extras link via the
-   * receiving_shipments junction. docs/multi-tracking-po-plan.md Phase 1.
-   */
-  onCommitExtraTracking?: (raw: string, index: number) => void;
+  /** When true, pulses the tracking chip to show edit is active. */
+  trackingEditOpen?: boolean;
+  /** Called when tracking chip edit is requested - opens external editor. */
+  onEditTracking?: () => void;
   platformValue: string;
   onPlatformSelect: (v: string) => void;
   receivingType: string;
@@ -264,9 +227,6 @@ export function CartonContextCard({
    */
   onSendToTicket?: () => void;
 }) {
-  const listingRef = useRef<HTMLInputElement>(null);
-  const poInputRef = useRef<HTMLInputElement>(null);
-
   const [classifyOpen, setClassifyOpen] = useState(classifyPending);
   // Classify pills slide in on the identity row (same plane as chips) — not a
   // second strip. Sidebar-rail presence: left-origin reveal from the toggle.
@@ -277,34 +237,11 @@ export function CartonContextCard({
   // header, expanded, IS the classify surface (no separate control). Opens the
   // moment classification is pending; never force-closes, so the operator can
   // still collapse back to the condensed one-row default after classifying.
-  // Skip while a detail editor is open (those collapse classify — see below).
   useEffect(() => {
-    if (
-      classifyPending &&
-      !poEditorOpen &&
-      !trackingEditorsOpen &&
-      !listingEditorOpen
-    ) {
+    if (classifyPending) {
       setClassifyOpen(true);
     }
-  }, [classifyPending, poEditorOpen, trackingEditorsOpen, listingEditorOpen]);
-
-  // Detail editors and classify compete for attention — collapse classify when
-  // any identity editor opens so the row stays one job at a time.
-  useEffect(() => {
-    if (poEditorOpen || trackingEditorsOpen || listingEditorOpen) {
-      setClassifyOpen(false);
-    }
-  }, [poEditorOpen, trackingEditorsOpen, listingEditorOpen]);
-
-  // Parent may auto-open the PO editor (matched carton with no PO#) — close any
-  // sibling identity editor so only one below-row stays open.
-  useEffect(() => {
-    if (!poEditorOpen) return;
-    setListingEditorOpen(false);
-    if (trackingEditorsOpen) onToggleTrackingEditors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to PO opening
-  }, [poEditorOpen]);
+  }, [classifyPending]);
 
   // One picker open at a time. Opening any pill unrenders the trailing chip
   // cluster (the options fill the freed row); selecting / dismissing collapses
@@ -336,7 +273,8 @@ export function CartonContextCard({
   const orderCopyOnly = isReturn || (!poDisplay && !!linkedReturnOrder);
   const listingHasTarget = !!(listingLink || listingOpenHref);
   const listingLinkOptions = formatListingLinkMenuOptions(listingLinks);
-  const syncNoteListingLinks = listingLinks.filter((l) => l.source === 'sync_notes');
+  // Platform title on the listing face (eBay / Amazon / …). Identity last-4
+  // stays on PO# / TRK / ticket; platform tone still drives icon/underline.
   const listingChipDisplay = isReturn
     ? platformValue
       ? platformMeta.label
@@ -348,18 +286,9 @@ export function CartonContextCard({
           ? 'Unfound'
           : 'Listing'
       : '----';
-  // Bar density: short lettermark (Gw / eB) so listing matches PO#/TRK last-4 width.
-  const listingBarDisplay = isReturn
-    ? platformValue
-      ? platformMeta.mark
-      : 'Return'
-    : listingHasTarget
-      ? platformValue
-        ? platformMeta.mark
-        : isUnmatched
-          ? 'Unfound'
-          : 'Listing'
-      : '----';
+  const listingOpenTitle = platformValue
+    ? `Open ${platformMeta.label} listing in new tab`
+    : 'Open listing in new tab';
 
   // Urgency is a tier picker: Auto + Priority/High/Medium/Low. Collapsed it
   // shows the *effective* tier — the manual override when set, else the
@@ -404,15 +333,6 @@ export function CartonContextCard({
   const handleUrgencySelect = (v: string) =>
     onPrioritySelect?.(v === 'auto' ? null : Number(v));
 
-  // All three identity editors now live in the below-row drawer — the condensed
-  // top row is chips + pencils only.
-  // The PO# editor is suppressed once the carton is an imported return — a
-  // return is keyed by its order number (shown on the listing chip), not a PO.
-  const anyBelow =
-    (trackingEditorsOpen && !isLocalPickup) ||
-    (showListing && listingEditorOpen) ||
-    (poEditable && poEditorOpen && !isReturn);
-
   // Platform/Type pill options come straight from the org catalog (active rows,
   // org sort order) — so renames, hides, reorders, and custom entries the org
   // makes in the catalog manager all propagate here. Falls back to the built-in
@@ -437,40 +357,6 @@ export function CartonContextCard({
   const typeOptions: InlinePillOption[] = typeCatalog.options
     .filter((o) => o.value !== 'PICKUP')
     .map((o) => ({ value: o.value, label: o.label }));
-
-  // Bar density has no card body pad — the shared scan rule's -mx-3 would bleed
-  // past the bookmark edge. Keep the rule flush to the field instead.
-  const scanRuleClass =
-    density === 'bar'
-      ? 'h-px w-full shrink-0 bg-surface-strong transition-colors group-focus-within:bg-blue-500'
-      : RECEIVING_SCAN_RULE_LINE_CLASS;
-
-  // One identity edit row at a time (PO# · tracking · listing).
-  const openPoEditor = () => {
-    setListingEditorOpen(false);
-    if (trackingEditorsOpen) onToggleTrackingEditors();
-    setPoEditorOpen((v) => {
-      const next = !v;
-      if (next) queueMicrotask(() => poInputRef.current?.focus());
-      return next;
-    });
-  };
-  const openListingEditor = () => {
-    setPoEditorOpen(false);
-    if (trackingEditorsOpen) onToggleTrackingEditors();
-    setListingEditorOpen((v) => {
-      const next = !v;
-      if (next) queueMicrotask(() => listingRef.current?.focus());
-      return next;
-    });
-  };
-  const openTrackingEditor = () => {
-    if (!trackingEditorsOpen) {
-      setPoEditorOpen(false);
-      setListingEditorOpen(false);
-    }
-    onToggleTrackingEditors();
-  };
 
   const body = (
       <div className={cn(density === 'bar' ? 'space-y-1 px-0.5 py-0' : 'space-y-2 px-4 pt-2 pb-3')}>
@@ -588,8 +474,9 @@ export function CartonContextCard({
             </AnimatePresence>
             </div>
 
-            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: pin right,
-                same as Unbox receiving — numbers flush to the bookmark edge). */}
+            {/* Clusters 2–3 — identity facts · Claim/Photos (bar: always pin
+                right). Classify only adds pills on the left — never moves or
+                hides this cluster. */}
             <div
               className={cn(
                 'flex min-w-0 items-center',
@@ -598,25 +485,25 @@ export function CartonContextCard({
                   : 'flex-wrap gap-2',
               )}
             >
-            {/* Cluster 2 — listing · PO · tracking */}
+            {/* Cluster 2 — listing · PO · tracking. Editors open externally. */}
             <div className="flex min-w-0 shrink items-center gap-2">
-            {/* Listing — bar: ExternalLink + platform mark (CopyChip anatomy).
-                Card: icon-only PlatformMark. Hover menu offers Copy, then Edit. */}
+            {/* Listing — bar: ExternalLink + platform title (CopyChip anatomy).
+                Card: icon-only PlatformMark. Hover: Copy, then Edit. */}
             {showListing ? (
               density === 'bar' ? (
                 <IdentityLinkChip
                   openHref={listingOpenHref}
-                  openTitle="Open listing in new tab"
+                  openTitle={listingOpenTitle}
                   linkOptions={listingLinkOptions}
                   value={listingLink || listingOpenHref || ''}
-                  display={listingBarDisplay}
+                  display={listingChipDisplay}
                   // Platform tone ONLY when there's an actual listing to open.
                   underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
                   iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
                   disableCopy={!(listingLink.trim() || listingOpenHref)}
-                  onEdit={openListingEditor}
-                  editOpen={listingEditorOpen}
-                  editLabel="Edit listing URL"
+                  onEdit={onEditListing}
+                  editOpen={listingEditOpen}
+                  editLabel="Edit listing"
                   actionsInMenu
                   chipAction="open"
                   menuFirstAction="copy"
@@ -625,7 +512,7 @@ export function CartonContextCard({
               ) : (
                 <IdentityLinkChip
                   openHref={listingOpenHref}
-                  openTitle="Open listing in new tab"
+                  openTitle={listingOpenTitle}
                   linkOptions={listingLinkOptions}
                   value={listingLink || listingOpenHref || ''}
                   display={listingChipDisplay}
@@ -645,9 +532,9 @@ export function CartonContextCard({
                   underlineClass={listingHasTarget && platformValue ? platformMeta.border : 'border-border-default'}
                   iconClass={listingHasTarget && platformValue ? platformMeta.text : 'text-text-faint'}
                   disableCopy={!(listingLink.trim() || listingOpenHref)}
-                  onEdit={openListingEditor}
-                  editOpen={listingEditorOpen}
-                  editLabel="Edit listing URL"
+                  onEdit={onEditListing}
+                  editOpen={listingEditOpen}
+                  editLabel="Edit listing"
                   actionsInMenu
                   chipAction="open"
                   menuFirstAction="copy"
@@ -672,56 +559,50 @@ export function CartonContextCard({
                 tone="id"
                 underlineClass="border-border-emphasis"
                 disableCopy={!effectiveOrder}
-                onEdit={
-                  orderCopyOnly || !poEditable
-                    ? undefined
-                    : openPoEditor
-                }
-                editOpen={orderCopyOnly || !poEditable ? false : poEditorOpen}
-                editLabel={orderCopyOnly || !poEditable ? undefined : 'Edit PO#'}
+                editOpen={false}
                 actionsInMenu
               />
             ) : null}
 
             {/* Tracking# — tone `tracking` → MapPin. Chip click copies; hover
-                menu opens carrier tracking or edits. Suppressed for pickup. */}
-            <div className="flex shrink-0 items-center gap-1">
-              {isLocalPickup ? (
-                <FulfillmentPickupPill
-                  variant="rail"
-                  tooltip="Fulfilled in person — no tracking number"
+                menu opens carrier tracking or edits. Extra-box `+` sits on the
+                chip (opens editor + adds a row). Suppressed for pickup. */}
+            {isLocalPickup ? (
+              <FulfillmentPickupPill
+                variant="rail"
+                tooltip="Fulfilled in person — no tracking number"
+              />
+            ) : (
+              <div className="flex shrink-0 items-center gap-1">
+                <IdentityLinkChip
+                  openHref={trackingOpenHref}
+                  openTitle="Open carrier tracking"
+                  value={primaryTrackingTrimmed}
+                  display={primaryTrackingTrimmed ? getLast4(primaryTrackingTrimmed) : '----'}
+                  tone="tracking"
+                  underlineClass="border-blue-500"
+                  disableCopy={!primaryTrackingTrimmed}
+                  onEdit={onEditTracking}
+                  editOpen={trackingEditOpen}
+                  editLabel="Edit tracking"
+                  actionsInMenu
                 />
-              ) : (
-                <>
-                  <IdentityLinkChip
-                    openHref={trackingOpenHref}
-                    openTitle="Open carrier tracking"
-                    value={primaryTrackingTrimmed}
-                    display={primaryTrackingTrimmed ? getLast4(primaryTrackingTrimmed) : '----'}
-                    tone="tracking"
-                    underlineClass="border-blue-500"
-                    disableCopy={!primaryTrackingTrimmed}
-                    onEdit={openTrackingEditor}
-                    editOpen={trackingEditorsOpen}
-                    editLabel="Edit tracking"
-                    actionsInMenu
-                  />
-                  {filledExtraTrackingsCount > 0 ? (
-                    <HoverTooltip
-                      label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
-                      asChild
-                    >
-                      <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-role-eyebrow tabular-nums text-text-muted">
-                        +{filledExtraTrackingsCount}
-                      </span>
-                    </HoverTooltip>
-                  ) : null}
-                </>
-              )}
-            </div>
+                {filledExtraTrackingsCount > 0 ? (
+                  <HoverTooltip
+                    label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
+                    asChild
+                  >
+                    <span className="shrink-0 rounded bg-surface-strong/90 px-1 py-px text-role-eyebrow tabular-nums text-text-muted">
+                      +{filledExtraTrackingsCount}
+                    </span>
+                  </HoverTooltip>
+                ) : null}
+              </div>
+            )}
             </div>
 
-            {/* Cluster 3 — Claim · Photos */}
+            {/* Cluster 3 — Claim · Photos. Always shown with identity (classify
+                does not collapse this side). */}
             {showStaffPhotoRow ? (
             <div className="flex shrink-0 items-center gap-2">
               {zendeskTrimmed ? (
@@ -841,209 +722,6 @@ export function CartonContextCard({
               )}
             </AnimatePresence>
           </div>
-
-          {/* Below-row inline editors for PO# / tracking / listing URL.
-              Close + paste share one horizontal trailing cluster on the field.
-              Only one of these rows is open at a time (see open*Editor helpers). */}
-          {anyBelow ? (
-            <div className="mt-2 space-y-2.5 border-t border-border-hairline pt-2">
-              {poEditorOpen && !isReturn ? (
-                <div className="relative min-w-0">
-                  <div className="mb-1.5">
-                    <WorkspaceFieldLabel className="whitespace-nowrap">PO number</WorkspaceFieldLabel>
-                  </div>
-                  <div className="group min-w-0">
-                    <SearchBar
-                      value={poNumberEdit}
-                      onChange={setPoNumberEdit}
-                      onSearch={onCommitPoNumber}
-                      inputRef={poInputRef}
-                      placeholder="PO-1234"
-                      variant="blue"
-                      size="compact"
-                      hideUnderline
-                      pasteOnlyTrailing
-                      trailingSuffix={
-                        <HoverTooltip label="Close editor" asChild>
-                          <IconButton
-                            type="button"
-                            onClick={() => setPoEditorOpen(false)}
-                            ariaLabel="Close PO# editor"
-                            className="rounded p-0.5 text-text-faint hover:bg-red-50 hover:text-red-600"
-                            icon={<X className="h-3.5 w-3.5" />}
-                          />
-                        </HoverTooltip>
-                      }
-                      className="w-full"
-                    />
-                    <div className={scanRuleClass} aria-hidden />
-                  </div>
-                </div>
-              ) : null}
-              {trackingEditorsOpen && !isLocalPickup ? (
-                <div className="relative min-w-0">
-                  <div className="mb-1.5 flex min-w-0 items-center justify-between gap-2">
-                    <WorkspaceFieldLabel className="whitespace-nowrap">
-                      Tracking number
-                    </WorkspaceFieldLabel>
-                    <div className="flex min-w-0 shrink-0 items-center gap-1.5">
-                      <HoverTooltip
-                        label={extraTrackings.length >= 1 ? 'Only one extra tracking row' : 'Add tracking number'}
-                        asChild
-                      >
-                        <IconButton
-                          type="button"
-                          onClick={() => setExtraTrackings((xs) => (xs.length >= 1 ? xs : [...xs, '']))}
-                          disabled={extraTrackings.length >= 1}
-                          ariaLabel="Add second tracking number row"
-                          className={TRACKING_ADD_BTN_CLASS}
-                          icon={<Plus className="h-3 w-3" />}
-                        />
-                      </HoverTooltip>
-                      <span
-                        className="max-w-[14rem] truncate font-mono text-role-caption font-bold tabular-nums tracking-tight text-text-default"
-                        title={primaryTrackingTrimmed || undefined}
-                      >
-                        {primaryTrackingTrimmed || '----'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="group min-w-0">
-                    <SearchBar
-                      value={trackingEdit}
-                      onChange={setTrackingEdit}
-                      onSearch={onCommitTracking}
-                      placeholder="Tracking"
-                      variant="blue"
-                      size="compact"
-                      hideUnderline
-                      pasteOnlyTrailing
-                      leadingIcon={<MapPin className="h-[14px] w-[14px]" />}
-                      trailingSuffix={
-                        <HoverTooltip label="Close editor" asChild>
-                          <IconButton
-                            type="button"
-                            onClick={onToggleTrackingEditors}
-                            ariaLabel="Close tracking editor"
-                            className="rounded p-0.5 text-text-faint hover:bg-red-50 hover:text-red-600"
-                            icon={<X className="h-3.5 w-3.5" />}
-                          />
-                        </HoverTooltip>
-                      }
-                      className="w-full min-w-0"
-                    />
-                    <div className={scanRuleClass} aria-hidden />
-                  </div>
-                  {extraTrackings.map((t, i) => (
-                    <div key={i} className="group min-w-0">
-                      <SearchBar
-                        value={t}
-                        onChange={(v) => setExtraTrackings((xs) => xs.map((x, j) => (j === i ? v : x)))}
-                        onSearch={(v) => onCommitExtraTracking?.(v, i)}
-                        placeholder="Tracking"
-                        variant="blue"
-                        size="compact"
-                        hideUnderline
-                        debounceMs={0}
-                        pasteOnlyTrailing
-                        leadingIcon={<MapPin className="h-[14px] w-[14px]" />}
-                        className="w-full min-w-0"
-                      />
-                      <div className={scanRuleClass} aria-hidden />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {listingEditorOpen ? (
-                <div className="relative min-w-0">
-                  <div className="mb-1.5">
-                    <WorkspaceFieldLabel className="whitespace-nowrap">Listing URL</WorkspaceFieldLabel>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="group min-w-0">
-                      <SearchBar
-                        value={listingLink}
-                        onChange={setListingLink}
-                        inputRef={listingRef}
-                        placeholder="Manual override URL"
-                        variant="blue"
-                        size="compact"
-                        hideUnderline
-                        pasteOnlyTrailing
-                        leadingIcon={
-                          <HoverTooltip label={listingOpenHref ? 'Open primary link' : 'Enter a valid URL'} asChild>
-                            <IconButton
-                              type="button"
-                              tone="accent"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                if (listingOpenHref) {
-                                  window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
-                                }
-                              }}
-                              disabled={listingOpenHref == null}
-                              ariaLabel="Open primary listing URL in new tab"
-                              className="-m-0.5 rounded p-0.5 text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-text-faint disabled:opacity-60"
-                              icon={<ExternalLink className="h-[14px] w-[14px]" />}
-                            />
-                          </HoverTooltip>
-                        }
-                        trailingSuffix={
-                          <HoverTooltip label="Close editor" asChild>
-                            <IconButton
-                              type="button"
-                              onClick={() => setListingEditorOpen(false)}
-                              ariaLabel="Close listing editor"
-                              className="rounded p-0.5 text-text-faint hover:bg-red-50 hover:text-red-600"
-                              icon={<X className="h-3.5 w-3.5" />}
-                            />
-                          </HoverTooltip>
-                        }
-                        className="w-full"
-                      />
-                      <div className={scanRuleClass} aria-hidden />
-                    </div>
-
-                    {syncNoteListingLinks.length > 0 ? (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <WorkspaceFieldLabel>Synced listing links</WorkspaceFieldLabel>
-                          <HoverTooltip label="Scroll to Zoho Notes editor (to edit the synced list)" asChild>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                const el = document.getElementById('zoho-notes-card');
-                                el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                              }}
-                            >
-                              Edit Zoho notes
-                            </Button>
-                          </HoverTooltip>
-                        </div>
-                        <div className="space-y-1">
-                          {syncNoteListingLinks.map((l, i) => (
-                            <button
-                              key={`${l.href}-${i}`}
-                              type="button"
-                              onClick={() => window.open(l.href, '_blank', 'noopener,noreferrer')}
-                              className="flex w-full items-center justify-between gap-2 rounded-md border border-border-hairline bg-surface-card/70 px-2 py-1.5 text-left text-role-caption font-semibold text-text-muted transition hover:bg-surface-hover"
-                            >
-                              <span className="min-w-0 flex-1 truncate">
-                                {(l.label || '').trim() || `Listing ${i + 1}/${syncNoteListingLinks.length}`}
-                              </span>
-                              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
   );

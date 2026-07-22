@@ -7,6 +7,8 @@ export type UnboxView =
   | 'units'
   | 'checklist'
   | 'po-note'
+  | 'tracking'
+  | 'listings'
   | 'timeline'
   | 'ticket'
   | 'support';
@@ -17,9 +19,12 @@ export type UnboxTerminalKind =
   | 'po-note'
   | 'checklist'
   | 'units'
+  | 'tracking'
+  | 'listings'
   | 'timeline'
   | 'ticket'
-  | 'support';
+  | 'support'
+  | 'none';
 
 /**
  * Bags the unbox terminal resolver needs — controller surface + PO-note state

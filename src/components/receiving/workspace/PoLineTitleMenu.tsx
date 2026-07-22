@@ -7,6 +7,7 @@ import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton, Popover } from '@/design-system/primitives';
 import { useSplitLineSerial } from '@/components/receiving/workspace/hooks/useSplitLineSerial';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
+import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 
 export interface PoLineSerialSplitContext {
   staffId: string;
@@ -154,7 +155,7 @@ export function PoLineTitleMenu({ line, descShown, onToggleDesc, serialSplit }: 
           <div className="min-w-0">
             <h2 className="text-role-body font-semibold text-text-default">Unlink item</h2>
             <p className="mt-0.5 truncate text-role-caption text-text-soft">
-              {line.item_name || line.sku || `Line #${line.id}`}
+              {receivingWorkspaceLineTitle(line)}
             </p>
           </div>
           <HoverTooltip label="Close" asChild>

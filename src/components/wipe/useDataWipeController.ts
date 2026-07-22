@@ -118,7 +118,8 @@ export function useDataWipeController() {
 
   // Focus-watchdog: re-grab the scan bar when the tab regains visibility —
   // modals / tab-aways steal focus, the classic wedge failure mode (station.md
-  // §3). The global F2 hotkey (StationScanBar `hotkey`) covers the manual case.
+  // §3). The global focus-scan hotkey (StationScanBar `hotkey`, default Insert)
+  // covers the manual case.
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === 'visible') inputRef.current?.focus();

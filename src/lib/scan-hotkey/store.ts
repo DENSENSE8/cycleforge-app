@@ -3,7 +3,7 @@
  * StationScanBar across the app.
  *
  * Three responsibilities:
- *   1. Hold the current binding (a function key F1–F12, default "F2").
+ *   1. Hold the current binding (Insert / ScrollLock / F1–F12, default "Insert").
  *      Hydrated synchronously from localStorage so the gear shows the right key
  *      with no flash; the server (staff_preferences) is the durable cross-device
  *      SoT, reconciled in the background by <ScanHotkeySync/>.

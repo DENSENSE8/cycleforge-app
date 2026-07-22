@@ -34,6 +34,10 @@ import { cn } from '@/utils/_cn';
 
 interface CellTextEditPopoverProps {
   anchorRef: RefObject<HTMLElement | null>;
+  /** Panel edge/alignment vs the anchor (default 'bottom-start'). Corner-
+   *  indicator editors pass 'bottom-end' so the panel opens AT the corner —
+   *  the Sheets note-bubble position — not across the row. */
+  placement?: 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end';
   title: string;
   /** `danger` tints the header (out-of-stock); default neutral. */
   tone?: 'default' | 'danger';
@@ -51,6 +55,7 @@ interface CellTextEditPopoverProps {
 
 export function CellTextEditPopover({
   anchorRef,
+  placement = 'bottom-start',
   title,
   tone = 'default',
   initialValue,
@@ -78,7 +83,12 @@ export function CellTextEditPopover({
   const settleRef = useRef(settle);
   settleRef.current = settle;
 
+  // Commit-on-unmount (a virtualized row scrolling away can't eat the draft),
+  // StrictMode-safe: the cleanup only SCHEDULES the commit; a synchronous
+  // re-mount (dev double-effect) cancels it, so only a REAL unmount settles.
+  const unmountingRef = useRef(false);
   useEffect(() => {
+    unmountingRef.current = false;
     const t = setTimeout(() => {
       const el = entryRef.current;
       if (el) {
@@ -87,10 +97,12 @@ export function CellTextEditPopover({
         el.setSelectionRange(end, end);
       }
     }, 0);
-    // Commit-on-unmount: a virtualized row scrolling away can't eat the draft.
     return () => {
       clearTimeout(t);
-      settleRef.current(true);
+      unmountingRef.current = true;
+      setTimeout(() => {
+        if (unmountingRef.current) settleRef.current(true);
+      }, 0);
     };
   }, []);
 
@@ -118,7 +130,7 @@ export function CellTextEditPopover({
       onClose={() => settle(true)}
       closeOnEscape={false}
       anchorRef={anchorRef}
-      placement="bottom-start"
+      placement={placement}
       role="dialog"
       aria-label={title}
       className="w-64"

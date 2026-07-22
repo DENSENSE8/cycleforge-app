@@ -15,17 +15,19 @@ const STATION_BOOKMARK_ELEVATION = elevationClass('raised', 'soft');
 
 /**
  * Centered identity bookmark — flush top; hairline on left · right · bottom;
- * bottom corners rounded (side radii override Panel `radius="xl"`).
+ * bottom corners `rounded-2xl` to match workbench cards below (PO accordion /
+ * SectionTabs). Side radii override Panel `radius="2xl"`.
  */
 export const stationBookmarkPanelClass =
-  `rounded-t-none rounded-b-xl border border-t-0 border-border-soft ${STATION_BOOKMARK_ELEVATION}`;
+  `rounded-t-none rounded-b-2xl border border-t-0 border-border-soft ${STATION_BOOKMARK_ELEVATION}`;
 
 /**
  * Top-right utilities bookmark — flush top + right of the work canvas;
- * hairline on left · bottom only; bottom-left corner rounded.
+ * hairline on left · bottom only; bottom-left corner `rounded-2xl` (same
+ * workbench card radius as the identity bookmark).
  */
 export const stationMoreDetailsPanelClass =
-  `rounded-tl-none rounded-tr-none rounded-br-none rounded-bl-xl border-l border-b border-border-soft ${STATION_BOOKMARK_ELEVATION}`;
+  `rounded-tl-none rounded-tr-none rounded-br-none rounded-bl-2xl border-l border-b border-border-soft ${STATION_BOOKMARK_ELEVATION}`;
 
 /** Inner pad for identity + more-details bookmark faces (matches icon-gap unit). */
 export const stationBookmarkPadClass = 'p-0.5';

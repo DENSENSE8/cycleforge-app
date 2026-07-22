@@ -1,22 +1,22 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import type { PhotoDateNav } from '@/components/photos/photo-library-grid/types';
-import { photoLibraryFilterParams } from '@/hooks/usePhotoLibrary';
-import type { PhotoLibraryFilterState, PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
+import { usePhotoLibrary } from '@/hooks/usePhotoLibrary';
+import {
+  PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE,
+  PHOTO_LIBRARY_PAGE_SIZE,
+  type PhotoLibraryFilterState,
+  type PhotoLibrarySourceScope,
+} from '@/lib/photos/library-filter-state';
 import { getCurrentPSTDateKey } from '@/utils/date';
-
-const PICKER_PAGE_LIMIT = 100;
 
 interface MediaTypeSelection {
   scope?: PhotoLibrarySourceScope;
   imageType?: string;
 }
 
-interface UseMediaLibraryPickerPhotosArgs {
-  enabled: boolean;
+interface BuildMediaLibraryPickerFiltersArgs {
   mediaType: MediaTypeSelection | null;
   ticketTab: boolean;
   /** Carton-scoped tab — filters by receivingId. */
@@ -27,8 +27,11 @@ interface UseMediaLibraryPickerPhotosArgs {
   search?: string;
 }
 
-/** Rolling window for the year-folder root — bounds DB reads in the picker. */
-function rootFetchDateRange(): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateTo'> {
+/**
+ * Rolling window for picker search without an explicit date drill — bounds
+ * unbounded q= scans. Folder browse no longer needs this (aggregation API).
+ */
+function searchFetchDateRange(): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateTo'> {
   const today = getCurrentPSTDateKey();
   const end = new Date(`${today}T12:00:00Z`);
   const start = new Date(end);
@@ -37,7 +40,8 @@ function rootFetchDateRange(): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateT
   return { dateFrom: ymd(start), dateTo: today };
 }
 
-function buildPickerFilters({
+/** Build library filters for the media picker (shared by folders + photo hooks). */
+export function buildMediaLibraryPickerFilters({
   mediaType,
   ticketTab,
   cartonTab,
@@ -45,7 +49,7 @@ function buildPickerFilters({
   receivingId,
   dateNav,
   search,
-}: Omit<UseMediaLibraryPickerPhotosArgs, 'enabled'>): PhotoLibraryFilterState | null {
+}: BuildMediaLibraryPickerFiltersArgs): PhotoLibraryFilterState | null {
   if (ticketTab) {
     if (!ticketId) return null;
     const base: PhotoLibraryFilterState = {
@@ -84,7 +88,7 @@ function buildPickerFilters({
       base.dateFrom = dateNav.dateFrom;
       base.dateTo = dateNav.dateTo;
     } else {
-      Object.assign(base, rootFetchDateRange());
+      Object.assign(base, searchFetchDateRange());
     }
     return base;
   }
@@ -92,18 +96,26 @@ function buildPickerFilters({
   if (dateNav.dateFrom && dateNav.dateTo) {
     base.dateFrom = dateNav.dateFrom;
     base.dateTo = dateNav.dateTo;
-  } else {
-    Object.assign(base, rootFetchDateRange());
   }
   if (dateNav.poRef) base.poRef = dateNav.poRef;
   if (dateNav.ticketId) base.ticketId = dateNav.ticketId;
   return base;
 }
 
-/** Date-scoped library fetch for the media picker (single page, max 100 rows). */
+interface UseMediaLibraryPickerPhotosArgs extends BuildMediaLibraryPickerFiltersArgs {
+  enabled: boolean;
+  /** Defaults to folder-leaf size (5). Search uses the grid page size. */
+  pageSize?: number;
+}
+
+/**
+ * Paginated library photos for the media picker leaf / search.
+ * Non-leaf folder browse should use {@link usePhotoLibraryFolders} instead —
+ * do not enable this hook just to paint year/month tiles.
+ */
 export function useMediaLibraryPickerPhotos(args: UseMediaLibraryPickerPhotosArgs) {
   const filters = useMemo(
-    () => buildPickerFilters(args),
+    () => buildMediaLibraryPickerFilters(args),
     [
       args.mediaType,
       args.ticketTab,
@@ -115,19 +127,16 @@ export function useMediaLibraryPickerPhotos(args: UseMediaLibraryPickerPhotosArg
     ],
   );
 
-  const query = useQuery({
-    queryKey: ['media-library-picker', filters],
+  const searchActive = Boolean(args.search?.trim());
+  const pageSize =
+    args.pageSize ??
+    (searchActive ? PHOTO_LIBRARY_PAGE_SIZE : PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE);
+
+  const emptyFilters = useMemo<PhotoLibraryFilterState>(() => ({}), []);
+  const { query, photos, isSettled } = usePhotoLibrary(filters ?? emptyFilters, {
+    pageSize,
     enabled: args.enabled && filters !== null,
-    queryFn: async () => {
-      const params = photoLibraryFilterParams(filters!);
-      params.set('limit', String(PICKER_PAGE_LIMIT));
-      const res = await fetch(`/api/photos/library?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load photos');
-      const data = (await res.json()) as { photos: LibraryPhoto[] };
-      return data.photos ?? [];
-    },
-    staleTime: 30_000,
   });
 
-  return { filters, photos: query.data ?? [], query };
+  return { filters, photos, query, isSettled, pageSize };
 }

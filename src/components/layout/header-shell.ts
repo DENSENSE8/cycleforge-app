@@ -16,9 +16,10 @@ export const receivingHeaderHairlineClass = appChromeBandHairlineClass;
  * change it here and every section that references it re-aligns together.
  *
  * 6px (px-1.5) is the house sidebar gutter. Mode pills inset to this line.
- * Scan-dock rails keep the list flush ({@link SIDEBAR_RAIL_INSET_X}); the status
+ * Scan-dock rails inset the list to {@link SIDEBAR_RAIL_INSET_X} (left =
+ * {@link SIDEBAR_GUTTER}); the status
  * dot rides a compact FLOW track at the row's left and the title sits one tight
- * {@link SIDEBAR_MASTER_NAV_MODE_GAP} after it (see {@link SIDEBAR_RAIL_LEADING_PAD}).
+ * {@link SIDEBAR_MASTER_NAV_MODE_GAP} after it (see {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}).
  */
 export const SIDEBAR_GUTTER = 'px-1.5';
 
@@ -42,25 +43,43 @@ export const SIDEBAR_MASTER_NAV_MODE_GAP = 'gap-1.5';
  * `--cf-density`.
  *
  * Column math: `pl-2` (8) + `w-4` track (16) + `gap-1.5` (6) ⇒ title at 30px.
- * The eyebrow ({@link SidebarRailShell}) mirrors the same `pad → track → gap`
- * so its title shares the row-title x; the dense scan bar
- * (`STATION_SCAN_BAR_*_DENSE` in `station/scan-bar/tokens.ts`) centers its icon
- * on the dot track and lands its typed text on the title — one clean column.
+ * The eyebrow ({@link SidebarRailShell}), rail rows, and dense scan bar
+ * (`leadingColumn="rail"`) all compose {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}
+ * so icon/dot track + typed text share one clean column — never a magic rem twin.
  * The MasterNav "now" label deliberately stays deeper (its chevron + hairline +
  * mode glyph own the 0→47px chrome column above the dock).
  */
-export const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';
+/** Leading pad before the dot track (`pl-2`) — internal to {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}. */
+const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';
 /** Dot / edit-checkbox flow-track width (centers the `h-2` dot / `h-3.5` box). */
 export const SIDEBAR_RAIL_DOT_TRACK = 'w-4';
 
 /**
- * Horizontal inset for scan-dock recent-rail **list hosts**. Flush left so the
- * row button's {@link SIDEBAR_RAIL_LEADING_PAD} leading track is measured from
- * the sidebar edge — the status dot hugs the left with no dead gutter, and the
- * title lands on the dense rail column. Right flush for
- * {@link SIDEBAR_RAIL_ROW_PAD_RIGHT}.
+ * Shared scan-dock leading row — `pad → track → gap` flex shell. Compose with
+ * a {@link SIDEBAR_RAIL_DOT_TRACK} cell (status dot / scan icon / empty spacer)
+ * then the title or scan input. Single knob for Unbox / Triage / Testing /
+ * Shipping / Labels scan-dock alignment.
  */
-export const SIDEBAR_RAIL_INSET_X = 'pl-0 pr-0';
+export const SIDEBAR_SCAN_DOCK_LEADING_ROW = cn(
+  'flex min-w-0 items-center',
+  SIDEBAR_RAIL_LEADING_PAD,
+  SIDEBAR_MASTER_NAV_MODE_GAP,
+);
+
+/**
+ * Left inset for scan-dock chrome (list host, eyebrow, dense scan bar).
+ * Same value as {@link SIDEBAR_GUTTER}'s horizontal pad — selection rings sit on
+ * this gutter; {@link SIDEBAR_SCAN_DOCK_LEADING_ROW} measures from here so scan
+ * text / eyebrow / row titles stay one column.
+ */
+export const SIDEBAR_RAIL_INSET_LEFT = 'pl-1.5';
+
+/**
+ * Horizontal inset for scan-dock recent-rail **list hosts**. Left =
+ * {@link SIDEBAR_RAIL_INSET_LEFT} (sidebar gutter); right flush so rows own
+ * {@link SIDEBAR_RAIL_ROW_PAD_RIGHT} alone (avoids doubling the right edge).
+ */
+export const SIDEBAR_RAIL_INSET_X = cn(SIDEBAR_RAIL_INSET_LEFT, 'pr-0');
 
 /**
  * Right pad on scan-dock rail rows (and the matching eyebrow). Narrows the
@@ -161,5 +180,5 @@ export const SIDEBAR_MRU_CLUSTER = 'ml-auto flex h-full shrink-0 items-stretch g
 /** One MRU hit cell — centers IconButton xs inside a compact mode-width column. */
 export const SIDEBAR_MRU_CELL = 'flex h-full w-8 shrink-0 items-center justify-center';
 
-/** Glyph for MRU jump chips (pairs with IconButton `size="xs"`). */
+/** Glyph for MRU jump chips (pairs with IconButton `size="xs"`). Mode or page SoT. */
 export const SIDEBAR_MRU_GLYPH = 'h-3.5 w-3.5';

@@ -20,21 +20,12 @@ export function PickupEntityContextHeader({
 }) {
   const sku = selected?.sku.trim() ?? '';
 
-  const [listingLink, setListingLink] = useState('');
-  const [listingEditorOpen, setListingEditorOpen] = useState(false);
-  const [poEditorOpen, setPoEditorOpen] = useState(false);
-  const [poNumberEdit, setPoNumberEdit] = useState(sku);
-  const [trackingEditorsOpen, setTrackingEditorsOpen] = useState(false);
-  const [trackingEdit, setTrackingEdit] = useState('');
-  const [extraTrackings, setExtraTrackings] = useState<string[]>([]);
   const [platformValue, setPlatformValue] = useState('');
   const [receivingType, setReceivingType] = useState('PICKUP');
 
   useEffect(() => {
-    setPoNumberEdit(sku);
-    setListingEditorOpen(false);
-    setPoEditorOpen(false);
-    setTrackingEditorsOpen(false);
+    setPlatformValue('');
+    setReceivingType('PICKUP');
   }, [selected?.key, sku]);
 
   return (
@@ -44,26 +35,15 @@ export function PickupEntityContextHeader({
       staffId=""
       isUnmatched={false}
       showStaffPhotoRow={false}
-      listingLink={listingLink}
-      setListingLink={setListingLink}
+      listingLink=""
       showListing={false}
-      listingEditorOpen={listingEditorOpen}
-      setListingEditorOpen={setListingEditorOpen}
       listingOpenHref={null}
       listingLinks={[]}
       poOpenHref={null}
       trackingOpenHref={null}
       poDisplay={sku}
       showOrderIdentity={Boolean(sku)}
-      poEditable={false}
       linkedOrderNumber={null}
-      poEditorOpen={poEditorOpen}
-      setPoEditorOpen={setPoEditorOpen}
-      poNumberEdit={poNumberEdit}
-      setPoNumberEdit={setPoNumberEdit}
-      onCommitPoNumber={() => {
-        /* staged intake — SKU identity is read-only */
-      }}
       lineId={null}
       zendeskTrimmed=""
       zendeskHref={null}
@@ -71,15 +51,6 @@ export function PickupEntityContextHeader({
       primaryTrackingTrimmed=""
       filledExtraTrackingsCount={0}
       isLocalPickup
-      trackingEditorsOpen={trackingEditorsOpen}
-      onToggleTrackingEditors={() => setTrackingEditorsOpen((value) => !value)}
-      trackingEdit={trackingEdit}
-      setTrackingEdit={setTrackingEdit}
-      onCommitTracking={() => {
-        /* local pickup has no carrier tracking */
-      }}
-      extraTrackings={extraTrackings}
-      setExtraTrackings={setExtraTrackings}
       platformValue={platformValue}
       onPlatformSelect={setPlatformValue}
       receivingType={receivingType}

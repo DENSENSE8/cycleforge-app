@@ -30,7 +30,7 @@ import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { MovePhotosBetweenPoModal } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoModal';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
-import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput, PhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import SocialCards, { type CardItem } from '@/components/ui/card-fan-carousel';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
@@ -297,9 +297,8 @@ export function PhotoPeekFan({
           )
         : null}
 
-      {/* Shared fullscreen viewer — portaled to <body>, opened from a fan card
-          or Space. X / Esc / backdrop close it (usePhotoGallery), returning to
-          the fan underneath. */}
+      {/* Shared fullscreen viewer — SoT portal; X / Esc / backdrop close
+          (usePhotoGallery), returning to the fan underneath. */}
       {isMobile ? (
         <MobileSwipePhotoViewer
           open={viewerOpen}
@@ -309,14 +308,7 @@ export function PhotoPeekFan({
           onDelete={handleDelete}
         />
       ) : (
-        gallery.mounted && typeof document !== 'undefined'
-          ? createPortal(
-              <AnimatePresence mode="wait">
-                {viewerOpen ? <PhotoViewerModal g={gallery} /> : null}
-              </AnimatePresence>,
-              document.body,
-            )
-          : null
+        <PhotoViewerPortal g={gallery} />
       )}
 
       {gallery.canReassignCurrent && receivingId != null ? (

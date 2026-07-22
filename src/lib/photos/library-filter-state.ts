@@ -225,6 +225,9 @@ export function photoLibraryViewToggleModes(
 /** Server page size for the library query (usePhotoLibrary requests this many per page). */
 export const PHOTO_LIBRARY_PAGE_SIZE = 48;
 
+/** Folders leaf contact sheet — newest N photos, then explicit Load more. */
+export const PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE = 5;
+
 export const PHOTO_SOURCE_SCOPE_LABELS: Record<PhotoLibrarySourceScope, string> = {
   all: 'All photos',
   unboxing: 'Unboxing',
@@ -340,7 +343,7 @@ export function datePresetFromFilters(filters: PhotoLibraryFilterState): PhotoLi
   return 'custom';
 }
 
-/** Folders view always opens on today's capture date (warehouse PST). */
+/** Optional date pin for folders browse (operators set Today / Last 7 / drills). */
 export function todayFoldersDateFilter(): Pick<PhotoLibraryFilterState, 'dateFrom' | 'dateTo'> {
   const today = getCurrentPSTDateKey();
   return { dateFrom: today, dateTo: today };

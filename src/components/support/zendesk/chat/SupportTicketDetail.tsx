@@ -12,11 +12,12 @@ import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportContext } from '@/hooks/useSupportContext';
 import type { SupportContextBundle } from '@/lib/support/context-types';
+import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import type { ZendeskComment } from '@/lib/zendesk';
 import { EmptyState, Spinner } from '@/design-system/primitives';
 import { Link2, Upload } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
-import { PhotoViewerModal } from '@/components/shipped/photo-gallery/PhotoViewerModal';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { SupportChatHeader } from './SupportChatHeader';
 import { SupportChatThread } from './SupportChatThread';
 import { SupportChatComposer } from './SupportChatComposer';
@@ -149,14 +150,14 @@ export function SupportTicketDetail({
             isNotConfigured(error)
               ? 'Helpdesk isn’t connected'
               : isRateLimited(error)
-                ? 'Zendesk is busy'
+                ? `${capabilityTitle('helpdesk')} is busy`
                 : 'Couldn’t load ticket'
           }
           description={
             isNotConfigured(error)
               ? 'Connect one in Settings → Integrations to use the console.'
               : isRateLimited(error)
-                ? 'Too many requests to Zendesk. Wait a moment, then refresh or reselect the ticket.'
+                ? `Too many requests to the ${capabilityTitle('helpdesk').toLowerCase()}. Wait a moment, then refresh or reselect the ticket.`
                 : 'Try selecting the ticket again.'
           }
           action={
@@ -239,11 +240,7 @@ export function SupportTicketDetail({
       </AnimatePresence>
 
       {/* Shared fullscreen viewer for every photo on this ticket. */}
-      <AnimatePresence>
-        {gallery.viewerOpen && gallery.photoItems.length > 0 ? (
-          <PhotoViewerModal g={gallery} />
-        ) : null}
-      </AnimatePresence>
+      {gallery.photoItems.length > 0 ? <PhotoViewerPortal g={gallery} /> : null}
     </div>
   );
 }

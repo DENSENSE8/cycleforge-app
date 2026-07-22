@@ -26,8 +26,9 @@ export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
     mode: 'ticket',
     label: 'Ticket #',
     Icon: TicketHelp,
-    armedClass: 'text-emerald-700',
-    iconClass: 'text-emerald-600',
+    // Match carton-context / CHIP_TONES.ticket (orange) — not staff-rule emerald.
+    armedClass: 'text-orange-600',
+    iconClass: 'text-orange-500',
   },
   {
     mode: 'tracking',
@@ -40,7 +41,7 @@ export const UNBOX_SCAN_MODES: readonly UnboxScanModeMeta[] = [
     mode: 'order',
     label: 'PO #',
     Icon: Hash,
-    armedClass: 'text-text-muted', // ds-allow-raw-neutral: identity/tone hue — PO-mode slate among emerald/blue mode tints
+    armedClass: 'text-text-muted', // ds-allow-raw-neutral: identity/tone hue — PO-mode slate among orange/blue mode tints
     iconClass: 'text-text-soft',
   },
 ] as const;

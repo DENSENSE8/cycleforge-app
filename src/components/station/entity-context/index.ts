@@ -2,9 +2,10 @@
  * Station entity-context — **SoT**.
  *
  * 1. **Identity** — {@link CartonContextCard}: condensed one-row listing · PO# ·
- *    tracking · CLAIM · photos · platform/type/priority. Every station that shows
- *    inbound carton **or** Shipping active-order chrome composes this — never fork
- *    a parallel header.
+ *    tracking · CLAIM · photos · platform/type/priority. Listing/tracking Edit
+ *    navigate to Unbox SectionTabs (`tracking` / `listings`); PO# is copy/open-only.
+ *    Every station that shows inbound carton **or** Shipping active-order chrome
+ *    composes this — never fork a parallel header.
  * 2. **Bookmark chrome** — {@link StationContextBar} + {@link StationMoreDetails}:
  *    sticky identity bookmark + corner utilities flush under GlobalHeader
  *    (`density="bar"`). Mount **above** StationWorkbench; do not put identity in

@@ -23,6 +23,12 @@ interface UseDateFoldersArgs {
   poRef?: string;
   ticketId?: string;
   onNavigate: (nav: PhotoDateNav) => void;
+  /**
+   * First page for the current filter has settled. Empty-day widen must wait for
+   * this — treating a still-loading query as empty causes day→week→month URL thrash
+   * and skeleton remount flicker.
+   */
+  isSettled?: boolean;
 }
 
 interface DateFoldersState {
@@ -36,10 +42,35 @@ interface DateFoldersState {
 }
 
 /**
+ * Whether an empty date pin should widen (day→week / week→month).
+ * Only after the query has settled with zero photos — never while pending.
+ */
+export function shouldWidenEmptyDateFolder({
+  isSettled,
+  poRef,
+  ticketId,
+  anchor,
+  photoCount,
+  level,
+}: {
+  isSettled: boolean;
+  poRef?: string;
+  ticketId?: string;
+  anchor?: string;
+  photoCount: number;
+  level: string;
+}): 'week' | 'month' | null {
+  if (!isSettled || poRef || ticketId || !anchor || photoCount > 0) return null;
+  if (level === 'day') return 'week';
+  if (level === 'week') return 'month';
+  return null;
+}
+
+/**
  * Date-drill folders view, driven by the active URL date filter (single source
  * of truth — the same state the bottom breadcrumb reads). Drill level + tiles
- * come from {@link resolveFolderBrowseState}; the page header reads the same
- * model via {@link describeFolderBrowseHeader}.
+ * come from {@link resolveFolderBrowseState} (leaf contact sheet / widen only —
+ * non-leaf tiles come from the folders aggregation API).
  */
 export function useDateFolders({
   photos,
@@ -49,6 +80,7 @@ export function useDateFolders({
   poRef,
   ticketId,
   onNavigate,
+  isSettled = true,
 }: UseDateFoldersArgs): DateFoldersState {
   const browseArgs = useMemo(
     () => ({ photos, scope, dateFrom, dateTo, poRef, ticketId }),
@@ -70,17 +102,19 @@ export function useDateFolders({
 
   useEffect(() => setOpenIndex(null), [dateFrom, dateTo, poRef, ticketId]);
 
-  // Empty-day fallback: if a single day is selected (e.g. today on open) but it
-  // has no photos, widen to that day's week so the operator lands on day folders
-  // instead of a dead-empty day. Empty-week widens to the month the same way.
+  // Empty-day fallback: only after the query settles empty — never while loading.
   useEffect(() => {
-    if (poRef || ticketId || !anchor || photos.length > 0) return;
-    if (level === 'day') {
-      onNavigate(weekRangeOf(anchor));
-    } else if (level === 'week') {
-      onNavigate(monthRangeOf(anchor.slice(0, 7)));
-    }
-  }, [level, poRef, ticketId, anchor, photos.length, onNavigate]);
+    const widen = shouldWidenEmptyDateFolder({
+      isSettled,
+      poRef,
+      ticketId,
+      anchor,
+      photoCount: photos.length,
+      level,
+    });
+    if (widen === 'week' && anchor) onNavigate(weekRangeOf(anchor));
+    else if (widen === 'month' && anchor) onNavigate(monthRangeOf(anchor.slice(0, 7)));
+  }, [level, poRef, ticketId, anchor, photos.length, onNavigate, isSettled]);
 
   return {
     isLeaf: browse.isLeaf,

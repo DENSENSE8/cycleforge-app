@@ -26,9 +26,6 @@ import type { CartonListingLink } from '@/lib/receiving/listing-links';
  */
 export function ShippingEntityContextHeader({
   activeOrder,
-  // Close the active scanned order → the right pane crossfades back to the list.
-  // Shared by two surfaces (tech ship-confirm + outbound labels); each passes its
-  // own close handler. Omit to hide the back button.
   onExitToList,
 }: {
   activeOrder: ActiveStationOrder;
@@ -56,26 +53,13 @@ export function ShippingEntityContextHeader({
   }, [listingUrl, listingPlatformLabel]);
 
   const [listingLink, setListingLink] = useState(listingUrl ?? '');
-  const [listingEditorOpen, setListingEditorOpen] = useState(false);
-  const [poEditorOpen, setPoEditorOpen] = useState(false);
-  const [poNumberEdit, setPoNumberEdit] = useState(orderId);
-  const [trackingEditorsOpen, setTrackingEditorsOpen] = useState(false);
-  const [trackingEdit, setTrackingEdit] = useState(tracking);
-  const [extraTrackings, setExtraTrackings] = useState<string[]>([]);
   const [platformValue, setPlatformValue] = useState(platformKey);
   const [receivingType, setReceivingType] = useState('');
 
-  // Keep local drafts in sync when the scanned order changes.
   useEffect(() => {
     setListingLink(listingUrl ?? '');
-    setPoNumberEdit(orderId);
-    setTrackingEdit(tracking);
-    setExtraTrackings([]);
     setPlatformValue(platformKey);
-    setListingEditorOpen(false);
-    setPoEditorOpen(false);
-    setTrackingEditorsOpen(false);
-  }, [activeOrder.orderId, activeOrder.tracking, listingItemKey, listingUrl, orderId, platformKey, tracking]);
+  }, [activeOrder.orderId, activeOrder.tracking, listingItemKey, listingUrl, platformKey]);
 
   return (
     <CartonContextCard
@@ -85,22 +69,12 @@ export function ShippingEntityContextHeader({
       isUnmatched={false}
       showStaffPhotoRow={false}
       listingLink={listingLink}
-      setListingLink={setListingLink}
-      listingEditorOpen={listingEditorOpen}
-      setListingEditorOpen={setListingEditorOpen}
       listingOpenHref={listingUrl}
       listingLinks={listingLinks}
       poOpenHref={null}
       trackingOpenHref={tracking ? getTrackingUrl(tracking) : null}
       poDisplay={orderId}
       linkedOrderNumber={orderId}
-      poEditorOpen={poEditorOpen}
-      setPoEditorOpen={setPoEditorOpen}
-      poNumberEdit={poNumberEdit}
-      setPoNumberEdit={setPoNumberEdit}
-      onCommitPoNumber={() => {
-        /* ship session — order id is read-only */
-      }}
       lineId={null}
       zendeskTrimmed=""
       zendeskHref={null}
@@ -108,15 +82,6 @@ export function ShippingEntityContextHeader({
       primaryTrackingTrimmed={tracking}
       filledExtraTrackingsCount={0}
       isLocalPickup={false}
-      trackingEditorsOpen={trackingEditorsOpen}
-      onToggleTrackingEditors={() => setTrackingEditorsOpen((v) => !v)}
-      trackingEdit={trackingEdit}
-      setTrackingEdit={setTrackingEdit}
-      onCommitTracking={() => {
-        /* ship session — tracking comes from the scanned order */
-      }}
-      extraTrackings={extraTrackings}
-      setExtraTrackings={setExtraTrackings}
       platformValue={platformValue}
       onPlatformSelect={setPlatformValue}
       receivingType={receivingType}

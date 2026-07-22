@@ -149,12 +149,12 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 }
 
 /**
- * Dogfood prod surface (stations + shipping + thin support).
+ * Dogfood prod surface (stations + shipping + inventory + thin support).
  *
  * Parked off master nav (routes + SIDEBAR_PAGE_NAV modes may still resolve for
  * deep-links / topic worktrees — do not delete those until a surface is
  * promoted back or archived):
- *   home (`/`), sourcing, inventory, warehouse, fba, studio, ai-chat
+ *   home (`/`), operations, sourcing, warehouse, fba, studio, ai-chat
  * Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
@@ -162,7 +162,10 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Home surface is unlocked (`DOGFOOD_FULL_SURFACE`), hidden for customers — so
   // the locked-prod-nav tests still see it absent (HOME-OPS plan §3.4/§28).
   { id: 'home',              label: 'Home',        href: '/',                   icon: Layout,          kind: 'main',    parkedSurface: 'home' },
-  { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view' },
+  // Operations (Live / Analytics / Insights / History / Signals). Parked-aware —
+  // same soft-gate as Home: hidden on prod nav + `ParkedSurface` stand-in until
+  // `DOGFOOD_FULL_SURFACE` unlocks the workspace.
+  { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main',    requires: 'operations.view', parkedSurface: 'operations' },
   { id: 'dashboard',         label: 'Dashboard',   href: '/dashboard',    icon: LayoutDashboard, kind: 'main',    requires: 'dashboard.view' },
   // Front-desk commerce — the overall transaction history (Sales · Pickups ·
   // Repairs categories) plus the sales cart. Renamed from "Walk-In" in the
@@ -172,6 +175,8 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the plan's Overlap register, "Nav id rename").
   { id: 'walk-in',           label: 'Sales',       href: '/walk-in',            icon: SalesPage,       kind: 'main',    requires: 'walk_in.view' },
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
+  // Inventory workbench — promoted back to dogfood prod nav (was parked).
+  { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'main',    requires: 'sku_stock.view' },
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
   // surface — so the primary nav lands on the canonical URL without a redirect
   // hop. Route key still resolves to 'receiving', so the item stays active
@@ -182,9 +187,10 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
   { id: 'tech',              label: 'Testing',     href: '/test',               icon: STATION_PAGE_ICONS.tech,      kind: 'station', requires: 'tech.view' },
-  // Data Wipe / FBA / Inventory / Warehouse / Sourcing / Studio / AI Chat /
-  // Home are temporarily absent from master nav — dogfood focuses stations +
-  // shipping. Routes + mode configs remain for deep-links / preview worktrees.
+  // Data Wipe / FBA / Warehouse / Sourcing / Studio / AI Chat / Home /
+  // Operations are temporarily absent from master nav — dogfood focuses
+  // stations + shipping + inventory. Routes + mode configs remain for
+  // deep-links / preview worktrees.
   { id: 'ops-photos',        label: 'Media library', href: '/ops/photos',       icon: Images,          kind: 'main',    requires: 'photos.view' },
   // Sub-route of the parked `studio` surface — hidden from nav while Studio is
   // parked (so it never dead-ends on the stand-in), shown once it's unlocked.

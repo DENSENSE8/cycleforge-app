@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { DogfoodSurfaceGate } from '@/components/dogfood/DogfoodSurfaceGate';
 
+/** Inventory is live on dogfood prod — no parked-surface gate. */
 export default function InventoryLayout({ children }: { children: ReactNode }) {
-  return <DogfoodSurfaceGate surface="inventory">{children}</DogfoodSurfaceGate>;
+  return children;
 }

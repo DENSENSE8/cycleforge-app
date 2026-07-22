@@ -399,13 +399,13 @@ export function useTrackingScan({
           }
 
           // Phase 0 — Recent-list instant select (zero fetch, no loader). If the
-          // scanned PO/tracking is already a MATERIALIZED carton (receiving_id
-          // set) sitting in any receiving-feed cache — the Recent/Unboxed rail,
-          // Prioritize, or the History table, all keyed under
-          // ['receiving-lines-table'] — open it straight from cache exactly like
-          // clicking that rail row (dispatchSelectLine). EXPECTED-only incoming
-          // lines (receiving_id null) are intentionally skipped so they still
-          // flow through the lookup-po adopt/stamp path below.
+          // scanned PO / tracking / ticket# is already a MATERIALIZED carton
+          // (receiving_id set) sitting in any receiving-feed cache — the
+          // Recent/Unboxed rail, Prioritize, or the History table, all keyed
+          // under ['receiving-lines-table'] — open it straight from cache
+          // exactly like clicking that rail row (dispatchSelectLine).
+          // EXPECTED-only incoming lines (receiving_id null) are intentionally
+          // skipped so they still flow through the lookup-po adopt/stamp path.
           try {
             // Phase-0 rung (pure, src/lib/receiving/scan): read the feed caches
             // and resolve to a materialized carton; the hook owns the effects.

@@ -260,31 +260,6 @@ export function useReceiveAction(
               // Prefer the workspace line being received, else first marked line.
               const src = lines.find((l) => l.id === row.id) ?? lines[0];
               if (!src) continue;
-              // #region agent log
-              if (rid === 14221 || row.zoho_purchaseorder_number === '63931720') {
-                fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '1348cc' },
-                  body: JSON.stringify({
-                    sessionId: '1348cc',
-                    runId: 'pre-fix',
-                    hypothesisId: 'B',
-                    location: 'useReceiveAction.tsx:optimistic-patch',
-                    message: 'Mark-received optimistic Unboxed rail patch',
-                    data: {
-                      rid,
-                      lineId: src.id,
-                      workflow_status: src.workflow_status ?? null,
-                      qty_r: src.quantity_received,
-                      qty_e: src.quantity_expected,
-                      httpOk: respRecord.ok,
-                      po: row.zoho_purchaseorder_number,
-                    },
-                    timestamp: Date.now(),
-                  }),
-                }).catch(() => {});
-              }
-              // #endregion
               patchUnboxRailQtyByCarton(queryClient, rid, {
                 quantity_received:
                   typeof src.quantity_received === 'number' ? src.quantity_received : undefined,

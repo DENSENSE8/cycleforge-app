@@ -150,14 +150,6 @@ export interface FolderBrowseState {
   leafPhotos: LibraryPhoto[];
 }
 
-export interface FolderBrowseHeaderContext {
-  /** Level eyebrow (POs, Days, …) or leaf title (PO PO_6818). */
-  title: string;
-  /** Folder count at this level, or photo count at a leaf. */
-  count: number;
-  isLeaf: boolean;
-}
-
 interface ResolveFolderBrowseArgs {
   photos: LibraryPhoto[];
   scope: PhotoLibrarySourceScope;
@@ -316,25 +308,6 @@ export function resolveFolderBrowseState({
   }
 
   return { eyebrow, tiles, isLeaf, leafTitle, level, leafPhotos };
-}
-
-/** Header copy for the folders view — level eyebrow + count, or leaf title + photo count. */
-export function describeFolderBrowseHeader(
-  args: ResolveFolderBrowseArgs,
-): FolderBrowseHeaderContext {
-  const state = resolveFolderBrowseState(args);
-  if (state.isLeaf) {
-    return {
-      title: state.leafTitle ?? 'Photos',
-      count: state.leafPhotos.length,
-      isLeaf: true,
-    };
-  }
-  return {
-    title: state.eyebrow,
-    count: state.tiles.length,
-    isLeaf: false,
-  };
 }
 
 /** Navigate one folder level deeper when a tile is clicked. */

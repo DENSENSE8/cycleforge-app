@@ -10,15 +10,7 @@ import { LinePoNoteCard } from '../LinePoNoteCard';
 import { SupportContextHub } from '@/components/support/context';
 import { SectionTabsSlider, WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { buildSectionTabs, WorkspaceTimelineTab } from '@/components/station/workbench';
-import {
-  Barcode,
-  ClipboardList,
-  FileText,
-  History,
-  MessageSquare,
-  PackageOpen,
-  Ticket,
-} from '@/components/Icons';
+import { Barcode, ClipboardList, ExternalLink, FileText, History, MapPin, MessageSquare, PackageOpen, Ticket } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import type { InlineActionFeedbackPayload } from '../../InlineActionFeedbackCard';
 import type { PoNoteTabState } from './usePoNoteTabState';
@@ -28,6 +20,8 @@ import type {
   ConversationTabBridge,
   UnitsTabBridge,
 } from './unbox-tab-bridges';
+import { TrackingNumbersTab } from '../TrackingNumbersTab';
+import { ListingLinksTab } from '../ListingLinksTab';
 
 /**
  * Controller is the full `useUnboxLineController` return. Typed as unknown at
@@ -43,6 +37,8 @@ export interface BuildUnboxTabsInput {
   hasUnits: boolean;
   serialCount: number;
   hasTimelineTab: boolean;
+  hasTrackingTab: boolean;
+  hasListingsTab: boolean;
   poIdForTracking: string;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
@@ -71,6 +67,8 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
     hasUnits,
     serialCount,
     hasTimelineTab,
+    hasTrackingTab,
+    hasListingsTab,
     poIdForTracking,
     hasPoNoteTab,
     poNote,
@@ -161,6 +159,41 @@ export function buildUnboxTabs(input: BuildUnboxTabsInput): SectionTab[] {
             />
           </div>
         </WorkspaceCard>
+      ),
+    },
+    {
+      id: 'tracking',
+      label: 'Tracking',
+      icon: MapPin,
+      visible: hasTrackingTab,
+      content: (
+        <TrackingNumbersTab
+          trackingEdit={c.trackingEdit}
+          setTrackingEdit={c.setTrackingEdit}
+          onCommitTracking={(v) => {
+            const trimmed = v.trim();
+            if (trimmed !== (row.tracking_number || '').trim()) {
+              c.patch({ zoho_reference_number: trimmed || null });
+            }
+          }}
+          extraTrackings={c.extraTrackings}
+          setExtraTrackings={c.setExtraTrackings}
+          onCommitExtraTracking={(v, i) => void c.attachExtraBox(v, i)}
+          primaryTrackingTrimmed={c.primaryTrackingTrimmed}
+        />
+      ),
+    },
+    {
+      id: 'listings',
+      label: 'Listings',
+      icon: ExternalLink,
+      visible: hasListingsTab,
+      content: (
+        <ListingLinksTab
+          listingLinks={c.listingLinks ?? []}
+          listingLink={c.listingLink}
+          setListingLink={c.setListingLink}
+        />
       ),
     },
     {

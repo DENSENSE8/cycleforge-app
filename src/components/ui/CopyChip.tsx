@@ -172,6 +172,12 @@ export interface CopyChipProps {
   activationLabel?: string;
   activationTitle?: string;
   activationDisabled?: boolean;
+  /**
+   * Below-row editor is open for this chip. Face swaps to pulsed `edit` (4
+   * chars — same footprint as last-4 / `----` / `eBay`) so the identity row
+   * never reflows when an editor opens. Copy is disabled while editing.
+   */
+  editing?: boolean;
   /** Hover-bubble trailing icon; defaults to external-link when `onActivate` is set. */
   tooltipAction?: 'copy' | 'external-link';
 }
@@ -197,8 +203,10 @@ export function CopyChip({
   activationTitle,
   activationDisabled = false,
   tooltipAction,
+  editing = false,
 }: CopyChipProps) {
   const resolvedTooltipAction = tooltipAction ?? (onActivate ? 'external-link' : 'copy');
+  const faceDisplay = editing ? 'edit' : display;
   const {
     chipRef,
     hasTooltipProvider,
@@ -212,12 +220,12 @@ export function CopyChip({
     showTooltipPreview,
   } = useCopyChip({
     value,
-    disableCopy,
-    disableTooltip,
+    disableCopy: disableCopy || editing,
+    disableTooltip: disableTooltip || editing,
     tooltipTrigger,
     onCopy,
     historyKind: tone,
-    historyDisplay: display,
+    historyDisplay: faceDisplay,
     tooltipAction: resolvedTooltipAction,
   });
 
@@ -233,10 +241,10 @@ export function CopyChip({
   const wrapperWidth =
     fitDisplayWidth && width === 'w-auto' ? 'w-fit max-w-full' : width;
 
-  const normalizedDisplay = normalizeCopyText(display);
+  const normalizedDisplay = normalizeCopyText(faceDisplay);
   const displayOverflowClass = truncateDisplay ? 'truncate' : 'whitespace-nowrap';
   const outerPx = outerPad === 'flush' ? 'px-0' : 'px-1.5';
-  const hoverTooltipEnabled = !disableTooltip && tooltipTrigger === 'hover';
+  const hoverTooltipEnabled = !disableTooltip && !editing && tooltipTrigger === 'hover';
 
   return (
     <div
@@ -262,15 +270,24 @@ export function CopyChip({
         onFocus={!disableTooltip && tooltipTrigger !== 'click' ? openTooltip : undefined}
         onBlur={!disableTooltip && tooltipTrigger !== 'click' ? closeTooltipImmediate : undefined}
         disabled={onActivate ? activationDisabled : isDisabled}
-        aria-label={onActivate ? activationLabel : undefined}
-        title={
-          !disableTooltip && hasTooltipProvider && canCopy
-            ? undefined
+        aria-label={
+          editing
+            ? 'Editing — open field below'
             : onActivate
-              ? activationTitle
-              : !disableTooltip && canCopy
-                ? normalizedValue
-                : undefined
+              ? activationLabel
+              : undefined
+        }
+        aria-busy={editing || undefined}
+        title={
+          editing
+            ? undefined
+            : !disableTooltip && hasTooltipProvider && canCopy
+              ? undefined
+              : onActivate
+                ? activationTitle
+                : !disableTooltip && canCopy
+                  ? normalizedValue
+                  : undefined
         }
         className={
           fitDisplayWidth
@@ -282,7 +299,7 @@ export function CopyChip({
         <span
           className={`${dense ? 'text-role-caption font-bold font-mono text-text-default' : monoValue} tracking-tight leading-none border-b-2 pb-0.5 text-left ${displayOverflowClass} ${resolvedUnderline} ${
             fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
-          }`}
+          }${editing ? ' animate-pulse text-text-muted' : ''}`}
         >
           {normalizedDisplay || '---'}
         </span>
@@ -495,20 +512,13 @@ export const UnitPriceChip = ({
 /**
  * Condition grade on a PO line meta row. Tags icon + underlined label; hue comes
  * from `src/lib/condition-tone.ts` (same registry as {@link ConditionPills}).
- * Pass `onActivate` to use the chip as a trigger (e.g. the Pending grid's
- * chip-as-dropdown condition editor) — replaces copy-on-click, standard look.
  */
 export const ConditionGradeChip = ({
   grade,
   dense,
-  onActivate,
-  activationLabel,
 }: {
   grade: string | null | undefined;
   dense?: boolean;
-  /** Replaces copy-on-click while preserving the chip presentation. */
-  onActivate?: () => void;
-  activationLabel?: string;
 }) => {
   const { underline, iconClass, isPending } = conditionGradeChipStyleOrPending(grade);
   const code = String(grade || '').trim().toUpperCase();
@@ -524,8 +534,6 @@ export const ConditionGradeChip = ({
       truncateDisplay={false}
       fitDisplayWidth
       dense={dense}
-      onActivate={onActivate}
-      activationLabel={activationLabel}
     />
   );
 };

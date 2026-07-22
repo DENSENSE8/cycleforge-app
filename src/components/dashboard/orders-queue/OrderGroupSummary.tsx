@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import {
   OrderIdChip,
   TrackingCountChip,
@@ -266,10 +266,9 @@ export function OrderGroupSummary({
       style={{ gridTemplateColumns: ordersQueueGridTemplate(columns.map((c) => c.key)) }}
       {...(gridSkin ? { 'data-grid-summary-row': '' } : {})}
     >
+      {/* Fragments keep cells DIRECT grid children for the skin's border rules. */}
       {columns.map((col, i) => (
-        <span key={col.key} className="contents">
-          {renderCell(col, i === columns.length - 1)}
-        </span>
+        <Fragment key={col.key}>{renderCell(col, i === columns.length - 1)}</Fragment>
       ))}
     </div>
   );

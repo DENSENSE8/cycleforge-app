@@ -4,7 +4,10 @@
  * Media Library workbench chrome — dashboard display-header recipe.
  *
  * Left:  recency tabs (Recent · Today · Last 7 · All).
- * Right: search · media type · filters · sort · display controls · NAS.
+ * Right: search · media type · filters · sort · NAS.
+ *
+ * Density / refresh / select / icons-list stay on the breadcrumb path strip
+ * ({@link PhotoLibraryHeader}) — those are in-folder photo actions.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -18,13 +21,7 @@ import {
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebounce } from '@/hooks';
-import { usePhotoLibrary } from '@/hooks/usePhotoLibrary';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
-import {
-  photoLibraryShowsGridControls,
-  photoLibraryShowsSecondHeaderControls,
-  type PhotoGridDensity,
-} from '@/lib/photos/photo-grid-density';
 import {
   applyRecencyTab,
   PHOTO_LIBRARY_RECENCY_TAB_LABEL,
@@ -32,15 +29,12 @@ import {
   recencyTabFromFilters,
   sourceScopeFromFilters,
   type PhotoLibraryRecencyTab,
-  type PhotoLibrarySourceScope,
-  type PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
 import {
   buildPhotoLibraryRefinements,
   photoLibraryStructuredFilterCount,
 } from '@/lib/photos/library-refinements';
 import type { StaffRecipient } from '@/components/quick-access/StaffRecipientList';
-import { PhotoDisplayControls } from './PhotoDisplayControls';
 import { PhotoLibraryFilterDropdown } from './PhotoLibraryFilterDropdown';
 import { PhotoLibraryNasBackup } from './PhotoLibraryNasBackup';
 import { PhotoLabelsSection } from './PhotoLabelsSection';
@@ -50,34 +44,11 @@ import { MediaSavedViewsSection } from './MediaSavedViewsSection';
 
 const SEARCH_PLACEHOLDER = 'Filter PO, order, tracking, serial, or ticket…';
 
-export function PhotoLibraryWorkspaceHeader({
-  view,
-  folderIsLeaf,
-  gridDensity,
-  onDensityChange,
-  onViewChange,
-  selectionActive,
-  onStartSelect,
-  onRefresh,
-  isRefreshing,
-  className,
-}: {
-  view: PhotoLibraryViewMode;
-  folderIsLeaf: boolean;
-  gridDensity: PhotoGridDensity;
-  onDensityChange: (density: PhotoGridDensity) => void;
-  onViewChange: (view: PhotoLibraryViewMode) => void;
-  selectionActive: boolean;
-  onStartSelect: () => void;
-  onRefresh: () => void;
-  isRefreshing: boolean;
-  className?: string;
-}) {
+export function PhotoLibraryWorkspaceHeader({ className }: { className?: string }) {
   const { filters, display, patch, setDatePreset, clearStructured, applyView } =
     usePhotoLibraryUrlState();
   const { has } = useAuth();
   const canManagePhotos = has('photos.manage');
-  const { photos } = usePhotoLibrary(filters);
 
   const { data: staffRows = [] } = useQuery<StaffRecipient[]>({
     queryKey: ['staff-picker'],
@@ -112,23 +83,6 @@ export function PhotoLibraryWorkspaceHeader({
   const activeScope = sourceScopeFromFilters(filters);
   const activeTab = recencyTabFromFilters(filters);
 
-  const inferredScope = useMemo<PhotoLibrarySourceScope | null>(() => {
-    if (activeScope !== 'all' || !filters.poRef) return null;
-    const counts = new Map<PhotoLibrarySourceScope, number>();
-    for (const photo of photos) {
-      if (photo.sourceScope) counts.set(photo.sourceScope, (counts.get(photo.sourceScope) ?? 0) + 1);
-    }
-    let best: PhotoLibrarySourceScope | null = null;
-    let bestCount = 0;
-    for (const [scope, count] of counts) {
-      if (count > bestCount) {
-        best = scope;
-        bestCount = count;
-      }
-    }
-    return best;
-  }, [activeScope, filters.poRef, photos]);
-
   const refinements = useMemo(
     () =>
       buildPhotoLibraryRefinements(filters, { patch, setDatePreset, clearStructured }, {
@@ -145,9 +99,6 @@ export function PhotoLibraryWorkspaceHeader({
     !!filters.hasAnalysis ||
     refinements.length > 0;
   const structuredCount = photoLibraryStructuredFilterCount(filters);
-
-  const showGridControls = photoLibraryShowsGridControls(view, folderIsLeaf);
-  const showSecondHeaderControls = photoLibraryShowsSecondHeaderControls(view, folderIsLeaf);
 
   const tabs = PHOTO_LIBRARY_RECENCY_TABS.map((id: PhotoLibraryRecencyTab) => ({
     id,
@@ -190,7 +141,7 @@ export function PhotoLibraryWorkspaceHeader({
             activeImageType={filters.imageType ?? null}
             activeDocumentType={filters.documentType ?? 'all'}
             activeOutboundMedia={filters.outboundMedia ?? 'documents'}
-            inferredScope={inferredScope}
+            inferredScope={null}
             onSelect={({ scope, imageType }) =>
               patch({
                 sourceScope: scope,
@@ -250,20 +201,6 @@ export function PhotoLibraryWorkspaceHeader({
           <PhotoSortMenu
             sort={filters.sort ?? 'recent'}
             onSortChange={(sort) => patch({ sort })}
-          />
-
-          <PhotoDisplayControls
-            view={view}
-            onViewChange={onViewChange}
-            density={gridDensity}
-            onDensityChange={onDensityChange}
-            showToggle={showSecondHeaderControls}
-            showDensity={showGridControls}
-            showSelect={showSecondHeaderControls}
-            selectionActive={selectionActive}
-            onStartSelect={onStartSelect}
-            onRefresh={onRefresh}
-            isRefreshing={isRefreshing}
           />
         </>
       }

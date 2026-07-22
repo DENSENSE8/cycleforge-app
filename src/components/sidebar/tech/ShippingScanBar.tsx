@@ -116,6 +116,8 @@ export function ShippingScanBar({
       placeholder={armedMode ? `Scan ${active.label}` : 'Orders · FNSKU · RS · Serial'}
       autoFocus
       className="w-full"
+      // Align the scan icon/text to the recent rail's dot/title column below.
+      leadingColumn="rail"
       rightPadClass="pr-40"
       isResolving={isResolving}
       icon={

@@ -1,13 +1,12 @@
 'use client';
 
-import { memo, useCallback, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { AlertTriangle, Check, ChevronDown, FileText, Maximize2 } from '@/components/Icons';
+import { AlertTriangle, Check, ChevronDown, FileText, Link2, Maximize2 } from '@/components/Icons';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ConditionGradeChip } from '@/components/ui/CopyChip';
 import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
@@ -50,8 +49,8 @@ import {
   ordersQueueRowShellClass,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
-import { orderRowQtyTone } from '@/lib/condition-tone';
-import { EMPTY_META_DASH } from '@/lib/conditions';
+import { conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
+import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import {
   replenishmentStatusMeta,
   replenishmentTooltip,
@@ -166,11 +165,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const canOos = has('orders.create');
   const [editing, setEditing] = useState<RowEditField | null>(null);
   const [editSeed, setEditSeed] = useState<string | null>(null);
-  // Anchors for the cell-anchored editor popovers. The title cell doubles as
-  // the note/OOS/link anchor (the indicators live on it); mobile anchors the
-  // same ref to the meta flag cluster instead.
+  // Anchors for the cell-anchored editor popovers. Note/OOS editors anchor to
+  // their CORNER INDICATOR (the Sheets note-bubble position) when it exists,
+  // else to the title cell aligned toward that corner; mobile anchors the meta
+  // flag cluster instead.
   const titleCellRef = useRef<HTMLDivElement | null>(null);
   const mobileFlagsRef = useRef<HTMLSpanElement | null>(null);
+  const noteIndicatorRef = useRef<HTMLButtonElement | null>(null);
+  const oosIndicatorRef = useRef<HTMLButtonElement | null>(null);
   const dateCellRef = useRef<HTMLDivElement | null>(null);
   const conditionCellRef = useRef<HTMLDivElement | null>(null);
   const editorAnchorRef = isMobile ? mobileFlagsRef : titleCellRef;
@@ -219,8 +221,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const showConditionCol = !isHidden('condition');
 
   // In-cell editing is a Pending-grid affordance: board/Packed/station rows
-  // stay display-only; bulk-select mode keeps every click a selection toggle.
-  const gridEditable = gridSkin && !isMobile && !selectMode;
+  // stay display-only. Selection no longer competes with editing — the grid's
+  // left gutter is always-on (checkbox toggles; row body opens), so editors
+  // stay armed regardless of `selectMode`.
+  const gridEditable = gridSkin && !isMobile;
   const canEditNotes = canOos;
 
   const animatePresence = !disableEnterAnimation;
@@ -437,6 +441,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const oosIndicator = hasOutOfStock ? (
     <HoverTooltip label={oosTooltip} focusable={false}>
       <button
+        ref={oosIndicatorRef}
         type="button"
         data-indicator="oos"
         aria-label={`Out of stock: ${outOfStockValue.trim() || 'flagged'}`}
@@ -462,6 +467,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const noteIndicator = hasNotes ? (
     <HoverTooltip label={notesValue.trim()} focusable={false}>
       <button
+        ref={noteIndicatorRef}
         type="button"
         data-indicator="note"
         aria-label={`Has note: ${notesValue.trim()}`}
@@ -485,27 +491,47 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   ) : null;
 
   // Explicit expand affordance (Airtable): editable cells select→edit on
-  // click, so opening the record from the Product cell is this control.
+  // click, so opening the record from the Product cell is this control. The
+  // sibling link affordance is the Title-side entry to the shared listing-link
+  // editor (same SoT editor the Platform hover menu opens).
+  const hoverControlClass = cn(
+    'shrink-0 rounded p-0.5 text-text-soft opacity-0 transition-opacity hover:bg-surface-hover hover:text-text-default focus-visible:opacity-100 group-hover/row:opacity-100',
+    focusRing('control'),
+  );
   const expandAffordance =
     gridSkin && !isMobile ? (
-      <HoverTooltip label="Open order" focusable={false}>
-        <button
-          type="button"
-          data-expand-row
-          aria-label={`Open order ${record.order_id || record.id}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRowClick(record);
-          }}
-          onKeyDown={(e) => e.stopPropagation()}
-          className={cn(
-            'ml-auto shrink-0 rounded p-0.5 text-text-soft opacity-0 transition-opacity hover:bg-surface-hover hover:text-text-default focus-visible:opacity-100 group-hover/row:opacity-100',
-            focusRing('control'),
-          )}
-        >
-          <Maximize2 className="h-3.5 w-3.5" />
-        </button>
-      </HoverTooltip>
+      <span className="ml-auto inline-flex shrink-0 items-center gap-0.5">
+        <HoverTooltip label="Edit listing link" focusable={false}>
+          <button
+            type="button"
+            data-edit-link
+            aria-label="Edit listing link"
+            onClick={(e) => {
+              e.stopPropagation();
+              openEditor('link');
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className={hoverControlClass}
+          >
+            <Link2 className="h-3.5 w-3.5" />
+          </button>
+        </HoverTooltip>
+        <HoverTooltip label="Open order" focusable={false}>
+          <button
+            type="button"
+            data-expand-row
+            aria-label={`Open order ${record.order_id || record.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRowClick(record);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className={hoverControlClass}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        </HoverTooltip>
+      </span>
     ) : null;
 
   // Mobile meta flags — the same note/OOS facts; tap opens the same editors.
@@ -701,19 +727,34 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           >
             {gridEditable ? (
               hasConditionValue ? (
-                // Chip-as-trigger (Airtable single-select): the SoT-toned chip
-                // IS the dropdown button.
-                <ConditionGradeChip
-                  grade={conditionValue}
-                  dense
-                  onActivate={() => openEditor('condition')}
-                  activationLabel="Change condition"
-                />
+                // Pill-as-trigger (Airtable single-select): SoT-toned soft pill
+                // + caret IS the dropdown button — pure select semantics, no
+                // copy action.
+                <button
+                  type="button"
+                  aria-label={`Change condition — ${conditionGradeTableLabel(conditionValue)}`}
+                  aria-haspopup="listbox"
+                  aria-expanded={editing === 'condition'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditor('condition');
+                  }}
+                  className={cn(
+                    'ds-raw-button inline-flex min-w-0 max-w-full items-center gap-0.5 rounded-full inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset transition-colors',
+                    conditionGradeTone(conditionValue).badge,
+                    focusRing('cell'),
+                  )}
+                >
+                  <span className="min-w-0 truncate">{conditionGradeTableLabel(conditionValue)}</span>
+                  <ChevronDown className="h-3 w-3 shrink-0 opacity-70" />
+                </button>
               ) : (
                 // Quiet set-affordance for empty cells (Canva-sheet `Not set ⌄`).
                 <button
                   type="button"
                   aria-label="Set condition"
+                  aria-haspopup="listbox"
+                  aria-expanded={editing === 'condition'}
                   onClick={(e) => {
                     e.stopPropagation();
                     openEditor('condition');
@@ -878,10 +919,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           {chipsNode}
         </>
       ) : (
+        // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
+        // skin's `[data-order-row-id] > *` border rules depend on it.
         columns.map((col, i) => (
-          <span key={col.key} className="contents">
-            {renderDesktopCell(col, i === columns.length - 1)}
-          </span>
+          <Fragment key={col.key}>{renderDesktopCell(col, i === columns.length - 1)}</Fragment>
         ))
       )}
 
@@ -912,7 +953,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       ) : null}
       {editing === 'note' ? (
         <CellTextEditPopover
-          anchorRef={editorAnchorRef}
+          // Open AT the note corner (Sheets note-bubble): anchor the triangle
+          // itself when present; else the title cell aligned to that corner.
+          anchorRef={!isMobile && hasNotes ? noteIndicatorRef : editorAnchorRef}
+          placement={isMobile ? 'bottom-start' : 'bottom-end'}
           title="Notes"
           initialValue={notesValue.trim()}
           multiline
@@ -926,7 +970,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       ) : null}
       {editing === 'oos' ? (
         <CellTextEditPopover
-          anchorRef={editorAnchorRef}
+          // OOS corner is top-LEFT — anchor its triangle, panel start-aligned.
+          anchorRef={!isMobile && hasOutOfStock ? oosIndicatorRef : editorAnchorRef}
+          placement="bottom-start"
           title="Out of stock"
           tone="danger"
           initialValue={outOfStockValue.trim()}

@@ -26,12 +26,21 @@ export interface SourcePlatformMeta {
   border: string;
   /**
    * Monochrome brand-mark SVG path (24×24, `currentColor`) from the vendored
-   * CC0 set in `src/lib/platform-brand-icons.ts`. Absent → surfaces fall back
-   * to the {@link mark} lettermark (amazon/fba/ecwid/goodwill/other have no
-   * legally-clean simple mark).
+   * CC0 set in `src/lib/platform-brand-icons.ts`. Fallback layer when no
+   * {@link favicon} is present.
    */
   icon?: string;
+  /**
+   * Vendored platform favicon (`public/icons/platforms/*.png`, fetched from
+   * the live sites 2026-07-21 — nominative brand identity in a data column).
+   * The PREFERRED mark: real colored favicon at a fixed footprint; `icon` /
+   * {@link mark} are the fallbacks when absent (`other`).
+   */
+  favicon?: string;
 }
+
+/** Vendored favicon path for a platform value (files in public/icons/platforms/). */
+const favicon = (value: string) => `/icons/platforms/${value}.png`;
 
 /**
  * Canonical platform registry, display order left → right. The pill options,
@@ -39,17 +48,17 @@ export interface SourcePlatformMeta {
  * from here. Add a platform once, in this list.
  */
 export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
-  { value: 'ebay',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', icon: PLATFORM_BRAND_ICON_PATHS.ebay },
-  { value: 'amazon',     label: 'Amazon',     mark: 'az', text: 'text-orange-600', border: 'border-orange-600' },
-  { value: 'fba',        label: 'FBA',        mark: 'FB', text: 'text-orange-600', border: 'border-orange-600' },
-  { value: 'aliexpress', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
-  { value: 'walmart',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
-  { value: 'goodwill',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600' },
+  { value: 'ebay',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', icon: PLATFORM_BRAND_ICON_PATHS.ebay, favicon: favicon('ebay') },
+  { value: 'amazon',     label: 'Amazon',     mark: 'az', text: 'text-orange-600', border: 'border-orange-600', favicon: favicon('amazon') },
+  { value: 'fba',        label: 'FBA',        mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', favicon: favicon('fba') },
+  { value: 'aliexpress', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress, favicon: favicon('aliexpress') },
+  { value: 'walmart',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart, favicon: favicon('walmart') },
+  { value: 'goodwill',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600', favicon: favicon('goodwill') },
   // ECWID-RS (not plain ECWID): today this pill only appears when the carton
   // was paired with an Ecwid repair-service (-RS) order.
-  { value: 'ecwid',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600' },
-  { value: 'square',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
-  { value: 'shopify',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
+  { value: 'ecwid',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600', favicon: favicon('ecwid') },
+  { value: 'square',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600', icon: PLATFORM_BRAND_ICON_PATHS.square, favicon: favicon('square') }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
+  { value: 'shopify',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify, favicon: favicon('shopify') },
   { value: 'other',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis' },
 ];
 

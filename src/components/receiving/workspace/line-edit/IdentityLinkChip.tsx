@@ -4,6 +4,9 @@
  * Identity chip used across the condensed carton row. It supports the original
  * `[external-link] · [copy value] · [edit]` layout plus a compact action-menu
  * mode where the chip remains the primary action and Open/Edit move below it.
+ *
+ * When `editOpen`, the {@link CopyChip} face pulses `edit` (4 chars) via the
+ * shared `editing` prop — the identity row never drops digits or reflows.
  */
 
 import { useState, type ReactNode } from 'react';
@@ -106,12 +109,25 @@ export function IdentityLinkChip({
     actionsInMenu &&
     (!!onEdit || menuFirstAction === 'copy' || !!openHref || multiLinks != null);
   const showActionMenu = hasMenuActions && !editOpen;
+  const isEditing = !!editOpen;
 
   const iconOnlyTooltip = openHref
     ? `${display} — ${openTitle}`
     : display
       ? `${display} — no link available`
       : 'No listing';
+
+  // While editing, chip face is pulsed "edit"; click closes the below-row field.
+  const chipActivate = isEditing
+    ? onEdit
+    : chipAction === 'open'
+      ? openExternal
+      : undefined;
+  const chipActivateLabel = isEditing
+    ? (editLabel ? `Done — ${editLabel}` : 'Done editing')
+    : chipAction === 'open'
+      ? openTitle
+      : undefined;
 
   return (
     <div
@@ -143,18 +159,25 @@ export function IdentityLinkChip({
             {/* ds-raw-button: fixed-width platform mark face — not a DS Button */}
             <button
               type="button"
-              onClick={chipAction === 'open' ? openExternal : copyValue}
+              onClick={chipActivate ?? copyValue}
               disabled={
-                chipAction === 'open'
-                  ? !openHref && !onEdit
-                  : !canCopy
+                isEditing
+                  ? !onEdit
+                  : chipAction === 'open'
+                    ? !openHref && !onEdit
+                    : !canCopy
               }
               aria-label={
-                chipAction === 'open'
-                  ? `${display}: ${openTitle}`
-                  : `Copy ${display}`
+                isEditing
+                  ? chipActivateLabel
+                  : chipAction === 'open'
+                    ? `${display}: ${openTitle}`
+                    : `Copy ${display}`
               }
-              className="inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:opacity-40"
+              aria-busy={isEditing || undefined}
+              className={`inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:opacity-40${
+                isEditing ? ' animate-pulse' : ''
+              }`}
             >
               {iconOnlyMark}
             </button>
@@ -164,6 +187,7 @@ export function IdentityLinkChip({
             value={value}
             display={display}
             tone={tone}
+            editing={isEditing}
             // Tone SoT (# / MapPin / …) wins; ExternalLink is listing-only.
             icon={
               tone
@@ -176,22 +200,29 @@ export function IdentityLinkChip({
             iconClass={iconClass}
             width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
             outerPad="flush"
-            disableCopy={disableCopy}
+            disableCopy={disableCopy || isEditing}
             fitDisplayWidth={!grow}
             truncateDisplay={grow}
-            // Hover owns the downward Open/Edit menu — site copy tooltip only on click
-            // (avoids a side-clamped bubble that visually “pushes” neighbors).
-            tooltipTrigger={actionsInMenu ? 'click' : 'hover'}
-            onActivate={chipAction === 'open' ? openExternal : undefined}
-            activationLabel={chipAction === 'open' ? openTitle : undefined}
+            // Hover shows the full value (listing URL / tracking / PO# / ticket#)
+            // via the site tooltip above; the Open/Edit action menu still opens
+            // below the chip on the same hover.
+            tooltipTrigger="hover"
+            onActivate={chipActivate}
+            activationLabel={chipActivateLabel}
             activationTitle={
-              chipAction === 'open'
-                ? openHref
-                  ? openTitle
-                  : 'No link available'
-                : undefined
+              isEditing
+                ? chipActivateLabel
+                : chipAction === 'open'
+                  ? openHref
+                    ? openTitle
+                    : 'No link available'
+                  : undefined
             }
-            activationDisabled={chipAction === 'open' && !openHref && !onEdit}
+            activationDisabled={
+              isEditing
+                ? !onEdit
+                : chipAction === 'open' && !openHref && !onEdit
+            }
           />
         )}
         {multiLinks ? (

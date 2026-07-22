@@ -38,6 +38,7 @@ import { LineEditModals } from './line-edit/LineEditModals';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { dispatchLineUpdated, type ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
+import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { useReceivingPhotoCount } from '@/hooks/useReceivingPhotoCount';
 import { activeReceivingStepKey } from './ReceivingProgressStepper';
 import {
@@ -144,10 +145,15 @@ export function LineEditPanel({
   const hasTimelineTab =
     trackingNumber.length > 0 || hasUnits || row.receiving_id != null;
   const hasPoNoteTab = !c.isUnfound && row.receiving_id != null;
+  const isLocalPickup = isLocalPickupFulfillment(row);
+  const hasTrackingTab = !isLocalPickup;
+  const hasListingsTab = true;
   const activeUnboxView: UnboxView =
     unboxView === 'checklist' ||
     (unboxView === 'po-note' && hasPoNoteTab) ||
     (unboxView === 'units' && hasUnits) ||
+    (unboxView === 'tracking' && hasTrackingTab) ||
+    (unboxView === 'listings' && hasListingsTab) ||
     (unboxView === 'timeline' && hasTimelineTab) ||
     unboxView === 'ticket' ||
     unboxView === 'support'
@@ -336,6 +342,8 @@ export function LineEditPanel({
         hasUnits,
         serialCount,
         hasTimelineTab,
+        hasTrackingTab,
+        hasListingsTab,
         poIdForTracking,
         hasPoNoteTab,
         poNote,
@@ -357,6 +365,8 @@ export function LineEditPanel({
       hasUnits,
       serialCount,
       hasTimelineTab,
+      hasTrackingTab,
+      hasListingsTab,
       poIdForTracking,
       hasPoNoteTab,
       poNote,
@@ -402,6 +412,10 @@ export function LineEditPanel({
           onToggleTicketView={toggleTicketView}
           ticketViewActive={false}
           density="bar"
+          onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
+          onEditListing={() => setUnboxView('listings')}
+          trackingEditOpen={activeUnboxView === 'tracking'}
+          listingEditOpen={activeUnboxView === 'listings'}
         />
       }
       moreDetails={moreDetails}
@@ -438,6 +452,10 @@ export function LineEditPanel({
                     onToggleTicketView={toggleTicketView}
                     ticketViewActive
                     density="bar"
+                    onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
+                    onEditListing={() => setUnboxView('listings')}
+                    trackingEditOpen={activeUnboxView === 'tracking'}
+                    listingEditOpen={activeUnboxView === 'listings'}
                   />
                 }
                 moreDetails={moreDetails}

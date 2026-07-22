@@ -230,7 +230,7 @@ export function ReceivingSidebarPanel() {
     return () => window.removeEventListener('receiving-focus-scan', handler);
   }, []);
 
-  // The focus-scan quick-key is now the app-wide shared hotkey (default F2,
+  // The focus-scan quick-key is now the app-wide shared hotkey (default Insert,
   // reassignable via the gear in any StationScanBar). The unbox/triage bars
   // register themselves as the focus target through StationScanBar, so the key
   // snaps focus here with no receiving-specific handler. The

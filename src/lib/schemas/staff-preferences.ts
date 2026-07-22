@@ -2,15 +2,17 @@ import { z } from 'zod';
 import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
 
 /**
- * Bindable focus-scan hotkey: a single function key F1–F12. Restricted to
- * function keys on purpose — the listener is GLOBAL, so binding a printable
- * key (a letter/digit) would hijack normal typing everywhere. Function keys
- * have no browser default and can't collide with text entry.
+ * Bindable focus-scan hotkey. The listener is GLOBAL, so printable letters /
+ * digits are banned — they would hijack normal typing. Allowed set is
+ * non-typing keys that barcode wedges can emit and operators rarely press:
+ *   - Insert (default) — warehouse/POS classic for “jump to scan field”
+ *   - ScrollLock — near-zero collision alternate
+ *   - F1–F12 — kept for operators who already prefer function keys
  */
-export const FOCUS_SCAN_HOTKEY_RE = /^F([1-9]|1[0-2])$/;
+export const FOCUS_SCAN_HOTKEY_RE = /^(Insert|ScrollLock|F([1-9]|1[0-2]))$/;
 
 /** Default binding when a staffer has never customized it. */
-export const DEFAULT_FOCUS_SCAN_HOTKEY = 'F2';
+export const DEFAULT_FOCUS_SCAN_HOTKEY = 'Insert';
 
 /**
  * Color themes — derived from the theme registry
@@ -83,7 +85,7 @@ export const StaffPreferencesPutBody = z
   .object({
     focusScanHotkey: z
       .string()
-      .regex(FOCUS_SCAN_HOTKEY_RE, 'Hotkey must be a function key F1–F12')
+      .regex(FOCUS_SCAN_HOTKEY_RE, 'Hotkey must be Insert, ScrollLock, or F1–F12')
       .nullable()
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
@@ -119,8 +121,9 @@ export const StaffPreferencesPutBody = z
     shippedBoard: BOARD_PREFS.nullable().optional(),
     /**
      * Per-staff list-table column config, keyed by TableId. Each table maps to
-     * `{ hidden: string[], widths: Record<colKey, px> }`. Sent as the whole map
-     * (shallow JSONB merge); a widths write preserves `hidden` and vice-versa.
+     * `{ hidden: string[], widths: Record<colKey, px>, order: string[] }`. Sent
+     * as the whole map (shallow JSONB merge); each writer preserves the sibling
+     * fields (a widths write keeps `hidden` + `order`, and so on).
      */
     tableColumns: z
       .record(
@@ -130,6 +133,9 @@ export const StaffPreferencesPutBody = z
             hidden: z.array(z.string()).optional(),
             /** Per-column drag-resized width in px, keyed by column key. */
             widths: z.record(z.string(), z.number().int().positive().max(2000)).optional(),
+            /** Drag-reordered column-key order (sanitized on read; locked keys
+             *  re-front themselves — a stale/hostile list is harmless). */
+            order: z.array(z.string().max(64)).max(64).optional(),
           })
           .strict(),
       )

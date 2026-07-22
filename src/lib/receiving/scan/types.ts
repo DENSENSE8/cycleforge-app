@@ -66,9 +66,9 @@ export interface InternalCodeDeps {
 }
 
 /**
- * Phase 0 — the scanned PO/tracking is already a MATERIALIZED carton
- * (`receiving_id` set) sitting in a receiving-feed cache, so it opens instantly
- * with zero network. The resolver has already preferred an OPEN line.
+ * Phase 0 — the scanned PO / tracking / ticket# is already a MATERIALIZED
+ * carton (`receiving_id` set) sitting in a receiving-feed cache, so it opens
+ * instantly with zero network. The resolver has already preferred an OPEN line.
  */
 export interface CachedCartonResolution {
   kind: 'cached-carton';

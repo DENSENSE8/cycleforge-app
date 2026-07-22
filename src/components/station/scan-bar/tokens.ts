@@ -17,10 +17,11 @@ import type { StationTheme } from '@/utils/staff-colors';
  *   • `masternav` (default) — icon under the MasterNav mode glyph
  *     (`left-[2.9375rem]`), text under the MasterNav label (`pl-[4.3125rem]`).
  *     For station benches with no recent rail below.
- *   • `rail` — dense scan-dock variants (`*_DENSE`, below); icon centered on
- *     the recent-rail status-dot track, text on the row title. For scan-dock
- *     bars stacked directly above a recent rail (Unbox / Triage).
- * Full literals so Tailwind scans them (see header-shell for the rail column).
+ *   • `rail` — structural share of {@link SIDEBAR_SCAN_DOCK_LEADING_ROW} from
+ *     `header-shell` (pad → DOT_TRACK → gap); icon in the track, input `pl-0`
+ *     so typed text lands on the row title. No rem twin — density tracks the
+ *     same tokens as the UNBOXED eyebrow / rail titles.
+ * Full literals so Tailwind scans MasterNav pads (see header-shell for rail).
  */
 
 /** Leading icon — MasterNav mode-glyph column. */
@@ -31,21 +32,6 @@ export const STATION_SCAN_BAR_DEFAULT_ICON_CLASS = 'h-[17px] w-[17px]';
 
 /** Input text — MasterNav label column (4.3125rem). */
 export const STATION_SCAN_BAR_PAD_LEFT_CLASS = 'pl-[4.3125rem]';
-
-/**
- * Dense scan-dock leading icon — centered on the recent-rail status-dot track.
- * `left-2` puts the glyph center at ≈16px, matching the rail dot at
- * `SIDEBAR_RAIL_LEADING_PAD` (`pl-2`) + half of `SIDEBAR_RAIL_DOT_TRACK` (`w-4`).
- */
-export const STATION_SCAN_BAR_ICON_SLOT_DENSE_CLASS =
-  'absolute left-2 top-1/2 z-raised flex h-4 w-4 -translate-y-1/2 items-center justify-center';
-
-/**
- * Dense scan-dock input text — lands on the recent-rail row title. Keep in
- * lockstep with the rail column: `pl-2` (8) + `w-4` (16) + `gap-1.5` (6) =
- * 1.875rem (SIDEBAR_RAIL_LEADING_PAD + SIDEBAR_RAIL_DOT_TRACK + MODE_GAP).
- */
-export const STATION_SCAN_BAR_PAD_LEFT_DENSE_CLASS = 'pl-[1.875rem]';
 
 export const STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS = 'pl-[2.9375rem]';
 
