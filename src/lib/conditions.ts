@@ -26,6 +26,50 @@ export const CONDITION_GRADES = [
 
 export type ConditionGrade = (typeof CONDITION_GRADES)[number];
 
+/**
+ * Marketplace / display strings → canonical grade codes. Order rows ingested
+ * from marketplaces carry raw strings ("NEW", "L-NEW", "REFURB", "A"…) rather
+ * than grade codes; resolving them HERE is what lets the tone + label SoTs
+ * color-code those rows exactly like grade-coded inventory. Bare "USED" stays
+ * unmapped on purpose — it names no specific grade (A/B/C), so it keeps the
+ * neutral fallback tone instead of claiming one.
+ */
+const CONDITION_GRADE_ALIASES: Record<string, ConditionGrade> = {
+  NEW: 'BRAND_NEW',
+  'BRAND NEW': 'BRAND_NEW',
+  BRANDNEW: 'BRAND_NEW',
+  'L-NEW': 'LIKE_NEW',
+  LNEW: 'LIKE_NEW',
+  'L NEW': 'LIKE_NEW',
+  'LIKE NEW': 'LIKE_NEW',
+  'LIKE-NEW': 'LIKE_NEW',
+  LIKENEW: 'LIKE_NEW',
+  REF: 'REFURBISHED',
+  REFURB: 'REFURBISHED',
+  A: 'USED_A',
+  'USED A': 'USED_A',
+  'USED-A': 'USED_A',
+  B: 'USED_B',
+  'USED B': 'USED_B',
+  'USED-B': 'USED_B',
+  C: 'USED_C',
+  'USED C': 'USED_C',
+  'USED-C': 'USED_C',
+  PART: 'PARTS',
+  'FOR PARTS': 'PARTS',
+  'FOR-PARTS': 'PARTS',
+};
+
+/**
+ * Resolve a raw condition string (grade code OR marketplace alias) to its
+ * canonical grade code. Unknown / empty values pass through trimmed+uppercased
+ * so existing fallback paths behave exactly as before.
+ */
+export function resolveConditionGrade(code: string | null | undefined): string {
+  const c = String(code || '').trim().toUpperCase();
+  return CONDITION_GRADE_ALIASES[c] ?? c;
+}
+
 export type ConditionLabelVariant =
   | 'pill'
   | 'table'
@@ -55,7 +99,7 @@ export function conditionLabel(
   code: string | null | undefined,
   variant: ConditionLabelVariant = 'label',
 ): string {
-  const c = String(code || 'BRAND_NEW').trim().toUpperCase();
+  const c = resolveConditionGrade(String(code || 'BRAND_NEW'));
   return CONDITION_LABELS[variant][c] ?? c.replace(/_/g, ' ');
 }
 
@@ -123,8 +167,7 @@ export const CONDITION_DESCRIPTIONS: Record<string, string> = {
 
 /** One-line meaning for a grade (for tooltips/help). Empty string for unknown codes. */
 export function conditionDescription(code: string | null | undefined): string {
-  const c = String(code || '').trim().toUpperCase();
-  return CONDITION_DESCRIPTIONS[c] ?? '';
+  return CONDITION_DESCRIPTIONS[resolveConditionGrade(code)] ?? '';
 }
 
 /**

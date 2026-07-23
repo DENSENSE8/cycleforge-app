@@ -1,6 +1,7 @@
 /**
- * Human label for a receiving type code (PO / RETURN / TRADE_IN / PICKUP).
- * Mirrors `RECEIVING_TYPE_OPTS`' labels; returns '' for an empty/unknown code.
+ * Human label for a receiving type code (PO / RETURN / REPAIR / TRADE_IN / PICKUP).
+ * Derives from {@link receivingTypeMeta} so classify faces, pills, and print
+ * never disagree on the display name.
  *
  * Lives here — not in `lib/print/printReceivingLabel` where it originated —
  * because it is a pure presentation-kind mapper with zero print dependencies.
@@ -8,20 +9,11 @@
  * (incl. the ~250 KB bwip-js barcode engine) into every consumer's client
  * bundle (useCatalog reaches most workbench surfaces).
  */
+
+import { receivingTypeMeta } from './receiving-type-meta';
+
 export function receivingLabelTypeDisplay(code: string | null | undefined): string {
-  const c = String(code ?? '').trim().toUpperCase();
-  switch (c) {
-    case 'PO':
-      return 'PO';
-    case 'RETURN':
-      return 'Return';
-    case 'TRADE_IN':
-      return 'Trade In';
-    case 'PICKUP':
-      return 'Pick Up';
-    case '':
-      return '';
-    default:
-      return c.replace(/_/g, ' ');
-  }
+  const key = String(code ?? '').trim();
+  if (!key) return '';
+  return receivingTypeMeta(key).label;
 }

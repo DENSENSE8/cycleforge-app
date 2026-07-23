@@ -162,7 +162,10 @@ export function MobileSelectionBar({
             pinToViewport ? 'fixed inset-x-0 bottom-0' : 'absolute inset-x-0 bottom-0',
           )}
         >
-          <div className={cn('relative flex items-center overflow-hidden rounded-full p-1.5 shadow-xl shadow-gray-900/10', SURFACE_LIGHT)}>
+          {/* Compact centered capsule — fit-content, never viewport-wide. A
+              full-width bar overflowed the grid shell on desktop selection and
+              hid the count under floating chrome. */}
+          <div className={cn('relative mx-auto flex w-full max-w-fit items-center overflow-hidden rounded-full p-1.5 shadow-xl shadow-gray-900/10', SURFACE_LIGHT)}>
             <div className="relative z-10 flex flex-1 items-center gap-2">
               <SelectAll count={count} allSelected={allSelected} onToggleAll={onToggleAll} />
               <span className="text-role-eyebrow font-bold uppercase tracking-wider text-text-soft">

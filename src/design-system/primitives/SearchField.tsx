@@ -1,6 +1,14 @@
 'use client';
 
-import { type FormEvent, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import {
+  type ClipboardEvent,
+  type FormEvent,
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Clipboard, Loader2, Search, X } from '@/components/Icons';
 
 export type SearchFieldTone =
@@ -43,6 +51,11 @@ const loaderToneClass: Record<SearchFieldTone, string> = {
 export interface SearchFieldProps {
   value: string;
   onChange: (value: string) => void;
+  /**
+   * Commit handler (Enter). Also fires after paste (clipboard button or native
+   * Cmd/Ctrl+V) when the pasted text is non-empty — paste is a commit, not a
+   * draft fill. Omit when paste should only populate the field.
+   */
   onSearch?: (value: string) => void;
   onClear?: () => void;
   inputRef?: Ref<HTMLInputElement>;
@@ -223,25 +236,41 @@ export function SearchField({
     onClear?.();
   };
 
+  /** Flush draft + notify parent; when `commit`, also fire onSearch (paste / Enter). */
+  const flushValue = (next: string, commit: boolean) => {
+    if (debounceTimeoutRef.current != null) {
+      window.clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
+    }
+    justClearedRef.current = false;
+    setDraft(next);
+    committedRef.current = next;
+    onChange(next);
+    if (commit) onSearch?.(next);
+  };
+
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       const trimmed = text.trim();
       if (!trimmed) return;
-      // Flush immediately — don't rely on debounce. Clicking paste blurs the
-      // input, and the unfocused sync effect would otherwise overwrite a
-      // draft-only update with the still-empty parent value.
-      if (debounceTimeoutRef.current != null) {
-        window.clearTimeout(debounceTimeoutRef.current);
-        debounceTimeoutRef.current = null;
-      }
-      justClearedRef.current = false;
-      setDraft(trimmed);
-      committedRef.current = trimmed;
-      onChange(trimmed);
+      // Paste is a commit when onSearch is set (header search → open detail,
+      // scan/attach fields → submit). Flush immediately — clicking paste can
+      // blur the input and the unfocused sync effect would otherwise overwrite
+      // a draft-only update with the still-empty parent value.
+      flushValue(trimmed, Boolean(onSearch));
     } catch {
       // clipboard blocked
     }
+  };
+
+  const handleNativePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    if (!onSearch) return; // no commit handler — let the browser fill the draft
+    const text = event.clipboardData?.getData('text') ?? '';
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    event.preventDefault();
+    flushValue(trimmed, true);
   };
 
   const icon = leadingIcon || <Search className="h-4 w-4" />;
@@ -310,6 +339,7 @@ export function SearchField({
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onPaste={handleNativePaste}
           placeholder={placeholder}
           autoFocus={autoFocus}
           className={`w-full border-0 bg-transparent px-0 font-bold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}

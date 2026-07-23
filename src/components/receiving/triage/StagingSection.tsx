@@ -4,7 +4,8 @@
  * StagingSection — shelf + priority-lane assignment for triage.
  * Auto-routes lane on shelf save; operator can override via lane select.
  * Placement summary is written for the unboxing person (room · bin · barcode).
- * SectionTabsSlider owns the "Staging" eyebrow — this card stays unlabeled.
+ * When embedded on Arrival overview, pass {@link eyebrow} ("Location Placement").
+ * Dedicated Staging tab leaves the card unlabeled (SectionTabsSlider owns the title).
  */
 
 import { useMemo } from 'react';
@@ -123,7 +124,14 @@ function PlacementSummary({
   );
 }
 
-export function StagingSection({ staging }: { staging: TriageStagingController }) {
+export function StagingSection({
+  staging,
+  eyebrow,
+}: {
+  staging: TriageStagingController;
+  /** When set (Arrival overview), labels the card — e.g. "Location Placement". */
+  eyebrow?: string;
+}) {
   const {
     locations,
     locationsLoading,
@@ -145,7 +153,13 @@ export function StagingSection({ staging }: { staging: TriageStagingController }
   ) : null;
 
   return (
-    <WorkspaceCard variant="glass" overflow="visible" bodyDensity="nested" actions={savingIndicator ?? undefined}>
+    <WorkspaceCard
+      variant="glass"
+      overflow="visible"
+      bodyDensity="nested"
+      label={eyebrow}
+      actions={savingIndicator ?? undefined}
+    >
       <div className="space-y-4">
         <TriageStagingStatusChips
           complete={isStaged}

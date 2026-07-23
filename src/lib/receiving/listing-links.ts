@@ -179,3 +179,21 @@ export function formatListingLinkMenuOptions(
     title: l.href,
   }));
 }
+
+/**
+ * Hub URL for the popup-blocker-safe multi-open page. Chip hover menus open
+ * this in one tab; the Listings tab can open hrefs directly (user gesture).
+ */
+export function buildOpenLinksHubHref(links: Array<{ href: string }>): string {
+  const qs = new URLSearchParams({ links: JSON.stringify(links.map((l) => l.href)) });
+  return `/open-links?${qs.toString()}`;
+}
+
+/** Open every listing href in a new tab — call only from a direct user gesture. */
+export function openAllListingHrefs(hrefs: string[]): void {
+  for (const href of hrefs) {
+    const t = href.trim();
+    if (!t) continue;
+    window.open(t, '_blank', 'noopener,noreferrer');
+  }
+}

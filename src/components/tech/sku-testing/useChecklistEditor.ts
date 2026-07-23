@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import {
   addQcCheck,
   bulkSetChecklist,
@@ -98,7 +99,12 @@ export function useChecklistEditor({
 
   const removeStep = useCallback(
     async (stepId: number) => {
-      if (!window.confirm('Remove this checklist step for the whole SKU?')) return;
+      const ok = await requestConfirm({
+        description: 'Remove this checklist step for the whole SKU?',
+        tone: 'danger',
+        confirmLabel: 'Remove',
+      });
+      if (!ok) return;
       setBusy(true);
       try {
         await deleteQcCheck(receivingLineId, stepId);

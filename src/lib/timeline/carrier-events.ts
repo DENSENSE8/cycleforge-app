@@ -63,6 +63,7 @@ export function carrierEventsToTimeline(events: CarrierEvent[]): TimelineItem[] 
       tone: carrierTone(e.normalized_status_category),
       subtitle: location,
       badges: badges.length ? badges : undefined,
+      sourceEventType: 'CARRIER_EVENT',
     };
   });
 }

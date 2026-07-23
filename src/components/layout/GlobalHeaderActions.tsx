@@ -21,8 +21,8 @@ import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_CLUSTER,
-  HEADER_ICON_GLYPH,
   HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
 
 type OpenPopover = 'none' | 'history' | 'inbox' | 'account' | 'clipboard' | 'feedback';
@@ -73,7 +73,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const accountInitial = initials(displayName) || '·';
 
   const iconBtnSize = isMobile ? ('touch' as const) : ('md' as const);
-  const iconSize = isMobile ? 'h-5 w-5' : HEADER_ICON_GLYPH;
+  const iconSize = isMobile ? 'h-5 w-5' : TOP_CHROME_ICON_GLYPH;
   const avatarSize = isMobile ? 'h-10 w-10 text-sm' : 'h-8 w-8 text-role-caption';
   const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 

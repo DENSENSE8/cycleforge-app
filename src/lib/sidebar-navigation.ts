@@ -149,12 +149,12 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 }
 
 /**
- * Dogfood prod surface (stations + shipping + inventory + thin support).
+ * Dogfood prod surface (stations + shipping + inventory + warehouse + thin support).
  *
  * Parked off master nav (routes + SIDEBAR_PAGE_NAV modes may still resolve for
  * deep-links / topic worktrees — do not delete those until a surface is
  * promoted back or archived):
- *   home (`/`), operations, sourcing, warehouse, fba, studio, ai-chat
+ *   home (`/`), operations, sourcing, fba, studio, ai-chat
  * Same pattern as Data Wipe: absent from nav, route can remain live.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
@@ -177,6 +177,8 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'main',    requires: 'sku_stock.view' },
   // Inventory workbench — promoted back to dogfood prod nav (was parked).
   { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'main',    requires: 'sku_stock.view' },
+  // Warehouse map / bins — promoted back to dogfood prod nav (was parked).
+  { id: 'warehouse',         label: 'Warehouse',   href: '/warehouse',          icon: Warehouse,       kind: 'main',    requires: 'sku_stock.view' },
   // Points at the Unbox surface (`/unbox`) — the receiving station's default
   // surface — so the primary nav lands on the canonical URL without a redirect
   // hop. Route key still resolves to 'receiving', so the item stays active
@@ -187,10 +189,10 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the canonical URL without a redirect hop. Route key still resolves to 'tech'
   // (reuses the tech panel), so the item stays active on /test + /tech.
   { id: 'tech',              label: 'Testing',     href: '/test',               icon: STATION_PAGE_ICONS.tech,      kind: 'station', requires: 'tech.view' },
-  // Data Wipe / FBA / Warehouse / Sourcing / Studio / AI Chat / Home /
-  // Operations are temporarily absent from master nav — dogfood focuses
-  // stations + shipping + inventory. Routes + mode configs remain for
-  // deep-links / preview worktrees.
+  // Data Wipe / FBA / Sourcing / Studio / AI Chat / Home / Operations are
+  // temporarily absent from master nav — dogfood focuses stations + shipping +
+  // inventory + warehouse. Routes + mode configs remain for deep-links /
+  // preview worktrees.
   { id: 'ops-photos',        label: 'Media library', href: '/ops/photos',       icon: Images,          kind: 'main',    requires: 'photos.view' },
   // Sub-route of the parked `studio` surface — hidden from nav while Studio is
   // parked (so it never dead-ends on the stand-in), shown once it's unlocked.
@@ -748,19 +750,20 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Products ──────────────────────────────────────────────────────────────
-  // `?view=manuals|labels|pairing|qc`; default `manuals` (param cleared).
+  // `?view=manuals|catalog|labels|pairing|qc|kit`; default `manuals` (param cleared).
   {
     id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'main', requires: 'sku_stock.view',
     modes: [
-      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
-      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
-      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
-      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
-      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit' } }) },
+      { id: 'catalog', label: 'Catalog', icon: Tags, to: () => ({ pathname: PRODUCTS, params: { view: 'catalog', linkFilter: null } }) },
+      { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null, linkFilter: null } }) },
+      { id: 'labels',  label: 'Labels',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels', linkFilter: null } }) },
+      { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing', linkFilter: null } }) },
+      { id: 'qc',      label: 'QC',      icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc', linkFilter: null } }) },
+      { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit', linkFilter: null } }) },
     ],
     resolveMode: ({ params }) => {
       const v = params.get('view');
-      return v === 'labels' || v === 'pairing' || v === 'qc' || v === 'kit' ? v : 'manuals';
+      return v === 'catalog' || v === 'labels' || v === 'pairing' || v === 'qc' || v === 'kit' ? v : 'manuals';
     },
   },
   // ── Testing ───────────────────────────────────────────────────────────────

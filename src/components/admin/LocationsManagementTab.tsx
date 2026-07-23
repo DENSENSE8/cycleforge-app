@@ -5,6 +5,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Edit, Trash2, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+} from '@/design-system/components/Dialog';
+import { requestConfirm } from '@/design-system/components/confirm';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
 import { toast } from '@/lib/toast';
@@ -175,11 +181,14 @@ export function LocationsManagementTab() {
     updateMutation.mutate({ barcode: editing.barcode, payload: form });
   };
 
-  const handleDelete = (row: BinRow) => {
+  const handleDelete = async (row: BinRow) => {
     if (!row.barcode) return;
-    if (!window.confirm(`Remove bin "${row.name}" (${row.barcode})? It will be deactivated; bins holding stock are refused.`)) {
-      return;
-    }
+    const ok = await requestConfirm({
+      description: `Remove bin "${row.name}" (${row.barcode})? It will be deactivated; bins holding stock are refused.`,
+      tone: 'danger',
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
     deleteMutation.mutate(row.barcode);
   };
 
@@ -195,7 +204,7 @@ export function LocationsManagementTab() {
             <select
               value={room}
               onChange={(e) => setRoom(e.target.value)}
-              className="h-8 border border-border-soft bg-surface-card px-2 text-xs font-semibold text-text-default outline-none focus:border-border-emphasis"
+              className={FILTER_DROPDOWN_SELECT_CLASS}
             >
               <option value={ALL_ROOMS}>All rooms</option>
               {rooms.map((r) => (
@@ -288,16 +297,19 @@ export function LocationsManagementTab() {
         </div>
       </div>
 
-      {editing && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          {/* ds-raw-button: full-bleed modal scrim/overlay dismiss target, not a DS Button */}
-          <button type="button" className="absolute inset-0 bg-scrim/30" onClick={closeForm} aria-label="Close bin form" />
-          <div className="relative flex w-full max-w-xl flex-col overflow-hidden border border-border-soft bg-surface-card shadow-xl">
+      <Dialog
+        open={editing != null}
+        onOpenChange={(next) => {
+          if (!next) closeForm();
+        }}
+      >
+        <DialogContent hideClose className="max-w-xl gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <div className="flex w-full flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
               <div>
                 <p className={sectionLabel}>Edit Bin</p>
                 <h3 className="mt-1 text-base font-semibold text-text-default">
-                  {editing.room ? `${editing.room} · ` : ''}{editing.name}
+                  {editing?.room ? `${editing.room} · ` : ''}{editing?.name}
                 </h3>
               </div>
               <IconButton
@@ -370,8 +382,8 @@ export function LocationsManagementTab() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

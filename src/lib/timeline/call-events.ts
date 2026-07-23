@@ -60,6 +60,12 @@ export function callEventsToTimeline(rows: CallEventTimelineRow[]): TimelineItem
       tone: DIRECTION_TONE[r.direction],
       subtitle: parts.join(' · '),
       actor: r.agentName ?? undefined,
+      sourceEventType:
+        r.direction === 'inbound'
+          ? 'CALL_INBOUND'
+          : r.direction === 'outbound'
+            ? 'CALL_OUTBOUND'
+            : 'CALL_MISSED',
     };
   });
 }

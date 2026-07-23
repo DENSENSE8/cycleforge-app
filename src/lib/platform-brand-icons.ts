@@ -1,23 +1,21 @@
 /**
- * Vendored monochrome brand-mark SVG paths for marketplace platforms.
+ * Monochrome brand-mark SVG paths for marketplace platforms.
  *
- * Source: Simple Icons v15 (https://github.com/simple-icons/simple-icons),
- * CC0-1.0 path data, 24×24 viewBox, designed to render in a single color
- * (`fill="currentColor"`), fetched 2026-07-21 from the published npm package.
- * Per-brand trademark guidelines still apply: simple mark only, no lockups —
- * nominative use in a data column.
+ * Rendered via {@link PlatformMark} at a fixed footprint, tinted with each
+ * platform's `text` tone (`fill="currentColor"`). 24×24 viewBox, single path
+ * (compound `M` ok). Never hotlink a CDN (CSP + build gotchas).
  *
- * Deliberately absent (no CC0 mark exists — {@link PlatformMark} falls back to
- * the lettermark):
- *   • `amazon` / `fba` — Amazon's icon was removed from Simple Icons on a
- *     trademark request; do NOT vendor it from elsewhere.
- *   • `ecwid` (ECWID-RS), `goodwill`, `other` — not in the catalog.
+ * Sources:
+ *   • eBay / AliExpress / Walmart / Shopify / Square — Simple Icons v15
+ *     (https://github.com/simple-icons/simple-icons), CC0-1.0 path data.
+ *   • Amazon / FBA / Goodwill / ECWID-RS / Other — Cycle Forge originals
+ *     (ops silhouettes; no scraped favicons, no trademark lockups).
  *
- * Dependency-free values module (bundle-altitude law): safe to import from any
- * client surface. Never hotlink a CDN for these (CSP + build gotchas).
+ * Amazon's mark was removed from Simple Icons on a trademark request — do not
+ * vendor their smile/"a" glyph. Use the carton silhouette instead.
  */
 
-/** Simple Icons standard canvas. */
+/** Shared canvas for every platform mark. */
 export const PLATFORM_BRAND_ICON_VIEWBOX = '0 0 24 24';
 
 /** `source_platform` value → monochrome SVG path (24×24, currentColor). */
@@ -32,4 +30,26 @@ export const PLATFORM_BRAND_ICON_PATHS: Readonly<Record<string, string>> = {
     'M15.337 23.979l7.216-1.561s-2.604-17.613-2.625-17.73c-.018-.116-.114-.192-.211-.192s-1.929-.136-1.929-.136-1.275-1.274-1.439-1.411c-.045-.037-.075-.057-.121-.074l-.914 21.104h.023zM11.71 11.305s-.81-.424-1.774-.424c-1.447 0-1.504.906-1.504 1.141 0 1.232 3.24 1.715 3.24 4.629 0 2.295-1.44 3.76-3.406 3.76-2.354 0-3.54-1.465-3.54-1.465l.646-2.086s1.245 1.066 2.28 1.066c.675 0 .975-.545.975-.932 0-1.619-2.654-1.694-2.654-4.359-.034-2.237 1.571-4.416 4.827-4.416 1.257 0 1.875.361 1.875.361l-.945 2.715-.02.01zM11.17.83c.136 0 .271.038.405.135-.984.465-2.064 1.639-2.508 3.992-.656.213-1.293.405-1.889.578C7.697 3.75 8.951.84 11.17.84V.83zm1.235 2.949v.135c-.754.232-1.583.484-2.394.736.466-1.777 1.333-2.645 2.085-2.971.193.501.309 1.176.309 2.1zm.539-2.234c.694.074 1.141.867 1.429 1.755-.349.114-.735.231-1.158.366v-.252c0-.752-.096-1.371-.271-1.871v.002zm2.992 1.289c-.02 0-.06.021-.078.021s-.289.075-.714.21c-.423-1.233-1.176-2.37-2.508-2.37h-.115C12.135.209 11.669 0 11.265 0 8.159 0 6.675 3.877 6.21 5.846c-1.194.365-2.063.636-2.16.674-.675.213-.694.232-.772.87-.075.462-1.83 14.063-1.83 14.063L15.009 24l.927-21.166z',
   square:
     'M4.01 0A4.01 4.01 0 000 4.01v15.98c0 2.21 1.8 4 4.01 4.01h15.98C22.2 24 24 22.2 24 19.99V4A4.01 4.01 0 0019.99 0H4zm1.62 4.36h12.74c.7 0 1.26.57 1.26 1.27v12.74c0 .7-.56 1.27-1.26 1.27H5.63c-.7 0-1.26-.57-1.26-1.27V5.63a1.27 1.27 0 011.26-1.27zm3.83 4.35a.73.73 0 00-.73.73v5.09c0 .4.32.72.72.72h5.1a.73.73 0 00.73-.72V9.44a.73.73 0 00-.73-.73h-5.1Z',
+
+  // ── Cycle Forge originals (ops silhouettes) ─────────────────────────────
+
+  /** Open shipping carton — marketplace outbound (not Amazon's trademarked smile). */
+  amazon:
+    'M3.25 8.1 12 3.4l8.75 4.7v1.35L12 14.15 3.25 9.45V8.1zm1.7 2.85 6.3 3.38v7.27l-6.3-3.38V10.95zm14.1 0v7.27l-6.3 3.38v-7.27l6.3-3.38zM12 5.25 7.1 7.9 12 10.55 16.9 7.9 12 5.25z',
+
+  /** Sealed carton with tape band — FBA fulfillment identity. */
+  fba:
+    'M4 7.1 12 2.7l8 4.4v9.8l-8 4.4-8-4.4V7.1zm8-2.85L6.6 7.3 12 10.25l5.4-2.95L12 4.25zM5.5 8.85v7.55L11 19.4v-7.55L5.5 8.85zm13 0L13 11.85V19.4l5.5-2.999V8.85zM10.6 11.35h2.8v1.9h-2.8z',
+
+  /** Heart — thrift / community channel (not Goodwill's trademarked g-face). */
+  goodwill:
+    'M12 21.35S3.2 15.4 3.2 9.45C3.2 6.2 5.75 3.8 9 3.8c1.75 0 3.3.9 4 2.25.7-1.35 2.25-2.25 4-2.25 3.25 0 5.8 2.4 5.8 5.65 0 5.95-8.8 11.9-8.8 11.9z',
+
+  /** Shopping bag — ECWID repair-service storefront. */
+  ecwid:
+    'M10 6V3.5a2 2 0 014 0V6h1.5V3.5a3.5 3.5 0 00-7 0V6H10zM5.5 7A1.5 1.5 0 004 8.5v12A1.5 1.5 0 005.5 22h13a1.5 1.5 0 001.5-1.5v-12A1.5 1.5 0 0018.5 7h-13z',
+
+  /** Generic storefront — catch-all "Other" channel. */
+  other:
+    'M2.5 10.75 12 3.25l9.5 7.5V12.5H19v8.25h-5.25V14.5h-3.5v6.25H5V12.5H2.5v-1.75z',
 };

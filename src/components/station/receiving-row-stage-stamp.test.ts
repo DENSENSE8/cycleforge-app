@@ -50,4 +50,21 @@ describe('resolveReceivingRowStageStamp', () => {
       { instant: '2026-07-03T12:00:00Z', label: 'Received', staffName: null },
     );
   });
+
+  it('tested axis prefers tested_at; falls back to unboxed', () => {
+    assert.deepEqual(
+      resolveReceivingRowStageStamp(
+        { tested_at: '2026-07-04T09:00:00Z', unboxed_at: '2026-07-02T18:00:00Z' },
+        'tested',
+      ),
+      { instant: '2026-07-04T09:00:00Z', label: 'Tested', staffName: null },
+    );
+    assert.deepEqual(
+      resolveReceivingRowStageStamp(
+        { tested_at: null, unboxed_at: '2026-07-02T18:00:00Z', unboxed_by_name: 'Ada' },
+        'tested',
+      ),
+      { instant: '2026-07-02T18:00:00Z', label: 'Unboxed', staffName: 'Ada' },
+    );
+  });
 });

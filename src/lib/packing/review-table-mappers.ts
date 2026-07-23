@@ -1,5 +1,5 @@
 /**
- * Map Review queue / order rows into the OrdersQueueTable `ShippedOrder` shape
+ * Map Review queue / order rows into the OrdersGridView `ShippedOrder` shape
  * so History (and any verification-enriched open) can reuse the SoT table.
  */
 

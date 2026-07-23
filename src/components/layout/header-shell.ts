@@ -157,8 +157,13 @@ export const HEADER_ICON_GAP = 'gap-0.5';
 /** Flex row for a GlobalHeader icon cluster. */
 export const HEADER_ICON_CLUSTER = `flex h-8 shrink-0 items-center ${HEADER_ICON_GAP}`;
 
-/** Canonical glyph box — pairs with IconButton `size="md"`. */
-export const HEADER_ICON_GLYPH = 'h-4 w-4';
+/**
+ * Glyph box for GlobalHeader icon actions (sidebar, WO, clipboard, inbox,
+ * search/AI). Native SVG `strokeWidth={2}` only — do **not** layer
+ * `navIconStrokeClass` here; CSS `![stroke-width:…]` on dense glyphs reads
+ * muddy/blurry at this size. MasterNav MRU uses {@link SIDEBAR_MRU_GLYPH}.
+ */
+export const TOP_CHROME_ICON_GLYPH = 'h-4 w-4';
 
 /**
  * Shared IconButton chrome for GlobalHeader — same radius, mute tone, and hover
@@ -180,5 +185,10 @@ export const SIDEBAR_MRU_CLUSTER = 'ml-auto flex h-full shrink-0 items-stretch g
 /** One MRU hit cell — centers IconButton xs inside a compact mode-width column. */
 export const SIDEBAR_MRU_CELL = 'flex h-full w-8 shrink-0 items-center justify-center';
 
-/** Glyph for MRU jump chips (pairs with IconButton `size="xs"`). Mode or page SoT. */
+/**
+ * Glyph for MRU jump chips (pairs with IconButton `size="xs"`). Keep `h-3.5` —
+ * upsizing to header `h-4` + mode stroke made dense glyphs (calendar / lists)
+ * read blurry. Stroke: native SVG width only (same as GlobalHeader) — no
+ * `navIconStrokeClass` on these chips.
+ */
 export const SIDEBAR_MRU_GLYPH = 'h-3.5 w-3.5';

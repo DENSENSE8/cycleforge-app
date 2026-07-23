@@ -8,12 +8,12 @@
  */
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef } from 'react';
 import { Loader2, Package, Plus, Trash2 } from '@/components/Icons';
-import { Button, DeferredQtyInput, IconButton } from '@/design-system/primitives';
+import { Button, DeferredQtyInput, IconButton, TextField } from '@/design-system/primitives';
 import { buildFbaPlanRefFromIsoDate } from '@/lib/fba/plan-ref';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
 import {
-  SidebarIntakeFormField,
+  FormField,
   SidebarIntakeFormShell,
 } from '@/design-system/components';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -117,73 +117,66 @@ export function FbaCreateShipmentForm({
         </button>
       }
     >
-      <SidebarIntakeFormField
-        label="Plan ID"
-        required
-        hintBelow={
-          <div className="space-y-1">
-            {derivedRef && derivedRef !== 'FBA-00/00/00' ? (
-              <p className="font-mono text-role-micro text-emerald-700">
-                Auto: {derivedRef}
-              </p>
-            ) : null}
-            {!isAutoRef ? (
-              /* ds-raw-button: inline micro underlined text-link inside a hint stack, not a CTA */
-              <button
-                type="button"
-                className="text-role-micro text-blue-600 underline"
-                onClick={() => {
-                  if (!derivedRef || derivedRef === 'FBA-00/00/00') return;
-                  lastAutoRefRef.current = derivedRef;
-                  setForm((f) => ({ ...f, shipment_ref: derivedRef }));
-                }}
-              >
-                Reset to auto
-              </button>
-            ) : null}
-            {refIsInvalid ? (
-              <p className="text-role-micro text-amber-600">
-                Invalid plan ref. Set a valid due date or type a custom ref.
-              </p>
-            ) : null}
-            <p className="text-role-micro leading-snug text-text-soft">
-              Stored as shipment_ref — not the internal DB row id or Amazon&apos;s FBA shipment id.
-            </p>
-          </div>
-        }
-      >
-        <input
-          type="text"
+      <div className="space-y-2">
+        <TextField
+          label="Plan ID"
           value={form.shipment_ref}
-          onChange={(e) => {
+          onChange={(next) => {
             lastAutoRefRef.current = '';
-            setForm((f) => ({ ...f, shipment_ref: e.target.value }));
+            setForm((f) => ({ ...f, shipment_ref: next }));
           }}
-          placeholder="FBA-03/24/26"
-          className={chrome.monoInput}
+          required
+          mono
+          tone="neutral"
         />
-      </SidebarIntakeFormField>
+        <div className="space-y-1">
+          {derivedRef && derivedRef !== 'FBA-00/00/00' ? (
+            <p className="font-mono text-role-micro text-emerald-700">
+              Auto: {derivedRef}
+            </p>
+          ) : null}
+          {!isAutoRef ? (
+            /* ds-raw-button: inline micro underlined text-link inside a hint stack, not a CTA */
+            <button
+              type="button"
+              className="text-role-micro text-blue-600 underline"
+              onClick={() => {
+                if (!derivedRef || derivedRef === 'FBA-00/00/00') return;
+                lastAutoRefRef.current = derivedRef;
+                setForm((f) => ({ ...f, shipment_ref: derivedRef }));
+              }}
+            >
+              Reset to auto
+            </button>
+          ) : null}
+          {refIsInvalid ? (
+            <p className="text-role-micro text-amber-600">
+              Invalid plan ref. Set a valid due date or type a custom ref.
+            </p>
+          ) : null}
+          <p className="text-role-micro leading-snug text-text-soft">
+            Stored as shipment_ref — not the internal DB row id or Amazon&apos;s FBA shipment id.
+          </p>
+        </div>
+      </div>
 
-      <SidebarIntakeFormField label="FC code">
-        <input
-          type="text"
-          value={form.destination_fc}
-          onChange={(e) => setForm((f) => ({ ...f, destination_fc: e.target.value }))}
-          placeholder="PHX7"
-          className={chrome.input}
-        />
-      </SidebarIntakeFormField>
+      <TextField
+        label="FC code"
+        value={form.destination_fc}
+        onChange={(next) => setForm((f) => ({ ...f, destination_fc: next }))}
+        tone="neutral"
+      />
 
-      <SidebarIntakeFormField label="Due date">
+      <FormField label="Due date">
         <input
           type="date"
           value={form.due_date}
           onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
           className={chrome.input}
         />
-      </SidebarIntakeFormField>
+      </FormField>
 
-      <SidebarIntakeFormField label="Tech (created by)" required>
+      <FormField label="Tech (created by)" required>
         <select
           value={form.assigned_tech_id}
           onChange={(e) => setForm((f) => ({ ...f, assigned_tech_id: e.target.value }))}
@@ -196,9 +189,9 @@ export function FbaCreateShipmentForm({
             </option>
           ))}
         </select>
-      </SidebarIntakeFormField>
+      </FormField>
 
-      <SidebarIntakeFormField label="Packer" optionalHint="(Optional)">
+      <FormField label="Packer" optionalHint="optional">
         <select
           value={form.assigned_packer_id}
           onChange={(e) => setForm((f) => ({ ...f, assigned_packer_id: e.target.value }))}
@@ -211,17 +204,14 @@ export function FbaCreateShipmentForm({
             </option>
           ))}
         </select>
-      </SidebarIntakeFormField>
+      </FormField>
 
-      <SidebarIntakeFormField label="Notes" optionalHint="(Optional)">
-        <input
-          type="text"
-          value={form.notes}
-          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-          placeholder="Optional notes"
-          className={chrome.input}
-        />
-      </SidebarIntakeFormField>
+      <TextField
+        label="Notes (optional)"
+        value={form.notes}
+        onChange={(next) => setForm((f) => ({ ...f, notes: next }))}
+        tone="neutral"
+      />
 
       <div className="space-y-3 border-t border-border-hairline pt-4">
         <div className="flex items-center justify-between gap-2">
@@ -256,25 +246,23 @@ export function FbaCreateShipmentForm({
             </div>
             <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1">
-                <SidebarIntakeFormField label="FNSKU">
-                  <input
-                    type="text"
-                    value={item.fnsku}
-                    onChange={(e) => updateItem(i, 'fnsku', e.target.value)}
-                    placeholder="FNSKU"
-                    className={chrome.monoInput}
-                  />
-                </SidebarIntakeFormField>
+                <TextField
+                  label="FNSKU"
+                  value={item.fnsku}
+                  onChange={(next) => updateItem(i, 'fnsku', next)}
+                  mono
+                  tone="neutral"
+                />
               </div>
               <div className="w-14 shrink-0">
-                <SidebarIntakeFormField label="Qty">
+                <FormField label="Qty">
                   <DeferredQtyInput
                     value={Math.max(0, parseInt(item.expected_qty, 10) || 0)}
                     onChange={(v) => updateItem(i, 'expected_qty', String(v))}
                     min={0}
                     className={`${chrome.input} text-center`}
                   />
-                </SidebarIntakeFormField>
+                </FormField>
               </div>
             </div>
           </div>

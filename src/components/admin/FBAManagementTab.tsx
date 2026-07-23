@@ -4,6 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { AdminEmptyDetail, useAdminUrlState } from './shared';
 
 interface FbaFnskuRow {
@@ -296,183 +304,160 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
         </div>
       )}
 
-      {isDeleteOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          {/* ds-raw-button: full-screen invisible click-catcher scrim, not a UI button */}
-          <button
-            type="button"
-            className="absolute inset-0 bg-scrim/30"
-            onClick={() => setIsDeleteOpen(false)}
-            aria-label="Close delete confirmation"
-          />
-          <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 space-y-4">
-            <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-default">
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent hideClose className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-role-caption font-bold uppercase tracking-wider">
               Delete FNSKU
-            </h3>
-            <p className="text-role-caption text-text-muted leading-relaxed">
+            </DialogTitle>
+            <DialogDescription className="text-role-caption leading-relaxed">
               Remove <span className="font-mono font-bold">{selectedFnsku}</span> from the catalog?
               It will no longer appear in the FNSKU directory. Re-adding or re-uploading the same
               FNSKU restores it.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteMutation.isError ? (
+            <p className="text-role-caption font-semibold text-red-600">
+              {(deleteMutation.error as Error)?.message || 'Failed to delete.'}
             </p>
-            {deleteMutation.isError ? (
-              <p className="text-role-caption font-semibold text-red-600">
-                {(deleteMutation.error as Error)?.message || 'Failed to delete.'}
-              </p>
-            ) : null}
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={() => setIsDeleteOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                size="md"
-                disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate()}
-              >
-                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => setIsDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {isUploadInfoOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          {/* ds-raw-button: full-screen invisible click-catcher scrim, not a UI button */}
-          <button
-            type="button"
-            className="absolute inset-0 bg-scrim/30"
-            onClick={() => setIsUploadInfoOpen(false)}
-            aria-label="Close FNSKU upload instructions"
-          />
-          <div className="relative w-full max-w-md rounded-2xl border border-border-soft bg-surface-card p-5 space-y-4">
-            <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-default">
+      <Dialog open={isUploadInfoOpen} onOpenChange={setIsUploadInfoOpen}>
+        <DialogContent hideClose className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-role-caption font-bold uppercase tracking-wider">
               Upload FNSKU CSV
-            </h3>
-            <p className="text-role-caption text-text-muted leading-relaxed">
+            </DialogTitle>
+            <DialogDescription className="text-role-caption leading-relaxed">
               Include <span className="font-bold">fnsku</span>,{' '}
               <span className="font-bold">product_title</span>,{' '}
               <span className="font-bold">asin</span>, and <span className="font-bold">sku</span>{' '}
               columns. Rows with duplicate <span className="font-bold">fnskus</span> in the same
               file are skipped.
-            </p>
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={() => setIsUploadInfoOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                onClick={() => {
-                  setIsUploadInfoOpen(false);
-                  fileInputRef.current?.click();
-                }}
-                className="bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
-              >
-                Choose File
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => setIsUploadInfoOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setIsUploadInfoOpen(false);
+                fileInputRef.current?.click();
+              }}
+              className="bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
+            >
+              Choose File
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {isAddOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          {/* ds-raw-button: full-screen invisible click-catcher scrim, not a UI button */}
-          <button
-            type="button"
-            className="absolute inset-0 bg-scrim/30"
-            onClick={() => setIsAddOpen(false)}
-            aria-label="Close add FNSKU mapping dialog"
-          />
-          <div className="relative w-full max-w-lg rounded-2xl border border-border-soft bg-surface-card p-5 space-y-4">
-            <div>
-              <h3 className="text-role-caption font-bold uppercase tracking-wider text-text-default">
-                Add FNSKU Mapping
-              </h3>
-              <p className="mt-1 text-role-caption text-text-muted">
-                Create one catalog row manually when you don&apos;t want to use a CSV upload.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <Field label="Product Title">
-                <input
-                  type="text"
-                  value={productTitle}
-                  onChange={(e) => setProductTitle(e.target.value)}
-                  placeholder="Enter product title"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
-                />
-              </Field>
-              <Field label="ASIN">
-                <input
-                  type="text"
-                  value={asin}
-                  onChange={(e) => setAsin(e.target.value)}
-                  placeholder="Enter ASIN"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
-                />
-              </Field>
-              <Field label="SKU">
-                <input
-                  type="text"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="Enter SKU"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
-                />
-              </Field>
-              <Field label="FNSKU">
-                <input
-                  type="text"
-                  value={fnsku}
-                  onChange={(e) => setFnsku(e.target.value.toUpperCase())}
-                  placeholder="Enter FNSKU"
-                  className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
-                />
-              </Field>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={() => setIsAddOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                disabled={createMutation.isPending || !fnsku.trim()}
-                onClick={() =>
-                  createMutation.mutate({
-                    product_title: productTitle,
-                    asin,
-                    sku,
-                    fnsku,
-                  })
-                }
-              >
-                {createMutation.isPending ? 'Saving…' : 'Save Row'}
-              </Button>
-            </div>
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent hideClose className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-role-caption font-bold uppercase tracking-wider">
+              Add FNSKU Mapping
+            </DialogTitle>
+            <DialogDescription className="text-role-caption">
+              Create one catalog row manually when you don&apos;t want to use a CSV upload.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="Product Title">
+              <input
+                type="text"
+                value={productTitle}
+                onChange={(e) => setProductTitle(e.target.value)}
+                placeholder="Enter product title"
+                className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
+              />
+            </Field>
+            <Field label="ASIN">
+              <input
+                type="text"
+                value={asin}
+                onChange={(e) => setAsin(e.target.value)}
+                placeholder="Enter ASIN"
+                className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
+              />
+            </Field>
+            <Field label="SKU">
+              <input
+                type="text"
+                value={sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="Enter SKU"
+                className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
+              />
+            </Field>
+            <Field label="FNSKU">
+              <input
+                type="text"
+                value={fnsku}
+                onChange={(e) => setFnsku(e.target.value.toUpperCase())}
+                placeholder="Enter FNSKU"
+                className="w-full rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-caption outline-none focus:border-blue-500"
+              />
+            </Field>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={() => setIsAddOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              disabled={createMutation.isPending || !fnsku.trim()}
+              onClick={() =>
+                createMutation.mutate({
+                  product_title: productTitle,
+                  asin,
+                  sku,
+                  fnsku,
+                })
+              }
+            >
+              {createMutation.isPending ? 'Saving…' : 'Save Row'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

@@ -6,7 +6,7 @@
  * sidebar (`ReceivingHistorySearchSection`) into the top bar.
  *
  * Left:   carton-source tabs — All / Unfound.
- * Right:  [⌕ search] · [⫶ field / sort] · [week pill] · [columns toolbar].
+ * Right:  [⌕ search] · [⫶ field / sort] · [week pill].
  * Row select lives in the table left gutter.
  */
 
@@ -19,7 +19,6 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { ToolbarSearchToggle } from '@/components/ui/ToolbarSearchToggle';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { useDebounce } from '@/hooks';
@@ -219,8 +218,6 @@ export function HistoryWorkspaceHeader({
               onNext: onNextWeek,
             }}
           />
-
-          <ColumnConfigButton variant="toolbar" />
         </>
       }
     />

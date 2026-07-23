@@ -17,12 +17,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
-
-function buildOpenLinksHubHref(links: Array<{ href: string }>): string {
-  // Keep this URL short + robust: JSON array of hrefs in a query param.
-  const qs = new URLSearchParams({ links: JSON.stringify(links.map((l) => l.href)) });
-  return `/open-links?${qs.toString()}`;
-}
+import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
 
 export function IdentityLinkChip({
   openHref,
@@ -41,6 +36,8 @@ export function IdentityLinkChip({
   chipAction = 'copy',
   showExternalIcon = false,
   menuFirstAction = 'open',
+  menuBetween,
+  suppressMenu = false,
   linkOptions,
   iconOnly = false,
   iconOnlyMark,
@@ -77,6 +74,16 @@ export function IdentityLinkChip({
   showExternalIcon?: boolean;
   /** First menu row. Listing uses Copy; PO/tracking use Open. */
   menuFirstAction?: 'open' | 'copy';
+  /**
+   * Optional row(s) between the first action (Open/Copy) and Edit — e.g. ticket
+   * chip seller-message. Caller owns separators / menuitem markup.
+   */
+  menuBetween?: ReactNode;
+  /**
+   * Hide the hover menu while a sibling panel is open (seller message, etc.).
+   * `editOpen` already suppresses; this covers other anchored panels.
+   */
+  suppressMenu?: boolean;
   /** Additional open targets — when length > 1, the hover menu lists every link. */
   linkOptions?: Array<{ href: string; label: string; title?: string }>;
   /**
@@ -107,8 +114,12 @@ export function IdentityLinkChip({
   };
   const hasMenuActions =
     actionsInMenu &&
-    (!!onEdit || menuFirstAction === 'copy' || !!openHref || multiLinks != null);
-  const showActionMenu = hasMenuActions && !editOpen;
+    (!!onEdit ||
+      menuFirstAction === 'copy' ||
+      !!openHref ||
+      multiLinks != null ||
+      menuBetween != null);
+  const showActionMenu = hasMenuActions && !editOpen && !suppressMenu;
   const isEditing = !!editOpen;
 
   const iconOnlyTooltip = openHref
@@ -321,6 +332,7 @@ export function IdentityLinkChip({
                 Copy
               </button>
             )}
+            {menuBetween}
             {onEdit ? (
               // ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button
               <button

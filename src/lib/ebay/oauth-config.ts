@@ -173,3 +173,83 @@ export function ebayIdentityEndpoint(env?: string | null): string {
     ? 'https://api.sandbox.ebay.com/commerce/identity/v1/user/'
     : 'https://api.ebay.com/commerce/identity/v1/user/';
 }
+
+type EbayAuthorizeProbeResult =
+  | { ok: true }
+  | {
+      ok: false;
+      /** Short eBay errorId from the errorOauth redirect, when present. */
+      errorId: string | null;
+      /** Stable app-facing reason for Settings banners. */
+      reason: 'invalid_request' | 'unauthorized_client' | 'unknown';
+    };
+
+/**
+ * Server-side preflight for the consent URL: follow eBay's authorize redirects
+ * (without a browser session) and detect App ID / RuName rejection before we
+ * send the operator to auth.ebay.com. A healthy config lands on a sign-in or
+ * consent path — never `/oauth2/errorOauth`.
+ *
+ * Does not log secrets; callers pass already-resolved app creds.
+ */
+export async function probeEbayOauthAuthorizeConfig(input: {
+  appId: string;
+  ruName: string;
+  environment: EbayEnvironment;
+  /** Space-separated scopes (same string connect will request). */
+  scope: string;
+  fetchImpl?: typeof fetch;
+}): Promise<EbayAuthorizeProbeResult> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const authUrl =
+    `https://${ebayAuthDomain(input.environment)}/oauth2/authorize` +
+    `?client_id=${encodeURIComponent(input.appId)}` +
+    `&redirect_uri=${encodeURIComponent(input.ruName)}` +
+    `&response_type=code` +
+    `&scope=${encodeURIComponent(input.scope)}`;
+
+  const ua =
+    'Mozilla/5.0 (compatible; CycleForge-OAuth-Preflight/1.0; +https://cycleforge.ai)';
+
+  let url: string | null = authUrl;
+  for (let hop = 0; hop < 6 && url; hop++) {
+    let res: Response;
+    try {
+      res = await fetchImpl(url, {
+        method: 'GET',
+        redirect: 'manual',
+        headers: { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml' },
+      });
+    } catch {
+      return { ok: false, errorId: null, reason: 'unknown' };
+    }
+
+    const location = res.headers.get('location');
+    if (!location) {
+      // Terminal HTML (sign-in / consent) — treat as accepted config.
+      return { ok: true };
+    }
+
+    let next: URL;
+    try {
+      next = new URL(location, url);
+    } catch {
+      return { ok: false, errorId: null, reason: 'unknown' };
+    }
+
+    if (next.pathname.includes('errorOauth') || next.searchParams.has('errorId')) {
+      const errorId = (next.searchParams.get('errorId') || '').trim().toLowerCase() || null;
+      const reason =
+        errorId === 'invalid_request'
+          ? 'invalid_request'
+          : errorId === 'unauthorized_client'
+            ? 'unauthorized_client'
+            : 'unknown';
+      return { ok: false, errorId, reason };
+    }
+
+    url = next.toString();
+  }
+
+  return { ok: false, errorId: null, reason: 'unknown' };
+}

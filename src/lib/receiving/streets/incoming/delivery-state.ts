@@ -32,7 +32,6 @@ export const DELIVERY_STATES = [
   'RECEIVED',
   'DELIVERED_UNOPENED',
   'DELIVERED_NOT_UNBOXED',
-  'DELIVERED_EMAIL',
   'ARRIVING_TODAY',
   'STALLED',
   'TRACKING_UNAVAILABLE',
@@ -103,22 +102,6 @@ const PENDING_CARRIER_CASE = `stn.latest_status_category IS NULL OR stn.latest_s
 const PENDING_CARRIER_WHERE = `stn.id IS NOT NULL
             AND (stn.latest_status_category IS NULL OR stn.latest_status_category = 'UNKNOWN')
             AND NOT ${CARRIER_MISMATCH_PREDICATE}`;
-// Wave-2 reader cutover: the line's normalized PO# reads from
-// receiving_line_zoho (rz_eds.zoho_purchaseorder_number_norm, 1:1 with the
-// line; rz rows exist for every line with ANY zoho field), joined inside the
-// EXISTS so consumers of the fragment need no extra join.
-const DELIVERED_EMAIL_WHERE = `EXISTS (
-             SELECT 1 FROM email_delivery_signals eds
-              JOIN receiving_line_zoho rz_eds
-                ON rz_eds.receiving_line_id = rl.id
-               AND rz_eds.organization_id = rl.organization_id
-              WHERE eds.order_number_norm = rz_eds.zoho_purchaseorder_number_norm
-                AND eds.organization_id = rl.organization_id
-                AND eds.delivered_at > NOW() - interval '30 days'
-           )
-           AND NOT EXISTS (
-             SELECT 1 FROM receiving_scans rs WHERE rs.receiving_id = r.id
-           )`;
 
 interface DeliveryStateBucket {
   state: DeliveryState;
@@ -136,8 +119,8 @@ export const DELIVERY_STATE_BUCKETS: ReadonlyArray<DeliveryStateBucket> = [
   { state: 'RECEIVED', caseWhen: RECEIVED, whereStandalone: null }, // incoming view filters to EXPECTED → no facet
   { state: 'DELIVERED_UNOPENED', caseWhen: DELIVERED_UNOPENED, whereStandalone: DELIVERED_UNOPENED },
   // CASE = scanned+not-unboxed; WHERE = broader delivered+not-unboxed (asymmetry like PENDING_CARRIER).
+  // Facet kept for Unbox deep-links; Incoming hunt tiles no longer expose this rose bucket.
   { state: 'DELIVERED_NOT_UNBOXED', caseWhen: DELIVERED_NOT_UNBOXED_CASE, whereStandalone: DELIVERED_NOT_UNBOXED_WHERE },
-  { state: 'DELIVERED_EMAIL', caseWhen: null, whereStandalone: DELIVERED_EMAIL_WHERE }, // facet-only
   { state: 'ARRIVING_TODAY', caseWhen: ARRIVING_TODAY, whereStandalone: ARRIVING_TODAY },
   { state: 'STALLED', caseWhen: STALLED, whereStandalone: STALLED },
   { state: 'TRACKING_UNAVAILABLE', caseWhen: TRACKING_UNAVAILABLE, whereStandalone: null }, // CASE-only label

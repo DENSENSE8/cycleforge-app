@@ -16,7 +16,7 @@ import { selectKpiValue } from './operations-dashboard-logic';
  * Operations Live — a **Monitor** (observe-only): goal → KPIs → exceptions →
  * pipeline → feed, and every click leaves to a workbench. The demoted sections
  * (Agents, StaffGoals, Inventory, Velocity, Matrix/PerformanceGoals, Support)
- * and the `PendingOrdersTable` order ledger were unmounted from Live — a ledger
+ * and the Pending grid order ledger were unmounted from Live — a ledger
  * is a Workbench (durable selection + edit), the wrong archetype on a Monitor.
  * Those components still exist for the Analytics mode; Live stops consuming them.
  * The out-of-stock KPI tile is the deep-link into the Orders workbench.

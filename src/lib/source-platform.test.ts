@@ -12,6 +12,12 @@ test('every platform has a fixed 1–2 char lettermark', () => {
   }
 });
 
+test('every platform has a monochrome brand icon path', () => {
+  for (const p of SOURCE_PLATFORMS) {
+    assert.ok(p.icon && p.icon.length > 20, `${p.value} missing icon path`);
+  }
+});
+
 test('sourcePlatformMark is stable width for known platforms', () => {
   assert.equal(sourcePlatformMark('goodwill'), 'Gw');
   assert.equal(sourcePlatformMark('amazon'), 'az');

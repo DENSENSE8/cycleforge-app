@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { StaffPickerList, type StaffPickerRow } from '@/components/auth/StaffPickerList';
 import { StaffPinPad } from '@/components/auth/StaffPinPad';
-import { IconButton } from '@/design-system/primitives';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { readRecentSignins, writeRecentSignin } from '@/lib/auth/recent-signins';
 
 function humanError(code: string | undefined): string {
@@ -80,61 +80,40 @@ export function SwitchStaffSheet() {
     return { ok: true as const };
   }, [picked, refresh, router, closeSwitcher]);
 
-  if (!isOpen) return null;
-
   const currentStaffName = user ? `Currently signed in as staff #${user.staffId}` : 'Choose a staff member';
 
   return (
-    <div
-      className="fixed inset-0 z-panel flex items-end justify-center bg-scrim/60 backdrop-blur-sm sm:items-center"
-      onClick={closeSwitcher}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Switch staff"
+    <BottomSheet
+      open={isOpen}
+      onClose={closeSwitcher}
+      title={picked ? undefined : 'Switch staff'}
+      maxWidth="28rem"
     >
-      <div
-        className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-gradient-to-b from-gray-50 via-white to-gray-50 px-6 pb-10 pt-6 shadow-2xl sm:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <IconButton
-          type="button"
-          onClick={closeSwitcher}
-          ariaLabel="Close switch staff"
-          className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border border-border-soft bg-surface-card transition hover:bg-surface-hover"
-          icon={
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-          }
+      {picked ? (
+        <StaffPinPad
+          staff={picked}
+          onSubmit={submit}
+          onBack={() => setPicked(null)}
+          submitLabel="Switch"
         />
-
-        {picked ? (
-          <StaffPinPad
-            staff={picked}
-            onSubmit={submit}
-            onBack={() => setPicked(null)}
-            submitLabel="Switch"
-          />
-        ) : (
-          <>
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-text-default">Switch staff</h2>
-              <p className="mt-1 text-role-caption text-text-soft">{currentStaffName}</p>
-            </div>
-            <div className="mt-6">
-              <StaffPickerList
-                recent={recent}
-                recentReady={recentReady}
-                onPick={(s) => { setPickerMessage(null); setPicked(s); }}
-                onMessage={setPickerMessage}
-              />
-              {pickerMessage && (
-                <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
-                  {pickerMessage}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+      ) : (
+        <>
+          <p className="text-center text-role-caption text-text-soft">{currentStaffName}</p>
+          <div className="mt-6">
+            <StaffPickerList
+              recent={recent}
+              recentReady={recentReady}
+              onPick={(s) => { setPickerMessage(null); setPicked(s); }}
+              onMessage={setPickerMessage}
+            />
+            {pickerMessage && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                {pickerMessage}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }

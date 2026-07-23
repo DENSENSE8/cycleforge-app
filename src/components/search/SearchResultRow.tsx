@@ -6,25 +6,20 @@
  * renders through this so there is exactly one row (SoT: never fork a
  * per-surface renderer).
  *
- * Two DENSITIES (+ header dropdown):
- *   • compact     — the header dropdown preview + sidebar quick-jumps. Tight
- *     rows, bare leading glyph. (Default — unchanged from the original.)
- *   • dropdown    — header combobox panel only: micro titles, tighter rows.
- *   • comfortable — the full results surface (/search + operations). Taller
- *     rows, a coloured entity tile, larger title, and — for serial units — a
- *     leading monospace serial badge that echoes the receiving carton display,
- *     so a serial you searched reads the same here as on the unit itself.
+ * Densities:
+ *   • compact  — sidebar quick-jumps / rails. Title-first; no chip wall.
+ *   • dropdown — header combobox preview. Same narrow anatomy, tighter pad.
+ *   • comfortable — full /search + operations. Chips, entity tile, type tag.
+ *
+ * Narrow law (compact | dropdown): title + subtitle own the width; status is a
+ * leading dot when known; trailing EntityTag and status/platform chips stay
+ * off; optional tracking last-4 only. Viewport `md:` must never gate rail
+ * chrome (sidebar is narrow on desktop too).
  *
  * Variants, chosen internally by entityType (callers never pass a flag):
- *   • order — Shopify-grade row: status dot · title · order#/sku/platform meta ·
- *     status+condition+platform chips · carrier + last-4 tracking · relative
- *     date. The dot AND the status chip both flow from orderStatusTone().
- *   • unit  — serial badge · product title · sku/status meta · chips.
- *   • generic — coloured entity tile · title · subtitle · ≤2 chips · type tag.
- *
- * The order variant needs facets. Exact-identifier hits carry NO facets, so
- * those render as the plain generic row (by design — do not "fix" a missing dot
- * on an exact hit). In operations/keyword scope facets are always present.
+ *   • order — status dot · title · meta · (comfortable: chips) · last-4 · when
+ *   • unit  — serial badge · product title · (comfortable: chips + type tag)
+ *   • generic — glyph/dot · title · subtitle · (comfortable: chips + type tag)
  */
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
@@ -35,7 +30,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { TrackingChip, getLast4, getLast4Serial } from '@/components/ui/CopyChip';
 import { formatRelativeTime } from '@/lib/search/search-recents';
-import { journeyHandoffHref } from '@/lib/search/search-hit';
+import { journeyHandoffHref, narrowSearchTitleDisplay } from '@/lib/search/search-hit';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import { cn } from '@/utils/_cn';
@@ -81,20 +76,22 @@ const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
   comfortable: 'gap-3.5 px-4 py-3',
   dropdown: 'gap-2 px-3 py-1',
 };
-// Title role by density — type role is (near-)constant; the row's padding does
-// the density work (plan §2.3-C). Compact = `role-caption` (12), comfortable =
-// `role-body` (14). Callers add `font-semibold` (600) for the title weight.
+// Narrow rails keep caption-size titles so IDs stay scannable; comfortable
+// uses body. (Dropdown used to be micro — that lost to the chip wall.)
 const TITLE_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'text-role-caption',
   comfortable: 'text-role-body',
-  dropdown: 'text-role-micro',
+  dropdown: 'text-role-caption',
 };
 const ROW_BASE = 'group flex items-center text-left transition-colors hover:bg-surface-hover';
 const ROW_ACTIVE = 'bg-blue-50 ring-1 ring-inset ring-blue-400';
-// CF Type roles (plan §2.4): meta/eyebrows use `role-eyebrow` (11/600, no
-// font-black), chips `role-micro` (10/600) — weight/tracking baked in the role.
+// Comfortable-only chips — density-gated, never viewport `md:`.
 const CHIP_BASE =
-  'hidden shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase ring-1 ring-inset md:inline-flex';
+  'inline-flex shrink-0 rounded px-1.5 py-0.5 text-role-micro uppercase ring-1 ring-inset';
+
+function isNarrowDensity(density: SearchRowDensity): boolean {
+  return density === 'compact' || density === 'dropdown';
+}
 
 // UI entity type → chip tone for the leading tile + type tag (sanctioned 5-tone
 // families only — no new colours). Two entities may share a tone.
@@ -118,6 +115,41 @@ const TILE_BY_TONE: Record<ChipTone, string> = {
 function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
   return (
     <span className={cn(CHIP_BASE, CHIP_TONE_CLASSES[tone] ?? CHIP_TONE_CLASSES.gray)}>{label}</span>
+  );
+}
+
+/** Title text — last-4 when identifier-shaped; full value on HoverTooltip. */
+function SearchTitle({
+  title,
+  density,
+  forceFull = false,
+}: {
+  title: string;
+  density: SearchRowDensity;
+  /** Product titles on order rows stay full even when oddly shaped. */
+  forceFull?: boolean;
+}) {
+  const info = forceFull
+    ? { display: title, full: title, abbreviated: false }
+    : isNarrowDensity(density)
+      ? narrowSearchTitleDisplay(title)
+      : { display: title, full: title, abbreviated: false };
+  const text = (
+    <span
+      className={cn(
+        'block truncate font-semibold text-text-default',
+        TITLE_BY_DENSITY[density],
+        info.abbreviated && 'font-mono tabular-nums',
+      )}
+    >
+      {info.display}
+    </span>
+  );
+  if (!info.abbreviated) return text;
+  return (
+    <HoverTooltip label={info.full} focusable={false}>
+      {text}
+    </HoverTooltip>
   );
 }
 
@@ -154,6 +186,24 @@ function journeyActionFor(
   return <JourneyAction href={href} density={density} />;
 }
 
+/** Carrier + last-4 — always shown when tracking exists (density-gated, not md:). */
+function TrackingMeta({
+  tracking,
+  carrier,
+}: {
+  tracking: string;
+  carrier?: string | null;
+}) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1">
+      {carrier && (
+        <span className="text-role-eyebrow uppercase text-text-faint">{carrier}</span>
+      )}
+      <TrackingChip value={tracking} display={getLast4(tracking)} dense />
+    </span>
+  );
+}
+
 /** The Shopify-grade order row. Requires facets (doc-arm hits). */
 function OrderRow({
   hit,
@@ -170,6 +220,7 @@ function OrderRow({
   const platform = facets.source_platform;
   const tracking = facets.tracking_number;
   const carrier = facets.carrier;
+  const narrow = isNarrowDensity(density);
   // Prefer the hydrated packout time (scan-out / packed) + its label; fall back
   // to the generic facet happened_at when the rail didn't hydrate this row.
   const whenSource = packout?.timeAt ?? facets.happened_at ?? null;
@@ -195,48 +246,35 @@ function OrderRow({
         />
       </HoverTooltip>
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate font-semibold text-text-default', TITLE_BY_DENSITY[density])}>
-          {hit.title}
-        </span>
+        <SearchTitle title={hit.title} density={density} forceFull />
         {hit.subtitle && (
           <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
             {hit.subtitle}
           </span>
         )}
       </span>
-      {facets.status && <Chip label={facets.status} tone={status.tone} />}
-      {/* On the rep rail (packout present) keep the row lean — title + status +
-          proof — and drop the secondary condition/platform/tracking chips that
-          would otherwise crowd out the product title in the narrow rail. */}
-      {!packout && condition && <Chip label={condition} tone="amber" />}
-      {!packout && platform && <Chip label={platform} tone="gray" />}
-      {/* Packout proof (rail only) — photos ● and packer, equal-weight with status. */}
+      {/* Comfortable only — narrow rails keep title width. */}
+      {!narrow && facets.status && <Chip label={facets.status} tone={status.tone} />}
+      {!narrow && !packout && condition && <Chip label={condition} tone="amber" />}
+      {!narrow && !packout && platform && <Chip label={platform} tone="gray" />}
+      {/* Packout proof (rail only) — density-gated, not viewport md:. */}
       {packout && packout.photoCount > 0 && (
         <HoverTooltip
           label={`${packout.photoCount} packing photo${packout.photoCount === 1 ? '' : 's'}`}
           focusable={false}
         >
-          <span className="hidden shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600 md:inline-flex">
+          <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
             <Camera className="h-3 w-3" />
             {packout.photoCount}
           </span>
         </HoverTooltip>
       )}
       {packout?.packerName && (
-        <span className="hidden max-w-[7rem] shrink-0 truncate text-role-eyebrow uppercase text-text-faint md:inline-flex">
+        <span className="max-w-[7rem] shrink-0 truncate text-role-eyebrow uppercase text-text-faint">
           {packout.packerName}
         </span>
       )}
-      {!packout && tracking && (
-        <span className="hidden shrink-0 items-center gap-1 md:inline-flex">
-          {carrier && (
-            <span className="text-role-eyebrow uppercase text-text-faint">
-              {carrier}
-            </span>
-          )}
-          <TrackingChip value={tracking} display={getLast4(tracking)} dense />
-        </span>
-      )}
+      {!packout && tracking && <TrackingMeta tracking={tracking} carrier={carrier} />}
       {when && (
         <span className="shrink-0 text-role-eyebrow uppercase tabular-nums text-text-faint">
           {whenLabel ? `${whenLabel} · ${when}` : when}
@@ -262,6 +300,7 @@ function UnitRow({
   const badge = serial ? getLast4Serial(serial) : '';
   const chips = hit.chips?.slice(0, 2) ?? [];
   const big = density === 'comfortable';
+  const narrow = isNarrowDensity(density);
 
   return (
     <Link
@@ -285,19 +324,18 @@ function UnitRow({
         <EntityTile entityType="unit" density={density} />
       )}
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate font-semibold text-text-default', TITLE_BY_DENSITY[density])}>
-          {hit.title}
-        </span>
+        <SearchTitle title={hit.title} density={density} />
         {hit.subtitle && (
           <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
             {hit.subtitle}
           </span>
         )}
       </span>
-      {chips.map((chip) => (
-        <Chip key={chip.label} label={chip.label} tone={chip.tone ?? 'gray'} />
-      ))}
-      <EntityTag entityType={hit.entityType} density={density} />
+      {!narrow &&
+        chips.map((chip) => (
+          <Chip key={chip.label} label={chip.label} tone={chip.tone ?? 'gray'} />
+        ))}
+      {!narrow && <EntityTag entityType={hit.entityType} />}
       {journeyActionFor(hit, density, showJourneyAction)}
     </Link>
   );
@@ -326,20 +364,34 @@ function EntityTile({ entityType, density }: { entityType: string; density: Sear
   );
 }
 
-/** Right-edge entity type tag — coloured in comfortable, neutral in compact. */
-function EntityTag({ entityType, density }: { entityType: string; density: SearchRowDensity }) {
+/** Right-edge entity type tag — comfortable density only. */
+function EntityTag({ entityType }: { entityType: string }) {
   const tone = ENTITY_TONE[entityType] ?? 'gray';
   return (
     <span
       className={cn(
-        'shrink-0 rounded-md px-1.5 py-0.5 text-role-micro uppercase',
-        density === 'comfortable'
-          ? cn('ring-1 ring-inset', CHIP_TONE_CLASSES[tone])
-          : 'bg-surface-sunken text-text-soft',
+        'shrink-0 rounded-md px-1.5 py-0.5 text-role-micro uppercase ring-1 ring-inset',
+        CHIP_TONE_CLASSES[tone],
       )}
     >
       {entityType}
     </span>
+  );
+}
+
+/** Status dot when a status string is known (narrow generic rows). */
+function StatusDot({ status, density }: { status: string; density: SearchRowDensity }) {
+  const tone = orderStatusTone(status);
+  return (
+    <HoverTooltip label={tone.label} focusable={false}>
+      <span
+        className={cn(
+          'shrink-0 rounded-full',
+          density === 'comfortable' ? 'h-2.5 w-2.5' : 'h-2 w-2',
+          tone.dot,
+        )}
+      />
+    </HoverTooltip>
   );
 }
 
@@ -352,6 +404,18 @@ function GenericRow({
   onNavigate,
   showJourneyAction,
 }: SearchResultRowProps) {
+  const narrow = isNarrowDensity(density);
+  const status =
+    hit.facets?.status ??
+    hit.chips?.find((c) => c.tone === 'blue' || c.tone === 'amber' || c.tone === 'rose')?.label ??
+    null;
+  const tracking = hit.facets?.tracking_number ?? null;
+  const carrier = hit.facets?.carrier ?? null;
+  // When the title itself is the tracking #, last-4 lives in the title — skip
+  // a redundant right-slot chip.
+  const titleAbbrev = narrow ? narrowSearchTitleDisplay(hit.title).abbreviated : false;
+  const showTrackingRight = Boolean(tracking) && !titleAbbrev;
+
   return (
     <Link
       href={hit.href}
@@ -361,21 +425,27 @@ function GenericRow({
       aria-selected={active || undefined}
       className={cn(ROW_BASE, ROW_BY_DENSITY[density], active && ROW_ACTIVE)}
     >
-      <EntityTile entityType={hit.entityType} density={density} />
+      {narrow && status ? (
+        <StatusDot status={status} density={density} />
+      ) : (
+        <EntityTile entityType={hit.entityType} density={density} />
+      )}
       <span className="min-w-0 flex-1">
-        <span className={cn('block truncate font-semibold text-text-default', TITLE_BY_DENSITY[density])}>
-          {hit.title}
-        </span>
+        <SearchTitle title={hit.title} density={density} />
         {hit.subtitle && (
           <span className="mt-0.5 block truncate text-role-eyebrow uppercase text-text-soft">
             {hit.subtitle}
           </span>
         )}
       </span>
-      {hit.chips?.slice(0, 2).map((chip) => (
-        <Chip key={chip.label} label={chip.label} tone={chip.tone ?? 'gray'} />
-      ))}
-      <EntityTag entityType={hit.entityType} density={density} />
+      {!narrow &&
+        hit.chips?.slice(0, 2).map((chip) => (
+          <Chip key={chip.label} label={chip.label} tone={chip.tone ?? 'gray'} />
+        ))}
+      {!narrow && <EntityTag entityType={hit.entityType} />}
+      {narrow && showTrackingRight && tracking && (
+        <TrackingMeta tracking={tracking} carrier={carrier} />
+      )}
       {journeyActionFor(hit, density, showJourneyAction)}
       {density === 'compact' && (
         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />

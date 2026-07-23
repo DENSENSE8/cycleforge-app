@@ -3,6 +3,13 @@
 import { useEffect, useState } from 'react';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
 import { useActiveStaffDirectory } from '@/components/sidebar/hooks';
@@ -87,23 +94,28 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-      <button
-        type="button"
-        className="ds-raw-button absolute inset-0 bg-scrim/35"
-        aria-label="Close create plan"
-        onClick={() => { if (!submitting) setOpen(false); }}
-      />
-      <div className="relative z-modal flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/15">
-        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !submitting) setOpen(false);
+      }}
+    >
+      <DialogContent
+        hideClose
+        className="flex max-h-[90dvh] max-w-lg flex-col overflow-hidden gap-0 p-0"
+      >
+        <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
             <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>
               New plan
             </p>
-            <h2 className="mt-1 text-sm font-black text-text-default">Create FBA shipment plan</h2>
+            <DialogTitle className="mt-1 text-sm font-black">
+              Create FBA shipment plan
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Fill in destination, due date, assignees, and FNSKU line items for a new FBA plan.
+            </DialogDescription>
           </div>
           <IconButton
             icon={<X className="h-4 w-4" />}
@@ -112,7 +124,7 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
             ariaLabel="Close create plan"
             className="rounded-full border border-border-soft bg-surface-card p-2 hover:border-border-default hover:bg-surface-hover disabled:opacity-40"
           />
-        </div>
+        </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <FbaCreateShipmentForm
             staff={staffDirectory}
@@ -128,7 +140,7 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
             stationTheme={stationTheme}
           />
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

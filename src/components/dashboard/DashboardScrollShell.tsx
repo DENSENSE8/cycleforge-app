@@ -15,11 +15,6 @@ export function useDashboardScrollParent(): RefObject<HTMLElement | null> {
   return ctx;
 }
 
-/** Returns null outside the dashboard scroll shell (embedded / legacy callers). */
-export function useDashboardScrollParentOptional(): RefObject<HTMLElement | null> | null {
-  return useContext(DashboardScrollContext);
-}
-
 export interface DashboardScrollShellProps {
   children: ReactNode;
   className?: string;

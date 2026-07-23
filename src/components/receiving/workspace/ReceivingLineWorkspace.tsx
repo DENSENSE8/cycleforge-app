@@ -45,6 +45,7 @@ interface Props {
 export function ReceivingLineWorkspace({
   row,
   staffId,
+  accordionBootstrap,
   nav,
   variant = 'unbox',
   onClose,
@@ -85,7 +86,13 @@ export function ReceivingLineWorkspace({
         {variant === 'triage' ? (
           <TriagePanel key="triage" row={row} staffId={staffId} onClose={onClose} />
         ) : (
-          <LineEditPanel key="unbox" row={row} staffId={staffId} itemTotal={nav?.total} />
+          <LineEditPanel
+            key="unbox"
+            row={row}
+            staffId={staffId}
+            itemTotal={nav?.total}
+            accordionBootstrap={accordionBootstrap}
+          />
         )}
       </div>
     </div>

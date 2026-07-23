@@ -9,17 +9,16 @@ import { framerPresence, framerTransition } from '@/design-system/foundations/mo
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
 /**
- * Day-group header shown between each day's rows in board / Packed / station lists.
+ * Day-group header shown between each day's rows in station / receiving / repair
+ * lists that still band by civil day.
  *
  * Micro sticky label (date + qty) — quiet chrome so lane headers and rows stay
  * primary. Sticky so as a day's rows scroll past, the label docks to the top of
  * the scroll container and *is* the live date header.
  *
- * **Pending Grid does not use this** — absolute civil date lives in a per-row
- * Date column ({@link LedgerGrid} passes `showDayHeaders={false}`). Board /
- * Packed / receiving / repair still compose day bands via
- * {@link VirtualGroupedSections} + `stickyHeaderTop` when a sticky column header
- * shares the scrollport.
+ * **Outbound spreadsheets do not use this** — absolute civil date lives in a
+ * per-row Date column ({@link LedgerGrid} / OrdersGridView pass
+ * `showDayHeaders={false}`).
  *
  * When `animate` is on (dense queue / swimlane Show more), the sticky row + label
  * use the same layout spring as chip columns / order rows so the top-left date

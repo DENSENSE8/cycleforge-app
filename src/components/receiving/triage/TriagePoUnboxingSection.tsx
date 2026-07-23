@@ -6,8 +6,8 @@
  * Sibling of Unbox {@link POUnboxingSection}:
  *   - No Auto-match strip (package not unboxed yet)
  *   - Arrival pairing hub without Inventory Item
- *   - Controlled collapse honors `pairingOpen` whenever matching is shown
- *     (does not gate on PO items — that broke hide/show for unfound)
+ *   - Collapsed by default (`pairingOpen` false) for matched AND unfound —
+ *     header stays visible; body expands via accordion / PairingTogglePill
  */
 
 import { WorkspaceCard } from '@/design-system/components';
@@ -32,6 +32,7 @@ export function TriagePoUnboxingSection({
   includeLinkedPoItems = false,
   suppressItemsHeader = false,
   pairingOpen: pairingOpenProp,
+  onPairingToggle,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -46,7 +47,7 @@ export function TriagePoUnboxingSection({
   includeLinkedPoItems?: boolean;
   suppressItemsHeader?: boolean;
   pairingOpen?: boolean;
-  /** Owned by TriagePanel PairingTogglePill — kept for call-site API parity. */
+  /** Toggle package pairing body — accordion header + PairingTogglePill. */
   onPairingToggle?: () => void;
 }) {
   const linkedPo = !c.isUnfound && !shouldUseUnmatchedItemsSurface(row);
@@ -55,10 +56,8 @@ export function TriagePoUnboxingSection({
 
   // Default closed when uncontrolled; Overview lifts state via pairingOpen.
   const pairingIsOpen = pairingOpenProp ?? false;
-
-  // Unfound: no Edit-PO toggle — pairing stays visible.
-  // Matched: honor pairingOpen (do not gate on showPoItems — that broke hide/show).
-  const pairingCollapsed = showPairing && !c.isUnfound ? !pairingIsOpen : false;
+  // Arrival: pairing body stays collapsed until the operator opens it.
+  const pairingCollapsed = showPairing ? !pairingIsOpen : false;
 
   if (!showPoItems && !showPairing) return null;
 
@@ -87,6 +86,7 @@ export function TriagePoUnboxingSection({
             showOpenInUnbox={openInUnbox}
             embedded
             collapsed={pairingCollapsed}
+            onToggleCollapsed={onPairingToggle}
             showTopRule={showPoItems}
           />
         ) : null}

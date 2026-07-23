@@ -1,53 +1,88 @@
 'use client';
 
 /**
- * Collapse-to-active pill selector. Collapsed, it shows only the current value
- * as a pill; open, it shows the full option set inline so the operator picks
- * without a floating dropdown.
+ * Collapse-to-active pill selector. Collapsed, it shows the **identity** of the
+ * current value (tone-coded icon face, icon+name, or label); open, it shows the
+ * full option set inline so the operator picks without a floating dropdown.
  *
- * Open/closed is now *parent-controlled* (`open` + `onOpenChange`) so the
- * carton bar can orchestrate one picker at a time: opening one unrenders the
- * trailing chip cluster, the options fill the freed row, and selecting (or
- * dismissing) collapses back and rerenders the chips. The same primitive backs
- * the platform, receiving-type, AND urgency pills so all three read identically.
+ * Open/closed is *parent-controlled* (`open` + `onOpenChange`) so the carton
+ * bar can orchestrate one picker at a time. The same primitive backs platform,
+ * receiving-type, AND urgency pills.
  *
- * Generic over the option set; per-option tone overrides keep e.g. the platform
- * "Unfound" pill amber while everything else uses the default blue active tone.
+ * Motion: opacity-only swaps (no layout anim); no `mode="wait"` gap between
+ * collapsed ↔ expanded. Timing from `framerTransition` / `motionBezier`.
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Flag, Globe, Tag } from '@/components/Icons';
-import { HEADER_ICON_GLYPH, HEADER_ICON_WRAP } from '@/components/layout/header-shell';
+import { TOP_CHROME_ICON_GLYPH, HEADER_ICON_WRAP } from '@/components/layout/header-shell';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 
 export interface InlinePillOption {
   value: string;
   label: string;
+  /**
+   * Dense carton-bookmark label (platform mark / type short / urgency short).
+   * Used when `collapsedVariant="bookmark"`.
+   */
+  shortLabel?: string;
   /** Active tone classes (default: blue). */
   activeClass?: string;
   /** Inactive tone classes (default: gray). */
   inactiveClass?: string;
   title?: string;
+  /**
+   * Identity face (platform mark / type glyph / urgency flag). Used when
+   * `collapsedFace` or `expandedFace` is `"icon"` / `"iconLabel"`.
+   */
+  face?: ReactNode;
 }
 
 /**
- * Expanded-row leading glyphs — Urgency / Platform / Type.
- * Same glyph box as the station bar back / classify IconButtons so open-picker
- * left edge lines up with the back-to-list column.
+ * Dimension glyphs — Urgency / Platform / Type section eyebrows only.
+ * Collapsed identity faces use per-option `face`, not these.
  */
 export const INLINE_PILL_LEADING = {
-  urgency: <Flag className={HEADER_ICON_GLYPH} />,
-  platform: <Globe className={HEADER_ICON_GLYPH} />,
-  type: <Tag className={HEADER_ICON_GLYPH} />,
+  urgency: <Flag className={TOP_CHROME_ICON_GLYPH} />,
+  platform: <Globe className={TOP_CHROME_ICON_GLYPH} />,
+  type: <Tag className={TOP_CHROME_ICON_GLYPH} />,
 } as const;
 
 const PILL_BASE =
   'inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-role-micro uppercase tracking-wide transition-colors';
-const DEFAULT_ACTIVE = 'border-blue-600 bg-blue-600 text-white';
-// Slightly translucent at rest so inactive pills sit INTO the frosted card
-// instead of stamping opaque tiles onto it; hover restores a solid wash.
-const DEFAULT_INACTIVE = 'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
+/**
+ * Locked equal width for icon-only faces — same hit box as
+ * {@link HEADER_ICON_WRAP} (`h-8 w-8`).
+ */
+export const INLINE_PILL_ICON_FACE =
+  'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors';
+/** Icon + full name — expanded option pads / default collapsed. */
+const INLINE_PILL_ICON_LABEL =
+  'inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase tracking-wide transition-colors';
+/**
+ * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
+ * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
+ * (`High` / `Med` / `Trade` truncated).
+ */
+const INLINE_PILL_ICON_LABEL_BOOKMARK =
+  'inline-flex h-8 w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-full border px-1 text-role-micro font-medium uppercase tracking-wide transition-colors shadow-none box-border';
+
+const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm';
+const DEFAULT_INACTIVE =
+  'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
+
+const EMPTY_FACE = (
+  <span className="text-role-micro font-black text-current" aria-hidden>
+    —
+  </span>
+);
+
+const SWAP_MS = 0.12;
+const OPTION_STAGGER_MS = 0.018;
 
 export function InlinePillPicker({
   ariaLabel,
@@ -57,40 +92,58 @@ export function InlinePillPicker({
   open,
   onOpenChange,
   disabled = false,
+  readOnly = false,
   placeholder = '—',
   collapsedLabel,
+  collapsedFullLabel,
   collapsedClass,
   leadingIcon,
+  collapsedFace = 'label',
+  expandedFace = 'label',
+  collapsedVariant = 'default',
 }: {
   ariaLabel: string;
   options: InlinePillOption[];
   value: string;
   onSelect: (next: string) => void;
-  /** Parent-owned open state (one picker open at a time across the bar). */
   open: boolean;
   onOpenChange: (open: boolean) => void;
   disabled?: boolean;
-  /** Collapsed label when nothing is selected yet. */
+  /**
+   * Facts-only display — collapsed face, no open, no dim (unlike `disabled`).
+   */
+  readOnly?: boolean;
   placeholder?: string;
-  /**
-   * Override the collapsed pill's label/tone independently of the option list.
-   * Lets the urgency pill show its *effective* tier at rest (e.g. derived
-   * "Medium") while the expanded list still offers a literal "Auto" option.
-   */
+  /** Collapsed visible label (bookmark: short SoT string). */
   collapsedLabel?: string;
-  collapsedClass?: string;
   /**
-   * Expanded-row leading glyph (e.g. Globe / Tag / Flag). Prefer an icon over
-   * restating `ariaLabel` as eyebrow text — name stays on the radiogroup for a11y.
+   * Full teaching name for aria / HoverTooltip when the visible face is short
+   * (e.g. urgency Auto mode still reads "High").
    */
+  collapsedFullLabel?: string;
+  collapsedClass?: string;
+  /** Quiet dimension eyebrow on expanded label rows only. */
   leadingIcon?: ReactNode;
+  /**
+   * `label` — text pill (variable width by copy).
+   * `icon` — locked `h-8 w-8` identity face.
+   * `iconLabel` — identity face + name (banner / options).
+   */
+  collapsedFace?: 'label' | 'icon' | 'iconLabel';
+  /** How expanded options render. */
+  expandedFace?: 'label' | 'icon' | 'iconLabel';
+  /**
+   * `bookmark` — equal-width quiet icon+shortLabel shell + HoverTooltip full name.
+   * CartonContextCard classify strip only.
+   */
+  collapsedVariant?: 'default' | 'bookmark';
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const reduceMotion = useReducedMotion();
+  const isBookmark = collapsedVariant === 'bookmark';
 
-  // Dismiss on click-away / Escape. Only the open picker is mounted in its open
-  // state (the parent hides the siblings), so a single listener is enough.
   useEffect(() => {
-    if (!open) return;
+    if (!open || readOnly) return;
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onOpenChange(false);
     };
@@ -103,19 +156,98 @@ export function InlinePillPicker({
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, readOnly]);
 
   const active = options.find((o) => o.value === value) ?? null;
+  const showOpen = open && !readOnly;
+  const fullLabel =
+    collapsedFullLabel ?? active?.label ?? collapsedLabel ?? placeholder;
+  const faceLabel = isBookmark
+    ? (collapsedLabel ?? active?.shortLabel ?? active?.label ?? placeholder)
+    : (collapsedLabel ?? active?.label ?? placeholder);
+  const faceTone =
+    collapsedClass ?? (active ? active.activeClass ?? DEFAULT_ACTIVE : DEFAULT_INACTIVE);
+  const identityFace = active?.face ?? EMPTY_FACE;
+  const tooltipLabel = `${ariaLabel}: ${active?.title ?? fullLabel}${
+    readOnly ? '' : ' — click to change'
+  }`;
+
+  const swapTransition = reduceMotion
+    ? { duration: 0.01 }
+    : { duration: SWAP_MS, ease: motionBezier.easeOut };
+  const optionTransition = (i: number) =>
+    reduceMotion
+      ? { duration: 0.01 }
+      : {
+          duration: framerDuration.chipCopyFeedback,
+          delay: i * OPTION_STAGGER_MS,
+          ease: motionBezier.easeOut,
+        };
+
+  const collapsedShell =
+    collapsedFace === 'icon'
+      ? INLINE_PILL_ICON_FACE
+      : collapsedFace === 'iconLabel'
+        ? isBookmark
+          ? INLINE_PILL_ICON_LABEL_BOOKMARK
+          : INLINE_PILL_ICON_LABEL
+        : PILL_BASE;
+
+  const collapsedClassName = cn(
+    collapsedShell,
+    faceTone,
+    isBookmark && 'shadow-none',
+    focusRing('control', 'accent'),
+    readOnly && 'pointer-events-none',
+  );
+
+  const collapsedFaceNode =
+    collapsedFace === 'icon' ? (
+      <span className="grid place-items-center" aria-hidden>
+        {identityFace}
+      </span>
+      ) : collapsedFace === 'iconLabel' ? (
+        <>
+          <span className="grid h-4 w-4 shrink-0 place-items-center overflow-hidden" aria-hidden>
+            {identityFace}
+          </span>
+          <span
+            className={cn(
+              isBookmark && 'min-w-0 truncate text-left leading-none opacity-80',
+            )}
+          >
+            {faceLabel}
+          </span>
+        </>
+      ) : (
+      faceLabel
+    );
+
+  const collapsedButton = (
+    <button
+      type="button"
+      aria-haspopup={readOnly ? undefined : 'true'}
+      aria-label={
+        readOnly ? `${ariaLabel}: ${fullLabel}` : `${ariaLabel}: ${fullLabel} — click to change`
+      }
+      title={isBookmark ? undefined : tooltipLabel}
+      onClick={readOnly ? undefined : () => onOpenChange(true)}
+      className={collapsedClassName}
+    >
+      {collapsedFaceNode}
+    </button>
+  );
 
   return (
     <div
       ref={ref}
-      className={`flex items-center ${open ? 'min-w-0 flex-1' : 'shrink-0'} ${
+      className={`flex items-center ${showOpen ? 'min-w-0 flex-1' : 'shrink-0'} ${
         disabled ? 'pointer-events-none opacity-50' : ''
       }`}
     >
-      <AnimatePresence initial={false} mode="wait">
-        {open ? (
+      {/* sync (not wait): overlapping opacity avoids an empty-frame jump */}
+      <AnimatePresence initial={false}>
+        {showOpen ? (
           <motion.div
             key="expanded"
             role="radiogroup"
@@ -123,65 +255,86 @@ export function InlinePillPicker({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
-            style={{ originX: 0 }}
+            transition={swapTransition}
             className="flex min-w-0 flex-1 items-center gap-1.5"
           >
-            {leadingIcon != null ? (
-              <span
-                className={cn(HEADER_ICON_WRAP, 'text-text-faint')}
-                aria-hidden
-              >
+            {leadingIcon != null && expandedFace === 'label' ? (
+              <span className={cn(HEADER_ICON_WRAP, 'text-text-faint')} aria-hidden>
                 {leadingIcon}
               </span>
             ) : null}
-            <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto scrollbar-hide">
+            <div
+              className={cn(
+                'flex min-w-0 flex-1 items-center gap-1.5',
+                expandedFace === 'icon'
+                  ? 'flex-wrap'
+                  : 'flex-nowrap overflow-x-auto scrollbar-hide',
+              )}
+            >
               {options.map((opt, i) => {
-              const isActive = opt.value === value;
-              return (
-                <motion.button
-                  key={opt.value || '__none__'}
-                  type="button"
-                  role="radio"
-                  aria-checked={isActive}
-                  title={opt.title}
-                  // Cascade in from the left so the set visibly expands
-                  // left → right out of the pill's origin.
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.14, delay: i * 0.025, ease: 'easeOut' }}
-                  onClick={() => {
-                    onSelect(opt.value);
-                    onOpenChange(false);
-                  }}
-                  className={`${PILL_BASE} ${
-                    isActive ? opt.activeClass ?? DEFAULT_ACTIVE : opt.inactiveClass ?? DEFAULT_INACTIVE
-                  }`}
-                >
-                  {opt.label}
-                </motion.button>
-              );
-            })}
+                const isActive = opt.value === value;
+                const tone = isActive
+                  ? opt.activeClass ?? DEFAULT_ACTIVE
+                  : opt.inactiveClass ?? DEFAULT_INACTIVE;
+                const faceClass =
+                  expandedFace === 'icon'
+                    ? INLINE_PILL_ICON_FACE
+                    : expandedFace === 'iconLabel'
+                      ? INLINE_PILL_ICON_LABEL
+                      : PILL_BASE;
+                return (
+                  <motion.button
+                    key={opt.value || '__none__'}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    aria-label={opt.label}
+                    title={opt.title ?? opt.label}
+                    initial={reduceMotion ? false : { opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={optionTransition(i)}
+                    onClick={() => {
+                      onSelect(opt.value);
+                      onOpenChange(false);
+                    }}
+                    className={cn(faceClass, tone, focusRing('control', 'accent'))}
+                  >
+                    {expandedFace === 'icon' ? (
+                      <span className="grid place-items-center" aria-hidden>
+                        {opt.face ?? opt.label}
+                      </span>
+                    ) : expandedFace === 'iconLabel' ? (
+                      <>
+                        <span className="grid h-5 w-5 place-items-center" aria-hidden>
+                          {opt.face ?? EMPTY_FACE}
+                        </span>
+                        <span>{opt.label}</span>
+                      </>
+                    ) : (
+                      opt.label
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
           </motion.div>
         ) : (
-          <motion.button
+          <motion.div
             key="collapsed"
-            type="button"
-            aria-haspopup="true"
-            aria-label={`${ariaLabel}: ${collapsedLabel ?? active?.label ?? placeholder} — click to change`}
-            title={`${ariaLabel}: ${collapsedLabel ?? active?.label ?? placeholder} — click to change`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
-            onClick={() => onOpenChange(true)}
-            className={`${PILL_BASE} ${
-              collapsedClass ?? (active ? active.activeClass ?? DEFAULT_ACTIVE : DEFAULT_INACTIVE)
-            }`}
+            transition={swapTransition}
+            className="shrink-0"
           >
-            {collapsedLabel ?? active?.label ?? placeholder}
-          </motion.button>
+            {isBookmark ? (
+              <HoverTooltip label={tooltipLabel} asChild>
+                {collapsedButton}
+              </HoverTooltip>
+            ) : (
+              collapsedButton
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

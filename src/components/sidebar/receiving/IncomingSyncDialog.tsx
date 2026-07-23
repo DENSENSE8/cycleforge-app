@@ -1,14 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Check, Loader2, Mail, Package, RefreshCw, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { AlertTriangle, Check, Loader2, Package, RefreshCw } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 
-export type IncomingSyncKind = 'zoho' | 'email' | 'marketplace';
+export type IncomingSyncKind = 'zoho' | 'marketplace';
 
 export interface SyncDialogTile {
   label: string;
@@ -45,7 +50,6 @@ interface IncomingSyncDialogProps {
 
 const KIND_META: Record<IncomingSyncKind, { eyebrow: string; icon: typeof RefreshCw; runningTitle: string; tone: string }> = {
   zoho: { eyebrow: 'Inventory Sync', icon: RefreshCw, runningTitle: 'Refreshing purchase orders', tone: 'text-emerald-600' },
-  email: { eyebrow: 'Email Sync', icon: Mail, runningTitle: 'Rescanning PO mailbox', tone: 'text-violet-600' },
   marketplace: { eyebrow: 'Marketplace Sync', icon: Package, runningTitle: 'Importing marketplace purchases', tone: 'text-amber-600' },
 };
 
@@ -66,10 +70,10 @@ function SummaryStat({ label, value, tone }: SyncDialogTile) {
 }
 
 /**
- * Result dialog for the Incoming toolbar's Zoho / Email sync buttons —
- * the single-shot (non-streaming) sibling of CarrierSyncDialog. Same visual
- * language (portal overlay, eyebrow + title header, summary stat tiles,
- * breakdown sections, footer) so all three sync actions feel consistent.
+ * Result dialog for Incoming Zoho / marketplace Import — single-shot
+ * (non-streaming) progress + result. Same visual language (Dialog shell,
+ * eyebrow + title header, summary stat tiles, breakdown sections, footer) as
+ * other sync result shells.
  */
 export function IncomingSyncDialog({
   open,
@@ -79,23 +83,6 @@ export function IncomingSyncDialog({
   result,
   onClose,
 }: IncomingSyncDialogProps) {
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setPortalNode(document.body);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !isRunning) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, isRunning, onClose]);
-
-  if (!portalNode || !open) return null;
-
   const meta = KIND_META[kind];
   const Icon = meta.icon;
   const title = isRunning
@@ -104,53 +91,40 @@ export function IncomingSyncDialog({
       ? 'Sync failed'
       : 'Sync complete';
 
-  const overlay = (
-    <motion.div
-      key="incoming-sync-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={framerTransition.overlayScrim}
-      className="fixed inset-0 z-panelPopover flex items-center justify-center bg-scrim/40 inset-empty"
-      onClick={() => {
-        if (!isRunning) onClose();
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !isRunning) onClose();
       }}
     >
-      <motion.div
-        key="incoming-sync-card"
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 320, mass: 0.55 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-surface-card shadow-[0_24px_80px_-20px_rgba(15,23,42,0.35)] ring-1 ring-border-soft"
+      <DialogContent
+        hideClose
+        className="max-w-2xl gap-0 overflow-hidden p-0 sm:rounded-2xl"
       >
-        <header className="flex items-start gap-3 border-b border-border-soft px-5 py-3.5">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+        <DialogHeader className="flex flex-row items-start gap-3 space-y-0 border-b border-border-soft px-5 py-3.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Icon className={`h-4 w-4 ${meta.tone} ${isRunning ? 'animate-pulse' : ''}`} />
             <div className="min-w-0">
-              <p className={`${microBadge} text-text-soft`}>{meta.eyebrow}</p>
-              <h2 className={`${sectionLabel} text-text-default mt-0.5`}>{title}</h2>
+              <DialogDescription className={`${microBadge} text-text-soft`}>
+                {meta.eyebrow}
+              </DialogDescription>
+              <DialogTitle className={`${sectionLabel} mt-0.5 text-text-default`}>
+                {title}
+              </DialogTitle>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <motion.span
-              key={Math.floor(elapsedMs / 100)}
-              initial={{ opacity: 0.4 }}
-              animate={{ opacity: 1 }}
-              className={`text-role-caption font-mono font-semibold tabular-nums ${meta.tone}`}
-            >
-              {(elapsedMs / 1000).toFixed(1)}s
-            </motion.span>
-            <IconButton
-              onClick={onClose}
-              disabled={isRunning}
-              ariaLabel="Close"
-              icon={<X className="w-4 h-4" />}
-              className="rounded-lg p-1.5 text-text-soft hover:bg-surface-sunken hover:text-text-muted disabled:opacity-50"
-            />
-          </div>
-        </header>
+          <motion.span
+            key={Math.floor(elapsedMs / 100)}
+            initial={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
+            className={`shrink-0 text-role-caption font-mono font-semibold tabular-nums ${meta.tone}`}
+          >
+            {(elapsedMs / 1000).toFixed(1)}s
+          </motion.span>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
           {isRunning || !result ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-text-soft">
               <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
@@ -219,7 +193,7 @@ export function IncomingSyncDialog({
           )}
         </div>
 
-        <footer className="flex items-center justify-end gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
+        <DialogFooter className="border-t border-border-soft bg-surface-canvas px-5 py-2.5 sm:justify-end">
           <Button
             variant="brand"
             size="sm"
@@ -228,10 +202,8 @@ export function IncomingSyncDialog({
           >
             {isRunning ? 'Running…' : 'Close'}
           </Button>
-        </footer>
-      </motion.div>
-    </motion.div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
-
-  return createPortal(overlay, portalNode);
 }

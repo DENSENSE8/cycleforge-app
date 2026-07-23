@@ -10,6 +10,10 @@ import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityLinkChip } from './IdentityLinkChip';
+import {
+  SellerMessageAnchoredPanel,
+  SellerMessageMenuItem,
+} from './SellerMessageChip';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
 
 /**
@@ -39,9 +43,10 @@ import { useTicketThread, threadKey } from '@/components/support/TicketThreadCar
 /**
  * Filed-ticket chip for the carton identity row. Renders the same
  * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone): chip
- * click copies, hover menu offers Open then Edit. The Edit row opens an
+ * click copies, hover menu offers Open → Message → Edit. The Edit row opens an
  * anchored popover showing the ticket's history (live Zendesk comments) with
- * an Unlink action — instead of re-opening the full claim modal.
+ * an Unlink action — instead of re-opening the full claim modal. Message opens
+ * the seller-facing draft panel (formerly a standalone header icon).
  */
 export function ReceivingTicketChip({
   value,
@@ -67,8 +72,18 @@ export function ReceivingTicketChip({
   onUnlinked: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [sellerOpen, setSellerOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
   const zendeskTicketId = providerTicketId ?? parseTicketId(value);
+
+  const openTicketHistory = () => {
+    setSellerOpen(false);
+    setOpen(true);
+  };
+  const openSellerMessage = () => {
+    setOpen(false);
+    setSellerOpen(true);
+  };
 
   return (
     <div ref={anchorRef} className="flex shrink-0 items-center">
@@ -80,10 +95,16 @@ export function ReceivingTicketChip({
         tone="ticket"
         underlineClass="border-orange-500"
         disableCopy={!value.trim()}
-        onEdit={() => setOpen(true)}
+        onEdit={openTicketHistory}
         editOpen={open}
         editLabel="View ticket history"
         actionsInMenu
+        suppressMenu={sellerOpen}
+        menuBetween={
+          receivingId != null ? (
+            <SellerMessageMenuItem onClick={openSellerMessage} active={sellerOpen} />
+          ) : null
+        }
       />
       <AnchoredLayer
         open={open}
@@ -105,6 +126,16 @@ export function ReceivingTicketChip({
           }}
         />
       </AnchoredLayer>
+      {receivingId != null ? (
+        <SellerMessageAnchoredPanel
+          open={sellerOpen}
+          onClose={() => setSellerOpen(false)}
+          anchorRef={anchorRef}
+          receivingId={receivingId}
+          lineId={lineId}
+          linkedTicketId={providerTicketId ?? null}
+        />
+      ) : null}
     </div>
   );
 }

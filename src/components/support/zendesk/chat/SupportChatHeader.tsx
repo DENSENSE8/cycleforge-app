@@ -31,6 +31,8 @@ export function SupportChatHeader({
   onBack,
   hideExternalLink = false,
   compact = false,
+  hideTitle = false,
+  hideRequesterBand = false,
   onOpenContext,
   contextOpen = false,
   contextBadge = null,
@@ -42,6 +44,16 @@ export function SupportChatHeader({
   hideExternalLink?: boolean;
   /** Station ticket tab — tighter padding + smaller type. */
   compact?: boolean;
+  /**
+   * Station identity bar already shows the subject — hide the duplicate title
+   * row; keep requester + status controls unless {@link hideRequesterBand}.
+   */
+  hideTitle?: boolean;
+  /**
+   * Station Ticket tab: drop the avatar/requester identity band entirely
+   * (status + assignment row stays). Details stack moves into the controls row.
+   */
+  hideRequesterBand?: boolean;
   /** Opens the Support Context slide-over (console host only). */
   onOpenContext?: () => void;
   /** Whether the context slide-over is open (pressed chrome). */
@@ -104,145 +116,150 @@ export function SupportChatHeader({
         compact ? 'px-3 py-2' : 'px-5 py-3.5',
       )}
     >
-      <div className="flex items-center gap-2.5">
-        {onBack ? (
-          <IconButton
-            icon={<ChevronLeft className="h-4 w-4" />}
-            onClick={onBack}
-            ariaLabel="Back to list"
-            className="-ml-1 rounded-md p-1 hover:bg-surface-sunken lg:hidden"
-          />
-        ) : null}
-        <span
-          className={cn(
-            'flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-black text-text-soft',
-            compact ? 'h-7 w-7 text-role-micro' : 'h-9 w-9 text-role-caption',
-          )}
-        >
-          {initials(reqName)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            {editingTitle ? (
-              <>
-                <input
-                  autoFocus
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      saveTitle();
-                    } else if (e.key === 'Escape') {
-                      setEditingTitle(false);
-                    }
-                  }}
-                  className={cn(
-                    'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
-                    compact ? 'text-role-caption' : 'text-role-body',
-                  )}
-                />
-                <HoverTooltip label="Save title" asChild>
-                  <IconButton
-                    icon={<Check className="h-3.5 w-3.5 text-white" />}
-                    onClick={saveTitle}
-                    disabled={update.isPending}
-                    ariaLabel="Save title"
-                    className="shrink-0 rounded-md bg-blue-600 p-1 hover:bg-blue-700"
-                  />
-                </HoverTooltip>
-                <HoverTooltip label="Cancel" asChild>
-                  <IconButton
-                    icon={<X className="h-3.5 w-3.5" />}
-                    onClick={() => setEditingTitle(false)}
-                    ariaLabel="Cancel"
-                    className="shrink-0 rounded-md p-1 hover:bg-surface-sunken"
-                  />
-                </HoverTooltip>
-              </>
-            ) : (
-              <>
-                <HoverTooltip label="Click to edit title" asChild>
-                  {/* ds-raw-button: text-left inline-editable title (truncating subject), not a standard action Button */}
-                  <button
-                    type="button"
-                    onClick={startEditTitle}
-                    aria-label="Click to edit title"
-                    className={cn(
-                      'min-w-0 truncate text-left font-bold tracking-tight text-text-default transition hover:text-blue-700',
-                      compact ? 'text-role-caption' : 'text-role-body',
-                    )}
-                  >
-                    {ticket.subject || '(no subject)'}
-                  </button>
-                </HoverTooltip>
-              </>
-            )}
-          </div>
-          <p
+      {hideRequesterBand ? null : (
+        <div className="flex items-center gap-2.5">
+          {onBack ? (
+            <IconButton
+              icon={<ChevronLeft className="h-4 w-4" />}
+              onClick={onBack}
+              ariaLabel="Back to list"
+              className="-ml-1 rounded-md p-1 hover:bg-surface-sunken lg:hidden"
+            />
+          ) : null}
+          <span
             className={cn(
-              'mt-0.5 truncate text-text-soft',
-              compact ? 'text-role-micro' : 'text-role-caption',
+              'flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-black text-text-soft',
+              compact ? 'h-7 w-7 text-role-micro' : 'h-9 w-9 text-role-caption',
             )}
           >
-            <span className="font-semibold text-text-muted">{reqName}</span>
-            {requester.email && requester.name ? <span className="text-text-faint"> · {requester.email}</span> : null}
-            <span className="text-text-faint"> · #{ticket.id}</span>
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {onOpenContext ? (
-            <HoverTooltip
-              label={contextBadge ? `Support context · ${contextBadge}` : 'Support context'}
-              asChild
-            >
-              <IconButton
-                icon={<Link2 className="h-4 w-4" />}
-                onClick={onOpenContext}
-                ariaLabel="Support context"
-                aria-pressed={contextOpen}
-                size="md"
-                className={cn(
-                  'rounded-lg ring-1 ring-inset',
-                  contextOpen
-                    ? 'bg-blue-50 text-blue-700 ring-blue-200'
-                    : 'bg-surface-card ring-border-soft hover:text-text-default',
+            {initials(reqName)}
+          </span>
+          <div className="min-w-0 flex-1">
+            {hideTitle ? null : (
+              <div className="flex min-w-0 items-center gap-1.5">
+                {editingTitle ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={titleDraft}
+                      onChange={(e) => setTitleDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          saveTitle();
+                        } else if (e.key === 'Escape') {
+                          setEditingTitle(false);
+                        }
+                      }}
+                      className={cn(
+                        'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-bold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
+                        compact ? 'text-role-caption' : 'text-role-body',
+                      )}
+                    />
+                    <HoverTooltip label="Save title" asChild>
+                      <IconButton
+                        icon={<Check className="h-3.5 w-3.5 text-white" />}
+                        onClick={saveTitle}
+                        disabled={update.isPending}
+                        ariaLabel="Save title"
+                        className="shrink-0 rounded-md bg-blue-600 p-1 hover:bg-blue-700"
+                      />
+                    </HoverTooltip>
+                    <HoverTooltip label="Cancel" asChild>
+                      <IconButton
+                        icon={<X className="h-3.5 w-3.5" />}
+                        onClick={() => setEditingTitle(false)}
+                        ariaLabel="Cancel"
+                        className="shrink-0 rounded-md p-1 hover:bg-surface-sunken"
+                      />
+                    </HoverTooltip>
+                  </>
+                ) : (
+                  <HoverTooltip label="Click to edit title" asChild>
+                    {/* ds-raw-button: text-left inline-editable title (truncating subject), not a standard action Button */}
+                    <button
+                      type="button"
+                      onClick={startEditTitle}
+                      aria-label="Click to edit title"
+                      className={cn(
+                        'min-w-0 truncate text-left font-bold tracking-tight text-text-default transition hover:text-blue-700',
+                        compact ? 'text-role-caption' : 'text-role-body',
+                      )}
+                    >
+                      {ticket.subject || '(no subject)'}
+                    </button>
+                  </HoverTooltip>
                 )}
-              />
-            </HoverTooltip>
-          ) : null}
-          {ordersHref ? (
-            <HoverTooltip label="Open linked order" asChild>
-              <a
-                href={ordersHref}
-                aria-label="Open linked order"
-                className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+              </div>
+            )}
+            <p
+              className={cn(
+                'truncate text-text-soft',
+                hideTitle ? null : 'mt-0.5',
+                compact ? 'text-role-micro' : 'text-role-caption',
+              )}
+            >
+              <span className="font-semibold text-text-muted">{reqName}</span>
+              {requester.email && requester.name ? (
+                <span className="text-text-faint"> · {requester.email}</span>
+              ) : null}
+              {hideTitle ? null : <span className="text-text-faint"> · #{ticket.id}</span>}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {onOpenContext ? (
+              <HoverTooltip
+                label={contextBadge ? `Support context · ${contextBadge}` : 'Support context'}
+                asChild
               >
-                <Package className="h-4 w-4" />
-              </a>
-            </HoverTooltip>
-          ) : null}
-          <SupportDetailsStack ticket={ticket} />
-          {url ? (
-            <HoverTooltip label={openLabel} asChild>
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={openLabel}
-                className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </HoverTooltip>
-          ) : null}
+                <IconButton
+                  icon={<Link2 className="h-4 w-4" />}
+                  onClick={onOpenContext}
+                  ariaLabel="Support context"
+                  aria-pressed={contextOpen}
+                  size="md"
+                  className={cn(
+                    'rounded-lg ring-1 ring-inset',
+                    contextOpen
+                      ? 'bg-blue-50 text-blue-700 ring-blue-200'
+                      : 'bg-surface-card ring-border-soft hover:text-text-default',
+                  )}
+                />
+              </HoverTooltip>
+            ) : null}
+            {ordersHref ? (
+              <HoverTooltip label="Open linked order" asChild>
+                <a
+                  href={ordersHref}
+                  aria-label="Open linked order"
+                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+                >
+                  <Package className="h-4 w-4" />
+                </a>
+              </HoverTooltip>
+            ) : null}
+            <SupportDetailsStack ticket={ticket} />
+            {url ? (
+              <HoverTooltip label={openLabel} asChild>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={openLabel}
+                  className="inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-card text-text-muted ring-1 ring-inset ring-border-soft transition hover:text-text-default"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </HoverTooltip>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         className={cn(
           'flex flex-wrap items-center justify-between gap-x-3 gap-y-2',
-          compact ? 'mt-2' : 'mt-3',
+          hideRequesterBand ? null : compact ? 'mt-2' : 'mt-3',
         )}
       >
         {/* Zendesk ticket fields — external/helpdesk controls on the left. */}
@@ -274,20 +291,21 @@ export function SupportChatHeader({
           />
         </div>
 
-        <ZendeskSelect
-          value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
-          options={staffOptions}
-          placeholder="Assign staff"
-          size="dense"
-          align="right"
-          disabled={assign.isPending}
-          className="ml-auto"
-          onChange={(v) => {
-            const staffId = v === UNASSIGNED ? null : Number(v);
-            const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
-            assign.mutate({ id: ticket.id, staffId, staffName });
-          }}
-        />
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <ZendeskSelect
+            value={assignment ? String(assignment.assignedStaffId) : UNASSIGNED}
+            options={staffOptions}
+            placeholder="Assign staff"
+            size="dense"
+            align="right"
+            disabled={assign.isPending}
+            onChange={(v) => {
+              const staffId = v === UNASSIGNED ? null : Number(v);
+              const staffName = staffId == null ? undefined : staff.find((s) => s.id === staffId)?.name;
+              assign.mutate({ id: ticket.id, staffId, staffName });
+            }}
+          />
+        </div>
       </div>
     </div>
   );

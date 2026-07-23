@@ -23,10 +23,9 @@
  * open strings; this component is the SoT that validates them on hydrate and
  * falls back to the canonical lane order / default sort for anything unknown.
  *
- * Column visibility is owned by the consumer: wrap `<SwimlaneBoard>` in your
- * `TableColumnConfigProvider` and pass `<ColumnConfigButton/>` as
- * `headerStartSlot` — the button renders inside the header band but the provider
- * stays outside, so every embedded lane table honors the same hidden-key set.
+ * Column visibility is owned by the consumer: wrap `<SwimlaneBoard>` in
+ * `TableColumnConfigProvider` so every embedded lane table honors the same
+ * hidden-key set (column chrome is parked for a later pass).
  *
  * Add a lane → add it to `lanes` + (optionally) the persisted order; the bubble
  * appears with no other change. Add a board → define a new `prefsKey` and a
@@ -141,7 +140,7 @@ export interface SwimlaneBoardProps<Row, LaneId extends string, SortId extends s
   title?: string;
   /** @deprecated No longer rendered (see `title`). */
   totalLabel?: string;
-  /** Header band start slot (e.g. `<ColumnConfigButton/>`), inside the band. */
+  /** Header band start slot, inside the band. */
   headerStartSlot?: ReactNode;
   /** Header band end slot (columns / options / layout toggles). */
   headerEndSlot?: ReactNode;

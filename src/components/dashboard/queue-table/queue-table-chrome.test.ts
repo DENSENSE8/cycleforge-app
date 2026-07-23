@@ -15,5 +15,7 @@ describe('queue-table-chrome', () => {
   it('maps activity axis to stage column labels', () => {
     assert.equal(receivingStageColumnLabel('unboxed'), 'Unboxed');
     assert.equal(receivingStageColumnLabel('scanned'), 'Scanned');
+    assert.equal(receivingStageColumnLabel('tested'), 'Tested');
+    assert.equal(receivingStageColumnLabel('received'), 'Received');
   });
 });

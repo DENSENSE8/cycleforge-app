@@ -60,6 +60,7 @@ export function warrantyEventsToTimeline(rows: WarrantyEventRow[]): TimelineItem
       tone,
       subtitle,
       actor: r.actorName ?? undefined,
+      sourceEventType: r.eventType,
     };
   });
 }

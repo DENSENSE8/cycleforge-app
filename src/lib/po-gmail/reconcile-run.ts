@@ -28,6 +28,7 @@ import {
   type MatchRow,
   type ReconciledStatus,
 } from '@/lib/po-gmail/reconcile';
+import { promoteEmailDeliverySignalsToStn } from '@/lib/receiving/delivered-unscanned';
 import { linkTrackingToPo } from '@/lib/po-gmail/link-tracking';
 
 export const DEFAULT_LIMIT = 25;
@@ -64,6 +65,8 @@ export interface ReconcilePersisted {
   upserted: number;
   resolved: number;
   delivery_signals: number;
+  /** STN rows flipped to is_delivered from email signals (writer path). */
+  delivery_promoted: number;
   tracking_linked: number;
   tracking_already_linked: number;
   tracking_rejected: number;
@@ -170,9 +173,11 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
   // any existing pending row for the same gmail_msg_id to resolved.
   let upserted = 0;
   let resolved = 0;
-  // "ORDER DELIVERED" emails → email_delivery_signals (drives the Incoming
-  // "Delivered · not scanned" email path). Counted across the run.
+  // "ORDER DELIVERED" emails → email_delivery_signals (audit) + promote onto
+  // linked STN rows so the carrier hunt queue sees them (email is a writer,
+  // not a parallel ops tile).
   let deliverySignals = 0;
+  let deliveryPromoted = 0;
   // Aggregate Gmail-leg tracking-link counts so the response surfaces
   // exactly how many shipment_id stamps this run produced.
   let trackingLinked = 0;
@@ -189,6 +194,7 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
         // at the dock — so we log it whether or not it's in the worklist.
         if (item.delivered) {
           const deliveredAt = item.internalDate ? new Date(Number(item.internalDate)) : null;
+          const promotedNorms: string[] = [];
           for (const ord of item.extracted.all) {
             const ordNorm = normalizeOrderNumber(ord);
             if (!ordNorm) continue;
@@ -215,6 +221,22 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
               ],
             );
             deliverySignals += rowCount ?? 0;
+            promotedNorms.push(ordNorm);
+          }
+          if (promotedNorms.length > 0) {
+            try {
+              deliveryPromoted += await promoteEmailDeliverySignalsToStn(
+                client,
+                orgId,
+                promotedNorms,
+                deliveredAt,
+              );
+            } catch (err) {
+              console.warn(
+                'po-gmail.reconcile: promoteEmailDeliverySignalsToStn failed (non-fatal)',
+                { err: err instanceof Error ? err.message : err },
+              );
+            }
           }
         }
 
@@ -326,6 +348,7 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
           upserted,
           resolved,
           delivery_signals: deliverySignals,
+          delivery_promoted: deliveryPromoted,
           tracking_linked: trackingLinked,
           tracking_already_linked: trackingAlreadyLinked,
           tracking_rejected: trackingRejected,

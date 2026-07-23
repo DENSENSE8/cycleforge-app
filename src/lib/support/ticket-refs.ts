@@ -7,6 +7,8 @@
  * re-exports everything here, so server callers keep their import path.
  */
 
+import { getLast4 } from '@/lib/copy-chip-format';
+
 /** Internal registry label — `#42`. The operator PRIMARY ticket id. Client-safe. */
 export function formatSupportTicketLabel(ticketId: number): string {
   return `#${ticketId}`;
@@ -33,6 +35,51 @@ export function secondaryProviderLabel(args: {
 }): string | null {
   const trimmed = args.externalTicketId?.replace(/^#/, '').trim();
   return trimmed ? `#${trimmed}` : null;
+}
+
+/**
+ * Operator-facing display `#` for Support station chrome — provider / URL first.
+ * Never prefers the internal registry id when a provider id (or `?ticket=`
+ * fallback) is available. Pure; client-safe.
+ */
+export function resolveSupportTicketDisplayLabel(args: {
+  id?: number | null;
+  label?: string | null;
+  provider?: string | null;
+  externalTicketId?: string | null;
+  providerTicketId?: number | null;
+  fallbackId: number;
+}): string {
+  const fromExternal = secondaryProviderLabel({
+    provider: args.provider ?? 'zendesk',
+    externalTicketId: args.externalTicketId ?? null,
+  });
+  if (fromExternal) return fromExternal;
+
+  if (args.providerTicketId != null && args.providerTicketId > 0) {
+    return formatSupportTicketLabel(args.providerTicketId);
+  }
+
+  const internal =
+    args.id != null && args.id > 0 ? formatSupportTicketLabel(args.id) : null;
+  const label = args.label?.trim() || null;
+  // Prefer a non-registry label; otherwise the durable URL / fallback id.
+  if (label && label !== internal) return label;
+
+  return formatSupportTicketLabel(args.fallbackId);
+}
+
+/**
+ * Compact ticket id face for Support station chrome — strip `#`, show last 4.
+ * Copy value stays the full numeric id. Pure; client-safe.
+ */
+export function supportTicketIdFace(label: string): { value: string; display: string } {
+  const value = label.replace(/^#/, '').trim();
+  const digits = value.replace(/\D/g, '') || value;
+  return {
+    value: value || digits,
+    display: getLast4(digits || value),
+  };
 }
 
 export interface TicketReceivingRef {

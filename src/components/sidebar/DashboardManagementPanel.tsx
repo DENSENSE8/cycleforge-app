@@ -3,7 +3,6 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { ShippedIntakeForm, type ShippedFormData } from '@/components/shipped';
 import { useAuth } from '@/contexts/AuthContext';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { containerVariants, itemVariants } from './dashboard-management/dashboard-management-shared';
@@ -12,9 +11,6 @@ import { OrdersImportCard } from './dashboard-management/OrdersImportCard';
 import { SyncStatusBanner } from './dashboard-management/SyncStatusBanner';
 
 interface DashboardManagementPanelProps {
-  showIntakeForm?: boolean;
-  onCloseForm?: () => void;
-  onFormSubmit?: (data: ShippedFormData) => void;
   filterControl?: ReactNode;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
@@ -26,21 +22,17 @@ interface DashboardManagementPanelProps {
  * (Sheets/Ecwid/exceptions). The global header pill stays global (search any
  * order across the app); the import stream lives in {@link useOrdersImport}; the
  * cards live under `./dashboard-management/`.
+ *
+ * New-order intake (`?new=true`) is owned by {@link NewOrderEntryOverlay} on
+ * the dashboard context panel — not swapped into this sidebar.
  */
 export function DashboardManagementPanel({
-  showIntakeForm = false,
-  onCloseForm,
-  onFormSubmit,
   filterControl,
 }: DashboardManagementPanelProps) {
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
 
   const imp = useOrdersImport();
-
-  if (showIntakeForm) {
-    return <ShippedIntakeForm onClose={onCloseForm || (() => {})} onSubmit={onFormSubmit || (() => {})} />;
-  }
 
   return (
     <>

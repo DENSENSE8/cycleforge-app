@@ -14,7 +14,9 @@ import { motion } from 'framer-motion';
 import { TRIAGE_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import {
+  ChevronRight,
   Link2,
   Loader2,
   Mail,
@@ -28,6 +30,8 @@ import {
 } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { WorkspaceCard } from '@/design-system/components';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
   useMotionPresence,
@@ -54,12 +58,51 @@ import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 
 type ArrivalMatchTab = 'zoho_po' | 'ecwid' | 'email' | 'zendesk';
 
+function PackagePairingHeader({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle?: () => void;
+}) {
+  if (onToggle) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        className={cn(
+          'ds-raw-button flex w-full items-center justify-between gap-2 text-left',
+          focusRing('control', 'accent'),
+        )}
+      >
+        <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+          Package Pairing
+        </h3>
+        <ChevronRight
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 text-text-faint transition-transform duration-150',
+            !collapsed && 'rotate-90',
+          )}
+          aria-hidden
+        />
+      </button>
+    );
+  }
+  return (
+    <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
+      Package Pairing
+    </h3>
+  );
+}
+
 export function TriageLineMatchingSection({
   row,
   staffId,
   showOpenInUnbox = true,
   embedded = false,
   collapsed = false,
+  onToggleCollapsed,
   showTopRule = false,
 }: {
   row: ReceivingLineRow;
@@ -67,6 +110,8 @@ export function TriageLineMatchingSection({
   showOpenInUnbox?: boolean;
   embedded?: boolean;
   collapsed?: boolean;
+  /** When set, Package Pairing header is a toggle (Arrival overview accordion). */
+  onToggleCollapsed?: () => void;
   showTopRule?: boolean;
 }) {
   const pkg = toTriagePackage(row);
@@ -80,10 +125,11 @@ export function TriageLineMatchingSection({
     if (embedded) {
       return (
         <div className="space-y-2">
-          <h3 className="text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
-            Package Pairing
-          </h3>
-          {teaching}
+          <PackagePairingHeader
+            collapsed={collapsed}
+            onToggle={onToggleCollapsed}
+          />
+          {!collapsed ? teaching : null}
         </div>
       );
     }
@@ -102,6 +148,7 @@ export function TriageLineMatchingSection({
       showOpenInUnbox={showOpenInUnbox}
       embedded={embedded}
       collapsed={collapsed}
+      onToggleCollapsed={onToggleCollapsed}
       showTopRule={showTopRule}
     />
   );
@@ -114,6 +161,7 @@ function ArrivalMatchingCard({
   showOpenInUnbox,
   embedded,
   collapsed,
+  onToggleCollapsed,
   showTopRule,
 }: {
   row: ReceivingLineRow;
@@ -122,6 +170,7 @@ function ArrivalMatchingCard({
   showOpenInUnbox: boolean;
   embedded: boolean;
   collapsed: boolean;
+  onToggleCollapsed?: () => void;
   showTopRule: boolean;
 }) {
   const router = useRouter();
@@ -175,7 +224,12 @@ function ArrivalMatchingCard({
       toast.error('Could not resolve the ticket number');
       return;
     }
-    if (!window.confirm(`Unlink ticket #${ticketId} from this package?`)) return;
+    const ok = await requestConfirm({
+      description: `Unlink ticket #${ticketId} from this package?`,
+      tone: 'danger',
+      confirmLabel: 'Unlink',
+    });
+    if (!ok) return;
     setUnlinkingTicket(true);
     try {
       const sp = new URLSearchParams({ receivingId: String(receivingId), ticketId });
@@ -375,33 +429,27 @@ function ArrivalMatchingCard({
   );
 
   if (embedded) {
-    // No layout="position" — tab bodies (Store / PO / Tickets) differ in height;
-    // layout animation on this wrapper makes the pill row ride the reflow ("shake").
-    // Collapse still animates height/opacity via pairingCollapse.
+    // Header always visible (collapsed accordion). Body height-animates so
+    // Location Placement below stays reachable without a full hide.
     return (
-      <motion.div
-        initial={false}
-        animate={
-          collapsed
-            ? { ...pairingCollapse.exit, marginTop: 0 }
-            : {
-                ...pairingCollapse.animate,
-                marginTop: showTopRule ? 16 : 0,
-              }
-        }
-        transition={pairingCollapseTransition}
-        className={collapsed ? 'overflow-hidden' : 'overflow-visible'}
-        aria-hidden={collapsed}
-      >
-        <div className={showTopRule ? 'border-t border-border-hairline pt-4' : undefined}>
-          <div className="mb-3 flex min-w-0 items-center justify-between gap-2 overflow-visible">
-            <h3 className="min-w-0 shrink text-role-caption font-bold uppercase tracking-[0.14em] text-text-soft">
-              Package Pairing
-            </h3>
-          </div>
-          {content}
+      <div className={showTopRule ? 'border-t border-border-hairline pt-4' : undefined}>
+        <div className="mb-1">
+          <PackagePairingHeader collapsed={collapsed} onToggle={onToggleCollapsed} />
         </div>
-      </motion.div>
+        <motion.div
+          initial={false}
+          animate={
+            collapsed
+              ? { ...pairingCollapse.exit }
+              : { ...pairingCollapse.animate }
+          }
+          transition={pairingCollapseTransition}
+          className={collapsed ? 'overflow-hidden' : 'overflow-visible'}
+          aria-hidden={collapsed}
+        >
+          <div className={collapsed ? undefined : 'mt-2'}>{content}</div>
+        </motion.div>
+      </div>
     );
   }
 

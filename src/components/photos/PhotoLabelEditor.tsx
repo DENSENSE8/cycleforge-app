@@ -1,8 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Check, Loader2, Plus, Tag, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Check, Loader2, Plus, Tag } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { cn } from '@/utils/_cn';
 import { useLabels } from '@/hooks/useLabels';
 import { labelChipClasses } from '@/lib/photos/label-colors';
@@ -107,28 +114,19 @@ export function PhotoLabelEditor({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/40 p-4"
-      onClick={onClose}
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !saving) onClose();
+      }}
     >
-      <div
-        className="w-full max-w-md rounded-2xl bg-surface-card shadow-xl ring-1 ring-black/5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-border-hairline px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-text-soft" />
-            <h2 className="text-sm font-bold text-text-default">
-              {single ? 'Edit labels' : `Label ${photos.length} photos`}
-            </h2>
-          </div>
-          <IconButton
-            icon={<X className="h-4 w-4" />}
-            onClick={onClose}
-            ariaLabel="Close"
-            className="-mr-1 inline-flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-sunken"
-          />
-        </div>
+      <DialogContent hideClose className="max-w-md gap-0 overflow-hidden p-0 sm:rounded-2xl">
+        <DialogHeader className="flex flex-row items-center gap-2 space-y-0 border-b border-border-hairline px-4 py-3">
+          <Tag className="h-4 w-4 text-text-soft" />
+          <DialogTitle className="text-sm font-bold text-text-default">
+            {single ? 'Edit labels' : `Label ${photos.length} photos`}
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="max-h-[50vh] overflow-y-auto px-4 py-3">
           {isLoading && labels.length === 0 ? (
@@ -170,7 +168,7 @@ export function PhotoLabelEditor({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
+        <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border-hairline px-4 py-3 sm:justify-between">
           <Button
             variant="ghost"
             size="sm"
@@ -193,8 +191,8 @@ export function PhotoLabelEditor({
               Apply
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

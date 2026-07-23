@@ -1,15 +1,24 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Loader2, Lock, Globe, MessageSquare, Ticket, User, Check,
-  MoreHorizontal, Pencil, Trash2, X, ExternalLink,
+  MoreHorizontal, Pencil, Trash2, X, ExternalLink, Link2,
   Package, Truck, Barcode, Tag, PackageOpen, Wrench, ShieldCheck, Box,
 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ThreadNoteComposer } from '@/components/threads/ThreadNoteComposer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  TrackingChip,
+  TicketChip,
+  SerialChip,
+  OrderIdChip,
+  SkuScanRefChip,
+  getLast4,
+} from '@/components/ui/CopyChip';
+import { supportTicketIdFace } from '@/lib/support/ticket-refs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThread, type ThreadConnectionRow, type ThreadAssignmentRow } from '@/hooks/useThread';
 import type { ThreadMessage, ThreadStatus } from '@/lib/threads/types';
@@ -336,47 +345,80 @@ function AssigneeControl({
 function ConnectionsStrip({
   connections,
   dense,
+  trailing,
 }: {
   connections: ThreadConnectionRow[];
   dense: boolean;
+  /** Status / assignee / escalate — right-aligned on the same row. */
+  trailing?: ReactNode;
 }) {
-  if (connections.length === 0) return null;
+  if (connections.length === 0 && !trailing) return null;
   return (
-    <div className={cn('flex items-center gap-1.5 overflow-x-auto border-b border-border-hairline pb-2', dense ? 'px-3' : 'px-5')}>
-      <span className="shrink-0 text-role-eyebrow font-black uppercase tracking-widest text-text-faint">Linked</span>
-      {connections.map((c, i) => {
-        const Icon = CONNECTION_ICON[c.entityType] ?? Tag;
-        const inner = (
-          <span
-            className={cn(
-              'inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide ring-1 ring-inset',
-              c.origin === 'derived'
-                ? 'bg-surface-canvas text-text-muted ring-border-soft'
-                : 'bg-blue-50 text-blue-700 ring-blue-200',
-            )}
-          >
-            <Icon className="h-3 w-3" />
-            <span className="max-w-[9rem] truncate normal-case tracking-normal">{c.label}</span>
-            {c.href ? <ExternalLink className="h-2.5 w-2.5 opacity-60" /> : null}
-          </span>
-        );
-        const key = `${c.entityType}:${c.entityId ?? c.label}:${i}`;
-        return (
-          <HoverTooltip
-            key={key}
-            label={`${c.entityType.replace(/_/g, ' ').toLowerCase()}${c.origin === 'link' ? ' · linked' : ''}`}
-            focusable={false}
-          >
-            {c.href ? (
-              <a href={c.href} className="shrink-0">{inner}</a>
-            ) : (
-              inner
-            )}
+    <div
+      className={cn(
+        'flex items-center gap-1.5 overflow-x-auto border-b border-border-hairline pb-2 pt-2',
+        dense ? 'px-3' : 'px-5',
+      )}
+    >
+      {connections.length > 0 ? (
+        <>
+          <HoverTooltip label="Linked" focusable={false}>
+            <span className="inline-flex shrink-0 text-text-faint" aria-label="Linked">
+              <Link2 className="h-3.5 w-3.5" aria-hidden />
+            </span>
           </HoverTooltip>
-        );
-      })}
+          {connections.map((c, i) => {
+            const key = `${c.entityType}:${c.entityId ?? c.label}:${i}`;
+            return <ConnectionChip key={key} connection={c} />;
+          })}
+        </>
+      ) : null}
+      {trailing ? <div className="ml-auto flex shrink-0 items-center gap-2">{trailing}</div> : null}
     </div>
   );
+}
+
+/** House CopyChip face for linked tracking / ticket / serial / order / sku — last-4. */
+function ConnectionChip({ connection: c }: { connection: ThreadConnectionRow }) {
+  const type = c.entityType.toUpperCase();
+  const hint = (c.hint ?? '').toLowerCase();
+  let chip: ReactNode;
+
+  if (type === 'TRACKING' || hint === 'tracking') {
+    chip = <TrackingChip value={c.label} dense disableTooltip />;
+  } else if (type === 'SUPPORT_TICKET' || type === 'ZENDESK_TICKET' || hint === 'ticket') {
+    const face = supportTicketIdFace(c.label);
+    chip = <TicketChip value={face.value} display={face.display} dense disableTooltip />;
+  } else if (type === 'SERIAL_UNIT' || hint === 'serial') {
+    chip = <SerialChip value={c.label} dense disableTooltip />;
+  } else if (type === 'ORDER') {
+    chip = <OrderIdChip value={c.label} display={getLast4(c.label)} dense />;
+  } else if (type === 'SKU' || hint === 'sku') {
+    chip = <SkuScanRefChip value={c.label} display={getLast4(c.label)} dense />;
+  } else {
+    const Icon = CONNECTION_ICON[c.entityType] ?? Tag;
+    chip = (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-role-eyebrow font-bold uppercase tracking-wide text-text-muted ring-1 ring-inset ring-border-soft">
+        <Icon className="h-3 w-3" />
+        <span className="max-w-[9rem] truncate normal-case tracking-normal font-mono">
+          {getLast4(c.label)}
+        </span>
+        {c.href ? <ExternalLink className="h-2.5 w-2.5 opacity-60" /> : null}
+      </span>
+    );
+  }
+
+  if (c.href) {
+    return (
+      <a href={c.href} className="inline-flex shrink-0 items-center gap-0.5">
+        {chip}
+        {type === 'SUPPORT_TICKET' || type === 'TRACKING' ? (
+          <ExternalLink className="h-2.5 w-2.5 shrink-0 text-text-faint" aria-hidden />
+        ) : null}
+      </a>
+    );
+  }
+  return <span className="inline-flex shrink-0">{chip}</span>;
 }
 
 function EscalateOption({
@@ -495,66 +537,70 @@ export function ThreadPanel({
 
   const loading = threadLoading || messagesLoading;
   const error = threadError || messagesError;
+  const hasTicket =
+    Boolean(thread?.supportTicketId) ||
+    connections.some((c) => {
+      const t = c.entityType.toUpperCase();
+      return t === 'SUPPORT_TICKET' || t === 'ZENDESK_TICKET' || c.hint === 'ticket';
+    });
 
   return (
     <div className={cn('flex min-h-0 flex-col', className)}>
-      <div className={cn('flex flex-wrap items-center gap-2 pb-2 pt-2', dense ? 'px-3' : 'px-5')}>
-        {thread ? (
-          <StatusControl
-            status={thread.status}
-            canManage={canPost}
-            pending={setStatus.isPending}
-            onChange={(s) => setStatus.mutate(s)}
-          />
-        ) : null}
-        <AssigneeControl
-          assignment={assignment}
-          canManage={canPost}
-          onAssign={(id) => assign.mutate(id)}
-          onUnassign={() => unassign.mutate()}
-        />
-        <div className="ml-auto flex items-center gap-2">
-        {thread?.supportTicketId ? (
-          <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow font-black uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
-            <Ticket className="h-2.5 w-2.5" /> Ticket #{thread.supportTicketId}
-          </span>
-        ) : canPost ? (
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              loading={escalate.isPending}
-              onClick={() => setEscalateOpen((v) => !v)}
-              icon={<Ticket className="h-3.5 w-3.5" />}
-            >
-              Escalate
-            </Button>
-            {escalateOpen && !escalate.isPending ? (
-              <div className="absolute right-0 z-panelPopover mt-1 w-52 overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg">
-                <EscalateOption
-                  label="Internal ticket"
-                  hint="Track here — no external send"
-                  onClick={() => {
-                    setEscalateOpen(false);
-                    escalate.mutate('internal');
-                  }}
-                />
-                <EscalateOption
-                  label="Support ticket"
-                  hint="Open a helpdesk ticket"
-                  onClick={() => {
-                    setEscalateOpen(false);
-                    escalate.mutate('zendesk');
-                  }}
-                />
+      <ConnectionsStrip
+        connections={connections}
+        dense={dense}
+        trailing={
+          <>
+            {thread ? (
+              <StatusControl
+                status={thread.status}
+                canManage={canPost}
+                pending={setStatus.isPending}
+                onChange={(s) => setStatus.mutate(s)}
+              />
+            ) : null}
+            <AssigneeControl
+              assignment={assignment}
+              canManage={canPost}
+              onAssign={(id) => assign.mutate(id)}
+              onUnassign={() => unassign.mutate()}
+            />
+            {!hasTicket && canPost ? (
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  loading={escalate.isPending}
+                  onClick={() => setEscalateOpen((v) => !v)}
+                  icon={<Ticket className="h-3.5 w-3.5" />}
+                >
+                  Escalate
+                </Button>
+                {escalateOpen && !escalate.isPending ? (
+                  <div className="absolute right-0 z-panelPopover mt-1 w-52 overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg">
+                    <EscalateOption
+                      label="Internal ticket"
+                      hint="Track here — no external send"
+                      onClick={() => {
+                        setEscalateOpen(false);
+                        escalate.mutate('internal');
+                      }}
+                    />
+                    <EscalateOption
+                      label="Support ticket"
+                      hint="Open a helpdesk ticket"
+                      onClick={() => {
+                        setEscalateOpen(false);
+                        escalate.mutate('zendesk');
+                      }}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
-          </div>
-        ) : null}
-        </div>
-      </div>
-
-      <ConnectionsStrip connections={connections} dense={dense} />
+          </>
+        }
+      />
 
       {escalate.isError ? (
         <div className={cn('pb-2 text-right text-role-caption text-rose-600', dense ? 'px-3' : 'px-5')}>

@@ -360,7 +360,7 @@ export function SupportOrdersWorkspace() {
     router.replace(qs ? `/support?${qs}` : '/support?mode=orders', { scroll: false });
   };
 
-  // Primary surface: Dashboard To Ship board (OrdersQueueTable family).
+  // Primary surface: Dashboard To Ship board (OrdersGridView / LedgerGrid).
   if (!openOrderId) {
     return <SupportOrdersBoard />;
   }

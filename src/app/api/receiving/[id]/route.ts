@@ -33,7 +33,7 @@ const SOURCE_PLATFORMS = new Set([
 
 // Carton-level default receiving type (receiving.intake_type). Per-line
 // receiving_lines.receiving_type overrides; see migration 2026-06-13b.
-const INTAKE_TYPES = new Set(['PO', 'RETURN', 'TRADE_IN']);
+const INTAKE_TYPES = new Set(['PO', 'RETURN', 'REPAIR', 'TRADE_IN']);
 
 // Return-platform vocabulary (receiving.return_platform). Mirrors the
 // return_platform_enum DB type and the RETURN_PLATFORM_LABELS keys in

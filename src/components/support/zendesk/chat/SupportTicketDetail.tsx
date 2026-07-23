@@ -185,6 +185,8 @@ export function SupportTicketDetail({
         onBack={onBack}
         hideExternalLink={hideExternalLink}
         compact={embedded}
+        hideTitle={embedded}
+        hideRequesterBand={embedded}
         onOpenContext={showContext ? () => setContextOpen(true) : undefined}
         contextOpen={contextOpen}
         contextBadge={showContext ? contextBadge : null}

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -10,13 +9,16 @@ import { SourceOrderChip, TicketChip } from '../ui/CopyChip';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { RepairDetailsPanel } from './RepairDetailsPanel';
 import DateRangeHeader from '@/components/ui/DateRangeHeader';
-import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useRepairsTable } from '@/hooks/useRepairs';
 import { formatPhoneNumber } from '@/utils/phone';
 import { toPSTDateKey } from '@/utils/date';
 import { Button } from '@/design-system/primitives';
 import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
+import { LedgerGrid } from '@/design-system/components/grid';
+import { useMemo, useState, useEffect, useRef, type KeyboardEvent } from 'react';
+import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { cn } from '@/utils/_cn';
 
 interface RepairTableProps {
   filter: RepairTab;
@@ -150,21 +152,24 @@ export function RepairTable({ filter }: RepairTableProps) {
 
   const filteredRepairs = repairs;
 
-  const groupedRepairs: { [key: string]: RSRecord[] } = {};
-  filteredRepairs.forEach(record => {
-    if (!record.created_at) return;
-    let date = '';
-    try {
-      date = toPSTDateKey(String(record.created_at)) || 'Unknown';
-    } catch { date = 'Unknown'; }
-    if (!groupedRepairs[date]) groupedRepairs[date] = [];
-    groupedRepairs[date].push(record);
-  });
+  const daySections = useMemo<[string, RSRecord[]][]>(() => {
+    const groupedRepairs: Record<string, RSRecord[]> = {};
+    filteredRepairs.forEach((record) => {
+      if (!record.created_at) return;
+      let date = '';
+      try {
+        date = toPSTDateKey(String(record.created_at)) || 'Unknown';
+      } catch {
+        date = 'Unknown';
+      }
+      if (!groupedRepairs[date]) groupedRepairs[date] = [];
+      groupedRepairs[date].push(record);
+    });
+    return Object.entries(groupedRepairs).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredRepairs]);
 
   // Flat sorted list matching the render order (oldest date first, same order as groups)
-  const flatRepairs = Object.entries(groupedRepairs)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .flatMap(([, records]) => records);
+  const flatRepairs = daySections.flatMap(([, records]) => records);
 
   const selectedIndex = selectedRepair
     ? flatRepairs.findIndex((r) => r.id === selectedRepair.id)
@@ -211,156 +216,195 @@ export function RepairTable({ filter }: RepairTableProps) {
           }
         />
 
-        {/* Table Content */}
-        <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar w-full">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-40 gap-3 text-text-soft">
-              <LoadingSpinner size="lg" className="text-blue-600" />
-              <p className="text-role-micro uppercase tracking-widest">Loading Repairs...</p>
-            </div>
-          ) : filteredRepairs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-40 text-center">
-              {search ? (
-                <div className="max-w-xs mx-auto animate-in fade-in zoom-in duration-300">
-                  <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="w-8 h-8 text-red-400" />
+        {/* LedgerGrid SoT — day-banded repair queue */}
+        {loading ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 py-40 text-text-soft">
+            <LoadingSpinner size="lg" className="text-blue-600" />
+            <p className="text-role-micro uppercase tracking-widest">Loading Repairs...</p>
+          </div>
+        ) : (
+          <LedgerGrid<RSRecord>
+            daySections={daySections}
+            showDayHeaders
+            bodyRef={scrollRef}
+            columnHeader={
+              <div
+                className={cn(
+                  'grid grid-cols-[1fr_220px] items-center gap-1 border-b border-border-soft bg-surface-card py-2 text-role-micro uppercase tracking-widest text-text-soft',
+                  QUEUE_ROW.px,
+                )}
+              >
+                <span>Product</span>
+                <span className="text-right">Ticket</span>
+              </div>
+            }
+            getRowKey={(repair) => String(repair.id)}
+            emptyState={
+              search ? (
+                <div className="mx-auto max-w-xs animate-in fade-in zoom-in duration-300">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+                    <Search className="h-8 w-8 text-red-400" />
                   </div>
-                  <h3 className="text-lg font-black text-text-default uppercase tracking-tight mb-1">Repair not found</h3>
-                  <p className="text-xs text-text-soft font-bold uppercase tracking-widest leading-relaxed">
-                    We couldn't find any repairs matching "{search}"
+                  <h3 className="mb-1 text-lg font-black uppercase tracking-tight text-text-default">
+                    Repair not found
+                  </h3>
+                  <p className="text-xs font-bold uppercase leading-relaxed tracking-widest text-text-soft">
+                    We couldn&apos;t find any repairs matching &quot;{search}&quot;
                   </p>
                 </div>
               ) : (
-                <p className="text-text-soft font-medium italic opacity-20">No repairs found</p>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col w-full">
-              {Object.entries(groupedRepairs)
-                .sort((a, b) => a[0].localeCompare(b[0]))
-                .map(([date, records]) => (
-                  <div key={date} className="flex flex-col">
-                    <DateGroupHeader date={date} total={records.length} />
-                    {records.map((repair, index) => (
-                      <motion.div
-                        key={
-                          repair.id != null
-                            ? `rep-${repair.id}`
-                            : `rep-${date}-${index}-${repair.ticket_number || repair.source_tracking_number || 'row'}`
-                        }
-                        {...framerPresence.tableRow}
-                        transition={framerTransition.tableRowMount}
-                        onClick={() => handleRowClick(repair)}
-                        onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-                          if (event.target !== event.currentTarget) return;
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            handleRowClick(repair);
-                          }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        aria-pressed={selectedRepair?.id === repair.id}
-                        aria-label={`Open repair details for ${repair.product_title || `record ${repair.id}`}`}
-                        className={`grid grid-cols-[1fr_220px] items-center gap-1 pl-4 pr-4 py-3 transition-all border-b border-border-hairline cursor-pointer hover:bg-blue-50/50 ${
-                          selectedRepair?.id === repair.id ? 'bg-blue-50/80' : index % 2 === 0 ? 'bg-surface-card' : 'bg-surface-canvas/10'
-                        }`}
-                      >
-                        <div className="flex flex-col min-w-0 gap-1">
-                          <div className="text-sm font-black text-text-default truncate leading-tight">
-                            {repair.product_title || 'Unknown Product'}
-                          </div>
-                          <div className="text-role-caption font-black text-text-muted truncate leading-tight">
-                            {repair.issue || repair.source_tracking_number || 'No issue specified'}
-                          </div>
-                          <div className="flex items-center gap-3 mt-0.5">
-                            <div className="text-role-micro text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                              {repair.price ? `$${repair.price}` : '---'}
-                            </div>
-                            <div className="text-role-micro text-text-muted truncate uppercase tracking-tight">
-                              {repair.customer_name || (() => {
-                                if (!repair.contact_info) return 'No Name';
-                                const parts = repair.contact_info.split(',').map((p: string) => p.trim());
-                                return parts[0] || 'No Name';
-                              })()}
-                            </div>
-                            <div className="text-role-eyebrow font-bold text-text-soft truncate">
-                              {formatPhoneNumber(repair.customer_phone || (() => {
-                                if (!repair.contact_info) return '';
-                                const parts = repair.contact_info.split(',').map((p: string) => p.trim());
-                                return parts[1] || '';
-                              })())}
-                            </div>
-                            <div className="text-role-micro font-bold text-text-default lowercase truncate">
-                              {repair.source_tracking_number || repair.customer_email || (() => {
-                                if (!repair.contact_info) return '';
-                                const parts = repair.contact_info.split(',').map((p: string) => p.trim());
-                                return parts[2] || '';
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex w-full items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col items-start shrink-0">
-                            <SourceOrderChip
-                              value={String(repair.source_order_id || '').trim() || 'WALK-IN'}
-                              display={String(repair.source_order_id || '').trim() ? getLast4(repair.source_order_id) : 'WALK-IN'}
-                              disableCopy={!String(repair.source_order_id || '').trim()}
-                            />
-                          </div>
-                          <div className="flex flex-col items-start shrink-0">
-                            <TicketChip
-                              value={repair.ticket_number || ''}
-                              display={getLast4(repair.ticket_number)}
-                            />
-                          </div>
-                          <HoverTooltip label="View Repair Document" focusable={false} asChild>
-                            {/* ds-raw-button: table row-action icon button — fixed h-8 w-8 keeps the trailing-column alignment */}
-                            <button
-                              type="button"
-                              onClick={() => window.open(`/api/repair-service/print/${repair.id}`, '_blank', 'noopener,noreferrer')}
-                              className={`${rowActionButtonClass} hover:bg-blue-50 hover:text-blue-600`}
-                              aria-label="View Repair Document"
-                            >
-                              <PrinterAlt className="h-5 w-5" />
-                            </button>
-                          </HoverTooltip>
-                          <HoverTooltip
-                            label={
-                              !canCreateSquarePayment(repair)
-                                ? 'Set source SKU or valid price to enable Square payment'
-                                : getRepairSourceSku(repair)
-                                  ? 'Create Square payment link from matching catalog SKU'
-                                  : 'Create Square payment link (price fallback)'
-                            }
-                            focusable={false}
-                            asChild
-                          >
-                            {/* ds-raw-button: table row-action icon button — fixed h-8 w-8 keeps the trailing-column alignment */}
-                            <button
-                              type="button"
-                              onClick={() => void openSquarePayment(repair)}
-                              disabled={!canCreateSquarePayment(repair) || payingRepairId === repair.id}
-                              className={`${rowActionButtonClass} hover:bg-emerald-50 hover:text-emerald-600`}
-                              aria-label={
-                                !canCreateSquarePayment(repair)
-                                  ? 'Set source SKU or valid price to enable Square payment'
-                                  : getRepairSourceSku(repair)
-                                    ? 'Create Square payment link from matching catalog SKU'
-                                    : 'Create Square payment link (price fallback)'
-                              }
-                            >
-                              <DollarSign className={`h-5 w-5 ${payingRepairId === repair.id ? 'animate-pulse' : ''}`} />
-                            </button>
-                          </HoverTooltip>
-                        </div>
-                      </motion.div>
-                    ))}
+                <p className="font-medium italic text-text-soft opacity-20">No repairs found</p>
+              )
+            }
+            isSearching={Boolean(search)}
+            searchEmptyState={
+              <div className="mx-auto max-w-xs animate-in fade-in zoom-in duration-300">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+                  <Search className="h-8 w-8 text-red-400" />
+                </div>
+                <h3 className="mb-1 text-lg font-black uppercase tracking-tight text-text-default">
+                  Repair not found
+                </h3>
+                <p className="text-xs font-bold uppercase leading-relaxed tracking-widest text-text-soft">
+                  We couldn&apos;t find any repairs matching &quot;{search}&quot;
+                </p>
+              </div>
+            }
+            renderRow={(repair, index) => (
+              <motion.div
+                key={
+                  repair.id != null
+                    ? `rep-${repair.id}`
+                    : `rep-${index}-${repair.ticket_number || repair.source_tracking_number || 'row'}`
+                }
+                {...framerPresence.tableRow}
+                transition={framerTransition.tableRowMount}
+                onClick={() => handleRowClick(repair)}
+                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleRowClick(repair);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selectedRepair?.id === repair.id}
+                aria-label={`Open repair details for ${repair.product_title || `record ${repair.id}`}`}
+                className={cn(
+                  'grid grid-cols-[1fr_220px] items-center gap-1 border-b border-border-hairline py-3 transition-all cursor-pointer hover:bg-blue-50/50',
+                  QUEUE_ROW.px,
+                  selectedRepair?.id === repair.id
+                    ? 'bg-blue-50/80'
+                    : index % 2 === 0
+                      ? 'bg-surface-card'
+                      : 'bg-surface-canvas/10',
+                )}
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="truncate text-sm font-black leading-tight text-text-default">
+                    {repair.product_title || 'Unknown Product'}
                   </div>
-                ))}
-            </div>
-          )}
-        </div>
+                  <div className="truncate text-role-caption font-black leading-tight text-text-muted">
+                    {repair.issue || repair.source_tracking_number || 'No issue specified'}
+                  </div>
+                  <div className="mt-0.5 flex items-center gap-3">
+                    <div className="rounded border border-emerald-100 bg-emerald-50 px-1.5 py-0.5 text-role-micro text-emerald-600">
+                      {repair.price ? `$${repair.price}` : '---'}
+                    </div>
+                    <div className="truncate text-role-micro uppercase tracking-tight text-text-muted">
+                      {repair.customer_name ||
+                        (() => {
+                          if (!repair.contact_info) return 'No Name';
+                          const parts = repair.contact_info.split(',').map((p: string) => p.trim());
+                          return parts[0] || 'No Name';
+                        })()}
+                    </div>
+                    <div className="truncate text-role-eyebrow font-bold text-text-soft">
+                      {formatPhoneNumber(
+                        repair.customer_phone ||
+                          (() => {
+                            if (!repair.contact_info) return '';
+                            const parts = repair.contact_info.split(',').map((p: string) => p.trim());
+                            return parts[1] || '';
+                          })(),
+                      )}
+                    </div>
+                    <div className="truncate text-role-micro font-bold lowercase text-text-default">
+                      {repair.source_tracking_number ||
+                        repair.customer_email ||
+                        (() => {
+                          if (!repair.contact_info) return '';
+                          const parts = repair.contact_info.split(',').map((p: string) => p.trim());
+                          return parts[2] || '';
+                        })()}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex w-full items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex shrink-0 flex-col items-start">
+                    <SourceOrderChip
+                      value={String(repair.source_order_id || '').trim() || 'WALK-IN'}
+                      display={
+                        String(repair.source_order_id || '').trim()
+                          ? getLast4(repair.source_order_id)
+                          : 'WALK-IN'
+                      }
+                      disableCopy={!String(repair.source_order_id || '').trim()}
+                    />
+                  </div>
+                  <div className="flex shrink-0 flex-col items-start">
+                    <TicketChip
+                      value={repair.ticket_number || ''}
+                      display={getLast4(repair.ticket_number)}
+                    />
+                  </div>
+                  <HoverTooltip label="View Repair Document" focusable={false} asChild>
+                    {/* ds-raw-button: table row-action icon button — fixed h-8 w-8 keeps the trailing-column alignment */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(`/api/repair-service/print/${repair.id}`, '_blank', 'noopener,noreferrer')
+                      }
+                      className={`${rowActionButtonClass} hover:bg-blue-50 hover:text-blue-600`}
+                      aria-label="View Repair Document"
+                    >
+                      <PrinterAlt className="h-5 w-5" />
+                    </button>
+                  </HoverTooltip>
+                  <HoverTooltip
+                    label={
+                      !canCreateSquarePayment(repair)
+                        ? 'Set source SKU or valid price to enable Square payment'
+                        : getRepairSourceSku(repair)
+                          ? 'Create Square payment link from matching catalog SKU'
+                          : 'Create Square payment link (price fallback)'
+                    }
+                    focusable={false}
+                    asChild
+                  >
+                    {/* ds-raw-button: table row-action icon button — fixed h-8 w-8 keeps the trailing-column alignment */}
+                    <button
+                      type="button"
+                      onClick={() => void openSquarePayment(repair)}
+                      disabled={!canCreateSquarePayment(repair) || payingRepairId === repair.id}
+                      className={`${rowActionButtonClass} hover:bg-emerald-50 hover:text-emerald-600`}
+                      aria-label={
+                        !canCreateSquarePayment(repair)
+                          ? 'Set source SKU or valid price to enable Square payment'
+                          : getRepairSourceSku(repair)
+                            ? 'Create Square payment link from matching catalog SKU'
+                            : 'Create Square payment link (price fallback)'
+                      }
+                    >
+                      <DollarSign className={`h-5 w-5 ${payingRepairId === repair.id ? 'animate-pulse' : ''}`} />
+                    </button>
+                  </HoverTooltip>
+                </div>
+              </motion.div>
+            )}
+          />
+        )}
       </WorkbenchTablePane>
 
       <AnimatePresence>

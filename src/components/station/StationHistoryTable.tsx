@@ -7,7 +7,6 @@ import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { StationQueueRow } from '@/components/station/StationQueueRow';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { Copy, X } from '@/components/Icons';
@@ -35,12 +34,11 @@ import { formatWeekRangeCompact } from '@/utils/date';
  * use the shared `RowTitle`/`RowMetaColumns`/`ChipColumns` primitives) through the
  * unified {@link StationListTable}, so the benches gain windowing (behind
  * `NEXT_PUBLIC_STATION_VIRTUAL_LIST`), the week band, the ⋮ menu (row density +
- * saved views), per-staff column config, and a typed first-run empty — while the
- * legacy `StationWeekTable` stays the default until bake-in.
+ * saved views), and a typed first-run empty — while the legacy
+ * `StationWeekTable` stays the default until bake-in.
  *
  * Wraps the per-staff `TableColumnConfigProvider` + `TableDensityProvider` (both
- * keyed by `tableId`) so the ColumnConfigButton and the density toggle in the ⋮
- * menu drive the same shared primitives every row already honors.
+ * keyed by `tableId`) so density + hidden-column prefs stay wired for rows.
  */
 export interface StationHistoryTableProps<T> {
   loading: boolean;
@@ -248,10 +246,7 @@ export function StationHistoryTable<T>({
   );
   const portaledControls = toolbarPortalTarget
     ? createPortal(
-        <div className="flex items-center gap-2">
-          <ColumnConfigButton variant="toolbar" />
-          {optionsMenu}
-        </div>,
+        <div className="flex items-center gap-2">{optionsMenu}</div>,
         toolbarPortalTarget,
       )
     : null;
@@ -310,7 +305,6 @@ export function StationHistoryTable<T>({
                     onNext: onNextWeek,
                   }}
                 />
-                {toolbarPortalTarget ? null : <ColumnConfigButton variant="toolbar" />}
               </div>
             }
             headerEndSlot={headerControls}
@@ -338,7 +332,6 @@ export function StationHistoryTable<T>({
               getRowKey={getRowKey}
               virtualized={virtualized}
               scrollToKey={focusedKey}
-              headerColumnsSlot={toolbarPortalTarget ? undefined : <ColumnConfigButton iconOnly />}
               headerEndSlot={headerControls}
               emptyMessage={emptyMessage}
               firstRunEmpty={firstRunEmpty}

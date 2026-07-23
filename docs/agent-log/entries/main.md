@@ -304,3 +304,86 @@
 - `2026-07-22T04:50:46.820Z` · **main** · main · agent · Station bookmark radius: rounded-b-2xl to match PoLinesAccordion / workbench cards below — ok
 - `2026-07-22T05:11:05.482Z` · **main** · main · agent · PhotoViewer dismiss SoT: PhotoViewerPortal present/exit + close reducer; migrated all desktop hosts off mode=wait — done
 - `2026-07-22T16:19:13.948Z` · **main** · main · agent · APPLIED migration 2026-07-21_ticket_links_rekey_support_ticket_id.sql to live DB (user-authorized). Clean transactional apply → 0 pending; SET NOT NULL + 2 support-led unique indexes built OK (invariants held). Both index families coexist; deploy-order gate now satisfied — new code safe to deploy — done
+- `2026-07-22T17:18:00.469Z` · **main** · main · agent · Queue sort chrome: TabSwitch → trailing dropdown left of Import; rule workbench-sort-chrome — success
+- `2026-07-22T17:24:15.653Z` · **main** · main · agent · Pending grid minimal-simplify: removed stock column (SoT+tests+e2e), platform cell dashes when no listing link, empty tracking renders blank on grid, fixed selection capsule viewport-wide overflow (max-w-fit centered), single-selected row info menu (Notes/OOS/Details), condition marketplace-alias tones (NEW/L-NEW/A-C) for pills+listbox; sort dropdown landed by concurrent cursor lane — done
+- `2026-07-22T17:25:01.061Z` · **main** · main · agent · Products Labels: catalog → right-pane workbench list; sidebar Printed rail (Unbox/outbound Labels Axis-5) — done
+- `2026-07-22T18:02:37.705Z` · **main** · main · agent · Packing scan bar: set leadingColumn=rail to match Unbox/Testing/Shipping SoT (was defaulting to MasterNav deep inset) — ok
+- `2026-07-22T18:07:04.812Z` · **main** · main · agent · Scan-bar leadingColumn audit: fixed ScanOut + FBA sidebar + mobile ScanInput (same MasterNav-inset miss as Packing); wipe/RMA standalone still masternav — ok
+- `2026-07-22T18:22:55.217Z` · **main** · main · agent · Pending grid round 2: qty matches Date/Age type scale; empty-tracking cell = filled +Label button deep-linking /shipping?open= (label station); vendored new eBay bag + Amazon a favicons (64px); wrote pending-grid-status-column-plan.md (status chip column + ?sort=status, plan only) — done
+- `2026-07-22T18:26:25.478Z` · **main** · main · agent · Dashboard new-order uses same detail-stack overlay as shipping — ok
+- `2026-07-22T18:28:01.783Z` · **main** · main · agent · Wrote pending-grid-dead-code-cleanup-PROMPT.md (handoff): lock stock-column removal; evidence-based kill list = unmounted PendingOrdersTable.tsx, unreachable price/staff sort branches + staffSortKey, replenishment short/chip fields; knip-as-queue with shrink-only baseline; OrdersQueueTable deletion stays Stage-2 ask-first — done
+- `2026-07-22T18:31:58.336Z` · **main** · main · agent · Migrate sidebar-intake text fields to TextField floating labels; delete SidebarIntakeFormField — ok
+- `2026-07-22T19:08:32.906Z` · **main** · main · agent · Pending grid display polish: label+glyph headers, equal PlatformMark tile, quiet plain Order/Tracking chips — ok
+- `2026-07-22T19:09:14.623Z` · **main** · main · agent · fix(search): identifier order # opens Search detail without list flash — stop shipping-panel clear from stripping openOrderId in Search mode; bridge lookup miss→sole matching ORDER from retrieve; clear stale header preview hits on retype — success
+- `2026-07-22T20:15:51.302Z` · **main** · main · agent · fix(search): stop order-search URL flash — keep painted detail across human→numeric canonicalize; preserve map=recent|search; header identifier Enter resolves once before navigate; drop sticky lastHref that blocked heal — success
+- `2026-07-22T20:19:57.344Z` · **main** · main · agent · Unify outbound lists onto OrdersGridView/LedgerGrid; delete OrdersQueueTable + Shipped day-band stack — ok
+- `2026-07-22T20:33:18.482Z` · **main** · main · agent · eBay prod OAuth: synced Production App/Cert/RuName/ENV to Vercel; confirm auth.ebay.com; App+Cert client_credentials OK; authorize invalid_request = EBAY_RU_NAME not owned by App ID; added authorize preflight + banners — blocked
+- `2026-07-22T20:34:40.481Z` · **main** · main · agent · Search rail: title-first SearchResultRow (narrow densities drop chip wall; last-4 for tracking titles) — ok
+- `2026-07-22T20:34:53.488Z` · **main** · main · agent · Pending grid width pressure: content mins + h-scroll, adaptive headers, viewport collapse By/Qty/Ch, revert CopyChip quiet — ok
+- `2026-07-22T20:36:47.931Z` · **main** · main · agent · Fix Dashboard Search openOrderId flash loop: useDashboardSelectedOrder now inert when detailsEnabled=false (gated listeners + resolve effect; disable effect deps only detailsEnabled via clearSelectedOrderRef) — search-mode URL owned solely by useDashboardSearchOrder; repro'd + verified via Playwright on tracking q, both search e2e specs green — success
+- `2026-07-22T20:40:03.736Z` · **main** · main · agent · Lock Pending grid columns: shared --cf-orders-grid-w so virtualized rows no longer drift under long titles — ok
+- `2026-07-22T20:49:03.210Z` · **main** · main · agent · Pending grid: bare PlatformMark channel favicons (drop sunken tile) + soft accent + Label pill matching condition chip anatomy; keep /shipping?open= deep-link — ok
+- `2026-07-22T20:51:31.015Z` · **main** · main · agent · Pending tracking: + Label → plus-icon only; drop Trk header text; shrink track to 3.75rem glyph-only — ok
+- `2026-07-22T21:08:23.356Z` · **main** · main · agent · eBay prod purchasing: replaced sandbox RuName with Production Densense_LLC-Densense-CycleF-qqkurhuce; Vercel synced+redeployed; authorize reaches signin.ebay.com; awaiting human consent on app.cycleforge.ai Add purchasing — ok
+- `2026-07-22T22:00:11.297Z` · **main** · main · agent · Promote Warehouse to dogfood prod nav (unpark + remove DogfoodSurfaceGate) — success
+- `2026-07-22T22:09:16.497Z` · **main** · main · agent · Unify top-band chrome icon display: TOP_CHROME_ICON_GLYPH + page stroke shared by GlobalHeader actions and MasterNav MRU — ok
+- `2026-07-22T22:13:15.427Z` · **main** · main · agent · Incoming POS: replace QueueTableShell with IncomingGridView → LedgerGrid (receiving column SoT + airtable skin); History/Unbox/board unchanged — success
+- `2026-07-22T22:13:49.885Z` · **main** · main · agent · Incoming eBay Import+Add chrome: marketplace sync CTA, manual import overlay, eBay row identity + empty copy — ok
+- `2026-07-22T22:14:52.878Z` · **main** · main · agent · Promote LedgerGrid to DS SoT: hoist VirtualGroupedSections, day-band API, migrate receiving/station/repair/FBA shells, wire accordionBootstrap Expand-all — done
+- `2026-07-22T22:19:54.280Z` · **main** · main · agent · Rooms Save: shared TanStack locations cache + selection-keyed hydration (rename race) — ok
+- `2026-07-22T22:27:47.624Z` · **main** · main · agent · Incoming grid: match Pending SoT columns (Product Title + Age), click-to-sort headers asc/desc — success
+- `2026-07-22T22:28:42.341Z` · **main** · main · agent · Support tickets focus: right-rail SupportTicketIdMark, Connections without Customer embed, shared glass WorkspaceCard shadow, floating send dock — ok
+- `2026-07-22T22:29:08.751Z` · **main** · main · agent · Handoff: Incoming grid PO group select-all + Status column + drop lines copy — docs/todo/incoming-grid-po-select-status-handoff.md — ok
+- `2026-07-22T22:32:45.219Z` · **main** · main · agent · Incoming Add eBay: switch ImportEbayOverlay from centered RightPaneOverlay to DetailStackRailRegistrar slide-over (match dashboard NewOrderEntry) — ok
+- `2026-07-22T22:33:30.757Z` · **main** · main · agent · Warehouse Labels/Racks: barcode-local LABEL_BUILDER pin — max-w-3xl, ops density, quiet selection (no DS promote yet) — ok
+- `2026-07-22T22:33:47.699Z` · **main** · main · agent · Enable eBay inbound source on buyer connect + Import self-heal; remove Incoming Sync icon menu — ok
+- `2026-07-22T22:36:37.832Z` · **main** · main · agent · Incoming Import: platform picker popover (Zoho / eBay) before sync; restore Zoho inventory refresh — ok
+- `2026-07-22T22:44:08.993Z` · **main** · main · agent · Incoming grid: group select-all, Status column, drop lines copy, editable leaf Product Title — done
+- `2026-07-22T22:58:23.833Z` · **main** · main · agent · EventTimeline rail: mode glyphs + HoverTooltip replace tone dots — ok
+- `2026-07-22T22:59:23.010Z` · **main** · main · agent · Incoming grid polish: align multi-PO headers, last-4 order chips, wider tracking, status icon-only (no city dump) — done
+- `2026-07-22T23:03:12.334Z` · **main** · main · agent · Incoming title edit: mirror Pending OrdersQueueTableRow cell contract (relative + span + always-on LedgerCellEditor) — done
+- `2026-07-22T23:08:00.556Z` · **main** · main · agent · Timeline polish: CopyChip-only ids, sharp linkable rail icons, Activity-first tab — ok
+- `2026-07-22T23:09:09.309Z` · **main** · main · agent · Revert blurry top-band icon stroke: MRU back to h-3.5 + page stroke; GlobalHeader native SVG stroke only (drop TOP_CHROME_ICON_STROKE_CLASS) — ok
+- `2026-07-22T23:14:07.939Z` · **main** · main · agent · Revert mode nav icon stroke 2.75→2.25 (pre-blur weight) for crisp MasterNav mode dropdown glyphs — ok
+- `2026-07-22T23:17:13.038Z` · **main** · main · agent · Unbox/History/Testing browse tables → ReceivingGridView LedgerGrid SoT; retire ReceivingGroupedList + QueueTableShell — ok
+- `2026-07-22T23:17:16.321Z` · **main** · main · agent · Pending grid: Status column (PENDING/TESTED/BLOCKED), filter empty tracking, full-bleed, page-scroll sticky under chrome — done
+- `2026-07-22T23:17:37.530Z` · **main** · main · agent · Support ticket dock: Conversations/Timeline floating FAB + drop forced Conversations min-height — ok
+- `2026-07-23T02:36:45.379Z` · **main** · main · agent · Inbound hunt queue: Zoho-decouple exit, drop email tile, 14d+age bands, enrichment always-on, demote not-unboxed tile — done
+- `2026-07-23T02:47:14.897Z` · **main** · main · agent · fix pending-grid zebra: stripe +1 per collapsed group (not leaf count), even=white, continuous across hidden day bands — ok
+- `2026-07-23T02:47:46.780Z` · **main** · main · agent · Unbox chrome search: ToolbarSearchToggle SoT (hover-expand); promote to DS primitives — ok
+- `2026-07-23T02:55:50.102Z` · **main** · main · agent · Details stack quick actions: Urgent → Notes → OOS → Mark shipped — ok
+- `2026-07-23T03:05:09.217Z` · **main** · main · agent · Header search paste commits identifier → open order detail (no preview) — shipped
+- `2026-07-23T03:08:11.386Z` · **main** · main · agent · Search Overview presence-driven: omit empty facts/cards, drop Order dupe, flag inverted ship-by — ok
+- `2026-07-23T03:08:19.905Z` · **main** · main · agent · Unbox: week pill → chrome controls slot; Date column; drop day-band headers — done
+- `2026-07-23T03:17:09.278Z` · **main** · main · agent · Product tab: condition chip in title header; Amazon ASIN reimport CTA; manual nested under item number — ok
+- `2026-07-23T03:34:32.794Z` · **main** · main · agent · Saved grid-surface-descriptor plan (Gemini validation + TESTED Phase A field contract) — ok
+- `2026-07-23T03:39:09.567Z` · **main** · main · agent · Products Catalog: provider_item_id + ?view=catalog hub list with Inventory chip, link filters, FBA expand; MDM remeasure doc — ok
+- `2026-07-23T03:40:50.920Z` · **main** · main · agent · Integrated grid engine research (hybrid B- TanStack Table) into grid-surface-descriptor plan — ok
+- `2026-07-23T03:55:14.014Z` · **main** · main · agent · Clarified grid plan framing: upgrade Kinetic Ledger (not shadcn/AG Grid succession) — ok
+- `2026-07-23T04:14:17.229Z` · **main** · main · agent · Validated grid sequencing: install TanStack now on Pending; corrected order-fold vs day-band; revised plan — ok
+- `2026-07-23T04:21:31.877Z` · **main** · main · agent · Plan: React Compiler × TanStack v8 trap + Final verdict section — ok
+- `2026-07-23T04:36:07.333Z` · **main** · main · agent · Added Fable 5 execution prompt for grid-surface-descriptor Phase A — ok
+- `2026-07-23T04:41:22.618Z` · **main** · main · agent · SectionTabsSlider labeled TabSwitch + station overflow menu (amended Option A) — ok
+- `2026-07-23T04:41:47.207Z` · **main** · main · agent · Unfound empty row matches PoLineRow: title + dashed EmptySkuChipFace + condition meta — ok
+- `2026-07-23T04:56:43.809Z` · **main** · main · agent · Compound ops for inbound scan contract: applyUnboxCartonOpened chokepoint in scan-apply.ts (all 5 unbox open rungs funnel; stub drop + Unboxed upsert + Arrival purge + touch-scan in one waist; 3 contract tests) + route-mocked e2e unbox-open-purges-arrival.spec.ts (Phase-0 rung, MasterNav soft return, reload sentinel). 8 neighboring scan e2e green; npm run verify PASSED tree-wide — success
+- `2026-07-23T05:12:00.012Z` · **main** · main · agent · Photo pill: hide + when count shown; lock w-14 so digit growth does not shift identity row — ok
+- `2026-07-23T05:13:40.865Z` · **main** · main · agent · Photo pill: camera left, count/plus right via justify-between — ok
+- `2026-07-23T05:18:32.968Z` · **main** · main · agent · Execution prompt: mandatory Playwright expansive feature matrix for Phase A — ok
+- `2026-07-23T05:33:39.900Z` · **main** · main · agent · Ticket chip: seller message is Open→Message→Edit menu row (removed header icon) — ok
+- `2026-07-23T05:36:15.872Z` · **main** · main · agent · Classify: banner identity faces (platform/type/urgency); tab stays names list; deferred icon+name pad handoff — ok
+- `2026-07-23T05:49:07.509Z` · **main** · main · agent · Classify accordion: grid-rows (no jump); banner icon+name pills; motion timing sync opacity — ok
+- `2026-07-23T05:52:57.204Z` · **main** · main · agent · Install shadcn into Kinetic Ledger DS: Dialog, AlertDialog, Switch, Checkbox, DropdownMenu, ContextMenu + ConfirmDialogHost; migrate admin dialogs, settings switches, menus, selects — success
+- `2026-07-23T05:54:00.608Z` · **main** · main · agent · Install shadcn into Kinetic Ledger DS: Dialog, AlertDialog, Switch, Checkbox, DropdownMenu, ContextMenu + ConfirmDialogHost; migrate admin dialogs, settings switches, menus, selects — success
+- `2026-07-23T06:00:59.675Z` · **main** · main · agent · Header classify pills open matching Classify accordion (not tab-only) — ok
+- `2026-07-23T06:08:16.109Z` · **main** · main · agent · Pending Phase A: TanStack v8 headless (useGridSurface, use-no-memo) + TESTED Tester/Tested-at mode columns + LedgerGrid split-x sticky-header fix + Playwright matrix (24 tests, 4 specs) green — success
+- `2026-07-23T06:09:08.344Z` · **main** · main · agent · Continue DS adoption: admin Dialog batch (ReasonCodes/RepairIssues/Favorites/Locations/FBA/AddStaff), eradicate window.confirm via requestConfirm, Switch on Print/Mobile display cards — success
+- `2026-07-23T06:15:40.498Z` · **main** · main · agent · Grid Phase B: shared cell registry src/components/ui/grid-cells.tsx (dash/date/age/platform/staff/datetime values); Pending+Incoming+Receiving rows & summaries composed; e2e sweep green — success
+- `2026-07-23T06:31:19.898Z` · **main** · main · agent · Grid Phase C: GridSurfaceDescriptor + buildLedgerColumnDefs + LedgerGridSurface in DS grid; Incoming + Receiving composers migrated onto descriptor surface (TanStack sort state); orders defs on shared factory; knip clean — success
+- `2026-07-23T06:35:28.690Z` · **main** · main · agent · Grid-surface-descriptor full-plan run: Phases A-D landed (TanStack headless + TESTED lane + cell registry + LedgerGridSurface/descriptors + DataTable boundary docs); Phase E grouping held at plan ask-first gate; npm run verify PASSED; 24 grid e2e green — success
+- `2026-07-23T15:32:11.091Z` · **main** · main · agent · Authored all-tables-improvements EXECUTION-PROMPT (grants Phase E + descriptor Fields menu; waves W0-W6 incl. URL sorts, cell tokens, bespoke-table collapse onto DataTable); linked from grid plan + memory — ok
+- `2026-07-23T15:32:13.078Z` · **main** · main · agent · Triage Open-in-unbox: remount StationRightEdgeAction mid-canvas (~top-1/4) via stationRightEdgeActionHostClass; FloatingButton untouched — ok
+- `2026-07-23T15:36:56.000Z` · **main** · main · agent · Carton banner classify pills: quiet equal-width icon+short SoT labels (AE/High/PO) + HoverTooltip full name; collapsedVariant=bookmark on InlinePillPicker — ok
+- `2026-07-23T15:38:51.639Z` · **main** · main · agent · shadcn→KL wave3: Dialog (FnskuSearch, ListingPhotoGallery + prior auth/manuals), SwitchStaff→BottomSheet, FilterDropdownSelect on org/manuals/goals — ok
+- `2026-07-23T15:40:35.100Z` · **main** · main · agent · Trash FloatingButton → SlicedActionDock (bottom-edge sliced segments, mobile display language); StationTerminalDock + FBA migrated — ok
+- `2026-07-23T15:45:47.440Z` · **main** · main · agent · Classify bookmark: keep short-name pills, lock equal w-14, pip instead of wordmark+EB; skip re-open when Classify dimension already expanded — ok
+- `2026-07-23T15:51:02.489Z` · **main** · main · agent · WIP dogfood: carton header classify pills text-only full SoT names; ignore outside-click on header pills so Classify dropdown does not close-reopen — ok

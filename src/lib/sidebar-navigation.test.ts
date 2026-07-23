@@ -66,15 +66,14 @@ test('dogfood prod nav omits parked surfaces', () => {
     'home',
     'operations',
     'sourcing',
-    'warehouse',
     'fba',
     'studio',
     'ai-chat',
   ]) {
     assert.equal(navIds.has(id), false, `${id} should be parked off APP_SIDEBAR_NAV`);
   }
-  // Stations + shipping + inventory stay visible.
-  for (const id of ['dashboard', 'receiving', 'outbound', 'tech', 'packer', 'inventory']) {
+  // Stations + shipping + inventory + warehouse stay visible.
+  for (const id of ['dashboard', 'receiving', 'outbound', 'tech', 'packer', 'inventory', 'warehouse']) {
     assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
   }
 });

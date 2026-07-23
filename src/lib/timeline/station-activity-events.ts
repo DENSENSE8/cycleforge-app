@@ -87,6 +87,7 @@ export function stationActivityToTimeline(rows: StationActivityRow[]): TimelineI
       subtitle: serialSourceSubtitle(r),
       ref,
       actor: r.actor_name ?? undefined,
+      sourceEventType: r.activity_type,
     };
   });
 }

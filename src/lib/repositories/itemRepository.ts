@@ -140,6 +140,7 @@ export class DrizzleItemRepository implements ItemRepository {
           ean: r.ean,
           image_url: r.imageUrl,
           status: r.status,
+          zoho_item_id: r.zohoItemId,
         })),
         syncOrgId,
       );

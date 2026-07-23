@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { AlertCircle, Check, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 
 // ─── Shared shell ──────────────────────────────────────────────────────────
 
@@ -29,42 +35,23 @@ interface ModalShellProps {
 export function ModalShell({
   open, onClose, eyebrow, title, busy, children, footer, maxWidth = 'md',
 }: ModalShellProps) {
-  // Close on ESC (but not while a request is in flight — easy to lose work).
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !busy) onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, onClose]);
-
-  // Render flag — createPortal needs document.body, which doesn't exist
-  // during SSR. Gate the portal until after first client mount.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-
-  if (!open || !mounted) return null;
-
   const widthClass = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }[maxWidth];
 
-  // Portal to body so the overlay escapes the sidebar's stacking context
-  // and centers over the whole viewport — fixed positioning alone gets
-  // trapped if any ancestor sets transform/filter/will-change.
-  return createPortal(
-    <div className="fixed inset-0 z-panelPopover flex items-center justify-center p-4">
-      {/* ds-raw-button: full-bleed dismiss scrim, not a Button shape */}
-      <button
-        type="button"
-        className="ds-raw-button absolute inset-0 bg-scrim/40"
-        aria-label="Close"
-        onClick={() => { if (!busy) onClose(); }}
-      />
-      <div className={`relative z-panelPopover w-full ${widthClass} overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-zinc-900/20`}>
-        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
+    >
+      <DialogContent hideClose className={`${widthClass} gap-0 overflow-hidden p-0`}>
+        <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-soft px-4 py-3">
           <div>
             <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">{eyebrow}</p>
-            <h2 className="mt-1 text-sm font-black text-text-default">{title}</h2>
+            <DialogTitle className="mt-1 text-sm font-black">{title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {eyebrow}: {title}
+            </DialogDescription>
           </div>
           <IconButton
             icon={<X className="h-4 w-4" />}
@@ -73,14 +60,13 @@ export function ModalShell({
             ariaLabel="Close"
             className="rounded-full border border-border-soft bg-surface-card p-2 hover:border-border-default hover:bg-surface-hover hover:text-text-default"
           />
-        </div>
+        </DialogHeader>
         <div className="space-y-4 px-4 py-4">{children}</div>
-        <div className="flex items-center justify-end gap-2 border-t border-border-hairline bg-surface-canvas/60 px-4 py-3">
+        <DialogFooter className="border-t border-border-hairline bg-surface-canvas/60 px-4 py-3">
           {footer}
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -95,7 +81,7 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
 export const inputClass =
   'w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-sm text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100';
 
-export const selectClass = inputClass + ' appearance-none bg-surface-card';
+export { FILTER_DROPDOWN_SELECT_CLASS as selectClass } from '@/design-system/components/FilterDropdownSelect';
 
 export function PrimaryButton({
   busy, disabled, children, onClick, danger,

@@ -11,9 +11,9 @@ import { IconButton } from '@/design-system/primitives';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_CLUSTER,
-  HEADER_ICON_GLYPH,
   HEADER_ICON_WRAP,
   HEADER_INSET_X,
+  TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
 import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
@@ -89,7 +89,7 @@ export function GlobalHeader({
                     strokeWidth={2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className={HEADER_ICON_GLYPH}
+                    className={TOP_CHROME_ICON_GLYPH}
                     aria-hidden
                   >
                     <rect width="18" height="18" x="3" y="3" rx="2" />

@@ -1,0 +1,163 @@
+'use client';
+
+/**
+ * Shared Kinetic Ledger grid VALUE cells (grid-surface-descriptor plan Phase B).
+ *
+ * The Workbench spreadsheets (Pending `OrdersQueueTableRow`, Incoming
+ * `IncomingGridRow`, Receiving `ReceivingGridRow`, and their group summaries)
+ * copy-adapted the same cell value markup per surface — the em-dash empty, the
+ * civil-day + tooltip date, the days-late / lane-age urgency value, the fixed
+ * platform brand mark, the staff name, and the live-format timestamp. This
+ * registry is the one home for those VALUE presenters so the row registries
+ * compose instead of re-typing them.
+ *
+ * Contract: these are dumb value cells — resolved facts in (label/tone SoTs
+ * already applied upstream where domain-specific), spans out. They never fetch,
+ * never own cell-track chrome (`ordersQueueGridCell` / `incomingGridCell` stay
+ * with the surface), and never invent tones — urgency hues come from
+ * `getDaysLateTone` / `getLaneAgeTone` (`src/utils/date.ts`), marks from
+ * `PlatformMark`. Size/density varies per surface via `className`
+ * (`densityClasses.metaText` on Pending, `text-role-caption` on station grids).
+ */
+
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
+import {
+  formatDateTimePST,
+  getDaysLateTone,
+  getLaneAgeTone,
+} from '@/utils/date';
+import { cn } from '@/utils/_cn';
+
+/** The house empty-cell value — a quiet em dash (never blank, never "N/A"). */
+export function GridCellDash({ className }: { className?: string }) {
+  return (
+    <span className={cn('text-text-faint', className)} aria-hidden>
+      —
+    </span>
+  );
+}
+
+/**
+ * Civil-day date value — compact label (e.g. `Jul 21`) with the full day in a
+ * tooltip; missing → em dash. Callers resolve the label/tooltip through their
+ * date SoT helper (`formatQueueRowDateCell`, `incomingDateCell`).
+ */
+export function GridDateCellValue({
+  label,
+  tooltip,
+  className,
+}: {
+  label?: string | null;
+  tooltip?: string | null;
+  className?: string;
+}) {
+  if (!label) return <GridCellDash />;
+  return (
+    <HoverTooltip label={tooltip ?? label} focusable={false}>
+      <span className={cn('tabular-nums normal-case tracking-normal text-text-muted', className)}>
+        {label}
+      </span>
+    </HoverTooltip>
+  );
+}
+
+/**
+ * Age / urgency value — days past ship-by (`3d`, SLA-toned) when late, else the
+ * lane-age compact label (`4h`), else em dash. Tones stay with the date SoT
+ * (`getDaysLateTone` / `getLaneAgeTone`); the lane-age branch only shows when
+ * the row is not late (matching every current surface).
+ */
+export function GridAgeCellValue({
+  daysLate,
+  laneAgeLabel,
+  laneAgeHours,
+  tooltip,
+  className,
+}: {
+  daysLate: number | null;
+  laneAgeLabel?: string | null;
+  laneAgeHours?: number | null;
+  tooltip?: string;
+  className?: string;
+}) {
+  const base = 'tabular-nums normal-case tracking-normal';
+  if (daysLate !== null) {
+    return (
+      <HoverTooltip label={tooltip ?? ''} focusable={false}>
+        <span className={cn(base, getDaysLateTone(daysLate), className)}>{daysLate}d</span>
+      </HoverTooltip>
+    );
+  }
+  if (laneAgeLabel) {
+    return (
+      <HoverTooltip label={tooltip ?? ''} focusable={false}>
+        <span className={cn(base, getLaneAgeTone(laneAgeHours ?? null), className)}>
+          {laneAgeLabel}
+        </span>
+      </HoverTooltip>
+    );
+  }
+  return <GridCellDash />;
+}
+
+/**
+ * Fixed platform brand mark — display variant (tooltip + sr-only label), the
+ * shape the station grids and group summaries share. The Pending leaf row keeps
+ * its richer `OrderIdentityChips` mark (listing link + hover menu) — that is a
+ * different job, not this cell.
+ */
+export function GridPlatformMarkValue({
+  platformValue,
+  label,
+  textClassName,
+}: {
+  /** Resolved `sourcePlatformMetaFromLabel(...).value`; falsy → em dash. */
+  platformValue?: string | null;
+  label: string;
+  textClassName?: string;
+}) {
+  if (!platformValue) return <GridCellDash />;
+  return (
+    <HoverTooltip label={label} focusable={false}>
+      <span className="inline-flex items-center justify-center">
+        <PlatformMark platformValue={platformValue} textClassName={textClassName} />
+        <span className="sr-only">{label}</span>
+      </span>
+    </HoverTooltip>
+  );
+}
+
+/**
+ * Staff name value (tester / packer) — expects a `normalizePersonName`-cleaned
+ * string where `'---'` means missing (renders the em dash).
+ */
+export function GridStaffCellValue({
+  name,
+  className,
+}: {
+  name?: string | null;
+  className?: string;
+}) {
+  if (!name || name === '---') return <GridCellDash />;
+  return (
+    <span className={cn('min-w-0 truncate normal-case tracking-normal text-text-muted', className)}>
+      {name}
+    </span>
+  );
+}
+
+/**
+ * Full timestamp value via `formatDateTimePST` (guards the `'1'` sentinel +
+ * naive wall-clock shapes). Subscribes to the live 12h↔24h preference so a
+ * toggle repaints in place — mount it only in cells that show a timestamp.
+ */
+export function GridDateTimeCellValue({ raw, className }: { raw: string; className?: string }) {
+  useTimeFormat();
+  return (
+    <span className={cn('min-w-0 truncate tabular-nums normal-case tracking-normal', className)}>
+      {formatDateTimePST(raw)}
+    </span>
+  );
+}

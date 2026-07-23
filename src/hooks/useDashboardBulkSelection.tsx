@@ -22,6 +22,7 @@ import type { SelectionAction } from '@/lib/selection/selection-actions';
 // page graph, and printing only happens on an explicit bulk action.
 const loadProductLabelPrinter = () => import('@/lib/print/printProductLabel');
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 
 /**
@@ -118,7 +119,12 @@ export function useDashboardBulkSelection(
       if (rows.length === 0) return;
       const noun = isShippedView ? 'shipped record' : 'order';
       const label = rows.length === 1 ? `this ${noun}` : `these ${rows.length} ${noun}s`;
-      if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+      const ok = await requestConfirm({
+        description: `Delete ${label}? This cannot be undone.`,
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      });
+      if (!ok) return;
       try {
         if (isShippedView) {
           // No bulk packer-log endpoint — delete each (the Shipped row id IS

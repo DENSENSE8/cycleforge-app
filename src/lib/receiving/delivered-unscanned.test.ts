@@ -1,7 +1,7 @@
 /**
- * Unit tests for the single-source-of-truth delivered-unscanned helper
- * (Phase B). Asserts the count path and the list path share the exact same
- * canonical base SQL, so `count === list.length` holds by construction.
+ * Unit tests for the single-source-of-truth delivered-unscanned helper.
+ * Asserts the count path and the list path share the exact same canonical
+ * base SQL, so `count === list.length` holds by construction.
  * Run: `npm run test:shipping-status`.
  */
 import { test } from 'node:test';
@@ -9,10 +9,11 @@ import assert from 'node:assert/strict';
 
 import {
   deliveredUnscannedBaseSql,
-  emailDeliveredUnscannedBaseSql,
+  deliveredUnscannedAgeBandSql,
   getDeliveredUnscannedCount,
   INBOUND_SHIPMENT_PREDICATE,
   ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE,
+  NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE,
   DELIVERED_UNSCANNED_WINDOW_DAYS,
 } from './delivered-unscanned';
 
@@ -20,12 +21,21 @@ test('base SQL embeds the inbound predicate, dedupe, and unscanned guard', () =>
   const sql = deliveredUnscannedBaseSql('$1');
   assert.match(sql, /DISTINCT ON \(stn\.tracking_number_normalized\)/);
   assert.match(sql, /stn\.is_delivered = true/);
-  assert.match(sql, /NOT EXISTS/);          // no receiving_scans
+  assert.match(sql, /NOT EXISTS/); // no receiving_scans
   assert.match(sql, /receiving_scans rs/);
   assert.ok(sql.includes(INBOUND_SHIPMENT_PREDICATE));
   assert.ok(sql.includes(ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE));
+  // Physical-first: Zoho terminal must NOT gate the hunt queue.
+  assert.ok(!sql.includes(NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE));
   // Window is parameterized, not hard-coded.
   assert.match(sql, /\$1 \|\| ' days'/);
+  // Age band + oldest-first burn-down.
+  assert.ok(sql.includes(deliveredUnscannedAgeBandSql('stn.delivered_at')));
+  assert.match(sql, /ORDER BY stn\.tracking_number_normalized, stn\.delivered_at ASC/);
+});
+
+test('hunt window is 14 days', () => {
+  assert.equal(DELIVERED_UNSCANNED_WINDOW_DAYS, 14);
 });
 
 test('window param placeholder is substituted verbatim', () => {
@@ -54,16 +64,4 @@ test('getDeliveredUnscannedCount wraps the canonical base and binds the window',
 test('count tolerates an empty result set', async () => {
   const fakeClient = { query: async () => ({ rows: [] as Array<{ n: number }> }) };
   assert.equal(await getDeliveredUnscannedCount(fakeClient as never), 0);
-});
-
-test('email base reads the line zoho cluster from receiving_line_zoho (Wave-2 reader cutover)', () => {
-  for (const sql of [emailDeliveredUnscannedBaseSql(), emailDeliveredUnscannedBaseSql(30, '$1')]) {
-    // The order#↔PO# string-key join is on the street table, keyed back to the
-    // line via its PK; the output columns keep their frozen names.
-    assert.match(sql, /JOIN receiving_line_zoho rz\s+ON rz\.zoho_purchaseorder_number_norm = eds\.order_number_norm/);
-    assert.match(sql, /JOIN receiving_line rl\s+ON rl\.id = rz\.receiving_line_id/);
-    assert.match(sql, /rz\.zoho_purchaseorder_id,\s+rz\.zoho_purchaseorder_number/);
-    // No zoho-cluster reads left on the line spine.
-    assert.ok(!/rl\.zoho_/.test(sql), 'spine zoho read leaked back into the email base');
-  }
 });

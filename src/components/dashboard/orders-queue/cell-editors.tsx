@@ -7,11 +7,11 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
 } from 'react';
-import { Check } from '@/components/Icons';
+import { AlertTriangle, Check, FileText, Maximize2 } from '@/components/Icons';
 import { Popover } from '@/design-system/primitives/Popover';
 import { Calendar } from '@/design-system/components/Calendar';
-import { conditionOptions, conditionDescription } from '@/lib/conditions';
-import { conditionGradeTextClass } from '@/lib/condition-tone';
+import { conditionOptions, conditionDescription, resolveConditionGrade } from '@/lib/conditions';
+import { conditionGradeTextClass, conditionGradeTone } from '@/lib/condition-tone';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
@@ -205,7 +205,9 @@ export function ConditionSelectPopover({
 }: ConditionSelectPopoverProps) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const options = conditionOptions('table');
-  const normalized = String(current || '').trim().toUpperCase();
+  // Alias-aware match ("NEW" → BRAND_NEW, "L-NEW" → LIKE_NEW, …) so a
+  // marketplace-string row highlights its grade as current.
+  const normalized = resolveConditionGrade(current);
 
   // Focus the current option (or the first) on mount; arrows rove between
   // options (APG listbox), Enter/Space select, Esc closes without saving.
@@ -268,6 +270,8 @@ export function ConditionSelectPopover({
               className={cn(
                 'ds-raw-button flex w-full items-center justify-between gap-2 px-2.5 py-1.5 text-left text-role-caption font-bold uppercase tracking-wide outline-none hover:bg-surface-hover focus-visible:bg-surface-hover',
                 conditionGradeTextClass(opt.value),
+                // Current grade reads in its own hue — soft toned wash + check.
+                isCurrent && conditionGradeTone(opt.value).badge,
               )}
             >
               <span className="min-w-0 truncate">{opt.label}</span>
@@ -287,6 +291,100 @@ export function ConditionSelectPopover({
         >
           Clear condition
         </button>
+      </div>
+    </Popover>
+  );
+}
+
+// ─── Row info menu — single-selected row quick editors ──────────────────────
+
+interface RowInfoMenuPopoverProps {
+  anchorRef: RefObject<HTMLElement | null>;
+  canEditNotes: boolean;
+  canEditOos: boolean;
+  onNotes: () => void;
+  onOutOfStock: () => void;
+  onDetails: () => void;
+  onDone: () => void;
+}
+
+/**
+ * Info-edit dropdown for the single checked grid row — fixed item order
+ * (Notes · Out of stock · Details). The first two hand off to the row's
+ * cell-anchored editors; Details opens the record. Un-permissioned edit rows
+ * are omitted, never rendered disabled.
+ */
+export function RowInfoMenuPopover({
+  anchorRef,
+  canEditNotes,
+  canEditOos,
+  onNotes,
+  onOutOfStock,
+  onDetails,
+  onDone,
+}: RowInfoMenuPopoverProps) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const items = [
+    canEditNotes
+      ? { key: 'notes', label: 'Notes', icon: <FileText className="h-3.5 w-3.5 shrink-0 text-text-soft" />, run: onNotes }
+      : null,
+    canEditOos
+      ? { key: 'oos', label: 'Out of stock', icon: <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-500" />, run: onOutOfStock }
+      : null,
+    { key: 'details', label: 'Details', icon: <Maximize2 className="h-3.5 w-3.5 shrink-0 text-text-soft" />, run: onDetails },
+  ].filter((it): it is NonNullable<typeof it> => it !== null);
+
+  // Focus the first item on mount; arrows rove (same contract as the
+  // condition listbox), Esc / outside click close via the Popover.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      listRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const list = listRef.current;
+    if (!list) return;
+    const rows = Array.from(list.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+    const idx = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === 'ArrowDown' ? Math.min(rows.length - 1, idx + 1) : Math.max(0, idx - 1);
+    rows[next]?.focus();
+  };
+
+  return (
+    <Popover
+      open
+      onClose={onDone}
+      anchorRef={anchorRef}
+      placement="bottom-end"
+      role="menu"
+      aria-label="Edit info"
+      padded={false}
+      className="w-40 py-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div ref={listRef} onKeyDown={onKeyDown}>
+        {items.map((it) => (
+          <button
+            key={it.key}
+            type="button"
+            role="menuitem"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDone();
+              it.run();
+            }}
+            className="ds-raw-button flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-role-caption font-semibold text-text-muted outline-none hover:bg-surface-hover focus-visible:bg-surface-hover"
+          >
+            {it.icon}
+            <span className="min-w-0 truncate">{it.label}</span>
+          </button>
+        ))}
       </div>
     </Popover>
   );

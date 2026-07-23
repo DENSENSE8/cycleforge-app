@@ -78,11 +78,17 @@ export function LineEditPanel({
   row,
   staffId,
   itemTotal,
+  accordionBootstrap = 'default',
 }: {
   row: ReceivingLineRow;
   staffId: string;
   /** Total number of items in the PO — drives the "Receive" vs "Receive all" labels. */
   itemTotal?: number;
+  /**
+   * Snapshot of `receiving.accordionExpand` at carton open — `'all'` keeps the
+   * active PO-line body expanded and suppresses inactive fake chevrons.
+   */
+  accordionBootstrap?: 'default' | 'all';
 }) {
   // All state, effects, and handlers live in the controller — this panel is pure
   // composition. See useUnboxLineController / useReceivingLineCore.
@@ -139,6 +145,18 @@ export function LineEditPanel({
   );
 
   const [unboxView, setUnboxView] = useState<UnboxView>('overview');
+  const [classifyExpand, setClassifyExpand] = useState<{
+    dimension: 'urgency' | 'platform' | 'type';
+    requestId: number;
+  } | null>(null);
+
+  const openClassifyFromHeader = (picker: 'urgency' | 'platform' | 'type') => {
+    setUnboxView('classify');
+    setClassifyExpand((prev) => ({
+      dimension: picker,
+      requestId: (prev?.requestId ?? 0) + 1,
+    }));
+  };
   const hasUnits = serialCount > 0;
   const trackingNumber = String(row.tracking_number ?? '').trim();
   const poIdForTracking = String(row.zoho_purchaseorder_id ?? '').trim();
@@ -147,13 +165,18 @@ export function LineEditPanel({
   const hasPoNoteTab = !c.isUnfound && row.receiving_id != null;
   const isLocalPickup = isLocalPickupFulfillment(row);
   const hasTrackingTab = !isLocalPickup;
-  const hasListingsTab = true;
+  // Classification: checklist tab only (header pill row removed — DS SoT).
+  // Unfound → strip order 2 (replaces Listings). Matched → ⋯ overflow.
+  const hasClassifyTab = true;
+  const classifyOnStrip = c.isUnfound;
+  const hasListingsTab = !c.isUnfound;
   const activeUnboxView: UnboxView =
     unboxView === 'checklist' ||
     (unboxView === 'po-note' && hasPoNoteTab) ||
     (unboxView === 'units' && hasUnits) ||
     (unboxView === 'tracking' && hasTrackingTab) ||
     (unboxView === 'listings' && hasListingsTab) ||
+    (unboxView === 'classify' && hasClassifyTab) ||
     (unboxView === 'timeline' && hasTimelineTab) ||
     unboxView === 'ticket' ||
     unboxView === 'support'
@@ -344,6 +367,8 @@ export function LineEditPanel({
         hasTimelineTab,
         hasTrackingTab,
         hasListingsTab,
+        hasClassifyTab,
+        classifyOnStrip,
         poIdForTracking,
         hasPoNoteTab,
         poNote,
@@ -356,17 +381,23 @@ export function LineEditPanel({
         onChecklistBridge,
         onUnitsBridge,
         onConversationBridge,
+        accordionBootstrap,
+        classifyExpandDimension: classifyExpand?.dimension ?? null,
+        classifyExpandRequestId: classifyExpand?.requestId ?? 0,
       }),
     [
       row,
       staffId,
       c,
+      accordionBootstrap,
       activeUnboxView,
       hasUnits,
       serialCount,
       hasTimelineTab,
       hasTrackingTab,
       hasListingsTab,
+      hasClassifyTab,
+      classifyOnStrip,
       poIdForTracking,
       hasPoNoteTab,
       poNote,
@@ -378,6 +409,7 @@ export function LineEditPanel({
       onChecklistBridge,
       onUnitsBridge,
       onConversationBridge,
+      classifyExpand,
     ],
   );
 
@@ -413,7 +445,8 @@ export function LineEditPanel({
           ticketViewActive={false}
           density="bar"
           onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
-          onEditListing={() => setUnboxView('listings')}
+          onEditListing={hasListingsTab ? () => setUnboxView('listings') : undefined}
+          onClassifyPillOpen={openClassifyFromHeader}
           trackingEditOpen={activeUnboxView === 'tracking'}
           listingEditOpen={activeUnboxView === 'listings'}
         />
@@ -453,7 +486,8 @@ export function LineEditPanel({
                     ticketViewActive
                     density="bar"
                     onEditTracking={hasTrackingTab ? () => setUnboxView('tracking') : undefined}
-                    onEditListing={() => setUnboxView('listings')}
+                    onEditListing={hasListingsTab ? () => setUnboxView('listings') : undefined}
+                    onClassifyPillOpen={openClassifyFromHeader}
                     trackingEditOpen={activeUnboxView === 'tracking'}
                     listingEditOpen={activeUnboxView === 'listings'}
                   />

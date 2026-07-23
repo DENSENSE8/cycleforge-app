@@ -2251,6 +2251,12 @@ export const skuCatalog = pgTable('sku_catalog', {
   replenishTargetCents: integer('replenish_target_cents'),
   /** Per-SKU pack/handling guidance shown to the packer before confirm (P1-PCK-02). Added 2026-06-21. */
   notes: text('notes'),
+  /**
+   * External inventory-provider item id (`items.zoho_item_id` while Zoho is the
+   * adapter). Join inventory mirror on this id — never on SKU string.
+   * Added 2026-07-22 (Products Catalog MDM).
+   */
+  providerItemId: text('provider_item_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

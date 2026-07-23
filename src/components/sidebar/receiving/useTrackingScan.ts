@@ -24,7 +24,6 @@ import type { QueryClient } from '@tanstack/react-query';
 import {
   deferInvalidateTriageAndUnboxQueueFeeds,
   dispatchReceivingLinesPrepended,
-  purgeTriageRailsAfterUnboxOpen,
   removePendingScanRailRow,
   upsertReceivingRailRows,
   upsertUnboxQueueRows,
@@ -39,7 +38,12 @@ import {
   type ScanResolutionMode,
   type ScanIntakeSurface,
 } from '@/lib/receiving/scan';
-import { applyMatchedCarton, applyUnmatchedCarton, refocusScanInput } from './scan-apply';
+import {
+  applyMatchedCarton,
+  applyUnboxCartonOpened,
+  applyUnmatchedCarton,
+  refocusScanInput,
+} from './scan-apply';
 import type { ScanApplyCtx, TrackingScanResult } from './scan-types';
 import { toast } from '@/lib/toast';
 import {
@@ -325,41 +329,38 @@ export function useTrackingScan({
                   { looksLikeCode: looksLikeReceivingCode, resolveCode: resolveReceivingCodeToLine },
                 );
             if (internal) {
-              if (internal.rows.length > 0) {
-                // Surface split FIRST so an unbox scan never writes triage feeds.
-                // Unbox → unbox feeds only; triage → triage feed + the sanctioned
-                // triage→Unbox-Queue mirror.
-                if (intakeSurfaceRef.current === 'unbox') {
-                  clearUnboxPendingRail();
-                  if (internal.pick && internal.receivingId != null) {
-                    upsertReceivingRailRows(queryClient, [
-                      {
-                        ...internal.pick,
-                        client_event_id: receivingRailCartonKey(internal.receivingId),
-                      },
-                    ]);
-                  }
-                  if (internal.receivingId != null) {
-                    purgeTriageRailsAfterUnboxOpen(queryClient, internal.receivingId);
-                  }
-                } else {
-                  dispatchReceivingLinesPrepended({
-                    segments: ['scanned', 'triage-combined'],
-                    scope: 'triage',
-                    intakeSurface: 'triage',
-                    rows: internal.rows,
+              // Surface split FIRST so an unbox scan never writes triage feeds.
+              // Unbox → the open chokepoint (stub drop, Unboxed upsert, Arrival
+              // purge, touch-scan stamp); triage → triage feed + the sanctioned
+              // triage→Unbox-Queue mirror.
+              if (intakeSurfaceRef.current === 'unbox') {
+                if (internal.receivingId != null) {
+                  applyUnboxCartonOpened(queryClient, {
+                    receivingId: internal.receivingId,
+                    trackingNumber,
+                    railRow: internal.pick ?? null,
+                    touchScan: {},
                   });
-                  const pick = internal.pick ?? internal.rows[0];
-                  if (pick && internal.receivingId != null) {
-                    upsertUnboxQueueRows(queryClient, [
-                      {
-                        ...pick,
-                        client_event_id: receivingRailCartonKey(internal.receivingId),
-                      },
-                    ]);
-                  }
-                  deferInvalidateTriageAndUnboxQueueFeeds(queryClient);
+                } else {
+                  clearUnboxPendingRail();
                 }
+              } else if (internal.rows.length > 0) {
+                dispatchReceivingLinesPrepended({
+                  segments: ['scanned', 'triage-combined'],
+                  scope: 'triage',
+                  intakeSurface: 'triage',
+                  rows: internal.rows,
+                });
+                const pick = internal.pick ?? internal.rows[0];
+                if (pick && internal.receivingId != null) {
+                  upsertUnboxQueueRows(queryClient, [
+                    {
+                      ...pick,
+                      client_event_id: receivingRailCartonKey(internal.receivingId),
+                    },
+                  ]);
+                }
+                deferInvalidateTriageAndUnboxQueueFeeds(queryClient);
               }
               // Echo the resolution back to the caller (phone-paired scans listen
               // for this to render their matched/unmatched result) — the code
@@ -371,17 +372,6 @@ export function useTrackingScan({
                 po_ids: internal.poIds,
                 receiving_id: internal.receivingId,
               });
-              if (internal.receivingId != null && intakeSurfaceRef.current === 'unbox') {
-                void fetch('/api/receiving/touch-scan', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    receiving_id: internal.receivingId,
-                    tracking_number: trackingNumber,
-                    intakeSurface: 'unbox',
-                  }),
-                }).catch(() => {});
-              }
               setScanMatchedRows(internal.rows);
               setLineAccordionBootstrap(accordionBootstrapRef.current);
               setSelectedLine(internal.pick);
@@ -423,15 +413,26 @@ export function useTrackingScan({
               // Stamp scanned_by for the signed-in operator (same lightweight
               // touch-scan the local-tracking short-circuit uses) — no blocking
               // lookup-po round-trip. Use the carton's own tracking number.
-              void fetch('/api/receiving/touch-scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  receiving_id: cached.receivingId,
-                  tracking_number: cached.row.tracking_number ?? trackingNumber,
-                  ...(intakeSurfaceRef.current === 'unbox' ? { intakeSurface: 'unbox' } : {}),
-                }),
-              }).catch(() => {});
+              // Unbox surface routes through the open chokepoint (stub drop +
+              // Arrival purge + touch-scan; the row is already cached, so no
+              // rail upsert). Triage keeps the plain scanned_by stamp.
+              if (intakeSurfaceRef.current === 'unbox') {
+                applyUnboxCartonOpened(queryClient, {
+                  receivingId: cached.receivingId,
+                  trackingNumber,
+                  touchScan: { tracking: cached.row.tracking_number ?? trackingNumber },
+                });
+              } else {
+                void fetch('/api/receiving/touch-scan', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    receiving_id: cached.receivingId,
+                    tracking_number: cached.row.tracking_number ?? trackingNumber,
+                  }),
+                }).catch(() => {});
+                clearUnboxPendingRail();
+              }
               // Open via the rail's own select event so the sidebar selectedLine,
               // rail highlight, and right-pane workspace stay in lockstep — this
               // is the identical path a Recent-rail row click takes.
@@ -439,10 +440,6 @@ export function useTrackingScan({
               // mid-scan. The row is already in the feed cache either way, so a
               // stale scan simply stays visible in the queue rather than yanking
               // the current view to it.
-              clearUnboxPendingRail();
-              if (intakeSurfaceRef.current === 'unbox') {
-                purgeTriageRailsAfterUnboxOpen(queryClient, cached.receivingId);
-              }
               if (isCurrent()) dispatchSelectLine(cached.row);
               window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
               return;
@@ -466,17 +463,6 @@ export function useTrackingScan({
             /* local miss/error — fall through to lookup-po */
           }
           if (local?.kind === 'local-matched') {
-            // Client short-circuit skips lookup-po — still stamp scanned_by for
-            // the signed-in operator via the lightweight touch-scan route.
-            void fetch('/api/receiving/touch-scan', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                receiving_id: local.receivingId,
-                tracking_number: trackingNumber,
-                ...(intakeSurfaceRef.current === 'unbox' ? { intakeSurface: 'unbox' } : {}),
-              }),
-            }).catch(() => {});
             fireResult({
               tracking: trackingNumber,
               matched: true,
@@ -484,19 +470,26 @@ export function useTrackingScan({
               receiving_id: local.receivingId,
             });
             if (intakeSurfaceRef.current === 'unbox') {
-              clearUnboxPendingRail();
-              if (local.pick && local.receivingId != null) {
-                upsertReceivingRailRows(queryClient, [
-                  {
-                    ...local.pick,
-                    client_event_id: receivingRailCartonKey(local.receivingId),
-                  },
-                ]);
-              }
-              if (local.receivingId != null) {
-                purgeTriageRailsAfterUnboxOpen(queryClient, local.receivingId);
-              }
+              // Client short-circuit skips lookup-po — the open chokepoint drops
+              // the stub, upserts Unboxed, purges Arrival, and fires touch-scan
+              // (scanned_by + unbox-open stamp) in one place.
+              applyUnboxCartonOpened(queryClient, {
+                receivingId: local.receivingId,
+                trackingNumber,
+                railRow: local.pick ?? null,
+                touchScan: {},
+              });
             } else {
+              // Triage re-scan: stamp scanned_by only (no unbox-open semantics).
+              void fetch('/api/receiving/touch-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  receiving_id: local.receivingId,
+                  tracking_number: trackingNumber,
+                }),
+              }).catch(() => {});
+              clearUnboxPendingRail();
               dispatchReceivingLinesPrepended({
                 segments: ['scanned', 'triage-combined'],
                 scope: 'triage',

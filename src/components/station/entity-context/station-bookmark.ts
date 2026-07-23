@@ -29,6 +29,27 @@ export const stationBookmarkPanelClass =
 export const stationMoreDetailsPanelClass =
   `rounded-tl-none rounded-tr-none rounded-br-none rounded-bl-2xl border-l border-b border-border-soft ${STATION_BOOKMARK_ELEVATION}`;
 
+/**
+ * Mid-canvas right-edge action tab (e.g. Triage → Open in Unbox) — flush
+ * right; hairline on left · top · bottom; left corners rounded; right edge
+ * sliced (no right radius / border) so it reads as a canvas bookmark.
+ *
+ * Host: mount on the station panel’s `relative` canvas root with
+ * {@link stationRightEdgeActionHostClass} — **not** inside
+ * `StationContextBar` `moreDetails` (that slot is top-right utilities only).
+ */
+export const stationRightEdgeActionClass =
+  `rounded-l-2xl rounded-r-none border border-r-0 border-border-soft ${STATION_BOOKMARK_ELEVATION}`;
+
+/**
+ * Required placement for {@link StationRightEdgeAction}: flush right, ~¼ down
+ * the work canvas (thumb zone). Apply on the action panel itself; parent must
+ * be `position: relative` and full-height. Stays below SlicedActionDock / dock
+ * (`z-fab`) and overlays; above workbench body (`z-0`).
+ */
+export const stationRightEdgeActionHostClass =
+  'absolute right-0 top-1/4 z-raised';
+
 /** Inner pad for identity + more-details bookmark faces (matches icon-gap unit). */
 export const stationBookmarkPadClass = 'p-0.5';
 

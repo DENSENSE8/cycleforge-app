@@ -14,6 +14,7 @@ import {
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
 import {
   ConditionGradeChip,
+  EmptySkuChipFace,
   SerialChip,
   SerialChipSkeleton,
   SkuScanRefChip,
@@ -84,6 +85,12 @@ interface Props {
   serialsLoading?: boolean;
   activeCollapsed: boolean;
   onToggleCollapsed: () => void;
+  /**
+   * When false, inactive rows keep the chevron track for alignment but omit the
+   * decorative glyph (Pending group headers use the same `showChevron={false}`
+   * discipline — don't advertise expand that only switches focus).
+   */
+  showInactiveChevron?: boolean;
   activeConditionOverride?: string | null;
   activeSerialActions?: PoLineSerialActions;
   activeRowSlot?: ActiveRowSlot;
@@ -116,6 +123,7 @@ export function PoLineRow({
   serialsLoading = false,
   activeCollapsed,
   onToggleCollapsed,
+  showInactiveChevron = false,
   activeConditionOverride,
   activeSerialActions,
   activeRowSlot,
@@ -195,11 +203,14 @@ export function PoLineRow({
                 >
                   <ChevronDown className="h-3.5 w-3.5" aria-hidden />
                 </motion.button>
-              ) : (
+              ) : showInactiveChevron ? (
                 <ChevronDown
                   className="h-3.5 w-3.5 -rotate-90 text-text-faint transition-transform"
                   aria-hidden
                 />
+              ) : (
+                // Empty track — inactive click switches focus; don't advertise expand.
+                <span className="h-3.5 w-3.5" aria-hidden />
               )}
             </span>
           ) : null}
@@ -242,7 +253,9 @@ export function PoLineRow({
                 display={getLast4(line.sku)}
                 dense
               />
-            ) : undefined
+            ) : (
+              <EmptySkuChipFace dense />
+            )
           }
           condition={
             <ConditionGradeChip

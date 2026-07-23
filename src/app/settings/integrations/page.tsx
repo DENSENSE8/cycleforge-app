@@ -70,6 +70,8 @@ export default async function IntegrationsPage({
   const sp = await searchParams;
   const success = typeof sp.success === 'string' ? sp.success : undefined;
   const error = typeof sp.error === 'string' ? sp.error : undefined;
+  const ebayOauthError =
+    typeof sp.ebay_oauth_error === 'string' ? sp.ebay_oauth_error : undefined;
   const nangoReady = isNangoConfigured();
 
   const [orgRowsR, amazonR, ebayR] = await Promise.all([
@@ -188,7 +190,9 @@ export default async function IntegrationsPage({
           </div>
         </div>
 
-        {(success || error) && <ResultBanner success={success} error={error} />}
+        {(success || error) && (
+          <ResultBanner success={success} error={error} ebayOauthError={ebayOauthError} />
+        )}
 
         {INTEGRATION_CATEGORIES.map((category) => {
           const providers = PROVIDER_CATALOG.filter((p) => p.category === category);

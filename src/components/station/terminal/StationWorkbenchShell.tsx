@@ -27,7 +27,7 @@ export function StationWorkbenchShell({
   toolbar?: ReactNode;
   children: ReactNode;
   dock?: ReactNode;
-  /** When true, scroll body gets `pb-32` so content clears an absolute FloatingButton. */
+  /** When true, scroll body gets `pb-32` so content clears an absolute SlicedActionDock. */
   reserveScrollClearance?: boolean;
   className?: string;
   scrollClassName?: string;

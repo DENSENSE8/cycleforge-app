@@ -41,6 +41,8 @@ import {
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
 import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { formatDateTimePST } from '@/utils/date';
+import { usePlatformMeta } from '@/hooks/useCatalog';
+import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
 import type { ReceivingLineRow } from './receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
 
@@ -106,9 +108,12 @@ export function ReceivingLineOrderRow({
   activityAxis?: ReceivingActivityAxis;
 }) {
   const stageStamp = !isIncoming ? resolveReceivingRowStageStamp(row, activityAxis) : null;
+  const resolvePlatformMeta = usePlatformMeta();
   // Unfound cartons (no Zoho PO) arrive labelled "Unfound PO" from the server
   // (buildUnmatchedEmptyReceivingLine / UNMATCHED_EMPTY_LINE_LABEL).
-  const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
+  const productTitle =
+    (row.catalog_product_title || row.zoho_item_title || row.item_name || row.zoho_item_id || '').trim() ||
+    'Unnamed inbound line';
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
@@ -120,7 +125,8 @@ export function ReceivingLineOrderRow({
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
   const trackingValue = (row.tracking_number || '').trim();
   const skuValue = (row.sku || '').trim();
-  const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
+  // Marketplace purchases without a Zoho PO fall back to source_order_id (eBay order #).
+  const { poValue } = getReceivingPoIdentityParts(row, (raw) => resolvePlatformMeta(raw).label);
   // Join all serials so SerialChip's CSV-aware helper picks the most recent and
   // shows its last 6 chars. Return-intake fallback rows retain their scanned
   // identity in the generated title until the serial projection catches up.

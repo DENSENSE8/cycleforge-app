@@ -8,7 +8,7 @@ import {
   type MobileNavTabId,
 } from '@/lib/auth/mobile-display-config';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Button, Switch } from '@/design-system/primitives';
 
 // ─── Mobile defaults card ───────────────────────────────────────────────
 //
@@ -106,23 +106,12 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
               When off, staff in this role are locked to a single page on their phone.
             </p>
           </div>
-          {/* ds-raw-button: role=switch toggle — not a DS Button variant */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={draftEnabled}
-            onClick={() => setDraftEnabled((v) => !v)}
+          <Switch
+            checked={draftEnabled}
+            onCheckedChange={setDraftEnabled}
             disabled={busy}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-              draftEnabled ? 'bg-blue-600' : 'bg-surface-strong'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-surface-card shadow ring-0 transition duration-200 ${
-                draftEnabled ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
+            aria-label="Bottom navigation bar"
+          />
         </label>
 
         <div>

@@ -13,7 +13,8 @@
  *   - useReceivingTableNavigation . arrow/chevron + detail-overlay nav
  *   - useReceivingDeepLink ........ ?recvId/?lineId auto-select
  *   - useReceivingAutoWeek ........ History empty-week back-jump
- *   - ReceivingGroupedList ........ the day-banded, PO-grouped render
+ *   - IncomingGridView ............ Incoming POS → LedgerGrid spreadsheet
+ *   - ReceivingGridView ........... Unbox / History → LedgerGrid spreadsheet
  *
  * The public exports below (types, dispatchers, the row component, the
  * synthetic-id helpers) are re-exported here so the ~50 existing importers of
@@ -24,7 +25,6 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { SkeletonList } from '@/design-system/components/Skeletons';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
 import { HistoryWorkspaceHeader } from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
@@ -38,24 +38,19 @@ import { useReceivingRowSelection } from '@/components/station/useReceivingRowSe
 import { useReceivingTableNavigation } from '@/components/station/useReceivingTableNavigation';
 import { useReceivingDeepLink } from '@/components/station/useReceivingDeepLink';
 import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek';
-import { ReceivingGroupedList } from '@/components/station/ReceivingGroupedList';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
+import { IncomingGridView } from '@/components/station/incoming-grid/IncomingGridView';
+import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
-import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
+import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout } from '@/lib/station/table-url-params';
 import {
   WorkbenchTablePane,
   WORKBENCH_CHROME_COLUMN,
   WORKBENCH_GUTTERS,
 } from '@/components/dashboard/workbench-shell';
-import {
-  QueueTableShell,
-  QueueTableToolbar,
-  StationRowColumnHeader,
-  receivingStageColumnLabel,
-  receivingTableScopeLabel,
-} from '@/components/dashboard/queue-table';
+import { receivingTableScopeLabel } from '@/components/dashboard/queue-table';
 import { useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
@@ -71,7 +66,6 @@ import {
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 
 const RECEIVING_LANE_ICON: Record<ReceivingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   inbox: Inbox,
@@ -114,21 +108,18 @@ export {
   RECEIVING_UNPAIR_ROW_PATCH,
   RECEIVING_SELECTION_SCOPE,
 } from '@/components/station/receiving-lines-table-helpers';
-export {
-  DELIVERED_UNSCANNED_SYNTHETIC_ID_BASE,
-  shipmentIdFromDeliveredUnscannedRow,
-} from '@/components/station/receiving-delivered-unscanned';
+export { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
 export { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 
 export interface ReceivingLinesTableProps {
   selectMode?: boolean;
   /**
    * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
-   * own DateRangeHeader / Incoming chrome and portals week + column controls
-   * into {@link toolbarPortalTarget} when provided.
+   * own History/Incoming chrome; week / scope pill portals into
+   * `toolbarPortalTarget` (top tabs bar controls slot).
    */
   embedded?: boolean;
-  /** Portal target for week pill + column config (Unbox header controls slot). */
+  /** Portal week/scope DateRangePickerPill into Unbox chrome controls slot. */
   toolbarPortalTarget?: HTMLElement | null;
 }
 
@@ -171,8 +162,15 @@ export default function ReceivingLinesTable({
   const { groupedRecords, filteredGroupedRecords, orderedVisibleRows, getWeekCount } =
     useReceivingGrouping({ localRows, mode, historyAxis, weekRange, skipWeekFilter });
 
-  const { selectedId, setSelectedId, selectedIds, handleSelectRow, selectedIdRef, selectModeRef } =
-    useReceivingRowSelection({ selectMode, localRows, orderedVisibleRows });
+  const {
+    selectedId,
+    setSelectedId,
+    selectedIds,
+    handleSelectRow,
+    handleSelectGroup,
+    selectedIdRef,
+    selectModeRef,
+  } = useReceivingRowSelection({ selectMode, localRows, orderedVisibleRows });
 
   useReceivingTableNavigation({
     orderedVisibleRows,
@@ -272,102 +270,64 @@ export default function ReceivingLinesTable({
     );
   }
 
-  // Shared list body — skeleton → teaching empty → grouped list. Rendered inside
-  // whichever scroll port the active mode's shell provides (both pass the same
-  // `scrollRef`, so virtualization + keyboard-nav scroll-into-view are identical).
-  const listBody =
-    isLoading && localRows.length === 0 ? (
-      <div className="p-3">
-        <SkeletonList count={12} type="row" />
-      </div>
-    ) : Object.keys(filteredGroupedRecords).length === 0 ? (
-      <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
-      </div>
-    ) : (
-      <ReceivingGroupedList
+  // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridView (same
+  // family as IncomingGridView). Date is a per-row column; no sticky day bands.
+  const visibleLineCount = orderedVisibleRows.length;
+  const weekCount = getWeekCount();
+
+  const receivingGrid = () => (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <ReceivingGridView
         filteredGroupedRecords={filteredGroupedRecords}
         serverSorted={mode.serverSorted}
+        loading={isLoading && localRows.length === 0}
+        emptyMessage={emptyMessage}
         isMobile={isMobile}
-        isIncomingMode={isIncomingMode}
-        isHistoryMode={isHistoryMode}
-        activityAxis={historyAxis}
         selectMode={selectMode}
         selectedId={selectedId}
         selectedIds={selectedIds}
         handleSelectRow={handleSelectRow}
-        virtualized={STATION_VIRTUAL_LIST}
-        scrollParentRef={scrollRef}
+        handleSelectGroup={handleSelectGroup}
+        activityAxis={historyAxis}
+        isHistory={isHistoryMode}
+        scrollRef={scrollRef}
+      />
+    </div>
+  );
+
+  const chromePill =
+    isHistoryMode || !skipWeekFilter ? (
+      <DateRangePickerPill
+        label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+        count={weekCount}
+        weekNav={{
+          weekOffset,
+          onPrev: () => setWeekOffset(weekOffset + 1),
+          onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
+        }}
+      />
+    ) : (
+      <DateRangePickerPill
+        label={receivingTableScopeLabel(mode.id)}
+        count={visibleLineCount}
       />
     );
 
-  const visibleLineCount = orderedVisibleRows.length;
-  const weekCount = getWeekCount();
-  const stageColumnLabel = receivingStageColumnLabel(historyAxis);
-  const columnHeader =
-    isMobile ? null : (
-      <StationRowColumnHeader
-        selectMode={selectMode}
-        includeSerial={!isIncomingMode}
-        stageLabel={stageColumnLabel}
-      />
-    );
-
-  const renderInCardToolbar = () => {
-    if (isHistoryMode || !skipWeekFilter) {
-      return (
-        <QueueTableToolbar
-          left={
-            <DateRangePickerPill
-              label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
-              count={weekCount}
-              weekNav={{
-                weekOffset,
-                onPrev: () => setWeekOffset(weekOffset + 1),
-                onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
-              }}
-            />
-          }
-          right={toolbarPortalTarget ? null : <ColumnConfigButton variant="toolbar" />}
-        />
-      );
-    }
-
-    return (
-      <QueueTableToolbar
-        left={
-          <DateRangePickerPill
-            label={receivingTableScopeLabel(mode.id)}
-            count={visibleLineCount}
-          />
-        }
-        right={toolbarPortalTarget ? null : <ColumnConfigButton variant="toolbar" />}
-      />
-    );
-  };
-
-  const portaledColumnConfig =
-    toolbarPortalTarget ? createPortal(<ColumnConfigButton variant="toolbar" />, toolbarPortalTarget) : null;
-
-  // Unbox workbench embeds the table under UnboxWorkspaceHeader — in-card toolbar
-  // + column guide; column config stays in the host chrome portal.
+  // Unbox workbench embeds the table under UnboxWorkspaceHeader — week/scope
+  // pill portals into the top tabs bar (dashboard Shipped recipe).
   if (embedded) {
+    const portaledToolbar =
+      toolbarPortalTarget != null ? createPortal(chromePill, toolbarPortalTarget) : null;
     return (
       <TableColumnConfigProvider tableId="receiving">
-        {portaledColumnConfig}
-        <QueueTableShell
-          scrollRef={scrollRef}
-          toolbar={renderInCardToolbar()}
-          columnHeader={columnHeader}
-        >
-          {listBody}
-        </QueueTableShell>
+        {portaledToolbar}
+        {receivingGrid()}
       </TableColumnConfigProvider>
     );
   }
 
   // Incoming adopts the golden workbench shape (sibling of the Dashboard orders
-  // view): pinned chrome + KPI strip + table card. Search / filters / columns /
+  // view): pinned chrome + KPI strip + LedgerGrid spreadsheet. Search / filters /
   // Select live in the header; the sidebar keeps Incoming PO sync + email triage.
   if (isIncomingMode) {
     return (
@@ -387,9 +347,19 @@ export default function ReceivingLinesTable({
             <IncomingKpiStrip />
           </div>
           <WorkbenchTablePane>
-            <QueueTableShell bare scrollRef={scrollRef} columnHeader={columnHeader}>
-              {listBody}
-            </QueueTableShell>
+            <IncomingGridView
+              filteredGroupedRecords={filteredGroupedRecords}
+              serverSorted={mode.serverSorted}
+              loading={isLoading && localRows.length === 0}
+              emptyMessage={emptyMessage}
+              isMobile={isMobile}
+              selectMode={selectMode}
+              selectedId={selectedId}
+              selectedIds={selectedIds}
+              handleSelectRow={handleSelectRow}
+              handleSelectGroup={handleSelectGroup}
+              scrollRef={scrollRef}
+            />
           </WorkbenchTablePane>
         </div>
       </TableColumnConfigProvider>
@@ -397,7 +367,7 @@ export default function ReceivingLinesTable({
   }
 
   // History — same workbench chrome recipe (All / Unfound tabs · search · filters
-  // · week · columns · Select). Sidebar no longer hosts History search chrome.
+  // · week · Select). Sidebar no longer hosts History search chrome.
   if (isHistoryMode) {
     return (
       <TableColumnConfigProvider tableId="receiving">
@@ -411,11 +381,7 @@ export default function ReceivingLinesTable({
               onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
             />
           </div>
-          <WorkbenchTablePane>
-            <QueueTableShell bare scrollRef={scrollRef} columnHeader={columnHeader}>
-              {listBody}
-            </QueueTableShell>
-          </WorkbenchTablePane>
+          <WorkbenchTablePane>{receivingGrid()}</WorkbenchTablePane>
         </div>
       </TableColumnConfigProvider>
     );
@@ -424,11 +390,7 @@ export default function ReceivingLinesTable({
   return (
     <TableColumnConfigProvider tableId="receiving">
       <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
-        <WorkbenchTablePane>
-          <QueueTableShell bare scrollRef={scrollRef} columnHeader={columnHeader}>
-            {listBody}
-          </QueueTableShell>
-        </WorkbenchTablePane>
+        <WorkbenchTablePane>{receivingGrid()}</WorkbenchTablePane>
       </div>
     </TableColumnConfigProvider>
   );

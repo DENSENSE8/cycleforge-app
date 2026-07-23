@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { MAX_PINS, type ActionToggles } from '@/lib/quick-access/types';
-import { Button } from '@/design-system/primitives';
+import { Button, Switch } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 const FIELD_CLS =
@@ -25,21 +25,7 @@ function ToggleRow({ label, description, checked, onChange }: ToggleRowProps) {
         <span className="block text-sm font-semibold text-text-default">{label}</span>
         {description && <span className="mt-0.5 block text-role-caption text-text-soft">{description}</span>}
       </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`ds-raw-button relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-          checked ? 'bg-blue-600' : 'bg-surface-strong'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
     </label>
   );
 }

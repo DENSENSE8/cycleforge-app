@@ -3,13 +3,12 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
+import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
-import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { OutboundSort } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
@@ -18,7 +17,7 @@ interface LabelsQueueTableProps {
   sort: OutboundSort;
   onOpenOrder: (order: ShippedOrder) => void;
   onCloseOrder: () => void;
-  /** Hide the built-in banner when the mode tab band already labels the queue. */
+  /** @deprecated Banner chrome removed — grid is headerless like Pending. */
   hideHeader?: boolean;
 }
 
@@ -27,17 +26,10 @@ export function LabelsQueueTable({
   sort,
   onOpenOrder,
   onCloseOrder,
-  hideHeader = false,
 }: LabelsQueueTableProps) {
   const searchParams = useSearchParams();
   const query = useQuery(awaitingLabelsQuery({ searchQuery, sort }));
-  // Grow-mode inside a DashboardScrollShell (one scroll port, KPI scrolls away);
-  // self-scroll boxed otherwise. Mirrors PackedOrdersTable.
-  const dashboardScrollRef = useDashboardScrollParentOptional();
-  const pageScroll = Boolean(dashboardScrollRef);
 
-  // Same URL waist as Dashboard · To Ship / Shipping · Pending
-  // (`?ustatus` + `?attention` → Urgent).
   const statusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as
     | FulfillmentState
     | '';
@@ -80,41 +72,32 @@ export function LabelsQueueTable({
 
   const awaitingOrderIds = records.map((r) => Number(r.id));
 
-  const table = (
-    <OrdersQueueTable
-      records={records}
-      queueMode="labels"
-      loading={query.isLoading}
-      isRefreshing={query.isFetching && !query.isLoading}
-      searchValue={searchQuery}
-      onClearSearch={() => undefined}
-      emptyMessage="No orders awaiting labels"
-      firstRunEmpty={
-        <OrdersFirstRunEmptyState
-          title="No labels to print"
-          description="Orders waiting on a carrier label land here. They flow in automatically once you connect a sales channel."
-        />
-      }
-      searchEmptyTitle="No matching orders"
-      searchResultLabel="orders awaiting labels"
-      clearSearchLabel="Show all awaiting labels"
-      bannerTitle="Awaiting label"
-      bannerSubtitle={`${records.length} order${records.length === 1 ? '' : 's'} need a carrier label`}
-      hideHeader={hideHeader}
-      sort={sort}
-      onOpenRecord={(record) => onOpenOrder(record)}
-      onCloseRecord={() => onCloseOrder()}
-      listShell={pageScroll ? 'monitor' : 'default'}
-      noHorizontalScroll={pageScroll}
-      growToContent={pageScroll}
-      scrollParentRef={pageScroll ? (dashboardScrollRef ?? undefined) : undefined}
-      virtualized={pageScroll}
-    />
-  );
-
   return (
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
-      {pageScroll ? <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>{table}</div> : table}
+      <div className="h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0">
+        <OrdersGridView
+          records={records}
+          queueMode="labels"
+          loading={query.isLoading}
+          searchValue={searchQuery}
+          onClearSearch={() => undefined}
+          emptyMessage="No orders awaiting labels"
+          firstRunEmpty={
+            <OrdersFirstRunEmptyState
+              title="No labels to print"
+              description="Orders waiting on a carrier label land here. They flow in automatically once you connect a sales channel."
+            />
+          }
+          searchEmptyTitle="No matching orders"
+          searchResultLabel="orders awaiting labels"
+          clearSearchLabel="Show all awaiting labels"
+          sort={sort}
+          selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          data-testid="labels-grid-body"
+          onOpenRecord={(record) => onOpenOrder(record)}
+          onCloseRecord={() => onCloseOrder()}
+        />
+      </div>
     </AddTrackingNavProvider>
   );
 }

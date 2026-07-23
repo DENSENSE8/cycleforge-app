@@ -22,6 +22,7 @@ import type { UnboxTerminalContext, UnboxTerminalKind, UnboxView } from './types
  */
 export const UNBOX_TAB_TERMINAL: Record<UnboxView, UnboxTerminalKind> = {
   overview: 'mode-default',
+  classify: 'none',
   'po-note': 'po-note',
   checklist: 'checklist',
   units: 'units',

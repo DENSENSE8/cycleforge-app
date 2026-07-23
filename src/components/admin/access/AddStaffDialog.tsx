@@ -9,6 +9,15 @@
 import { useCallback, useState } from 'react';
 import { ALL_ROLES } from '@/lib/auth/permissions-shared';
 import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 
 interface AddStaffDialogProps {
   open: boolean;
@@ -61,17 +70,22 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
     }
   }, [name, role, code, onCreated, onClose]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-surface-card p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-semibold text-text-default">Add staff</h2>
-        <p className="mt-0.5 text-xs text-text-soft">
-          Creates an invited account. Generate an enrollment QR to let them set a PIN.
-        </p>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busy) onClose();
+      }}
+    >
+      <DialogContent hideClose className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add staff</DialogTitle>
+          <DialogDescription>
+            Creates an invited account. Generate an enrollment QR to let them set a PIN.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-5 space-y-3">
+        <div className="space-y-3">
           <label className="block">
             <span className="block text-role-caption font-semibold uppercase tracking-wider text-text-soft">Name</span>
             <input
@@ -88,7 +102,7 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as typeof ALL_ROLES[number])}
-              className="mt-1 w-full rounded-md border border-border-default px-2 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={`mt-1 ${FILTER_DROPDOWN_SELECT_CLASS}`}
             >
               {ALL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -104,17 +118,17 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
           </label>
         </div>
 
-        {err && <div className="mt-3 rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>}
+        {err && <div className="rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>}
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} disabled={busy || !name.trim()}>
-            {busy ? 'Adding…' : 'Add'}
+          <Button variant="primary" onClick={submit} loading={busy} disabled={!name.trim()}>
+            Add
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

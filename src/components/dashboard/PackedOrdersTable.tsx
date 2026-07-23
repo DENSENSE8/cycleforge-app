@@ -2,29 +2,22 @@
 
 /**
  * Dashboard · Packed — first-class staged queue (PACK event, no dock scan-out).
- * Uses `/api/orders?stagedOnly=true` via {@link packedOrdersQuery}, not a client
- * filter of the shipped week packerlogs dataset.
+ * Uses `/api/orders?stagedOnly=true` via {@link packedOrdersQuery}, rendered on
+ * the shared outbound spreadsheet ({@link OrdersGridView} / LedgerGrid).
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
+import { createPortal } from 'react-dom';
+import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
-import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
-import { createPortal } from 'react-dom';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { useEventBridge } from '@/hooks';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundQueueKeyboard } from '@/hooks/useOutboundQueueKeyboard';
-import { useDashboardScrollParentOptional } from '@/components/dashboard/DashboardScrollShell';
-import { PACKED_SAVED_VIEWS_KEY, PACKED_VIEW_PARAMS } from '@/components/unshipped/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/types/orders';
 
 export interface PackedOrdersTableProps {
@@ -43,8 +36,6 @@ export function PackedOrdersTable({
   const searchQuery = String(searchParams.get('search') || '').trim();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const dashboardScrollRef = useDashboardScrollParentOptional();
-  const pageScroll = Boolean(dashboardScrollRef);
 
   const query = useQuery({
     ...packedOrdersQuery({ searchQuery, staffId }),
@@ -93,12 +84,6 @@ export function PackedOrdersTable({
   const toolbar = (
     <div className="flex items-center gap-2">
       <StaffFilterButton iconOnly />
-      <ColumnConfigButton variant="toolbar" />
-      <TableOptionsMenu
-        showDensity
-        showColumnPresets
-        savedViews={{ storageKey: PACKED_SAVED_VIEWS_KEY, paramKeys: PACKED_VIEW_PARAMS }}
-      />
     </div>
   );
 
@@ -119,53 +104,38 @@ export function PackedOrdersTable({
     ) : undefined;
 
   return (
-    <TableColumnConfigProvider tableId="orders">
-      <TableDensityProvider tableId="orders" urlSync={false}>
-        <div className={pageScroll ? 'flex flex-col bg-surface-canvas' : 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-surface-canvas'}>
-          {toolbarPortalTarget ? createPortal(toolbar, toolbarPortalTarget) : (
-            <div className="flex h-[40px] shrink-0 items-center justify-end gap-2 border-b border-border-default px-3">
-              {toolbar}
-            </div>
-          )}
-          <div className={pageScroll ? (toolbarPortalTarget ? 'py-1' : 'p-4') : `flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${toolbarPortalTarget ? 'py-1' : 'p-4'}`}>
-            {/* h-1 spacer keeps the card's top radius clear of the scroll edge */}
-            {pageScroll ? <div className="shrink-0 h-1" aria-hidden /> : null}
-            <div className={pageScroll ? MONITOR_SECTION_CARD_SCROLL_CLASS : `${MONITOR_SECTION_CARD_SCROLL_CLASS} flex min-h-0 min-w-0 flex-1 flex-col`}>
-              <OrdersQueueTable
-                records={records as ShippedOrder[]}
-                loading={query.isLoading}
-                isRefreshing={query.isFetching && !query.isLoading}
-                searchValue={searchQuery}
-                onClearSearch={clearSearch}
-                emptyMessage="No packed orders"
-                firstRunEmpty={idleEmpty}
-                searchEmptyTitle="No packed orders found"
-                searchResultLabel="packed orders"
-                clearSearchLabel="Show All Packed Orders"
-                queueMode="staged"
-                sort="newest"
-                selectMode={selectMode}
-                selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-                onOpenRecord={(record) => {
-                  setSelectedId(Number(record.id));
-                  dispatchOpenShippedDetails(record, 'queue');
-                }}
-                onCloseRecord={() => {
-                  setSelectedId(null);
-                  dispatchCloseShippedDetails();
-                }}
-                hideHeader
-                inheritColumnConfig
-                listShell="monitor"
-                noHorizontalScroll
-                growToContent={pageScroll}
-                scrollParentRef={dashboardScrollRef ?? undefined}
-                virtualized={pageScroll}
-              />
-            </div>
-          </div>
+    <div className="flex min-w-0 flex-col bg-surface-canvas">
+      {toolbarPortalTarget ? createPortal(toolbar, toolbarPortalTarget) : (
+        <div className="flex h-[40px] shrink-0 items-center justify-end gap-2 border-b border-border-default px-3">
+          {toolbar}
         </div>
-      </TableDensityProvider>
-    </TableColumnConfigProvider>
+      )}
+      <div className="h-[calc(100dvh-13rem)] min-h-[24rem] min-w-0 pb-3">
+        <OrdersGridView
+          records={records as ShippedOrder[]}
+          loading={query.isLoading}
+          searchValue={searchQuery}
+          onClearSearch={clearSearch}
+          emptyMessage="No packed orders"
+          firstRunEmpty={idleEmpty}
+          searchEmptyTitle="No packed orders found"
+          searchResultLabel="packed orders"
+          clearSearchLabel="Show All Packed Orders"
+          queueMode="staged"
+          sort="newest"
+          selectMode={selectMode}
+          selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+          data-testid="packed-grid-body"
+          onOpenRecord={(record) => {
+            setSelectedId(Number(record.id));
+            dispatchOpenShippedDetails(record, 'queue');
+          }}
+          onCloseRecord={() => {
+            setSelectedId(null);
+            dispatchCloseShippedDetails();
+          }}
+        />
+      </div>
+    </div>
   );
 }

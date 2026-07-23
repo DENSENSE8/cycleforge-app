@@ -17,8 +17,8 @@ import { isOnWorkOrderSourcePath } from './header-work-order-shared';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
-  HEADER_ICON_GLYPH,
   HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_GLYPH,
 } from './header-shell';
 
 /**
@@ -107,7 +107,7 @@ export function HeaderTopWorkOrderChip() {
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
           className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
-          icon={<ClipboardList className={HEADER_ICON_GLYPH} />}
+          icon={<ClipboardList className={TOP_CHROME_ICON_GLYPH} />}
         />
       </HoverTooltip>
 

@@ -32,7 +32,6 @@ import type {
 } from './shipping-information/types';
 
 // Re-export the public API so existing consumers keep importing from this path.
-export { ShippingEditableRow };
 export type { EditableShippingFields, PrepackedSkuInfo };
 
 interface ShippingInformationSectionProps {

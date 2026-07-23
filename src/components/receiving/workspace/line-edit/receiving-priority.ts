@@ -10,11 +10,13 @@
 export { platformPriorityRank as receivingPriorityRank } from '@/lib/receiving/display/precedence';
 
 interface PriorityTone {
-  /** Short label rendered in the badge (fixed-width, mirrors the Claim pill). */
+  /** Full label (Classify / tooltips). */
   label: string;
+  /** Dense carton-bookmark label (≤4 chars preferred). */
+  short: string;
   /** Longer text for the title tooltip. */
   title: string;
-  /** Tailwind tone — color-coded so urgency reads at a glance. */
+  /** Quiet tint — color-coded heat, same face language as Claim/Photos. */
   className: string;
 }
 
@@ -32,41 +34,45 @@ export function receivingPriorityTone(rank: number): PriorityTone {
     case 0:
       return {
         label: 'Priority',
+        short: 'Pri',
         title: 'Flagged priority — pending-order match or manual; test/unbox first',
-        className: 'bg-red-600 text-white',
+        className: 'border-red-200 bg-red-50 text-red-700 shadow-sm',
       };
     case 1:
       return {
         label: 'High',
+        short: 'High',
         title: 'Highest priority — unfound/untagged carton, triage first',
-        className: 'bg-amber-500 text-white',
+        className: 'border-amber-200 bg-amber-50 text-amber-700 shadow-sm',
       };
     case 2:
       return {
         label: 'High',
+        short: 'High',
         title: 'High priority — Amazon',
-        className: 'bg-rose-500 text-white',
+        className: 'border-rose-200 bg-rose-50 text-rose-700 shadow-sm',
       };
     case 3:
       return {
         label: 'Medium',
+        short: 'Med',
         title: 'Medium priority — eBay',
-        // blue-600 (not -500) so the collapsed urgency pill matches the
-        // platform/type pills, which share DEFAULT_ACTIVE's blue-600.
-        className: 'bg-blue-600 text-white',
+        className: 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm',
       };
     case 4:
       return {
         label: 'Low',
+        short: 'Low',
         title: 'Low priority — Goodwill',
-        className: 'bg-emerald-500 text-white',
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm',
       };
     default:
       return {
         label: 'Other',
+        short: 'Oth',
         title: 'Lowest priority — other platform',
-        // ds-allow-raw-neutral: identity tone — neutral member of the colored filled-pill family
-        className: 'bg-slate-400 text-white',
+        // ds-allow-raw-neutral: identity tone — neutral member of the quiet tint family
+        className: 'border-slate-200 bg-slate-50 text-slate-600 shadow-sm',
       };
   }
 }

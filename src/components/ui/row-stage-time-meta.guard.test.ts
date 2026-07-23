@@ -9,6 +9,8 @@ import { describe, it } from 'node:test';
  *     so PARTS / L-NEW grades do not shift the stage clock vs single-line rows.
  *   • Ops tables that show a stage stamp under the title go through RowStageTimeMeta
  *     (fixed META_REST_COL.stageTime track) — not a bare tabular-nums span.
+ *   • Outbound spreadsheet rows use Age column (days-late) on OrdersQueueTableRow —
+ *     not a stage stamp under a two-line title stack.
  */
 
 function readSibling(relativePath: string): string {
@@ -43,12 +45,9 @@ describe('row stage-time meta alignment', () => {
     );
   });
 
-  it('OrdersQueue age column and Shipped stage clocks stay on SoT tracks', () => {
+  it('OrdersQueue age column stays on SoT tracks', () => {
     const ordersQueue = readSibling('../dashboard/orders-queue/OrdersQueueTableRow.tsx');
-    const shipped = readSibling('../shipped/ShippedRecordRow.tsx');
 
-    // Pending WMS table uses a fixed Age column (days-late / lane age) — not a
-    // stage stamp under a two-line title stack.
     assert.ok(
       ordersQueue.includes('ordersQueueGridTemplate'),
       'OrdersQueueTableRow must use the fixed orders-queue column grid',
@@ -57,11 +56,5 @@ describe('row stage-time meta alignment', () => {
       ordersQueue.includes('data-col="age"') || ordersQueue.includes('getDaysLateTone'),
       'OrdersQueueTableRow must render age / days-late in the Age column',
     );
-
-    assert.ok(
-      shipped.includes("from '@/components/ui/RowStageTimeMeta'"),
-      'ShippedRecordRow must import RowStageTimeMeta',
-    );
-    assert.ok(shipped.includes('<RowStageTimeMeta'), 'ShippedRecordRow must render RowStageTimeMeta');
   });
 });

@@ -14,7 +14,6 @@ export const PARKED_SURFACE_KEYS = [
   'home',
   'operations',
   'sourcing',
-  'warehouse',
   'fba',
   'studio',
   'ai-chat',
@@ -63,14 +62,6 @@ export const PARKED_SURFACE_META: Record<ParkedSurfaceKey, ParkedSurfaceMeta> = 
     blurb: 'Sourcing is still being built. You can keep working from orders and receiving for now.',
     primaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
     secondaryCta: { href: '/unbox', label: 'Open Unbox' },
-  },
-  warehouse: {
-    key: 'warehouse',
-    label: 'Warehouse',
-    href: '/warehouse',
-    blurb: 'Warehouse map and bins are still in progress. Receiving and shipping remain available.',
-    primaryCta: { href: '/unbox', label: 'Open Unbox' },
-    secondaryCta: { href: '/dashboard', label: 'Go to Dashboard' },
   },
   fba: {
     key: 'fba',

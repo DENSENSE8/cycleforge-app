@@ -14,6 +14,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Condition grade → label | `src/lib/conditions.ts` (`conditionLabel`) |
 | Condition grade → tone | `src/lib/condition-tone.ts` (+ `useConditionGradeStyle`) |
 | Source platform → label / tone | `src/lib/source-platform.ts` |
+| Receiving type → label / tone / icon | `src/lib/receiving/receiving-type-meta.ts` |
 | Typed identifiers (serial, FNSKU, tracking, …) | `CopyChip` family + `src/lib/copy-chip-format.ts` |
 | Capability / provider nouns | `src/lib/integrations/capability-labels.ts` (+ server connections) |
 | Cross-entity search row | `SearchHit` / `src/lib/search/search-hit.ts` + hybrid retrieval |
@@ -23,13 +24,18 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing(archetype, tone)`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Surface / box shell | `Panel` (generic) · `SectionCard` (monitor) · `CardShell` (rows) — never hand-roll |
+| Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
+| Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
+| Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
 | App chrome / canvas / wash / work-canvas depth | `src/design-system/tokens/app-surface.ts` + `appContentShellClass` (`appWorkCanvasEdgeClass` owns the depth-edge hairline on every desktop page) |
 | Global detail-stack overlay shell | `@/design-system/shells/detail-stack` (`DETAIL_STACK_LAYOUT`, `detailStackAsideClassName`, …) |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox / Triage / Testing / Shipping active-order |
+| Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` — collapsed Search icon; expands on hover / focus / click (or when query non-empty); composes `SearchField`. Never mount an always-open `SearchField` in a `WorkbenchChromeHeader` `search` slot. |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) — Labels Print, Testing manuals |
 | Buttons | `src/design-system/primitives` `Button` |
 | Product icon glyphs | `@/components/Icons` (`src/components/icons/*`) — never duplicate nav primitives |
 | Station page + L2 mode nav icons | `src/lib/nav/station-nav-icons.ts` + semantic wrappers `src/components/icons/stations.tsx` — mode glyphs unique via `MODE_ICON_GLYPH_KEYS` |
+| Top-band chrome icon **display** (glyph box) | `src/components/layout/header-shell.ts` (`TOP_CHROME_ICON_GLYPH` for GlobalHeader; `SIDEBAR_MRU_GLYPH` for MasterNav MRU) — native SVG stroke only; do not layer `navIconStrokeClass` on header/MRU chips (muddies dense glyphs). Glyph *identity* stays Icons / station-nav |
 
 If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not fork a page-local map “just for this screen.”
 
@@ -124,6 +130,7 @@ If a facet has no SoT yet, **add or extend one** (pattern evolution) — do not 
 ## Source platform → label / tone
 
 - Source: `src/lib/source-platform.ts` (`SOURCE_PLATFORM_OPTS` / `SOURCE_PLATFORM_LABELS` derive from it).
+- Receiving type faces: `src/lib/receiving/receiving-type-meta.ts` (+ `ReceivingTypeMark`).
 - Urgency / priority is a priority-tier picker on `receiving.priority_tier`; SoT is `src/lib/receiving/priority-override.ts`
   (`is_priority` = synced tier-0).
 

@@ -110,11 +110,8 @@ export function useShippedTableFilters({
   const search = searchParams.get('search') || '';
   const normalizedSearch = search.trim().toLowerCase();
 
-  // Dashboard lifecycle tabs are list-only. Board layout remains URL-readable for
-  // any residual bookmarks but the outbound header no longer offers the switch;
-  // locked stages (Packed) always force the flat list.
-  const layout: ShippedLayout =
-    lockedOutboundStatus || searchParams.get('layout') !== 'board' ? 'all' : 'board';
+  // Dashboard Shipped is list-only flat spreadsheet. Board layout URL is ignored.
+  const layout: ShippedLayout = 'all';
 
   // Mirror the active type filter into the persisted preference.
   useEffect(() => {

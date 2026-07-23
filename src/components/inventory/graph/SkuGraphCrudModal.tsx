@@ -1,8 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Trash2, X } from '@/components/Icons';
+import { Search, Trash2 } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { cn } from '@/utils/_cn';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import { useSkuChildren, useSkuParents, useSkuRelationshipMutations } from './useSkuGraph';
@@ -46,26 +53,19 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/40 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface-card shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3.5">
-          <div>
-            <h2 className="text-role-body font-bold text-text-default">Edit Connections</h2>
-            <p className="text-role-caption text-text-soft">{focused.sku}</p>
-          </div>
-          <IconButton
-            type="button"
-            onClick={onClose}
-            ariaLabel="Close"
-            className="rounded-lg p-1.5 text-text-faint hover:bg-surface-sunken"
-            icon={<X className="h-4 w-4" />}
-          />
-        </header>
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="text-role-body font-bold">Edit Connections</DialogTitle>
+          <DialogDescription>{focused.sku}</DialogDescription>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           {/* Add */}
           <section className="space-y-3">
             <div className="inline-flex rounded-xl border border-border-soft bg-surface-canvas p-0.5">
@@ -201,7 +201,7 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
             ))}
           </section>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

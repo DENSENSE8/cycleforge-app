@@ -2,7 +2,14 @@
 
 /**
  * Build the Triage SectionTabsSlider tab list (Classify / Staging / Pairing).
- * Tab bar owns labels + Edit-PO rightSlot — tab bodies stay unlabeled.
+ *
+ * Arrival main surface = Classify tab stack:
+ *   1. Classify (dimension list)
+ *   2. Package Pairing (collapsed by default)
+ *   3. Location Placement (shelf + lane)
+ * Staging / Pairing tabs remain for focus deep-links.
+ * Tab bar owns labels + Edit-PO rightSlot — tab bodies stay unlabeled except
+ * overview section eyebrows (Package Pairing / Location Placement).
  */
 
 import type { ReactNode } from 'react';
@@ -35,6 +42,8 @@ export function buildTriageTabs({
   onItemDescFeedback,
   onItemDescSaved,
   onNotesFeedback,
+  classifyExpandDimension = null,
+  classifyExpandRequestId = 0,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -45,6 +54,8 @@ export function buildTriageTabs({
   onItemDescFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   onItemDescSaved: (lineId: number, zohoNotes: string | null) => void;
   onNotesFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
+  classifyExpandDimension?: 'urgency' | 'platform' | 'type' | null;
+  classifyExpandRequestId?: number;
 }): SectionTab[] {
   const linkedPo = !c.isUnfound && !shouldUseUnmatchedItemsSurface(row);
   const isReturn = isReturnIntake(row);
@@ -61,7 +72,12 @@ export function buildTriageTabs({
         <div className="space-y-4">
           {/* Arrival Door→Classified→Staged→Ready lives only in the Arrival
               receiving-details Progress tab (Info → details), not here. */}
-          <TriageClassifySection row={row} c={c} />
+          <TriageClassifySection
+            row={row}
+            c={c}
+            expandDimension={classifyExpandDimension}
+            expandRequestId={classifyExpandRequestId}
+          />
           <TriagePoUnboxingSection
             row={row}
             staffId={staffId}
@@ -78,6 +94,7 @@ export function buildTriageTabs({
             onItemDescFeedback={onItemDescFeedback}
             onItemDescSaved={onItemDescSaved}
           />
+          <StagingSection staging={staging} eyebrow="Location Placement" />
           <WorkspaceNotesCard row={row} c={c} onActionFeedback={onNotesFeedback} />
           {row.receiving_source === 'unmatched' ? (
             <UnfoundTodoStrip message={unfoundMessage} />
@@ -108,6 +125,7 @@ export function buildTriageTabs({
           c={c}
           suppressItemsHeader
           pairingOpen
+          onPairingToggle={onPairingToggle}
           onItemDescFeedback={onItemDescFeedback}
           onItemDescSaved={onItemDescSaved}
         />

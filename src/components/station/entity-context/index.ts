@@ -10,6 +10,8 @@
  *    sticky identity bookmark + corner utilities flush under GlobalHeader
  *    (`density="bar"`). Mount **above** StationWorkbench; do not put identity in
  *    the workbench `entityContext` / `toolbar` slots for Unbox-family stations.
+ *    Mid-canvas secondary jumps use {@link StationRightEdgeAction} on the panel
+ *    root with `stationRightEdgeActionHostClass` — not inside `moreDetails`.
  * 3. **Header utilities** — {@link StationHeaderToolbar} + workspace mode registry:
  *    refresh · more · info / prev-next driven by the mode registry.
  *
@@ -37,7 +39,11 @@
 export { CartonContextCard } from './CartonContextCard';
 export { StationContextBar } from './StationContextBar';
 export { StationMoreDetails } from './StationMoreDetails';
+export { StationRightEdgeAction } from './StationRightEdgeAction';
 export { StationHeaderToolbar } from './StationHeaderToolbar';
+export {
+  stationRightEdgeActionHostClass,
+} from './station-bookmark';
 export {
   WORKSPACE_MODES,
   type WorkspaceMode,

@@ -1,0 +1,25 @@
+---
+description: Workbench queue sort is a quiet trailing dropdown, never TabSwitch beside search
+globs: "**/*WorkspaceHeader*.tsx,**/QueueSortSwitch.tsx,**/workbench-shell*.tsx,**/queue-display-sort.ts"
+alwaysApply: false
+---
+
+# Workbench sort chrome
+
+Display sort (`Priority` / `Newest` / `Deadline`, etc.) is a **quiet preference**, not a primary view mode.
+
+## Do
+
+- Render sort as a compact **dropdown** (`ToolbarButton` + `Popover` / listbox) — current value on the trigger.
+- Place it in the workbench chrome **trailing** cluster, **immediately left of Import** (then Add) when those CTAs exist.
+- Reuse `QueueSortSwitch` for Pending / Testing queue sort; Labels’ ghost sort toggle stays in the same trailing slot.
+
+## Don’t
+
+- Don’t use a solid `TabSwitch` (or other primary segmented control) for display sort beside search.
+- Don’t park sort in the `right` filter cluster next to search / filter icons — that overweights a preference and competes with lifecycle tabs.
+- Don’t invent a second sort chrome; grow `QueueSortSwitch` or the Labels trailing pattern.
+
+## Chrome order (right cluster)
+
+`search` → `right` (filters / staff) → controls portal → `trailing` (**sort** → Import → Add)

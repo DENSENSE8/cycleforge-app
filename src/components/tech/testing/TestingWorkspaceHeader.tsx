@@ -63,18 +63,16 @@ export function TestingWorkspaceHeader({
         />
       }
       right={
-        <>
-          {showSort ? <QueueSortSwitch sort={sort} onChange={setSort} /> : null}
-          {tab === 'history' ? (
-            <StaffFilterButton
-              iconOnly
-              allLabel="All technicians"
-              allToken="all"
-              meLabel="You"
-            />
-          ) : null}
-        </>
+        tab === 'history' ? (
+          <StaffFilterButton
+            iconOnly
+            allLabel="All technicians"
+            allToken="all"
+            meLabel="You"
+          />
+        ) : undefined
       }
+      trailing={showSort ? <QueueSortSwitch sort={sort} onChange={setSort} /> : undefined}
     />
   );
 }

@@ -73,6 +73,10 @@ export function useAiQuickJump(
       setSearching(false);
       return;
     }
+    // Clear stale hits immediately on retype so Enter / handoff cannot use a
+    // previous query's ORDER id while the new retrieve is still in flight.
+    abortRef.current?.abort();
+    setHits([]);
     setSearching(true);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {

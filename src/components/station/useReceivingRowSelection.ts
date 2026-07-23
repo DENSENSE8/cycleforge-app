@@ -31,6 +31,8 @@ export interface ReceivingRowSelection {
   setSelectedId: React.Dispatch<React.SetStateAction<number | null>>;
   selectedIds: Set<number>;
   handleSelectRow: (row: ReceivingLineRow) => void;
+  /** Bulk-toggle every id in a PO fold (select-all / clear-group). */
+  handleSelectGroup: (ids: readonly number[]) => void;
   selectedIdRef: React.MutableRefObject<number | null>;
   selectModeRef: React.MutableRefObject<boolean>;
 }
@@ -115,6 +117,20 @@ export function useReceivingRowSelection({
     dispatchSelectLine(next ? row : null);
   }, []);
 
+  const handleSelectGroup = useCallback((ids: readonly number[]) => {
+    if (!selectModeRef.current || ids.length === 0) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of ids) next.delete(id);
+      } else {
+        for (const id of ids) next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   // ── Bulk selection wiring ──────────────────────────────────────────────────
   // Broadcast the resolved selected rows whenever the id set or rows change.
   useEffect(() => {
@@ -151,5 +167,13 @@ export function useReceivingRowSelection({
     );
   }, [selectMode, orderedVisibleRows]);
 
-  return { selectedId, setSelectedId, selectedIds, handleSelectRow, selectedIdRef, selectModeRef };
+  return {
+    selectedId,
+    setSelectedId,
+    selectedIds,
+    handleSelectRow,
+    handleSelectGroup,
+    selectedIdRef,
+    selectModeRef,
+  };
 }

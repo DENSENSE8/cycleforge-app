@@ -118,56 +118,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
           ),
         },
         {
-          id: 'photos',
-          label: 'Photos',
-          icon: Camera,
-          visible: hasUnitPhotos,
-          content: (
-            <div className="space-y-3">
-              <p className="text-role-caption font-semibold text-text-muted">
-                Packing photos for this prepacked unit — linked to the unit label and
-                visible on the timeline.
-              </p>
-              <UnitPackPhotoPeek
-                serialUnitId={Number(activeOrder.serialUnitId)}
-                preferSource="packing"
-              />
-            </div>
-          ),
-        },
-        {
-          id: 'timeline',
-          label: 'Timeline',
-          icon: History,
-          visible: hasTimelineTab,
-          content: (
-            <WorkspaceTimelineTab
-              orderId={orderId || null}
-              tracking={tracking || null}
-              serials={timelineSerials}
-            />
-          ),
-        },
-        {
-          id: 'support',
-          label: 'Support',
-          icon: MessageSquare,
-          content: (
-            <div className="space-y-3">
-              <SupportContextHub
-                anchor={{
-                  order: activeOrder.orderId || undefined,
-                  tracking: activeOrder.tracking || undefined,
-                }}
-                variant="station"
-                defaultSegment="team"
-                hideCustomerSegment
-                hideLinkage
-              />
-            </div>
-          ),
-        },
-        {
           id: 'ticket',
           label: 'Ticket',
           icon: Ticket,
@@ -186,8 +136,26 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
           ),
         },
         {
+          id: 'photos',
+          label: 'Photos',
+          icon: Camera,
+          visible: hasUnitPhotos,
+          content: (
+            <div className="space-y-3">
+              <p className="text-role-caption font-semibold text-text-muted">
+                Packing photos for this prepacked unit — linked to the unit label and
+                visible on the timeline.
+              </p>
+              <UnitPackPhotoPeek
+                serialUnitId={Number(activeOrder.serialUnitId)}
+                preferSource="packing"
+              />
+            </div>
+          ),
+        },
+        {
           id: 'rollup',
-          label: 'Order rollup',
+          label: 'Rollup',
           icon: Layers,
           visible: hasRollup,
           content: (
@@ -210,6 +178,39 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 Multi-line order — verify each line is packed before sealing.
               </p>
             </div>
+          ),
+        },
+        {
+          id: 'support',
+          label: 'Support',
+          icon: MessageSquare,
+          content: (
+            <div className="space-y-3">
+              <SupportContextHub
+                anchor={{
+                  order: activeOrder.orderId || undefined,
+                  tracking: activeOrder.tracking || undefined,
+                }}
+                variant="station"
+                defaultSegment="team"
+                hideCustomerSegment
+                hideLinkage
+              />
+            </div>
+          ),
+        },
+        {
+          id: 'timeline',
+          label: 'Timeline',
+          icon: History,
+          priority: 'overflow',
+          visible: hasTimelineTab,
+          content: (
+            <WorkspaceTimelineTab
+              orderId={orderId || null}
+              tracking={tracking || null}
+              serials={timelineSerials}
+            />
           ),
         },
       ]),

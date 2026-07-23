@@ -2,13 +2,13 @@
 
 /**
  * Review · Pairing — outbound orders in flight (staged + awaiting label) with
- * allocate-serial detail overlay. Uses existing allocate API + OrdersQueueTable.
+ * allocate-serial detail overlay. Uses existing allocate API + OrdersGridView.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersQueueTable } from '@/components/dashboard/OrdersQueueTable';
+import { OrdersGridView } from '@/components/dashboard/orders-queue/OrdersGridView';
 import {
   WORKBENCH_BODY_COLUMN,
   WORKBENCH_CHROME_COLUMN,
@@ -16,14 +16,10 @@ import {
 } from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
-import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
-import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
-import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { ShippedOrder } from '@/types/orders';
 
 interface ReviewPairingTableProps {
@@ -57,8 +53,6 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
   }, [stagedQuery.data, awaitingQuery.data]);
 
   const loading = stagedQuery.isLoading || awaitingQuery.isLoading;
-  const fetching =
-    (stagedQuery.isFetching || awaitingQuery.isFetching) && !loading;
 
   const clearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -66,14 +60,6 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
-
-  const toolbar = (
-    <div className="flex items-center gap-2">
-      <StaffFilterButton iconOnly />
-      <ColumnConfigButton variant="toolbar" />
-      <TableOptionsMenu showDensity showColumnPresets />
-    </div>
-  );
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
@@ -85,38 +71,28 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
               tabs={[{ id: 'pairing', label: 'Needs allocation' }]}
               activeTab="pairing"
               onTabChange={() => undefined}
-              right={toolbar}
+              right={<StaffFilterButton iconOnly />}
             />
           </div>
         }
       >
-        <div className={WORKBENCH_BODY_COLUMN}>
-          <div className={MONITOR_SECTION_CARD_SCROLL_CLASS}>
-            <TableColumnConfigProvider tableId="orders">
-              <TableDensityProvider tableId="orders" urlSync={false}>
-                <OrdersQueueTable
-                  records={records}
-                  loading={loading}
-                  isRefreshing={fetching}
-                  searchValue={searchQuery}
-                  onClearSearch={clearSearch}
-                  emptyMessage="No outbound orders needing serial/SKU pairing"
-                  searchEmptyTitle="No matching orders"
-                  searchResultLabel="orders"
-                  clearSearchLabel="Clear search"
-                  queueMode="staged"
-                  sort="newest"
-                  onOpenRecord={onOpenOrder}
-                  onCloseRecord={() => onCloseOrder()}
-                  hideHeader
-                  inheritColumnConfig
-                  listShell="monitor"
-                  noHorizontalScroll
-                  growToContent
-                />
-              </TableDensityProvider>
-            </TableColumnConfigProvider>
-          </div>
+        <div className={`${WORKBENCH_BODY_COLUMN} h-[calc(100dvh-8rem)] min-h-[24rem] pb-3`}>
+          <OrdersGridView
+            records={records}
+            loading={loading}
+            searchValue={searchQuery}
+            onClearSearch={clearSearch}
+            emptyMessage="No outbound orders needing serial/SKU pairing"
+            searchEmptyTitle="No matching orders"
+            searchResultLabel="orders"
+            clearSearchLabel="Clear search"
+            queueMode="staged"
+            sort="newest"
+            selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+            data-testid="review-pairing-grid-body"
+            onOpenRecord={onOpenOrder}
+            onCloseRecord={() => onCloseOrder()}
+          />
         </div>
       </DashboardScrollShell>
     </div>

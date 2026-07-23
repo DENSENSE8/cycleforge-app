@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Loader2, MessageSquare } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
-import { Button, IconButton } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Button } from '@/design-system/primitives';
 import type { ClaimType } from '@/lib/zendesk-claim-template';
 // From the light refs module — importing via receiving-claim-seller-message
 // drags the server-only tenancy/db (Neon driver) into this client bundle.
@@ -99,53 +98,66 @@ function useSellerMessage(
 }
 
 /**
- * Chat icon beside a filed claim # — opens the saved seller-facing message
- * (marketplace / eBay copy) stored in Neon after AI refine or claim submit.
+ * Seller-facing claim message draft — opened from the ticket chip hover menu
+ * (Open → Message → Edit). Panel + Neon persistence live here; the menu row is
+ * {@link SellerMessageMenuItem}.
  */
-export function SellerMessageChip({
+export function SellerMessageMenuItem({
+  onClick,
+  active = false,
+}: {
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    // ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      aria-label="Seller message draft"
+      aria-expanded={active}
+      className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-bold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
+    >
+      <MessageSquare className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+      Message
+    </button>
+  );
+}
+
+/** Anchored seller-message draft panel — composed by {@link ReceivingTicketChip}. */
+export function SellerMessageAnchoredPanel({
+  open,
+  onClose,
+  anchorRef,
   receivingId,
   lineId,
   linkedTicketId,
 }: {
-  receivingId: number | null;
+  open: boolean;
+  onClose: () => void;
+  anchorRef: RefObject<HTMLElement | null>;
+  receivingId: number;
   lineId: number | null;
-  /** Numeric Zendesk id currently linked — stale drafts for other tickets are hidden. */
-  linkedTicketId?: number | null;
+  linkedTicketId: number | null;
 }) {
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLButtonElement>(null);
-
-  if (receivingId == null) return null;
-
   return (
-    <>
-      <HoverTooltip label="Seller message draft" placement="below" asChild>
-        <IconButton
-          ref={anchorRef}
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          ariaLabel="Seller message draft"
-          icon={<MessageSquare className="h-3.5 w-3.5 text-blue-600" />}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border border-blue-200 bg-blue-50 shadow-sm hover:border-blue-300 hover:bg-blue-100"
-        />
-      </HoverTooltip>
-      <AnchoredLayer
+    <AnchoredLayer
+      open={open}
+      onClose={onClose}
+      anchorRef={anchorRef}
+      placement="bottom-end"
+      level="panelPopover"
+      gap={6}
+    >
+      <SellerMessagePanel
+        receivingId={receivingId}
+        lineId={lineId}
+        linkedTicketId={linkedTicketId}
         open={open}
-        onClose={() => setOpen(false)}
-        anchorRef={anchorRef}
-        placement="bottom-end"
-        level="panelPopover"
-        gap={6}
-      >
-        <SellerMessagePanel
-          receivingId={receivingId}
-          lineId={lineId}
-          linkedTicketId={linkedTicketId ?? null}
-          open={open}
-          onClose={() => setOpen(false)}
-        />
-      </AnchoredLayer>
-    </>
+        onClose={onClose}
+      />
+    </AnchoredLayer>
   );
 }
 
@@ -371,5 +383,3 @@ function SellerMessagePanel({
     </div>
   );
 }
-
-export default SellerMessageChip;

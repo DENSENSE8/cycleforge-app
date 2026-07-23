@@ -3,6 +3,8 @@
  * Unit-tested DB-free — no React.
  */
 
+import type { TimelineItem } from '@/lib/timeline/types';
+
 export type WorkspaceTimelineAnchor = {
   /** PO-scoped carrier fetch (Unbox/Testing receiving rows). */
   poId?: string | null;
@@ -12,6 +14,14 @@ export type WorkspaceTimelineAnchor = {
   receivingId?: number | null;
   /** Order-scoped fallback for Shipping/Packing (business order id). */
   orderId?: string | null;
+  /**
+   * Optional Activity spine (Support station) — merged support-context events.
+   * When set, Timeline prefers Activity as the lead tab (before Units / Tracking).
+   */
+  activity?: {
+    items: TimelineItem[];
+    loading?: boolean;
+  } | null;
 };
 
 export type CarrierDataPath = 'po' | 'tracking' | 'order' | null;
@@ -19,6 +29,7 @@ export type CarrierDataPath = 'po' | 'tracking' | 'order' | null;
 export type TimelineSectionsPlan = {
   showCarrier: boolean;
   showSerials: boolean;
+  showActivity: boolean;
   carrierVia: CarrierDataPath;
   /** Fetch carton serials when no explicit list and receivingId is set. */
   fetchCartonSerials: boolean;
@@ -42,6 +53,7 @@ export function resolveTimelineSections(anchor: WorkspaceTimelineAnchor): Timeli
   const explicit = normalizeExplicitSerials(anchor.serials);
   const receivingId = Number(anchor.receivingId);
   const hasReceiving = Number.isFinite(receivingId) && receivingId > 0;
+  const showActivity = anchor.activity != null;
 
   let carrierVia: CarrierDataPath = null;
   if (poId) carrierVia = 'po';
@@ -55,8 +67,9 @@ export function resolveTimelineSections(anchor: WorkspaceTimelineAnchor): Timeli
   return {
     showCarrier,
     showSerials,
+    showActivity,
     carrierVia,
     fetchCartonSerials,
-    hasContent: showCarrier || showSerials,
+    hasContent: showCarrier || showSerials || showActivity,
   };
 }

@@ -120,10 +120,23 @@ export function parseEbaySignatureHeader(header: string): EbaySignatureHeader | 
   }
 }
 
+/**
+ * Match eBay event-notification-nodejs-sdk `formatKey`: always force a newline
+ * after BEGIN / before END. Returning a one-line PEM (common when the API
+ * already embeds the markers) makes OpenSSL verify fail → perpetual 412s
+ * even with valid App ID / Cert / verification token.
+ */
 function formatPemPublicKey(key: string): string {
   const trimmed = key.trim();
-  if (trimmed.includes('BEGIN PUBLIC KEY')) return trimmed;
-  return `-----BEGIN PUBLIC KEY-----\n${trimmed}\n-----END PUBLIC KEY-----`;
+  const withBegin = trimmed.replace(
+    /-----BEGIN PUBLIC KEY-----/,
+    '-----BEGIN PUBLIC KEY-----\n',
+  );
+  const withEnds = withBegin.includes('BEGIN PUBLIC KEY')
+    ? withBegin.replace(/-----END PUBLIC KEY-----/, '\n-----END PUBLIC KEY-----')
+    : `-----BEGIN PUBLIC KEY-----\n${trimmed}\n-----END PUBLIC KEY-----`;
+  // Collapse accidental blank double-newlines from keys that already had breaks.
+  return withEnds.replace(/\n{3,}/g, '\n\n');
 }
 
 async function getApplicationAccessToken(
@@ -211,33 +224,27 @@ export async function verifyEbayNotificationSignature(
   const publicKey = await fetchNotificationPublicKey(parsed.kid, config);
   const pem = formatPemPublicKey(publicKey);
 
+  // Official SDK verifies with ALGORITHM='ssl3-sha1' over JSON.stringify(parsed).
+  // Also try raw body (exact bytes eBay may have signed) and RSA-SHA1 aliases.
   const algorithms = [
+    SIGNATURE_ALGORITHM, // ssl3-sha1 — eBay SDK default
     parsed.alg === 'sha1' || parsed.digest === 'SHA1' ? 'RSA-SHA1' : null,
-    SIGNATURE_ALGORITHM,
     'RSA-SHA1',
-    'sha256',
     'sha1',
   ].filter((v, i, arr): v is string => typeof v === 'string' && arr.indexOf(v) === i);
 
-  for (const algorithm of algorithms) {
-    try {
-      const verifier = createVerify(algorithm);
-      verifier.update(rawBody);
-      if (verifier.verify(pem, parsed.signature, 'base64')) return true;
-    } catch {
-      /* try next algorithm */
-    }
-  }
+  const payloads: string[] = [];
+  if (parsedFallback !== undefined) payloads.push(JSON.stringify(parsedFallback));
+  payloads.push(rawBody);
 
-  if (parsedFallback !== undefined) {
-    const canonical = JSON.stringify(parsedFallback);
+  for (const payload of payloads) {
     for (const algorithm of algorithms) {
       try {
         const verifier = createVerify(algorithm);
-        verifier.update(canonical);
+        verifier.update(payload);
         if (verifier.verify(pem, parsed.signature, 'base64')) return true;
       } catch {
-        /* try next algorithm */
+        /* try next algorithm / payload */
       }
     }
   }

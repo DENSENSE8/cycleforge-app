@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { SkeletonList } from '@/design-system/components/Skeletons';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import {
   ReceivingLineOrderRow,
@@ -11,12 +10,7 @@ import {
   type ReceivingLineRow,
 } from '@/components/station/ReceivingLinesTable';
 import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
-import { StationListTable } from '@/components/station/StationListTable';
-import {
-  QueueTableShell,
-  QueueTableToolbar,
-  StationRowColumnHeader,
-} from '@/components/dashboard/queue-table';
+import { ReceivingGridView } from '@/components/station/receiving-grid/ReceivingGridView';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS, STATION_VIRTUAL_LIST } from '@/lib/station/flags';
 import {
@@ -43,10 +37,11 @@ import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
+import { QueueTableToolbar } from '@/components/dashboard/queue-table';
+import { WorkbenchTablePane } from '@/components/dashboard/workbench-shell';
 
 const TESTING_LANE_ICON: Record<TestingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   check: Check,
@@ -226,7 +221,21 @@ export function TestingHistoryList({
     onOpenLine?.(row);
   }, [onOpenLine]);
 
-  const renderRow = useCallback(
+  const handleSelectGroup = useCallback((ids: readonly number[]) => {
+    if (!selectModeRef.current || ids.length === 0) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = ids.every((id) => next.has(id));
+      if (allSelected) {
+        for (const id of ids) next.delete(id);
+      } else {
+        for (const id of ids) next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const renderLegacyBoardRow = useCallback(
     (row: ReceivingLineRow, index: number) => (
       <ReceivingLineOrderRow
         key={row.id}
@@ -234,6 +243,7 @@ export function TestingHistoryList({
         index={index}
         isMobile={isMobile}
         isHistory={mode === 'history'}
+        activityAxis={mode === 'history' ? 'tested' : 'unboxed'}
         selectMode={selectMode}
         isSelected={selectMode ? selectedIds.has(row.id) : false}
         onSelect={() => handleSelect(row)}
@@ -291,20 +301,55 @@ export function TestingHistoryList({
       }}
     />
   );
-  const toolbarControls = (
-    <div className="flex items-center gap-2">
-      <ColumnConfigButton variant="toolbar" />
-      {optionsMenu}
-    </div>
-  );
   const portaledControls =
     mode === 'history' && toolbarPortalTarget
-      ? createPortal(toolbarControls, toolbarPortalTarget)
+      ? createPortal(optionsMenu, toolbarPortalTarget)
       : null;
-  const localHeaderColumns =
-    mode === 'history' && !toolbarPortalTarget ? <ColumnConfigButton iconOnly /> : undefined;
   const localHeaderOptions =
     mode === 'history' && !toolbarPortalTarget ? optionsMenu : undefined;
+
+  const activityAxis = mode === 'history' ? 'tested' as const : 'unboxed' as const;
+  const scopeLabel = mode === 'returns' ? 'Return queue' : mode === 'history' ? 'History' : 'Pending tests';
+
+  const gridBody = (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {mode !== 'history' ? (
+        <QueueTableToolbar
+          left={<DateRangePickerPill label={scopeLabel} count={rows.length} />}
+        />
+      ) : !toolbarPortalTarget ? (
+        <QueueTableToolbar
+          left={
+            <DateRangePickerPill
+              label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+              count={rows.length}
+              weekNav={{
+                weekOffset,
+                onPrev: () => setWeekOffset(weekOffset + 1),
+                onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
+              }}
+            />
+          }
+          right={localHeaderOptions}
+        />
+      ) : null}
+      <ReceivingGridView
+        daySections={daySections}
+        loading={isLoading && rows.length === 0}
+        emptyMessage={emptyMessage}
+        isMobile={isMobile}
+        selectMode={selectMode}
+        selectedId={null}
+        selectedIds={selectedIds}
+        handleSelectRow={handleSelect}
+        handleSelectGroup={handleSelectGroup}
+        activityAxis={activityAxis}
+        isHistory={mode === 'history'}
+        selectionScope={TESTING_SELECTION_SCOPE}
+        testId="testing-grid-body"
+      />
+    </div>
+  );
 
   let content: ReactNode;
   if (mode === 'history' && boardEnabled && layout === 'board') {
@@ -316,7 +361,7 @@ export function TestingHistoryList({
           bucket={(row) => bucketTestingHistoryLane(row)}
           records={rows}
           loading={isLoading && rows.length === 0}
-          renderRow={renderRow}
+          renderRow={renderLegacyBoardRow}
           getRowKey={(row) => String(row.id)}
           toDaySections={toDaySections}
           getRowDate={(row) => row.tested_at ?? row.updated_at ?? row.created_at}
@@ -331,86 +376,24 @@ export function TestingHistoryList({
                   onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
                 }}
               />
-              {localHeaderColumns}
             </div>
           }
           headerEndSlot={localHeaderOptions}
         />
       </div>
     );
-  } else if (mode === 'history' || STATION_VIRTUAL_LIST) {
+  } else {
     content = (
-      <div className="flex h-full min-w-0 flex-col overflow-hidden bg-surface-card">
-        <StationListTable<ReceivingLineRow>
-          hideHeader={mode !== 'history'}
-          loading={isLoading && rows.length === 0}
-          isRefreshing={false}
-          totalCount={rows.length}
-          daySections={daySections}
-          renderRow={renderRow}
-          getRowKey={(row) => String(row.id)}
-          virtualized={STATION_VIRTUAL_LIST}
-          weekRange={mode === 'history' ? weekRange : undefined}
-          weekOffset={weekOffset}
-          onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-          onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-          onResetWeek={() => setWeekOffset(0)}
-          showWeekControls={mode === 'history'}
-          headerColumnsSlot={localHeaderColumns}
-          headerEndSlot={localHeaderOptions}
-          emptyMessage={emptyMessage}
-          selectMode={selectMode}
-          showStationColumnHeader
-          columnHeaderStageLabel={mode === 'history' ? 'Tested' : 'Stage'}
-        />
+      <div className="flex h-full min-w-0 flex-col overflow-hidden bg-surface-canvas">
+        <WorkbenchTablePane>{gridBody}</WorkbenchTablePane>
       </div>
     );
-  } else {
-    const scopeLabel = mode === 'returns' ? 'Return queue' : 'Pending tests';
-    const queueBody =
-      isLoading && rows.length === 0 ? (
-        <div className="p-3">
-          <SkeletonList count={12} type="row" />
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-          <p className="text-sm font-semibold text-text-soft">{emptyMessage}</p>
-        </div>
-      ) : (
-        <div className="flex w-full flex-col">
-          {rows.map((row, index) => renderRow(row, index))}
-        </div>
-      );
-
-    content = (
-      <QueueTableShell
-        toolbar={
-          <QueueTableToolbar
-            left={
-              <DateRangePickerPill label={scopeLabel} count={rows.length} />
-            }
-          />
-        }
-        columnHeader={
-          isMobile ? null : (
-            <StationRowColumnHeader selectMode={selectMode} stageLabel="Stage" />
-          )
-        }
-      >
-        {queueBody}
-      </QueueTableShell>
-    );
   }
-
-  const portaledQueueControls =
-    mode !== 'history' && toolbarPortalTarget
-      ? createPortal(<ColumnConfigButton variant="toolbar" />, toolbarPortalTarget)
-      : null;
 
   return (
     <TableColumnConfigProvider tableId="testing">
       <TableDensityProvider tableId={mode === 'history' ? 'testing-history' : 'testing-queue'}>
-        {mode === 'history' ? portaledControls : portaledQueueControls}
+        {mode === 'history' ? portaledControls : null}
         {content}
       </TableDensityProvider>
     </TableColumnConfigProvider>

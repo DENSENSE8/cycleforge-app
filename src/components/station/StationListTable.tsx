@@ -10,24 +10,18 @@ import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
 import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
-import { VirtualGroupedSections } from '@/components/dashboard/orders-queue/VirtualGroupedSections';
+import { LedgerGrid } from '@/design-system/components/grid';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
 import type { RowGroup } from '@/lib/group-rows';
+import { cn } from '@/utils/_cn';
 
 /**
- * `StationListTable<TRecord>` — the generic, record-agnostic day-banded list shell
- * for the station/history tables (Tech, Packer, Receiving history/incoming,
- * Testing history). It is the generalization of {@link OrdersQueueTable}'s
- * scaffold: the 40px header band (week nav + ⋮/columns slots), the scroll body
- * (self-scrolling OR an ancestor-scroll stacked lane), the virtualized ⇄ dense
- * branch, and the typed empty/first-run/search states — with the row + grouping
- * INJECTED (`renderRow` / `renderGroup`) so the surface owns only its row anatomy.
- *
- * Grouping is caller-built (by that surface's controller): pass `orderGroupsByDate`
- * (folded order groups, with a `renderGroup`) OR `daySections` (flat rows). All
- * windowing / sticky-header / stacked-lane ancestor-scroll mechanics come from
- * {@link VirtualGroupedSections}. Row density comes from a `TableDensityProvider`
- * mounted by the consumer (rows read it via `useTableDensity`), same as columns.
+ * `StationListTable<TRecord>` — day-banded station/history list shell.
+ * Virtualized path composes the Workbench spreadsheet SoT {@link LedgerGrid}
+ * (sticky column guide + {@link VirtualGroupedSections}). Dense path keeps an
+ * inline day map for small auto-height embeds. Sibling of outbound
+ * {@link OrdersGridView}: week/banner chrome stays here; row + grouping are
+ * injected (`renderRow` / `renderGroup`).
  */
 export interface StationListTableProps<TRecord> {
   loading: boolean;
@@ -144,7 +138,7 @@ export function StationListTable<TRecord>({
   const { isMobile } = useUIModeOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Body class logic mirrors OrdersQueueTable so the two scaffolds scroll identically.
+  // Body class logic mirrors OrdersGridView / LedgerGrid scroll scaffolds.
   const rootClass = autoHeight
     ? 'flex min-w-0 w-full bg-surface-card relative'
     : 'flex h-full min-w-0 flex-1 bg-surface-card relative';
@@ -213,10 +207,10 @@ export function StationListTable<TRecord>({
           />
         )}
 
-        {columnHeader}
+        {!virtualized || isEmpty ? columnHeader : null}
 
-        <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
-          {isEmpty ? (
+        {isEmpty ? (
+          <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
             <div className={`flex flex-col items-center justify-center ${emptyPadClass} text-center`}>
               {searchValue ? (
                 <OrderSearchEmptyState
@@ -244,18 +238,25 @@ export function StationListTable<TRecord>({
                 </div>
               )}
             </div>
-          ) : virtualized ? (
-            <VirtualGroupedSections<TRecord>
-              orderGroupsByDate={orderGroupsByDate}
-              daySections={daySections}
-              scrollParentRef={scrollParentRef ?? scrollRef}
-              useAncestorScroll={Boolean(scrollParentRef)}
-              renderRow={renderRow}
-              renderGroup={renderGroup}
-              getRowKey={getRowKey}
-              scrollToKey={scrollToKey}
-            />
-          ) : (
+          </div>
+        ) : virtualized ? (
+          <LedgerGrid<TRecord>
+            orderGroupsByDate={orderGroupsByDate}
+            daySections={daySections}
+            showDayHeaders
+            columnHeader={columnHeader}
+            renderRow={renderRow}
+            renderGroup={renderGroup}
+            getRowKey={getRowKey}
+            scrollToKey={scrollToKey}
+            scrollParentRef={scrollParentRef}
+            bodyRef={scrollRef}
+            emptyState={null}
+            className={cn(autoHeight && bodyScrollClass)}
+            data-testid="column-table-body"
+          />
+        ) : (
+          <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
             <div className="flex flex-col w-full">
               {dayBands.map(([date, groupsOrRows]) => (
                 <DenseDaySection<TRecord>
@@ -267,8 +268,8 @@ export function StationListTable<TRecord>({
                 />
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
         {footer}
       </div>
     </div>
@@ -292,6 +293,8 @@ function DenseDaySection<TRecord>({
     ? (groupsOrRows as RowGroup<TRecord>[]).reduce((sum, g) => sum + g.rows.length, 0)
     : groupsOrRows.length;
 
+  // One stripe slot per top-level group — collapsed multi-child folds still
+  // paint as a single visible row (see group-stripe-index.ts).
   let stripeIndex = 0;
   return (
     <div className="flex flex-col">
@@ -299,7 +302,7 @@ function DenseDaySection<TRecord>({
       {isGrouped
         ? (groupsOrRows as RowGroup<TRecord>[]).map((group) => {
             const base = stripeIndex;
-            stripeIndex += group.rows.length;
+            stripeIndex += 1;
             return <div key={`g:${group.key}`}>{renderGroup!(group, base)}</div>;
           })
         : (groupsOrRows as TRecord[]).map((record, i) => <div key={`r:${i}`}>{renderRow(record, i)}</div>)}

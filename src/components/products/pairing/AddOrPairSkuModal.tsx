@@ -1,10 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { X, Search, Loader2, Check, Link2, Plus, AlertCircle } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
-import { useBodyScrollLock, useEscapeClose } from '@/design-system/hooks';
+import { Search, Loader2, Check, Link2, Plus, AlertCircle } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { platformStyle } from './platform-style';
 import type { UnmappedPlatformId } from './types';
 
@@ -38,7 +44,6 @@ type Mode = 'create' | 'existing';
  *      existing one (POST /api/sku-catalog/pair, which also backfills orders).
  */
 export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Props) {
-  const [portal, setPortal] = useState<HTMLElement | null>(null);
   const [mode, setMode] = useState<Mode>('create');
 
   // Create-form fields.
@@ -56,10 +61,6 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => setPortal(document.body), []);
-  useBodyScrollLock(open);
-  useEscapeClose(open, onClose);
 
   // Reset whenever the modal (re)opens or the target changes.
   useEffect(() => {
@@ -171,170 +172,164 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
   const headerLabel = pending ? 'Pair identifier' : 'Add inventory SKU';
   const style = useMemo(() => (pending ? platformStyle(pending.platform) : null), [pending]);
 
-  if (!open || !portal) return null;
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !submitting) onClose();
+      }}
+    >
+      <DialogContent
+        hideClose
+        className="max-h-[84vh] max-w-lg gap-0 overflow-hidden p-0 sm:rounded-xl"
+      >
+        <DialogHeader className="shrink-0 space-y-0 border-b border-border-soft px-4 py-3">
+          <DialogTitle className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            {headerLabel}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            {pending
+              ? 'Create a new inventory SKU or pair this identifier to an existing one.'
+              : 'Add a new inventory SKU to the catalog.'}
+          </DialogDescription>
+        </DialogHeader>
 
-  return createPortal(
-    <>
-      <div className="fixed inset-0 z-modal bg-scrim/30" onClick={onClose} />
-      <div className="pointer-events-none fixed inset-0 z-modal flex items-start justify-center p-3 sm:p-6">
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="pointer-events-auto mt-[6vh] flex max-h-[84vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-4 py-3">
-            <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
-              {headerLabel}
-            </p>
-            <IconButton
-              icon={<X className="h-4 w-4" />}
-              ariaLabel="Close"
-              onClick={onClose}
-              className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-            />
-          </div>
-
-          {/* Pending identifier banner */}
-          {pending && style && (
-            <div className="shrink-0 border-b border-border-hairline bg-surface-canvas px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
-                  {style.label}
+        {/* Pending identifier banner */}
+        {pending && style && (
+          <div className="shrink-0 border-b border-border-hairline bg-surface-canvas px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
+                {style.label}
+              </span>
+              <span className="font-mono text-xs font-bold text-text-default">{identifier}</span>
+              {pending.orderCount > 0 && (
+                <span className="text-role-micro font-semibold text-amber-700">
+                  links {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}
                 </span>
-                <span className="font-mono text-xs font-bold text-text-default">{identifier}</span>
-                {pending.orderCount > 0 && (
-                  <span className="text-role-micro font-semibold text-amber-700">
-                    links {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}
-                  </span>
-                )}
-              </div>
-              {pending.suggestedTitle && (
-                <p className="mt-1 truncate text-role-caption text-text-soft">{pending.suggestedTitle}</p>
               )}
             </div>
-          )}
-
-          {/* Mode tabs (only meaningful when pairing an identifier) */}
-          {pending && (
-            <div className="flex shrink-0 gap-1 border-b border-border-hairline px-3 py-2">
-              <ModeTab active={mode === 'create'} onClick={() => setMode('create')} icon={<Plus className="h-3.5 w-3.5" />} label="Create new SKU" />
-              <ModeTab active={mode === 'existing'} onClick={() => setMode('existing')} icon={<Link2 className="h-3.5 w-3.5" />} label="Pair to existing" />
-            </div>
-          )}
-
-          {/* Body */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-            {mode === 'create' ? (
-              <div className="space-y-3">
-                <Field label="Inventory SKU" required>
-                  <input
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                    placeholder="e.g. 00326-P-2"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm font-bold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
-                  />
-                </Field>
-                <Field label="Product title" required>
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Canonical product name"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Category">
-                    <input
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      placeholder="Optional"
-                      className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
-                    />
-                  </Field>
-                  <Field label="UPC">
-                    <input
-                      value={upc}
-                      onChange={(e) => setUpc(e.target.value)}
-                      placeholder="Optional"
-                      className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
-                    />
-                  </Field>
-                </div>
-                {pending && (
-                  <p className="rounded-lg bg-emerald-50 px-3 py-2 text-role-micro font-semibold text-emerald-700">
-                    Creating this SKU will also link <span className="font-mono">{identifier}</span> and backfill its {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
-                  <input
-                    value={existingQuery}
-                    onChange={(e) => { setExistingQuery(e.target.value); setSelected(null); }}
-                    placeholder="Search canonical SKU or title…"
-                    className="w-full rounded-lg border border-border-soft bg-surface-canvas py-2 pl-8 pr-3 text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
-                  />
-                  {searching && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />}
-                </div>
-                <div className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border-hairline">
-                  {results.length === 0 ? (
-                    <p className="px-3 py-6 text-center text-role-caption text-text-faint">
-                      {existingQuery.trim() ? 'No matches' : 'Type to search the catalog'}
-                    </p>
-                  ) : (
-                    results.map((r) => {
-                      const isSel = selected?.id === r.id;
-                      return (
-                        // ds-raw-button: text-left master-detail picker row (SKU + title), not a standard action button
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => setSelected(isSel ? null : r)}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${isSel ? 'bg-emerald-50' : 'hover:bg-surface-hover'}`}
-                        >
-                          {isSel && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
-                          <span className="font-mono text-xs font-black text-text-default">{r.sku}</span>
-                          <span className="truncate text-role-caption text-text-soft">{r.product_title}</span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+            {pending.suggestedTitle && (
+              <p className="mt-1 truncate text-role-caption text-text-soft">{pending.suggestedTitle}</p>
             )}
           </div>
+        )}
 
-          {/* Error */}
-          {error && (
-            <div className="flex shrink-0 items-center gap-1.5 border-t border-red-100 bg-red-50 px-4 py-2 text-role-micro font-semibold text-red-700">
-              <AlertCircle className="h-3.5 w-3.5" />{error}
+        {/* Mode tabs (only meaningful when pairing an identifier) */}
+        {pending && (
+          <div className="flex shrink-0 gap-1 border-b border-border-hairline px-3 py-2">
+            <ModeTab active={mode === 'create'} onClick={() => setMode('create')} icon={<Plus className="h-3.5 w-3.5" />} label="Create new SKU" />
+            <ModeTab active={mode === 'existing'} onClick={() => setMode('existing')} icon={<Link2 className="h-3.5 w-3.5" />} label="Pair to existing" />
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          {mode === 'create' ? (
+            <div className="space-y-3">
+              <Field label="Inventory SKU" required>
+                <input
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="e.g. 00326-P-2"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm font-bold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                />
+              </Field>
+              <Field label="Product title" required>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Canonical product name"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Category">
+                  <input
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="Optional"
+                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                  />
+                </Field>
+                <Field label="UPC">
+                  <input
+                    value={upc}
+                    onChange={(e) => setUpc(e.target.value)}
+                    placeholder="Optional"
+                    className="w-full rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 font-mono text-sm text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                  />
+                </Field>
+              </div>
+              {pending && (
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-role-micro font-semibold text-emerald-700">
+                  Creating this SKU will also link <span className="font-mono">{identifier}</span> and backfill its {pending.orderCount} order{pending.orderCount === 1 ? '' : 's'}.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+                <input
+                  value={existingQuery}
+                  onChange={(e) => { setExistingQuery(e.target.value); setSelected(null); }}
+                  placeholder="Search canonical SKU or title…"
+                  className="w-full rounded-lg border border-border-soft bg-surface-canvas py-2 pl-8 pr-3 text-sm font-semibold text-text-default outline-none focus:border-blue-300 focus:bg-surface-card focus:ring-2 focus:ring-blue-100"
+                />
+                {searching && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />}
+              </div>
+              <div className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border-hairline">
+                {results.length === 0 ? (
+                  <p className="px-3 py-6 text-center text-role-caption text-text-faint">
+                    {existingQuery.trim() ? 'No matches' : 'Type to search the catalog'}
+                  </p>
+                ) : (
+                  results.map((r) => {
+                    const isSel = selected?.id === r.id;
+                    return (
+                      // ds-raw-button: text-left master-detail picker row (SKU + title), not a standard action button
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setSelected(isSel ? null : r)}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${isSel ? 'bg-emerald-50' : 'hover:bg-surface-hover'}`}
+                      >
+                        {isSel && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                        <span className="font-mono text-xs font-black text-text-default">{r.sku}</span>
+                        <span className="truncate text-role-caption text-text-soft">{r.product_title}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
-
-          {/* Footer */}
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-soft px-4 py-3">
-            <Button variant="ghost" size="md" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              variant="brand"
-              size="md"
-              loading={submitting}
-              disabled={submitting || (mode === 'existing' && !selected)}
-              onClick={mode === 'create' ? handleCreate : handlePairExisting}
-              icon={mode === 'create' ? <Plus className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-            >
-              {mode === 'create' ? (pending ? 'Create & pair' : 'Add SKU') : 'Pair SKU'}
-            </Button>
-          </div>
         </div>
-      </div>
-    </>,
-    portal,
+
+        {/* Error */}
+        {error && (
+          <div className="flex shrink-0 items-center gap-1.5 border-t border-red-100 bg-red-50 px-4 py-2 text-role-micro font-semibold text-red-700">
+            <AlertCircle className="h-3.5 w-3.5" />{error}
+          </div>
+        )}
+
+        <DialogFooter className="shrink-0 border-t border-border-soft px-4 py-3 sm:justify-end">
+          <Button variant="ghost" size="md" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="brand"
+            size="md"
+            loading={submitting}
+            disabled={submitting || (mode === 'existing' && !selected)}
+            onClick={mode === 'create' ? handleCreate : handlePairExisting}
+            icon={mode === 'create' ? <Plus className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+          >
+            {mode === 'create' ? (pending ? 'Create & pair' : 'Add SKU') : 'Pair SKU'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

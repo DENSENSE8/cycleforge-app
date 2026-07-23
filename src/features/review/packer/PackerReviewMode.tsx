@@ -5,7 +5,7 @@
  * LineEditPanel anatomy):
  *   StationContextBar + CartonContextCard (bar) + StationMoreDetails
  *   → StationWorkbench → SectionTabsSlider
- *   → StationTerminalDock → FloatingButton (Approve · Flag menu)
+ *   → StationTerminalDock → SlicedActionDock (Approve · Flag menu)
  *
  * Receiving-only LineEditModals (claim / audit / photo-note) stay on Unbox —
  * Review has no ReceivingLineRow. Overlays still compose *around* the

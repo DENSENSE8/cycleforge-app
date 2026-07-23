@@ -231,6 +231,10 @@ test('emptyMessage reflects mode + facet context', () => {
   assert.match(RECEIVING_MODES.history.emptyMessage(ctx()), /start scanning/);
   assert.match(RECEIVING_MODES.incoming.emptyMessage(ctx()), /No incoming POs/);
   assert.match(
+    RECEIVING_MODES.incoming.emptyMessage(ctx({ incomingSource: 'ebay' })),
+    /No eBay purchases yet/,
+  );
+  assert.match(
     RECEIVING_MODES.incoming.emptyMessage(ctx({ isDeliveredUnscannedFacet: true })),
     /delivered-and-unscanned/,
   );

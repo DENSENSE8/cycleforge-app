@@ -24,5 +24,8 @@ export function receivingTableScopeLabel(modeId: string): string {
 }
 
 export function receivingStageColumnLabel(axis: ReceivingActivityAxis): string {
-  return axis === 'unboxed' ? 'Unboxed' : 'Scanned';
+  if (axis === 'unboxed') return 'Unboxed';
+  if (axis === 'tested') return 'Tested';
+  if (axis === 'received') return 'Received';
+  return 'Scanned';
 }

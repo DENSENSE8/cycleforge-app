@@ -8,8 +8,10 @@ import { motionBezier } from '@/design-system/foundations/motion-framer';
 import type { TimelineItem, TimelineTone, TimelineRef, TimelineGroupKey } from '@/lib/timeline/types';
 import { TIMELINE_OTHER_BAND_KEY } from '@/lib/timeline/types';
 import { isRawStatusTrailSubtitle } from '@/lib/timeline/station-subtitle';
+import { resolveTimelineGlyph } from '@/lib/timeline/timeline-glyphs';
 import { ChevronRight } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
 import {
   TrackingChip,
   SerialChip,
@@ -28,31 +30,10 @@ import {
  * each domain provides a `*ToTimeline` adapter (`src/lib/timeline/*`) — panels
  * never hand-roll a timeline.
  *
- * Visual language: Linear/Notion/Shopify — a quiet fading rail, precise tone dots
- * (the only color), refined type hierarchy, a hover row, and a restrained
- * staggered reveal. Identifiers reuse the app-wide {@link CopyChip} family
- * (last-4 + copy-on-click), so a tracking/serial in the timeline behaves exactly
- * like the same id everywhere else.
+ * Visual language: quiet fading rail, **mode glyphs + HoverTooltip** (not color
+ * dots), refined type hierarchy, hover row, restrained stagger. Identifiers
+ * reuse the app-wide {@link CopyChip} family (last-4 + copy-on-click).
  */
-
-const DOT_TONE: Record<TimelineTone, string> = {
-  default: 'bg-blue-500',
-  info: 'bg-blue-500',
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-rose-500',
-  muted: 'bg-surface-strong',
-};
-
-// Soft static halo behind the latest dot (calm, not an animated ping).
-const DOT_HALO: Record<TimelineTone, string> = {
-  default: 'rgba(59,130,246,0.16)',
-  info: 'rgba(59,130,246,0.16)',
-  success: 'rgba(16,185,129,0.18)',
-  warning: 'rgba(245,158,11,0.18)',
-  danger: 'rgba(244,63,94,0.18)',
-  muted: 'rgba(148,163,184,0.18)',
-};
 
 const BADGE_TONE: Record<TimelineTone, string> = {
   default: 'bg-surface-sunken text-text-muted',
@@ -64,9 +45,9 @@ const BADGE_TONE: Record<TimelineTone, string> = {
 };
 
 type Density = 'comfortable' | 'compact';
-const DENSITY: Record<Density, { pb: string; day: string; dotTop: string }> = {
-  comfortable: { pb: 'pb-4', day: 'mt-5 first:mt-0', dotTop: 'top-[3px]' },
-  compact: { pb: 'pb-3', day: 'mt-4 first:mt-0', dotTop: 'top-[2px]' },
+const DENSITY: Record<Density, { pb: string; day: string; glyphTop: string }> = {
+  comfortable: { pb: 'pb-4', day: 'mt-5 first:mt-0', glyphTop: 'top-0' },
+  compact: { pb: 'pb-3', day: 'mt-4 first:mt-0', glyphTop: 'top-px' },
 };
 
 function fmt(value: string | null | undefined, pattern: string): string {
@@ -124,6 +105,25 @@ const REF_KIND_LABEL: Record<TimelineRef['kind'], string> = {
   bin: 'Bin',
   ticket: 'Ticket',
 };
+
+/** True when subtitle is only the same id the CopyChip already shows (optional collapse ×). */
+function isRedundantRefSubtitle(subtitle: string, ref: TimelineRef | undefined): boolean {
+  if (!ref?.value) return false;
+  const norm = (s: string) => s.replace(/^#/, '').trim().toLowerCase();
+  const refNorm = norm(ref.value);
+  if (!refNorm) return false;
+  // "#9462" or "#9462 · 2× · earliest 11:50am"
+  const head = subtitle.split('·')[0]?.trim() ?? subtitle;
+  return norm(head) === refNorm;
+}
+
+/** Collapse-only footnote when the id chip already carries identity ("2× · earliest …"). */
+function collapseOnlyFootnote(subtitle: string, ref: TimelineRef | undefined): string | null {
+  if (!ref?.value || !isRedundantRefSubtitle(subtitle, ref)) return null;
+  const parts = subtitle.split('·').map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return null;
+  return parts.slice(1).join(' · ');
+}
 
 /** Render an identifier through the shared CopyChip family (last-4 + copy). */
 function TimelineRefChip({ refItem }: { refItem: TimelineRef }) {
@@ -460,10 +460,10 @@ export function EventTimeline({
       animate="show"
     >
       {/* Fading hairline rail — soft at both ends (Linear touch), so it never
-          hard-stops against the first/last dot. */}
+          hard-stops against the first/last glyph. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-[5px] top-1 bottom-1 w-px bg-surface-strong"
+        className="pointer-events-none absolute left-2 top-1 bottom-1 w-px bg-surface-strong"
         style={{
           maskImage:
             'linear-gradient(to bottom, transparent, #000 14px, #000 calc(100% - 14px), transparent)',
@@ -477,9 +477,11 @@ export function EventTimeline({
         const dayKey = fmt(item.at, 'EEE, MMM d');
         const showDay = groupByDay && (i === 0 || dayKey !== fmt(items[i - 1]?.at, 'EEE, MMM d'));
         const isLatest = highlightLatest && i === 0;
-        const tone = item.tone ?? 'info';
         // Station floor: title alone is primary; chip · time · actor is secondary.
         const stationAnatomy = metaTrail && refInline;
+        const glyphSpec = resolveTimelineGlyph(item.sourceEventType);
+        const GlyphIcon = TIMELINE_GLYPH_ICONS[glyphSpec.id];
+        const glyphHref = item.href?.trim() || item.ref?.href?.trim() || undefined;
         const timeNode = richTime ? (
           <HoverTooltip
             label={absTimestamp(item.at)}
@@ -506,10 +508,16 @@ export function EventTimeline({
           </span>
         );
         // Station omits raw PREV → NEXT machine trails (duplicate the title dialect).
-        const footnote =
+        // Never repeat the CopyChip id as plain subtitle text.
+        const rawFootnote =
           item.subtitle && !(stationAnatomy && isRawStatusTrailSubtitle(item.subtitle))
             ? item.subtitle
             : null;
+        const footnote = rawFootnote
+          ? isRedundantRefSubtitle(rawFootnote, item.ref)
+            ? collapseOnlyFootnote(rawFootnote, item.ref)
+            : rawFootnote
+          : null;
 
         return (
           <motion.li key={item.id} variants={row} className="relative pl-5">
@@ -526,19 +534,38 @@ export function EventTimeline({
             ) : null}
 
             <div className={`relative ${d.pb} last:pb-0`}>
-              {/* Dot / icon — the only color in the row. */}
-              {item.icon ? (
-                <span className={`absolute -left-5 ${d.dotTop} flex h-3.5 w-3.5 items-center justify-center text-text-faint`}>
-                  {item.icon}
-                </span>
-              ) : (
-                <span
-                  className={`absolute -left-[18px] ${d.dotTop} h-[9px] w-[9px] rounded-full ring-[3px] ring-white ${DOT_TONE[tone]}`}
-                  style={isLatest && !stationAnatomy ? { boxShadow: `0 0 0 4px ${DOT_HALO[tone]}` } : undefined}
-                />
-              )}
+              {/* Mode glyph + tooltip — sharp house icons; link when href resolves. */}
+              <span
+                className={`absolute -left-5 ${d.glyphTop} flex h-4 w-4 items-center justify-center bg-surface-card text-text-muted ${
+                  isLatest && !stationAnatomy ? 'rounded-sm ring-1 ring-border-soft' : ''
+                }`}
+              >
+                {item.icon ? (
+                  item.icon
+                ) : (
+                  <HoverTooltip
+                    label={glyphHref ? `${glyphSpec.tooltip} — open` : glyphSpec.tooltip}
+                    focusable={false}
+                  >
+                    {glyphHref ? (
+                      <Link
+                        href={glyphHref}
+                        className="flex h-4 w-4 items-center justify-center text-text-muted transition-colors hover:text-text-default"
+                        aria-label={`${glyphSpec.tooltip} — open`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <GlyphIcon className="h-4 w-4 shrink-0" aria-hidden />
+                      </Link>
+                    ) : (
+                      <span className="flex h-4 w-4 items-center justify-center">
+                        <GlyphIcon className="h-4 w-4 shrink-0" aria-hidden />
+                      </span>
+                    )}
+                  </HoverTooltip>
+                )}
+              </span>
 
-              {/* Hover surface — bleeds slightly past the text, never under the dot. */}
+              {/* Hover surface — bleeds slightly past the text, never under the glyph. */}
               <div
                 className={`-mx-2 rounded-lg px-2 py-0.5 transition-colors duration-150 hover:bg-surface-canvas/80${
                   onSelectItem ? ' cursor-pointer' : ''

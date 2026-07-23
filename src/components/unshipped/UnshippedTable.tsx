@@ -265,7 +265,16 @@ export function UnshippedTable({
   // FulfillmentState (PENDING/TESTED/BLOCKED), Decision 8. `?attention=1` now
   // keeps only operator-flagged urgent rows (orders.is_urgent).
   const records = allRecords.filter((r) => {
-    const row = r as { has_tech_scan?: boolean; out_of_stock?: string | null; is_urgent?: boolean };
+    const row = r as {
+      has_tech_scan?: boolean;
+      out_of_stock?: string | null;
+      is_urgent?: boolean;
+      tracking_number?: string | null;
+      shipping_tracking_number?: string | null;
+    };
+    // Pending dashboard is labeled + tracked only — no-tracking rows belong on Labels.
+    const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
+    if (!tracking) return false;
     const state = deriveFulfillmentState({
       hasTechScan: Boolean(row.has_tech_scan),
       outOfStock: row.out_of_stock,

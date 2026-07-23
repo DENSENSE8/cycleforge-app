@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AppToaster } from '@/design-system/components/AppToaster';
+import { ConfirmDialogHost } from '@/design-system/components/confirm';
 import { SiteTooltipProvider } from '@/components/providers/SiteTooltipProvider';
 import { StepUpProvider } from '@/components/providers/StepUpProvider';
 import { UIModeProvider } from '@/design-system/providers/UIModeProvider';
@@ -32,6 +33,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                 </SiteTooltipProvider>
             </UIModeProvider>
             <AppToaster />
+            <ConfirmDialogHost />
         </QueryClientProvider>
     );
 }

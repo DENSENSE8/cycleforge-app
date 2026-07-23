@@ -43,34 +43,97 @@
   select semantics (NO copy action — the CopyChip variant was deliberately not
   used); listbox over `conditionOptions()` SoT; empty cells show a quiet `— ⌄`
   set-affordance. Track sized 5.5rem for the widest pill (`PARTS` + caret).
-- **Platform favicons** — the column shows each platform's REAL colored
-  favicon (Airtable channel-mark style), fetched live 2026-07-21 and vendored
-  under `public/icons/platforms/*.png` (Google favicon service; eBay from its
-  official touch-icon CDN at 60px). `SourcePlatformMeta.favicon` is the
-  preferred mark; the CC0 monochrome paths (`platform-brand-icons.ts`) and the
-  lettermark remain the fallback layers (`other` has no favicon). sr-only +
-  tooltip always carry the label.
-- **Backorder as metrics** — the `stock` column shows strictly
-  `replenishment_*` facts (shortfall qty · status tone; PO + notes in the
-  tooltip) via the `replenishment-display.ts` registry; the free-text
-  `out_of_stock` reason surfaces ONLY on the OOS corner indicator. Quiet-empty
-  when in stock. No fake numbers; no stock-on-hand join (still ask-first).
+- **Platform marks** — the column shows a fixed-footprint monochrome brand
+  icon (`PlatformMark` + `platform-brand-icons.ts`), tinted by each platform's
+  tone. No scraped favicons — Simple Icons CC0 paths where available, Cycle
+  Forge ops silhouettes for Amazon / FBA / Goodwill / ECWID-RS / Other.
+  Lettermark remains the only fallback. sr-only + tooltip always carry the
+  label. **Bare channel mark**: no sunken/rounded app-tile wrapper — every
+  mark centers in a transparent `h-5 w-5` footprint with a `h-4` icon.
+- **Width pressure (2026-07-22)** — content-hard `minmax(X,X)` fact tracks;
+  title `minmax(12rem, 1fr)`; shared `--cf-orders-grid-w: max(100%, <min>rem)`
+  on LedgerGrid so every virtualized row locks the same track widths (never
+  per-row `w-max`, which drifted columns under long Product titles). Adaptive
+  headers: glyph-only below `labelFitRem`, short `gridLabel` when it fits
+  (never truncated `A…`). Viewport priority collapse By → Qty → Ch.
+  (ephemeral; Age/Cond/Order/Tracking-glyph always stay). CopyChip `quiet` face reverted
+  (`plain` = icon-off only). Frozen `select · Product` sticky pane unchanged.
+- **Backorder as metrics** — `replenishment_*` facts resolve via the
+  `replenishment-display.ts` registry and surface ONLY in the OOS
+  corner-indicator tooltip (the dedicated `stock` column was retired
+  2026-07-22 — see the minimal-simplify pass below). The free-text
+  `out_of_stock` reason stays on the OOS indicator. No fake numbers; no
+  stock-on-hand join (still ask-first).
 - **Table baseline** — qty right-aligned tabular; one subtle rule color;
   truncate + `HoverTooltip` everywhere; row height never changes (selection AND
   editing are background/ring only).
 
 ## Column scan order (canonical — `ORDERS_QUEUE_COLUMNS` is the SoT)
 
-`select · Product · Ship by (date) · Age · Qty · Cond · Stock · Platform · Order · Tracking`
+`select · Product · Ship by (date) · Age · Status · Qty · Cond · Platform · Order · Tracking`
 
-- `title` is the ONLY flex track. The old **`notes` column is deleted** — its
-  flex width funds the fixed `stock` track; `platform` shrank `5.5rem → 3rem`
-  (favicon track); `condition` grew `4rem → 5.5rem` (pill + caret, fits
-  `PARTS`/`L-NEW` untruncated).
+- `title` is the ONLY flex track. The old **`notes` column is deleted**, and the
+  **`stock` column was retired 2026-07-22** (replenishment facts live only in
+  the OOS corner-indicator tooltip); fact tracks are content-hard
+  `minmax(X,X)` (platform `3rem` equal tile); `condition` is `5.5rem` (pill +
+  caret). Adaptive `gridLabel` / glyph-only via `labelFitRem`; viewport
+  force-hides `date` → `qty` → `platform` under width pressure.
+- **Status column (2026-07-22)** — Pending / Tested / Out of stock chips from
+  `FULFILLMENT_STATE_META`; `?sort=status`; Product title-dot dropped on
+  `gridSkin`. Rows without a tracking number are **filtered out** of Pending
+  (Labels owns untracked). Grid is **full-bleed** (no card shell); page scroll
+  via `DashboardScrollShell` + `LedgerGrid` `scrollParentRef` so KPI scrolls
+  away and the column header sticks under pinned chrome.
 - Per-staff drag order persists in
   `staff_preferences.tableColumns['orders'].order` (schema + Zod extended);
   `sanitizeOrdersQueueColumnOrder()` re-fronts locked keys, drops retired keys
-  (`notes`), and inserts new SoT columns at their canonical slot.
+  (`notes`, `stock`), and inserts new SoT columns at their canonical slot.
+
+## Minimal-simplify pass (2026-07-22, landed)
+
+- **Stock column removed** — `OrdersQueueColumnKey`/`ORDERS_QUEUE_COLUMNS` no
+  longer carry `stock`; the sanitizer drops persisted keys;
+  `replenishmentStatusMeta` is internal to `replenishment-display.ts` (tooltip
+  only). Unit + both e2e specs updated.
+- **Platform = listing-link cell** — grid rows/folds with **no listing link
+  show a faint `—`** instead of a dead (unclickable) favicon; FBA keeps its
+  channel mark by design.
+- **Tracking empty** — Pending **filters out** rows with no tracking number
+  (Labels owns untracked). Defensive `+` jump remains in the tracking cell for
+  other surfaces / edge cases; Pending e2e asserts zero `data-add-label`.
+- **Qty type scale** — qty numerals match the Date/Age cells
+  (`densityClasses.metaText` inherit, no more `text-role-eyebrow`/mono); group
+  summary qty uses `text-role-caption`.
+- **Platform favicons refreshed** — `public/icons/platforms/ebay.png` is now
+  the eBay four-color shopping-bag mark (from eBay's developer-program
+  branding, 64px); `amazon.png` is the "a + smile" icon (Wikimedia
+  `Amazon_icon.png`, 64px). `fba.png` keeps the old orange smile tile.
+- **Status column — LANDED 2026-07-22** — see
+  `pending-grid-status-column-plan.md` (fulfillment-only Pending/Tested/Out of
+  stock; page-scroll sticky; full-bleed).
+- **Next up: dead-code cleanup** — **DONE (2026-07-22 LedgerGrid SoT pass):**
+  unreachable `price`/`staff` sort branches + `staffSortKey`/`saleAmountValue`
+  removed; replenishment display shrunk to label + tooltip (no short/chip).
+  `PendingOrdersTable` was already gone. Knip baseline held (no growth).
+- **LedgerGrid DS SoT** — `VirtualGroupedSections` hoisted to
+  `src/design-system/components/grid/`; `LedgerGrid` gained optional day bands /
+  `daySections`. Receiving browse, StationListTable (virtualized), RepairTable,
+  and FbaBoardTable compose it; Unbox `accordionBootstrap` / Expand-all wired
+  through `PoLinesAccordion` (inactive fake chevrons removed).
+- **Sort chrome** — `QueueSortSwitch` is now a quiet trailing dropdown
+  (ArrowUpDown + value + caret) in the CTA cluster left of Import, on Pending
+  and Testing (rule: `.cursor/rules/workbench-sort-chrome.mdc`).
+- **Selection bar overflow fixed** — `MobileSelectionBar`'s capsule is
+  `mx-auto w-full max-w-fit` (compact, centered) instead of viewport-wide.
+- **Single-selected row info menu** — exactly one checked row shows a chevron
+  on the Product cell (layout-stable slot) opening `RowInfoMenuPopover`:
+  **Notes · Out of stock · Details**, wired to the existing cell editors /
+  `?openOrderId=` open.
+- **Condition color coding** — marketplace strings resolve through
+  `resolveConditionGrade()` aliases (`NEW`→BRAND_NEW, `L-NEW`→LIKE_NEW, `A/B/C`,
+  …) in `conditions.ts`, so pills + the listbox current-option render their SoT
+  grade tone (`conditionGradeTone().badge`); bare `USED` deliberately keeps the
+  neutral fallback (it names no grade).
 
 ## Architecture (what changed)
 

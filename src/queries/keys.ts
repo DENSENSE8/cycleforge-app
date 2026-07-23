@@ -120,6 +120,12 @@ export const qk = {
     all: ['favorites'] as const,
     list: (workspace: string) => ['favorites', 'list', workspace] as const,
   },
+  locations: {
+    /** Broad invalidation prefix — matches every warehouse locations list query. */
+    all: ['locations'] as const,
+    /** Full GET /api/locations payload (rooms + bins + roomStructure). */
+    list: () => ['locations', 'list'] as const,
+  },
   locationsAdmin: {
     /** Broad invalidation prefix — matches every bins-admin query. */
     all: ['locations-admin'] as const,

@@ -9,7 +9,6 @@ import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import { sumDaySectionCounts } from '@/components/station/station-table-logic';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { ColumnConfigButton } from '@/components/ui/table-column-config/ColumnConfigButton';
 import type { TableId } from '@/lib/tables/table-columns';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
@@ -32,9 +31,8 @@ export interface StationWeekTableProps<T> {
   /** Render one row. Receives the record, its in-day index, and the day key. */
   renderRow: (record: T, index: number, date: string) => ReactNode;
   /**
-   * When set, the table is wrapped in a per-staff column-config provider and the
-   * header gains a "Columns" control — so the shared ChipColumns/RowMetaColumns
-   * primitives drop columns this staffer has hidden for this table.
+   * When set, the table is wrapped in a per-staff column-config provider so the
+   * shared ChipColumns/RowMetaColumns primitives honor hidden prefs for this table.
    */
   tableId?: TableId;
   /** Portal display controls into the owning workspace chrome. */
@@ -82,10 +80,7 @@ export function StationWeekTable<T>({
   const portaledControls =
     tableId && toolbarPortalTarget
       ? createPortal(
-          <div className="flex items-center gap-2">
-            <ColumnConfigButton variant="toolbar" />
-            {optionsMenu}
-          </div>,
+          <div className="flex items-center gap-2">{optionsMenu}</div>,
           toolbarPortalTarget,
         )
       : null;
@@ -103,7 +98,6 @@ export function StationWeekTable<T>({
           <DateRangeHeader
             count={weekCount}
             rightSlot={toolbarPortalTarget ? undefined : optionsMenu}
-            columns={tableId && !toolbarPortalTarget ? <ColumnConfigButton iconOnly /> : undefined}
             weekRange={weekRange}
             weekOffset={weekOffset}
             onPrevWeek={onPrevWeek}

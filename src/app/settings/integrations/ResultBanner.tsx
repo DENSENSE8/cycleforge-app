@@ -32,7 +32,16 @@ const ERRORS: Record<string, string> = {
   ebay_oauth_state_expired: 'The eBay connection link expired — please retry.',
   ebay_server_configuration: 'The eBay app is not fully configured on the server.',
   ebay_app_credentials_invalid: 'eBay rejected the app credentials (Cert ID / Client Secret). Update EBAY_CERT_ID with the full Production Cert ID from developer.ebay.com, then reconnect.',
+  ebay_oauth_runame_invalid:
+    'eBay rejected the OAuth authorize request (invalid_request). Confirm in developer.ebay.com → Application Keys → Production that EBAY_APP_ID matches the Production App ID, EBAY_RU_NAME is the Production RuName (not Sandbox) for that same keyset, OAuth is selected, accept URL is https://app.cycleforge.ai/api/ebay/callback, and the RuName is Saved. Then update Vercel Production EBAY_RU_NAME and redeploy.',
+  ebay_oauth_authorize_rejected:
+    'eBay rejected the OAuth authorize request. Confirm Production EBAY_APP_ID, EBAY_CERT_ID, and EBAY_RU_NAME match the CycleForge app in developer.ebay.com, then retry.',
   ebay_token_exchange_failed: 'Token exchange with eBay failed — please retry.',
+  // Detail codes appended via ?ebay_oauth_error=… from /api/ebay/callback
+  ebay_oauth_invalid_code:
+    'eBay rejected the authorization code (expired, already used, or RuName / App ID mismatch). Start Add purchasing again — do not refresh the callback URL. Confirm EBAY_RU_NAME matches the Production RuName whose accept URL is app.cycleforge.ai/api/ebay/callback.',
+  ebay_oauth_invalid_grant:
+    'eBay rejected the authorization grant — start Add purchasing again with a fresh consent.',
   ebay_callback_failed: 'eBay connection failed — please retry.',
   missing_oauth_params: 'Sign-in returned no authorization code — please retry.',
   token_exchange_failed: 'Token exchange with the provider failed — please retry.',
@@ -46,10 +55,32 @@ const ERRORS: Record<string, string> = {
   google_drive_access_denied: 'Google sign-in was cancelled.',
 };
 
-export function ResultBanner({ success, error }: { success?: string; error?: string }) {
+function resolveEbayTokenExchangeMessage(ebayOauthError?: string): string {
+  const code = String(ebayOauthError ?? '').trim().toLowerCase();
+  if (code && ERRORS[`ebay_oauth_${code}`]) return ERRORS[`ebay_oauth_${code}`];
+  if (code) {
+    return `Token exchange with eBay failed (${code}) — please retry. If this persists, confirm Production EBAY_APP_ID / EBAY_CERT_ID / EBAY_RU_NAME match the eBay Developer Portal keyset.`;
+  }
+  return ERRORS.ebay_token_exchange_failed;
+}
+
+export function ResultBanner({
+  success,
+  error,
+  ebayOauthError,
+}: {
+  success?: string;
+  error?: string;
+  /** Short eBay OAuth error from token exchange (e.g. invalid_code). */
+  ebayOauthError?: string;
+}) {
   const [dismissed, setDismissed] = useState(false);
   const successMsg = success ? SUCCESS[success] ?? 'Connected.' : null;
-  const errorMsg = error ? ERRORS[error] ?? 'The connection could not be completed.' : null;
+  const errorMsg = error
+    ? error === 'ebay_token_exchange_failed'
+      ? resolveEbayTokenExchangeMessage(ebayOauthError)
+      : (ERRORS[error] ?? 'The connection could not be completed.')
+    : null;
 
   useEffect(() => {
     if (successMsg) toast.success(successMsg);
@@ -58,6 +89,7 @@ export function ResultBanner({ success, error }: { success?: string; error?: str
       const url = new URL(window.location.href);
       url.searchParams.delete('success');
       url.searchParams.delete('error');
+      url.searchParams.delete('ebay_oauth_error');
       window.history.replaceState({}, '', url.toString());
     }
   }, [successMsg, errorMsg]);

@@ -11,14 +11,11 @@
  * fetching (dry-run preview + live run) and feeds report/phase/elapsed in as props.
  */
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Check,
   Loader2,
-  X,
   RefreshCw,
   FileText,
   Package,
@@ -27,10 +24,17 @@ import {
   Link2,
 } from '@/components/Icons';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 // ─── Shared report shape (mirrors the API's SyncRunReport / OrderSyncResult) ──
 
@@ -244,24 +248,7 @@ export function InventoryFulfillmentSyncDialog({
   onRefresh,
   onSync,
 }: InventoryFulfillmentSyncDialogProps) {
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setPortalNode(document.body);
-  }, []);
-
   const busy = phase === 'previewing' || phase === 'syncing';
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, busy, onClose]);
-
-  if (!portalNode || !open) return null;
 
   const title = notConnected
     ? 'Inventory not connected'
@@ -278,53 +265,36 @@ export function InventoryFulfillmentSyncDialog({
   const errored = report?.errored ?? 0;
   const noRows = !report || report.results.length === 0;
 
-  const overlay = (
-    <motion.div
-      key="zoho-sync-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={framerTransition.overlayScrim}
-      className="fixed inset-0 z-panelPopover flex items-center justify-center bg-scrim/40 px-4 py-6"
-      onClick={() => {
-        if (!busy) onClose();
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Escape / overlay dismiss only when idle. Header Cancel still calls onClose while busy.
+        if (!next && !busy) onClose();
       }}
     >
-      <motion.div
-        key="zoho-sync-card"
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 320, mass: 0.55 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-surface-card shadow-[0_24px_80px_-20px_rgba(15,23,42,0.35)] ring-1 ring-border-soft"
+      <DialogContent
+        hideClose
+        className="max-w-3xl gap-0 overflow-hidden p-0 sm:rounded-2xl"
       >
-        <header className="flex items-start gap-3 border-b border-border-soft px-5 py-3.5">
-          <div className="flex-1 min-w-0">
-            <p className={`${microBadge} text-text-soft`}>Inventory Fulfillment Sync</p>
-            <h2 className={`${sectionLabel} text-text-default mt-0.5`}>{title}</h2>
+        <DialogHeader className="flex flex-row items-start gap-3 space-y-0 border-b border-border-soft px-5 py-3.5">
+          <div className="min-w-0 flex-1">
+            <DialogDescription className={`${microBadge} text-text-soft`}>
+              Inventory Fulfillment Sync
+            </DialogDescription>
+            <DialogTitle className={`${sectionLabel} mt-0.5 text-text-default`}>
+              {title}
+            </DialogTitle>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <motion.span
-              key={Math.floor(elapsedMs / 100)}
-              initial={{ opacity: 0.4 }}
-              animate={{ opacity: 1 }}
-              className="text-role-caption font-mono font-semibold text-blue-600 tabular-nums"
-            >
-              {(elapsedMs / 1000).toFixed(1)}s
-            </motion.span>
-            <HoverTooltip label={busy ? 'Cancel' : 'Close'} asChild>
-              <IconButton
-                onClick={onClose}
-                ariaLabel={busy ? 'Cancel sync' : 'Close'}
-                className={`rounded-lg p-1.5 ${
-                  busy
-                    ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
-                    : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted'
-                }`}
-                icon={<X className="h-4 w-4" />}
-              />
-            </HoverTooltip>
-          </div>
-        </header>
+          <motion.span
+            key={Math.floor(elapsedMs / 100)}
+            initial={{ opacity: 0.4 }}
+            animate={{ opacity: 1 }}
+            className="shrink-0 text-role-caption font-mono font-semibold text-blue-600 tabular-nums"
+          >
+            {(elapsedMs / 1000).toFixed(1)}s
+          </motion.span>
+        </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-1.5 border-b border-border-hairline bg-surface-canvas/60 px-5 py-2">
           <span className="text-role-micro font-medium uppercase tracking-wide text-text-faint">Each order →</span>
@@ -341,7 +311,7 @@ export function InventoryFulfillmentSyncDialog({
           ) : null}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
           {notConnected ? (
             <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
               <Link2 className="h-6 w-6 text-text-faint" />
@@ -412,8 +382,8 @@ export function InventoryFulfillmentSyncDialog({
           )}
         </div>
 
-        <footer className="flex items-center justify-between gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5">
-          <p className="text-role-micro leading-snug text-text-faint">
+        <DialogFooter className="flex-col gap-3 border-t border-border-soft bg-surface-canvas px-5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-role-micro leading-snug text-text-faint sm:mr-auto">
             {report?.dryRun !== false
               ? 'Preview is a dry run (no changes).'
               : 'Records created in inventory.'}
@@ -440,11 +410,17 @@ export function InventoryFulfillmentSyncDialog({
             >
               {confirming ? 'Confirm sync' : pendingCount > 0 ? `Sync ${pendingCount} now` : 'Sync now'}
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              ariaLabel={busy ? 'Cancel sync' : 'Close'}
+            >
+              {busy ? 'Cancel' : 'Close'}
+            </Button>
           </div>
-        </footer>
-      </motion.div>
-    </motion.div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
-
-  return createPortal(overlay, portalNode);
 }

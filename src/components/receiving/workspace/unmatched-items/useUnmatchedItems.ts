@@ -11,6 +11,7 @@ import {
   type UnmatchedItemsSectionProps,
 } from './unmatched-items-shared';
 import { useReceivingCartonUnlink } from './useReceivingCartonUnlink';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { isSalesOrderDerivedCarton } from '@/lib/receiving/intake-items-routing';
 import { getLast4Serial } from '@/lib/copy-chip-format';
 import {
@@ -626,7 +627,12 @@ export function useUnmatchedItems({
 
   const handleRemoveLine = useCallback(
     async (lineId: number) => {
-      if (!window.confirm('Remove this item from the carton?')) return;
+      const ok = await requestConfirm({
+        description: 'Remove this item from the carton?',
+        tone: 'danger',
+        confirmLabel: 'Remove',
+      });
+      if (!ok) return;
       // Optimistic — drop it immediately; restore on failure.
       const prev = lines;
       setLines((xs) => xs.filter((l) => l.id !== lineId));

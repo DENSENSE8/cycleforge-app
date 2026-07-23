@@ -40,7 +40,6 @@ export function useIncomingFilters() {
   const state: IncomingDeliveryState | null =
     stateRaw === 'DELIVERED_UNOPENED'
       || stateRaw === 'DELIVERED_NOT_UNBOXED'
-      || stateRaw === 'DELIVERED_EMAIL'
       || stateRaw === 'ARRIVING_TODAY'
       || stateRaw === 'STALLED'
       || stateRaw === 'IN_TRANSIT'

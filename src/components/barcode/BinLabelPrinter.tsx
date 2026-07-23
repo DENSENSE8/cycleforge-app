@@ -11,6 +11,7 @@
 import { Printer } from '@/components/Icons';
 import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
 import { locationCode } from '@/lib/barcode-routing';
+import { LABEL_BUILDER } from './label-builder-layout';
 import { LabelRoomSidebar } from './LabelRoomSidebar';
 import { ConfigSheet, PrintLabel, type LabelPrinterVariant } from './bin-label-printer';
 import { useBinLabelPrinter } from './bin-label-printer/useBinLabelPrinter';
@@ -49,13 +50,13 @@ export function BinLabelPrinter({ variant = 'main' }: BinLabelPrinterProps) {
   return (
     // flex-1 + min-h-0 lets this column fill the LabelPrintWorkspace height;
     // mt-auto on the StickyActionBar pins it to the bottom of the page.
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="lg:hidden">
+    <div className={`flex min-h-0 flex-1 flex-col ${LABEL_BUILDER.stackGap}`}>
+      <div className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
         <BinBuilderMobile c={c} variant={variant} />
       </div>
 
       {(c.selectedRoom || c.aisle != null) && (
-        <WorkspaceCard label="Live preview" className="lg:hidden">
+        <WorkspaceCard label="Live preview" className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
           <LivePreviewBody
             zoneLetter={c.zoneLetter}
             roomName={c.selectedRoom}
@@ -73,10 +74,11 @@ export function BinLabelPrinter({ variant = 'main' }: BinLabelPrinterProps) {
       </div>
 
       <StickyActionBar
-        // Receiving-page parity: negative margins cancel the /warehouse page's
-        // px-4 py-6 sm:px-6 gutter so the bar spans edge-to-edge and sits flush
-        // against the scroll-container floor.
-        className="mt-auto -mx-4 -mb-6 sm:-mx-6"
+        // Bleed bar chrome to the scroll-container edges; inner CTAs stay on
+        // LABEL_BUILDER.contentMax so they align with the builder column.
+        className="mt-auto -mx-4 -mb-5 sm:-mx-6"
+        maxWidth={LABEL_BUILDER.contentMax}
+        density="compact"
         primary={{
           label: c.isPrinting
             ? 'Printing…'

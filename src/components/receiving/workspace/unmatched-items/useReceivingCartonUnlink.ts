@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { dispatchReceivingCartonUnlinkPatch } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 
@@ -32,7 +33,12 @@ export function useReceivingCartonUnlink() {
       confirmMessage = 'Unlink this package? The order/PO pairing is cleared and the carton goes back to the Unfound queue.',
     }: ReceivingCartonUnlinkOptions) => {
       if (unlinking) return false;
-      if (!window.confirm(confirmMessage)) return false;
+      const ok = await requestConfirm({
+        description: confirmMessage,
+        tone: 'danger',
+        confirmLabel: 'Unlink',
+      });
+      if (!ok) return false;
 
       setUnlinking(true);
       try {

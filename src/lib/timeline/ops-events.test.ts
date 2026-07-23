@@ -44,3 +44,13 @@ test('id is namespaced with the ops: prefix', () => {
   const [item] = opsEventsToTimeline([row({ id: 7 })]);
   assert.equal(item.id, 'ops:7');
 });
+
+test('receiving entity_id deep-links the rail glyph to Unbox', () => {
+  const [item] = opsEventsToTimeline([row({ entity_type: 'receiving', entity_id: 42 })]);
+  assert.equal(item.href, '/unbox?openReceivingId=42');
+});
+
+test('non-receiving entity leaves rail href unset', () => {
+  const [item] = opsEventsToTimeline([row({ entity_type: 'order', entity_id: 9 })]);
+  assert.equal(item.href, undefined);
+});

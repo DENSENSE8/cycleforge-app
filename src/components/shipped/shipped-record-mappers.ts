@@ -1,12 +1,27 @@
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import type { DerivedPackerRecord } from '@/lib/shipped-records';
+import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 
 /**
  * Pure shape-mappers between the two record types the Shipped table juggles:
  * the `PackerRecord` rows that come back from the week query / scan-out, and the
- * `ShippedOrder` shape the details panel expects. Extracted from
- * DashboardShippedTable so the table component stays composition-only.
+ * `ShippedOrder` shape the details panel / OrdersGridView expects.
  */
+
+/**
+ * Flat spreadsheet row for {@link OrdersGridView}. Uses the packer-log id as the
+ * list key (unique per package) and carries `outboundState` for status chrome.
+ */
+export function derivedPackerRecordToQueueRow(record: DerivedPackerRecord): QueueRowRecord {
+  const detail = toDetailRecord(record);
+  return {
+    ...detail,
+    id: record.id,
+    outboundState: record.outboundState,
+    has_tech_scan: true,
+  };
+}
 
 /** Build the details-panel `ShippedOrder` payload from a packer record. */
 export function toDetailRecord(record: PackerRecord): ShippedOrder {

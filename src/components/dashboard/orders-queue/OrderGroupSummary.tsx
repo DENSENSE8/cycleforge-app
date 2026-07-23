@@ -25,11 +25,12 @@ import {
   ORDERS_QUEUE_FROZEN_CELL,
   ordersQueueFrozenLeft,
   ordersQueueGridCell,
-  ordersQueueGridTemplate,
+  ordersQueueGridTemplateFor,
   ordersQueueRowShellClass,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
-import { formatQueueRowDateCell, formatSalePrice, queueRowShipBySource, type QueueRowRecord } from './helpers';
+import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
+import { formatQueueRowDateCell, formatSalePrice, queueRowShipBySource, resolveRowStatus, type QueueRowRecord } from './helpers';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { orderRowConditionLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
@@ -60,6 +61,7 @@ export function OrderGroupSummary({
   const isHidden = useIsColumnHidden();
   const showQtyCol = !isHidden('qty');
   const showConditionCol = !isHidden('condition');
+  const showStatusCol = !isHidden('status');
   const showPlatform = !isHidden('platform');
   const showOrder = !isHidden('orderid');
   const showTracking = !isHidden('tracking');
@@ -80,6 +82,16 @@ export function OrderGroupSummary({
       : conditions.size > 1
         ? 'MIXED'
         : EMPTY_META_DASH;
+
+  // Fulfillment status fold — single lane → that chip; mixed → quiet MIXED.
+  const statusMetas = rows.map((r) => resolveRowStatus(r as QueueRowRecord, 'fulfillment'));
+  const statusLabels = new Set(statusMetas.map((m) => m.label));
+  const groupStatus =
+    statusLabels.size === 1
+      ? statusMetas[0]
+      : statusLabels.size > 1
+        ? { label: 'MIXED', description: 'Mixed fulfillment status in this order', pill: 'bg-surface-canvas text-text-muted ring-border-soft', dot: 'bg-border-emphasis' }
+        : null;
 
   const priceSum = rows.reduce((sum, r) => {
     const n = r.sale_amount == null || r.sale_amount === '' ? NaN : Number(r.sale_amount);
@@ -119,8 +131,8 @@ export function OrderGroupSummary({
           if (productPageUrl && !isFba) window.open(productPageUrl, '_blank', 'noopener,noreferrer');
         }}
         className={cn(
-          'ds-raw-button inline-flex items-center justify-center rounded-md',
-          productPageUrl && !isFba ? 'hover:bg-surface-hover' : 'cursor-default',
+          'ds-raw-button inline-flex items-center justify-center',
+          productPageUrl && !isFba ? 'rounded-sm hover:bg-surface-hover' : 'cursor-default',
         )}
       >
         <PlatformMark platformValue={platformMeta.value} textClassName={platformIconClass} />
@@ -194,17 +206,11 @@ export function OrderGroupSummary({
       case 'date':
         return (
           <div data-col="date" className={dataCell(rule)}>
-            {groupDateCell ? (
-              <HoverTooltip label={groupDateCell.tooltip} focusable={false}>
-                <span className="tabular-nums normal-case tracking-normal text-role-caption text-text-muted">
-                  {groupDateCell.label}
-                </span>
-              </HoverTooltip>
-            ) : (
-              <span className="text-text-faint" aria-hidden>
-                —
-              </span>
-            )}
+            <GridDateCellValue
+              label={groupDateCell?.label}
+              tooltip={groupDateCell?.tooltip}
+              className="text-role-caption"
+            />
           </div>
         );
       case 'age':
@@ -214,10 +220,28 @@ export function OrderGroupSummary({
             —
           </div>
         );
+      case 'status':
+        return showStatusCol && groupStatus ? (
+          <div data-col="status" className={dataCell(rule)}>
+            <HoverTooltip label={groupStatus.description} focusable={false}>
+              <span
+                className={cn(
+                  'inline-flex min-w-0 max-w-full items-center truncate rounded-full inset-chip text-role-micro font-black uppercase tracking-widest ring-1 ring-inset',
+                  groupStatus.pill,
+                )}
+              >
+                {groupStatus.label}
+              </span>
+            </HoverTooltip>
+          </div>
+        ) : (
+          <span className={dataCell(rule)} />
+        );
       case 'qty':
         return showQtyCol ? (
           <div data-col="qty" className={cn(dataCell(rule), gridSkin && 'justify-end')}>
-            <span className={cn('min-w-0 truncate font-mono tabular-nums text-role-eyebrow', orderRowQtyTone(qtySum))}>
+            {/* Matches the leaf-row qty / Date-cell type scale. */}
+            <span className={cn('min-w-0 truncate tabular-nums text-role-caption', orderRowQtyTone(qtySum))}>
               {qtySum}
             </span>
           </div>
@@ -234,13 +258,16 @@ export function OrderGroupSummary({
         ) : (
           <span className={dataCell(rule)} />
         );
-      case 'stock':
-        // Per-line replenishment lives on the leaf rows; the fold stays quiet.
-        return <div data-col="stock" className={dataCell(rule)} aria-hidden />;
       case 'platform':
+        // Listing-link cell — mirrors the leaf-row rule: on the grid, a fold
+        // with no listing link shows a quiet dash (FBA keeps its channel mark).
         return (
           <div data-col="platform" className={dataCell(rule)}>
-            {showPlatform ? platformCell : null}
+            {!showPlatform ? null : gridSkin && !productPageUrl && !isFba ? (
+              <GridCellDash />
+            ) : (
+              platformCell
+            )}
           </div>
         );
       case 'order':
@@ -262,8 +289,13 @@ export function OrderGroupSummary({
 
   return (
     <div
-      className={cn(ordersQueueRowShellClass(false), 'w-full', gridSkin && 'px-0')}
-      style={{ gridTemplateColumns: ordersQueueGridTemplate(columns.map((c) => c.key)) }}
+      className={cn(
+        ordersQueueRowShellClass(false, { scrollMinContent: gridSkin }),
+        gridSkin && 'px-0',
+      )}
+      style={{
+        gridTemplateColumns: ordersQueueGridTemplateFor(columns),
+      }}
       {...(gridSkin ? { 'data-grid-summary-row': '' } : {})}
     >
       {/* Fragments keep cells DIRECT grid children for the skin's border rules. */}

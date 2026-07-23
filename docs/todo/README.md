@@ -18,7 +18,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-ALP | `agentic-loop-master-plan.md`, `agentic-loop-EXECUTION-PROMPT.md` |
 | WS-BETA | `beta-intake-funnel-plan.md` |
 | WS-CONN | `connections-mdx-forge-plan.md`, `connections-mdx-forge-EXECUTION-PROMPT.md` — **live:** 74 `CONN-*` in `master-plan.mdx` (`pnpm connections:check`) |
-| WS-DISPLAY | `fable5-ds-prune-alignment-plan.md`, `fable5-ds-prune-EXECUTION-PROMPT.md` — Axis 5 workbench shell prune; Fable 5 audit + outbound FBA/Labels convergence |
+| WS-DISPLAY | `fable5-ds-prune-alignment-plan.md`, `fable5-ds-prune-EXECUTION-PROMPT.md` — Axis 5 workbench shell prune; Fable 5 audit + outbound FBA/Labels convergence; **`grid-surface-descriptor-plan.md`** + **`grid-surface-descriptor-EXECUTION-PROMPT.md`** (Kinetic Ledger upgrade · Pending Phase A = TanStack Table headless + TESTED columns · B-) |
 | WS-ENGINE | `ops-events-station-workflow-unification-plan.md` |
 | WS-GLASS | `GLASS-DESIGN-SYSTEM.md` |
 | WS-HOME | `contextual-my-day-home-plan.md`, **`home-ops-tv-collab-surfaces-plan.md`** (Home triage/collab · Ops TV · Forge on Home) |
@@ -36,7 +36,7 @@ Refresh: `pnpm portfolio:sot`
 | WS-STUDIO | `studio-driven-operator-surfaces-refactor-plan.md`, `studio-integrations-master-plan.md`, **`foh-boh-surface-split-plan.md`** (Walk-In station · Sales main · Receiving BOH · inbound History chrome) |
 | WS-SUB | `tech-substitution-wiring-plan.md` |
 | WS-SYNC | `cycleforge-sync-from-usav-2026-07-10.md` |
-| WS-UNBOX | `unbox-receive-ux-improvement-plan.md` |
+| WS-UNBOX | `unbox-receive-ux-improvement-plan.md`, **`classify-option-icon-faces-handoff.md`** (banner identity faces shipped; Classify tab names list → icon+name pad later), **`station-workbench-sot-rules-BRIEFING.md`** (Gemini: harden Unbox-family Station Workbench SoT + CI ratchets) |
 | WS-VOICE | `nextiva-voice-support-mode-plan.md` |
 | WS-WH | `warehouse-map-react-flow-plan.md` |
 

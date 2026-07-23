@@ -2,8 +2,6 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ShippedFormData } from '@/components/shipped';
-import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
 import { ThroughputRoiCard } from '@/components/dashboard/ThroughputRoiCard';
@@ -16,9 +14,6 @@ import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSideb
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
 interface UnshippedSidebarProps {
-  showIntakeForm?: boolean;
-  onCloseForm?: () => void;
-  onFormSubmit?: (data: ShippedFormData) => void;
   filterControl?: ReactNode;
   embedded?: boolean;
   hideSectionHeader?: boolean;
@@ -31,9 +26,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
   const searchParams = useSearchParams();
   const scope = useOutboundSidebarScope();
   const {
-    showIntakeForm = false,
-    onCloseForm,
-    onFormSubmit,
     filterControl,
     embedded = false,
     hideSectionHeader = false,
@@ -50,15 +42,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     const qs = params.toString();
     router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
   }, [stageParam, searchValue, searchParams, router]);
-
-  if (showIntakeForm) {
-    return (
-      <ShippedIntakeForm
-        onClose={onCloseForm || (() => {})}
-        onSubmit={onFormSubmit || (() => {})}
-      />
-    );
-  }
 
   const containerVariants = {
     hidden: { opacity: 0 },

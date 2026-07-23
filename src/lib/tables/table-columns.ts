@@ -7,9 +7,8 @@
  * chips, keyed) and `RowMetaColumns` (left-side qty | condition | rest grid).
  * Those primitives now read a per-staff hidden-key set from
  * `TableColumnConfigProvider` and drop matching columns. This registry declares,
- * per table, the toggleable columns + their human labels so the
- * `ColumnConfigButton` popover can render the checkbox list — instead of any
- * table hardcoding which columns exist.
+ * per table, the toggleable columns + their human labels for a future Fields /
+ * columns menu — instead of any table hardcoding which columns exist.
  *
  * Keys MUST match the real column keys the rows emit:
  *   chip group → ChipColumn.key: 'platform' | 'orderid' | 'tracking' | 'serial'
@@ -65,6 +64,7 @@ export const META_KEYS = {
 const META_QTY: TableColumnSpec = { key: 'qty', label: 'Quantity', group: 'meta' };
 const META_CONDITION: TableColumnSpec = { key: 'condition', label: 'Condition', group: 'meta' };
 const META_REST: TableColumnSpec = { key: 'rest', label: 'Details', group: 'meta' };
+const META_STATUS: TableColumnSpec = { key: 'status', label: 'Status', group: 'meta', type: 'tag' };
 const CHIP_PLATFORM: TableColumnSpec = { key: 'platform', label: 'Platform', group: 'chip' };
 const CHIP_ORDERID: TableColumnSpec = { key: 'orderid', label: 'Order ID', group: 'chip' };
 const CHIP_TRACKING: TableColumnSpec = { key: 'tracking', label: 'Tracking', group: 'chip' };
@@ -77,7 +77,7 @@ const CHIP_SERIAL: TableColumnSpec = { key: 'serial', label: 'Serial', group: 'c
  */
 export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   receiving: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
-  orders: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
+  orders: [META_STATUS, META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   shipped: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   testing: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],

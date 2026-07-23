@@ -131,9 +131,9 @@ export function TestingPoItemsSection({
       activeSerialActions={{
         editingSerialId: c.headerSerialEdit?.id ?? null,
         onEdit: (s) => c.setHeaderSerialEdit(s as UnitSlotSerial),
-        onDelete: (s, lineId) => {
+        onDelete: async (s, lineId) => {
           if (s.id == null) return;
-          if (!confirmDeleteSerial(s.serial_number)) return;
+          if (!(await confirmDeleteSerial(s.serial_number))) return;
           if (c.headerSerialEdit?.id === s.id) c.setHeaderSerialEdit(null);
           void c.deleteSerial(lineId, s.id);
         },

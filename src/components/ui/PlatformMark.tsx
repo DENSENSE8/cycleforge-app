@@ -2,19 +2,25 @@
  * Fixed-width platform mark — listing chrome uses this instead of the
  * variable-width platform name so PO# / tracking chips stay aligned across
  * marketplaces. Mark resolution (all from {@link sourcePlatformMeta}):
- *   1. **favicon** — the platform's real colored favicon, vendored under
- *      `public/icons/platforms/` (the Airtable-style channel mark);
- *   2. monochrome CC0 brand icon (`SourcePlatformMeta.icon`), tinted;
- *   3. 1–2 char lettermark.
+ *   1. monochrome brand icon (`SourcePlatformMeta.icon`), tinted by platform tone;
+ *   2. 1–2 char lettermark.
  * Label lives in tooltip / aria — the mark itself is always `aria-hidden`.
+ *
+ * Bare channel-mark discipline: no sunken/rounded app-tile wrapper. Every layer
+ * centers in the same transparent footprint so icon / lettermark share optical
+ * weight without washing out brand color.
  */
 
 import { cn } from '@/utils/_cn';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { PLATFORM_BRAND_ICON_VIEWBOX } from '@/lib/platform-brand-icons';
 
+/** Shared transparent footprint — icon / lettermark all center here. */
 const MARK_BOX =
-  'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-role-micro font-black uppercase leading-none tracking-tight';
+  'inline-flex h-5 w-5 shrink-0 items-center justify-center text-role-micro font-black uppercase leading-none tracking-tight';
+
+/** Inner mark footprint — ~16px so bare icons stay scannable without tile pad. */
+const MARK_INNER = 'h-4 w-4 shrink-0';
 
 export function PlatformMark({
   platformValue,
@@ -40,27 +46,10 @@ export function PlatformMark({
       </span>
     );
   }
-  if (meta.favicon) {
-    return (
-      <span className={cn(MARK_BOX, className)} aria-hidden>
-        {/* Tiny same-origin favicon — next/image is overkill for a 16px mark. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={meta.favicon}
-          alt=""
-          width={16}
-          height={16}
-          loading="lazy"
-          decoding="async"
-          className="h-4 w-4 shrink-0 rounded-sm object-contain"
-        />
-      </span>
-    );
-  }
   if (meta.icon) {
     return (
       <span className={cn(MARK_BOX, textClassName ?? meta.text, className)} aria-hidden>
-        <svg viewBox={PLATFORM_BRAND_ICON_VIEWBOX} fill="currentColor" className="h-4 w-4 shrink-0">
+        <svg viewBox={PLATFORM_BRAND_ICON_VIEWBOX} fill="currentColor" className={MARK_INNER} aria-hidden>
           <path d={meta.icon} />
         </svg>
       </span>

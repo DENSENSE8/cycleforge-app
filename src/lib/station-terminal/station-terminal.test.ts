@@ -62,6 +62,7 @@ test('resolveTerminalKind: unbox tabs each resolve to a distinct kind', () => {
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'units' }), 'units');
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'tracking' }), null);
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'listings' }), null);
+  assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'classify' }), null);
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'timeline' }), 'timeline');
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'ticket' }), 'ticket');
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: 'support' }), 'support');

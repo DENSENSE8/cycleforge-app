@@ -2,10 +2,8 @@
 
 import React from 'react';
 import { Check } from '../Icons';
-import {
-    SIDEBAR_INTAKE_LABEL_CLASS,
-    SIDEBAR_INTAKE_INPUT_CLASS,
-} from '@/design-system/components';
+import { TextField } from '@/design-system/primitives';
+import { FormField } from '@/design-system/components';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { REPAIR_FAILURE_LABELS } from '@/lib/repair/repair-failure-reasons';
 
@@ -40,10 +38,8 @@ export function ReasonSelector({
 
     return (
         <div className="space-y-4">
-            <div>
-                <p className={SIDEBAR_INTAKE_LABEL_CLASS}>Reason for Repair</p>
-
-                <div className="mt-2 space-y-2">
+            <FormField label="Reason for Repair">
+                <div className="space-y-2">
                     {reasons.map((reason) => {
                         const isSelected = selectedReasons.includes(reason);
 
@@ -72,21 +68,16 @@ export function ReasonSelector({
                         );
                     })}
                 </div>
-            </div>
+            </FormField>
 
-            {/* Repair Notes */}
-            <div className="space-y-2">
-                <label className={SIDEBAR_INTAKE_LABEL_CLASS}>
-                    Repair Notes <span className="text-text-faint">-- Optional</span>
-                </label>
-                <textarea
-                    value={notes}
-                    onChange={(e) => onNotesChange(e.target.value)}
-                    placeholder="Describe any additional issues or details..."
-                    rows={3}
-                    className={`${SIDEBAR_INTAKE_INPUT_CLASS} resize-none`}
-                />
-            </div>
+            <TextField
+                label="Repair Notes (optional)"
+                value={notes}
+                onChange={onNotesChange}
+                multiline
+                rows={3}
+                tone="neutral"
+            />
         </div>
     );
 }

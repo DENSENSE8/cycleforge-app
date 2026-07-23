@@ -20,6 +20,7 @@ import {
   upsertUnboxQueueRows,
   receivingRailCartonKey,
 } from '@/lib/queries/receiving-queries';
+import type { QueryClient } from '@tanstack/react-query';
 import type { LookupPoData } from '@/lib/receiving/scan';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
@@ -46,6 +47,50 @@ export function refocusScanInput(
     return;
   }
   setTimeout(() => window.dispatchEvent(new CustomEvent('receiving-focus-scan')), 60);
+}
+
+/**
+ * The single client chokepoint for "a scan OPENED this carton on the Unbox
+ * surface". Every Unbox open path — the internal-code / Phase-0 cache /
+ * local-tracking short-circuits and both lookup-po applies — funnels here so
+ * the open side-effects can never drift apart per rung:
+ *   1. drop the pre-resolve `scan:{tracking}` pending stub (no-op if none),
+ *   2. upsert the carton onto the Unboxed rail under its durable carton key
+ *      (`railRow` omitted when the row is already cached — Phase-0),
+ *   3. purge the triage rails so Arrival never keeps phantom dock inventory,
+ *   4. optionally fire the lightweight touch-scan stamp (`touchScan`) — the
+ *      client short-circuit rungs only; lookup-po paths already stamped
+ *      server-side and must not double-post.
+ */
+export function applyUnboxCartonOpened(
+  queryClient: QueryClient,
+  args: {
+    receivingId: number;
+    trackingNumber: string;
+    /** Carton row for the Unboxed rail; null/omitted when already cached. */
+    railRow?: ReceivingLineRow | null;
+    /** Fire touch-scan; `tracking` overrides the scanned value (Phase-0 uses the carton's own). */
+    touchScan?: { tracking?: string };
+  },
+): void {
+  removePendingScanRailRow(queryClient, pendingScanReconcileKey(args.trackingNumber));
+  if (args.railRow) {
+    upsertReceivingRailRows(queryClient, [
+      { ...args.railRow, client_event_id: receivingRailCartonKey(args.receivingId) },
+    ]);
+  }
+  purgeTriageRailsAfterUnboxOpen(queryClient, args.receivingId);
+  if (args.touchScan) {
+    void fetch('/api/receiving/touch-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receiving_id: args.receivingId,
+        tracking_number: args.touchScan.tracking ?? args.trackingNumber,
+        intakeSurface: 'unbox',
+      }),
+    }).catch(() => {});
+  }
 }
 
 function dispatchTriageMatchedFeedRows(
@@ -169,15 +214,15 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
 
   const unboxRailLine = pickPoLineSummary(poCtx.lines);
   if (ctx.intakeSurface === 'unbox') {
-    // The server stamped unbox_opened (lookup-po intakeSurface) — the carton
-    // just left triage membership; purge Arrival caches so it exits instantly.
-    purgeTriageRailsAfterUnboxOpen(ctx.queryClient, poCtx.receiving_id);
-  }
-  if (ctx.intakeSurface === 'unbox' && unboxRailLine) {
-    removePendingScanRailRow(ctx.queryClient, pendingScanReconcileKey(ctx.trackingNumber));
-    upsertReceivingRailRows(ctx.queryClient, [
-      buildUnboxRailMatchedRow(poCtx.receiving_id, ctx.trackingNumber, unboxRailLine),
-    ]);
+    // Server already stamped unbox_opened (lookup-po intakeSurface): run the
+    // open chokepoint — pending-stub drop, Unboxed upsert, Arrival purge.
+    applyUnboxCartonOpened(ctx.queryClient, {
+      receivingId: poCtx.receiving_id,
+      trackingNumber: ctx.trackingNumber,
+      railRow: unboxRailLine
+        ? buildUnboxRailMatchedRow(poCtx.receiving_id, ctx.trackingNumber, unboxRailLine)
+        : null,
+    });
   } else if (unboxRailLine) {
     const now = new Date().toISOString();
     dispatchTriageMatchedFeedRows(ctx, [
@@ -340,13 +385,13 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   }
 
   if (unmatchedReceivingId != null && isUnbox) {
-    removePendingScanRailRow(ctx.queryClient, pendingScanReconcileKey(ctx.trackingNumber));
-    upsertReceivingRailRows(ctx.queryClient, [
-      buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
-    ]);
-    // Server stamped unbox_opened for this unfound carton — it must exit the
-    // Arrival Unfound / combined rails immediately, not on the next stale fetch.
-    purgeTriageRailsAfterUnboxOpen(ctx.queryClient, unmatchedReceivingId);
+    // Server stamped unbox_opened for this unfound carton (lookup-po
+    // intakeSurface) — chokepoint drops the stub, upserts Unboxed, purges Arrival.
+    applyUnboxCartonOpened(ctx.queryClient, {
+      receivingId: unmatchedReceivingId,
+      trackingNumber: ctx.trackingNumber,
+      railRow: buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
+    });
   }
 
   // Auto-open the unfound workspace so the operator can immediately add items via

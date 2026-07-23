@@ -6,6 +6,7 @@ import {
   formatDateKeyShort,
   toPSTDateKey,
 } from '@/utils/date';
+import type { QueueDisplaySort } from '@/utils/queue-display-sort';
 
 export interface WeekRange {
   startStr: string;
@@ -16,21 +17,14 @@ export interface WeekRange {
 export type QueueRowRecord = ShippedOrder & Record<string, unknown>;
 
 /** Which surface owns this table — drives status dots and tracking affordances. */
-export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged';
+export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged' | 'shipped';
 
-/** Sort order for the date-banded queue.
+/** Sort order for the date-banded / column-sorted queue.
  *  - `priority` (default): soonest deadline, Awaiting-before-Pending within a day.
  *  - `newest`: bands by created date, most-recently-added first.
  *  - `deadline`: bands by deadline date; most-overdue first within a day.
- *  - `price`: keeps deadline date bands; highest sale price first within a day.
- *  - `staff`: keeps deadline date bands; clusters by assigned tester/packer name. */
-export type OrdersQueueSort = 'priority' | 'newest' | 'deadline' | 'price' | 'staff';
-
-/** Best-effort numeric sale amount for sorting (NaN-safe → treated as lowest). */
-export function saleAmountValue(record: QueueRowRecord): number {
-  const n = Number(record.sale_amount);
-  return Number.isFinite(n) ? n : -Infinity;
-}
+ *  - Column sorts (`title`…`tracking`): flat global order (see queue-row-compare). */
+export type OrdersQueueSort = QueueDisplaySort;
 
 /**
  * Instant used for day banding / within-day sort keys — matches
@@ -41,6 +35,7 @@ export function queueRowBandDateSource(
   record: Pick<ShippedOrder, 'deadline_at' | 'created_at'>,
   sort: OrdersQueueSort,
 ): string | null {
+  // Column sorts are flat (no day banding); if called, use ship-by like priority.
   const raw =
     sort === 'newest'
       ? record.created_at || record.deadline_at
@@ -77,23 +72,12 @@ export function formatQueueRowDateCell(source: string | null | undefined): {
   };
 }
 
-/** Assigned-staff sort key — tester then packer name, lowercased; empty sorts last. */
-export function staffSortKey(record: QueueRowRecord): string {
-  const tester = normalizePersonName(
-    (record.tested_by_name as string | undefined) || (record.tester_name as string | undefined),
-  );
-  const packer = normalizePersonName(
-    (record.packed_by_name as string | undefined) || (record.packer_name as string | undefined),
-  );
-  const name = (tester !== '---' ? tester : packer !== '---' ? packer : '').toLowerCase();
-  // Unassigned rows sort to the end of each day band.
-  return name || '￿';
-}
-
 export interface RowStatusMeta {
   dot: string;
   label: string;
   description: string;
+  /** Soft pill classes from the lifecycle meta registry (Status column chip). */
+  pill: string;
 }
 
 /**
@@ -118,6 +102,42 @@ export function formatSalePrice(
   }
 }
 
+/**
+ * Guard a wire timestamp before display: empty/whitespace and the legacy `'1'`
+ * sentinel are "missing" (plan §9.3). Returns the raw string otherwise —
+ * formatting stays with `formatDateTimePST` (never parse dates here).
+ */
+export function nonSentinelTimestamp(value: unknown): string | null {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw === '1') return null;
+  return raw;
+}
+
+/**
+ * TESTED-lane "Tested at" raw value — prefer the serial MIN stamp
+ * (`test_date_time`, shipped/packer feeds) then station activity
+ * (`test_activity_at`, Pending's primary on `/api/orders`). Plan §9.3.
+ */
+export function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
+  return (
+    nonSentinelTimestamp(record.test_date_time) ??
+    nonSentinelTimestamp(record.test_activity_at)
+  );
+}
+
+/**
+ * TESTED-lane tester name from wire fields only — scan actor first
+ * (`tested_by_name`), then assignee (`tester_name`). Staff-id fallback
+ * (`getStaffName`) + `normalizePersonName` stay in the view layer (hooks).
+ */
+export function queueRowTesterNameRaw(record: QueueRowRecord): string | null {
+  const scanActor = String(record.tested_by_name ?? '').trim();
+  if (scanActor) return scanActor;
+  const assignee = String(record.tester_name ?? '').trim();
+  if (assignee) return assignee;
+  return null;
+}
+
 /** Clean a tester/packer name, stripping role prefixes and placeholder values. */
 export function normalizePersonName(value: unknown): string {
   const text = String(value ?? '')
@@ -132,11 +152,19 @@ export function normalizePersonName(value: unknown): string {
 export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueMode): RowStatusMeta {
   if (queueMode === 'labels') {
     const meta = UNSHIPPED_STATE_META.AWAITING_LABEL;
-    return { dot: meta.dot, label: meta.label, description: meta.description };
+    return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
   }
   if (queueMode === 'staged') {
     const meta = OUTBOUND_STATE_META.PACKED_STAGED;
-    return { dot: meta.dot, label: meta.label, description: meta.description };
+    return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
+  }
+  if (queueMode === 'shipped') {
+    const outbound = String(record.outboundState || '').trim().toUpperCase();
+    const meta =
+      outbound && outbound in OUTBOUND_STATE_META
+        ? OUTBOUND_STATE_META[outbound as keyof typeof OUTBOUND_STATE_META]
+        : OUTBOUND_STATE_META.SCANNED_OUT;
+    return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
   }
   const state = deriveFulfillmentState({
     shipmentId: record.shipment_id,
@@ -144,7 +172,7 @@ export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueM
     outOfStock: record.out_of_stock as string | null | undefined,
   });
   const meta = FULFILLMENT_STATE_META[state];
-  return { dot: meta.dot, label: meta.label, description: meta.description };
+  return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
 }
 
 /**

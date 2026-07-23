@@ -55,10 +55,12 @@ export interface TimelineSectionProps {
 function TimelineSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <ol className="relative animate-pulse" aria-hidden>
-      <span className="absolute left-[5px] top-1 bottom-1 w-px bg-surface-sunken" />
+      <span className="absolute left-2 top-1 bottom-1 w-px bg-surface-sunken" />
       {Array.from({ length: rows }).map((_, i) => (
         <li key={i} className="relative pl-5 pb-4 last:pb-0">
-          <span className="absolute -left-[18px] top-[3px] h-[9px] w-[9px] rounded-full bg-surface-strong ring-[3px] ring-white" />
+          <span className="absolute -left-5 top-0 flex h-4 w-4 items-center justify-center bg-surface-card">
+            <span className="h-3.5 w-3.5 rounded-sm bg-surface-strong" />
+          </span>
           <div className="flex items-baseline justify-between gap-3">
             <span className="h-2.5 rounded bg-surface-strong" style={{ width: `${52 - i * 8}%` }} />
             <span className="h-2 w-12 rounded bg-surface-sunken" />

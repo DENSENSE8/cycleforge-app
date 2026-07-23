@@ -2,9 +2,9 @@
  * Pure claim-seller-message ref helper — client-safe.
  *
  * Split out of `receiving-claim-seller-message.ts` (which owns the DB
- * reads/writes via `tenancy/db`) so client chrome like `SellerMessageChip`
- * can normalize refs without dragging the server-only Neon driver into its
- * bundle. The DB module re-exports this, so server callers keep their path.
+ * reads/writes via `tenancy/db`) so client chrome like ticket seller-message
+ * menu rows can import refs without pulling Neon into the client bundle.
+ * The DB module re-exports this, so server callers keep their path.
  */
 import { normalizeReceivingTicketEntityRefs } from '@/lib/support/ticket-refs';
 

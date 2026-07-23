@@ -8,6 +8,7 @@ import {
   ebayAuthDomain,
   ebayScopeStringForRole,
   normalizeEbayRole,
+  probeEbayOauthAuthorizeConfig,
   EBAY_OAUTH_STATE_COOKIE,
 } from '@/lib/ebay/oauth-config';
 
@@ -50,6 +51,36 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
+    const scope = ebayScopeStringForRole(role);
+
+    // Preflight: catch App ID / RuName rejection before dumping the operator onto
+    // eBay's errorOauth page (classic invalid_request = RuName not owned by this
+    // Production App ID, or sandbox RuName paired with production keys).
+    const probe = await probeEbayOauthAuthorizeConfig({
+      appId: creds.appId,
+      ruName: creds.ruName,
+      environment: creds.environment,
+      scope,
+    });
+    if (!probe.ok) {
+      console.warn(
+        '[ebay/connect] authorize preflight failed',
+        `env=${creds.environment}`,
+        `host=${ebayAuthDomain(creds.environment)}`,
+        `role=${role}`,
+        `ruNameLen=${creds.ruName.length}`,
+        `reason=${probe.reason}`,
+        probe.errorId ? `errorId=${probe.errorId}` : '',
+      );
+      const error =
+        probe.reason === 'invalid_request'
+          ? 'ebay_oauth_runame_invalid'
+          : probe.reason === 'unauthorized_client'
+            ? 'ebay_app_credentials_invalid'
+            : 'ebay_oauth_authorize_rejected';
+      return NextResponse.redirect(`${req.nextUrl.origin}/settings/integrations?error=${error}`);
+    }
+
     const nonce = randomBytes(16).toString('hex');
     const state = encryptIntegrationPayload({
       organizationId: ctx.organizationId,
@@ -66,9 +97,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       `?client_id=${encodeURIComponent(creds.appId)}` +
       `&redirect_uri=${encodeURIComponent(creds.ruName)}` +
       `&response_type=code` +
-      `&scope=${encodeURIComponent(ebayScopeStringForRole(role))}` +
+      `&scope=${encodeURIComponent(scope)}` +
       `&state=${encodeURIComponent(state)}` +
       `&prompt=login`;
+
+    // Safe diagnostics only — never log App ID / Cert / full RuName / state.
+    console.warn(
+      '[ebay/connect] authorize',
+      `env=${creds.environment}`,
+      `host=${ebayAuthDomain(creds.environment)}`,
+      `role=${role}`,
+      `ruNameLen=${creds.ruName.length}`,
+    );
 
     const res = NextResponse.redirect(authUrl);
     res.cookies.set(EBAY_OAUTH_STATE_COOKIE, nonce, {

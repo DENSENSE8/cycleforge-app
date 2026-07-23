@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, ChevronUp, Image as ImageIcon, Loader2, Plus, Star, Trash2, X } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { useListingGallery, type ListingGalleryTarget } from '@/hooks/useListingGallery';
 import { PhotoThumb } from './PhotoThumb';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -214,15 +222,23 @@ function ListingPhotoPicker({
     });
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/40 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl bg-surface-card shadow-xl ring-1 ring-black/5"
-        onClick={(e) => e.stopPropagation()}
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent
+        hideClose
+        className="flex max-h-[80vh] max-w-2xl flex-col gap-0 overflow-hidden p-0"
       >
-        <div className="flex items-center justify-between border-b border-border-hairline px-4 py-3">
+        <DialogHeader className="flex-row items-center justify-between space-y-0 border-b border-border-hairline px-4 py-3">
           <div className="flex items-center gap-2">
             <ImageIcon className="h-4 w-4 text-text-soft" />
-            <h2 className="text-sm font-bold text-text-default">Add listing photos</h2>
+            <DialogTitle className="text-sm font-bold">Add listing photos</DialogTitle>
+            <DialogDescription className="sr-only">
+              Select photos linked to this SKU or unit to add to the listing gallery.
+            </DialogDescription>
           </div>
           <IconButton
             type="button"
@@ -231,7 +247,7 @@ function ListingPhotoPicker({
             className="-mr-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-text-faint hover:bg-surface-sunken hover:text-text-muted"
             icon={<X className="h-4 w-4" />}
           />
-        </div>
+        </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {error ? (
@@ -275,7 +291,7 @@ function ListingPhotoPicker({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
+        <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border-hairline px-4 py-3 sm:justify-between">
           <span className="text-role-caption text-text-soft">{picked.size} selected</span>
           <div className="flex items-center gap-2">
             <Button
@@ -297,8 +313,8 @@ function ListingPhotoPicker({
               Add {picked.size > 0 ? picked.size : ''}
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

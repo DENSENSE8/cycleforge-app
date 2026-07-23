@@ -194,8 +194,31 @@ export function TestingPanel({
           ),
         },
         {
+          id: 'ticket',
+          label: 'Ticket',
+          icon: Ticket,
+          content:
+            testingView === 'ticket' && (row.id != null || row.receiving_id != null) ? (
+              <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
+                <SupportContextHub
+                  anchor={{
+                    receivingId: row.receiving_id ?? null,
+                    lineId: row.id ?? null,
+                    tracking: row.tracking_number ?? null,
+                  }}
+                  variant="station"
+                  onlySegment="customer"
+                  hideLinkage
+                  onRequestLinkTicket={() => c.openClaimModal('link')}
+                  onBridgeChange={setTicketBridge}
+                  className="h-full min-h-0 rounded-2xl"
+                />
+              </div>
+            ) : null,
+        },
+        {
           id: 'pairing',
-          label: 'SKU Pairing',
+          label: 'Pairing',
           icon: Link2,
           content: (
             <TestingSkuPairingPanel
@@ -230,32 +253,10 @@ export function TestingPanel({
           ),
         },
         {
-          id: 'ticket',
-          label: 'Ticket',
-          icon: Ticket,
-          content:
-            testingView === 'ticket' && (row.id != null || row.receiving_id != null) ? (
-              <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
-                <SupportContextHub
-                  anchor={{
-                    receivingId: row.receiving_id ?? null,
-                    lineId: row.id ?? null,
-                    tracking: row.tracking_number ?? null,
-                  }}
-                  variant="station"
-                  onlySegment="customer"
-                  hideLinkage
-                  onRequestLinkTicket={() => c.openClaimModal('link')}
-                  onBridgeChange={setTicketBridge}
-                  className="h-full min-h-0 rounded-2xl"
-                />
-              </div>
-            ) : null,
-        },
-        {
           id: 'timeline',
           label: 'Timeline',
           icon: History,
+          priority: 'overflow',
           visible: hasTimelineTab,
           content: (
             <WorkspaceTimelineTab

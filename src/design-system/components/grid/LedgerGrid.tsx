@@ -4,66 +4,92 @@ import {
   useLayoutEffect,
   useRef,
   type CSSProperties,
+  type MutableRefObject,
   type ReactNode,
   type RefObject,
 } from 'react';
-import { VirtualGroupedSections } from '@/components/dashboard/orders-queue/VirtualGroupedSections';
+import { VirtualGroupedSections } from '@/design-system/components/grid/VirtualGroupedSections';
 import type { RowGroup } from '@/lib/group-rows';
+import {
+  ORDERS_QUEUE_GRID_WIDTH_VAR,
+  ordersQueueGridWidthVarValue,
+} from '@/lib/dashboard-order-row-layout';
 import { cn } from '@/utils/_cn';
 
 /**
- * `LedgerGrid<T>` — the house spreadsheet/ledger grid primitive.
+ * `LedgerGrid<T>` — Workbench spreadsheet / ledger shell (DS SoT).
  *
- * A single, clean orchestrator for a **date-ordered, order-grouped** ledger table:
- * one always-virtualized body (via {@link VirtualGroupedSections}), one sticky
- * column header, and a per-surface `scrollX` contract. Absolute civil dates live
- * in a per-row **Date** column — no floating day-band chrome (Pending Grid).
- * Board / Packed keep day bands via {@link OrdersQueueTable} + DateGroupHeader.
+ * One sticky column header, one always-virtualized body
+ * ({@link VirtualGroupedSections}), and a per-surface `scrollX` contract.
+ * Outbound Pending (via {@link OrdersGridView}) is the golden path:
+ * `showDayHeaders={false}`, Date as a per-row column, `gridSkin="airtable"`.
+ * Station / receiving feeds may pass `showDayHeaders` and/or `daySections`.
  *
- * Design invariants (the defects this primitive exists to kill):
- *  • **One sticky layer, measured — no magic number.** The column header docks at
- *    `top-0`; a ResizeObserver publishes its real height as `--cf-grid-header-h`
- *    for consumers that still need it (scroll shadows / future chrome).
- *  • **Per-surface `scrollX`.** Flat spreadsheet consumers pass `scrollX` (frozen
- *    identity pane pins while fact columns scroll under it, scroll-shadow on);
- *    vertical board consumers pass `scrollX={false}` (overflow clipped, frozen
- *    inert *by contract*, not by accident).
- *  • **One render path.** Always virtualized — no dense/virtual fork, no triplicated
- *    flattener, no duplicated stripe-index accumulator (all owned by
- *    {@link VirtualGroupedSections}).
+ * Domain cell registries stay outside DS — pass `columnHeader` / `renderRow` /
+ * `renderGroup`. Multi-child folds use {@link CollapsibleGroupRow}; Maximize2 /
+ * open-row is domain `onOpenRecord`, not this shell.
  *
- * Zebra opacity lives in the row renderer: pass an OPAQUE stripe so frozen cells
- * (`bg-inherit`) never bleed the scrolling fact columns through the pinned pane.
+ * Design invariants:
+ *  • **One sticky layer, measured** — header docks at `top-0`; ResizeObserver
+ *    publishes `--cf-grid-header-h` for day-band sticky offset.
+ *  • **Per-surface `scrollX`** — frozen identity pane vs clipped board.
+ *  • **Ancestor page scroll** — when `scrollParentRef` is set (Pending under
+ *    `DashboardScrollShell`), Y scroll lives on the parent so KPI strips can
+ *    scroll away; this surface keeps X-only scroll (`overflow-y: clip`) so the
+ *    sticky header docks under pinned chrome without a nested Y port.
+ *  • **One render path** — always virtualized via VirtualGroupedSections.
  */
 interface LedgerGridProps<T> {
-  /** Date-ordered → folded order groups (sort/fold only; no day-band UI). */
-  orderGroupsByDate: [string, RowGroup<T>[]][];
+  /** Date-ordered → folded groups (Pending / receiving PO fold). */
+  orderGroupsByDate?: [string, RowGroup<T>[]][];
+  /** Date-ordered → flat rows (station history / logs). Mutually exclusive with groups. */
+  daySections?: [string, T[]][];
+  /**
+   * Sticky {@link DateGroupHeader} per day. Default `false` (Pending Date column).
+   * Station / receiving feeds pass `true`.
+   */
+  showDayHeaders?: boolean;
   /** Horizontal scroll (flat spreadsheet). `false` clips overflow (vertical board). */
   scrollX?: boolean;
+  /**
+   * When `scrollX`, content-min rem sum published as `--cf-orders-grid-w` so every
+   * virtualized row/header shares one width (locked columns). Omitted → `100%`.
+   */
+  contentMinWidthRem?: number;
   /** Width-override CSS custom properties for the grid surface (`--cf-col-*`). */
   columnVars?: CSSProperties;
   /** The sticky column-header row (caller composes it; it self-pins at `top-0`). */
   columnHeader: ReactNode;
-  /** Render one order group (singleton row or multi-product fold). */
-  renderGroup: (group: RowGroup<T>, baseStripeIndex: number) => ReactNode;
+  /** Grouped mode: render one fold (singleton row or multi-child disclosure). */
+  renderGroup?: (group: RowGroup<T>, baseStripeIndex: number) => ReactNode;
   /** Render one leaf row at the given zebra-stripe index. */
   renderRow: (record: T, stripeIndex: number) => ReactNode;
-  /** Shown centered when there are zero groups and no active search. */
+  /** Stable key for flat `daySections` rows (windowing across re-sorts). */
+  getRowKey?: (record: T, dayIndex: number) => string;
+  /** Scroll a flat row into view by `getRowKey` value. */
+  scrollToKey?: string | null;
+  /** Shown centered when there are zero groups/sections and no active search. */
   emptyState: ReactNode;
-  /** Shown centered when there are zero groups *and* a search is active. */
+  /** Shown centered when there are zero rows *and* a search is active. */
   searchEmptyState?: ReactNode;
   /** True while an active search yielded zero rows (picks `searchEmptyState`). */
   isSearching?: boolean;
   /** First-paint size estimates threaded to the virtualizer. */
   headerEstimate?: number;
   rowEstimate?: number;
-  /** Optional external scroll region (stacked lanes); default = the internal body. */
+  /** Optional external scroll region (page / stacked lanes); default = the internal body. */
   scrollParentRef?: RefObject<HTMLElement | null>;
+  /**
+   * Optional handle to the grid's scroll body (keyboard-nav / scroll-to-top).
+   * When set, mirrors the internal body element onto this ref.
+   */
+  bodyRef?: RefObject<HTMLDivElement | null>;
   className?: string;
   /**
    * Visual skin for the surface. `'airtable'` stamps `data-grid-skin="airtable"`,
    * which the scoped stylesheet in `globals.css` targets for a light connected
-   * spreadsheet (hairline grid, rounded shell, opaque white header).
+   * spreadsheet (hairline grid, opaque white header). Full-bleed Pending has no
+   * outer card radius — gutters come from the workbench column.
    * Omitted → the plain hairline look (the vertical shelf-board never opts in).
    */
   gridSkin?: 'airtable';
@@ -73,17 +99,23 @@ interface LedgerGridProps<T> {
 
 export function LedgerGrid<T>({
   orderGroupsByDate,
+  daySections,
+  showDayHeaders = false,
   scrollX = false,
+  contentMinWidthRem,
   columnVars,
   columnHeader,
   renderGroup,
   renderRow,
+  getRowKey,
+  scrollToKey,
   emptyState,
   searchEmptyState,
   isSearching = false,
   headerEstimate,
   rowEstimate,
   scrollParentRef,
+  bodyRef: bodyRefProp,
   className,
   gridSkin,
   'data-testid': dataTestId = 'ledger-grid-body',
@@ -91,9 +123,18 @@ export function LedgerGrid<T>({
   const bodyRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 
+  // Mirror the scroll body onto an optional caller ref (receiving keyboard nav).
+  useLayoutEffect(() => {
+    if (!bodyRefProp) return;
+    const mutable = bodyRefProp as MutableRefObject<HTMLDivElement | null>;
+    mutable.current = bodyRef.current;
+    return () => {
+      mutable.current = null;
+    };
+  });
+
   // Publish the column header's REAL rendered height as `--cf-grid-header-h` on
-  // the scroll surface (frozen-edge / chrome consumers). Day bands are not used
-  // on this surface — Date is a per-row column.
+  // the scroll surface so day bands (when enabled) dock beneath it.
   useLayoutEffect(() => {
     const header = headerRef.current;
     const surface = bodyRef.current;
@@ -105,31 +146,108 @@ export function LedgerGrid<T>({
     return () => ro.disconnect();
   }, []);
 
-  const empty = orderGroupsByDate.length === 0;
+  const empty =
+    (orderGroupsByDate?.length ?? 0) === 0 && (daySections?.length ?? 0) === 0;
   // Self-scrolling body owns the virtualizer scroll unless an ancestor is passed.
   const useAncestorScroll = Boolean(scrollParentRef);
+  // Ancestor page scroll + h-scroll (Pending): the header band must dock to the
+  // PAGE port, but `overflow-x: auto` on this surface would make it a scroll
+  // container — and a scroll container captures `position: sticky` on BOTH
+  // axes, so the header could never stick to the page. Split mode moves the
+  // horizontal scroll onto an inner body box; the header band stays outside it
+  // (sticky against the page port, clipped) and its row is translated by the
+  // synced `--cf-grid-sx` offset (see globals.css `[data-grid-split-x]`).
+  const splitX = useAncestorScroll && scrollX;
+  const xScrollRef = useRef<HTMLDivElement>(null);
+
+  // When Y lives on an ancestor, depth under the sticky header follows that port.
+  useLayoutEffect(() => {
+    if (!useAncestorScroll || !scrollParentRef) return;
+    const parent = scrollParentRef.current;
+    const surface = bodyRef.current;
+    const header = headerRef.current;
+    if (!parent || !surface || !header) return;
+    const sync = () => {
+      const parentTop = parent.getBoundingClientRect().top;
+      const headerTop = header.getBoundingClientRect().top;
+      surface.classList.toggle('cf-grid-scrolled-y', headerTop <= parentTop + 1);
+    };
+    sync();
+    parent.addEventListener('scroll', sync, { passive: true });
+    return () => parent.removeEventListener('scroll', sync);
+  }, [useAncestorScroll, scrollParentRef]);
+
+  const surfaceStyle: CSSProperties = {
+    ...columnVars,
+    ...(scrollX
+      ? {
+          [ORDERS_QUEUE_GRID_WIDTH_VAR]: ordersQueueGridWidthVarValue(
+            contentMinWidthRem ?? 40,
+          ),
+        }
+      : {}),
+  };
+
+  // Split mode: mirror the inner body's h-scroll onto the surface as the
+  // `--cf-grid-sx` offset (header-row translation) + the frozen-edge shadow.
+  const syncSplitScroll = (el: HTMLElement) => {
+    const surface = bodyRef.current;
+    if (!surface) return;
+    surface.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
+    surface.style.setProperty('--cf-grid-sx', `${-el.scrollLeft}px`);
+  };
+
+  const body = (
+    <VirtualGroupedSections
+      orderGroupsByDate={orderGroupsByDate}
+      daySections={daySections}
+      scrollParentRef={scrollParentRef ?? bodyRef}
+      useAncestorScroll={useAncestorScroll}
+      renderRow={renderRow}
+      renderGroup={renderGroup}
+      getRowKey={getRowKey}
+      scrollToKey={scrollToKey}
+      headerEstimate={headerEstimate}
+      rowEstimate={rowEstimate}
+      showDayHeaders={showDayHeaders}
+      stickyHeaderTop={showDayHeaders ? 'var(--cf-grid-header-h, 0px)' : '0'}
+    />
+  );
 
   return (
     <div
       ref={bodyRef}
       data-cf-grid
       data-grid-skin={gridSkin}
-      data-testid={dataTestId}
+      data-grid-split-x={splitX ? '' : undefined}
+      data-testid={splitX ? undefined : dataTestId}
       onScroll={
-        (e) => {
-          const el = e.currentTarget;
-          // Frozen-edge shadow while fact columns scroll under the pinned identity pane.
-          if (scrollX) el.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
-          // Depth under the sticky column header once rows scroll beneath it.
-          el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
-        }
+        splitX
+          ? undefined
+          : (e) => {
+              const el = e.currentTarget;
+              // Frozen-edge shadow while fact columns scroll under the pinned identity pane.
+              if (scrollX) el.classList.toggle('cf-grid-scrolled', el.scrollLeft > 0);
+              // Self-scroll only: ancestor mode syncs cf-grid-scrolled-y from the parent.
+              if (!useAncestorScroll) {
+                el.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
+              }
+            }
       }
       className={cn(
-        'relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto no-scrollbar bg-surface-card',
-        scrollX ? 'overflow-x-auto' : 'overflow-x-hidden',
+        'relative flex min-w-0 w-full flex-col bg-surface-card',
+        useAncestorScroll
+          ? // Page owns Y — grow with content. Split mode keeps this surface a
+            // NON-scroll container (clip only) so the sticky header docks to the
+            // page port; the inner body box owns overflow-x.
+            'overflow-x-clip'
+          : cn(
+              'h-full min-h-0 flex-1 overflow-y-auto no-scrollbar',
+              scrollX ? 'overflow-x-auto' : 'overflow-x-hidden',
+            ),
         className,
       )}
-      style={columnVars}
+      style={surfaceStyle}
     >
       {empty ? (
         <div className="flex flex-1 flex-col items-center justify-center py-40 text-center">
@@ -137,26 +255,32 @@ export function LedgerGrid<T>({
         </div>
       ) : (
         <>
-          {/* Sticky + frozen column header — pins to the grid scrollport top;
-              opaque so virtualized rows never paint through. Frozen select/title
-              cells keep sticky-left inside this band. */}
+          {/* Sticky + frozen column header — pins to the active scrollport top
+              (self or page ancestor); opaque so virtualized rows never paint
+              through. Frozen select/title cells keep sticky-left inside this
+              band (self-scroll), or counter-translate under split mode. */}
           <div
             ref={headerRef}
             data-grid-col-header=""
-            className="sticky top-0 z-sticky isolate shrink-0 bg-surface-card"
+            className={cn(
+              'sticky top-0 z-sticky isolate shrink-0 bg-surface-card',
+              splitX && 'overflow-x-clip',
+            )}
           >
             {columnHeader}
           </div>
-          <VirtualGroupedSections
-            orderGroupsByDate={orderGroupsByDate}
-            scrollParentRef={scrollParentRef ?? bodyRef}
-            useAncestorScroll={useAncestorScroll}
-            renderRow={renderRow}
-            renderGroup={renderGroup}
-            headerEstimate={headerEstimate}
-            rowEstimate={rowEstimate}
-            showDayHeaders={false}
-          />
+          {splitX ? (
+            <div
+              ref={xScrollRef}
+              data-testid={dataTestId}
+              className="min-w-0 w-full overflow-x-auto overflow-y-clip"
+              onScroll={(e) => syncSplitScroll(e.currentTarget)}
+            >
+              {body}
+            </div>
+          ) : (
+            body
+          )}
         </>
       )}
     </div>

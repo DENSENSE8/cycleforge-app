@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { onToggleAll } from '@/lib/selection/table-selection';
 import {
   removeReceivingRailByCarton,
@@ -111,7 +112,12 @@ export function useRailEditMode({
     async (ids: number[]) => {
       if (ids.length === 0 || railBulkDismissing) return;
       const label = ids.length === 1 ? 'this row' : `these ${ids.length} rows`;
-      if (!window.confirm(`Dismiss ${label} from your receiving rails? This hides them for you only (across this surface's tabs) — you can restore them.`)) return;
+      const ok = await requestConfirm({
+        description: `Dismiss ${label} from your receiving rails? This hides them for you only (across this surface's tabs) — you can restore them.`,
+        tone: 'danger',
+        confirmLabel: 'Dismiss',
+      });
+      if (!ok) return;
       setRailBulkDismissing(true);
       try {
         // Rail id encoding → (entity_type, entity_id): negative = unfound carton

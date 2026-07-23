@@ -49,7 +49,7 @@ test('no-drift invariant: shared buckets use the same predicate for CASE and WHE
 
 test('facets are the states with a standalone WHERE (CASE-only labels excluded)', () => {
   const facets = deliveryStateFacets();
-  assert.ok(facets.includes('DELIVERED_EMAIL')); // facet-only
+  assert.ok(!facets.includes('DELIVERED_EMAIL' as never)); // retired ops tile — email promotes STN
   assert.ok(facets.includes('CARRIER_MISMATCH'));
   assert.ok(!facets.includes('RECEIVED')); // CASE-only
   assert.ok(!facets.includes('TRACKING_UNAVAILABLE')); // CASE-only label
@@ -60,19 +60,8 @@ test('facets are the states with a standalone WHERE (CASE-only labels excluded)'
 test('isDeliveryState guards the union', () => {
   assert.equal(isDeliveryState('STALLED'), true);
   assert.equal(isDeliveryState('NOPE'), false);
+  assert.equal(isDeliveryState('DELIVERED_EMAIL'), false);
 });
-
-// ── Equivalence to the route's inline SQL (the safety proof for wiring) ──────
-// These transcribe the EXACT originals from app/api/receiving-lines/route.ts and
-// assert the SoT reproduces them semantically — so replacing the inline copies
-// with deliveryStateCaseSql()/deliveryStateWhereSql() is provably behavior-preserving.
-//
-// Wave-2 reader cutover (2026-07-11): the moved-column reads inside these
-// predicates now come from the street tables — DELIVERED_EMAIL's normalized PO#
-// from receiving_line_zoho (rz_eds), DELIVERED_NOT_UNBOXED's unboxed milestone
-// from receiving_unbox (ru_ds, correlated NOT EXISTS) — so the pinned
-// expectations below are the street forms, deliberately updated from the
-// original spine transcriptions (r.unboxed_at / rl.zoho_purchaseorder_number_norm).
 
 test('deliveryStateCaseSql includes DELIVERED_NOT_UNBOXED after DELIVERED_UNOPENED', () => {
   const sql = deliveryStateCaseSql();
@@ -87,18 +76,6 @@ test('each facet WHERE is present for known facets', () => {
   const ORIG_WHERE: Record<string, string> = {
     DELIVERED_UNOPENED: `stn.is_delivered = true
            AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
-    DELIVERED_EMAIL: `EXISTS (
-             SELECT 1 FROM email_delivery_signals eds
-              JOIN receiving_line_zoho rz_eds
-                ON rz_eds.receiving_line_id = rl.id
-               AND rz_eds.organization_id = rl.organization_id
-              WHERE eds.order_number_norm = rz_eds.zoho_purchaseorder_number_norm
-                AND eds.organization_id = rl.organization_id
-                AND eds.delivered_at > NOW() - interval '30 days'
-           )
-           AND NOT EXISTS (
-             SELECT 1 FROM receiving_scans rs WHERE rs.receiving_id = r.id
-           )`,
     ARRIVING_TODAY: `stn.latest_status_category = 'OUT_FOR_DELIVERY'`,
     STALLED: `stn.id IS NOT NULL
            AND COALESCE(stn.is_terminal, false) = false

@@ -16,15 +16,36 @@ import { useRef, useState } from 'react';
 import { Plus, Search } from '@/components/Icons';
 import {
   Button,
+  Checkbox,
   Panel,
   PanelHeader,
   PanelFooter,
   Popover,
+  Switch,
   Toolbar,
   ToolbarSeparator,
   EmptyState,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
 } from '@/design-system/primitives';
-import { StatusBadge, DataTable, TabSwitch, type DataTableColumn } from '@/design-system/components';
+import {
+  StatusBadge,
+  DataTable,
+  TabSwitch,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  type DataTableColumn,
+} from '@/design-system/components';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import type { TimelineItem } from '@/lib/timeline/types';
 
@@ -78,6 +99,9 @@ export default function DesignShowcasePage() {
   const popoverAnchor = useRef<HTMLButtonElement>(null);
   const [solidTab, setSolidTab] = useState('unshipped');
   const [defaultTab, setDefaultTab] = useState('unshipped');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [switchOn, setSwitchOn] = useState(true);
+  const [checkOn, setCheckOn] = useState(false);
 
   const LIFECYCLE_TABS = [
     { id: 'unshipped', label: 'Pending', count: 83, color: 'blue' as const },
@@ -196,6 +220,59 @@ export default function DesignShowcasePage() {
               />
             </div>
           </Panel>
+        </Bay>
+
+        {/* Dialog / Switch / Checkbox / DropdownMenu */}
+        <Bay title="Dialog · Switch · Checkbox · DropdownMenu" path="design-system/{components,primitives}">
+          <Panel className="flex flex-wrap items-center gap-4 p-4">
+            <Button size="sm" variant="primary" onClick={() => setDialogOpen(true)}>
+              Open Dialog
+            </Button>
+            <label className="flex items-center gap-2 text-sm text-text-default">
+              <Switch checked={switchOn} onCheckedChange={setSwitchOn} aria-label="Demo switch" />
+              Switch
+            </label>
+            <label className="flex items-center gap-2 text-sm text-text-default">
+              <Checkbox checked={checkOn} onCheckedChange={(v) => setCheckOn(v === true)} aria-label="Demo checkbox" />
+              Checkbox
+            </label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="secondary">Menu</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>Action one</DropdownMenuItem>
+                <DropdownMenuItem tone="danger">Destructive</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <Button size="sm" variant="ghost">Right-click me</Button>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem>Inspect</ContextMenuItem>
+                <ContextMenuItem tone="danger">Remove</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          </Panel>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Kinetic Dialog</DialogTitle>
+                <DialogDescription>
+                  Radix Dialog restyled to Kinetic Ledger tokens — SoT for centered modals.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button size="sm" variant="secondary" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" variant="primary" onClick={() => setDialogOpen(false)}>
+                  Confirm
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </Bay>
 
         {/* DataTable */}

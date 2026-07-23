@@ -76,11 +76,11 @@ export function isExceptionShippedRow(shipped: ShippedOrder): boolean {
 }
 
 /** Canonical quick-action order for order rows + shipped detail headers. */
-export const SHIPPED_QUICK_ACTION_KEYS = ['notes', 'urgent', 'status', 'out_of_stock'] as const;
+export const SHIPPED_QUICK_ACTION_KEYS = ['urgent', 'notes', 'out_of_stock', 'status'] as const;
 
 export type ShippedQuickActionKey = (typeof SHIPPED_QUICK_ACTION_KEYS)[number];
 
-/** Order header quick actions: notes → urgent → mark shipped → out of stock. */
+/** Order header quick actions: urgent → notes → out of stock → mark shipped. */
 export function buildShippedHeaderQuickActions<T extends { key: string }>(
   actions: T[],
 ): T[] {

@@ -109,6 +109,7 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - `PanelRow.tsx` — base row with label, accessory, actions, divider
 - `IconButton.tsx` — icon-only button with tone variants
 - `SearchField.tsx` — decoupled draft architecture, debounced, tone-colored
+- `ToolbarSearchToggle.tsx` — **SoT for workbench chrome scoped search**: collapsed Search icon → expands on hover/focus/click (composes `SearchField`). Quiet header rails only — not modal/station always-open fields.
 - `DeferredQtyInput.tsx` — number input with internal draft, clamped on blur
 - `StatusText.tsx` — uppercase label with colored underline
 - `ExpandableSection.tsx` — AnimatePresence height:'auto' wrapper (uses `framerPresence.sidebarSection`)
@@ -124,6 +125,16 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 - Actions: `CopyActionIcon`, `ExternalLinkActionIcon`
 - Search/labels: `StatusMicroLabel`
 - Overlays: `AssignmentOverlayCard`, `Tooltip`
+- **Workbench spreadsheet (SoT):** `components/grid/`
+  - `LedgerGrid` — virtualized sticky-header spreadsheet shell (`scrollX`, `gridSkin="airtable"`, optional day bands). Golden path: Pending / To Ship via `OrdersGridView`. Under ancestor page scroll + `scrollX` it runs **split-x mode**: the header band lives outside the inner h-scroll box (an `overflow-x` container captures `position: sticky` on both axes) and is translated via the synced `--cf-grid-sx` offset.
+  - `LedgerCellEditor` — Sheets-style in-cell edit commit shell.
+  - `VirtualGroupedSections` — shared date→groups/rows virtualizer (LedgerGrid + station/receiving feeds).
+  - **Headless state engine (TanStack Table v8 — state math ONLY):** `useGridSurface` (`"use no memo"` — React Compiler trap) owns column defs + sorting + visibility + column order; markup, virtualization, grouping/folds, fetch, and mutations stay house. `grid-surface-descriptor.ts` (`buildLedgerColumnDefs`, `makeGridSurfaceDescriptor`, `GridSurfaceDescriptor`) lifts a house column-model list (`ORDERS_QUEUE_COLUMNS` / `INCOMING_GRID_COLUMNS` / `RECEIVING_GRID_COLUMNS`) into TanStack defs carrying the house model on `meta.gridColumn`. **Never** mount a foreign UI grid (AG Grid / MUI / Glide) and never let TanStack own widths/markup — geometry stays on the house CSS-var templates.
+  - `LedgerGridSurface` — descriptor-driven station composer (card shell + skeleton + teaching empty + TanStack sort surface + `LedgerGrid`). Adopters: `IncomingGridView`, `ReceivingGridView`. Pending composes `LedgerGrid` directly (full-bleed ancestor scroll, URL `?sort=` SoT, force-hide, drag order).
+  - Shared VALUE cells for grid rows/summaries: `@/components/ui/grid-cells` (`GridCellDash`, `GridDateCellValue`, `GridAgeCellValue`, `GridPlatformMarkValue`, `GridStaffCellValue`, `GridDateTimeCellValue`) — compose these, never re-type the em-dash / age-tone / date-tooltip / brand-mark markup per surface.
+  - **Do not** fork sticky header / scrollX / virtual body chrome for ops queues — compose `LedgerGrid` + a domain thin composer (`OrdersGridView`, receiving/station wrappers). Domain cell registries stay out of DS.
+  - **Two expand jobs (never merge):** Maximize2 / non-edit open = domain `onOpenRecord` (detail pane); multi-child fold = `CollapsibleGroupRow` + `groupRowsBy` (summary → child rows).
+  - Sibling SoT for non-virtualized HTML tables: `components/DataTable/` (lifecycle/admin tables — `{ key, header, cell, align, width }` schema; **no TanStack, no virtualizer** — that simplicity is its job). Boards / pickers / rails stay their own surfaces.
 - **New components:**
   - `DateGroupHeader.tsx` — sticky date group header for tables with variant-based tonal backgrounds
   - `FormField.tsx` — standardized form field wrapper (label, required indicator, hint)

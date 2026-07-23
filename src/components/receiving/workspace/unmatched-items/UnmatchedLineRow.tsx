@@ -10,12 +10,19 @@ import {
   type SerialMatchedOrder,
 } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchLineUpdated } from '@/components/station/ReceivingLinesTable';
-import { ConditionGradeChip, SkuScanRefChip, getLast4 } from '@/components/ui/CopyChip';
+import {
+  ConditionGradeChip,
+  EmptySkuChipFace,
+  SkuScanRefChip,
+  getLast4,
+} from '@/components/ui/CopyChip';
 import { ProgressBadge } from '@/components/receiving/workspace/PoLinesAccordion';
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
+import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import type { SerialAbsentState } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { requestConfirm } from '@/design-system/components/confirm';
 import type { UnfoundLine, UnmatchedLineRenderHelpers } from './unmatched-items-shared';
 
 interface UnmatchedLineRowProps {
@@ -140,7 +147,12 @@ export function UnmatchedLineRow({
   const deleteSerialChip = useCallback(
     async (serial: { id?: number; serial_number: string }) => {
       if (serial.id == null) return;
-      if (!window.confirm(`Remove serial ${serial.serial_number}?`)) return;
+      const ok = await requestConfirm({
+        description: `Remove serial ${serial.serial_number}?`,
+        tone: 'danger',
+        confirmLabel: 'Remove',
+      });
+      if (!ok) return;
       await deleteSerialUnit(serial.id);
     },
     [deleteSerialUnit],
@@ -229,44 +241,47 @@ export function UnmatchedLineRow({
           <div className="truncate text-role-caption font-bold text-text-default">
             {line.item_name ?? line.sku ?? `Line ${line.id}`}
           </div>
-          {/* Meta row — indented under title when a leading track exists
-              (PoLinesAccordion uses META_COL.indentWide); unfound rows have
-              no chevron so meta starts flush left. */}
-          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
-            <ProgressBadge
-              received={line.quantity_received ?? 0}
-              expected={line.quantity_expected ?? 1}
-            />
-            {line.sku ? (
-              <>
-                <span aria-hidden>·</span>
-                <SkuScanRefChip value={line.sku} display={getLast4(line.sku)} />
-              </>
-            ) : null}
-            <span aria-hidden>·</span>
-            <ConditionGradeChip grade={line.condition_grade} />
-            {saved.length > 0 ? (
-              <>
-                <span aria-hidden>·</span>
-                {saved.map((s, i) => {
-                  const sn = (s.serial_number || '').trim();
-                  if (!sn) return null;
-                  // Menu chip (delete/edit on hover) — the ONLY serial display
-                  // on the row; ActiveLineConditionSerial below has its saved
-                  // chips off so the serial isn't shown twice.
-                  return (
-                    <SerialChipWithMenu
-                      key={`${sn}-${i}`}
-                      serial={s}
-                      isEditing={editingSerial?.id != null && editingSerial.id === s.id}
-                      onEdit={(target) => setEditingSerial(target as ActiveRowSerial)}
-                      onDelete={(target) => void deleteSerialChip(target)}
-                    />
-                  );
-                })}
-              </>
-            ) : null}
-          </div>
+          {/* Same fixed-column meta as PoLineRow: qty | SKU | condition | serial. */}
+          <PoLineMetaGrid
+            indent="0px"
+            qty={
+              <ProgressBadge
+                received={line.quantity_received ?? 0}
+                expected={line.quantity_expected ?? 1}
+              />
+            }
+            sku={
+              (line.sku || '').trim() ? (
+                <SkuScanRefChip value={line.sku as string} display={getLast4(line.sku)} dense />
+              ) : (
+                <EmptySkuChipFace dense />
+              )
+            }
+            condition={<ConditionGradeChip grade={line.condition_grade} dense />}
+            serial={
+              saved.length > 0 ? (
+                <span className="flex min-w-0 flex-wrap items-center gap-1">
+                  {saved.map((s, i) => {
+                    const sn = (s.serial_number || '').trim();
+                    if (!sn) return null;
+                    // Menu chip (delete/edit on hover) — the ONLY serial display
+                    // on the row; ActiveLineConditionSerial below has its saved
+                    // chips off so the serial isn't shown twice.
+                    return (
+                      <SerialChipWithMenu
+                        key={`${sn}-${i}`}
+                        serial={s}
+                        dense
+                        isEditing={editingSerial?.id != null && editingSerial.id === s.id}
+                        onEdit={(target) => setEditingSerial(target as ActiveRowSerial)}
+                        onDelete={(target) => void deleteSerialChip(target)}
+                      />
+                    );
+                  })}
+                </span>
+              ) : undefined
+            }
+          />
         </div>
         {/* Right-edge trash — removes the line via DELETE /api/receiving-lines.
             Confirms before deleting so an accidental tap doesn't lose work. */}

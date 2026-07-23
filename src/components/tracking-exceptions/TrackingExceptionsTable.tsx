@@ -1,8 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, RefreshCw, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Pencil, RefreshCw } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TrackingChip, getLast4 } from '@/components/ui/CopyChip';
 
@@ -378,20 +385,18 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
   };
 
   return (
-    <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-surface-card shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border-soft px-5 py-3">
-          <h2 className="text-role-caption font-black uppercase tracking-widest text-text-default">
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !saving) onClose();
+      }}
+    >
+      <DialogContent hideClose className="max-w-lg gap-0 overflow-hidden p-0 sm:rounded-xl">
+        <DialogHeader className="space-y-0 border-b border-border-soft px-5 py-3">
+          <DialogTitle className="text-role-caption font-black uppercase tracking-widest text-text-default">
             Edit exception #{row.id}
-          </h2>
-          <IconButton
-            type="button"
-            onClick={onClose}
-            ariaLabel="Close"
-            icon={<X className="h-4 w-4" />}
-            className="rounded-md p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-          />
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-3 px-5 py-4">
           <label className="block">
@@ -447,7 +452,7 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-border-soft px-5 py-3">
+        <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border-soft px-5 py-3 sm:justify-between">
           {!confirmingDelete ? (
             // ds-raw-button: low-emphasis destructive action — transparent bg with red text. No variant fits: `danger` is solid red-fill, `ghost` would drop the red affordance.
             <button
@@ -504,8 +509,8 @@ function TrackingExceptionEditDialog({ row, onClose, onSave, onDelete }: EditDia
               {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

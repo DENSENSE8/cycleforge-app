@@ -1,27 +1,27 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { FloatingButton } from '@/design-system/primitives';
+import { SlicedActionDock } from '@/design-system/primitives';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 
 /**
  * Industry-aligned sticky bar sizing (DoorDash / Uber Eats / HIG):
- *   - FloatingButton CTA is `h-12` (48px) — meets 44–48px min tap target
- *   - Dock band stays slim; `disabledReason` is a separate line above the pill
- *   - Safe-area inset handled by FloatingButton (`env(safe-area-inset-bottom)`)
- *   - Host scroll body should reserve clearance (`pb-32` for absolute float)
+ *   - SlicedActionDock CTA is `h-12` (48px) — meets 44–48px min tap target
+ *   - Dock band stays slim; `disabledReason` is a separate line above the track
+ *   - Safe-area inset handled by SlicedActionDock (`env(safe-area-inset-bottom)`)
+ *   - Host scroll body should reserve clearance (`pb-32` for absolute bottom slice)
  */
 export const STATION_TERMINAL_SCROLL_CLEARANCE = 'pb-32';
 
 /**
- * Renders a TerminalActionVm as the panel-level FloatingButton dock.
+ * Renders a TerminalActionVm as the panel-level bottom-edge sliced action dock.
  * Cross-fades (200–250ms) when the VM label / kind swaps on tab change;
  * reduced-motion collapses to an instant swap.
  *
  * When `assignedTechId` is set and the VM has no explicit `toneClasses`,
- * tints the pill with the assigned tech's station theme (unbox receive bar).
+ * tints the track with the assigned tech's station theme (unbox receive bar).
  */
 export function StationTerminalDock({
   vm,
@@ -70,7 +70,8 @@ export function StationTerminalDock({
               </p>
             </div>
           ) : null}
-          <FloatingButton
+          <SlicedActionDock
+            edge="bottom"
             label={vm.label}
             onClick={() => void vm.onClick()}
             icon={vm.icon}

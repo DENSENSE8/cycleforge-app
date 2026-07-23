@@ -33,7 +33,7 @@ import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 import {
   getDeliveredUnscannedCount,
   getDeliveredUnscannedByCarrier,
-  getEmailDeliveredUnscannedCount,
+  getDeliveredUnscannedClaimsCount,
   NOT_ZOHO_RECEIVED_PREDICATE,
   CARRIER_MISMATCH_PREDICATE,
   SHIPMENT_SCANNED_PREDICATE,
@@ -168,16 +168,8 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     // longer counts other tenants' delivered-unscanned boxes.
     row.delivered_unopened = await getDeliveredUnscannedCount(pool, undefined, orgId);
     const delivered_not_unboxed = await getDeliveredNotUnboxedCount(orgId);
-
-    // Email-driven delivered-unscanned: orders an "ORDER DELIVERED" email
-    // flagged that map to a still-incoming, unscanned receiving line. Shown
-    // alongside the carrier signal (both surface a delivered-but-not-scanned
-    // box; email catches the ones carrier polling misses or can't reach).
-    // Threaded orgId → the helper's tenant branch pins eds/rl on organization_id
-    // AND aligns the org across the normalized-order# string-key join, matching
-    // the sibling list endpoint's `eds.organization_id = rl.organization_id`, so
-    // this org's count no longer mixes in other tenants' order#/PO# collisions.
-    const deliveredEmail = await getEmailDeliveredUnscannedCount(pool, undefined, orgId);
+    // Claims-attention sub-band of the hunt queue (>48h since delivered, still unscanned).
+    const delivered_unscanned_claims = await getDeliveredUnscannedClaimsCount(pool, undefined, orgId);
 
     // E4 per-carrier breakdown — "USPS: 12 unavailable, FedEx: 3 delivered-
     // unscanned". delivered_unscanned reuses the deduped canonical base (sums to
@@ -329,7 +321,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     return {
       ...row,
       delivered_not_unboxed,
-      delivered_email: deliveredEmail,
+      delivered_unscanned_claims,
       ebay_pending,
       ebay_incoming,
       universal_incoming,

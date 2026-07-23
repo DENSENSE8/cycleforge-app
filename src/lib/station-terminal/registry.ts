@@ -13,6 +13,7 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
     hasSectionTabs: true,
     tabs: {
       overview: 'mode-default',
+      classify: 'none',
       'po-note': 'po-note',
       checklist: 'checklist',
       units: 'units',

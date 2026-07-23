@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Search-order identity — the condensed one-row bookmark content (box icon ·
- * ORDER # · title · status/platform/condition chips · tracking · Trace). Mounts
- * inside {@link SearchOrderContextBar}'s bookmark chrome. Never ShippedDetailsHeader.
+ * Search-order identity — bookmark content (box icon · order id · title ·
+ * status/platform/condition chips · tracking · Trace). Two-row identity:
+ * order id on top, product title below. Mounts inside
+ * {@link SearchOrderContextBar}'s bookmark chrome. Never ShippedDetailsHeader.
  */
 
 import { useState } from 'react';
@@ -92,28 +93,23 @@ export function SearchOrderDetailHeader({ order }: { order: ShippedOrder }) {
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="text-role-eyebrow font-black uppercase tracking-widest text-text-soft">
-          {showExceptions ? 'Exceptions' : 'Order #'}
-        </p>
-        <div className="flex min-w-0 items-baseline gap-2">
-          <HoverTooltip label={copied ? 'Copied' : 'Click to copy'} asChild>
-            {/* ds-raw-button: click-to-copy identity value, not a styled CTA */}
-            <button
-              type="button"
-              onClick={() => void handleCopyOrder()}
-              className="shrink-0 truncate text-left text-role-body font-bold text-text-default transition-colors hover:text-blue-700"
-              aria-label={`Copy ${orderIdDisplay}`}
-            >
-              {orderIdDisplay}
-              {copied ? <span className="ml-1 text-text-success">✓</span> : null}
-            </button>
-          </HoverTooltip>
-          {order.product_title ? (
-            <span className="min-w-0 truncate text-role-caption font-medium text-text-muted">
-              {order.product_title}
-            </span>
-          ) : null}
-        </div>
+        <HoverTooltip label={copied ? 'Copied' : 'Click to copy'} asChild>
+          {/* ds-raw-button: click-to-copy identity value, not a styled CTA */}
+          <button
+            type="button"
+            onClick={() => void handleCopyOrder()}
+            className="block max-w-full truncate text-left text-role-body font-bold text-text-default transition-colors hover:text-blue-700"
+            aria-label={`Copy ${showExceptions ? 'Exceptions' : 'Order #'} ${orderIdDisplay}`}
+          >
+            {orderIdDisplay}
+            {copied ? <span className="ml-1 text-text-success">✓</span> : null}
+          </button>
+        </HoverTooltip>
+        {order.product_title ? (
+          <p className="min-w-0 truncate text-role-caption font-medium text-text-muted">
+            {order.product_title}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">

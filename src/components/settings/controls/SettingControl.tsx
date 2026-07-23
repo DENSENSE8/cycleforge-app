@@ -5,14 +5,11 @@
  * setting's `control` type (toggle / segmented / select / number / text) and
  * calls onChange with a value the registry schema will accept. Purely
  * presentational: the panel owns which value to show and which home to write.
- *
- * Styling matches the existing settings sections (QuickAccessSection switch,
- * AppearanceSection segmented grid) — gray-/blue- palette, not semantic tokens,
- * to read like its siblings.
  */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Button, Switch } from '@/design-system/primitives';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import type { SettingDef, SettingValue } from '@/lib/settings/types';
 
 interface SettingControlProps {
@@ -24,44 +21,17 @@ interface SettingControlProps {
   onChange: (value: SettingValue) => void;
 }
 
-function Switch({
-  checked,
-  disabled,
-  onChange,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`ds-raw-button relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-        checked ? 'bg-blue-600' : 'bg-surface-strong'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-surface-card shadow transition-transform ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
-    </button>
-  );
-}
-
-const FIELD_CLS =
-  'rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default ' +
-  'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ' +
-  'disabled:cursor-not-allowed disabled:opacity-40';
-
 export function SettingControl({ def, value, disabled, lockedOptions = [], onChange }: SettingControlProps) {
   switch (def.control) {
     case 'toggle':
-      return <Switch checked={Boolean(value)} disabled={disabled} onChange={onChange} />;
+      return (
+        <Switch
+          checked={Boolean(value)}
+          disabled={disabled}
+          onCheckedChange={onChange}
+          aria-label={def.label}
+        />
+      );
 
     case 'segmented':
       return (
@@ -100,21 +70,24 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
 
     case 'select':
       return (
-        <select
-          disabled={disabled}
-          value={String(value)}
-          onChange={(e) => {
-            const opt = (def.options ?? []).find((o) => String(o.value) === e.target.value);
-            if (opt) onChange(opt.value);
-          }}
-          className={FIELD_CLS}
-        >
-          {(def.options ?? []).map((opt) => (
-            <option key={String(opt.value)} value={String(opt.value)}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative min-w-[10rem]">
+          <select
+            disabled={disabled}
+            value={String(value)}
+            onChange={(e) => {
+              const opt = (def.options ?? []).find((o) => String(o.value) === e.target.value);
+              if (opt) onChange(opt.value);
+            }}
+            className={FILTER_DROPDOWN_SELECT_CLASS}
+            aria-label={def.label}
+          >
+            {(def.options ?? []).map((opt) => (
+              <option key={String(opt.value)} value={String(opt.value)}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       );
 
     case 'number':
@@ -132,7 +105,7 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
               const n = Number(e.target.value);
               if (Number.isFinite(n) && n !== Number(value)) onChange(n);
             }}
-            className={`w-24 ${FIELD_CLS}`}
+            className="w-24 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
           />
           {def.unit && <span className="text-role-caption text-text-soft">{def.unit}</span>}
         </div>
@@ -149,7 +122,7 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
             const v = e.target.value.trim();
             if (v && v !== String(value)) onChange(v);
           }}
-          className={`w-48 ${FIELD_CLS}`}
+          className="w-48 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 text-sm text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40"
         />
       );
 

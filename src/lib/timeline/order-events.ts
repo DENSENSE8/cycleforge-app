@@ -90,6 +90,7 @@ export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
       ref,
       actor: r.actor_name ?? undefined,
       changes: changes.length ? changes : undefined,
+      sourceEventType: r.action,
     });
   }
   return items;

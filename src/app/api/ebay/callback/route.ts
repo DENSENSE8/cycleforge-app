@@ -13,6 +13,8 @@ import {
 } from '@/lib/ebay/oauth-config';
 import { syncEbayAccountsToPlatformAccounts } from '@/lib/neon/catalog-queries';
 import { enableOrgFeatureFlag, INCOMING_UNIVERSAL_FLAG } from '@/lib/feature-flags';
+import { ensureEbayInboundSourceEnabled } from '@/lib/inbound/org-settings';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 /** State freshness window — aligned with the connect cookie's maxAge (10 min). */
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -125,6 +127,14 @@ export async function GET(req: NextRequest) {
       if (ebayErrorCode === 'invalid_client') {
         return finish('error=ebay_app_credentials_invalid');
       }
+      // Surface eBay's short OAuth error code (e.g. invalid_code) so Settings can
+      // show an actionable banner without reading Vercel logs. Only allow a safe
+      // [a-z0-9_]+ token — never echo error_description (may contain request context).
+      if (/^[a-z0-9_]{1,64}$/i.test(ebayErrorCode)) {
+        return finish(
+          `error=ebay_token_exchange_failed&ebay_oauth_error=${encodeURIComponent(ebayErrorCode.toLowerCase())}`,
+        );
+      }
       return finish('error=ebay_token_exchange_failed');
     }
 
@@ -204,7 +214,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Purchasing connect → light up Universal Incoming so /incoming shows eBay
-    // buyer lines without a separate flag hunt (idempotent upsert).
+    // buyer lines without a separate flag hunt (idempotent upsert). Also merge
+    // `ebay` into inbound.enabledSources so a stale explicit list cannot leave
+    // Import no-oping after a successful buyer OAuth.
     if (accountRole === 'buyer') {
       try {
         await enableOrgFeatureFlag(organizationId, INCOMING_UNIVERSAL_FLAG);
@@ -212,6 +224,14 @@ export async function GET(req: NextRequest) {
         console.warn(
           '[ebay/callback] incoming_universal enable failed:',
           flagErr instanceof Error ? flagErr.message : flagErr,
+        );
+      }
+      try {
+        await ensureEbayInboundSourceEnabled(organizationId as OrgId);
+      } catch (srcErr: unknown) {
+        console.warn(
+          '[ebay/callback] ensure ebay inbound source failed:',
+          srcErr instanceof Error ? srcErr.message : srcErr,
         );
       }
     }

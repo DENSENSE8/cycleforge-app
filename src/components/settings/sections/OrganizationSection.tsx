@@ -7,6 +7,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { useAuth } from '@/contexts/AuthContext';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
@@ -36,7 +38,12 @@ function ActiveWorkspaceCard() {
 
   const switchTo = async (organizationId: string, name: string) => {
     if (switching) return;
-    if (!window.confirm(`Switch to ${name}? Your current view and any unsaved scan state will close.`)) return;
+    const ok = await requestConfirm({
+      description: `Switch to ${name}? Your current view and any unsaved scan state will close.`,
+      tone: 'primary',
+      confirmLabel: 'Switch',
+    });
+    if (!ok) return;
     setSwitching(organizationId);
     setSwitchErr(null);
     try {
@@ -289,7 +296,7 @@ function InvitationsSection() {
           className={FIELD_CLS + ' flex-1'}
           onKeyDown={(e) => { if (e.key === 'Enter') void invite(); }}
         />
-        <select value={role} onChange={(e) => setRole(e.target.value)} className={FIELD_CLS + ' sm:w-44'}>
+        <select value={role} onChange={(e) => setRole(e.target.value)} className={`${FILTER_DROPDOWN_SELECT_CLASS} sm:w-44`}>
           {INVITE_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
         </select>
         <Button
@@ -438,7 +445,7 @@ export function OrganizationSection() {
             <select
               value={draft.timezone}
               onChange={(e) => setDraft({ ...draft, timezone: e.target.value })}
-              className={FIELD_CLS}
+              className={FILTER_DROPDOWN_SELECT_CLASS}
             >
               {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
               {!TIMEZONES.includes(draft.timezone as typeof TIMEZONES[number]) && (
@@ -537,7 +544,7 @@ export function OrganizationSection() {
                 },
               })
             }
-            className={FIELD_CLS}
+            className={FILTER_DROPDOWN_SELECT_CLASS}
           >
             <option value="advisory">Advisory — show the checklist, never block</option>
             <option value="block_until_matched">Box until matched — flag the pack until every required item is confirmed</option>

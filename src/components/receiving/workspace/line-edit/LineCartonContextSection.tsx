@@ -15,8 +15,6 @@ import { CartonContextCard } from '@/components/station/entity-context';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/ReceivingLinesTable';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
-import { classifyLineSource } from '@/lib/receiving/intake-items-routing';
-import { isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
 import type { UnboxLineController } from './unbox-line-controller';
 
 interface LineCartonContextSectionProps {
@@ -37,16 +35,24 @@ interface LineCartonContextSectionProps {
   /** True while the inline ticket editor is open. */
   ticketViewActive?: boolean;
   /**
-   * When false, never auto-expand platform/type/priority pills in the header
-   * (triage moves classify into the Overview SectionTabsSlider tab).
-   * Default true = unbox behavior (expand when classify is pending).
+   * When false, never auto-expand (legacy — pills are always on when shown).
+   * Kept for call-site API parity.
    */
   expandClassifyWhenPending?: boolean;
   /**
-   * When false, hide the header classify toggle + platform/type/urgency pills
-   * entirely (triage). Default true.
+   * When false, hide the header platform/type/urgency pills entirely. Default true.
    */
   showClassifyControls?: boolean;
+  /**
+   * When false, header pills are read-only facts (triage — Overview checklist
+   * owns edits). Default true = unbox InlinePillPicker.
+   */
+  classifyInteractive?: boolean;
+  /**
+   * Unbox / Arrival: fired when a classify pill is clicked — host opens the
+   * Classify surface and expands that dimension's names list.
+   */
+  onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
   /** Forwarded to {@link CartonContextCard} — `bar` for the sticky station chrome. */
   density?: 'card' | 'bar';
   /** Switch Unbox workspace to the Tracking tab. */
@@ -71,30 +77,24 @@ export function LineCartonContextSection({
   ticketViewActive = false,
   expandClassifyWhenPending = true,
   showClassifyControls = true,
+  classifyInteractive = true,
+  onClassifyPillOpen,
   density = 'card',
   onEditTracking,
   onEditListing,
   trackingEditOpen = false,
   listingEditOpen = false,
 }: LineCartonContextSectionProps) {
-  // An unfound carton whose intake kind isn't set yet: the unbox stepper's
-  // Classify dot is active, so surface the classify pills (platform + type)
-  // right here in the header — expanded — instead of hiding them behind the
-  // sliders toggle. Matched cartons (identity resolved by their PO) and
-  // already-classified unfound cartons keep the condensed one-row default.
-  // Triage opts out (classify lives in the Overview tab).
-  const classifyPending =
-    expandClassifyWhenPending &&
-    classifyLineSource(row) === 'unmatched' &&
-    !isIntakeClassified(row);
+  void expandClassifyWhenPending;
 
   return (
     <CartonContextCard
       receivingId={row.receiving_id ?? null}
       staffId={staffId}
       isUnmatched={row.receiving_source === 'unmatched'}
-      classifyPending={classifyPending}
       showClassifyControls={showClassifyControls}
+      classifyInteractive={classifyInteractive}
+      onClassifyPillOpen={onClassifyPillOpen}
       density={density}
       showStaffPhotoRow
       onMakeClaim={() => c.openClaimModal('create')}

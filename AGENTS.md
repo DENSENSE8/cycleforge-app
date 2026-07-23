@@ -39,9 +39,14 @@ Each concern has one module — never inline or re-derive:
 | Focus affordance | `src/design-system/tokens/focus-ring.ts` (`focusRing`) |
 | Depth elevation (flat · raised · overlay) | `src/design-system/tokens/shadows.ts` (`elevationClass`) |
 | Surface / box shell | `Panel` / `SectionCard` / `CardShell` (never hand-roll the shell) |
+| Dialog / AlertDialog | `@/design-system/components` `Dialog` / `AlertDialog` (+ `requestConfirm` / `ConfirmDialogHost`) — never hand-roll `fixed inset-0` scrims; floor confirms stay on `ConfirmSheet` |
+| Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
+| Dropdown / Context menu | `@/design-system/primitives` `DropdownMenu` / `ContextMenu` |
 | Station entity-context header | `@/components/station/entity-context` (`CartonContextCard` + `StationContextBar`) — Unbox/Triage/Testing/Shipping |
+| Workbench chrome scoped search | `@/design-system/primitives/ToolbarSearchToggle` (icon → expand on hover/focus; compose `SearchField`) |
 | Resizable document PDF slide-over | `@/design-system/components/DocumentSlideOver` (+ `DocumentPreviewFrame`, `useHorizontalEdgeResize`) |
 | Integrations / capabilities | `src/lib/integrations/**` |
+| Receiving type → label / tone / icon | `src/lib/receiving/receiving-type-meta.ts` |
 | Cross-entity search | `src/lib/search/hybrid-retrieval.ts` → `SearchHit` |
 | Toasts | `@/lib/toast` + `AppToaster` (never Sonner `richColors`) |
 | Full list | `.claude/rules/source-of-truth.md` |

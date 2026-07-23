@@ -23,6 +23,11 @@ interface ContextualManualLinkRowProps {
   itemNumber?: string | null;
   onSaved?: (fileId: string) => void;
   allowEmbeddedItemNumberInput?: boolean;
+  /**
+   * Nested under Item Number on the Product tab — quieter label + no outer
+   * DetailsPanelRow chrome (parent row already owns the divider).
+   */
+  embedded?: boolean;
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -31,6 +36,7 @@ export function ContextualManualLinkRow({
   itemNumber,
   onSaved,
   allowEmbeddedItemNumberInput = true,
+  embedded = false,
 }: ContextualManualLinkRowProps) {
   const normalizedItemNumber = String(itemNumber || '').trim().toUpperCase();
   const [localItemNumber, setLocalItemNumber] = useState(normalizedItemNumber);
@@ -114,67 +120,40 @@ export function ContextualManualLinkRow({
     return `https://docs.google.com/document/d/${savedFileId}`;
   }, [savedFileId]);
 
-  return (
-    <DetailsPanelRow
-      label="Product Manual"
-      headerAccessory={
-        effectiveItemNumber ? (
-          <span className="truncate text-role-micro uppercase tracking-wide text-text-soft">
-            {effectiveItemNumber}
-          </span>
-        ) : null
-      }
-      actions={(
-        <div className="flex items-center gap-2">
-          <InlineSaveIndicator state={saveState} />
-          {openUrl ? (
-            <HoverTooltip label="Open manual" asChild>
-              <a
-                href={openUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-faint transition-colors hover:text-blue-600"
-                aria-label={`Open manual for ${contextualKey}`}
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </HoverTooltip>
-          ) : null}
-        </div>
-      )}
-    >
-      <div className="w-full space-y-2">
-        {allowEmbeddedItemNumberInput && !normalizedItemNumber ? (
-          <input
-            ref={itemInputRef}
-            type="text"
-            value={localItemNumber}
-            onChange={(e) => {
-              setLocalItemNumber(e.target.value);
-              setSaveState('idle');
-            }}
-            placeholder="Item number"
-            className="h-8 w-full border-0 bg-transparent px-0 text-sm font-bold uppercase tracking-wide text-text-default outline-none"
-          />
-        ) : null}
-        <div className="flex items-center gap-2">
-          <input
-            ref={googleInputRef}
-            type="text"
-            value={googleInput}
-            onChange={(e) => {
-              setGoogleInput(e.target.value);
-              setSaveState('idle');
-            }}
-            onBlur={() => { void saveManual(); }}
-            placeholder={
-              effectiveItemNumber
-                ? `Paste manual link or file ID for ${contextualKey}`
-                : 'Enter item number'
-            }
-            disabled={!effectiveItemNumber}
-            className="h-8 flex-1 border-0 bg-transparent px-0 text-sm font-medium text-text-default outline-none placeholder:text-text-faint disabled:text-text-faint"
-          />
+  const body = (
+    <div className="w-full space-y-2">
+      {allowEmbeddedItemNumberInput && !normalizedItemNumber ? (
+        <input
+          ref={itemInputRef}
+          type="text"
+          value={localItemNumber}
+          onChange={(e) => {
+            setLocalItemNumber(e.target.value);
+            setSaveState('idle');
+          }}
+          placeholder="Item number"
+          className="h-8 w-full border-0 bg-transparent px-0 text-sm font-bold uppercase tracking-wide text-text-default outline-none"
+        />
+      ) : null}
+      <div className="flex items-center gap-2">
+        <input
+          ref={googleInputRef}
+          type="text"
+          value={googleInput}
+          onChange={(e) => {
+            setGoogleInput(e.target.value);
+            setSaveState('idle');
+          }}
+          onBlur={() => { void saveManual(); }}
+          placeholder={
+            effectiveItemNumber
+              ? `Paste manual link or file ID for ${contextualKey}`
+              : 'Add an item number to attach a manual'
+          }
+          disabled={!effectiveItemNumber}
+          className="h-8 flex-1 border-0 bg-transparent px-0 text-sm font-medium text-text-default outline-none placeholder:text-text-faint disabled:text-text-faint"
+        />
+        {effectiveItemNumber ? (
           <HoverTooltip label="Paste manual link" asChild>
             <IconButton
               type="button"
@@ -196,8 +175,57 @@ export function ContextualManualLinkRow({
               icon={<Clipboard className="h-3.5 w-3.5" />}
             />
           </HoverTooltip>
-        </div>
+        ) : null}
       </div>
+    </div>
+  );
+
+  const actions = (
+    <div className="flex items-center gap-2">
+      <InlineSaveIndicator state={saveState} />
+      {openUrl ? (
+        <HoverTooltip label="Open manual" asChild>
+          <a
+            href={openUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-text-faint transition-colors hover:text-blue-600"
+            aria-label={`Open manual for ${contextualKey}`}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </HoverTooltip>
+      ) : null}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-1.5 pt-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-role-micro uppercase tracking-widest text-text-faint">
+            Product Manual
+          </span>
+          {actions}
+        </div>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <DetailsPanelRow
+      label="Product Manual"
+      headerAccessory={
+        effectiveItemNumber ? (
+          <span className="truncate text-role-micro uppercase tracking-wide text-text-soft">
+            {effectiveItemNumber}
+          </span>
+        ) : null
+      }
+      actions={actions}
+    >
+      {body}
     </DetailsPanelRow>
   );
 }

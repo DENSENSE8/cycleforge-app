@@ -802,22 +802,6 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
              'UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE','FAILED','RTV','SCRAP'
            )`,
         );
-      } else if (deliveryStateFilter === 'DELIVERED_EMAIL') {
-        // Email-driven counterpart to DELIVERED_UNOPENED: an "ORDER DELIVERED"
-        // email logged a delivery signal for this PO's order#, and it hasn't
-        // been scanned at the dock yet. Same normalized-order# join key the
-        // summary's getEmailDeliveredUnscannedCount uses, so list === count.
-        conditions.push(
-          `EXISTS (
-             SELECT 1 FROM email_delivery_signals eds
-              WHERE eds.order_number_norm = rz.zoho_purchaseorder_number_norm
-                AND eds.organization_id = rl.organization_id
-                AND eds.delivered_at > NOW() - interval '30 days'
-           )
-           AND NOT EXISTS (
-             SELECT 1 FROM receiving_scans rs WHERE rs.receiving_id = r.id
-           )`,
-        );
       } else if (deliveryStateFilter === 'ARRIVING_TODAY') {
         conditions.push(`stn.latest_status_category = 'OUT_FOR_DELIVERY'`);
       } else if (deliveryStateFilter === 'STALLED') {

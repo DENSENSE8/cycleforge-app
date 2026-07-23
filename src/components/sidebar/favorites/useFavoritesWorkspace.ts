@@ -10,6 +10,7 @@ import {
   type EcwidSearchProduct,
   type FavoriteDraft,
 } from './favorites-search';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { deleteFavorite, fetchFavorites, saveFavorite, searchEcwidProducts } from './favorites-api';
 
 export interface FavoritesWorkspaceSectionProps {
@@ -201,7 +202,12 @@ export function useFavoritesWorkspace(props: FavoritesWorkspaceSectionProps) {
   };
 
   const handleDelete = async (favoriteId: number) => {
-    if (!window.confirm('Remove this favorite from this workspace?')) return;
+    const ok = await requestConfirm({
+      description: 'Remove this favorite from this workspace?',
+      tone: 'danger',
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
     setError(null);
     try {
       await deleteFavorite(favoriteId, workspaceKey);

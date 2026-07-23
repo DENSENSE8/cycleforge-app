@@ -4,7 +4,13 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Edit, Plus, Trash2, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, Checkbox, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+} from '@/design-system/components/Dialog';
+import { requestConfirm } from '@/design-system/components/confirm';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
 import { toast } from '@/lib/toast';
@@ -216,8 +222,13 @@ export function ReasonCodesManagementTab() {
     createMutation.mutate(form);
   };
 
-  const handleDelete = (row: ReasonCodeRecord) => {
-    if (!window.confirm(`Remove reason code "${row.code}"? It will be hidden from pickers.`)) return;
+  const handleDelete = async (row: ReasonCodeRecord) => {
+    const ok = await requestConfirm({
+      description: `Remove reason code "${row.code}"? It will be hidden from pickers.`,
+      tone: 'danger',
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
     deleteMutation.mutate(row.id);
   };
 
@@ -311,11 +322,14 @@ export function ReasonCodesManagementTab() {
         </div>
       </div>
 
-      {isFormOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          {/* ds-raw-button: full-bleed modal scrim, not a styled control */}
-          <button type="button" className="absolute inset-0 bg-scrim/30" onClick={closeForm} aria-label="Close reason code form" />
-          <div className="relative flex w-full max-w-2xl flex-col overflow-hidden border border-border-soft bg-surface-card shadow-xl">
+      <Dialog
+        open={isFormOpen}
+        onOpenChange={(next) => {
+          if (!next) closeForm();
+        }}
+      >
+        <DialogContent hideClose className="max-w-2xl gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <div className="flex w-full flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
               <div>
                 <p className={sectionLabel}>{editingId != null ? 'Edit Reason Code' : 'New Reason Code'}</p>
@@ -352,7 +366,7 @@ export function ReasonCodesManagementTab() {
                 <select
                   value={form.category}
                   onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}
-                  className={inputClass}
+                  className={FILTER_DROPDOWN_SELECT_CLASS}
                 >
                   {CATEGORY_OPTIONS.map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -376,7 +390,7 @@ export function ReasonCodesManagementTab() {
                 <select
                   value={form.direction}
                   onChange={(e) => setForm((c) => ({ ...c, direction: e.target.value as Direction }))}
-                  className={inputClass}
+                  className={FILTER_DROPDOWN_SELECT_CLASS}
                 >
                   {DIRECTION_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -430,21 +444,19 @@ export function ReasonCodesManagementTab() {
               </div>
 
               <label className="flex items-center gap-3 border border-border-soft px-3 py-3">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={form.requiresNote}
-                  onChange={(e) => setForm((c) => ({ ...c, requiresNote: e.target.checked }))}
-                  className="h-4 w-4 border-border-default text-text-default focus:ring-border-default"
+                  onCheckedChange={(v) => setForm((c) => ({ ...c, requiresNote: v === true }))}
+                  aria-label="Requires note"
                 />
                 <span className={`${sectionLabel} text-text-muted`}>Requires note</span>
               </label>
 
               <label className="flex items-center gap-3 border border-border-soft px-3 py-3">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={form.requiresPhoto}
-                  onChange={(e) => setForm((c) => ({ ...c, requiresPhoto: e.target.checked }))}
-                  className="h-4 w-4 border-border-default text-text-default focus:ring-border-default"
+                  onCheckedChange={(v) => setForm((c) => ({ ...c, requiresPhoto: v === true }))}
+                  aria-label="Requires photo"
                 />
                 <span className={`${sectionLabel} text-text-muted`}>Requires photo</span>
               </label>
@@ -459,8 +471,8 @@ export function ReasonCodesManagementTab() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

@@ -3,6 +3,7 @@ import {
   getSkuCatalogBySku,
   getSkuCatalogList,
   upsertSkuCatalog,
+  type SkuCatalogLinkFilter,
 } from '@/lib/neon/sku-catalog-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
@@ -17,11 +18,23 @@ import pool from '@/lib/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { upsertSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
+import {
+  connectedProviderKey,
+  connectedProviderLabel,
+} from '@/lib/integrations/capability-connections';
 
 const ROUTE_SKU_CATALOG_POST = 'sku-catalog.post';
 
+function parseLinkFilter(raw: string | null): SkuCatalogLinkFilter | undefined {
+  if (raw === 'active_linked' || raw === 'unlinked_pending' || raw === 'all') return raw;
+  return undefined;
+}
+
 /**
  * GET /api/sku-catalog — Paginated SKU catalog list with platform/manual/QC counts.
+ *
+ * Optional `linkFilter=active_linked|unlinked_pending|all` for Products Catalog
+ * MDM segments. When omitted, preserves historic active-only admin list behavior.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -32,13 +45,25 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const sort = searchParams.get('sort') || 'az';
     const dir = searchParams.get('dir') || 'asc';
     const ecwidOnly = searchParams.get('ecwidOnly') === 'true';
+    const linkFilter = parseLinkFilter(searchParams.get('linkFilter'));
 
-    const { items, total } = await getSkuCatalogList(
-      { q, limit, offset, sort, dir, ecwidOnly },
-      ctx.organizationId,
-    );
+    const [{ items, total }, providerKey, providerLabel] = await Promise.all([
+      getSkuCatalogList(
+        { q, limit, offset, sort, dir, ecwidOnly, linkFilter },
+        ctx.organizationId,
+      ),
+      connectedProviderKey(ctx.organizationId, 'inventory'),
+      connectedProviderLabel(ctx.organizationId, 'inventory'),
+    ]);
 
-    return NextResponse.json({ success: true, items, total });
+    return NextResponse.json({
+      success: true,
+      items,
+      total,
+      inventoryProvider: providerKey
+        ? { key: providerKey, label: providerLabel }
+        : null,
+    });
   } catch (error: any) {
     console.error('Error in GET /api/sku-catalog:', error);
     return NextResponse.json(

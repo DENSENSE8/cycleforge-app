@@ -36,8 +36,8 @@ const ACTION_CATALOG: Record<string, { label: string; icon: ReactNode; toneClass
 };
 
 const ENTITY_ACTION_KEYS: Record<PanelEntityType, string[]> = {
-  order:      ['goals', 'notes', 'urgent', 'status', 'out_of_stock'],
-  work_order: ['goals', 'notes', 'urgent', 'status', 'out_of_stock'],
+  order:      ['goals', 'urgent', 'notes', 'out_of_stock', 'status'],
+  work_order: ['goals', 'urgent', 'notes', 'out_of_stock', 'status'],
   fba_item:   ['goals', 'notes'],
   repair:         ['notes'],
   walk_in_sale:   ['notes'],

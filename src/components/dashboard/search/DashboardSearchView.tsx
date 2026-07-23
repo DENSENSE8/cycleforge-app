@@ -77,8 +77,9 @@ export function DashboardSearchView() {
   const searchParams = useSearchParams();
   const q = (searchParams.get('q') ?? searchParams.get('dq') ?? '').trim();
   const openOrderId = (searchParams.get('openOrderId') ?? '').trim();
+  const map = (searchParams.get('map') ?? '').trim();
 
-  const resolution = useDashboardSearchOrder({ q, openOrderId });
+  const resolution = useDashboardSearchOrder({ q, openOrderId, map });
 
   const { push: pushRecent } = useStaffSearchRecents({
     scope: DASHBOARD_SEARCH_RECENTS_SCOPE,
@@ -99,9 +100,9 @@ export function DashboardSearchView() {
     (hit: AiSearchHit, event: ReactMouseEvent) => {
       if (hit.entityType !== 'order') return;
       event.preventDefault();
-      router.push(orderSearchHref(hit.id, q));
+      router.push(orderSearchHref(hit.id, q, { map: map === 'recent' ? 'recent' : 'search' }));
     },
-    [router, q],
+    [router, q, map],
   );
 
   // Sole-ORDER convenience open for a natural-language query showing the list.
@@ -117,9 +118,9 @@ export function DashboardSearchView() {
       const key = q.trim();
       if (!key || autoOpenQueryRef.current === key) return;
       autoOpenQueryRef.current = key;
-      router.replace(orderSearchHref(hits[0].id, q));
+      router.replace(orderSearchHref(hits[0].id, q, { map: map === 'recent' ? 'recent' : 'search' }));
     },
-    [openOrderId, q, router],
+    [openOrderId, q, map, router],
   );
 
   if (resolution.phase === 'resolving') {

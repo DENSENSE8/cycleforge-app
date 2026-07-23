@@ -1,24 +1,23 @@
 import { useCallback, useMemo } from 'react';
-import { useFetch, useMutation } from './_data';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
+import {
+  applyRoomCreateToLocations,
+  applyRoomDeleteToLocations,
+  applyRoomPatchToLocations,
+  applyRoomReorderToLocations,
+  type LocationRecord,
+  type LocationsListData,
+  type RoomSnapshot,
+  type RoomStructure,
+} from './locations-cache';
+
+export type {
+  LocationRecord,
+  RoomStructure,
+} from './locations-cache';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-export interface LocationRecord {
-  id: number;
-  name: string;
-  room: string | null;
-  description: string | null;
-  barcode: string | null;
-  is_active: boolean;
-  sort_order: number;
-  row_label: string | null;
-  col_label: string | null;
-  bin_type: string | null;
-  capacity: number | null;
-  parent_id: number | null;
-  /** Zone letter A-Z for parent room rows only. */
-  zone_letter: string | null;
-}
 
 export interface CreateLocationPayload {
   name: string;
@@ -33,17 +32,24 @@ export interface CreateLocationPayload {
   parentId?: number | null;
 }
 
-/** Room → { rows: { [row]: cols[] } } structure for cascading pickers. */
-export type RoomStructure = Record<string, { rows: Record<string, string[]> }>;
-
-// ─── Fetcher ────────────────────────────────────────────────────────────────
-
-interface LocationsResponse {
-  locations: LocationRecord[];
-  roomStructure: RoomStructure;
+export interface BulkBinRangePayload {
+  room: string;
+  rowLabel: string;
+  colStart: number;
+  colEnd: number;
+  binType?: string | null;
+  capacity?: number | null;
 }
 
-async function fetchLocations(): Promise<LocationsResponse> {
+interface RoomPatchResult {
+  updated: number;
+  barcodesRekeyed: number;
+  room: RoomSnapshot | null;
+}
+
+// ─── Fetchers ───────────────────────────────────────────────────────────────
+
+async function fetchLocations(): Promise<LocationsListData> {
   const res = await fetch('/api/locations', { cache: 'no-store' });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || 'Failed to fetch locations');
@@ -83,7 +89,7 @@ async function patchRoom(args: {
   oldName: string;
   newName?: string;
   zoneLetter?: string | null;
-}): Promise<{ updated: number; barcodesRekeyed: number }> {
+}): Promise<RoomPatchResult> {
   const body: Record<string, unknown> = {};
   if (args.newName !== undefined) body.name = args.newName;
   if (args.zoneLetter !== undefined) body.zoneLetter = args.zoneLetter;
@@ -94,7 +100,11 @@ async function patchRoom(args: {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error || 'Failed to update room');
-  return data;
+  return {
+    updated: typeof data?.updated === 'number' ? data.updated : 0,
+    barcodesRekeyed: typeof data?.barcodesRekeyed === 'number' ? data.barcodesRekeyed : 0,
+    room: data?.room ?? null,
+  };
 }
 
 async function deleteRoom(name: string): Promise<{ deactivated: number }> {
@@ -104,16 +114,9 @@ async function deleteRoom(name: string): Promise<{ deactivated: number }> {
   return data;
 }
 
-export interface BulkBinRangePayload {
-  room: string;
-  rowLabel: string;
-  colStart: number;
-  colEnd: number;
-  binType?: string | null;
-  capacity?: number | null;
-}
-
-async function postBulkBins(payload: BulkBinRangePayload): Promise<{ created: number; bins: LocationRecord[] }> {
+async function postBulkBins(
+  payload: BulkBinRangePayload,
+): Promise<{ created: number; bins: LocationRecord[] }> {
   const res = await fetch('/api/locations/bulk', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -148,6 +151,8 @@ export interface UseLocationsResult {
   /** Get distinct rooms as strings. */
   roomNames: string[];
   loading: boolean;
+  /** True while a background refetch / invalidation is in flight. */
+  fetching: boolean;
   error: Error | null;
   refetch: () => void;
   create: (payload: CreateLocationPayload) => Promise<LocationRecord | null>;
@@ -160,11 +165,13 @@ export interface UseLocationsResult {
     oldName: string,
     newName?: string,
     zoneLetter?: string | null,
-  ) => Promise<{ updated: number; barcodesRekeyed: number } | null>;
+  ) => Promise<RoomPatchResult | null>;
   /** Soft-delete a room and all of its bins. */
   removeRoom: (name: string) => Promise<{ deactivated: number } | null>;
   /** Bulk-create bins from a range spec ({room, rowLabel, colStart, colEnd}). */
-  createBinRange: (payload: BulkBinRangePayload) => Promise<{ created: number; bins: LocationRecord[] } | null>;
+  createBinRange: (
+    payload: BulkBinRangePayload,
+  ) => Promise<{ created: number; bins: LocationRecord[] } | null>;
   /** Persist a new room display order (array of room names). */
   reorderRooms: (order: string[]) => Promise<{ updated: number } | null>;
   roomMutating: boolean;
@@ -176,76 +183,174 @@ export interface UseLocationsResult {
 }
 
 export function useLocations(): UseLocationsResult {
-  const { data, loading, error, refetch } = useFetch(fetchLocations, []);
+  const queryClient = useQueryClient();
 
   const {
-    mutate: createRaw,
-    loading: creating,
-    error: createError,
-  } = useMutation(postLocation);
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: qk.locations.list(),
+    queryFn: fetchLocations,
+    staleTime: 30_000,
+  });
+
+  const invalidateLocations = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: qk.locations.all });
+    void queryClient.invalidateQueries({ queryKey: qk.locationsAdmin.all });
+  }, [queryClient]);
+
+  const writeList = useCallback(
+    (updater: (prev: LocationsListData) => LocationsListData) => {
+      queryClient.setQueryData<LocationsListData>(qk.locations.list(), (prev) => {
+        if (!prev) return prev;
+        return updater(prev);
+      });
+    },
+    [queryClient],
+  );
+
+  const createMutation = useMutation({
+    mutationFn: postLocation,
+    onSuccess: () => {
+      invalidateLocations();
+    },
+  });
+
+  const createRoomMutation = useMutation({
+    mutationFn: postRoom,
+    onSuccess: (room) => {
+      writeList((prev) => applyRoomCreateToLocations(prev, room));
+      invalidateLocations();
+    },
+  });
+
+  const renameRoomMutation = useMutation({
+    mutationFn: patchRoom,
+    onSuccess: (result, vars) => {
+      if (result.room) {
+        writeList((prev) =>
+          applyRoomPatchToLocations(prev, {
+            oldName: vars.oldName,
+            room: result.room!,
+          }),
+        );
+      }
+      invalidateLocations();
+    },
+  });
+
+  const deleteRoomMutation = useMutation({
+    mutationFn: deleteRoom,
+    onSuccess: (_result, name) => {
+      writeList((prev) => applyRoomDeleteToLocations(prev, name));
+      invalidateLocations();
+    },
+  });
+
+  const bulkBinsMutation = useMutation({
+    mutationFn: postBulkBins,
+    onSuccess: () => {
+      invalidateLocations();
+    },
+  });
+
+  const reorderRoomsMutation = useMutation({
+    mutationFn: postReorderRooms,
+    onSuccess: (_result, order) => {
+      writeList((prev) => applyRoomReorderToLocations(prev, order));
+      invalidateLocations();
+    },
+  });
 
   const create = useCallback(
     async (payload: CreateLocationPayload): Promise<LocationRecord | null> => {
-      const result = await createRaw(payload);
-      if (result) refetch();
-      return result as LocationRecord | null;
+      try {
+        return await createMutation.mutateAsync(payload);
+      } catch {
+        return null;
+      }
     },
-    [createRaw, refetch],
+    [createMutation],
   );
-
-  const { mutate: createRoomRaw, loading: creatingRoom, error: roomCreateError } = useMutation(postRoom);
-  const { mutate: renameRoomRaw, loading: renaming, error: renameError } = useMutation(patchRoom);
-  const { mutate: deleteRoomRaw, loading: deletingRoom, error: deleteError } = useMutation(deleteRoom);
-  const { mutate: bulkBinsRaw, loading: bulkCreating, error: bulkError } = useMutation(postBulkBins);
-  const { mutate: reorderRoomsRaw, loading: reordering, error: reorderError } = useMutation(postReorderRooms);
 
   const createRoom = useCallback(
     async (name: string, zoneLetter?: string | null) => {
-      const result = await createRoomRaw({ name, zoneLetter: zoneLetter ?? null });
-      if (result) refetch();
-      return result as LocationRecord | null;
+      try {
+        return await createRoomMutation.mutateAsync({
+          name,
+          zoneLetter: zoneLetter ?? null,
+        });
+      } catch {
+        return null;
+      }
     },
-    [createRoomRaw, refetch],
+    [createRoomMutation],
   );
 
   const renameRoomFn = useCallback(
     async (oldName: string, newName?: string, zoneLetter?: string | null) => {
-      const result = await renameRoomRaw({ oldName, newName, zoneLetter });
-      if (result) refetch();
-      return result as { updated: number; barcodesRekeyed: number } | null;
+      try {
+        return await renameRoomMutation.mutateAsync({
+          oldName,
+          newName,
+          zoneLetter,
+        });
+      } catch {
+        return null;
+      }
     },
-    [renameRoomRaw, refetch],
+    [renameRoomMutation],
   );
 
   const removeRoom = useCallback(
     async (name: string) => {
-      const result = await deleteRoomRaw(name);
-      if (result) refetch();
-      return result as { deactivated: number } | null;
+      try {
+        return await deleteRoomMutation.mutateAsync(name);
+      } catch {
+        return null;
+      }
     },
-    [deleteRoomRaw, refetch],
+    [deleteRoomMutation],
   );
 
   const createBinRange = useCallback(
     async (payload: BulkBinRangePayload) => {
-      const result = await bulkBinsRaw(payload);
-      if (result) refetch();
-      return result as { created: number; bins: LocationRecord[] } | null;
+      try {
+        return await bulkBinsMutation.mutateAsync(payload);
+      } catch {
+        return null;
+      }
     },
-    [bulkBinsRaw, refetch],
+    [bulkBinsMutation],
   );
 
   const reorderRoomsFn = useCallback(
     async (order: string[]) => {
-      const result = await reorderRoomsRaw(order);
-      if (result) refetch();
-      return result as { updated: number } | null;
+      try {
+        return await reorderRoomsMutation.mutateAsync(order);
+      } catch {
+        return null;
+      }
     },
-    [reorderRoomsRaw, refetch],
+    [reorderRoomsMutation],
   );
 
-  const roomMutating = creatingRoom || renaming || deletingRoom || bulkCreating || reordering;
-  const roomMutationError = roomCreateError || renameError || deleteError || bulkError || reorderError;
+  const roomMutating =
+    createRoomMutation.isPending ||
+    renameRoomMutation.isPending ||
+    deleteRoomMutation.isPending ||
+    bulkBinsMutation.isPending ||
+    reorderRoomsMutation.isPending;
+
+  const roomMutationError =
+    createRoomMutation.error ||
+    renameRoomMutation.error ||
+    deleteRoomMutation.error ||
+    bulkBinsMutation.error ||
+    reorderRoomsMutation.error;
 
   const locations = data?.locations ?? [];
   const roomStructure = data?.roomStructure ?? {};
@@ -281,19 +386,32 @@ export function useLocations(): UseLocationsResult {
     bins,
     roomStructure,
     roomNames,
-    loading,
-    error,
-    refetch,
+    loading: isLoading,
+    fetching: isFetching,
+    error: error instanceof Error ? error : error ? new Error(String(error)) : null,
+    refetch: () => {
+      void refetch();
+    },
     create,
-    creating,
-    createError,
+    creating: createMutation.isPending,
+    createError:
+      createMutation.error instanceof Error
+        ? createMutation.error
+        : createMutation.error
+          ? new Error(String(createMutation.error))
+          : null,
     createRoom,
     renameRoom: renameRoomFn,
     removeRoom,
     createBinRange,
     reorderRooms: reorderRoomsFn,
     roomMutating,
-    roomMutationError,
+    roomMutationError:
+      roomMutationError instanceof Error
+        ? roomMutationError
+        : roomMutationError
+          ? new Error(String(roomMutationError))
+          : null,
     findByBarcode,
     binsForRoom,
   };

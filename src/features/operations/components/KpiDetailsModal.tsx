@@ -1,11 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
-import { IconButton } from '@/design-system/primitives';
-import { useBodyScrollLock, useEscapeClose } from '@/design-system/hooks';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { formatDistanceToNowStrict } from 'date-fns';
 import type { DashboardData } from '@/features/operations/types';
 import { useRepairsTable } from '@/hooks/useRepairs';
@@ -194,65 +196,40 @@ function RepairList({ emptyHint }: { emptyHint: string }) {
 }
 
 export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetailsModalProps) {
-  useEscapeClose(Boolean(kind), onClose);
-  useBodyScrollLock(Boolean(kind));
-
-  if (typeof document === 'undefined') return null;
-
   const meta = kind ? TITLES[kind] : null;
   const filtered = kind && kind !== 'repair' ? filterFeed(kind, activityFeed) : [];
 
-  return createPortal(
-    <AnimatePresence>
-      {kind && meta ? (
-        <motion.div
-          key="kpi-modal"
-          className="fixed inset-0 z-elevatedModal flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-        >
-          <div
-            className="absolute inset-0 bg-[#2D2A26]/40 backdrop-blur-[2px]"
-            onClick={onClose}
-            aria-hidden
-          />
-
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label={meta.title}
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 4 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
-            className="relative flex w-full max-w-[520px] flex-col overflow-hidden rounded-3xl border border-border-soft bg-surface-card shadow-[0_24px_60px_rgba(45,42,38,0.18)]"
-            style={{ maxHeight: 'min(600px, 88vh)' }}
-          >
-            <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+  return (
+    <Dialog
+      open={Boolean(kind)}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <DialogContent
+        className="flex max-h-[min(600px,88vh)] max-w-[520px] flex-col gap-0 overflow-hidden p-0 sm:rounded-3xl"
+      >
+        {meta ? (
+          <>
+            <DialogHeader className="flex flex-row items-start justify-between gap-3 space-y-0 px-5 pb-3 pt-5 pr-12">
               <div className="min-w-0">
-                <p className="text-role-title font-extrabold leading-tight text-text-default">{meta.title}</p>
-                <p className="mt-0.5 text-role-caption font-medium leading-snug text-text-muted">{meta.subtitle}</p>
+                <DialogTitle className="text-role-title font-extrabold leading-tight text-text-default">
+                  {meta.title}
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 text-role-caption font-medium leading-snug text-text-muted">
+                  {meta.subtitle}
+                </DialogDescription>
               </div>
-              <div className="flex items-center gap-2">
-                {typeof value === 'number' ? (
-                  <span className={`rounded-full px-2.5 py-1 text-role-caption font-extrabold tabular-nums ${TONE_RING[meta.tone]}`}>
-                    {value.toLocaleString()}
-                  </span>
-                ) : null}
-                <IconButton
-                  onClick={onClose}
-                  ariaLabel="Close"
-                  icon={<X className="h-4 w-4" strokeWidth={2.25} />}
-                  className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-card"
-                />
-              </div>
-            </div>
+              {typeof value === 'number' ? (
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-role-caption font-extrabold tabular-nums ${TONE_RING[meta.tone]}`}>
+                  {value.toLocaleString()}
+                </span>
+              ) : null}
+            </DialogHeader>
 
             <div className="border-t border-border-soft" />
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {kind === 'repair' ? (
                 <RepairList emptyHint={meta.emptyHint} />
               ) : (
@@ -265,10 +242,9 @@ export function KpiDetailsModal({ kind, value, activityFeed, onClose }: KpiDetai
                 ? 'Live queue · updates as tickets close'
                 : 'Most recent activity · refreshes every minute'}
             </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>,
-    document.body,
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

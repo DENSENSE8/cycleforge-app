@@ -15,6 +15,14 @@
 import { useMemo, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { Button } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
 import { isAdminRoleKey, type StaffRole } from '@/lib/auth/permissions-shared';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { useConfirmedAction } from '@/hooks';
@@ -173,23 +181,35 @@ export function StaffAccessDetail({ staffId }: StaffAccessDetailProps) {
       <AuditCard audit={audit} borderClass={sc.border} />
 
       {/* Reset PIN — enrollment QR modal */}
-      {qrUrl && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-scrim/60 p-4" onClick={() => setQrUrl(null)}>
-          <div className="w-full max-w-md rounded-3xl bg-surface-card p-6 text-center" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-text-default">Reset PIN for {staff.name}</h2>
-            <p className="mt-1 text-xs text-text-soft">
-              Have them scan this on their phone to pick a new PIN. Expires {new Date(qrUrl.expiresAt).toLocaleString()}.
-            </p>
-            <div className="my-5 inline-block rounded-2xl border border-border-soft bg-surface-card p-4">
-              <QRCode value={qrUrl.url} size={220} level="M" />
-            </div>
-            <p className="break-all text-role-micro text-text-faint">{qrUrl.url}</p>
-            <Button variant="brand" size="lg" onClick={() => setQrUrl(null)} className="mt-5">
+      <Dialog
+        open={!!qrUrl}
+        onOpenChange={(next) => {
+          if (!next) setQrUrl(null);
+        }}
+      >
+        <DialogContent hideClose className="max-w-md text-center">
+          <DialogHeader className="items-center text-center">
+            <DialogTitle>Reset PIN for {staff.name}</DialogTitle>
+            <DialogDescription>
+              Have them scan this on their phone to pick a new PIN.
+              {qrUrl ? ` Expires ${new Date(qrUrl.expiresAt).toLocaleString()}.` : null}
+            </DialogDescription>
+          </DialogHeader>
+          {qrUrl ? (
+            <>
+              <div className="inline-block rounded-2xl border border-border-soft bg-surface-card p-4">
+                <QRCode value={qrUrl.url} size={220} level="M" />
+              </div>
+              <p className="break-all text-role-micro text-text-faint">{qrUrl.url}</p>
+            </>
+          ) : null}
+          <DialogFooter className="sm:justify-center">
+            <Button variant="brand" size="lg" onClick={() => setQrUrl(null)}>
               Done
             </Button>
-          </div>
-        </div>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Update PIN dialog */}
       <SetPinDialog
